@@ -2572,15 +2572,17 @@ export default function DealDetail() {
               </Button>
             )}
 
-            {/* Proactive Alert Bar - inline */}
-            <ProactiveAlertBar 
-              deal={deal}
-              checklistTotal={allChecklistItems.length}
-              checklistComplete={0}
-              outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
-              infoRequestCount={infoRequestActionCount}
-              onNavigate={handleTabChange}
-            />
+            {/* Proactive Alert Bar - inline (debt-pipeline only) */}
+            {!isSimplifiedDeal && (
+              <ProactiveAlertBar 
+                deal={deal}
+                checklistTotal={allChecklistItems.length}
+                checklistComplete={0}
+                outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
+                infoRequestCount={infoRequestActionCount}
+                onNavigate={handleTabChange}
+              />
+            )}
 
             <div className="flex items-center gap-2 flex-wrap ml-auto">
               <Tooltip>
@@ -2657,11 +2659,13 @@ export default function DealDetail() {
                   />
                   <HubSpotDealBadge dealId={deal.id} />
                 </div>
-                <InlineEditField
-                  value={formatValue(deal.value)}
-                  onSave={(value) => updateDeal('value', parseValue(value))}
-                  displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
-                />
+                {!isSimplifiedDeal && (
+                  <InlineEditField
+                    value={formatValue(deal.value)}
+                    onSave={(value) => updateDeal('value', parseValue(value))}
+                    displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                  />
+                )}
               </div>
               <div className="flex items-center justify-between gap-2 mt-4 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
