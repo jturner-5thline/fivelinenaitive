@@ -1154,7 +1154,7 @@ function NeuralNetwork() {
         <meshBasicMaterial
           color="#22d3ee"
           transparent
-          opacity={0.08}
+          opacity={0.04}
           blending={THREE.AdditiveBlending}
           side={THREE.BackSide}
           depthWrite={false}
@@ -1167,7 +1167,7 @@ function NeuralNetwork() {
           color="#67e8f9"
           wireframe
           transparent
-          opacity={0.18}
+          opacity={0.1}
           depthWrite={false}
         />
       </mesh>
@@ -1178,7 +1178,7 @@ function NeuralNetwork() {
           color="#a5f3fc"
           wireframe
           transparent
-          opacity={0.12}
+          opacity={0.06}
           depthWrite={false}
         />
       </mesh>
@@ -1201,7 +1201,7 @@ function NeuralNetwork() {
           color="#67e8f9"
           wireframe
           transparent
-          opacity={0.55}
+          opacity={0.38}
           depthWrite={false}
         />
       </mesh>
@@ -1211,7 +1211,7 @@ function NeuralNetwork() {
         <meshBasicMaterial
           color="#cffafe"
           transparent
-          opacity={0.45}
+          opacity={0.35}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
