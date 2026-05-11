@@ -36,6 +36,9 @@ interface Props {
   thread: EmailThread;
   /** Resolved attachments from the latest message (post `useFullEmailMessage`). */
   attachments?: EmailAttachment[];
+  /** Optional lender firm name resolved upstream (workflow analysis). Used
+   *  for source-attribution headers like "<Lender> requested N items". */
+  lenderName?: string;
 }
 
 /** Tokens used to fuzzy-match attachment filenames -> outstanding item text. */
@@ -140,7 +143,7 @@ function detectContactFulfillment(
   return matches;
 }
 
-export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments }: Props) {
+export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments, lenderName }: Props) {
   const { items, updateItem } = useOutstandingItems(dealId);
   const { logAuditAction } = useDealAuditLog(dealId);
   const [working, setWorking] = useState<Record<string, boolean>>({});
@@ -159,6 +162,7 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
     openItems,
     attachments,
     thread,
+    lenderName,
     enabled: !!dealId,
   });
 
