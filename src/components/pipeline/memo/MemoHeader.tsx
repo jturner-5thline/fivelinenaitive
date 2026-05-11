@@ -39,6 +39,25 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
       ? rawStage.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
       : null);
 
+  // Real deal status text: comes from the deal's free-text "status notes"
+  // field (stored as rich-text HTML in `deal.notes`), which is the same
+  // value shown in the deal detail header tile.
+  const statusText = (() => {
+    const raw = (deal.notes || '').toString();
+    if (!raw.trim()) return null;
+    const stripped = raw
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return stripped || null;
+  })();
+  const statusDisplay = statusText || stageLabel;
+
   return (
     <div className="px-5 pt-4 pb-3 border-b border-border">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -49,9 +68,13 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
           >
             {deal.company || deal.name}
           </h2>
-          {stageLabel && (
-            <Badge variant="outline" className="rounded-full border-primary/30 text-primary/90 bg-primary/5">
-              {stageLabel}
+          {statusDisplay && (
+            <Badge
+              variant="outline"
+              className="rounded-full border-primary/30 text-primary/90 bg-primary/5 max-w-[360px] truncate"
+              title={statusDisplay}
+            >
+              {statusDisplay}
             </Badge>
           )}
           {structureLabel && (
