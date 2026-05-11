@@ -2572,15 +2572,17 @@ export default function DealDetail() {
               </Button>
             )}
 
-            {/* Proactive Alert Bar - inline */}
-            <ProactiveAlertBar 
-              deal={deal}
-              checklistTotal={allChecklistItems.length}
-              checklistComplete={0}
-              outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
-              infoRequestCount={infoRequestActionCount}
-              onNavigate={handleTabChange}
-            />
+            {/* Proactive Alert Bar - inline (debt-pipeline only) */}
+            {!isSimplifiedDeal && (
+              <ProactiveAlertBar 
+                deal={deal}
+                checklistTotal={allChecklistItems.length}
+                checklistComplete={0}
+                outstandingItemsCount={outstandingItems.filter(i => !i.received && !i.approved).length}
+                infoRequestCount={infoRequestActionCount}
+                onNavigate={handleTabChange}
+              />
+            )}
 
             <div className="flex items-center gap-2 flex-wrap ml-auto">
               <Tooltip>
@@ -2657,11 +2659,13 @@ export default function DealDetail() {
                   />
                   <HubSpotDealBadge dealId={deal.id} />
                 </div>
-                <InlineEditField
-                  value={formatValue(deal.value)}
-                  onSave={(value) => updateDeal('value', parseValue(value))}
-                  displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
-                />
+                {!isSimplifiedDeal && (
+                  <InlineEditField
+                    value={formatValue(deal.value)}
+                    onSave={(value) => updateDeal('value', parseValue(value))}
+                    displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                  />
+                )}
               </div>
               <div className="flex items-center justify-between gap-2 mt-4 flex-wrap">
                 <div className="flex items-center gap-2 flex-wrap">
@@ -2773,15 +2777,17 @@ export default function DealDetail() {
                   onDeleteNote={deleteStatusNote}
                 />
                 </div>
-                <div className="flex items-center gap-1.5 ml-auto">
-                  <span className="text-xs text-muted-foreground">Close:</span>
-                  <input
-                    type="date"
-                    value={deal.closingDate || ''}
-                    onChange={(e) => updateDeal('closingDate', e.target.value || null)}
-                    className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
-                  />
-                </div>
+                {!isSimplifiedDeal && (
+                  <div className="flex items-center gap-1.5 ml-auto">
+                    <span className="text-xs text-muted-foreground">Close:</span>
+                    <input
+                      type="date"
+                      value={deal.closingDate || ''}
+                      onChange={(e) => updateDeal('closingDate', e.target.value || null)}
+                      className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
+                    />
+                  </div>
+                )}
               </div>
               
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-t border-border mt-4 pt-4">
@@ -2965,6 +2971,19 @@ export default function DealDetail() {
                 </div>
 
                 <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
+                  {/* Naitive pipeline deals get a fully Naitive-specific layout —
+                      no debt panels (research, AI assistant, outstanding items,
+                      activity timeline, benchmarks). */}
+                  {isNaitiveDeal ? (
+                    <div className="space-y-6">
+                      <NaitiveStageMilestonesSection dealId={deal.id} stage={deal.stage} />
+                      <NaitiveDealInformation
+                        deal={deal}
+                        onUpdate={(field, value) => updateDeal(field as any, value as any)}
+                      />
+                    </div>
+                  ) : (
+                  <>
                   {/* Milestones Card - hidden for naitive pipeline deals */}
                   {!isSimplifiedDeal && (
                   <Card>
@@ -2978,11 +2997,6 @@ export default function DealDetail() {
                       />
                     </CardContent>
                   </Card>
-                  )}
-
-                  {/* Naitive pipeline stage milestones */}
-                  {isNaitiveDeal && deal && (
-                    <NaitiveStageMilestonesSection dealId={deal.id} stage={deal.stage} />
                   )}
 
                   <div className="flex justify-end">
@@ -3746,6 +3760,8 @@ export default function DealDetail() {
                   )}
 
 
+                  </>
+                  )}
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
