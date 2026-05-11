@@ -578,24 +578,59 @@ serve(async (req: Request): Promise<Response> => {
       case "send": {
         const { to, cc, bcc, subject, body, body_html, attachments, reply_to_message_id } = requestData;
 
-        if (!to || to.length === 0 || !subject) {
+        // Defensive recipient normalization — Nylas v3 rejects comma-joined
+        // strings (e.g. "a@x.co, b@x.co"). Always coerce to a clean string[]
+        // and validate each address, no matter what shape the caller sent.
+        const EMAIL_RE = /^[^\s<>@,;]+@[^\s<>@,;]+\.[^\s<>@,;]+$/;
+        const normalizeRecipients = (input: unknown): string[] => {
+          if (input == null) return [];
+          const arr = Array.isArray(input) ? input : [input];
+          const out: string[] = [];
+          for (const item of arr) {
+            if (!item) continue;
+            const raw = typeof item === "string"
+              ? item
+              : (item as any)?.email ?? "";
+            if (!raw) continue;
+            for (const part of String(raw).split(/[,;]/)) {
+              const m = part.match(/<([^>]+)>/);
+              const cleaned = (m ? m[1] : part).trim().replace(/^["']|["']$/g, "");
+              if (cleaned) out.push(cleaned);
+            }
+          }
+          return Array.from(new Set(out));
+        };
+
+        const toList = normalizeRecipients(to);
+        const ccList = normalizeRecipients(cc);
+        const bccList = normalizeRecipients(bcc);
+
+        if (toList.length === 0 || !subject) {
           return new Response(JSON.stringify({ error: "To and subject are required" }), {
             status: 400,
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
 
+        const invalid = [...toList, ...ccList, ...bccList].filter((e) => !EMAIL_RE.test(e));
+        if (invalid.length > 0) {
+          return new Response(
+            JSON.stringify({ error: `Invalid recipient address(es): ${invalid.join(", ")}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
         const sendBody: any = {
-          to: to.map(email => ({ email, name: email })),
+          to: toList.map((email) => ({ email, name: email })),
           subject,
           body: body_html || body || "",
         };
 
-        if (cc && cc.length > 0) {
-          sendBody.cc = cc.map(email => ({ email, name: email }));
+        if (ccList.length > 0) {
+          sendBody.cc = ccList.map((email) => ({ email, name: email }));
         }
-        if (bcc && bcc.length > 0) {
-          sendBody.bcc = bcc.map(email => ({ email, name: email }));
+        if (bccList.length > 0) {
+          sendBody.bcc = bccList.map((email) => ({ email, name: email }));
         }
 
         // Outbound attachments — Nylas v3 expects base64-encoded `content`.
