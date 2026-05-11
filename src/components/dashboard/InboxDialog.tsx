@@ -611,7 +611,19 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           "w-[94vw] max-w-none sm:max-w-none max-h-none",
           "overflow-hidden"
         )}
-        style={{ width: '94vw' }}
+        style={{
+          width: '94vw',
+          // Executive dark gradient: a true near-black base with a
+          // restrained deep-plum accent concentrated in the top-left
+          // corner only, so the modal gains depth without reading as a
+          // colorful or "SaaS" gradient. Stops are deliberately low
+          // opacity and high-contrast so child glass surfaces remain
+          // legible on top.
+          background:
+            'radial-gradient(120% 90% at 0% 0%, hsla(280, 28%, 14%, 0.55) 0%, hsla(280, 22%, 10%, 0.30) 28%, transparent 60%),' +
+            'radial-gradient(100% 80% at 100% 100%, hsla(240, 20%, 6%, 0.55) 0%, transparent 55%),' +
+            'linear-gradient(160deg, #0a0a0d 0%, #0b0a10 45%, #08080b 100%)',
+        }}
       >
         <DialogTitle className="sr-only">Email</DialogTitle>
         <div className="flex-1 min-h-0 overflow-hidden">
