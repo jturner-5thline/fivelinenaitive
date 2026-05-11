@@ -438,12 +438,12 @@ export function useGmail() {
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: 'send',
-          to: options.to,
+          to: normalizeRecipients(options.to),
           subject: options.subject,
           body: options.body,
           body_html: options.bodyHtml,
-          cc: options.cc,
-          bcc: options.bcc,
+          cc: normalizeRecipients(options.cc),
+          bcc: normalizeRecipients(options.bcc),
           attachments: encodedAttachments,
           reply_to_message_id: options.replyToMessageId,
         },
