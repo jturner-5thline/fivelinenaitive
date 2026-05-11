@@ -18474,6 +18474,7 @@ export type Database = {
           section_id: string | null
           source_email_from: string | null
           source_email_message_id: string | null
+          source_email_received_at: string | null
           source_email_subject: string | null
           source_email_thread_id: string | null
           start_date: string | null
@@ -18515,6 +18516,7 @@ export type Database = {
           section_id?: string | null
           source_email_from?: string | null
           source_email_message_id?: string | null
+          source_email_received_at?: string | null
           source_email_subject?: string | null
           source_email_thread_id?: string | null
           start_date?: string | null
@@ -18556,6 +18558,7 @@ export type Database = {
           section_id?: string | null
           source_email_from?: string | null
           source_email_message_id?: string | null
+          source_email_received_at?: string | null
           source_email_subject?: string | null
           source_email_thread_id?: string | null
           start_date?: string | null

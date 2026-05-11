@@ -26,6 +26,10 @@ export interface CreateTaskFromEmailSource {
   fromName?: string | null;
   fromEmail?: string | null;
   snippet?: string | null;
+  /** ISO timestamp of when the source email was received. Persisted on
+   *  the task so downstream "Open source email" tooltips can show it
+   *  alongside sender + subject. */
+  receivedAt?: string | null;
   /** Optional pre-resolved deal/contact context. */
   dealId?: string | null;
   contactId?: string | null;
@@ -128,6 +132,7 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
           email.fromName || email.fromEmail
             ? `${email.fromName || ''}${email.fromEmail ? ` <${email.fromEmail}>` : ''}`.trim()
             : null,
+        source_email_received_at: email.receivedAt || null,
       } as any);
       if (error) throw error;
       toast.success('Task created from email');

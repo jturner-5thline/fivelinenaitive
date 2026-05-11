@@ -691,6 +691,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
         fromName: latest.from_name,
         fromEmail: latest.from_email,
         snippet: latest.snippet || latest.body_preview,
+        receivedAt: latest.received_at || null,
       }}
     />
     </>
