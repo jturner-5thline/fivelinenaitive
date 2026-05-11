@@ -190,6 +190,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { applyDefaultChecklistToOutstandingItems } from '@/utils/applyDefaultChecklist';
+import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycle';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
