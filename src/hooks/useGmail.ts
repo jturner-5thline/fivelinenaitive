@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_BASE_URL } from '@/constants/appConfig';
+import { getInvalidRecipients, normalizeRecipientInput } from '@/lib/emailRecipients';
 
 /**
  * Normalize recipient inputs into a clean string[] of individual addresses.
@@ -9,17 +10,8 @@ import { APP_BASE_URL } from '@/constants/appConfig';
  * Nylas v3 rejects entries that contain multiple addresses, so we always split.
  */
 function normalizeRecipients(input: string[] | string | undefined): string[] | undefined {
-  if (!input) return undefined;
-  const arr = Array.isArray(input) ? input : [input];
-  const out: string[] = [];
-  for (const raw of arr) {
-    if (!raw) continue;
-    for (const part of String(raw).split(/[,;]/)) {
-      const trimmed = part.trim().replace(/^['"<]+|['">]+$/g, '').trim();
-      if (trimmed) out.push(trimmed);
-    }
-  }
-  return out.length ? out : undefined;
+  const normalized = normalizeRecipientInput(input);
+  return normalized.length ? normalized : undefined;
 }
 
 interface GmailMessage {
@@ -427,6 +419,22 @@ export function useGmail() {
     if (!user) return null;
 
     try {
+      const normalizedTo = normalizeRecipients(options.to);
+      const normalizedCc = normalizeRecipients(options.cc);
+      const normalizedBcc = normalizeRecipients(options.bcc);
+      const invalidRecipients = [
+        ...getInvalidRecipients(options.to),
+        ...getInvalidRecipients(options.cc),
+        ...getInvalidRecipients(options.bcc),
+      ];
+
+      if (!normalizedTo?.length) {
+        throw new Error('Add at least one valid recipient before sending.');
+      }
+      if (invalidRecipients.length > 0) {
+        throw new Error(`Invalid recipient${invalidRecipients.length > 1 ? 's' : ''}: ${invalidRecipients.join(', ')}`);
+      }
+
       let encodedAttachments: Array<{
         filename: string;
         content_type: string;
@@ -454,15 +462,30 @@ export function useGmail() {
         );
       }
 
+      console.log('[useGmail.sendEmail] payload-shape', {
+        raw: {
+          to: options.to,
+          cc: options.cc,
+          bcc: options.bcc,
+          reply_to_message_id: options.replyToMessageId,
+        },
+        normalized: {
+          to: normalizedTo,
+          cc: normalizedCc,
+          bcc: normalizedBcc,
+          attachment_count: encodedAttachments?.length ?? 0,
+        },
+      });
+
       const { data, error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: 'send',
-          to: normalizeRecipients(options.to),
+          to: normalizedTo,
           subject: options.subject,
           body: options.body,
           body_html: options.bodyHtml,
-          cc: normalizeRecipients(options.cc),
-          bcc: normalizeRecipients(options.bcc),
+          cc: normalizedCc,
+          bcc: normalizedBcc,
           attachments: encodedAttachments,
           reply_to_message_id: options.replyToMessageId,
         },

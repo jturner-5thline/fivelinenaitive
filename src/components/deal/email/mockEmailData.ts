@@ -77,6 +77,8 @@ export interface MockEmail {
   _cc?: string[];
   /** Transient: full BCC recipient list for an outbound send. */
   _bcc?: string[];
+  /** Transient: normalized TO recipient list for an outbound send. */
+  _to?: string[];
 }
 
 const now = new Date();

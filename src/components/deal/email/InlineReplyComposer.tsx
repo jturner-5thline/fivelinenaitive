@@ -113,6 +113,7 @@ export function InlineReplyComposer({
       is_follow_up: false,
       needs_response: false,
       category: 'deal',
+      _to: toEmails,
       _outgoing_files: files.length > 0 ? files : undefined,
       _cc: recipients.cc.length > 0 ? recipients.cc : undefined,
       _bcc: recipients.bcc.length > 0 ? recipients.bcc : undefined,
