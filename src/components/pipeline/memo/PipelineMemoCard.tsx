@@ -52,7 +52,7 @@ function PipelineMemoCardImpl({
       tabIndex={0}
       role="button"
       aria-label={`Open deal memo for ${deal.company || deal.name}`}
-      className="cursor-pointer transition-colors duration-150 hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+      className="cursor-pointer min-w-0 max-w-full overflow-hidden transition-colors duration-150 hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
       // NOTE: do NOT set `content-visibility: auto` here. The card sits inside
       // a @tanstack/react-virtual absolute-positioned row whose offsets come
       // from each card's measured height. `content-visibility: auto` makes
