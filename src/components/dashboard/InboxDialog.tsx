@@ -386,7 +386,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     if (isLoadingMore) return;
     // Cursor-based fallback: even when upstream token is gone, we may
     // still have older messages cached locally — keep going if so.
-    const canCacheFallback = !!oldestReceivedAt;
+    const canCacheFallback = !!oldestReceivedAt && hasMoreCache;
     if (!hasMoreInbox && !hasMoreSent && !canCacheFallback) return;
     setIsLoadingMore(true);
     try {
@@ -401,16 +401,18 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
           // Upstream rate-limited — fall back to cursor-anchored cache read
           // so the user still gets older messages instead of a hard stop.
           const older = await loadOlderFromCache(oldestReceivedAt, 100);
-          if (isMountedRef.current && older.length) {
-            setInboxMessages(prev => mergeUniqueById(prev, older));
+          if (isMountedRef.current) {
+            if (older.length) setInboxMessages(prev => mergeUniqueById(prev, older));
+            else setHasMoreCache(false);
           }
         }
       } else if (!hasMoreInbox && canCacheFallback) {
         // Upstream exhausted but the local cache still has older rows
         // anchored before our oldest loaded `received_at`.
         const older = await loadOlderFromCache(oldestReceivedAt, 100);
-        if (isMountedRef.current && older.length) {
-          setInboxMessages(prev => mergeUniqueById(prev, older));
+        if (isMountedRef.current) {
+          if (older.length) setInboxMessages(prev => mergeUniqueById(prev, older));
+          else setHasMoreCache(false);
         }
       }
       if (hasMoreSent && sentNextToken) {
@@ -426,7 +428,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     } finally {
       if (isMountedRef.current) setIsLoadingMore(false);
     }
-  }, [hasMoreInbox, hasMoreSent, inboxNextToken, sentNextToken, isLoadingMore, mergeUniqueById, oldestReceivedAt, loadOlderFromCache]);
+  }, [hasMoreInbox, hasMoreSent, hasMoreCache, inboxNextToken, sentNextToken, isLoadingMore, mergeUniqueById, oldestReceivedAt, loadOlderFromCache]);
 
   // ─── Background read-state sync ───────────────────────────────────
   // Periodically reconciles is_read / is_starred state for messages
