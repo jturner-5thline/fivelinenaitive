@@ -94,13 +94,13 @@ export function ExpandedTaskDetails({ task, onUpdate, onOpenFullDetail }: Expand
               </div>
             </div>
           ) : (
-            <button
+            <div
               onClick={() => setEditingDesc(true)}
-              className="w-full text-left text-[12.5px] leading-relaxed rounded px-2 py-1.5 -mx-2 hover:bg-[rgba(255,255,255,0.03)] transition-colors whitespace-pre-wrap"
+              className="w-full text-left text-[12.5px] leading-relaxed rounded px-2 py-1.5 -mx-2 hover:bg-[rgba(255,255,255,0.03)] transition-colors whitespace-pre-wrap cursor-text"
               style={{ color: task.description ? '#cfd5e0' : '#5b6173' }}
             >
-              {task.description || 'Click to add description…'}
-            </button>
+              {task.description ? renderWithLinks(task.description) : 'Click to add description…'}
+            </div>
           )}
         </Section>
 
