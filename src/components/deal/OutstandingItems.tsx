@@ -84,6 +84,14 @@ interface OutstandingItemsProps {
    * (deal-type → standard fallback) as the create-deal flow.
    */
   onApplyDefaultChecklist?: () => Promise<void> | void;
+  /**
+   * When true, all add/edit/delete affordances are hidden or disabled and
+   * a banner is shown at the top explaining why. Existing items remain
+   * viewable for record-keeping. Used for closed/archived/inactive deals.
+   */
+  readOnly?: boolean;
+  /** Human-readable reason shown in the read-only banner (e.g. "Closed Won"). */
+  readOnlyReason?: string;
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
