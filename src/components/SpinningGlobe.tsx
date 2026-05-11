@@ -1137,14 +1137,48 @@ function NeuralNetwork() {
           depthWrite={false}
         />
       </mesh>
-      {/* Inner shell — defines a clean inner edge */}
+      {/* Inner shell — defines a clean inner edge (lower opacity to feel less flat) */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[0.272, 96, 96]} />
         <meshBasicMaterial
           color="#0891b2"
           transparent
-          opacity={0.35}
+          opacity={0.18}
           side={THREE.FrontSide}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Internal tonal layer — additive cyan wash gives depth without solidity */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.22, 64, 64]} />
+        <meshBasicMaterial
+          color="#22d3ee"
+          transparent
+          opacity={0.08}
+          blending={THREE.AdditiveBlending}
+          side={THREE.BackSide}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Internal latitude wireframe — engineered texture inside the nucleus */}
+      <mesh position={[0, 0, 0]} rotation={[0, 0, 0]}>
+        <sphereGeometry args={[0.245, 24, 12]} />
+        <meshBasicMaterial
+          color="#67e8f9"
+          wireframe
+          transparent
+          opacity={0.18}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Cross wireframe — second axis to break flatness with subtle structure */}
+      <mesh position={[0, 0, 0]} rotation={[Math.PI / 2.5, Math.PI / 4, 0]}>
+        <sphereGeometry args={[0.235, 18, 10]} />
+        <meshBasicMaterial
+          color="#a5f3fc"
+          wireframe
+          transparent
+          opacity={0.12}
           depthWrite={false}
         />
       </mesh>
@@ -1171,13 +1205,25 @@ function NeuralNetwork() {
           depthWrite={false}
         />
       </mesh>
-      {/* Bright defined nuclear core — small, sharp focal anchor */}
+      {/* Inner core — translucent, layered (no longer a flat opaque dot) */}
       <mesh position={[0, 0, 0]}>
         <sphereGeometry args={[0.06, 32, 32]} />
         <meshBasicMaterial
           color="#cffafe"
           transparent
-          opacity={0.95}
+          opacity={0.45}
+          blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Core hot-spot — tight bright focal point with additive falloff */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.028, 24, 24]} />
+        <meshBasicMaterial
+          color="#ecfeff"
+          transparent
+          opacity={0.85}
+          blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
       </mesh>
