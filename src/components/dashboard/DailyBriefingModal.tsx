@@ -37,6 +37,7 @@ import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/compone
 // behavior, actions, ordering, and label wiring stay identical between
 // Daily Briefing email rows and the Email widget pop-up.
 import { EmailContextMenu } from '@/components/deal/email/EmailContextMenu';
+import { CreateTaskFromEmailDialog, type CreateTaskFromEmailSource } from '@/components/tasks/CreateTaskFromEmailDialog';
 import { useGmail } from '@/hooks/useGmail';
 import { toast } from 'sonner';
 // Code-split: keeps the Memo view (and @tanstack/react-virtual) out of the
