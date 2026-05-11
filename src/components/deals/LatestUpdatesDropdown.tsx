@@ -73,8 +73,12 @@ export function LatestUpdatesDropdown() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-96 bg-popover">
-        <DropdownMenuLabel className="flex items-center gap-2">
+      <DropdownMenuContent
+        align="end"
+        sideOffset={10}
+        className="w-[400px] p-0 rounded-3xl border border-border/40 bg-popover/70 backdrop-blur-2xl shadow-[0_20px_60px_-15px_hsl(var(--background)/0.6),0_8px_24px_-12px_hsl(var(--background)/0.4)] supports-[backdrop-filter]:bg-popover/55"
+      >
+        <DropdownMenuLabel className="flex items-center gap-2 px-5 pt-4 pb-3">
           <Clock className="h-4 w-4 text-primary" />
           <span className="font-semibold">Latest Updates</span>
           {unreadCount > 0 && (
@@ -87,11 +91,11 @@ export function LatestUpdatesDropdown() {
 
         {unreadCount > 0 && (
           <>
-            <div className="px-3 py-1.5">
+            <div className="px-4 py-2">
               <Button
                 variant="ghost"
                 size="sm"
-                className="w-full justify-center text-xs text-muted-foreground hover:text-foreground gap-1.5"
+                className="w-full justify-center text-xs text-muted-foreground hover:text-teal-400 gap-1.5"
                 onClick={handleMarkAllAsRead}
               >
                 <CheckCheck className="h-3.5 w-3.5" />
@@ -114,30 +118,30 @@ export function LatestUpdatesDropdown() {
             <p className="text-xs mt-1">Activity will appear here</p>
           </div>
         ) : (
-          <ScrollArea className="h-[320px]">
-            <div className="p-1">
+          <ScrollArea className="h-[360px]">
+            <div className="px-3 pt-2 pb-3 space-y-2">
               {filteredActivities.map((activity) => {
                 const unread = isUnread(activity.created_at);
                 return (
                   <DropdownMenuItem
                     key={activity.id}
                     asChild
-                    className={`flex items-start gap-3 py-2.5 px-3 cursor-pointer hover:bg-accent/50 rounded-md mx-1 ${unread ? 'bg-accent/20' : ''}`}
+                    className={`group flex items-start gap-3 py-3 px-3.5 cursor-pointer rounded-2xl border transition-all duration-200 bg-card/60 supports-[backdrop-filter]:bg-card/45 backdrop-blur-md border-border/40 shadow-sm hover:bg-card/80 hover:border-teal-400/30 hover:shadow-md hover:-translate-y-0.5 focus:bg-card/80 focus:border-teal-400/40 ${unread ? 'border-teal-400/25 bg-card/75' : ''}`}
                   >
                     <Link 
                       to={`/deal/${activity.deal_id}`}
                       onClick={() => setOpen(false)}
                     >
                       {unread && (
-                        <div className="mt-2 h-2 w-2 rounded-full bg-primary shrink-0" />
+                        <div className="mt-2 h-2 w-2 rounded-full bg-teal-400 shadow-[0_0_8px_hsl(var(--primary)/0.6)] shrink-0" />
                       )}
                       <div className="mt-0.5">{getIcon(activity.activity_type, activity.description)}</div>
-                      <div className="flex-1 min-w-0">
+                      <div className="flex-1 min-w-0 text-left">
                         {activity.deal_name && (
-                          <p className={`text-xs text-primary truncate ${unread ? 'font-semibold' : 'font-medium'}`}>{activity.deal_name}</p>
+                          <p className={`text-[13px] truncate text-foreground ${unread ? 'font-semibold' : 'font-medium'}`}>{activity.deal_name}</p>
                         )}
-                        <span className={`text-sm text-foreground ${unread ? 'font-medium' : ''}`}>{activity.description}</span>
-                        <p className="text-xs text-muted-foreground mt-0.5">
+                        <span className={`block text-[13px] leading-snug text-muted-foreground mt-0.5 ${unread ? 'text-foreground/90' : ''}`}>{activity.description}</span>
+                        <p className="text-[11px] text-muted-foreground/70 mt-1.5 tracking-wide">
                           {format(new Date(activity.created_at), 'MMM d, h:mm a')}
                         </p>
                       </div>
