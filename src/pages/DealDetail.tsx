@@ -3161,6 +3161,17 @@ export default function DealDetail() {
                             </Collapsible>
                           );
                         case 'deal-information': {
+                          // Naitive pipeline deals use a Naitive-specific schema —
+                          // do not render the debt-pipeline field set.
+                          if (isNaitiveDeal) {
+                            return (
+                              <NaitiveDealInformation
+                                key={id}
+                                deal={deal}
+                                onUpdate={(field, value) => updateDeal(field as any, value as any)}
+                              />
+                            );
+                          }
                           const renderDealInfoField = (fieldId: DealInfoFieldId) => {
                             if (!isDealInfoFieldVisible(fieldId)) return null;
                             switch (fieldId) {
