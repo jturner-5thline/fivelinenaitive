@@ -272,15 +272,23 @@ serve(async (req) => {
         continue;
       }
 
+      // Loop-prevention marker: stamp this update as originating from Asana
+      // so the Naitive client (useTasks) skips pushing it back to Asana.
+      updateData.sync_source = 'asana';
+      updateData.updated_at = new Date().toISOString();
+
       const { error: updateError } = await supabase
         .from("tasks")
         .update(updateData)
         .eq("id", naitiveTask.id);
 
       if (updateError) {
-        console.error(`Update error for naitive task ${naitiveTask.id}:`, updateError);
+        console.error(`[asana-webhook] update error for naitive task ${naitiveTask.id} (gid ${taskGid}):`, updateError);
       } else {
-        console.log(`[asana-webhook] synced ${taskGid} → ${naitiveTask.id} fields:`, Object.keys(updateData));
+        console.log(
+          `[asana-webhook] synced ${taskGid} → ${naitiveTask.id} fields:`,
+          Object.keys(updateData).filter((k) => k !== 'sync_source' && k !== 'updated_at'),
+        );
       }
     }
 
