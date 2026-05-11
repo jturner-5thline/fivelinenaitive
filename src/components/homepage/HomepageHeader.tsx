@@ -23,7 +23,7 @@ export const HomepageHeader = () => {
           : "bg-transparent backdrop-blur-sm border-b border-white/5"
       )}
     >
-      <nav className="container mx-auto px-4 sm:px-6 h-24 flex items-center justify-between gap-4">
+      <nav className="container mx-auto px-4 sm:px-6 py-1 flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0" aria-label="naitive home">
           <img
