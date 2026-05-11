@@ -3606,6 +3606,9 @@ export default function DealDetail() {
                           );
                         }
                         case 'outstanding-items':
+                          // Outstanding Items is a debt-pipeline concept —
+                          // skip it entirely for Naitive pipeline deals.
+                          if (isNaitiveDeal) return null;
                           return (
                             <div key={id} className="space-y-6">
                               <OutstandingItems
