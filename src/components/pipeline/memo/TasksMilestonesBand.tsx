@@ -244,9 +244,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   };
 
   return (
-    <div className="px-5 py-3 bg-muted/40 border-b border-border">
-      <div className="md:max-w-[88%] lg:max-w-[85%]">
-      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+    <div className="px-5 py-3 bg-muted/40 border-b border-border max-w-full min-w-0 overflow-hidden">
+      <div className="md:max-w-[88%] lg:max-w-[85%] max-w-full min-w-0">
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap max-w-full min-w-0">
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Tasks & milestones
         </div>
