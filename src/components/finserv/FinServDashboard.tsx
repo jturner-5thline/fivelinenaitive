@@ -113,16 +113,16 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
             </CardContent>
           </Card>
 
-          {/* Top 3 Clients */}
+          {/* Top Active Clients (deals currently in the Active Client stage only) */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-medium uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Trophy className="h-4 w-4" /> Top 3 Clients
+                <Trophy className="h-4 w-4" /> Top Active Clients
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               {topClients.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No client data yet</p>
+                <p className="text-sm text-muted-foreground">No deals in the Active Client stage yet.</p>
               ) : topClients.map((c, i) => (
                 <div key={c.name} className="flex items-center gap-3">
                   <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
@@ -132,6 +132,11 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
                   </div>
                 </div>
               ))}
+              {topClients.length > 0 && topClients.length < 3 && (
+                <p className="text-[10px] text-muted-foreground italic pt-1">
+                  Showing all active clients. Add more Active Client deals to expand this list.
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>
