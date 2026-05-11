@@ -547,6 +547,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
     setSentNextToken(null);
     setHasMoreInbox(true);
     setHasMoreSent(true);
+    setHasMoreCache(true);
     setIsInitialLoading(true);
 
     const firstInbox = await fetchPage({ labelIds: ['INBOX'] });
