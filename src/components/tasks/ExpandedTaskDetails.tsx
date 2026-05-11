@@ -36,8 +36,11 @@ function renderWithLinks(text: string) {
         href={p.url}
         target="_blank"
         rel="noopener noreferrer"
+        // Stop both mousedown and click so the parent description
+        // container never enters edit mode when the user clicks a link.
+        onMouseDown={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
-        className="text-primary hover:underline break-all"
+        className="text-primary underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none break-all"
       >
         {p.url}
       </a>
