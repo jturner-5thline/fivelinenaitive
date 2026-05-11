@@ -263,9 +263,73 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
   const visibleContactMatches = contactMatches.filter(
     (m) => !dismissed.has(`contact:${m.item.id}`) && !attachmentMatches.some((a) => a.item.id === m.item.id),
   );
-  const visibleNewItemSuggestions = (aiResult.new_item_suggestions || []).filter(
+  const allNewItemSuggestions = aiResult.new_item_suggestions || [];
+  const visibleNewItemSuggestions = allNewItemSuggestions.filter(
     (s, i) => !dismissed.has(`new:${i}:${s.description}`),
   );
+
+  // Group lender-request lists ("we'll need the following: …") so we can
+  // render ONE approval card with a single "Add N items" CTA instead of
+  // N stacked cards. Items without a group_id render as standalone cards
+  // (one-off deliverables — the legacy behavior).
+  const groupedSuggestions = useMemo(() => {
+    const groups: Record<string, { label: string; items: typeof visibleNewItemSuggestions; firstIdx: number }> = {};
+    const standalone: Array<{ s: typeof visibleNewItemSuggestions[number]; idx: number }> = [];
+    visibleNewItemSuggestions.forEach((s, idx) => {
+      const gid = (s as any).group_id as string | null | undefined;
+      if (gid) {
+        if (!groups[gid]) {
+          groups[gid] = {
+            label: ((s as any).group_label as string | undefined) || '',
+            items: [],
+            firstIdx: idx,
+          };
+        }
+        if (!groups[gid].label && (s as any).group_label) {
+          groups[gid].label = (s as any).group_label as string;
+        }
+        groups[gid].items.push(s);
+      } else {
+        standalone.push({ s, idx });
+      }
+    });
+    // Only treat as a "grouped" card when 2+ items share a group_id —
+    // a single grouped item still renders as a standalone card.
+    const groupCards: Array<{ id: string; label: string; items: typeof visibleNewItemSuggestions }> = [];
+    Object.entries(groups)
+      .sort(([, a], [, b]) => a.firstIdx - b.firstIdx)
+      .forEach(([id, g]) => {
+        if (g.items.length >= 2) {
+          groupCards.push({ id, label: g.label, items: g.items });
+        } else {
+          // Demote 1-item groups to standalone.
+          g.items.forEach((s) => {
+            const idx = visibleNewItemSuggestions.indexOf(s);
+            standalone.push({ s, idx });
+          });
+        }
+      });
+    return { groupCards, standalone };
+  }, [visibleNewItemSuggestions]);
+
+  // Per-group selection state — defaults to all items checked. Lets the
+  // user uncheck an individual line before clicking "Add N items".
+  const [groupSelection, setGroupSelection] = useState<Record<string, Set<number>>>({});
+  const getGroupSelected = (groupId: string, total: number): Set<number> => {
+    if (groupSelection[groupId]) return groupSelection[groupId];
+    // Default: all selected.
+    const all = new Set<number>();
+    for (let i = 0; i < total; i++) all.add(i);
+    return all;
+  };
+  const toggleGroupItem = (groupId: string, idx: number, total: number) => {
+    setGroupSelection((prev) => {
+      const cur = new Set(prev[groupId] ?? Array.from({ length: total }, (_, i) => i));
+      if (cur.has(idx)) cur.delete(idx);
+      else cur.add(idx);
+      return { ...prev, [groupId]: cur };
+    });
+  };
 
   if (
     !dealId ||
