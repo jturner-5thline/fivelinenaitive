@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, useCallback, memo, lazy, Suspense } from 'react';
 import { Mail, ArrowRight, Inbox, RefreshCw, AlertCircle, Clock, TrendingUp, Zap, CheckCircle2 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,11 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/comp
 import { useDashboardLayout } from '@/contexts/DashboardLayoutContext';
 import { useGmail } from '@/hooks/useGmail';
 import { useEmailIntelligence, EnrichedEmail } from '@/hooks/useEmailIntelligence';
-import { EmailDetailModal } from '@/components/dashboard/EmailDetailModal';
+// Heavy detail modal is lazy-loaded so the widget itself paints
+// without dragging in the full email-detail bundle on dashboard mount.
+const EmailDetailModal = lazy(() =>
+  import('@/components/dashboard/EmailDetailModal').then(m => ({ default: m.EmailDetailModal })),
+);
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -98,7 +102,7 @@ function EmailIntelligenceHoverLabel({
   );
 }
 
-function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
+const EmailRow = memo(function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => void }) {
   const navigate = useNavigate();
   const closeCarousel = useWidgetCarouselStore((s) => s.close);
   const analysis = email.analysis;
@@ -193,9 +197,9 @@ function EmailRow({ email, onClick }: { email: EnrichedEmail; onClick: () => voi
       <ArrowRight className="h-3.5 w-3.5 text-muted-foreground/0 group-hover:text-muted-foreground/50 transition-colors shrink-0 mt-2" />
     </div>
   );
-}
+});
 
-export function EmailIntelligenceWidget() {
+function EmailIntelligenceWidgetImpl() {
   const { toggles } = useDashboardLayout();
   const { status, isStatusLoading } = useGmail();
   const { emails, stats, isLoading, isAnalyzing, syncEmails } = useEmailIntelligence();
@@ -212,15 +216,15 @@ export function EmailIntelligenceWidget() {
 
   if (toggles.hideEmailHints) return null;
 
-  const handleEmailClick = (email: EnrichedEmail) => {
+  const handleEmailClick = useCallback((email: EnrichedEmail) => {
     setSelectedEmail(email);
     setIsModalOpen(true);
-  };
+  }, []);
 
-  const handleModalClose = (open: boolean) => {
+  const handleModalClose = useCallback((open: boolean) => {
     setIsModalOpen(open);
     if (!open) setSelectedEmail(null);
-  };
+  }, []);
 
   // Loading state — checking Gmail connection
   if (isStatusLoading) {
@@ -276,21 +280,22 @@ export function EmailIntelligenceWidget() {
     );
   }
 
-  // Sort: follow-up needed first, then by priority, then by date
-  const sortedEmails = [...emails].sort((a, b) => {
-    const aFollowUp = a.analysis?.follow_up_needed ? 1 : 0;
-    const bFollowUp = b.analysis?.follow_up_needed ? 1 : 0;
-    if (bFollowUp !== aFollowUp) return bFollowUp - aFollowUp;
-
+  // Sort: follow-up needed first, then by priority, then by date.
+  // Memoized so unrelated parent rerenders don't re-sort every paint.
+  const displayEmails = useMemo(() => {
     const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
-    const aPriority = priorityOrder[a.analysis?.priority || 'medium'] || 2;
-    const bPriority = priorityOrder[b.analysis?.priority || 'medium'] || 2;
-    if (bPriority !== aPriority) return bPriority - aPriority;
-
-    return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
-  });
-
-  const displayEmails = sortedEmails.slice(0, 6);
+    return [...emails]
+      .sort((a, b) => {
+        const aFollowUp = a.analysis?.follow_up_needed ? 1 : 0;
+        const bFollowUp = b.analysis?.follow_up_needed ? 1 : 0;
+        if (bFollowUp !== aFollowUp) return bFollowUp - aFollowUp;
+        const aPriority = priorityOrder[a.analysis?.priority || 'medium'] || 2;
+        const bPriority = priorityOrder[b.analysis?.priority || 'medium'] || 2;
+        if (bPriority !== aPriority) return bPriority - aPriority;
+        return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
+      })
+      .slice(0, 6);
+  }, [emails]);
 
   return (
     <>
@@ -358,11 +363,22 @@ export function EmailIntelligenceWidget() {
         </CardContent>
       </Card>
 
-      <EmailDetailModal
-        email={selectedEmail}
-        open={isModalOpen}
-        onOpenChange={handleModalClose}
-      />
+      {/* Defer mounting the modal entirely until the user actually opens
+          one — keeps initial widget render cheap and avoids paying the
+          dialog/portal cost on every dashboard mount. */}
+      {(isModalOpen || selectedEmail) && (
+        <Suspense fallback={null}>
+          <EmailDetailModal
+            email={selectedEmail}
+            open={isModalOpen}
+            onOpenChange={handleModalClose}
+          />
+        </Suspense>
+      )}
     </>
   );
 }
+
+// Memoize the widget itself: dashboard layout/scroll/state changes shouldn't
+// re-render the email intelligence list when its own inputs are unchanged.
+export const EmailIntelligenceWidget = memo(EmailIntelligenceWidgetImpl);
