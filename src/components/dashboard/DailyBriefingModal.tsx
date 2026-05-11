@@ -24,6 +24,7 @@ import {
 import { OperationalDashboard } from './operational/OperationalDashboard';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useDailyDismissals } from '@/hooks/useDailyDismissals';
 
 // Reused from the main Email widget pop-up so the AI Assist experience
 // (prompts, actions, summaries, suggested replies) is identical here.
@@ -1267,21 +1268,42 @@ function FollowupTiles({
   onNavigate: (path: string) => void;
   assigneeName: string;
 }) {
-  const tiles = groups.flatMap(g =>
+  const { dismiss, isDismissed } = useDailyDismissals('rundown-followup');
+  const allTiles = groups.flatMap(g =>
     g.items.map(it => ({ ...it, company: g.company, stage: g.stage })),
   );
+  const tiles = allTiles.filter(t => !isDismissed(t.key));
+  if (tiles.length === 0 && allTiles.length > 0) {
+    return (
+      <p className="text-xs italic text-muted-foreground px-1 py-2">
+        All follow-ups dismissed for today. They’ll return after the 5 AM ET reset.
+      </p>
+    );
+  }
   return (
     <div>
       {tiles.map(t => {
         const due = t.dueAt ? new Date(t.dueAt) : null;
         const overdue = due ? isPast(due) && !isToday(due) : false;
         return (
-          <button
-            key={t.key}
-            type="button"
-            onClick={() => t.dealId && onNavigate(`/deal/${t.dealId}`)}
-            className="block w-full text-left rounded-lg bg-white/5 border border-white/10 p-3 mb-2 hover:bg-white/[0.08] transition-colors"
-          >
+          <div key={t.key} className="relative group/dismiss mb-2">
+            <button
+              type="button"
+              aria-label="Dismiss for today"
+              title="Dismiss for today (returns at 5 AM ET)"
+              onClick={(e) => {
+                e.stopPropagation();
+                dismiss(t.key);
+              }}
+              className="absolute top-1.5 right-1.5 z-10 inline-flex items-center justify-center h-5 w-5 rounded-full text-white/50 hover:text-white hover:bg-white/10 opacity-0 group-hover/dismiss:opacity-100 focus:opacity-100 transition-opacity"
+            >
+              <X className="h-3 w-3" />
+            </button>
+            <button
+              type="button"
+              onClick={() => t.dealId && onNavigate(`/deal/${t.dealId}`)}
+              className="block w-full text-left rounded-lg bg-white/5 border border-white/10 p-3 pr-7 hover:bg-white/[0.08] transition-colors"
+            >
             {/* Top: company + stage badge */}
             <div className="flex items-center justify-between gap-2 mb-1">
               <span className="text-sm font-semibold text-white truncate">{t.company}</span>
@@ -1309,7 +1331,8 @@ function FollowupTiles({
                 {assigneeName}
               </span>
             </div>
-          </button>
+            </button>
+          </div>
         );
       })}
     </div>
