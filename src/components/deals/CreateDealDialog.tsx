@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Flag, Calendar, ChevronDown } from 'lucide-react';
+import { Plus, Flag, Calendar, ChevronDown, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,7 +41,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
-import { autoPopulateOutstandingItems, isActivePipeline } from '@/utils/autoPopulateOutstandingItems';
+import { applyDefaultChecklistToOutstandingItems, getChecklistPreview, type ChecklistPreview } from '@/utils/applyDefaultChecklist';
 import { useProfile } from '@/hooks/useProfile';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -114,6 +114,8 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   const [isCreating, setIsCreating] = useState(false);
   const [showMilestonesPreview, setShowMilestonesPreview] = useState(false);
   const [dealTypesOpen, setDealTypesOpen] = useState(false);
+  const [showChecklistPreview, setShowChecklistPreview] = useState(false);
+  const [checklistPreview, setChecklistPreview] = useState<ChecklistPreview | null>(null);
   const dialogContentRef = useRef<HTMLDivElement | null>(null);
 
   const isControlled = controlledOpen !== undefined;
@@ -144,6 +146,22 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
   }, [defaultStageId, pipelines, selectedPipelineId, dealStages, dealStage]);
 
   const isLoadingFormData = isLoadingStages || isLoadingPipelines || isLoadingDealTypes;
+
+  // Live-preview the checklist that will be applied as Outstanding Items.
+  // Recomputes when the user changes Deal Types — so Fix 2's "X items will
+  // be added based on [Deal Type]" wording stays accurate.
+  useEffect(() => {
+    let cancelled = false;
+    if (!company?.id) {
+      setChecklistPreview(null);
+      return;
+    }
+    (async () => {
+      const p = await getChecklistPreview(company.id, selectedDealTypes);
+      if (!cancelled) setChecklistPreview(p);
+    })();
+    return () => { cancelled = true; };
+  }, [company?.id, selectedDealTypes]);
 
   const sortedMilestones = [...defaultMilestones].sort((a, b) => a.position - b.position);
 
@@ -254,20 +272,26 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
       });
 
       if (newDeal) {
-        // Auto-populate default checklist based on deal type
+        // Populate the data-room (VDR) checklist from the matched deal-type
+        // config. This is independent of Outstanding Items and only fires
+        // when a deal-type config matches.
         if (selectedDealTypes.length > 0 && user && company?.id) {
-          // Try each deal type for contains-match; first match wins
           for (const dealType of selectedDealTypes) {
             const count = await populateDefaultChecklist(newDeal.id, dealType, company.id, user.id);
-            if (count > 0) break; // First match wins
+            if (count > 0) break;
           }
+        }
 
-          // Auto-populate Outstanding Items from Initial Items for Active Pipeline deals
-          const pipelineId = selectedPipelineId || activePipelineId || null;
-          const isActive = await isActivePipeline(pipelineId, company.id);
-          if (isActive) {
-            await autoPopulateOutstandingItems(newDeal.id, selectedDealTypes, company.id, user.id);
-          }
+        // ALWAYS auto-populate Outstanding Items on deal creation, regardless
+        // of pipeline. Resolution: deal-type config → Standard Checklist
+        // fallback. (Fix 1 & Fix 2)
+        if (user && company?.id) {
+          await applyDefaultChecklistToOutstandingItems(
+            newDeal.id,
+            selectedDealTypes,
+            company.id,
+            user.id,
+          );
         }
         toast.success(`Deal "${dealName}" created successfully!`);
         setOpen(false);
@@ -656,6 +680,31 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                             {milestone.daysFromCreation !== null 
                               ? format(addDays(new Date(), milestone.daysFromCreation), 'MMM d, yyyy')
                               : 'No date'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+              {checklistPreview && checklistPreview.items.length > 0 && (
+                <Collapsible open={showChecklistPreview} onOpenChange={setShowChecklistPreview}>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                      <span className="flex items-center gap-2">
+                        <ListChecks className="h-4 w-4" />
+                        {checklistPreview.items.length} outstanding item{checklistPreview.items.length !== 1 ? 's' : ''} will be added ({checklistPreview.sourceLabel})
+                      </span>
+                      <span className="text-xs">{showChecklistPreview ? 'Hide' : 'Preview'}</span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2">
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 max-h-56 overflow-y-auto">
+                      {checklistPreview.items.map((it, idx) => (
+                        <div key={`${it.label}-${idx}`} className="flex items-center justify-between text-sm gap-3">
+                          <span className="font-medium truncate">{it.label}</span>
+                          <span className="text-muted-foreground text-xs whitespace-nowrap">
+                            {it.category || ''}{it.required ? (it.category ? ' · Required' : 'Required') : ''}
                           </span>
                         </div>
                       ))}

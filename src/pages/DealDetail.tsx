@@ -188,6 +188,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
+import { applyDefaultChecklistToOutstandingItems } from '@/utils/applyDefaultChecklist';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
@@ -1132,7 +1133,7 @@ export default function DealDetail() {
   const { isSaving, withSavingAsync, isAnySaving } = useSaveOperation();
   
   // Outstanding items persistence
-  const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb } = useOutstandingItems(id);
+  const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems } = useOutstandingItems(id);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -3608,6 +3609,30 @@ export default function DealDetail() {
                                 onBulkAdd={bulkAddOutstandingItemsDb}
                                 onReorder={reorderOutstandingItemsDb}
                                 teamMembers={teamMembers}
+                                onApplyDefaultChecklist={async () => {
+                                  if (!company?.id || !user?.id || !deal?.id) return;
+                                  const r = await applyDefaultChecklistToOutstandingItems(
+                                    deal.id,
+                                    deal.dealTypes || [],
+                                    company.id,
+                                    user.id,
+                                  );
+                                  await refreshOutstandingItems();
+                                  if (r.inserted > 0) {
+                                    toast({
+                                      title: 'Checklist applied',
+                                      description: `Added ${r.inserted} item${r.inserted !== 1 ? 's' : ''} from ${r.sourceLabel}.`,
+                                    });
+                                  } else {
+                                    toast({
+                                      title: 'Nothing to add',
+                                      description: r.source === 'none'
+                                        ? 'No checklist is configured in Settings → Deals → Data Room Checklists.'
+                                        : 'All checklist items already exist on this deal.',
+                                      variant: 'destructive',
+                                    });
+                                  }
+                                }}
                               />
                             </div>
                           );

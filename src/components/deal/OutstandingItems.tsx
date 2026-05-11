@@ -78,6 +78,12 @@ interface OutstandingItemsProps {
   onBulkAdd?: (texts: string[], requestedBy: string[]) => void;
   onReorder?: (items: OutstandingItem[]) => void;
   teamMembers?: { id: string; display_name: string }[];
+  /**
+   * Optional handler for the "Apply Checklist" banner shown when the deal
+   * has zero outstanding items. Should run the same checklist resolution
+   * (deal-type → standard fallback) as the create-deal flow.
+   */
+  onApplyDefaultChecklist?: () => Promise<void> | void;
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
@@ -307,7 +313,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, teamMembers }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, teamMembers, onApplyDefaultChecklist }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [newPriority, setNewPriority] = useState<ItemPriority>('normal');
@@ -971,6 +977,24 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               <p className="text-xs text-muted-foreground mt-1">
                 {!searchQuery && filterByLender.length === 0 && 'Add items above to track what\'s needed from lenders'}
               </p>
+              {/* Retroactive bulk-add for legacy deals (Fix 4). Only shown
+                  when the deal truly has zero items overall — not when a
+                  search/filter merely hides them. */}
+              {!searchQuery && filterByLender.length === 0 && items.length === 0 && onApplyDefaultChecklist && (
+                <div className="mt-4 mx-auto max-w-md rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
+                  <span className="text-xs text-muted-foreground text-left">
+                    Apply the default checklist to get started.
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => { await onApplyDefaultChecklist(); }}
+                  >
+                    Apply Checklist
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
