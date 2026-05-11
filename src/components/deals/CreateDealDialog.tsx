@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Flag, Calendar, ChevronDown } from 'lucide-react';
+import { Plus, Flag, Calendar, ChevronDown, ListChecks } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,7 +41,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useCompany } from '@/hooks/useCompany';
 import { populateDefaultChecklist } from '@/hooks/useDefaultChecklistConfig';
-import { autoPopulateOutstandingItems, isActivePipeline } from '@/utils/autoPopulateOutstandingItems';
 import { applyDefaultChecklistToOutstandingItems, getChecklistPreview, type ChecklistPreview } from '@/utils/applyDefaultChecklist';
 import { useProfile } from '@/hooks/useProfile';
 import { useDealStages } from '@/contexts/DealStagesContext';
@@ -681,6 +680,31 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                             {milestone.daysFromCreation !== null 
                               ? format(addDays(new Date(), milestone.daysFromCreation), 'MMM d, yyyy')
                               : 'No date'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+              {checklistPreview && checklistPreview.items.length > 0 && (
+                <Collapsible open={showChecklistPreview} onOpenChange={setShowChecklistPreview}>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
+                      <span className="flex items-center gap-2">
+                        <ListChecks className="h-4 w-4" />
+                        {checklistPreview.items.length} outstanding item{checklistPreview.items.length !== 1 ? 's' : ''} will be added ({checklistPreview.sourceLabel})
+                      </span>
+                      <span className="text-xs">{showChecklistPreview ? 'Hide' : 'Preview'}</span>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2">
+                    <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 max-h-56 overflow-y-auto">
+                      {checklistPreview.items.map((it, idx) => (
+                        <div key={`${it.label}-${idx}`} className="flex items-center justify-between text-sm gap-3">
+                          <span className="font-medium truncate">{it.label}</span>
+                          <span className="text-muted-foreground text-xs whitespace-nowrap">
+                            {it.category || ''}{it.required ? (it.category ? ' · Required' : 'Required') : ''}
                           </span>
                         </div>
                       ))}
