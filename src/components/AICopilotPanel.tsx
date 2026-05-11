@@ -254,16 +254,38 @@ function CopilotAssistantContent({ content }: { content: string }) {
   );
   
   const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
-  const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```/g;
+  // Match either fenced ```json {...} ``` blocks OR bare {...} objects that
+  // contain an "action" key. The LLM sometimes drops the fence or uses
+  // alternate key names ("type" instead of "action_type", "label" instead of
+  // "description") — we normalize those here so the renderer never leaks raw
+  // JSON to end users.
+  const jsonBlockRegex = /```json\s*(\{[\s\S]*?\})\s*```|(\{(?:[^{}]|\{[^{}]*\})*"action"\s*:\s*"[^"]+"(?:[^{}]|\{[^{}]*\})*\})/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   // Track seen confirm/auto_executed actions to prevent duplicates
   const seenActions = new Set<string>();
 
+  const normalizeActionPayload = (raw: any): any => {
+    if (!raw || typeof raw !== 'object') return raw;
+    const out: any = { ...raw };
+    if (!out.action_type && typeof out.type === 'string') out.action_type = out.type;
+    if (!out.description && typeof out.label === 'string') out.description = out.label;
+    if (!out.description && typeof out.message === 'string') out.description = out.message;
+    if (!out.params && out.payload && typeof out.payload === 'object') out.params = out.payload;
+    if (!out.params || typeof out.params !== 'object') out.params = {};
+    if (!out.description) out.description = 'Action ready for confirmation';
+    if (!out.action_type) out.action_type = 'generic_action';
+    return out;
+  };
+
   while ((match = jsonBlockRegex.exec(displayContent)) !== null) {
-    if (match.index > lastIndex) segments.push({ type: 'text', value: displayContent.slice(lastIndex, match.index) });
+    const jsonText = match[1] ?? match[2];
+    const matchStart = match.index;
+    if (matchStart > lastIndex) segments.push({ type: 'text', value: displayContent.slice(lastIndex, matchStart) });
     try {
-      const parsed = JSON.parse(match[1]);
+      const rawParsed = JSON.parse(jsonText);
+      const isAction = rawParsed && (rawParsed.action === 'confirm' || rawParsed.action === 'auto_executed');
+      const parsed = isAction ? normalizeActionPayload(rawParsed) : rawParsed;
       if (parsed.responseType === 'deal_card') segments.push({ type: 'deal', value: parsed.data });
       else if (parsed.responseType === 'lender_card') segments.push({ type: 'lender', value: parsed.data });
       else if (parsed.responseType === 'task_card') segments.push({ type: 'task', value: parsed.data });
@@ -294,11 +316,23 @@ function CopilotAssistantContent({ content }: { content: string }) {
         }
       }
       else if (parsed.subject && parsed.body) segments.push({ type: 'email', value: parsed });
-      else segments.push({ type: 'text', value: match[0] });
+      else if (isAction) {
+        // Unknown shape but clearly an action payload — show fallback card
+        // rather than leaking JSON to the user.
+        segments.push({ type: 'confirm', value: parsed });
+      } else {
+        segments.push({ type: 'text', value: match[0] });
+      }
     } catch {
-      segments.push({ type: 'text', value: match[0] });
+      // If the candidate looked like an action payload (bare-JSON branch)
+      // but failed to parse, hide it instead of dumping JSON to the user.
+      if (match[2]) {
+        segments.push({ type: 'text', value: '_Action ready for confirmation_' });
+      } else {
+        segments.push({ type: 'text', value: match[0] });
+      }
     }
-    lastIndex = match.index + match[0].length;
+    lastIndex = matchStart + match[0].length;
   }
   if (lastIndex < displayContent.length) segments.push({ type: 'text', value: displayContent.slice(lastIndex) });
   if (segments.length === 0) segments.push({ type: 'text', value: displayContent });
