@@ -2,7 +2,6 @@ import { Helmet } from "react-helmet-async";
 import {
   HomepageHeader,
   HomepageHero,
-  HomepageValueProp,
   HomepageStatsBar,
   HomepageFeatureGrid,
   HomepageWorkflow,
@@ -44,11 +43,6 @@ export default function Homepage() {
         {/* Scrolling capability tags — full-width banner directly under hero */}
         <div className="scroll-reveal">
           <HomepageScrollingTags />
-        </div>
-
-        {/* Narrative intro */}
-        <div className="scroll-reveal-soft">
-          <HomepageValueProp />
         </div>
 
         {/* Feature grid — 5 modules */}
