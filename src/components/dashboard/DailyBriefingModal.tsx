@@ -888,6 +888,8 @@ function EmailTab({
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
   // Local read/star overrides so the row reflects the action instantly.
   const [overrides, setOverrides] = useState<Record<string, { is_read?: boolean; is_starred?: boolean }>>({});
+  // Email-to-task creation modal state (one shared modal per tab).
+  const [taskEmail, setTaskEmail] = useState<CreateTaskFromEmailSource | null>(null);
 
   const setReadState = useCallback(async (e: any, read: boolean) => {
     setOverrides(prev => ({ ...prev, [e.id]: { ...prev[e.id], is_read: read } }));
@@ -1010,6 +1012,14 @@ function EmailTab({
                       onToggleStar={() => setStarState(e)}
                       onArchive={() => archiveOrDelete(e, 'archive')}
                       onDelete={() => archiveOrDelete(e, 'delete')}
+                      onCreateTask={() => setTaskEmail({
+                        messageId: e.gmail_message_id || e.id,
+                        threadId: e.thread_id || null,
+                        subject: e.subject || null,
+                        fromName: e.from_name || null,
+                        fromEmail: e.from_email || null,
+                        snippet: e.analysis?.summary || e.snippet || null,
+                      })}
                   >
                     <div>
                     <BriefingRow
