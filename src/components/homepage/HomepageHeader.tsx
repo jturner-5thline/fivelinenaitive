@@ -23,13 +23,13 @@ export const HomepageHeader = () => {
           : "bg-transparent backdrop-blur-sm border-b border-white/5"
       )}
     >
-      <nav className="container mx-auto px-4 sm:px-6 py-1 flex items-center justify-between gap-4">
+      <nav className="container mx-auto px-4 sm:px-6 py-0 flex items-center justify-between gap-4 leading-none">
         {/* Logo */}
-        <Link to="/" className="flex items-center shrink-0" aria-label="naitive home">
+        <Link to="/" className="flex items-center shrink-0 leading-none" aria-label="naitive home">
           <img
             src={naitiveLogoDark}
             alt="naitive"
-            className="h-20 sm:h-24 w-auto object-contain"
+            className="h-20 sm:h-24 w-auto object-contain block -my-6 sm:-my-8"
             style={{ aspectRatio: 'auto' }}
           />
         </Link>
