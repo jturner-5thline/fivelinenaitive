@@ -84,6 +84,14 @@ interface OutstandingItemsProps {
    * (deal-type → standard fallback) as the create-deal flow.
    */
   onApplyDefaultChecklist?: () => Promise<void> | void;
+  /**
+   * When true, all add/edit/delete affordances are hidden or disabled and
+   * a banner is shown at the top explaining why. Existing items remain
+   * viewable for record-keeping. Used for closed/archived/inactive deals.
+   */
+  readOnly?: boolean;
+  /** Human-readable reason shown in the read-only banner (e.g. "Closed Won"). */
+  readOnlyReason?: string;
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
@@ -313,7 +321,15 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, teamMembers, onApplyDefaultChecklist }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, readOnly = false, readOnlyReason }: OutstandingItemsProps) {
+  // When readOnly, neuter all mutators so any leftover handler (kanban
+  // drag, checkbox toggles, etc.) cannot mutate items. Also disable the
+  // top-level add/bulk handlers so banner/empty-state CTAs no-op.
+  const onAdd = readOnly ? (() => {}) : rawOnAdd;
+  const onUpdate = readOnly ? (() => {}) : rawOnUpdate;
+  const onDelete = readOnly ? (() => {}) : rawOnDelete;
+  const onBulkAdd = readOnly ? undefined : rawOnBulkAdd;
+  const onReorder = readOnly ? undefined : rawOnReorder;
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [newPriority, setNewPriority] = useState<ItemPriority>('normal');
@@ -682,6 +698,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       onCheckedChange={(checked) =>
                         onUpdate(item.id, { received: checked === true })
                       }
+                      disabled={readOnly}
                       className={cn(
                         item.received && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                       )}
@@ -700,6 +717,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                       onCheckedChange={(checked) =>
                         onUpdate(item.id, { approved: checked === true })
                       }
+                      disabled={readOnly}
                       className={cn(
                         item.approved && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                       )}
@@ -710,6 +728,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     )}>Submitted</span>
                   </div>
                 </div>
+                {!readOnly && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -721,6 +740,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
+                )}
+                {!readOnly && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -733,6 +754,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                 >
                   <Check className="h-4 w-4" />
                 </Button>
+                )}
               </>
             )}
             
@@ -743,6 +765,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     <Checkbox
                       checked={item.received}
                       onCheckedChange={(checked) => onUpdate(item.id, { received: checked === true })}
+                      disabled={readOnly}
                       className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                     />
                     <span className="text-xs text-emerald-600 font-medium">Received</span>
@@ -751,6 +774,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
                     <Checkbox
                       checked={item.approved}
                       onCheckedChange={(checked) => onUpdate(item.id, { approved: checked === true })}
+                      disabled={readOnly}
                       className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                     />
                     <span className="text-xs text-emerald-600 font-medium">Submitted</span>
@@ -865,7 +889,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
             </Select>
 
             {/* Bulk import */}
-            {onBulkAdd && (
+            {onBulkAdd && !readOnly && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -900,8 +924,16 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
         )}
         
         <CardContent className="space-y-3 h-full flex-1">
+          {readOnly && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100">
+              <span aria-hidden>🔒</span>
+              <span>
+                This deal is <strong>{readOnlyReason || 'inactive'}</strong>. Outstanding items are read-only and cannot be added, edited, or deleted.
+              </span>
+            </div>
+          )}
           {/* Bulk Action Bar */}
-          {selectedIds.size > 0 && (
+          {selectedIds.size > 0 && !readOnly && (
             <div className="flex items-center justify-between gap-2 p-3 rounded-lg border border-primary/30 bg-primary/5">
               <div className="flex items-center gap-2">
                 <CheckSquare className="h-4 w-4 text-primary" />
@@ -917,7 +949,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
           )}
 
           {/* Select All for Active Items */}
-          {activeItems.length > 1 && selectedIds.size === 0 && (
+          {activeItems.length > 1 && selectedIds.size === 0 && !readOnly && (
             <div className="flex items-center gap-2">
               <Button
                 variant="ghost"
@@ -932,6 +964,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
           )}
 
           {/* Add item input */}
+          {!readOnly && (
           <div className={`${items.length > 0 ? 'pb-3 border-b border-border' : ''}`}>
             <div className="flex items-center gap-2">
               <Input
@@ -967,6 +1000,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               </Popover>
             </div>
           </div>
+          )}
 
           {filteredItems.length === 0 && (
             <div className="text-center py-8">
@@ -980,7 +1014,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               {/* Retroactive bulk-add for legacy deals (Fix 4). Only shown
                   when the deal truly has zero items overall — not when a
                   search/filter merely hides them. */}
-              {!searchQuery && filterByLender.length === 0 && items.length === 0 && onApplyDefaultChecklist && (
+              {!searchQuery && filterByLender.length === 0 && items.length === 0 && onApplyDefaultChecklist && !readOnly && (
                 <div className="mt-4 mx-auto max-w-md rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
                   <span className="text-xs text-muted-foreground text-left">
                     Apply the default checklist to get started.

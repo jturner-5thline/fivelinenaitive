@@ -24,6 +24,22 @@ const STALE_ACTIVITY_TRIGGER_PREFIXES = [
   'deal.attention.',              // deal.attention.* digests
   'lenders_needing_attention',    // attention digest
   'lender_attention',
+  // Outstanding-item / checklist / data-room reminders & nudges. These are
+  // proactive and should be skipped when the deal is closed/inactive.
+  'outstanding_item',
+  'item_requested_by_lender',
+  'items_received',
+  'info_requested_via_flex',
+  'client_no_response',
+  'lender_no_response',
+  'deal_milestone_past_due',
+  'milestone_missed',
+  'task_overdue',
+  'task_due_soon',
+  'task_reminder',
+  'checklist',                    // checklist_nudge, etc.
+  'data_room',                    // data_room_completion_prompt, etc.
+  'ai_suggestion',                // AI-suggested deal-info fills
 ];
 
 function isStaleActivityTrigger(triggerKey: string): boolean {
@@ -36,6 +52,8 @@ const HARD_SUPPRESSED_DEAL_STATES = new Set<string>([
   'on hold', 'on-hold', 'on_hold',
   'closed won', 'closed-won', 'closed_won', 'won',
   'closed lost', 'closed-lost', 'closed_lost', 'lost',
+  'funded', 'funded / invoiced', 'funded-invoiced', 'funded_invoiced',
+  'in due diligence', 'in-due-diligence', 'in_due_diligence',
 ]);
 
 function normState(v: unknown): string {
@@ -347,7 +365,7 @@ serve(async (req) => {
       try {
         const { data: dealRow } = await supabase
           .from("deals")
-          .select("status, stage, company")
+          .select("status, stage, company, pipeline_id")
           .eq("id", String(context.deal_id))
           .maybeSingle();
         if (dealRow) {
@@ -358,6 +376,19 @@ serve(async (req) => {
             suppressionReason = `deal status ${status}`;
           } else if (HARD_SUPPRESSED_DEAL_STATES.has(stage)) {
             suppressionReason = `deal stage ${stage}`;
+          }
+          // Pipeline-based suppression: "In Development" pipeline never
+          // receives proactive reminders.
+          if (!suppressionReason && (dealRow as any).pipeline_id) {
+            const { data: pipelineRow } = await supabase
+              .from("deal_pipelines")
+              .select("name")
+              .eq("id", String((dealRow as any).pipeline_id))
+              .maybeSingle();
+            const pname = normState((pipelineRow as any)?.name);
+            if (pname === 'in development' || pname === 'archived pipeline') {
+              suppressionReason = `pipeline ${pname}`;
+            }
           }
           if (suppressionReason) {
             await writeAudit(supabase, {

@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Loader2 } from 'lucide-react';
+import { Bell, AlertCircle, Activity, ChevronRight, CheckCheck, Settings, Loader2, Filter } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useDealsContext } from '@/contexts/DealsContext';
@@ -13,6 +15,8 @@ import { usePreferences } from '@/contexts/PreferencesContext';
 import { useAllActivities } from '@/hooks/useAllActivities';
 import { useNotificationReads } from '@/hooks/useNotificationReads';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { isDealInactive } from '@/utils/dealLifecycle';
 import { Deal } from '@/types/deal';
 import { differenceInDays, format, formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -104,6 +108,7 @@ function getActivityLabel(activityType: string) {
 
 export default function Notifications() {
   const { deals } = useDealsContext();
+  const { pipelines } = usePipelineContext();
   const { preferences: appPreferences } = usePreferences();
   const { 
     activities, 
@@ -115,13 +120,46 @@ export default function Notifications() {
   const { isRead, markAsRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
   const { shouldShowStaleAlerts, shouldShowActivity, isLoading: prefsLoading } = useNotificationPreferences();
   const [isMarkingRead, setIsMarkingRead] = useState(false);
+  // Active-deals-only toggle (default ON). Hides notifications belonging to
+  // archived / closed-won / closed-lost / on-hold / funded / in-due-diligence
+  // deals and deals in the In Development pipeline.
+  const [activeOnly, setActiveOnly] = useState(true);
+
+  const dealsById = useMemo(() => {
+    const m = new Map<string, Deal>();
+    deals.forEach(d => m.set(d.id, d));
+    return m;
+  }, [deals]);
+
+  const pipelineNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    pipelines.forEach(p => m.set(p.id, p.name));
+    return m;
+  }, [pipelines]);
+
+  const isInactiveDeal = (dealId: string | null | undefined): boolean => {
+    if (!dealId) return false;
+    const d = dealsById.get(dealId);
+    if (!d) return false;
+    const pname = d.pipelineId ? pipelineNameById.get(d.pipelineId) : null;
+    return isDealInactive(d, pname);
+  };
   
   // Get all stale alerts
   const allStaleAlerts = getStaleDealAlerts(deals, appPreferences.lenderUpdateYellowDays);
   
   // Filter based on preferences
-  const staleAlerts = shouldShowStaleAlerts ? allStaleAlerts : [];
-  const filteredActivities = activities.filter(a => shouldShowActivity(a.activity_type));
+  const prefStaleAlerts = shouldShowStaleAlerts ? allStaleAlerts : [];
+  const prefActivities = activities.filter(a => shouldShowActivity(a.activity_type));
+  // Apply active-deals-only filter
+  const staleAlerts = activeOnly
+    ? prefStaleAlerts.filter(a => !isInactiveDeal(a.dealId))
+    : prefStaleAlerts;
+  const filteredActivities = activeOnly
+    ? prefActivities.filter(a => !isInactiveDeal(a.deal_id))
+    : prefActivities;
+  const hiddenInactiveCount =
+    (prefStaleAlerts.length - staleAlerts.length) + (prefActivities.length - filteredActivities.length);
   
   // Count unread notifications
   const unreadAlerts = staleAlerts.filter(a => !isRead('stale_alert', a.dealId));
@@ -171,6 +209,22 @@ export default function Notifications() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-2 px-2 py-1 rounded-md border border-border">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label htmlFor="active-only-toggle" className="text-xs cursor-pointer select-none">
+                  Active deals only
+                </Label>
+                <Switch
+                  id="active-only-toggle"
+                  checked={activeOnly}
+                  onCheckedChange={setActiveOnly}
+                />
+                {activeOnly && hiddenInactiveCount > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {hiddenInactiveCount} hidden
+                  </Badge>
+                )}
+              </div>
               {unreadCount > 0 && (
                 <Button 
                   variant="outline" 
