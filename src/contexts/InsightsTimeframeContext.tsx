@@ -7,8 +7,8 @@ import {
   endOfQuarter,
   startOfYear,
   subDays,
+  subMonths,
   format as fmtDateFn,
-  parse as parseDateFn,
 } from 'date-fns';
 import type { TimeWindow } from '@/components/widget-editor/widgetTypes';
 import {
@@ -35,6 +35,9 @@ export type InsightsTimeframeId =
   | 'mtd'
   | 'qtd'
   | 'ytd'
+  | 'last3m'
+  | 'last6m'
+  | 'last12m'
   | 'custom';
 
 export interface InsightsTimeframe {
@@ -89,6 +92,17 @@ function computeRange(id: InsightsTimeframeId, custom?: { start: string; end: st
       return { id, start: ymd(startOfQuarter(today)), end: ymd(today), label: 'Quarter to date' };
     case 'ytd':
       return { id, start: ymd(startOfYear(today)), end: ymd(today), label: 'Year to date' };
+    case 'last3m':
+    case 'last6m':
+    case 'last12m': {
+      const n = id === 'last3m' ? 3 : id === 'last6m' ? 6 : 12;
+      // "Most recent N months" = the last N complete calendar months
+      // ending with the current month (inclusive). Bars therefore reflect
+      // every month in the window, calculated standalone per month.
+      const end = endOfMonth(today);
+      const start = startOfMonth(subMonths(today, n - 1));
+      return { id, start: ymd(start), end: ymd(end), label: `Last ${n} Months` };
+    }
     case 'custom': {
       if (custom?.start && custom?.end) {
         const s = new Date(custom.start + 'T00:00:00');
@@ -111,7 +125,9 @@ function readInitial(searchParams: URLSearchParams): { id: InsightsTimeframeId; 
   const cs = searchParams.get('tfStart');
   const ce = searchParams.get('tfEnd');
   if (tf === 'custom' && cs && ce) return { id: 'custom', custom: { start: cs, end: ce } };
-  if (tf && ['7d', '30d', '90d', 'mtd', 'qtd', 'ytd'].includes(tf)) return { id: tf as InsightsTimeframeId };
+  if (tf && ['7d', '30d', '90d', 'mtd', 'qtd', 'ytd', 'last3m', 'last6m', 'last12m'].includes(tf)) {
+    return { id: tf as InsightsTimeframeId };
+  }
   try {
     const raw = globalThis.localStorage?.getItem(STORAGE_KEY);
     if (raw) {
@@ -120,7 +136,7 @@ function readInitial(searchParams: URLSearchParams): { id: InsightsTimeframeId; 
       if (parsed?.id) return { id: parsed.id };
     }
   } catch { /* ignore */ }
-  return { id: 'qtd' };
+  return { id: 'ytd' };
 }
 
 function quarterFromMonth(monthIndex0: number) {
