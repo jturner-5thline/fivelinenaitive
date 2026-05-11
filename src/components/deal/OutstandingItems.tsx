@@ -313,7 +313,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, teamMembers }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpdate, onDelete, onBulkAdd, onReorder, teamMembers, onApplyDefaultChecklist }: OutstandingItemsProps) {
   const [newItemText, setNewItemText] = useState('');
   const [newRequestedBy, setNewRequestedBy] = useState<string[]>([]);
   const [newPriority, setNewPriority] = useState<ItemPriority>('normal');
