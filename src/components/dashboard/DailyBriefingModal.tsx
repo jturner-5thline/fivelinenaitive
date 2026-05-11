@@ -1179,6 +1179,27 @@ function PipelineTab({
 
   return (
     <div className="relative flex flex-col min-w-0 max-w-full w-full">
+      {/* Today's Follow-Ups — sticky at the top of the modal scroll region */}
+      <div className="sticky top-0 z-20 -mx-4 px-4 py-3 mb-4 bg-[#0b1620]/95 backdrop-blur-md border-b border-white/10 shrink-0 min-w-0 max-w-full">
+        <div className="min-w-0 border-l-2 border-l-purple-500 pl-2">
+          <Section title="Today's Follow-Ups">
+            {showFollowups ? (
+              <FollowupTiles
+                groups={followupGroups}
+                onNavigate={onNavigate}
+                assigneeName={
+                  (user?.user_metadata as any)?.full_name ||
+                  user?.email?.split('@')[0] ||
+                  'You'
+                }
+              />
+            ) : (
+              <EmptySection message="No follow-ups for today" />
+            )}
+          </Section>
+        </div>
+      </div>
+
       {/* Deals (primary focus) — full width, single vertical flow */}
       <div className="w-full min-w-0 max-w-full">
         <Suspense
@@ -1198,27 +1219,6 @@ function PipelineTab({
             onOpenDeal={id => onNavigate(`/deal/${id}`)}
           />
         </Suspense>
-      </div>
-
-      {/* Today's Follow-Ups — stacked below deals in the same scroll flow */}
-      <div className="mt-6 shrink-0 min-w-0 max-w-full border-t border-white/10 pt-4">
-        <div className="min-w-0 border-l-2 border-l-purple-500 pl-2">
-          <Section title="Today's Follow-Ups">
-            {showFollowups ? (
-              <FollowupTiles
-                groups={followupGroups}
-                onNavigate={onNavigate}
-                assigneeName={
-                  (user?.user_metadata as any)?.full_name ||
-                  user?.email?.split('@')[0] ||
-                  'You'
-                }
-              />
-            ) : (
-              <EmptySection message="No follow-ups for today" />
-            )}
-          </Section>
-        </div>
       </div>
 
       {/* Recent Pipeline Activity — below follow-ups in the same scroll flow */}
