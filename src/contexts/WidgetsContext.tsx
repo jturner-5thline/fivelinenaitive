@@ -1,4 +1,6 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 export type WidgetMetric = 
   | 'active-deals'
@@ -53,59 +55,17 @@ export const COLOR_OPTIONS: { value: Widget['color']; label: string; className: 
 const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w1', label: 'Active Deals', metric: 'active-deals', color: 'primary' },
   { id: 'w2', label: 'Active Deal Volume', metric: 'active-deal-volume', color: 'accent' },
-  { id: 'w3', label: 'Sales Pipeline', metric: 'sales-pipeline-deals', color: 'success' },
-  { id: 'w4', label: 'Sales Pipeline Volume', metric: 'sales-pipeline-volume', color: 'warning' },
+  { id: 'w3', label: 'Deals in Diligence', metric: 'deals-in-diligence', color: 'success' },
+  { id: 'w4', label: 'Dollars in Diligence', metric: 'dollars-in-diligence', color: 'warning' },
 ];
 
 const DEFAULT_SPECIAL_WIDGETS: Record<SpecialWidget, boolean> = {
   'stale-deals': false,
 };
 
-const STORAGE_KEY = 'dashboard-widgets-v2';
-const SPECIAL_WIDGETS_STORAGE_KEY = 'dashboard-special-widgets';
-
-const loadWidgets = (): Widget[] => {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      return JSON.parse(stored);
-    }
-  } catch (error) {
-    console.error('Failed to load widgets from localStorage:', error);
-  }
-  return DEFAULT_WIDGETS;
-};
-
-const saveWidgets = (widgets: Widget[]) => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(widgets));
-  } catch (error) {
-    console.error('Failed to save widgets to localStorage:', error);
-  }
-};
-
-const loadSpecialWidgets = (): Record<SpecialWidget, boolean> => {
-  try {
-    const stored = localStorage.getItem(SPECIAL_WIDGETS_STORAGE_KEY);
-    if (stored) {
-      return { ...DEFAULT_SPECIAL_WIDGETS, ...JSON.parse(stored) };
-    }
-  } catch (error) {
-    console.error('Failed to load special widgets from localStorage:', error);
-  }
-  return DEFAULT_SPECIAL_WIDGETS;
-};
-
-const saveSpecialWidgets = (specialWidgets: Record<SpecialWidget, boolean>) => {
-  try {
-    localStorage.setItem(SPECIAL_WIDGETS_STORAGE_KEY, JSON.stringify(specialWidgets));
-  } catch (error) {
-    console.error('Failed to save special widgets to localStorage:', error);
-  }
-};
-
 interface WidgetsContextType {
   widgets: Widget[];
+  isLoading: boolean;
   addWidget: (widget: Omit<Widget, 'id'>) => void;
   updateWidget: (id: string, widget: Partial<Widget>) => void;
   deleteWidget: (id: string) => void;
@@ -117,23 +77,80 @@ interface WidgetsContextType {
 const WidgetsContext = createContext<WidgetsContextType | undefined>(undefined);
 
 export function WidgetsProvider({ children }: { children: ReactNode }) {
-  const [widgets, setWidgets] = useState<Widget[]>(loadWidgets);
-  const [specialWidgets, setSpecialWidgets] = useState<Record<SpecialWidget, boolean>>(loadSpecialWidgets);
+  const { user } = useAuth();
+  const [widgets, setWidgets] = useState<Widget[]>(DEFAULT_WIDGETS);
+  const [specialWidgets, setSpecialWidgets] = useState<Record<SpecialWidget, boolean>>(DEFAULT_SPECIAL_WIDGETS);
+  const [isLoading, setIsLoading] = useState(true);
+  const isLoaded = useRef(false);
 
+  // Load from Supabase on mount / user change
   useEffect(() => {
-    saveWidgets(widgets);
-  }, [widgets]);
+    let cancelled = false;
+    if (!user) {
+      setWidgets(DEFAULT_WIDGETS);
+      setSpecialWidgets(DEFAULT_SPECIAL_WIDGETS);
+      setIsLoading(false);
+      isLoaded.current = false;
+      return;
+    }
 
+    setIsLoading(true);
+    isLoaded.current = false;
+    (async () => {
+      const { data, error } = await (supabase as any)
+        .from('widget_preferences')
+        .select('widgets, special_widgets')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (cancelled) return;
+
+      if (!error && data) {
+        if (Array.isArray(data.widgets) && data.widgets.length > 0) {
+          setWidgets(data.widgets as Widget[]);
+        } else {
+          setWidgets(DEFAULT_WIDGETS);
+        }
+        if (data.special_widgets && typeof data.special_widgets === 'object') {
+          setSpecialWidgets({ ...DEFAULT_SPECIAL_WIDGETS, ...(data.special_widgets as Record<SpecialWidget, boolean>) });
+        } else {
+          setSpecialWidgets(DEFAULT_SPECIAL_WIDGETS);
+        }
+      } else {
+        setWidgets(DEFAULT_WIDGETS);
+        setSpecialWidgets(DEFAULT_SPECIAL_WIDGETS);
+      }
+      isLoaded.current = true;
+      setIsLoading(false);
+    })();
+
+    return () => { cancelled = true; };
+  }, [user]);
+
+  // Persist to Supabase whenever values change (after initial load)
   useEffect(() => {
-    saveSpecialWidgets(specialWidgets);
-  }, [specialWidgets]);
+    if (!user || !isLoaded.current) return;
+    const handle = setTimeout(() => {
+      (supabase as any)
+        .from('widget_preferences')
+        .upsert(
+          {
+            user_id: user.id,
+            widgets,
+            special_widgets: specialWidgets,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        )
+        .then(({ error }: any) => {
+          if (error) console.error('Failed to persist widget preferences:', error);
+        });
+    }, 300);
+    return () => clearTimeout(handle);
+  }, [widgets, specialWidgets, user]);
 
   const addWidget = (widget: Omit<Widget, 'id'>) => {
-    const newWidget: Widget = {
-      ...widget,
-      id: `w${Date.now()}`,
-    };
-    setWidgets(prev => [...prev, newWidget]);
+    setWidgets(prev => [...prev, { ...widget, id: `w${Date.now()}` }]);
   };
 
   const updateWidget = (id: string, updates: Partial<Widget>) => {
@@ -149,15 +166,13 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
   };
 
   const toggleSpecialWidget = (widget: SpecialWidget) => {
-    setSpecialWidgets(prev => ({
-      ...prev,
-      [widget]: !prev[widget],
-    }));
+    setSpecialWidgets(prev => ({ ...prev, [widget]: !prev[widget] }));
   };
 
   return (
     <WidgetsContext.Provider value={{ 
       widgets, 
+      isLoading,
       addWidget, 
       updateWidget, 
       deleteWidget, 

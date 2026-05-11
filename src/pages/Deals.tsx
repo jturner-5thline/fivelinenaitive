@@ -19,6 +19,7 @@ import { SortField, SortDirection } from '@/hooks/useDeals';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
+import { useWidgets } from '@/contexts/WidgetsContext';
 import { PipelineSelector } from '@/components/deals/PipelineSelector';
 
 
@@ -118,6 +119,7 @@ export default function Dashboard() {
   const [allExpanded, setAllExpanded] = useState(true);
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
+  const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   const { activePipelineId, pipelines } = usePipelineContext();
@@ -546,7 +548,7 @@ export default function Dashboard() {
             </div>
 
             {/* 2. Stats / widgets row */}
-            {isLoading ? (
+            {isLoading || widgetsLoading ? (
               <WidgetsSectionSkeleton />
             ) : (
               <div
