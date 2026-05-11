@@ -44,7 +44,6 @@ import {
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import {
   Dialog,
   DialogContent,
@@ -98,8 +97,11 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
   milestones: DealStageMilestone[]; onToggleMilestone: (dealId: string, stage: string, key: string) => void;
   onOpenEdit: (deal: Deal) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: deal.id, data: { deal } });
-  const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: deal.id, data: { deal } });
+  // DragOverlay handles the moving copy — keep the source in place but hide
+  // it while dragging so we don't get a flickering double-card and avoid
+  // per-frame transform repaints on every card.
+  const style: React.CSSProperties = isDragging ? { opacity: 0, pointerEvents: 'none' } : {};
 
   return (
     <div
@@ -327,7 +329,10 @@ export default function NaitivePipeline() {
     setActiveDealId(e.active.id as string);
     setActiveDeal(e.active.data.current?.deal || null);
   };
-  const handleDragOver = (e: DragOverEvent) => setOverId((e.over?.id as string) || null);
+  const handleDragOver = (e: DragOverEvent) => {
+    const next = (e.over?.id as string) || null;
+    setOverId((prev) => (prev === next ? prev : next));
+  };
   const handleDragEnd = (e: DragEndEvent) => {
     const dealId = e.active.id as string;
     const newStage = e.over?.id as string;

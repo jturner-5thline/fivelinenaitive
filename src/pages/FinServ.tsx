@@ -38,15 +38,16 @@ import {
   useDraggable,
   useDroppable,
 } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DashboardPage } from '@/components/layout/DashboardPage';
 
 function DraggableCard({ deal, onStatusChange, isDragging }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
 }) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: deal.id, data: { deal } });
-  const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
+  const { attributes, listeners, setNodeRef } = useDraggable({ id: deal.id, data: { deal } });
+  // Source stays put; DragOverlay handles the moving copy. Hiding (vs.
+  // half-opacity + transform) avoids the lagging "ghost" double card.
+  const style: React.CSSProperties = isDragging ? { opacity: 0, pointerEvents: 'none' } : {};
 
   return (
     <div
@@ -169,7 +170,10 @@ export default function FinServ() {
     setActiveDealId(e.active.id as string);
     setActiveDeal(e.active.data.current?.deal || null);
   };
-  const handleDragOver = (e: DragOverEvent) => setOverId((e.over?.id as string) || null);
+  const handleDragOver = (e: DragOverEvent) => {
+    const next = (e.over?.id as string) || null;
+    setOverId((prev) => (prev === next ? prev : next));
+  };
   const handleDragEnd = (e: DragEndEvent) => {
     const dealId = e.active.id as string;
     const newStage = e.over?.id as string;

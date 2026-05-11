@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { memo, useMemo, useState } from 'react';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import {
   DndContext,
@@ -15,7 +15,6 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import { useDraggable } from '@dnd-kit/core';
-import { CSS } from '@dnd-kit/utilities';
 import { Deal, DealStatus } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealStages } from '@/contexts/DealStagesContext';
@@ -49,16 +48,18 @@ interface DraggableDealCardProps {
   isDragging?: boolean;
 }
 
-function DraggableDealCard({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount, isDragging }: DraggableDealCardProps) {
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+function DraggableDealCardImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount, isDragging }: DraggableDealCardProps) {
+  const { attributes, listeners, setNodeRef } = useDraggable({
     id: deal.id,
     data: { deal },
   });
 
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    opacity: isDragging ? 0.5 : 1,
-  };
+  // When dragging, hide the source card (DragOverlay renders the moving copy).
+  // Avoid applying a transform here — translating the source AND the overlay
+  // causes a flickering ghost and forces layout/paint on every pointer move.
+  const style: React.CSSProperties = isDragging
+    ? { opacity: 0, pointerEvents: 'none' }
+    : {};
 
   return (
     <div
@@ -82,6 +83,8 @@ function DraggableDealCard({ deal, onStatusChange, onStageChange, onMarkReviewed
   );
 }
 
+const DraggableDealCard = memo(DraggableDealCardImpl);
+
 interface DroppableStageColumnProps {
   stageId: string;
   stageLabel: string;
@@ -98,7 +101,7 @@ interface DroppableStageColumnProps {
   fullscreen?: boolean;
 }
 
-function DroppableStageColumn({
+function DroppableStageColumnImpl({
   stageId,
   stageLabel,
   stageColor,
@@ -121,7 +124,7 @@ function DroppableStageColumn({
     <div
       ref={setNodeRef}
       className={cn(
-        "flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border transition-colors",
+        "flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border",
         isOver && "ring-2 ring-primary bg-primary/5"
       )}
     >
@@ -171,6 +174,8 @@ function DroppableStageColumn({
     </div>
   );
 }
+
+const DroppableStageColumn = memo(DroppableStageColumnImpl);
 
 export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag }: DealsPipelineViewProps) {
   const { stages: globalStages } = useDealStages();
@@ -239,7 +244,10 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
-    setOverId(over?.id as string || null);
+    const next = (over?.id as string) || null;
+    // Avoid spurious re-renders on every pointer move when the over target
+    // hasn't actually changed columns.
+    setOverId((prev) => (prev === next ? prev : next));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
