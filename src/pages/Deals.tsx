@@ -662,30 +662,36 @@ export default function Dashboard() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <ToggleGroup
-                        type="single"
-                        value={filters.hasNotificationsOnly ? 'has' : (filters.notificationsFilter ?? 'all')}
-                        onValueChange={(v) => {
-                          const next = (v || 'all') as 'all' | 'has' | 'none';
-                          updateFilters({
-                            notificationsFilter: next,
-                            // Clear legacy flag — the tri-state owns this now.
-                            hasNotificationsOnly: false,
-                            ...(next !== 'all' ? { staleOnly: false, flaggedOnly: false } : {}),
-                          });
-                          setSavedViewWarningDismissed(false);
-                        }}
-                        className="h-8 gap-0 rounded-md border border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 to-teal-600/5 backdrop-blur-md p-0.5"
-                      >
-                        <ToggleGroupItem value="all" className="h-7 px-2 text-[11px] data-[state=on]:bg-cyan-500/25 data-[state=on]:text-cyan-300 text-cyan-400/70">
-                          <Bell className="h-3.5 w-3.5" />
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="has" className="h-7 px-2 text-[11px] data-[state=on]:bg-cyan-500/25 data-[state=on]:text-cyan-300 text-cyan-400/70">Has</ToggleGroupItem>
-                        <ToggleGroupItem value="none" className="h-7 px-2 text-[11px] data-[state=on]:bg-cyan-500/25 data-[state=on]:text-cyan-300 text-cyan-400/70">None</ToggleGroupItem>
-                      </ToggleGroup>
+                      {(() => {
+                        const notifActive =
+                          filters.hasNotificationsOnly ||
+                          (filters.notificationsFilter ?? 'all') === 'has';
+                        return (
+                          <button
+                            type="button"
+                            aria-pressed={notifActive}
+                            onClick={() => {
+                              const next: 'all' | 'has' = notifActive ? 'all' : 'has';
+                              updateFilters({
+                                notificationsFilter: next,
+                                hasNotificationsOnly: false,
+                                ...(next === 'has' ? { staleOnly: false, flaggedOnly: false } : {}),
+                              });
+                              setSavedViewWarningDismissed(false);
+                            }}
+                            className={`h-8 w-8 inline-flex items-center justify-center rounded-md border backdrop-blur-md transition-colors ${
+                              notifActive
+                                ? 'border-cyan-500/40 bg-cyan-500/25 text-cyan-300'
+                                : 'border-cyan-500/20 bg-gradient-to-br from-cyan-500/10 to-teal-600/5 text-cyan-400/70 hover:text-cyan-300'
+                            }`}
+                          >
+                            <Bell className="h-3.5 w-3.5" />
+                          </button>
+                        );
+                      })()}
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Filter by notifications: All / Has / None</p>
+                      <p>Show only deals with notifications</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -693,24 +699,29 @@ export default function Dashboard() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <ToggleGroup
-                        type="single"
-                        value={filters.tasksFilter ?? 'all'}
-                        onValueChange={(v) => {
-                          updateFilters({ tasksFilter: ((v || 'all') as 'all' | 'has' | 'none') });
-                          setSavedViewWarningDismissed(false);
-                        }}
-                        className="h-8 gap-0 rounded-md border border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-blue-600/5 backdrop-blur-md p-0.5"
-                      >
-                        <ToggleGroupItem value="all" className="h-7 px-2 text-[11px] data-[state=on]:bg-sky-500/25 data-[state=on]:text-sky-300 text-sky-400/70">
-                          <CheckSquare className="h-3.5 w-3.5" />
-                        </ToggleGroupItem>
-                        <ToggleGroupItem value="has" className="h-7 px-2 text-[11px] data-[state=on]:bg-sky-500/25 data-[state=on]:text-sky-300 text-sky-400/70">Has</ToggleGroupItem>
-                        <ToggleGroupItem value="none" className="h-7 px-2 text-[11px] data-[state=on]:bg-sky-500/25 data-[state=on]:text-sky-300 text-sky-400/70">None</ToggleGroupItem>
-                      </ToggleGroup>
+                      {(() => {
+                        const tasksActive = (filters.tasksFilter ?? 'all') === 'has';
+                        return (
+                          <button
+                            type="button"
+                            aria-pressed={tasksActive}
+                            onClick={() => {
+                              updateFilters({ tasksFilter: tasksActive ? 'all' : 'has' });
+                              setSavedViewWarningDismissed(false);
+                            }}
+                            className={`h-8 w-8 inline-flex items-center justify-center rounded-md border backdrop-blur-md transition-colors ${
+                              tasksActive
+                                ? 'border-sky-500/40 bg-sky-500/25 text-sky-300'
+                                : 'border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-blue-600/5 text-sky-400/70 hover:text-sky-300'
+                            }`}
+                          >
+                            <CheckSquare className="h-3.5 w-3.5" />
+                          </button>
+                        );
+                      })()}
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>Filter by tasks: All / Has / None</p>
+                      <p>Show only deals with open tasks</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
