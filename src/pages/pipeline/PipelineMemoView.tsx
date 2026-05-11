@@ -1,5 +1,4 @@
-import { useMemo, useRef, useCallback, useLayoutEffect } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Deal } from '@/types/deal';
@@ -14,21 +13,15 @@ interface PipelineMemoViewProps {
   onOpenDeal?: (dealId: string) => void;
 }
 
-/** Estimated card height in px. Cards measure themselves once mounted. */
-const ESTIMATED_CARD_HEIGHT = 360;
-/** Px of buffer rendered above + below the visible viewport. */
-const VIRTUAL_OVERSCAN = 4;
-
 /**
- * Virtualised stack of PipelineMemoCard components. Replaces the previous
- * "render every deal" implementation that was freezing the Daily Briefing
- * modal on click.
+ * Stack of PipelineMemoCard components rendered in natural document flow.
  *
- * Performance budget hit:
- *  - Only ~10–15 cards mount at a time (initial render <300 ms even on 200 deals).
- *  - Single shared blurred page background (no per-card backdrop-filter).
- *  - Single batched 24h digest fetch (3 queries total, not 3 × N).
- *  - Live-dot pulse animation only on the topmost visible card.
+ * NOTE: We previously virtualised this list with @tanstack/react-virtual
+ * for performance, but absolute-positioned virtual rows could briefly
+ * overlap their neighbours when card content changed (lender expand,
+ * lazy digests, follow-up form). Natural flow guarantees zero overlap
+ * under every state — expanded lenders, long task lists, multiple groups,
+ * empty sections — at the cost of mounting every card up front.
  */
 export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.', onOpenDeal }: PipelineMemoViewProps) {
   const dealIds = useMemo(() => deals.map(d => d.id).filter(Boolean), [deals]);
@@ -133,29 +126,6 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   const { digestMap, rawByDeal, isLoading: digestsLoading } = usePipelineDigests(sorted, sorted.length > 0);
   const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
 
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-
-  const virtualizer = useVirtualizer({
-    count: sorted.length,
-    getScrollElement: () => scrollRef.current,
-    estimateSize: useCallback(() => ESTIMATED_CARD_HEIGHT, []),
-    overscan: VIRTUAL_OVERSCAN,
-    // Let @tanstack/react-virtual use its built-in ResizeObserver-backed
-    // measurement. Supplying a custom `measureElement` disables the
-    // observer and the row offsets stop updating when card content grows
-    // after mount (lazy digests, expanded follow-up form, lender groups),
-    // which manifests as cards overlapping their neighbours.
-  });
-
-  // Force re-measure when async content (digests, tasks) lands. The
-  // ResizeObserver normally catches this, but cards whose final height
-  // changes only after several batched re-renders can briefly overlap
-  // their neighbours before RO fires. An explicit measure() call after
-  // tasks/digests arrive eliminates the visible collision.
-  useLayoutEffect(() => {
-    virtualizer.measure();
-  }, [virtualizer, digestMap, tasksByDeal, digestsLoading]);
-
   if (sorted.length === 0) {
     return (
       <div className="rounded-xl py-12 px-4 text-center">
@@ -164,39 +134,24 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     );
   }
 
-  const items = virtualizer.getVirtualItems();
-  const totalHeight = virtualizer.getTotalSize();
-
   return (
     <div
-      ref={scrollRef}
       className="-mx-1 px-3 py-2 overflow-y-auto max-h-[78vh]"
       style={{ overscrollBehavior: 'contain' }}
     >
-      <div className="max-w-[1100px] mx-auto relative" style={{ height: totalHeight }}>
-        {items.map(virtualRow => {
-          const deal = sorted[virtualRow.index];
-          if (!deal) return null;
-          return (
-            <div
-              key={deal.id}
-              data-index={virtualRow.index}
-              ref={virtualizer.measureElement}
-              className="absolute left-0 right-0 pb-3"
-              style={{ transform: `translateY(${virtualRow.start}px)` }}
-            >
-              <PipelineMemoCard
-                deal={deal}
-                digest={digestMap.get(deal.id)}
-                rawDigest={rawByDeal.get(deal.id)}
-                tasks={tasksByDeal?.get(deal.id) || []}
-                isDigestLoading={digestsLoading}
-                showLiveDot={virtualRow.index === 0}
-                onOpenDeal={onOpenDeal}
-              />
-            </div>
-          );
-        })}
+      <div className="max-w-[1100px] mx-auto flex flex-col gap-3">
+        {sorted.map((deal, index) => (
+          <PipelineMemoCard
+            key={deal.id}
+            deal={deal}
+            digest={digestMap.get(deal.id)}
+            rawDigest={rawByDeal.get(deal.id)}
+            tasks={tasksByDeal?.get(deal.id) || []}
+            isDigestLoading={digestsLoading}
+            showLiveDot={index === 0}
+            onOpenDeal={onOpenDeal}
+          />
+        ))}
       </div>
     </div>
   );
