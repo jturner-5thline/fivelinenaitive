@@ -34,7 +34,7 @@ export const HomepageScrollingTags = () => {
           {[...tags, ...tags, ...tags].map((tag, index) => (
             <div
               key={index}
-              className="flex-shrink-0 px-5 py-2.5 mx-2 rounded-lg bg-gradient-to-b from-[hsl(280,40%,20%,0.3)] to-[hsl(260,30%,12%,0.3)] border border-[hsl(280,60%,45%,0.4)] text-white/80 text-sm whitespace-nowrap pointer-events-none"
+              className="flex-shrink-0 px-5 py-2.5 mx-2 rounded-lg bg-gradient-to-b from-white/[0.04] to-white/[0.02] border border-white/10 text-white/75 text-sm font-medium tracking-tight whitespace-nowrap pointer-events-none backdrop-blur-sm"
             >
               {tag}
             </div>
