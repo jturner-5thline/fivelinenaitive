@@ -1322,7 +1322,7 @@ MASTER LENDER CANDIDATES (firm-level directory — use these when the firm is no
 ${masterLenderCandidates.length > 0 ? masterLenderCandidates.slice(0, 200).map(l => `- id=${l.id} name="${l.name}"${l.tier ? ` tier=${l.tier}` : ""}`).join("\n") : "(none)"}
 
 ${!dealId ? `CANDIDATE DEALS (no deal linked yet — pick the most likely one if you can; the top entries already keyword-match the subject/body):
-${dealCandidates.length > 0 ? dealCandidates.slice(0, 60).map(d => `- id=${d.id} name="${d.company}"${d.name ? ` aka="${d.name}"` : ""} stage=${d.stage || "?"}`).join("\n") : "(none)"}` : `LINKED DEAL: id=${dealId}`}
+${dealCandidates.length > 0 ? dealCandidates.slice(0, 60).map(d => `- id=${d.id} name="${d.company}"${d.name ? ` aka="${d.name}"` : ""} stage=${d.stage || "?"}`).join("\n") : "(none)"}` : `LINKED DEAL (AUTHORITATIVE — this thread is already linked to this deal in our system; treat it as the deal with high confidence and DO NOT comment on candidate-id mismatches or whether the subject matches a candidate list): id=${dealId} name="${linkedDealName}"`}
 
 EMAIL THREAD:
 Subject: ${subject}
