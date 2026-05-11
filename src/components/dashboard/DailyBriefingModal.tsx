@@ -978,6 +978,11 @@ function EmailTab({
 
   return (
     <div className="relative h-full flex flex-col min-h-0">
+      <CreateTaskFromEmailDialog
+        open={!!taskEmail}
+        onOpenChange={(o) => { if (!o) setTaskEmail(null); }}
+        email={taskEmail}
+      />
       {/* Email list */}
       {/* Workspace: when no email is selected, the grouped list takes the full
           width. When an email IS selected, we switch to the same 3-column
