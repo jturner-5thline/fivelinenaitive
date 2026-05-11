@@ -23,6 +23,16 @@ export const HomepageHero = () => {
             The Operating System for Deal Management
           </h1>
 
+          {/* Supporting body copy */}
+          <div className="mt-4 sm:mt-6 max-w-[42rem] flex flex-col gap-3 sm:gap-4 text-sm sm:text-base md:text-lg font-light leading-relaxed text-white/70">
+            <p>
+              We centralize deal execution into a single operating system — bringing work, decisions, and data together as deals move through review, diligence, and approval.
+            </p>
+            <p>
+              Intelligence is embedded directly into execution, surfacing bottlenecks, highlighting risk, and keeping work moving without adding more tools or manual oversight.
+            </p>
+          </div>
+
           {/* CTA — shares left edge with tagline and wordmark "n" */}
           <Button
             size="lg"
