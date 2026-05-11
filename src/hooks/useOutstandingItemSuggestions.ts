@@ -38,6 +38,17 @@ export interface AiNewItemSuggestion {
   source_quote: string;
   priority: 'low' | 'normal' | 'high' | 'urgent';
   confidence: 'low' | 'medium' | 'high';
+  /** When set, every suggestion sharing the same group_id was extracted
+   *  from a single lender-request list and should render as ONE grouped
+   *  approval card ("Add N items"). */
+  group_id?: string | null;
+  group_label?: string | null;
+  group_size?: number | null;
+  requested_by_contact_name?: string | null;
+  requested_by_contact_email?: string | null;
+  requested_by_lender_name?: string | null;
+  source_thread_id?: string | null;
+  source_message_id?: string | null;
 }
 
 export interface OutstandingItemAiResult {
@@ -76,6 +87,8 @@ interface Options {
   openItems: OutstandingItem[];
   attachments?: EmailAttachment[];
   thread?: EmailThread;
+  /** Optional lender firm name for source attribution on extracted items. */
+  lenderName?: string;
   /** Skip AI when false — useful when caller wants deterministic-only mode. */
   enabled?: boolean;
 }
@@ -86,6 +99,7 @@ export function useOutstandingItemSuggestions({
   openItems,
   attachments,
   thread,
+  lenderName,
   enabled = true,
 }: Options) {
   const [result, setResult] = useState<OutstandingItemAiResult>(EMPTY);
@@ -103,8 +117,8 @@ export function useOutstandingItemSuggestions({
     // after the user adds/edits items between opens.
     const itemsSig = openItems.map((i) => i.id).sort().join(',');
     const attSig = (attachments || []).map((a) => a.id || a.filename || '').sort().join(',');
-    return `${dealId}::${messageId}::${itemsSig}::${attSig}`;
-  }, [dealId, messageId, openItems, attachments]);
+    return `${dealId}::${messageId}::${itemsSig}::${attSig}::${lenderName || ''}`;
+  }, [dealId, messageId, openItems, attachments, lenderName]);
 
   useEffect(() => {
     if (!enabled) {
@@ -144,6 +158,7 @@ export function useOutstandingItemSuggestions({
             body: {
               dealId,
               dealName,
+              lenderName: lenderName || undefined,
               openItems: openItems.map((i) => ({ id: i.id, text: i.text })),
               attachments: (attachments || [])
                 .filter((a) => !a.is_inline && a.filename)
