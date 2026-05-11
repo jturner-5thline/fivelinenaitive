@@ -35,7 +35,7 @@ export function EmailsPanel({ emails, isLoading }: EmailsPanelProps) {
   }
 
   return (
-    <div className="p-5 flex flex-col h-full min-w-0">
+    <div className="p-5 min-w-0 self-start">
       <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">
         Emails
       </div>

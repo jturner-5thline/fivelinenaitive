@@ -19,6 +19,14 @@ describe('DailyBriefingModal.tsx — Pipeline tab Grid removal', () => {
     resolve(__dirname, '../DailyBriefingModal.tsx'),
     'utf8',
   );
+  const memoViewSource = readFileSync(
+    resolve(__dirname, '../../../pages/pipeline/PipelineMemoView.tsx'),
+    'utf8',
+  );
+  const memoCardSource = readFileSync(
+    resolve(__dirname, '../../pipeline/memo/PipelineMemoCard.tsx'),
+    'utf8',
+  );
 
   it('does not render a Grid/Memo view toggle anywhere', () => {
     expect(source).not.toMatch(/\bsetViewMode\b/);
@@ -49,5 +57,18 @@ describe('DailyBriefingModal.tsx — Pipeline tab Grid removal', () => {
 
   it('still renders the PipelineMemoView (memo path preserved)', () => {
     expect(source).toMatch(/<PipelineMemoView\b/);
+  });
+
+  it('renders memo tiles in natural document flow with real spacing', () => {
+    expect(memoViewSource).toMatch(/flex flex-col gap-3/);
+    expect(memoViewSource).not.toMatch(/useVirtualizer/);
+    expect(memoViewSource).not.toMatch(/absolute left-0 right-0/);
+  });
+
+  it('does not clip memo cards or force equal-height insight columns', () => {
+    expect(memoCardSource).not.toMatch(/overflow-hidden/);
+    expect(memoCardSource).not.toMatch(/contain:\s*'layout paint'/);
+    expect(memoCardSource).toMatch(/style=\{\{ contain: 'paint' \} as React\.CSSProperties\}/);
+    expect(memoCardSource).toMatch(/grid\s+items-start/);
   });
 });
