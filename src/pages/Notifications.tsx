@@ -209,6 +209,22 @@ export default function Notifications() {
               </p>
             </div>
             <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 mr-2 px-2 py-1 rounded-md border border-border">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <Label htmlFor="active-only-toggle" className="text-xs cursor-pointer select-none">
+                  Active deals only
+                </Label>
+                <Switch
+                  id="active-only-toggle"
+                  checked={activeOnly}
+                  onCheckedChange={setActiveOnly}
+                />
+                {activeOnly && hiddenInactiveCount > 0 && (
+                  <Badge variant="secondary" className="text-[10px]">
+                    {hiddenInactiveCount} hidden
+                  </Badge>
+                )}
+              </div>
               {unreadCount > 0 && (
                 <Button 
                   variant="outline" 
