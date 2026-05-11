@@ -1,19 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
 
 export const HomepageHero = () => {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return sessionStorage.getItem("hero-work-email") ?? "";
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (email) sessionStorage.setItem("hero-work-email", email);
+  }, [email]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     const trimmed = email.trim();
     if (!trimmed) return;
+    sessionStorage.setItem("hero-work-email", trimmed);
     setIsSubmitting(true);
     navigate(`/waitlist?email=${encodeURIComponent(trimmed)}`);
   };
