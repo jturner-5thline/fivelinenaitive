@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Building2, User, FileText, ListChecks, MessageSquare, Plus, ExternalLink, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { splitTextByUrls } from '@/lib/emailNotesCleanup';
 
 /**
  * Auto-linkify URLs in plain-text descriptions so source-email links
@@ -16,24 +17,14 @@ import { formatDistanceToNow } from 'date-fns';
  * Stops propagation so clicking a link doesn't also enter edit mode on
  * the parent description container.
  */
-const URL_REGEX = /\bhttps?:\/\/[^\s<>"')]+/g;
 function renderWithLinks(text: string) {
-  const parts: Array<string | { url: string }> = [];
-  let lastIdx = 0;
-  for (const match of text.matchAll(URL_REGEX)) {
-    const start = match.index ?? 0;
-    if (start > lastIdx) parts.push(text.slice(lastIdx, start));
-    parts.push({ url: match[0] });
-    lastIdx = start + match[0].length;
-  }
-  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
-  return parts.map((p, i) =>
-    typeof p === 'string' ? (
-      <span key={i}>{p}</span>
+  return splitTextByUrls(text).map((p, i) =>
+    p.type === 'text' ? (
+      <span key={i}>{p.value}</span>
     ) : (
       <a
         key={i}
-        href={p.url}
+        href={p.value}
         target="_blank"
         rel="noopener noreferrer"
         // Stop both mousedown and click so the parent description
@@ -42,7 +33,7 @@ function renderWithLinks(text: string) {
         onClick={(e) => e.stopPropagation()}
         className="text-primary underline-offset-2 hover:underline focus-visible:underline focus-visible:outline-none break-all"
       >
-        {p.url}
+        {p.value}
       </a>
     ),
   );
