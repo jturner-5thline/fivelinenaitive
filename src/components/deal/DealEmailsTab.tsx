@@ -213,7 +213,13 @@ function PaginationFooter({
           onLoadMore();
         }
       },
-      { root: scrollRoot ?? null, rootMargin: '200px', threshold: 0 },
+      // Prefetch aggressively: fire onLoadMore well before the user
+      // actually reaches the end of the list so the next page of older
+      // messages is already streaming in by the time they get there.
+      // 1500px ≈ ~20 message rows of lookahead at typical row heights,
+      // which means smooth infinite scroll without a visible
+      // "Loading older messages…" gap in the common case.
+      { root: scrollRoot ?? null, rootMargin: '1500px', threshold: 0 },
     );
     io.observe(el);
     return () => io.disconnect();
