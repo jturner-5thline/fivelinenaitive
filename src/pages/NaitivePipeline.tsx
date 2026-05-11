@@ -28,6 +28,7 @@ import { NaitiveICPLeaderboard } from '@/components/naitive-pipeline/NaitiveICPL
 import { NaitiveQualToDemoInsights } from '@/components/naitive-pipeline/NaitiveQualToDemoInsights';
 import { NaitiveDidNotMoveInsights } from '@/components/naitive-pipeline/NaitiveDidNotMoveInsights';
 import { NaitivePipelineNarrative } from '@/components/naitive-pipeline/NaitivePipelineNarrative';
+import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUpCard';
 import {
   DndContext,
   DragOverlay,
@@ -391,6 +392,7 @@ export default function NaitivePipeline() {
       <Helmet>
         <title>naitive Pipeline | naitive</title>
       </Helmet>
+      <NaitiveCatchUpCard />
       <div className="bg-transparent">
         <DashboardPage
           padding="sm"
