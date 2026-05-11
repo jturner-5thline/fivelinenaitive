@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
-import { Navigate, useNavigate } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
@@ -50,6 +50,26 @@ import {
 } from '@/components/ui/dialog';
 import { DashboardPage } from '@/components/layout/DashboardPage';
 
+const CARD_INTERACTIVE_SELECTOR = [
+  '[data-milestone-toggle]',
+  '[data-no-card-open]',
+  'button',
+  'a',
+  'input',
+  'textarea',
+  'select',
+  'label',
+  '[role="button"]',
+  '[role="menuitem"]',
+  '[role="menu"]',
+  '[role="dialog"]',
+  '[contenteditable="true"]',
+].join(',');
+
+function shouldIgnoreCardOpen(target: EventTarget | null) {
+  return target instanceof HTMLElement && !!target.closest(CARD_INTERACTIVE_SELECTOR);
+}
+
 function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone, onOpenEdit }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
   milestones: DealStageMilestone[]; onToggleMilestone: (dealId: string, stage: string, key: string) => void;
@@ -58,24 +78,44 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
   const { attributes, listeners, setNodeRef, transform } = useDraggable({ id: deal.id, data: { deal } });
   const style = { transform: CSS.Translate.toString(transform), opacity: isDragging ? 0.5 : 1 };
 
+  const openDeal = () => {
+    if (import.meta.env.DEV) {
+      console.info('[NaitivePipeline] deal tile click', { dealId: deal.id, company: deal.company || deal.name });
+    }
+    onOpenEdit(deal);
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      {...listeners}
-      {...attributes}
-      className="touch-none w-full min-w-0"
+      className="relative w-full min-w-0 touch-none rounded-xl"
       onClick={(e) => {
-        // Ignore clicks on milestone toggles or other interactive children
-        const t = e.target as HTMLElement;
-        if (
-          t.closest(
-            '[data-milestone-toggle],[data-no-card-open],button,a,input,textarea,select,label,[role="button"],[role="menuitem"],[role="menu"],[role="dialog"],[contenteditable="true"]'
-          )
-        ) return;
-        onOpenEdit(deal);
+        if (shouldIgnoreCardOpen(e.target)) return;
+        openDeal();
       }}
+      onKeyDown={(e) => {
+        if (shouldIgnoreCardOpen(e.target)) return;
+        if (e.key !== 'Enter' && e.key !== ' ') return;
+        e.preventDefault();
+        openDeal();
+      }}
+      role="button"
+      tabIndex={0}
+      aria-label={`Open deal details for ${deal.company || deal.name || 'deal'}`}
     >
+      <button
+        type="button"
+        data-no-card-open
+        {...listeners}
+        {...attributes}
+        className="absolute right-2 top-2 z-20 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground shadow-sm transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background cursor-grab active:cursor-grabbing"
+        aria-label={`Drag ${deal.company || deal.name || 'deal'}`}
+        title="Drag deal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="h-3.5 w-3.5" />
+      </button>
       <NaitiveDealCard deal={deal} disableLink>
         {milestones.length > 0 && (
           <div className="pt-1">
