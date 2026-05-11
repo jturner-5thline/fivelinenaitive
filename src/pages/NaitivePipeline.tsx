@@ -68,7 +68,11 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
       onClick={(e) => {
         // Ignore clicks on milestone toggles or other interactive children
         const t = e.target as HTMLElement;
-        if (t.closest('[data-milestone-toggle]')) return;
+        if (
+          t.closest(
+            '[data-milestone-toggle],[data-no-card-open],button,a,input,textarea,select,label,[role="button"],[role="menuitem"],[role="menu"],[role="dialog"],[contenteditable="true"]'
+          )
+        ) return;
         onOpenEdit(deal);
       }}
     >
