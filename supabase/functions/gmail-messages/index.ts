@@ -647,11 +647,20 @@ serve(async (req: Request): Promise<Response> => {
         const sendData = await sendResponse.json();
 
         if (!sendResponse.ok) {
-          console.error("Nylas send error:", sendData);
-          return new Response(JSON.stringify({ error: sendData.message || "Failed to send" }), {
-            status: sendResponse.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          console.error("Nylas send error:", JSON.stringify(sendData));
+          const nylasErr =
+            sendData?.error?.message ||
+            sendData?.error?.type ||
+            sendData?.message ||
+            (typeof sendData?.error === "string" ? sendData.error : null) ||
+            `Nylas returned ${sendResponse.status}`;
+          return new Response(
+            JSON.stringify({ error: nylasErr, details: sendData?.error ?? sendData }),
+            {
+              status: sendResponse.status,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            },
+          );
         }
 
         const sentMsg = sendData.data || sendData;
