@@ -1137,13 +1137,24 @@ function NeuralNetwork() {
           depthWrite={false}
         />
       </mesh>
-      {/* Cyan rim/border — backside additive creates a luminous outline */}
+      {/* Cyan rim/border — thin defined outline (backside) */}
       <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.295, 64, 64]} />
+        <sphereGeometry args={[0.292, 96, 96]} />
         <meshBasicMaterial
           color="#22d3ee"
           transparent
-          opacity={0.38}
+          opacity={0.55}
+          side={THREE.BackSide}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Soft outer halo to keep the rim feeling airy, not harsh */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.305, 64, 64]} />
+        <meshBasicMaterial
+          color="#67e8f9"
+          transparent
+          opacity={0.18}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
