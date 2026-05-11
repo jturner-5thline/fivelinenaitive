@@ -1024,6 +1024,7 @@ function EmailTab({
                         fromName: e.from_name || null,
                         fromEmail: e.from_email || null,
                         snippet: e.analysis?.summary || e.snippet || null,
+                        receivedAt: e.received_at || null,
                       })}
                   >
                     <div>
