@@ -605,6 +605,107 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
       </div>
 
       <div className="space-y-2">
+        {/* GROUPED LENDER REQUESTS — top priority. One card per detected
+            list, with one bulk "Add N items" CTA and per-line checkboxes. */}
+        {groupedSuggestions.groupCards.map((group) => {
+          const selected = getGroupSelected(group.id, group.items.length);
+          const selectedCount = selected.size;
+          const workingKey = `group:${group.id}`;
+          const lenderForLabel =
+            (group.items[0] as any)?.requested_by_lender_name ||
+            lenderName ||
+            thread.latestEmail?.from_name ||
+            'Sender';
+          const headerLabel =
+            group.label ||
+            `${lenderForLabel} requested ${group.items.length} items for ${dealName || 'this deal'}`;
+          return (
+            <div
+              key={`group-${group.id}`}
+              className="rounded-md border border-primary/30 bg-primary/[0.04] overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-primary/15 bg-primary/[0.05]">
+                <ListPlus className="h-3 w-3 text-primary shrink-0" />
+                <span className="text-[11px] font-semibold text-foreground/90 truncate flex-1">
+                  {headerLabel}
+                </span>
+                <Badge variant="secondary" className="h-4 text-[9px] px-1.5 shrink-0">
+                  {group.items.length} requested
+                </Badge>
+              </div>
+              <div className="px-3 py-2.5 space-y-2">
+                <Row label="Deal" value={dealName || '—'} />
+                <Row
+                  label="From"
+                  value={`${thread.latestEmail?.from_name || ''}${thread.latestEmail?.from_email ? ` <${thread.latestEmail.from_email}>` : ''}`}
+                  mono
+                />
+                <ul className="space-y-1 pt-1">
+                  {group.items.map((s, i) => {
+                    const isChecked = selected.has(i);
+                    return (
+                      <li key={`${group.id}-${i}`} className="flex items-start gap-2 text-[11px]">
+                        <button
+                          type="button"
+                          aria-label={isChecked ? 'Exclude this item' : 'Include this item'}
+                          onClick={() => toggleGroupItem(group.id, i, group.items.length)}
+                          className={`mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded border ${
+                            isChecked
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-white/20 bg-background/40'
+                          }`}
+                        >
+                          {isChecked && <CheckSquare className="h-2.5 w-2.5" />}
+                        </button>
+                        <span className={`flex-1 leading-snug ${isChecked ? 'text-foreground/90' : 'text-muted-foreground line-through'}`}>
+                          {s.description}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+                {group.items[0]?.source_quote && (
+                  <div className="text-[10.5px] text-muted-foreground/85 italic leading-snug border-l-2 border-white/[0.08] pl-2 mt-1">
+                    "{group.items[0].source_quote}"
+                  </div>
+                )}
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] gap-1"
+                    disabled={!!working[workingKey] || selectedCount === 0}
+                    onClick={() => handleAddGroup(group.id, group.items)}
+                  >
+                    {working[workingKey] ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <ListPlus className="h-3 w-3" />
+                    )}
+                    Add {selectedCount} Outstanding Item{selectedCount === 1 ? '' : 's'}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-[11px] gap-1 text-muted-foreground"
+                    onClick={() =>
+                      setDismissed((d) => {
+                        const n = new Set(d);
+                        group.items.forEach((s) => {
+                          const idxInVisible = visibleNewItemSuggestions.indexOf(s);
+                          n.add(`new:${idxInVisible}:${s.description}`);
+                        });
+                        return n;
+                      })
+                    }
+                  >
+                    <X className="h-3 w-3" /> Dismiss all
+                  </Button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
         {visibleAttachmentMatches.map(({ item, attachment, matchedOn }) => (
           <div
             key={`att-${item.id}`}
@@ -737,7 +838,9 @@ export function OutstandingItemMatchCard({ dealId, dealName, thread, attachments
           </div>
         ))}
 
-        {visibleNewItemSuggestions.map((s, idx) => {
+        {/* Standalone (ungrouped) new-item suggestions render with the
+            legacy single-item card. */}
+        {groupedSuggestions.standalone.map(({ s, idx }) => {
           const dismissKey = `new:${idx}:${s.description}`;
           return (
             <div
