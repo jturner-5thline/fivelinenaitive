@@ -29,6 +29,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
+import { NaitiveDealInformation } from '@/components/naitive-pipeline/NaitiveDealInformation';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
