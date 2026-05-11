@@ -1,10 +1,28 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { cn } from "@/lib/utils";
 import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
 
 export const HomepageHeader = () => {
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-sm border-b border-white/5">
+    <header
+      className={cn(
+        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
+        scrolled
+          ? "bg-[rgba(4,8,18,0.72)] backdrop-blur-md border-b border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
+          : "bg-transparent backdrop-blur-sm border-b border-white/5"
+      )}
+    >
       <nav className="container mx-auto px-4 sm:px-6 h-24 flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0" aria-label="naitive home">
