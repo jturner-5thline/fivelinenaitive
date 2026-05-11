@@ -57,10 +57,11 @@ interface Summary {
 }
 
 export function NaitiveCatchUpCard() {
-  const { user, profile } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
 
   const allowed = useMemo(
     () => !!user?.email && (ALLOWED_EMAILS as readonly string[]).includes(user.email.toLowerCase()),
@@ -77,9 +78,13 @@ export function NaitiveCatchUpCard() {
 
     let cancelled = false;
     (async () => {
-      const data = await fetchSummary(user.id);
+      const [data, prof] = await Promise.all([
+        fetchSummary(user.id),
+        supabase.from('profiles').select('display_name').eq('user_id', user.id).maybeSingle(),
+      ]);
       if (cancelled) return;
       setSummary(data);
+      setDisplayName((prof.data as any)?.display_name || null);
       // Slide up 0.5s after page is ready.
       setTimeout(() => {
         if (cancelled) return;
@@ -101,7 +106,7 @@ export function NaitiveCatchUpCard() {
   if (!allowed || !open || !summary) return null;
 
   const firstName =
-    (profile?.display_name?.split(' ')[0]) ||
+    (displayName?.split(' ')[0]) ||
     user?.email?.split('@')[0] ||
     'there';
 
