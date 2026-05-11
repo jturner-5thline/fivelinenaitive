@@ -3,6 +3,25 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { APP_BASE_URL } from '@/constants/appConfig';
 
+/**
+ * Normalize recipient inputs into a clean string[] of individual addresses.
+ * Accepts string[], a single string (possibly comma/semicolon-joined), or undefined.
+ * Nylas v3 rejects entries that contain multiple addresses, so we always split.
+ */
+function normalizeRecipients(input: string[] | string | undefined): string[] | undefined {
+  if (!input) return undefined;
+  const arr = Array.isArray(input) ? input : [input];
+  const out: string[] = [];
+  for (const raw of arr) {
+    if (!raw) continue;
+    for (const part of String(raw).split(/[,;]/)) {
+      const trimmed = part.trim().replace(/^['"<]+|['">]+$/g, '').trim();
+      if (trimmed) out.push(trimmed);
+    }
+  }
+  return out.length ? out : undefined;
+}
+
 interface GmailMessage {
   id: string;
   thread_id: string;
