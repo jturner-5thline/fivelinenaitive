@@ -977,6 +977,24 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd, onUpd
               <p className="text-xs text-muted-foreground mt-1">
                 {!searchQuery && filterByLender.length === 0 && 'Add items above to track what\'s needed from lenders'}
               </p>
+              {/* Retroactive bulk-add for legacy deals (Fix 4). Only shown
+                  when the deal truly has zero items overall — not when a
+                  search/filter merely hides them. */}
+              {!searchQuery && filterByLender.length === 0 && items.length === 0 && onApplyDefaultChecklist && (
+                <div className="mt-4 mx-auto max-w-md rounded-lg border border-primary/30 bg-primary/5 p-3 flex items-center justify-between gap-3">
+                  <span className="text-xs text-muted-foreground text-left">
+                    Apply the default checklist to get started.
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => { await onApplyDefaultChecklist(); }}
+                  >
+                    Apply Checklist
+                  </Button>
+                </div>
+              )}
             </div>
           )}
 
