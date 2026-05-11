@@ -11,6 +11,7 @@ import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
 import { NaitiveDealCard } from '@/components/naitive-pipeline/NaitiveDealCard';
+import { NaitiveDealDetailModal } from '@/components/naitive-pipeline/NaitiveDealDetailModal';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
 import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveMilestoneDiamonds';
@@ -150,6 +151,7 @@ export default function NaitivePipeline() {
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editDeal, setEditDeal] = useState<Deal | null>(null);
+  const [viewDealId, setViewDealId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const stageLabelById = useMemo(() => {
@@ -294,7 +296,7 @@ export default function NaitivePipeline() {
               fullscreen={fullscreen}
               getMilestonesForDeal={getMilestonesForDeal}
               onToggleMilestone={toggleMilestone}
-              onOpenEdit={setEditDeal}
+              onOpenEdit={(d) => setViewDealId(d.id)}
             />
           ))}
         </div>
@@ -522,6 +524,12 @@ export default function NaitivePipeline() {
           onCreated={() => { setEditDeal(null); refetch(); }}
         />
       )}
+
+      <NaitiveDealDetailModal
+        dealId={viewDealId}
+        open={!!viewDealId}
+        onOpenChange={(o) => { if (!o) setViewDealId(null); }}
+      />
     </>
   );
 }
