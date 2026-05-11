@@ -1,8 +1,19 @@
 import { Button } from "@/components/ui/button";
-import { Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
 
 export const HomepageHero = () => {
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = email.trim();
+    if (!trimmed) return;
+    navigate(`/waitlist?email=${encodeURIComponent(trimmed)}`);
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden bg-transparent">
       {/* Globe — scaled down, pushed right. Screen blend so any internal dark fill disappears into the page gradient. */}
@@ -33,14 +44,37 @@ export const HomepageHero = () => {
             </p>
           </div>
 
-          {/* CTA — shares left edge with tagline and wordmark "n" */}
-          <Button
-            size="lg"
-            className="marketing-glass-cta mt-6 sm:mt-8 px-8 sm:px-10 py-5 sm:py-6 text-sm sm:text-base font-semibold border-0"
-            asChild
+          {/* Email capture form */}
+          <form
+            onSubmit={handleSubmit}
+            className="mt-6 sm:mt-8 w-full max-w-[36rem] flex flex-col gap-3"
+            aria-label="Book a demo"
           >
-            <Link to="/auth">Sign Up</Link>
-          </Button>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full">
+              <label htmlFor="hero-email" className="sr-only">
+                Work email
+              </label>
+              <input
+                id="hero-email"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your work email"
+                className="flex-1 min-w-0 h-12 px-4 rounded-lg bg-white/5 border border-white/15 text-white placeholder:text-white/40 text-sm sm:text-base outline-none transition-colors focus:border-white/40 focus:bg-white/10"
+              />
+              <Button
+                type="submit"
+                size="lg"
+                className="marketing-glass-cta h-12 px-6 sm:px-8 text-sm sm:text-base font-semibold border-0 shrink-0"
+              >
+                Book a demo
+              </Button>
+            </div>
+            <p className="text-xs leading-relaxed font-light text-white/40 max-w-[36rem]">
+              By submitting this form, you consent to allow naitive to store and process the personal information submitted here to provide you with occasional updates and content that may interest you.
+            </p>
+          </form>
         </div>
       </div>
     </section>
