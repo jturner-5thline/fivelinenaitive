@@ -365,13 +365,6 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                         </span>
                       )}
                     </Button>
-                    <FlagNoteDialog
-                      dealId={deal.id}
-                      dealName={deal.company}
-                      isOpen={isFlagDialogOpen}
-                      onClose={() => setIsFlagDialogOpen(false)}
-                      onFlagCountChange={setActiveFlagCount}
-                    />
                   </>
                 )}
                 <Button
