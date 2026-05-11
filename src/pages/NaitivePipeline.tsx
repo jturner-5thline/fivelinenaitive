@@ -217,6 +217,9 @@ export default function NaitivePipeline() {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ── Multi-select filter bar (shared between Dashboard & Pipeline views) ─
+  const naitiveFilters = useNaitivePipelineFilters(deals, stages);
+
   const stageLabelById = useMemo(() => {
     const m = new Map<string, string>();
     stages.forEach(s => m.set(s.id, s.label));
@@ -224,9 +227,12 @@ export default function NaitivePipeline() {
   }, [stages]);
 
   const filteredDeals = useMemo(() => {
+    // 1) Apply dropdown filters first (cheap, structural).
+    const afterFilters = naitiveFilters.apply(deals);
+    // 2) Then layer the free-text search on top.
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return deals;
-    return deals.filter(d => {
+    if (!q) return afterFilters;
+    return afterFilters.filter(d => {
       const stageLabel = stageLabelById.get(d.stage) || d.stage || '';
       const haystack = [
         d.name,
@@ -261,7 +267,7 @@ export default function NaitivePipeline() {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [deals, searchQuery, stageLabelById]);
+  }, [deals, searchQuery, stageLabelById, naitiveFilters]);
 
   const goTo = useCallback((target: 0 | 1) => {
     if (target === activeView) return;
