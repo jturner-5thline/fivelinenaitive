@@ -40,7 +40,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
     .some(b => grouped[b].length > VISIBLE_PER_BUCKET);
 
   return (
-    <div className="p-5 flex flex-col h-full min-w-0">
+    <div className="p-5 min-w-0 self-start">
       <button
         type="button"
         onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
@@ -65,7 +65,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
       {lenders.length === 0 ? (
         <p className="text-xs text-muted-foreground italic">No lenders engaged.</p>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-3 min-w-0">
           {(['reviewing', 'onhold', 'ondeck', 'passed'] as Bucket[]).map(b => {
             const items = grouped[b];
             if (items.length === 0) return null;
