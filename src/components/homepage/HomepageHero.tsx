@@ -1,30 +1,55 @@
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, CheckCircle2 } from "lucide-react";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
+import { supabase } from "@/integrations/supabase/client";
 
 export const HomepageHero = () => {
-  const navigate = useNavigate();
   const [email, setEmail] = useState(() => {
     if (typeof window === "undefined") return "";
     return sessionStorage.getItem("hero-work-email") ?? "";
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
     if (email) sessionStorage.setItem("hero-work-email", email);
   }, [email]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const isValidEmail = (val: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     const trimmed = email.trim();
     if (!trimmed) return;
+    if (!isValidEmail(trimmed)) {
+      setErrorMsg("Please enter a valid email address.");
+      return;
+    }
+    setErrorMsg(null);
     sessionStorage.setItem("hero-work-email", trimmed);
     setIsSubmitting(true);
-    navigate(`/waitlist?email=${encodeURIComponent(trimmed)}`);
+    try {
+      const submittedAt = new Date().toISOString();
+      const { error } = await supabase.functions.invoke("send-transactional-email", {
+        body: {
+          templateName: "demo-request",
+          recipientEmail: "ppina@5thline.co",
+          idempotencyKey: `demo-request-${trimmed}-${submittedAt}`,
+          templateData: { workEmail: trimmed, submittedAt },
+        },
+      });
+      if (error) throw error;
+      setSubmitted(true);
+    } catch (err) {
+      console.error("Demo request submit failed", err);
+      setErrorMsg("Something went wrong sending your request. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -58,6 +83,17 @@ export const HomepageHero = () => {
           </div>
 
           {/* Email capture form */}
+          {submitted ? (
+            <div
+              role="status"
+              className="mt-6 sm:mt-8 w-full max-w-[36rem] flex items-start gap-3 rounded-lg border border-white/15 bg-white/5 p-4 text-white"
+            >
+              <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0 text-emerald-400" />
+              <p className="text-sm sm:text-base font-light leading-relaxed">
+                Thanks — we've received your request and will be in touch shortly.
+              </p>
+            </div>
+          ) : (
           <form
             onSubmit={handleSubmit}
             className="mt-6 sm:mt-8 w-full max-w-[36rem] flex flex-col gap-3"
@@ -87,17 +123,23 @@ export const HomepageHero = () => {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Booking…
+                    Sending…
                   </>
                 ) : (
                   "Book a demo"
                 )}
               </Button>
             </div>
+            {errorMsg && (
+              <p role="alert" className="text-xs sm:text-sm text-red-300">
+                {errorMsg}
+              </p>
+            )}
             <p className="text-xs leading-relaxed font-light text-white/40 max-w-[36rem]">
               By submitting this form, you consent to allow naitive to store and process the personal information submitted here to provide you with occasional updates and content that may interest you.
             </p>
           </form>
+          )}
         </div>
       </div>
     </section>
