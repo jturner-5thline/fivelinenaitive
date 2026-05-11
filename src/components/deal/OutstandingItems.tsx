@@ -78,6 +78,12 @@ interface OutstandingItemsProps {
   onBulkAdd?: (texts: string[], requestedBy: string[]) => void;
   onReorder?: (items: OutstandingItem[]) => void;
   teamMembers?: { id: string; display_name: string }[];
+  /**
+   * Optional handler for the "Apply Checklist" banner shown when the deal
+   * has zero outstanding items. Should run the same checklist resolution
+   * (deal-type → standard fallback) as the create-deal flow.
+   */
+  onApplyDefaultChecklist?: () => Promise<void> | void;
 }
 
 const getItemStage = (item: OutstandingItem): KanbanStage => {
