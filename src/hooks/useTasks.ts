@@ -700,15 +700,26 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
             if (Object.keys(asanaUpdates).length > 0) {
               await updateTaskInAsana(ctx, asanaTaskGid, asanaUpdates);
               console.log('Asana sync pushed:', Object.keys(asanaUpdates));
+              // Clear the asana sync_source marker so future Asana echoes
+              // (or unrelated updates) aren't permanently flagged as Asana-originated.
+              await supabase
+                .from('tasks')
+                .update({ sync_source: null })
+                .eq('id', id);
             }
           } catch (e) {
             console.error('Asana update sync failed:', e);
           }
         })();
 
-        // Clear sync_source if it was set by a previous Asana sync
       } else if (syncSource === 'asana') {
         console.log('Skipping Asana sync — update originated from Asana');
+        // Clear the marker now that the Asana-originated change has propagated
+        // through the UI; subsequent Naitive edits should sync forward normally.
+        await supabase
+          .from('tasks')
+          .update({ sync_source: null })
+          .eq('id', id);
       }
     },
     onSuccess: () => {
