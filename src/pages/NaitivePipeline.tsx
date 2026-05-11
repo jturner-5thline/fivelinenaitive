@@ -155,7 +155,7 @@ export default function NaitivePipeline() {
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [editDeal, setEditDeal] = useState<Deal | null>(null);
-  const [viewDealId, setViewDealId] = useState<string | null>(null);
+
   const [searchQuery, setSearchQuery] = useState('');
 
   const stageLabelById = useMemo(() => {
