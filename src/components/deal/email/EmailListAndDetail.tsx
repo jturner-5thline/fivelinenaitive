@@ -79,6 +79,7 @@ import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggesti
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 import { EmailContextMenu } from './EmailContextMenu';
+import { CreateTaskFromEmailDialog } from '@/components/tasks/CreateTaskFromEmailDialog';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailAttachmentList } from './EmailAttachmentList';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from './EmailAttachmentsStrip';
@@ -280,6 +281,7 @@ interface ThreadListItemProps {
 
 function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
+  const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const latest = thread.latestEmail;
   // Preview/sender should always reflect the most-recent message in the
   // entire conversation (inbox + sent), regardless of who sent it. The row
@@ -662,6 +664,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
   );
 
   return (
+    <>
     <EmailContextMenu
       isRead={!isUnread}
       isStarred={thread.isStarred}
@@ -674,9 +677,23 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       onToggleStar={() => onToggleStar(latest)}
       onArchive={() => onArchive?.(latest)}
       onDelete={() => onDelete?.(latest)}
+      onCreateTask={() => setCreateTaskOpen(true)}
     >
       {rowContent}
     </EmailContextMenu>
+    <CreateTaskFromEmailDialog
+      open={createTaskOpen}
+      onOpenChange={setCreateTaskOpen}
+      email={{
+        messageId: latest.id,
+        threadId: thread.provider_thread_id || thread.threadId,
+        subject: latest.subject,
+        fromName: latest.from_name,
+        fromEmail: latest.from_email,
+        snippet: latest.snippet || latest.body_preview,
+      }}
+    />
+    </>
   );
 }
 
