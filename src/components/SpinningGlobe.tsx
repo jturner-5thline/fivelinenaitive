@@ -1309,17 +1309,7 @@ function NeuralNetwork() {
         })}
       </group>
       
-      {/* === NETWORK CONNECTIONS === */}
-      
-      {/* Network connections between nodes */}
-      {lineObjects.map((line, idx) => (
-        <primitive key={`neural-${idx}`} object={line} />
-      ))}
-      
-      {/* Core-to-surface connections */}
-      {coreConnections.map((line, idx) => (
-        <primitive key={`core-${idx}`} object={line} />
-      ))}
+      {/* Cyan interior network lines removed per design request */}
     </group>
   );
 }
