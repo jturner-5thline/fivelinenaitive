@@ -213,13 +213,11 @@ function PaginationFooter({
           onLoadMore();
         }
       },
-      // Prefetch aggressively: fire onLoadMore well before the user
-      // actually reaches the end of the list so the next page of older
-      // messages is already streaming in by the time they get there.
-      // 1500px ≈ ~20 message rows of lookahead at typical row heights,
-      // which means smooth infinite scroll without a visible
-      // "Loading older messages…" gap in the common case.
-      { root: scrollRoot ?? null, rootMargin: '1500px', threshold: 0 },
+      // Late-trigger: only fire onLoadMore when the sentinel is essentially
+      // at the bottom of the scroll container, so "Loading older messages…"
+      // appears only when the user is very close to the end of the list
+      // rather than firing eagerly mid-scroll.
+      { root: scrollRoot ?? null, rootMargin: '80px', threshold: 0 },
     );
     io.observe(el);
     return () => io.disconnect();
