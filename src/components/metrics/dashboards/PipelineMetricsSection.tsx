@@ -216,6 +216,99 @@ export function PipelineMetricWidget({
   const metrics = usePipelineStageMetrics(selectedQuarter);
   const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[] } | null>(null);
 
+  // FinServ KPI tiles use the same combined layout as the Debt
+  // "Deals Signed / Closed" cards: count on the left, recurring revenue
+  // on the right. Definitions:
+  //   • Deals on the Board   → new deals added to the FinServ pipeline this period (count + MRR added)
+  //   • Clients Signed       → deals that entered Closed Won this period (count + MRR signed)
+  //   • Active Clients       → deals currently in Closed Won (snapshot count + current MRR)
+  if (cardId === 'finserv-deals-on-board' || cardId === 'finserv-clients-signed' || cardId === 'finserv-active-clients') {
+    const cfg = (() => {
+      if (cardId === 'finserv-deals-on-board') {
+        return {
+          title: 'FinServ: Deals on the Board',
+          icon: Building2,
+          color: 'hsl(var(--chart-5))',
+          metric: metrics.finservDealsOnBoard,
+          drilldownTitle: 'FinServ: Deals on the Board — Added to Pipeline',
+        };
+      }
+      if (cardId === 'finserv-clients-signed') {
+        return {
+          title: 'FinServ: Clients Signed',
+          icon: UserCheck,
+          color: 'hsl(var(--success))',
+          metric: metrics.finservClientsSigned,
+          drilldownTitle: 'FinServ: Clients Signed — Entered Closed Won',
+        };
+      }
+      return {
+        title: 'FinServ: Active Clients',
+        icon: UserCheck,
+        color: 'hsl(var(--chart-1))',
+        metric: metrics.finservActiveClients,
+        drilldownTitle: 'FinServ: Active Clients — Currently in Closed Won',
+      };
+    })();
+    const Icon = cfg.icon;
+    const count = cfg.metric.count;
+    const recurring = Number(cfg.metric.mrr ?? 0);
+    const isLoading = cfg.metric.isLoading;
+    return (
+      <div className="h-full">
+        <Card
+          onClick={() => setDrilldown({ title: cfg.drilldownTitle, deals: cfg.metric.deals })}
+          className={cn(
+            'relative group cursor-pointer overflow-hidden transition-all duration-200 h-full',
+            'glass-module',
+            'hover:border-primary/40 hover:-translate-y-0.5',
+            'hover:shadow-[0_0_20px_hsl(var(--primary)/0.1),0_8px_32px_hsl(0,0%,0%,0.4)]',
+          )}
+        >
+          <div
+            className="absolute top-0 left-0 right-0 h-[2px] opacity-60"
+            style={{ background: `linear-gradient(90deg, ${cfg.color}, transparent)` }}
+          />
+          <CardContent className="flex items-center gap-4 p-4 h-full">
+            <div
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-border/20"
+              style={{ background: `linear-gradient(135deg, ${cfg.color}20, transparent)` }}
+            >
+              <Icon className="h-5 w-5" style={{ color: cfg.color }} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium truncate">
+                {cfg.title}
+              </p>
+              <div className="flex items-baseline gap-2 mt-1">
+                {isLoading ? (
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                ) : (
+                  <>
+                    <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+                      {count} <span className="text-xs font-medium text-muted-foreground">Deal{count === 1 ? '' : 's'}</span>
+                    </span>
+                    <span className="text-muted-foreground/60 font-light">|</span>
+                    <span className="text-xl font-bold font-mono tabular-nums text-foreground">
+                      {formatCurrencyMM(recurring)}
+                      <span className="text-xs font-medium text-muted-foreground ml-1">MRR</span>
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <PipelineDrilldownModal
+          open={!!drilldown}
+          onClose={() => setDrilldown(null)}
+          title={drilldown?.title ?? ''}
+          deals={drilldown?.deals ?? []}
+        />
+      </div>
+    );
+  }
+
   const map: Record<PipelineMetricCardId, MetricCardConfig> = {
     'deals-on-board': {
       id: 'deals-on-board', title: PIPELINE_METRIC_LABELS['deals-on-board'], icon: Users,
