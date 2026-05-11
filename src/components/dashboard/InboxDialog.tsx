@@ -593,7 +593,7 @@ export function InboxDialog({ open, onOpenChange }: InboxDialogProps) {
   // either upstream still has a next page_token OR our local
   // `received_at` cursor still resolves to older cached rows — so the
   // user can keep scrolling past upstream rate limits / end-of-token.
-  const hasMore = hasMoreInbox || hasMoreSent || !!oldestReceivedAt;
+  const hasMore = hasMoreInbox || hasMoreSent || (hasMoreCache && !!oldestReceivedAt);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
