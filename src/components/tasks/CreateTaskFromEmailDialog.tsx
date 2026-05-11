@@ -17,6 +17,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
+import { cleanEmailSnippet } from '@/lib/emailNotesCleanup';
 
 export interface CreateTaskFromEmailSource {
   messageId: string;
