@@ -244,7 +244,10 @@ export function DealsPipelineView({ deals, onStatusChange, onStageChange, onMark
 
   const handleDragOver = (event: DragOverEvent) => {
     const { over } = event;
-    setOverId(over?.id as string || null);
+    const next = (over?.id as string) || null;
+    // Avoid spurious re-renders on every pointer move when the over target
+    // hasn't actually changed columns.
+    setOverId((prev) => (prev === next ? prev : next));
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
