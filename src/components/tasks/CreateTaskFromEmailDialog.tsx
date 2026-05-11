@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2, Mail, Link2 } from 'lucide-react';
+import { CalendarIcon, Loader2, Mail, Link2, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,8 +36,6 @@ interface Props {
   email: CreateTaskFromEmailSource | null;
 }
 
-type Priority = 'low' | 'medium' | 'high' | 'urgent';
-
 /**
  * Lightweight task-creation modal triggered from the email context menu.
  * Prefills title/description/due date from the source email and persists the
@@ -53,24 +51,55 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
   const [description, setDescription] = useState('');
   const [assignee, setAssignee] = useState<string>('');
   const [dueDate, setDueDate] = useState<Date | undefined>(new Date());
-  const [priority, setPriority] = useState<Priority>('medium');
   const [submitting, setSubmitting] = useState(false);
+
+  // Build a stable in-app deep link to the source email/thread. The
+  // dashboard inbox is opened via `?widget=email`; we also pass the
+  // thread id so future enhancements can scroll directly to the thread.
+  const sourceEmailUrl = useMemo(() => {
+    if (!email) return '';
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const params = new URLSearchParams({ widget: 'email' });
+    if (email.threadId) params.set('thread', email.threadId);
+    if (email.messageId) params.set('message', email.messageId);
+    return `${origin}/dashboard?${params.toString()}`;
+  }, [email]);
+
+  // Strip raw HTML tags / collapse <br> from snippets so the textarea
+  // shows clean prose instead of escaped markup.
+  const cleanSnippet = (raw: string) =>
+    raw
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/?[^>]+>/g, '')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
 
   useEffect(() => {
     if (!open || !email) return;
     setTitle(email.subject?.trim() || 'Follow up on email');
-    const lines = [
+    const fromLine =
       email.fromName || email.fromEmail
         ? `From: ${email.fromName || ''}${email.fromEmail ? ` <${email.fromEmail}>` : ''}`.trim()
-        : '',
-      email.subject ? `Subject: ${email.subject}` : '',
-      email.snippet ? `\n${email.snippet.trim()}` : '',
-    ].filter(Boolean);
-    setDescription(lines.join('\n'));
+        : '';
+    const subjLine = email.subject ? `Subject: ${email.subject}` : '';
+    const snippetLine = email.snippet ? cleanSnippet(email.snippet) : '';
+    // Append a clean, plain-text URL so the link is preserved on the
+    // saved task and renders as a clickable link wherever the
+    // description is auto-linkified.
+    const linkLine = sourceEmailUrl ? `\nSource email: ${sourceEmailUrl}` : '';
+    setDescription(
+      [fromLine, subjLine, snippetLine ? `\n${snippetLine}` : '', linkLine]
+        .filter(Boolean)
+        .join('\n'),
+    );
     setAssignee(user?.id || '');
     setDueDate(new Date());
-    setPriority('medium');
-  }, [open, email, user?.id]);
+  }, [open, email, user?.id, sourceEmailUrl]);
 
   const linkedLabel = useMemo(() => {
     if (!email) return '';
@@ -94,7 +123,8 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
         assigned_to: assignee || user.id,
         assigned_by: user.id,
         created_by: user.id,
-        priority,
+        // Priority intentionally not set from this flow — DB default applies.
+        priority: 'medium',
         status: 'not_started',
         due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
         deal_id: email.dealId || null,
@@ -132,12 +162,23 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
         {email && (
           <div className="flex items-start gap-2 rounded-md border border-border/50 bg-muted/40 px-3 py-2 text-xs">
             <Link2 className="h-3.5 w-3.5 mt-0.5 text-muted-foreground shrink-0" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <div className="text-[10px] uppercase tracking-wide text-muted-foreground/80">
                 Linked to email
               </div>
               <div className="truncate text-foreground">{linkedLabel}</div>
             </div>
+            {sourceEmailUrl && (
+              <a
+                href={sourceEmailUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+              >
+                <ExternalLink className="h-3 w-3" />
+                Open email
+              </a>
+            )}
           </div>
         )}
 
@@ -198,19 +239,6 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
                   <Calendar mode="single" selected={dueDate} onSelect={setDueDate} initialFocus />
                 </PopoverContent>
               </Popover>
-            </div>
-
-            <div className="space-y-1.5 min-w-0">
-              <Label className="text-xs">Priority</Label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as Priority)}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="urgent">Urgent</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="low">Low</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </div>
         </div>
