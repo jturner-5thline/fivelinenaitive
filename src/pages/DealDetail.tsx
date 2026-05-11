@@ -3640,6 +3640,9 @@ export default function DealDetail() {
                           // Outstanding Items is a debt-pipeline concept —
                           // skip it entirely for Naitive pipeline deals.
                           if (isNaitiveDeal) return null;
+                          {
+                          // computed below; isolated block to keep variable scoped
+                          }
                           return (
                             <div key={id} className="space-y-6">
                               <OutstandingItems
@@ -3655,6 +3658,19 @@ export default function DealDetail() {
                                 onBulkAdd={bulkAddOutstandingItemsDb}
                                 onReorder={reorderOutstandingItemsDb}
                                 teamMembers={teamMembers}
+                                readOnly={(() => {
+                                  const pname = deal.pipelineId
+                                    ? pipelines.find(p => p.id === deal.pipelineId)?.name
+                                    : null;
+                                  return getDealInactiveReason(deal, pname) !== null;
+                                })()}
+                                readOnlyReason={(() => {
+                                  const pname = deal.pipelineId
+                                    ? pipelines.find(p => p.id === deal.pipelineId)?.name
+                                    : null;
+                                  const r = getDealInactiveReason(deal, pname);
+                                  return r ? inactiveReasonLabel(r) : undefined;
+                                })()}
                                 onApplyDefaultChecklist={async () => {
                                   if (!company?.id || !user?.id || !deal?.id) return;
                                   const r = await applyDefaultChecklistToOutstandingItems(
