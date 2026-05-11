@@ -698,6 +698,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                       onCheckedChange={(checked) =>
                         onUpdate(item.id, { received: checked === true })
                       }
+                      disabled={readOnly}
                       className={cn(
                         item.received && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                       )}
@@ -716,6 +717,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                       onCheckedChange={(checked) =>
                         onUpdate(item.id, { approved: checked === true })
                       }
+                      disabled={readOnly}
                       className={cn(
                         item.approved && "border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                       )}
@@ -726,6 +728,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                     )}>Submitted</span>
                   </div>
                 </div>
+                {!readOnly && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -737,6 +740,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 >
                   <Pencil className="h-3.5 w-3.5" />
                 </Button>
+                )}
+                {!readOnly && (
                 <Button
                   variant="ghost"
                   size="icon"
@@ -749,6 +754,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 >
                   <Check className="h-4 w-4" />
                 </Button>
+                )}
               </>
             )}
             
