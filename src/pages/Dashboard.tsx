@@ -565,7 +565,15 @@ export default function Dashboard() {
   // Deep-link: open a carousel widget from ?widget=<id>. Ignored if the user
   // doesn't have access to that widget.
   useEffect(() => {
-    const widgetParam = searchParams.get('widget');
+    let widgetParam = searchParams.get('widget');
+    // Backstop: a deep link that targets a specific email thread/message
+    // (e.g. the "Open email" link on a task created from email) implies
+    // the Email widget should open even if `?widget=email` was omitted.
+    // The thread/message params are intentionally NOT stripped here —
+    // DealEmailsTab consumes and clears them once the inbox renders.
+    if (!widgetParam && (searchParams.get('thread') || searchParams.get('message'))) {
+      widgetParam = 'email';
+    }
     if (!widgetParam) return;
     // Special-case: the Deals dialog isn't part of the carousel store —
     // it's a standalone modal opened from the Deals quick-action tile. We
