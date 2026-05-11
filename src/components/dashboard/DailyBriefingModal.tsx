@@ -1178,9 +1178,9 @@ function PipelineTab({
   }
 
   return (
-    <div className="relative h-full flex flex-col lg:flex-row min-h-0">
+    <div className="relative flex flex-col lg:flex-row min-h-0 min-w-0 max-w-full w-full">
       {/* LEFT: Deals (primary focus) — full width on mobile/tablet, 75% on desktop */}
-      <div className="w-full lg:w-3/4 min-h-0 overflow-y-auto lg:pr-3">
+      <div className="w-full lg:w-3/4 min-w-0 min-h-0 lg:pr-3">
         <Suspense
           fallback={
             <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
@@ -1201,8 +1201,8 @@ function PipelineTab({
       </div>
 
       {/* RIGHT: 25% sidebar on desktop, stacks under deals below lg */}
-      <div className="w-full lg:w-1/4 min-h-0 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 pt-3 lg:pt-0 lg:pl-3 mt-3 lg:mt-0">
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-l-2 border-l-purple-500 pl-2">
+      <div className="w-full lg:w-1/4 min-w-0 min-h-0 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 pt-3 lg:pt-0 lg:pl-3 mt-3 lg:mt-0">
+        <div className="min-w-0 pr-1 border-l-2 border-l-purple-500 pl-2">
           <Section title="Today's Follow-Ups">
             {showFollowups ? (
               <FollowupTiles
@@ -1219,7 +1219,7 @@ function PipelineTab({
             )}
           </Section>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-t border-white/10 pt-3 mt-3">
+        <div className="min-w-0 pr-1 border-t border-white/10 pt-3 mt-3">
           {recentActivity.length > 0 ? (
             <RecentPipelineActivitySection
               recentActivity={recentActivity}
