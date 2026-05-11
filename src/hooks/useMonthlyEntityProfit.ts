@@ -66,6 +66,35 @@ function lineAccountRefs(row: any): { accountId: string; amount: number }[] {
   return out;
 }
 
+function isWithinBucket(txnDate: string | null | undefined, start: string, end: string) {
+  if (!txnDate) return false;
+  return txnDate >= start && txnDate <= end;
+}
+
+function sumStandaloneBucketRevenue(rows: Array<{ txn_date: string | null; total_amt: number | null | undefined }>, start: string, end: string) {
+  return rows.reduce((sum, row) => {
+    if (!isWithinBucket(row.txn_date, start, end)) return sum;
+    return sum + (Number(row.total_amt) || 0);
+  }, 0);
+}
+
+function sumStandaloneBucketExpenses(
+  rows: Array<{ txn_date: string | null; total_amt?: number | null; account_ref_id?: string | null; line_items?: any }>,
+  start: string,
+  end: string,
+  classificationById: Map<string, string>,
+) {
+  return rows.reduce((sum, row) => {
+    if (!isWithinBucket(row.txn_date, start, end)) return sum;
+    const refs = lineAccountRefs(row);
+    let rowExpense = 0;
+    for (const { accountId, amount } of refs) {
+      if (classificationById.get(accountId) === 'Expense') rowExpense += amount;
+    }
+    return sum + rowExpense;
+  }, 0);
+}
+
 export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthDef[]) {
   const { user } = useAuth();
   const realmId = ENTITY_REALM_MAP[entityName];
@@ -175,7 +204,7 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
       if (a.qb_id) classificationById.set(String(a.qb_id), String(a.classification ?? ''));
     }
 
-    // Per-month transaction sums (only consumed when no P&L report exists).
+    // Per-month transaction sums used by the chart.
     const txnRevenue = new Map<string, number>();
     const txnExpenses = new Map<string, number>();
     for (const row of invoices ?? []) {
@@ -196,11 +225,46 @@ export function useMonthlyEntityProfit(entityName: string, quarterMonths: MonthD
       }
     }
 
-    const months: ProfitMonthBucket[] = buckets.map((b) => {
+    const monthsFromGroupedKeys: ProfitMonthBucket[] = buckets.map((b) => {
       const revenue = txnRevenue.get(b.key) ?? 0;
       const exp = txnExpenses.get(b.key) ?? 0;
       return { label: b.label, key: b.key, revenue, expenses: exp, profit: revenue - exp };
     });
+
+    // Internal safeguard: independently recompute each displayed month from the
+    // raw rows using the bucket's exact month boundaries. If grouped-key math is
+    // ever changed in a way that reintroduces running totals, fall back to the
+    // direct standalone-month recompute immediately.
+    const monthsValidated: ProfitMonthBucket[] = buckets.map((b) => {
+      const revenue = sumStandaloneBucketRevenue(invoices ?? [], b.start, b.end);
+      const exp = sumStandaloneBucketExpenses(
+        [...(expenses ?? []), ...(bills ?? [])],
+        b.start,
+        b.end,
+        classificationById,
+      );
+      return { label: b.label, key: b.key, revenue, expenses: exp, profit: revenue - exp };
+    });
+
+    const hasStandaloneMismatch = monthsFromGroupedKeys.some((month, index) => {
+      const validated = monthsValidated[index];
+      return (
+        month.key !== validated.key ||
+        Math.abs(month.revenue - validated.revenue) > 0.005 ||
+        Math.abs(month.expenses - validated.expenses) > 0.005 ||
+        Math.abs(month.profit - validated.profit) > 0.005
+      );
+    });
+
+    if (hasStandaloneMismatch) {
+      console.warn('[useMonthlyEntityProfit] Standalone month validation failed; using direct bucket totals.', {
+        entityName,
+        grouped: monthsFromGroupedKeys,
+        validated: monthsValidated,
+      });
+    }
+
+    const months = hasStandaloneMismatch ? monthsValidated : monthsFromGroupedKeys;
 
     const total = months.reduce((s, m) => s + m.profit, 0);
     return { months, total, isLoading };
