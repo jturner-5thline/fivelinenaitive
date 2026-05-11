@@ -17,6 +17,8 @@ export interface StageEntryDeal {
   from_stage?: string | null;
   /** Stage moved TO (from activity_logs.metadata->>to). Equals the target stage for signed-deal series. */
   to_stage?: string | null;
+  /** Recurring revenue contribution for this deal (FinServ widgets). */
+  mrr?: number;
 }
 
 interface StageMetricResult {
@@ -355,7 +357,7 @@ function useStageEntryMetric(
     if (!data) return { count: 0, dollarVolume: 0, deals: [], isLoading: loading, mrr: 0 };
 
     // Deduplicate: first entry per deal_id only
-    const seen = new Map<string, StageEntryDeal & { __mrr: number }>();
+    const seen = new Map<string, StageEntryDeal>();
     for (const row of data) {
       if (seen.has(row.deal_id)) continue;
       const deal = row.deals as any;
@@ -370,13 +372,12 @@ function useStageEntryMetric(
         current_stage: deal.stage,
         entered_at: row.created_at,
         pipeline_id: deal.pipeline_id,
-        __mrr: Number(deal.mrr) || 0,
+        mrr: Number(deal.mrr) || 0,
       });
     }
 
-    const enriched = Array.from(seen.values()).filter(d => !isExcludedDealName(d.company));
-    const deals: StageEntryDeal[] = enriched.map(({ __mrr, ...rest }) => rest);
-    const mrr = enriched.reduce((s, d) => s + d.__mrr, 0);
+    const deals: StageEntryDeal[] = Array.from(seen.values()).filter(d => !isExcludedDealName(d.company));
+    const mrr = deals.reduce((s, d) => s + (d.mrr ?? 0), 0);
     return {
       count: deals.length,
       dollarVolume: deals.reduce((s, d) => s + d.value, 0),
@@ -430,6 +431,7 @@ function usePipelineAddedMetric(
         current_stage: d.stage,
         entered_at: d.created_at,
         pipeline_id: d.pipeline_id ?? '',
+        mrr: Number(d.mrr) || 0,
       }));
     const mrr = filtered.reduce((s: number, d: any) => s + (Number(d.mrr) || 0), 0);
 
@@ -593,6 +595,7 @@ function useFinServActiveClientsCurrent(): StageMetricResult & { mrr: number } {
         current_stage: d.stage,
         entered_at: d.created_at,
         pipeline_id: d.pipeline_id ?? '',
+        mrr: Number(d.mrr) || 0,
       }));
 
     const mrr = data
