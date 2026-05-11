@@ -10,6 +10,41 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Building2, User, FileText, ListChecks, MessageSquare, Plus, ExternalLink, Loader2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
+/**
+ * Auto-linkify URLs in plain-text descriptions so source-email links
+ * (and any other URLs the user pastes in) render as clickable anchors.
+ * Stops propagation so clicking a link doesn't also enter edit mode on
+ * the parent description container.
+ */
+const URL_REGEX = /\bhttps?:\/\/[^\s<>"')]+/g;
+function renderWithLinks(text: string) {
+  const parts: Array<string | { url: string }> = [];
+  let lastIdx = 0;
+  for (const match of text.matchAll(URL_REGEX)) {
+    const start = match.index ?? 0;
+    if (start > lastIdx) parts.push(text.slice(lastIdx, start));
+    parts.push({ url: match[0] });
+    lastIdx = start + match[0].length;
+  }
+  if (lastIdx < text.length) parts.push(text.slice(lastIdx));
+  return parts.map((p, i) =>
+    typeof p === 'string' ? (
+      <span key={i}>{p}</span>
+    ) : (
+      <a
+        key={i}
+        href={p.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        className="text-primary hover:underline break-all"
+      >
+        {p.url}
+      </a>
+    ),
+  );
+}
+
 interface ExpandedTaskDetailsProps {
   task: Task;
   onUpdate: (updates: Partial<Task>) => void;
@@ -94,13 +129,13 @@ export function ExpandedTaskDetails({ task, onUpdate, onOpenFullDetail }: Expand
               </div>
             </div>
           ) : (
-            <button
+            <div
               onClick={() => setEditingDesc(true)}
-              className="w-full text-left text-[12.5px] leading-relaxed rounded px-2 py-1.5 -mx-2 hover:bg-[rgba(255,255,255,0.03)] transition-colors whitespace-pre-wrap"
+              className="w-full text-left text-[12.5px] leading-relaxed rounded px-2 py-1.5 -mx-2 hover:bg-[rgba(255,255,255,0.03)] transition-colors whitespace-pre-wrap cursor-text"
               style={{ color: task.description ? '#cfd5e0' : '#5b6173' }}
             >
-              {task.description || 'Click to add description…'}
-            </button>
+              {task.description ? renderWithLinks(task.description) : 'Click to add description…'}
+            </div>
           )}
         </Section>
 
