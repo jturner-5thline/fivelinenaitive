@@ -214,8 +214,6 @@ function EmailIntelligenceWidgetImpl() {
   const [selectedEmail, setSelectedEmail] = useState<EnrichedEmail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  if (toggles.hideEmailHints) return null;
-
   const handleEmailClick = useCallback((email: EnrichedEmail) => {
     setSelectedEmail(email);
     setIsModalOpen(true);
@@ -225,6 +223,29 @@ function EmailIntelligenceWidgetImpl() {
     setIsModalOpen(open);
     if (!open) setSelectedEmail(null);
   }, []);
+
+  // Sort: follow-up needed first, then by priority, then by date.
+  // Memoized so unrelated parent rerenders don't re-sort every paint.
+  // Declared at the top of the component (before any early returns) so
+  // hook order is stable across all render branches.
+  const displayEmails = useMemo(() => {
+    const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
+    return [...emails]
+      .sort((a, b) => {
+        const aFollowUp = a.analysis?.follow_up_needed ? 1 : 0;
+        const bFollowUp = b.analysis?.follow_up_needed ? 1 : 0;
+        if (bFollowUp !== aFollowUp) return bFollowUp - aFollowUp;
+        const aPriority = priorityOrder[a.analysis?.priority || 'medium'] || 2;
+        const bPriority = priorityOrder[b.analysis?.priority || 'medium'] || 2;
+        if (bPriority !== aPriority) return bPriority - aPriority;
+        return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
+      })
+      .slice(0, 6);
+  }, [emails]);
+
+  // Early returns must come AFTER all hook calls above to keep hook
+  // order stable when toggles / connection / loading state changes.
+  if (toggles.hideEmailHints) return null;
 
   // Loading state — checking Gmail connection
   if (isStatusLoading) {
@@ -279,23 +300,6 @@ function EmailIntelligenceWidgetImpl() {
       </Card>
     );
   }
-
-  // Sort: follow-up needed first, then by priority, then by date.
-  // Memoized so unrelated parent rerenders don't re-sort every paint.
-  const displayEmails = useMemo(() => {
-    const priorityOrder: Record<string, number> = { high: 3, medium: 2, low: 1 };
-    return [...emails]
-      .sort((a, b) => {
-        const aFollowUp = a.analysis?.follow_up_needed ? 1 : 0;
-        const bFollowUp = b.analysis?.follow_up_needed ? 1 : 0;
-        if (bFollowUp !== aFollowUp) return bFollowUp - aFollowUp;
-        const aPriority = priorityOrder[a.analysis?.priority || 'medium'] || 2;
-        const bPriority = priorityOrder[b.analysis?.priority || 'medium'] || 2;
-        if (bPriority !== aPriority) return bPriority - aPriority;
-        return new Date(b.received_at || 0).getTime() - new Date(a.received_at || 0).getTime();
-      })
-      .slice(0, 6);
-  }, [emails]);
 
   return (
     <>
