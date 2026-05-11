@@ -251,7 +251,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
           Tasks & milestones
         </div>
         <div
-          className="flex items-center gap-1"
+          className="flex flex-nowrap items-center gap-1 overflow-x-auto whitespace-nowrap max-w-full"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -272,7 +272,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                   setActiveFilter(selected ? null : f.key);
                 }}
                 className={cn(
-                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
                   selected
                     ? 'border-primary/60 bg-primary/15 text-primary'
                     : 'border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/40'
