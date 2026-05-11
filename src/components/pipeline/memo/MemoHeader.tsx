@@ -29,9 +29,15 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
   const assetClassRaw = (deal.dealTypes && deal.dealTypes[0]) || null;
   const assetClass = assetClassRaw ? formatDealType(assetClassRaw) : null;
   const { getStageConfigForDeal } = usePipelineStageConfig();
-  const stageLabel = deal.stage
-    ? getStageConfigForDeal(deal.stage as string, deal.pipelineId)?.label
+  const rawStage = (deal.stage as string | undefined) || '';
+  const resolvedLabel = rawStage
+    ? getStageConfigForDeal(rawStage, deal.pipelineId)?.label
     : null;
+  const stageLabel =
+    resolvedLabel ||
+    (rawStage
+      ? rawStage.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+      : null);
 
   return (
     <div className="px-5 pt-4 pb-3 border-b border-border">
