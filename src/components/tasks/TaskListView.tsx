@@ -696,6 +696,18 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   // Blocker note (stored as any since it's a new column)
   const blockerNote = (task as any).blocker_note;
 
+  // Source email deep-link (set when the task was created from an email
+  // via the right-click → Create Task flow). We surface it as a small
+  // inline icon link so users can jump back to the originating message.
+  const sourceEmailUrl = buildSourceEmailUrl({
+    messageId: (task as any).source_email_message_id,
+    threadId: (task as any).source_email_thread_id,
+  });
+  const sourceEmailTitle =
+    (task as any).source_email_subject ||
+    (task as any).source_email_from ||
+    'Open source email';
+
   // Build the sub-label string shown under the title (single line, ellipsis).
   const subLabel: { icon: typeof Building2 | typeof User; text: string; href: string } | null =
     task.deal_id && task.deal?.company
