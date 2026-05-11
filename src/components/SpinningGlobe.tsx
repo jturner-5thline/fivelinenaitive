@@ -1115,48 +1115,80 @@ function NeuralNetwork() {
         <meshBasicMaterial color="#6d28d9" transparent opacity={0.15} />
       </mesh>
       
-      {/* Nucleus main body — soft cyan gradient interior (airy, low opacity) */}
+      {/* Nucleus main body — translucent cyan interior (slightly more defined) */}
       <mesh ref={nucleusRef} position={[0, 0, 0]}>
-        <sphereGeometry args={[0.28, 48, 48]} />
+        <sphereGeometry args={[0.28, 64, 64]} />
         <meshBasicMaterial
           color="#a5f3fc"
-          transparent
-          opacity={0.07}
-          blending={THREE.AdditiveBlending}
-          depthWrite={false}
-        />
-      </mesh>
-      {/* Inner gradient highlight — brighter cyan core fading outward */}
-      <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.18, 32, 32]} />
-        <meshBasicMaterial
-          color="#67e8f9"
           transparent
           opacity={0.12}
           blending={THREE.AdditiveBlending}
           depthWrite={false}
         />
       </mesh>
-      {/* Cyan rim/border — thin defined outline (backside) */}
+      {/* Crisp cyan rim — front-facing fresnel-like ring via thin shell */}
       <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.292, 96, 96]} />
+        <sphereGeometry args={[0.282, 128, 128]} />
         <meshBasicMaterial
           color="#22d3ee"
           transparent
-          opacity={0.55}
+          opacity={0.95}
           side={THREE.BackSide}
           depthWrite={false}
         />
       </mesh>
-      {/* Soft outer halo to keep the rim feeling airy, not harsh */}
+      {/* Inner shell — defines a clean inner edge */}
       <mesh position={[0, 0, 0]}>
-        <sphereGeometry args={[0.305, 64, 64]} />
+        <sphereGeometry args={[0.272, 96, 96]} />
+        <meshBasicMaterial
+          color="#0891b2"
+          transparent
+          opacity={0.35}
+          side={THREE.FrontSide}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Tight outer glow — minimal, just to lift the rim off the background */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.298, 64, 64]} />
         <meshBasicMaterial
           color="#67e8f9"
           transparent
           opacity={0.18}
           side={THREE.BackSide}
           blending={THREE.AdditiveBlending}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Geometric inner armature — icosahedron wireframe for technical/architected feel */}
+      <mesh position={[0, 0, 0]}>
+        <icosahedronGeometry args={[0.2, 1]} />
+        <meshBasicMaterial
+          color="#67e8f9"
+          wireframe
+          transparent
+          opacity={0.55}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Bright defined nuclear core — small, sharp focal anchor */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.06, 32, 32]} />
+        <meshBasicMaterial
+          color="#cffafe"
+          transparent
+          opacity={0.95}
+          depthWrite={false}
+        />
+      </mesh>
+      {/* Core outline — crisp ring around bright center */}
+      <mesh position={[0, 0, 0]}>
+        <sphereGeometry args={[0.068, 64, 64]} />
+        <meshBasicMaterial
+          color="#22d3ee"
+          transparent
+          opacity={0.9}
+          side={THREE.BackSide}
           depthWrite={false}
         />
       </mesh>
