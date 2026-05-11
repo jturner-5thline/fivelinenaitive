@@ -805,19 +805,17 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
                 {task.title}
               </span>
               {sourceEmailUrl && (
-                <a
+                <SourceEmailLink
                   href={sourceEmailUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onMouseDown={(e) => e.stopPropagation()}
-                  onClick={(e) => e.stopPropagation()}
-                  title={`Open source email: ${sourceEmailTitle}`}
-                  aria-label="Open source email"
+                  subject={(task as any).source_email_subject}
+                  from={(task as any).source_email_from}
+                  receivedAt={(task as any).source_email_received_at}
+                  ariaLabel="Open source email"
                   className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-medium shrink-0 text-primary hover:bg-primary/10 transition-colors"
                 >
                   <Mail className="h-2.5 w-2.5" />
                   Email
-                </a>
+                </SourceEmailLink>
               )}
               {(task.recurrence_rule || (task as any).is_recurring) && (() => {
               const rule: string | null = task.recurrence_rule;
