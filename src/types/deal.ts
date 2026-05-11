@@ -134,7 +134,8 @@ export interface Deal {
   keySignal?: string;
   productGapFlagged?: string;
   dmPresent?: string;
-  whyNotMovingForward?: string;
+  dmName?: string;
+  whyNotMovingForward?: string | string[];
 }
 
 /* ─── Why Moving Forward (advance reasons) ───────────────────── */

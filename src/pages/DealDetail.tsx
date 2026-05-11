@@ -29,6 +29,7 @@ import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSo
 import { SortableLenderItem } from '@/components/deal/SortableLenderItem';
 import { DealMilestones } from '@/components/deals/DealMilestones';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
+import { NaitiveDealInformation } from '@/components/naitive-pipeline/NaitiveDealInformation';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
 import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
@@ -722,6 +723,22 @@ export default function DealDetail() {
           projectedCloseDate: (dbDeal as any).projected_close_date || null,
           contractStartDate: (dbDeal as any).contract_start_date || null,
           contractEndDate: (dbDeal as any).contract_end_date || null,
+          // ── Naitive sales-pipeline extras ──
+          icpCategory: (dbDeal as any).icp_category || undefined,
+          ownedBy: (dbDeal as any).owned_by || undefined,
+          contactTitle: (dbDeal as any).contact_title || undefined,
+          nextStep: (dbDeal as any).next_step || undefined,
+          nextStepDate: (dbDeal as any).next_step_date || undefined,
+          prospectType: (dbDeal as any).prospect_type || undefined,
+          outcome: (dbDeal as any).outcome || undefined,
+          painPointsConfirmed: (dbDeal as any).pain_points_confirmed || undefined,
+          objectionsRaised: (dbDeal as any).objections_raised || undefined,
+          competitorsMentioned: (dbDeal as any).competitors_mentioned || undefined,
+          keySignal: (dbDeal as any).key_signal || undefined,
+          productGapFlagged: (dbDeal as any).product_gap_flagged || undefined,
+          dmPresent: (dbDeal as any).dm_present || undefined,
+          ...(((dbDeal as any).dm_name) ? { dmName: (dbDeal as any).dm_name } as any : {}),
+          whyNotMovingForward: (dbDeal as any).why_not_moving_forward || undefined,
         };
 
         if (!cancelled) setDeal(mapped);
@@ -3160,6 +3177,17 @@ export default function DealDetail() {
                             </Collapsible>
                           );
                         case 'deal-information': {
+                          // Naitive pipeline deals use a Naitive-specific schema —
+                          // do not render the debt-pipeline field set.
+                          if (isNaitiveDeal) {
+                            return (
+                              <NaitiveDealInformation
+                                key={id}
+                                deal={deal}
+                                onUpdate={(field, value) => updateDeal(field as any, value as any)}
+                              />
+                            );
+                          }
                           const renderDealInfoField = (fieldId: DealInfoFieldId) => {
                             if (!isDealInfoFieldVisible(fieldId)) return null;
                             switch (fieldId) {
@@ -3594,6 +3622,9 @@ export default function DealDetail() {
                           );
                         }
                         case 'outstanding-items':
+                          // Outstanding Items is a debt-pipeline concept —
+                          // skip it entirely for Naitive pipeline deals.
+                          if (isNaitiveDeal) return null;
                           return (
                             <div key={id} className="space-y-6">
                               <OutstandingItems

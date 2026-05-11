@@ -70,8 +70,11 @@ function normalizeOutcome(o?: string): typeof OUTCOMES[number] | null {
   return null;
 }
 
-function splitReasons(value?: string): string[] {
+function splitReasons(value?: string | string[]): string[] {
   if (!value) return [];
+  if (Array.isArray(value)) {
+    return value.map((s) => String(s).trim()).filter(Boolean);
+  }
   return value
     .split(/\n|;|\u2022|,/g)
     .map((s) => s.replace(/^[-*\s]+/, '').trim())
