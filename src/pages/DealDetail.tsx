@@ -2453,11 +2453,11 @@ export default function DealDetail() {
         <meta name="description" content={`Deal details for ${deal.name} with ${deal.company}`} />
       </Helmet>
 
-      {/* Delete Deal Confirmation Dialog */}
+      {/* Archive Deal Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="max-w-md">
           <AlertDialogHeader>
-            <AlertDialogTitle>{isAdmin ? 'Delete or Archive Deal?' : 'Archive Deal?'}</AlertDialogTitle>
+            <AlertDialogTitle>Archive Deal?</AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
                 What would you like to do with <strong>{deal.company}</strong>?
@@ -2469,20 +2469,7 @@ export default function DealDetail() {
                     <span className="font-medium">Archive</span> - Hide from active deals but keep all data. You can restore it later.
                   </div>
                 </div>
-                {isAdmin && (
-                  <div className="flex items-start gap-2">
-                    <Trash2 className="h-4 w-4 mt-0.5 text-destructive" />
-                    <div>
-                      <span className="font-medium">Delete</span> - Permanently remove the deal and all associated data. Cannot be undone.
-                    </div>
-                  </div>
-                )}
               </div>
-              {!isAdmin && (
-                <p className="text-xs text-muted-foreground">
-                  Only administrators can permanently delete deals.
-                </p>
-              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-col sm:flex-row gap-2">
@@ -2497,25 +2484,6 @@ export default function DealDetail() {
                 <Archive className="h-4 w-4" />
                 Archive
               </Button>
-            )}
-            {isAdmin && (
-              <AlertDialogAction 
-                onClick={handleDeleteDeal}
-                disabled={isDeleting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-2"
-              >
-                {isDeleting ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </>
-                )}
-              </AlertDialogAction>
             )}
           </AlertDialogFooter>
         </AlertDialogContent>
