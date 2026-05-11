@@ -1,5 +1,8 @@
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { Deal, DealLender } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 interface LendersPanelProps {
   deal: Deal;
@@ -29,15 +32,35 @@ const BUCKET_META: Record<
 const VISIBLE_PER_BUCKET = 2;
 
 export function LendersPanel({ deal }: LendersPanelProps) {
+  const [expanded, setExpanded] = useState(false);
   const lenders = deal.lenders || [];
   const grouped: Record<Bucket, DealLender[]> = { reviewing: [], onhold: [], ondeck: [], passed: [] };
   for (const l of lenders) grouped[bucketOf(l)].push(l);
+  const hasHidden = (['reviewing','onhold','ondeck','passed'] as Bucket[])
+    .some(b => grouped[b].length > VISIBLE_PER_BUCKET);
 
   return (
     <div className="p-5 flex flex-col h-full min-w-0">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">
-        Lenders
-      </div>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        disabled={lenders.length === 0}
+        className="group flex items-center gap-1.5 mb-3 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors disabled:cursor-default disabled:hover:text-muted-foreground"
+        aria-expanded={expanded}
+        title={hasHidden ? (expanded ? 'Collapse lenders' : 'Show all lenders') : undefined}
+      >
+        <span>Lenders{lenders.length > 0 ? ` · ${lenders.length}` : ''}</span>
+        {lenders.length > 0 && (
+          <ChevronDown
+            className={cn(
+              'h-3 w-3 transition-transform duration-200',
+              expanded && 'rotate-180'
+            )}
+          />
+        )}
+      </button>
 
       {lenders.length === 0 ? (
         <p className="text-xs text-muted-foreground italic">No lenders engaged.</p>
@@ -47,8 +70,8 @@ export function LendersPanel({ deal }: LendersPanelProps) {
             const items = grouped[b];
             if (items.length === 0) return null;
             const meta = BUCKET_META[b];
-            const shown = items.slice(0, VISIBLE_PER_BUCKET);
-            const hidden = items.slice(VISIBLE_PER_BUCKET);
+            const shown = expanded ? items : items.slice(0, VISIBLE_PER_BUCKET);
+            const hidden = expanded ? [] : items.slice(VISIBLE_PER_BUCKET);
             return (
               <div key={b}>
                 <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
@@ -70,15 +93,32 @@ export function LendersPanel({ deal }: LendersPanelProps) {
                     </div>
                   ))}
                   {hidden.length > 0 && (
-                    <div className="text-[10px] text-muted-foreground italic pl-3.5 truncate">
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setExpanded(true); }}
+                      onPointerDown={(e) => e.stopPropagation()}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      className="block text-left text-[10px] text-muted-foreground italic pl-3.5 truncate hover:text-foreground transition-colors w-full"
+                    >
                       {hidden.slice(0, 2).map(l => l.name).join(', ')}
                       {hidden.length > 2 ? ` + ${hidden.length - 2} more` : ''}
-                    </div>
+                    </button>
                   )}
                 </div>
               </div>
             );
           })}
+          {expanded && hasHidden && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setExpanded(false); }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="text-[10px] font-medium text-muted-foreground hover:text-foreground transition-colors uppercase tracking-wider"
+            >
+              Show less
+            </button>
+          )}
         </div>
       )}
     </div>
