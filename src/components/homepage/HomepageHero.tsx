@@ -1,16 +1,20 @@
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
+import { Loader2 } from "lucide-react";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
 
 export const HomepageHero = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const trimmed = email.trim();
     if (!trimmed) return;
+    setIsSubmitting(true);
     navigate(`/waitlist?email=${encodeURIComponent(trimmed)}`);
   };
 
@@ -61,14 +65,24 @@ export const HomepageHero = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your work email"
+                disabled={isSubmitting}
                 className="flex-1 min-w-0 h-12 px-4 rounded-lg bg-white/5 border border-white/15 text-white placeholder:text-white/40 text-sm sm:text-base outline-none transition-colors focus:border-white/40 focus:bg-white/10"
               />
               <Button
                 type="submit"
                 size="lg"
-                className="marketing-glass-cta h-12 px-6 sm:px-8 text-sm sm:text-base font-semibold border-0 shrink-0"
+                disabled={isSubmitting}
+                aria-busy={isSubmitting}
+                className="marketing-glass-cta h-12 px-6 sm:px-8 text-sm sm:text-base font-semibold border-0 shrink-0 disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                Book a demo
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Booking…
+                  </>
+                ) : (
+                  "Book a demo"
+                )}
               </Button>
             </div>
             <p className="text-xs leading-relaxed font-light text-white/40 max-w-[36rem]">
