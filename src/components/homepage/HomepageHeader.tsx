@@ -24,13 +24,13 @@ export const HomepageHeader = () => {
             : "bg-[linear-gradient(180deg,rgba(16,20,32,0.7)_0%,rgba(6,10,20,0.6)_100%)] backdrop-blur-md border border-white/12 shadow-[0_1px_0_0_rgba(255,255,255,0.03)_inset,0_6px_18px_-8px_rgba(0,0,0,0.4),0_1px_4px_-1px_rgba(0,0,0,0.25)]"
         )}
       >
-        <nav className="px-4 sm:px-6 py-1.5 flex items-center justify-between gap-4 leading-none">
+        <nav className="pl-1 pr-4 sm:pl-2 sm:pr-6 py-1.5 flex items-center justify-between gap-4 leading-none">
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0 leading-none" aria-label="naitive home">
           <img
             src={naitiveLogoDark}
             alt="naitive"
-            className="h-20 sm:h-24 w-auto object-contain block -my-5 sm:-my-6"
+            className="h-20 sm:h-24 w-auto object-contain block -my-5 sm:-my-6 -ml-3 sm:-ml-4"
             style={{ aspectRatio: 'auto' }}
           />
         </Link>
