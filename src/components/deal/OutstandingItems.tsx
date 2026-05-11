@@ -765,6 +765,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                     <Checkbox
                       checked={item.received}
                       onCheckedChange={(checked) => onUpdate(item.id, { received: checked === true })}
+                      disabled={readOnly}
                       className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                     />
                     <span className="text-xs text-emerald-600 font-medium">Received</span>
@@ -773,6 +774,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                     <Checkbox
                       checked={item.approved}
                       onCheckedChange={(checked) => onUpdate(item.id, { approved: checked === true })}
+                      disabled={readOnly}
                       className="border-emerald-500 bg-emerald-500 text-white data-[state=checked]:bg-emerald-500 data-[state=checked]:border-emerald-500"
                     />
                     <span className="text-xs text-emerald-600 font-medium">Submitted</span>
