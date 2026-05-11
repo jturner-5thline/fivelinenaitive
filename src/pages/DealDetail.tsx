@@ -2971,6 +2971,19 @@ export default function DealDetail() {
                 </div>
 
                 <TabsContent value="deal-info" className={cn("mt-6 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
+                  {/* Naitive pipeline deals get a fully Naitive-specific layout —
+                      no debt panels (research, AI assistant, outstanding items,
+                      activity timeline, benchmarks). */}
+                  {isNaitiveDeal ? (
+                    <div className="space-y-6">
+                      <NaitiveStageMilestonesSection dealId={deal.id} stage={deal.stage} />
+                      <NaitiveDealInformation
+                        deal={deal}
+                        onUpdate={(field, value) => updateDeal(field as any, value as any)}
+                      />
+                    </div>
+                  ) : (
+                  <>
                   {/* Milestones Card - hidden for naitive pipeline deals */}
                   {!isSimplifiedDeal && (
                   <Card>
@@ -2984,11 +2997,6 @@ export default function DealDetail() {
                       />
                     </CardContent>
                   </Card>
-                  )}
-
-                  {/* Naitive pipeline stage milestones */}
-                  {isNaitiveDeal && deal && (
-                    <NaitiveStageMilestonesSection dealId={deal.id} stage={deal.stage} />
                   )}
 
                   <div className="flex justify-end">
