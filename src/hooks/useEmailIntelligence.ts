@@ -191,7 +191,7 @@ export function useEmailIntelligence() {
     // Demo: bypass DB cache + AI analysis. Render the seeded mock inbox
     // with pre-baked analysis directly so storyline is deterministic.
     if (isDemoUserEmail(user.email)) {
-      const result = await listMessages({ maxResults: 50 });
+      const result = await listMessages({ maxResults: 100 });
       const msgs = (result?.messages || []) as any[];
       const enriched: EnrichedEmail[] = msgs.map((m) => {
         const baked = DEMO_EMAIL_ANALYSIS[m.id];
@@ -231,10 +231,10 @@ export function useEmailIntelligence() {
     setIsLoading(true);
     try {
       // Fetch from Gmail API
-      // Initial inbox load: fetch up to 50 messages so the All / Clients & Deals /
-      // Asana & Projects / Calendar tabs each render a fuller working set on
-      // first open (was 25). Subsequent pagination still loads older messages.
-      const result = await listMessages({ maxResults: 50 });
+      // Initial inbox load: fetch up to 100 messages so the All / Clients & Deals /
+      // Asana & Projects / Calendar tabs each render a deep working set on
+      // first open. Subsequent pagination still loads older messages.
+      const result = await listMessages({ maxResults: 100 });
       const gmailMessages = result?.messages || [];
 
       if (gmailMessages.length === 0) {

@@ -19,7 +19,10 @@ import { supabase } from '@/integrations/supabase/client';
  * ─────────────────────────────────────────────────────────────────────────────
  */
 
-const PAGE_SIZE = 50;
+// Initial page size for inbox prefetch + first Gmail/Nylas page.
+// Bumped from 50 → 100 so the dialog opens deep enough that
+// "Load more" rarely fires during normal scrolling.
+const PAGE_SIZE = 100;
 
 /**
  * Fetch Microsoft (Outlook) messages from the unified `emails` table and

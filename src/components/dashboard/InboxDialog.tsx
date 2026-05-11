@@ -18,8 +18,10 @@ interface InboxDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-// How many messages to request per page from Nylas/Gmail
-const PAGE_SIZE = 50;
+// How many messages to request per page from Nylas/Gmail.
+// Bumped to 100 so the first paint of the inbox already has a deep working
+// set and "Load more" is needed far less often during normal scrolling.
+const PAGE_SIZE = 100;
 // Safety cap: hard maximum number of inbox messages we will ever auto-load in
 // one session. Prevents accidentally fetching tens of thousands of messages
 // from a very large mailbox. Users can keep clicking "Load more" past this
