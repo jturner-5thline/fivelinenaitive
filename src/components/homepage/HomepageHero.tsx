@@ -1,7 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { SpinningGlobe } from "@/components/SpinningGlobe";
-import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
 
 export const HomepageHero = () => {
   return (
@@ -19,14 +18,6 @@ export const HomepageHero = () => {
       {/* Left-aligned, vertically centered content */}
       <div className="relative z-10 container mx-auto px-6 md:px-[8%] lg:px-[10%]">
         <div className="max-w-full md:max-w-[60%] lg:max-w-[50%] flex flex-col items-start gap-2">
-          {/* Wordmark — negative left margin so the dot-ring bleeds left while the "n" aligns with text below */}
-          <img
-            src={naitiveLogoDark}
-            alt="naitive"
-            className="h-32 sm:h-48 md:h-72 lg:h-80 w-auto shrink-0 object-contain -ml-8 sm:-ml-12 md:-ml-[5.5rem] lg:-ml-24 -mb-6 sm:-mb-10 md:-mb-14"
-            style={{ aspectRatio: 'auto' }}
-          />
-
           {/* Tagline — shares left edge with the "n" in the wordmark */}
           <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-[1.15] text-white">
             The Operating System for Deal Management
