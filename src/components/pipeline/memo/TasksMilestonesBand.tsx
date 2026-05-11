@@ -66,18 +66,51 @@ function relativeDays(dueDate: string): string {
 export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesBandProps) {
   const queryClient = useQueryClient();
   const { company } = useCompany();
-  const milestone = nextUpcomingMilestone(deal.milestones);
-  const visibleTasks = tasks;
-  const hasContent = visibleTasks.length > 0 || !!milestone;
+  const [activeFilter, setActiveFilter] = useState<'task' | 'milestone' | 'outstanding' | null>(null);
+
+  const nextMilestone = nextUpcomingMilestone(deal.milestones);
+  const allIncompleteMilestones = (deal.milestones || [])
+    .filter((m) => !m.completed)
+    .sort((a, b) => {
+      const ta = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return ta - tb;
+    });
+
+  const taskOnlyItems = tasks.filter((t) => t.kind === 'task');
+  const outstandingOnlyItems = tasks.filter((t) => {
+    if (t.kind === 'outstanding') return true;
+    if (t.kind === 'task' && t.dueDate) {
+      return differenceInCalendarDays(new Date(t.dueDate), new Date()) < 0;
+    }
+    return false;
+  });
+
+  const visibleTasks =
+    activeFilter === 'task'
+      ? taskOnlyItems
+      : activeFilter === 'outstanding'
+      ? outstandingOnlyItems
+      : activeFilter === 'milestone'
+      ? []
+      : tasks;
+  const milestonesToRender =
+    activeFilter === 'milestone'
+      ? allIncompleteMilestones
+      : activeFilter === null && nextMilestone
+      ? [nextMilestone]
+      : [];
+  const hasContent = visibleTasks.length > 0 || milestonesToRender.length > 0;
   // Show ~2 rows by default; scroll the rest. Each row ≈ 36px + 6px gap.
-  const totalItems = visibleTasks.length + (milestone ? 1 : 0);
+  const totalItems = visibleTasks.length + milestonesToRender.length;
   const isScrollable = totalItems > 2;
   // The "+" add control is anchored to the bottom-most actionable row in
   // the rendered list. Milestone is rendered after tasks, so if present it
   // owns the inline plus; otherwise the final visible task row does.
   const lastTaskIndex = visibleTasks.length - 1;
-  const plusOnMilestone = !!milestone;
-  const plusOnTaskIndex = !milestone ? lastTaskIndex : -1;
+  const plusOnMilestone = milestonesToRender.length > 0;
+  const plusOnTaskIndex = !plusOnMilestone ? lastTaskIndex : -1;
+  const lastMilestoneIndex = milestonesToRender.length - 1;
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
