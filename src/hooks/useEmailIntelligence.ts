@@ -231,10 +231,10 @@ export function useEmailIntelligence() {
     setIsLoading(true);
     try {
       // Fetch from Gmail API
-      // Initial inbox load: fetch up to 50 messages so the All / Clients & Deals /
-      // Asana & Projects / Calendar tabs each render a fuller working set on
-      // first open (was 25). Subsequent pagination still loads older messages.
-      const result = await listMessages({ maxResults: 50 });
+      // Initial inbox load: fetch up to 100 messages so the All / Clients & Deals /
+      // Asana & Projects / Calendar tabs each render a deep working set on
+      // first open. Subsequent pagination still loads older messages.
+      const result = await listMessages({ maxResults: 100 });
       const gmailMessages = result?.messages || [];
 
       if (gmailMessages.length === 0) {
