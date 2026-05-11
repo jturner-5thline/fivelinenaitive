@@ -4329,33 +4329,80 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
     }
     case "move_deal_pipeline": {
       console.log("[move_deal_pipeline] params:", JSON.stringify(params));
-      // Defensively look up deal name if missing
-      let dealName = params.deal_name;
-      let pipelineName = params.new_pipeline_name;
-      if (!dealName || !pipelineName) {
-        const { data: dealInfo } = await supabase.from("deals").select("company").eq("id", params.deal_id).single();
-        dealName = dealName || dealInfo?.company || "Unknown deal";
-        if (!pipelineName) {
-          const { data: pipeInfo } = await supabase.from("deal_pipelines").select("name").eq("id", params.new_pipeline_id).single();
-          pipelineName = pipeInfo?.name || "Unknown pipeline";
-        }
+      // Normalize alternate key names the LLM sometimes emits.
+      const dealId = params.deal_id || params.dealId || params.deal;
+      const newPipelineId = params.new_pipeline_id || params.pipeline_id || params.pipelineId || params.new_pipeline;
+      const newStage = params.new_stage || params.stage_id || params.stage || params.new_stage_id;
+
+      if (!dealId || !newPipelineId) {
+        console.error("[move_deal_pipeline] malformed payload — missing deal or pipeline id:", JSON.stringify(params));
+        return {
+          success: false,
+          error: "Move action is missing deal or pipeline information. Please ask Copilot to retry the move.",
+        };
       }
-      const { error } = await supabase.from("deals").update({ pipeline_id: params.new_pipeline_id, stage: params.new_stage }).eq("id", params.deal_id);
+
+      // Resolve human-readable names up front so success/error messages never
+      // fall back to "Unknown deal" / "Unknown pipeline".
+      const [{ data: dealInfo }, { data: pipeInfo }] = await Promise.all([
+        supabase.from("deals").select("company, pipeline_id, stage").eq("id", dealId).maybeSingle(),
+        supabase.from("deal_pipelines").select("name, stages").eq("id", newPipelineId).maybeSingle(),
+      ]);
+      const dealName = params.deal_name || dealInfo?.company || `deal ${dealId.slice(0, 8)}`;
+      const pipelineName = params.new_pipeline_name || pipeInfo?.name || `pipeline ${newPipelineId.slice(0, 8)}`;
+
+      if (!dealInfo) {
+        return { success: false, error: `Deal "${dealName}" was not found or you do not have access to it.` };
+      }
+      if (!pipeInfo) {
+        return { success: false, error: `Pipeline "${pipelineName}" was not found.` };
+      }
+
+      // Default the stage to the first stage of the destination pipeline if
+      // the LLM omitted it.
+      const stages = Array.isArray(pipeInfo.stages) ? pipeInfo.stages : [];
+      const resolvedStage = newStage || (stages.length > 0 ? stages[0].id : null);
+      if (!resolvedStage) {
+        return { success: false, error: `Could not determine a target stage in "${pipelineName}".` };
+      }
+
+      const { error } = await supabase
+        .from("deals")
+        .update({ pipeline_id: newPipelineId, stage: resolvedStage })
+        .eq("id", dealId);
       if (error) {
         console.error("[move_deal_pipeline] update error:", error);
-        return { success: false, error: error.message };
+        return {
+          success: false,
+          error: `Could not move "${dealName}" to "${pipelineName}": ${error.message}`,
+        };
       }
-      const { data: verified } = await supabase.from("deals").select("pipeline_id, stage").eq("id", params.deal_id).single();
-      if (!verified || verified.pipeline_id !== params.new_pipeline_id) {
-        console.error("[move_deal_pipeline] verification failed:", verified);
-        return { success: false, error: `Failed to move "${dealName}" to "${pipelineName}". Update may have been blocked by permissions.` };
+
+      const { data: verified } = await supabase
+        .from("deals")
+        .select("pipeline_id, stage")
+        .eq("id", dealId)
+        .maybeSingle();
+      if (!verified || verified.pipeline_id !== newPipelineId) {
+        console.error("[move_deal_pipeline] verification failed:", { verified, expected: newPipelineId });
+        return {
+          success: false,
+          error: `Could not move "${dealName}" to "${pipelineName}" — your account may not have permission to edit this deal.`,
+        };
       }
+
       await supabase.from("activity_logs").insert({
-        deal_id: params.deal_id, activity_type: "pipeline_change",
-        description: `Deal moved to "${pipelineName}" pipeline (stage: ${params.new_stage}) via AI Copilot`,
+        deal_id: dealId,
+        activity_type: "pipeline_change",
+        description: `Deal moved to "${pipelineName}" pipeline (stage: ${resolvedStage}) via AI Copilot`,
         user_id: userId,
       });
-      return { success: true, message: `Moved "${dealName}" to "${pipelineName}" pipeline`, actionType: "move_deal_pipeline", params: { deal_id: params.deal_id } };
+      return {
+        success: true,
+        message: `Moved "${dealName}" to "${pipelineName}" pipeline`,
+        actionType: "move_deal_pipeline",
+        params: { deal_id: dealId, new_pipeline_id: newPipelineId, new_stage: resolvedStage },
+      };
     }
     case "create_task": {
       // Normalise due_date — accept YYYY-MM-DD, ISO timestamps, or relative words.
