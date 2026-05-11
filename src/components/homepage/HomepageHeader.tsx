@@ -15,15 +15,16 @@ export const HomepageHeader = () => {
   }, []);
 
   return (
-    <header
-      className={cn(
-        "fixed top-0 left-0 right-0 z-50 transition-all duration-300 ease-out",
-        scrolled
-          ? "bg-[rgba(4,8,18,0.72)] backdrop-blur-md border-b border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.35)]"
-          : "bg-transparent backdrop-blur-sm border-b border-white/5"
-      )}
-    >
-      <nav className="container mx-auto px-4 sm:px-6 py-1.5 flex items-center justify-between gap-4 leading-none">
+    <div className="fixed top-3 sm:top-4 left-0 right-0 z-50 px-3 sm:px-6 pointer-events-none">
+      <header
+        className={cn(
+          "container mx-auto rounded-2xl transition-all duration-300 ease-out pointer-events-auto",
+          scrolled
+            ? "bg-[rgba(4,8,18,0.78)] backdrop-blur-md border border-white/10 shadow-[0_8px_28px_rgba(0,0,0,0.4)]"
+            : "bg-[rgba(4,8,18,0.45)] backdrop-blur-sm border border-white/5 shadow-[0_4px_18px_rgba(0,0,0,0.25)]"
+        )}
+      >
+        <nav className="px-4 sm:px-6 py-1.5 flex items-center justify-between gap-4 leading-none">
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0 leading-none" aria-label="naitive home">
           <img
@@ -52,7 +53,8 @@ export const HomepageHeader = () => {
             <Link to="/waitlist">Contact Us</Link>
           </Button>
         </div>
-      </nav>
-    </header>
+        </nav>
+      </header>
+    </div>
   );
 };
