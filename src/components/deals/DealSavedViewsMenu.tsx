@@ -42,11 +42,19 @@ export function DealSavedViewsMenu({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="outline" size="sm" className="h-8 gap-1.5 shrink-0">
+        <Button
+          variant="outline"
+          size="icon"
+          aria-label={`Saved views${views.length > 0 ? ` (${views.length})` : ''}`}
+          title="Saved views"
+          className="relative h-8 w-8 shrink-0"
+        >
           <Bookmark className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Views</span>
           {views.length > 0 && (
-            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[9px]">
+            <Badge
+              variant="secondary"
+              className="absolute -top-1 -right-1 h-4 min-w-4 px-1 text-[9px]"
+            >
               {views.length}
             </Badge>
           )}

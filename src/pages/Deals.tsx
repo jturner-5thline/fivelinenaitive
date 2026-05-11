@@ -757,11 +757,16 @@ export default function Dashboard() {
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 h-8 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      aria-label="Sort deals"
+                      title="Sort deals"
+                      className="relative h-8 w-8 shrink-0"
+                    >
                       <ArrowUpDown className="h-3.5 w-3.5" />
-                      <span className="hidden sm:inline">Sort</span>
                       {sortField === 'flexEngagement' && (
-                        <Flame className="h-3 w-3 text-orange-500" />
+                        <Flame className="absolute -top-1 -right-1 h-3 w-3 text-orange-500" />
                       )}
                     </Button>
                   </DropdownMenuTrigger>
