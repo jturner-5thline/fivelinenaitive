@@ -29,6 +29,8 @@ import { NaitiveQualToDemoInsights } from '@/components/naitive-pipeline/Naitive
 import { NaitiveDidNotMoveInsights } from '@/components/naitive-pipeline/NaitiveDidNotMoveInsights';
 import { NaitivePipelineNarrative } from '@/components/naitive-pipeline/NaitivePipelineNarrative';
 import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUpCard';
+import { NaitivePipelineFilterBar } from '@/components/naitive-pipeline/NaitivePipelineFilterBar';
+import { useNaitivePipelineFilters } from '@/hooks/useNaitivePipelineFilters';
 import {
   DndContext,
   DragOverlay,
@@ -215,6 +217,9 @@ export default function NaitivePipeline() {
 
   const [searchQuery, setSearchQuery] = useState('');
 
+  // ── Multi-select filter bar (shared between Dashboard & Pipeline views) ─
+  const naitiveFilters = useNaitivePipelineFilters(deals, stages);
+
   const stageLabelById = useMemo(() => {
     const m = new Map<string, string>();
     stages.forEach(s => m.set(s.id, s.label));
@@ -222,9 +227,12 @@ export default function NaitivePipeline() {
   }, [stages]);
 
   const filteredDeals = useMemo(() => {
+    // 1) Apply dropdown filters first (cheap, structural).
+    const afterFilters = naitiveFilters.apply(deals);
+    // 2) Then layer the free-text search on top.
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return deals;
-    return deals.filter(d => {
+    if (!q) return afterFilters;
+    return afterFilters.filter(d => {
       const stageLabel = stageLabelById.get(d.stage) || d.stage || '';
       const haystack = [
         d.name,
@@ -259,7 +267,7 @@ export default function NaitivePipeline() {
         .toLowerCase();
       return haystack.includes(q);
     });
-  }, [deals, searchQuery, stageLabelById]);
+  }, [deals, searchQuery, stageLabelById, naitiveFilters.apply]);
 
   const goTo = useCallback((target: 0 | 1) => {
     if (target === activeView) return;
@@ -534,14 +542,38 @@ export default function NaitivePipeline() {
                     </div>
                   ) : (
                     <div className="space-y-6">
+                      <NaitivePipelineFilterBar
+                        filters={naitiveFilters.filters}
+                        options={naitiveFilters.options}
+                        activeCount={naitiveFilters.activeCount}
+                        totalCount={deals.length}
+                        matchedCount={filteredDeals.length}
+                        onSetMulti={naitiveFilters.setMulti}
+                        onSetDateRange={naitiveFilters.setDateRange}
+                        onSetDateField={naitiveFilters.setDateField}
+                        onClearAll={naitiveFilters.clearAll}
+                        showDateRange
+                      />
+                      {naitiveFilters.activeCount > 0 && filteredDeals.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+                            <FileX className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-sm font-medium">No deals match your current filters</h3>
+                          <Button variant="outline" size="sm" className="mt-3" onClick={naitiveFilters.clearAll}>
+                            Clear Filters
+                          </Button>
+                        </div>
+                      ) : (
                       <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 items-stretch">
                         <div className="xl:col-span-5 min-w-0 order-1">
-                          <NaitivePipelineNarrative deals={deals} />
+                          <NaitivePipelineNarrative deals={filteredDeals} />
                         </div>
                         <div className="xl:col-span-7 min-w-0 order-2">
-                          <NaitiveWeeklyExecutionPulse deals={deals} history={stageHistory} />
+                          <NaitiveWeeklyExecutionPulse deals={filteredDeals} history={stageHistory} />
                         </div>
                       </div>
+                      )}
                     </div>
                   )
                 ) : (
@@ -562,13 +594,36 @@ export default function NaitivePipeline() {
                     </div>
                   ) : (
                     <>
+                      <NaitivePipelineFilterBar
+                        filters={naitiveFilters.filters}
+                        options={naitiveFilters.options}
+                        activeCount={naitiveFilters.activeCount}
+                        totalCount={deals.length}
+                        matchedCount={filteredDeals.length}
+                        onSetMulti={naitiveFilters.setMulti}
+                        onSetDateRange={naitiveFilters.setDateRange}
+                        onSetDateField={naitiveFilters.setDateField}
+                        onClearAll={naitiveFilters.clearAll}
+                      />
                       <div className="flex justify-end mb-2">
                         <Button variant="outline" size="sm" className="gap-1.5" onClick={() => setIsFullscreen(true)}>
                           <Maximize2 className="h-3.5 w-3.5" />
                           Expand
                         </Button>
                       </div>
-                      {pipelineContent(false)}
+                      {naitiveFilters.activeCount > 0 && filteredDeals.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-dashed border-border/60 bg-muted/20">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-3">
+                            <FileX className="h-6 w-6 text-muted-foreground" />
+                          </div>
+                          <h3 className="text-sm font-medium">No deals match your current filters</h3>
+                          <Button variant="outline" size="sm" className="mt-3" onClick={naitiveFilters.clearAll}>
+                            Clear Filters
+                          </Button>
+                        </div>
+                      ) : (
+                        pipelineContent(false)
+                      )}
                     </>
                   )
                 )}
