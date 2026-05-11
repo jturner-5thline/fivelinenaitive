@@ -546,7 +546,7 @@ export default function Dashboard() {
             </div>
 
             {/* 2. Stats / widgets row */}
-            {isLoading ? (
+            {isLoading || widgetsLoading ? (
               <WidgetsSectionSkeleton />
             ) : (
               <div
