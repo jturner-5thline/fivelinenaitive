@@ -1480,24 +1480,35 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
       <DialogContent
         className={cn(
           useCarouselSwipeClass(),
-          'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
+          'w-[min(95vw,1600px)] max-w-[95vw] h-[min(92dvh,1000px)] max-h-[92dvh] p-0 overflow-hidden rounded-2xl',
           'bg-background/60 backdrop-blur-3xl',
           'border-transparent glass-border-soft',
           'shadow-[0_32px_80px_-20px_hsl(var(--primary)/0.25),inset_0_1px_0_hsl(0_0%_100%/0.04)]',
         )}
         overlayClassName="bg-black/80"
       >
-        <div className="flex flex-col h-full relative">
+        <div className="flex flex-col h-full min-h-0 min-w-0 relative max-w-full overflow-hidden">
           {/* Unified top header — title + date on the left, primary tab
               navigation on the right. When the Email tab is active, a second
               row beneath surfaces the email sub-tabs and the unread/all
               segmented control so all navigation lives in one cohesive band. */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-            <div className="px-6 pt-4 pb-3 glass-divider-b glass-surface-1 space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
-                  <p className="text-xs text-muted-foreground/60 mt-0.5 truncate">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
+            <div
+              className="glass-divider-b glass-surface-1 min-w-0"
+              style={{
+                paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
+                paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
+                paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
+                paddingBottom: 'clamp(0.5rem, 0.9vw, 0.75rem)',
+                rowGap: 'clamp(0.5rem, 0.9vw, 0.75rem)',
+                display: 'flex',
+                flexDirection: 'column',
+              }}
+            >
+              <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate">{title}</h2>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground/60 mt-0.5 truncate">
                     {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
                   </p>
                 </div>
@@ -1508,10 +1519,10 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                       <TabsTrigger
                         key={tab.value}
                         value={tab.value}
-                        className="gap-1.5 text-xs px-3 py-1.5"
+                        className="gap-1.5 text-[11px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5"
                       >
                         <Icon className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">{tab.label}</span>
+                        <span className="hidden md:inline">{tab.label}</span>
                       </TabsTrigger>
                     );
                   })}
@@ -1519,7 +1530,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
               </div>
 
               {isEmailActive && (
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                   {EMAIL_CATEGORY_TABS.map(t => (
                     <button
                       key={t.key}
@@ -1577,7 +1588,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
               )}
             </div>
 
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative">
               {/* Left arrow */}
               {canGoLeft && (
                 <button
@@ -1612,10 +1623,19 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                 </button>
               )}
 
-              <ScrollArea className={cn('px-6 pt-4 pb-6', isEmailActive ? 'h-[calc(92vh-180px)]' : 'h-[calc(92vh-120px)]')}>
+              <ScrollArea
+                className="h-full w-full max-w-full"
+                style={{
+                  paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
+                  paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
+                  paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
+                  paddingBottom: 'clamp(0.75rem, 1.2vw, 1.5rem)',
+                }}
+              >
                 <div
                   key={activeTab}
                   className={cn(
+                    'min-w-0 max-w-full',
                     slideDirection === 'left' && 'animate-slide-in-from-right',
                     slideDirection === 'right' && 'animate-slide-in-from-left',
                   )}
