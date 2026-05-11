@@ -2,12 +2,6 @@ import { BarChart3, Linkedin, Twitter } from "lucide-react";
 import { Logo } from "@/components/Logo";
 
 const footerLinks = {
-  product: [
-    { label: "Features", href: "#features" },
-    { label: "Pricing", href: "#pricing" },
-    { label: "Security", href: "/login" },
-    
-  ],
   company: [
     { label: "About", href: "#about" },
     { label: "Careers", href: "mailto:careers@5thline.com" },
@@ -31,7 +25,7 @@ export const Footer = () => {
   return (
     <footer className="bg-primary text-primary-foreground">
       <div className="container mx-auto px-6 py-16">
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2">
             <a href="/" className="flex items-center gap-2 mb-4">
@@ -66,22 +60,6 @@ export const Footer = () => {
           </div>
 
           {/* Links */}
-          <div>
-            <h4 className="font-semibold mb-4">Product</h4>
-            <ul className="space-y-3">
-              {footerLinks.product.map((link) => (
-                <li key={link.label}>
-                  <a
-                    href={link.href}
-                    className="text-sm text-primary-foreground/60 hover:text-primary-foreground transition-colors"
-                  >
-                    {link.label}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </div>
-
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-3">
