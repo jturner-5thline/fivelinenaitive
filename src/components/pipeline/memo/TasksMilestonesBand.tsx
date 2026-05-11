@@ -244,14 +244,14 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   };
 
   return (
-    <div className="px-5 py-3 bg-muted/40 border-b border-border max-w-full min-w-0 overflow-hidden">
-      <div className="md:max-w-[88%] lg:max-w-[85%] max-w-full min-w-0">
-      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap max-w-full min-w-0">
+    <div className="px-5 py-3 bg-muted/40 border-b border-border">
+      <div className="md:max-w-[88%] lg:max-w-[85%]">
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
         <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           Tasks & milestones
         </div>
         <div
-          className="flex flex-nowrap items-center gap-1 overflow-x-auto whitespace-nowrap max-w-full"
+          className="flex items-center gap-1"
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -272,7 +272,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                   setActiveFilter(selected ? null : f.key);
                 }}
                 className={cn(
-                  'shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
                   selected
                     ? 'border-primary/60 bg-primary/15 text-primary'
                     : 'border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/40'
