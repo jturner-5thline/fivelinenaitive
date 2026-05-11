@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
@@ -65,6 +65,24 @@ const CARD_INTERACTIVE_SELECTOR = [
   '[role="dialog"]',
   '[contenteditable="true"]',
 ].join(',');
+
+const NAITIVE_PIPELINE_VIEW_STORAGE_KEY = 'naitive-pipeline:active-view';
+
+function readStoredNaitivePipelineView(): 0 | 1 {
+  try {
+    return sessionStorage.getItem(NAITIVE_PIPELINE_VIEW_STORAGE_KEY) === 'pipeline' ? 1 : 0;
+  } catch {
+    return 0;
+  }
+}
+
+function persistNaitivePipelineView(view: 0 | 1) {
+  try {
+    sessionStorage.setItem(NAITIVE_PIPELINE_VIEW_STORAGE_KEY, view === 1 ? 'pipeline' : 'dashboard');
+  } catch {
+    // ignore storage failures
+  }
+}
 
 function shouldIgnoreCardOpen(target: EventTarget | null, currentTarget?: HTMLElement | null) {
   if (!(target instanceof HTMLElement)) return false;
@@ -182,12 +200,10 @@ export default function NaitivePipeline() {
   const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const { history: stageHistory } = useNaitiveStageHistory(pipelineId);
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
-  const initialView = searchParams.get('view') === 'pipeline' ? 1 : 0;
 
-  const [activeView, setActiveView] = useState<0 | 1>(initialView);
+  const [activeView, setActiveView] = useState<0 | 1>(() => readStoredNaitivePipelineView());
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
@@ -250,42 +266,20 @@ export default function NaitivePipeline() {
   }, [activeView]);
 
   const openDealFromPipeline = useCallback((deal: Deal) => {
-    const nextParams = new URLSearchParams(searchParams);
-    nextParams.set('view', 'pipeline');
-
+    persistNaitivePipelineView(1);
     navigate(`/deal/${deal.id}`, {
       state: {
         dealOrigin: {
           label: 'Back to Naitive Pipeline',
-          returnTo: `/naitive-pipeline?${nextParams.toString()}`,
+          returnTo: '/naitive-pipeline',
         },
       },
     });
-  }, [navigate, searchParams]);
+  }, [navigate]);
 
   useEffect(() => {
-    const viewParam = searchParams.get('view');
-    if (viewParam === 'pipeline' && activeView !== 1) {
-      setActiveView(1);
-    } else if (viewParam !== 'pipeline' && activeView !== 0) {
-      setActiveView(0);
-    }
-  }, [activeView, searchParams]);
-
-  useEffect(() => {
-    const nextParams = new URLSearchParams(searchParams);
-    if (activeView === 1) {
-      nextParams.set('view', 'pipeline');
-    } else {
-      nextParams.delete('view');
-    }
-
-    const current = searchParams.toString();
-    const next = nextParams.toString();
-    if (current !== next) {
-      setSearchParams(nextParams, { replace: true });
-    }
-  }, [activeView, searchParams, setSearchParams]);
+    persistNaitivePipelineView(activeView);
+  }, [activeView]);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
