@@ -1178,9 +1178,9 @@ function PipelineTab({
   }
 
   return (
-    <div className="relative h-full flex flex-col lg:flex-row min-h-0">
+    <div className="relative flex flex-col lg:flex-row min-h-0 min-w-0 max-w-full w-full">
       {/* LEFT: Deals (primary focus) — full width on mobile/tablet, 75% on desktop */}
-      <div className="w-full lg:w-3/4 min-h-0 overflow-y-auto lg:pr-3">
+      <div className="w-full lg:w-3/4 min-w-0 min-h-0 lg:pr-3">
         <Suspense
           fallback={
             <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
@@ -1201,8 +1201,8 @@ function PipelineTab({
       </div>
 
       {/* RIGHT: 25% sidebar on desktop, stacks under deals below lg */}
-      <div className="w-full lg:w-1/4 min-h-0 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 pt-3 lg:pt-0 lg:pl-3 mt-3 lg:mt-0">
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-l-2 border-l-purple-500 pl-2">
+      <div className="w-full lg:w-1/4 min-w-0 min-h-0 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 pt-3 lg:pt-0 lg:pl-3 mt-3 lg:mt-0">
+        <div className="min-w-0 pr-1 border-l-2 border-l-purple-500 pl-2">
           <Section title="Today's Follow-Ups">
             {showFollowups ? (
               <FollowupTiles
@@ -1219,7 +1219,7 @@ function PipelineTab({
             )}
           </Section>
         </div>
-        <div className="flex-1 min-h-0 overflow-y-auto pr-1 border-t border-white/10 pt-3 mt-3">
+        <div className="min-w-0 pr-1 border-t border-white/10 pt-3 mt-3">
           {recentActivity.length > 0 ? (
             <RecentPipelineActivitySection
               recentActivity={recentActivity}
@@ -1480,20 +1480,20 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
       <DialogContent
         className={cn(
           useCarouselSwipeClass(),
-          'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
+          'w-[min(96vw,1200px)] max-w-full h-[min(90dvh,900px)] max-h-[90dvh] p-0 overflow-hidden rounded-2xl',
           'bg-background/60 backdrop-blur-3xl',
           'border-transparent glass-border-soft',
           'shadow-[0_32px_80px_-20px_hsl(var(--primary)/0.25),inset_0_1px_0_hsl(0_0%_100%/0.04)]',
         )}
         overlayClassName="bg-black/80"
       >
-        <div className="flex flex-col h-full relative max-w-full min-w-0 overflow-hidden">
+        <div className="flex h-full min-h-0 min-w-0 max-w-full flex-col relative overflow-hidden">
           {/* Unified top header — title + date on the left, primary tab
               navigation on the right. When the Email tab is active, a second
               row beneath surfaces the email sub-tabs and the unread/all
               segmented control so all navigation lives in one cohesive band. */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden min-w-0 max-w-full">
-            <div className="px-6 pt-4 pb-3 glass-divider-b glass-surface-1 space-y-3 max-w-full min-w-0 overflow-hidden">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 min-h-0 min-w-0 max-w-full flex flex-col overflow-hidden">
+            <div className="shrink-0 px-6 pt-4 pb-3 glass-divider-b glass-surface-1 space-y-3 max-w-full min-w-0 overflow-hidden">
               <div className="flex flex-wrap items-center justify-between gap-3 max-w-full min-w-0">
                 <div className="min-w-0 flex-1">
                   <h2 className="text-lg font-bold text-foreground tracking-tight">{title}</h2>
@@ -1577,7 +1577,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
               )}
             </div>
 
-            <div className="flex-1 overflow-hidden relative">
+            <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative">
               {/* Left arrow */}
               {canGoLeft && (
                 <button
@@ -1612,10 +1612,11 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                 </button>
               )}
 
-              <ScrollArea className={cn('px-6 pt-4 pb-6', isEmailActive ? 'h-[calc(92vh-180px)]' : 'h-[calc(92vh-120px)]')}>
+              <ScrollArea className="h-full w-full px-6 pt-4 pb-6">
                 <div
                   key={activeTab}
                   className={cn(
+                    'min-w-0 max-w-full',
                     slideDirection === 'left' && 'animate-slide-in-from-right',
                     slideDirection === 'right' && 'animate-slide-in-from-left',
                   )}
