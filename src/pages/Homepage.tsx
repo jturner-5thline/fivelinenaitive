@@ -61,7 +61,7 @@ export default function Homepage() {
 
         <div className="scroll-reveal-soft">
           <HomepageFeatureSection
-            title="Centralized Lender Management, Without the Noise"
+            title="Centralized Lender Management"
             description="Track lender outreach, review, and term sheets directly within the deal — without spreadsheets, side channels, or manual handoffs. As lenders move through each stage, activity is captured in context, giving teams a clear, real-time view of where the deal stands and what needs attention next."
             image={<PlatformPreviewLenderKanban />}
             reverse
