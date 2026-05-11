@@ -66,18 +66,51 @@ function relativeDays(dueDate: string): string {
 export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesBandProps) {
   const queryClient = useQueryClient();
   const { company } = useCompany();
-  const milestone = nextUpcomingMilestone(deal.milestones);
-  const visibleTasks = tasks;
-  const hasContent = visibleTasks.length > 0 || !!milestone;
+  const [activeFilter, setActiveFilter] = useState<'task' | 'milestone' | 'outstanding' | null>(null);
+
+  const nextMilestone = nextUpcomingMilestone(deal.milestones);
+  const allIncompleteMilestones = (deal.milestones || [])
+    .filter((m) => !m.completed)
+    .sort((a, b) => {
+      const ta = a.dueDate ? new Date(a.dueDate).getTime() : Infinity;
+      const tb = b.dueDate ? new Date(b.dueDate).getTime() : Infinity;
+      return ta - tb;
+    });
+
+  const taskOnlyItems = tasks.filter((t) => t.kind === 'task');
+  const outstandingOnlyItems = tasks.filter((t) => {
+    if (t.kind === 'outstanding') return true;
+    if (t.kind === 'task' && t.dueDate) {
+      return differenceInCalendarDays(new Date(t.dueDate), new Date()) < 0;
+    }
+    return false;
+  });
+
+  const visibleTasks =
+    activeFilter === 'task'
+      ? taskOnlyItems
+      : activeFilter === 'outstanding'
+      ? outstandingOnlyItems
+      : activeFilter === 'milestone'
+      ? []
+      : tasks;
+  const milestonesToRender =
+    activeFilter === 'milestone'
+      ? allIncompleteMilestones
+      : activeFilter === null && nextMilestone
+      ? [nextMilestone]
+      : [];
+  const hasContent = visibleTasks.length > 0 || milestonesToRender.length > 0;
   // Show ~2 rows by default; scroll the rest. Each row ≈ 36px + 6px gap.
-  const totalItems = visibleTasks.length + (milestone ? 1 : 0);
+  const totalItems = visibleTasks.length + milestonesToRender.length;
   const isScrollable = totalItems > 2;
   // The "+" add control is anchored to the bottom-most actionable row in
   // the rendered list. Milestone is rendered after tasks, so if present it
   // owns the inline plus; otherwise the final visible task row does.
   const lastTaskIndex = visibleTasks.length - 1;
-  const plusOnMilestone = !!milestone;
-  const plusOnTaskIndex = !milestone ? lastTaskIndex : -1;
+  const plusOnMilestone = milestonesToRender.length > 0;
+  const plusOnTaskIndex = !plusOnMilestone ? lastTaskIndex : -1;
+  const lastMilestoneIndex = milestonesToRender.length - 1;
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
@@ -213,13 +246,56 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   return (
     <div className="px-5 py-3 bg-muted/40 border-b border-border">
       <div className="md:max-w-[88%] lg:max-w-[85%]">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-2">
-        Tasks & milestones
+      <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Tasks & milestones
+        </div>
+        <div
+          className="flex items-center gap-1"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          {([
+            { key: 'task', label: 'Tasks' },
+            { key: 'milestone', label: 'Milestones' },
+            { key: 'outstanding', label: 'Outstanding' },
+          ] as const).map((f) => {
+            const selected = activeFilter === f.key;
+            return (
+              <button
+                key={f.key}
+                type="button"
+                aria-pressed={selected}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setActiveFilter(selected ? null : f.key);
+                }}
+                className={cn(
+                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  selected
+                    ? 'border-primary/60 bg-primary/15 text-primary'
+                    : 'border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/40'
+                )}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {!hasContent ? (
         <p className="text-xs italic text-muted-foreground">
-          No outstanding tasks or milestones.
+          {activeFilter
+            ? `No ${
+                activeFilter === 'task'
+                  ? 'tasks'
+                  : activeFilter === 'milestone'
+                  ? 'milestones'
+                  : 'outstanding items'
+              } for this deal.`
+            : 'No outstanding tasks or milestones.'}
         </p>
       ) : (
         <div
@@ -426,25 +502,25 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
               </div>
             );
           })}
-          {milestone && (
-            <div className="grid items-center gap-2 grid-cols-[1fr_28px]">
+          {milestonesToRender.map((m, idx) => (
+            <div key={m.id || `${m.title}-${idx}`} className="grid items-center gap-2 grid-cols-[1fr_28px]">
               <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
                 <Diamond className="h-3.5 w-3.5 text-primary shrink-0 fill-primary" />
-                <span className="flex-1 text-xs text-foreground font-medium truncate" title={milestone.title}>
-                  {milestone.title}
-                  {milestone.dueDate && ` · ${format(new Date(milestone.dueDate), 'MMM d')}`}
+                <span className="flex-1 text-xs text-foreground font-medium truncate" title={m.title}>
+                  {m.title}
+                  {m.dueDate && ` · ${format(new Date(m.dueDate), 'MMM d')}`}
                 </span>
-                {milestone.dueDate && (
+                {m.dueDate && (
                   <span className="text-[10px] text-primary whitespace-nowrap">
-                    {relativeDays(milestone.dueDate)}
+                    {relativeDays(m.dueDate)}
                   </span>
                 )}
               </div>
               <div className="w-7 flex items-center justify-center">
-                {!addFormOpen && plusOnMilestone ? StandalonePlusButton : null}
+                {!addFormOpen && plusOnMilestone && idx === lastMilestoneIndex ? StandalonePlusButton : null}
               </div>
             </div>
-          )}
+          ))}
         </div>
         {isScrollable && (
           <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-4 -mt-4 bg-gradient-to-t from-muted/80 to-transparent rounded-b-md" />
