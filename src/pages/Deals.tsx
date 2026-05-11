@@ -118,6 +118,7 @@ export default function Dashboard() {
   const [allExpanded, setAllExpanded] = useState(true);
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
+  const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   const { activePipelineId, pipelines } = usePipelineContext();
