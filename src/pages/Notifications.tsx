@@ -108,6 +108,7 @@ function getActivityLabel(activityType: string) {
 
 export default function Notifications() {
   const { deals } = useDealsContext();
+  const { pipelines } = usePipelineContext();
   const { preferences: appPreferences } = usePreferences();
   const { 
     activities, 
@@ -119,6 +120,30 @@ export default function Notifications() {
   const { isRead, markAsRead, markAllAsRead, isLoading: readsLoading } = useNotificationReads();
   const { shouldShowStaleAlerts, shouldShowActivity, isLoading: prefsLoading } = useNotificationPreferences();
   const [isMarkingRead, setIsMarkingRead] = useState(false);
+  // Active-deals-only toggle (default ON). Hides notifications belonging to
+  // archived / closed-won / closed-lost / on-hold / funded / in-due-diligence
+  // deals and deals in the In Development pipeline.
+  const [activeOnly, setActiveOnly] = useState(true);
+
+  const dealsById = useMemo(() => {
+    const m = new Map<string, Deal>();
+    deals.forEach(d => m.set(d.id, d));
+    return m;
+  }, [deals]);
+
+  const pipelineNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    pipelines.forEach(p => m.set(p.id, p.name));
+    return m;
+  }, [pipelines]);
+
+  const isInactiveDeal = (dealId: string | null | undefined): boolean => {
+    if (!dealId) return false;
+    const d = dealsById.get(dealId);
+    if (!d) return false;
+    const pname = d.pipelineId ? pipelineNameById.get(d.pipelineId) : null;
+    return isDealInactive(d, pname);
+  };
   
   // Get all stale alerts
   const allStaleAlerts = getStaleDealAlerts(deals, appPreferences.lenderUpdateYellowDays);
