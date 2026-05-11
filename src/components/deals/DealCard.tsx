@@ -188,6 +188,56 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
         className={`deal-glass group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
         {/*
+          Flagged-for-discussion indicator — small red flag pinned to the
+          top-LEFT corner so it never collides with the notification badge
+          that lives at top-right. Always rendered when the deal is
+          flagged, in both grid and list views (and in pipeline views,
+          where onToggleFlag isn't passed). The dialog is self-contained
+          via useFlagNotes(dealId), so it works without a parent handler.
+          Color matches the toolbar's flag filter (red-400).
+        */}
+        {activeFlagCount > 0 && (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Flagged for discussion"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsFlagDialogOpen(true);
+                  }}
+                  className="absolute -top-1.5 -left-1.5 z-30 inline-flex h-[22px] w-[22px] items-center justify-center rounded-full bg-red-500/95 text-white ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_10px_rgba(239,68,68,0.55)] hover:bg-red-500 transition-colors"
+                  style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+                >
+                  <Flag className="h-3 w-3 fill-current" />
+                  {activeFlagCount > 1 && (
+                    <span className="absolute -bottom-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-background text-red-400 text-[9px] font-bold flex items-center justify-center ring-1 ring-red-500/50 tabular-nums">
+                      {activeFlagCount > 9 ? '9+' : activeFlagCount}
+                    </span>
+                  )}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Flagged for discussion — click to view / unflag</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        )}
+
+        {/* Flag dialog — mounted whenever the card is, so the corner
+            indicator can open it even if no onToggleFlag handler exists
+            (e.g. in pipeline kanbans). */}
+        <FlagNoteDialog
+          dealId={deal.id}
+          dealName={deal.company}
+          isOpen={isFlagDialogOpen}
+          onClose={() => setIsFlagDialogOpen(false)}
+          onFlagCountChange={setActiveFlagCount}
+        />
+
+        {/*
           Notification indicator — single overlay anchored to the top-right
           corner of the tile. Pure absolute overlay (outside content flow)
           so its presence/absence cannot shift the title's top inset or any
