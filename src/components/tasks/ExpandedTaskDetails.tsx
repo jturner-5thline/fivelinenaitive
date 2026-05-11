@@ -11,6 +11,7 @@ import { Building2, User, FileText, ListChecks, MessageSquare, Plus, ExternalLin
 import { formatDistanceToNow } from 'date-fns';
 import { splitTextByUrls } from '@/lib/emailNotesCleanup';
 import { buildSourceEmailUrl } from '@/lib/sourceEmailLink';
+import { SourceEmailLink } from '@/components/tasks/SourceEmailLink';
 
 /**
  * Auto-linkify URLs in plain-text descriptions so source-email links
