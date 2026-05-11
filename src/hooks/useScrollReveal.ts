@@ -1,25 +1,45 @@
 import { useEffect, useRef, useState } from "react";
 
-export function useScrollReveal(threshold = 0.15) {
-  const ref = useRef<HTMLDivElement>(null);
+/**
+ * Reveals an element with a subtle fade + rise once it enters the viewport.
+ * Stays visible after the first reveal so scrolling back up doesn't replay
+ * the animation. Respects prefers-reduced-motion.
+ *
+ * @param threshold IntersectionObserver threshold (0-1). Default 0.
+ */
+export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(
+  threshold: number = 0
+) {
+  const ref = useRef<T | null>(null);
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
+    if (typeof window === "undefined") return;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(el);
-        }
+    // Respect reduced motion: show immediately, no animation gate.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (reduce) {
+      setIsVisible(true);
+      return;
+    }
+
+    const node = ref.current;
+    if (!node) return;
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible(true);
+            io.unobserve(entry.target);
+          }
+        });
       },
-      { threshold }
+      { threshold, rootMargin: "0px 0px -8% 0px" }
     );
 
-    observer.observe(el);
-    return () => observer.disconnect();
+    io.observe(node);
+    return () => io.disconnect();
   }, [threshold]);
 
   return { ref, isVisible };
