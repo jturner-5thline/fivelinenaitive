@@ -18,6 +18,12 @@ interface InboxDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Memoize the dialog: the dashboard re-renders frequently for unrelated
+// reasons (carousel state, toggles, layout). Without this, every parent
+// render walks the inbox subtree even when `open` and `onOpenChange` are
+// referentially stable.
+export const InboxDialog = memo(InboxDialogImpl);
+
 // How many messages to request per page from Nylas/Gmail.
 // Bumped to 100 so the first paint of the inbox already has a deep working
 // set and "Load more" is needed far less often during normal scrolling.
