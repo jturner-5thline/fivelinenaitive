@@ -365,7 +365,7 @@ serve(async (req) => {
       try {
         const { data: dealRow } = await supabase
           .from("deals")
-          .select("status, stage, company")
+          .select("status, stage, company, pipeline_id")
           .eq("id", String(context.deal_id))
           .maybeSingle();
         if (dealRow) {
@@ -376,6 +376,19 @@ serve(async (req) => {
             suppressionReason = `deal status ${status}`;
           } else if (HARD_SUPPRESSED_DEAL_STATES.has(stage)) {
             suppressionReason = `deal stage ${stage}`;
+          }
+          // Pipeline-based suppression: "In Development" pipeline never
+          // receives proactive reminders.
+          if (!suppressionReason && (dealRow as any).pipeline_id) {
+            const { data: pipelineRow } = await supabase
+              .from("deal_pipelines")
+              .select("name")
+              .eq("id", String((dealRow as any).pipeline_id))
+              .maybeSingle();
+            const pname = normState((pipelineRow as any)?.name);
+            if (pname === 'in development' || pname === 'archived pipeline') {
+              suppressionReason = `pipeline ${pname}`;
+            }
           }
           if (suppressionReason) {
             await writeAudit(supabase, {
