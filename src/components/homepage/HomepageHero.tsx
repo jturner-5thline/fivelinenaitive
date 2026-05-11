@@ -40,7 +40,7 @@ export const HomepageHero = () => {
       </div>
 
       {/* Left-aligned, vertically centered content */}
-      <div className="relative z-10 container mx-auto px-6 md:px-[8%] lg:px-[10%]">
+      <div className="relative z-10 container mx-auto px-4 sm:px-6">
         <div className="max-w-full md:max-w-[60%] lg:max-w-[50%] flex flex-col items-start gap-2">
           {/* Tagline — shares left edge with the "n" in the wordmark */}
           <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold leading-[1.15] text-white">
