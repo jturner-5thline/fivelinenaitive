@@ -1501,17 +1501,17 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                     {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
                   </p>
                 </div>
-                <TabsList className="shrink-0 flex-wrap h-auto">
+                <TabsList className="h-auto flex flex-nowrap gap-1 overflow-x-auto whitespace-nowrap max-w-full">
                   {TABS.map(tab => {
                     const Icon = tab.icon;
                     return (
                       <TabsTrigger
                         key={tab.value}
                         value={tab.value}
-                        className="gap-1.5 text-xs px-3 py-1.5"
+                        className="shrink-0 gap-1.5 text-xs px-3 py-1.5"
                       >
                         <Icon className="h-3.5 w-3.5" />
-                        <span className="hidden sm:inline">{tab.label}</span>
+                        <span>{tab.label}</span>
                       </TabsTrigger>
                     );
                   })}
@@ -1519,13 +1519,13 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
               </div>
 
               {isEmailActive && (
-                <div className="flex flex-wrap items-center gap-1.5">
+                <div className="flex flex-nowrap items-center gap-1.5 overflow-x-auto whitespace-nowrap">
                   {EMAIL_CATEGORY_TABS.map(t => (
                     <button
                       key={t.key}
                       onClick={() => setEmailSubTab(t.key)}
                       className={cn(
-                        'px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 border',
+                        'shrink-0 px-3 py-1 rounded-full text-xs font-medium transition-all duration-150 border',
                         emailSubTab === t.key
                           ? 'bg-primary/15 text-primary border-primary/30'
                           : 'bg-white/[0.03] text-muted-foreground/70 glass-border-soft hover:bg-white/[0.06] hover:text-foreground/80',
