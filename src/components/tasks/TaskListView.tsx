@@ -18,10 +18,11 @@ import {
 } from '@/components/ui/popover';
 import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
-  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3,
+  Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3, Mail,
 } from 'lucide-react';
 import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
+import { buildSourceEmailUrl } from '@/lib/sourceEmailLink';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor,
