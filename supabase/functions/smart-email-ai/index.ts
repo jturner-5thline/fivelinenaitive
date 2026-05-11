@@ -1076,6 +1076,10 @@ Classify and return strict JSON only.`;
 
         // Build lender candidate list from the linked deal (for high-precision matching).
         let lenderCandidates: Array<{ id: string; name: string; stage?: string; tracking_status?: string }> = [];
+        // When a deal is already linked, fetch its name so the model treats
+        // the linked deal as authoritative instead of speculating against
+        // candidate ids it doesn't have.
+        let linkedDealName: string = "";
         if (dealId) {
           const { data: ls } = await supabase
             .from("deal_lenders")
@@ -1087,6 +1091,14 @@ Classify and return strict JSON only.`;
             stage: l.stage,
             tracking_status: l.tracking_status,
           }));
+          try {
+            const { data: dRow } = await supabase
+              .from("deals")
+              .select("company")
+              .eq("id", dealId)
+              .maybeSingle();
+            linkedDealName = (dRow as any)?.company || "";
+          } catch { /* non-fatal */ }
         }
 
         // Build deal candidates — when no deal is linked yet, surface deals the
