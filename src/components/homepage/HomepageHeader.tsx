@@ -5,13 +5,13 @@ import naitiveLogoDark from "@/assets/naitive-logo-dark.png";
 export const HomepageHeader = () => {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-transparent backdrop-blur-sm border-b border-white/5">
-      <nav className="container mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      <nav className="container mx-auto px-4 sm:px-6 h-24 flex items-center justify-between gap-4">
         {/* Logo */}
         <Link to="/" className="flex items-center shrink-0" aria-label="naitive home">
           <img
             src={naitiveLogoDark}
             alt="naitive"
-            className="h-7 sm:h-8 w-auto object-contain"
+            className="h-20 sm:h-24 w-auto object-contain"
             style={{ aspectRatio: 'auto' }}
           />
         </Link>
