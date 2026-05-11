@@ -9,7 +9,7 @@ import {
   ContextMenuSubContent,
   ContextMenuLabel,
 } from '@/components/ui/context-menu';
-import { Mail, MailOpen, Star, Archive, Trash2, Tag, Check, Plus } from 'lucide-react';
+import { Mail, MailOpen, Star, Archive, Trash2, Tag, Check, Plus, ListChecks } from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,9 @@ interface EmailContextMenuProps {
   onToggleStar: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  /** Optional: when provided, shows a "Create Task" item that opens the
+   *  email-to-task creation modal in the parent. */
+  onCreateTask?: () => void;
 }
 
 export function EmailContextMenu({
@@ -45,6 +48,7 @@ export function EmailContextMenu({
   onToggleStar,
   onArchive,
   onDelete,
+  onCreateTask,
 }: EmailContextMenuProps) {
   const { data: labels = [] } = useLabels();
   const { data: assignments = [] } = useAllLabelAssignments();
@@ -101,6 +105,15 @@ export function EmailContextMenu({
           <Star className={`h-3.5 w-3.5 ${isStarred ? 'fill-yellow-400 text-yellow-400' : ''}`} />
           {isStarred ? 'Unstar' : 'Star'}
         </ContextMenuItem>
+        {onCreateTask && (
+          <>
+            <ContextMenuSeparator />
+            <ContextMenuItem onClick={onCreateTask} className="gap-2 text-xs">
+              <ListChecks className="h-3.5 w-3.5" />
+              Create Task
+            </ContextMenuItem>
+          </>
+        )}
         {threadId && (
           <>
             <ContextMenuSeparator />
