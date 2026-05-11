@@ -748,6 +748,26 @@ export function useDealsDatabase() {
       if ((updates as any).contractStartDate !== undefined) (dbUpdates as any).contract_start_date = (updates as any).contractStartDate;
       if ((updates as any).contractEndDate !== undefined) (dbUpdates as any).contract_end_date = (updates as any).contractEndDate;
 
+      // Pipeline-specific (Naitive) fields — mirrors CreateNaitiveDealDialog.
+      if ((updates as any).icpCategory !== undefined) (dbUpdates as any).icp_category = (updates as any).icpCategory || null;
+      if ((updates as any).prospectType !== undefined) (dbUpdates as any).prospect_type = (updates as any).prospectType || null;
+      if ((updates as any).ownedBy !== undefined) (dbUpdates as any).owned_by = (updates as any).ownedBy || null;
+      if ((updates as any).contactTitle !== undefined) (dbUpdates as any).contact_title = (updates as any).contactTitle || null;
+      if ((updates as any).nextStep !== undefined) (dbUpdates as any).next_step = (updates as any).nextStep || null;
+      if ((updates as any).nextStepDate !== undefined) (dbUpdates as any).next_step_date = (updates as any).nextStepDate || null;
+      if ((updates as any).dmPresent !== undefined) (dbUpdates as any).dm_present = (updates as any).dmPresent || null;
+      if ((updates as any).dmName !== undefined) (dbUpdates as any).dm_name = (updates as any).dmName || null;
+      if ((updates as any).outcome !== undefined) (dbUpdates as any).outcome = (updates as any).outcome || null;
+      if ((updates as any).whyNotMovingForward !== undefined) {
+        const v = (updates as any).whyNotMovingForward;
+        (dbUpdates as any).why_not_moving_forward = Array.isArray(v) ? v : (v ? [v] : []);
+      }
+      if ((updates as any).painPointsConfirmed !== undefined) (dbUpdates as any).pain_points_confirmed = (updates as any).painPointsConfirmed || null;
+      if ((updates as any).objectionsRaised !== undefined) (dbUpdates as any).objections_raised = (updates as any).objectionsRaised || null;
+      if ((updates as any).competitorsMentioned !== undefined) (dbUpdates as any).competitors_mentioned = (updates as any).competitorsMentioned || null;
+      if ((updates as any).keySignal !== undefined) (dbUpdates as any).key_signal = (updates as any).keySignal || null;
+      if ((updates as any).productGapFlagged !== undefined) (dbUpdates as any).product_gap_flagged = (updates as any).productGapFlagged || null;
+
       const { error } = await supabase
         .from('deals')
         .update(dbUpdates)
