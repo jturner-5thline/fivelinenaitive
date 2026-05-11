@@ -1,5 +1,5 @@
-import { lazy, Suspense } from 'react';
-import { MemoryRouter, Routes, Route } from 'react-router-dom';
+import { lazy, Suspense, useMemo } from 'react';
+import { Routes, Route } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
@@ -13,11 +13,26 @@ interface Props {
 }
 
 /**
- * Near full-screen overlay that renders the canonical DealDetail page for a
- * given deal id. Uses a nested MemoryRouter so DealDetail's useParams /
- * useNavigate hooks work without affecting the outer Pipeline route.
+ * Near full-screen overlay rendering the canonical DealDetail page for a
+ * given deal id. Uses the existing top-level app router by passing a
+ * synthetic `location` to <Routes> — this lets DealDetail's useParams()
+ * resolve the modal's deal id without nesting another <Router>.
  */
 export function NaitiveDealDetailModal({ dealId, open, onOpenChange }: Props) {
+  const syntheticLocation = useMemo(
+    () =>
+      dealId
+        ? ({
+            pathname: `/deal/${dealId}`,
+            search: '',
+            hash: '',
+            state: null,
+            key: `modal-${dealId}`,
+          } as const)
+        : null,
+    [dealId],
+  );
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
@@ -34,18 +49,17 @@ export function NaitiveDealDetailModal({ dealId, open, onOpenChange }: Props) {
           Full deal details for the selected pipeline deal.
         </DialogDescription>
         <div className="h-full w-full overflow-y-auto">
-          {dealId && (
-            <Suspense fallback={
-              <div className="flex h-full w-full items-center justify-center">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            }>
-              <MemoryRouter initialEntries={[`/deal/${dealId}`]}>
-                <Routes>
-                  <Route path="/deal/:id" element={<DealDetail />} />
-                  <Route path="*" element={<DealDetail />} />
-                </Routes>
-              </MemoryRouter>
+          {syntheticLocation && (
+            <Suspense
+              fallback={
+                <div className="flex h-full w-full items-center justify-center">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              }
+            >
+              <Routes location={syntheticLocation}>
+                <Route path="/deal/:id" element={<DealDetail />} />
+              </Routes>
             </Suspense>
           )}
         </div>
