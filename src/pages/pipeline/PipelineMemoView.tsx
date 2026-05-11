@@ -5,6 +5,8 @@ import type { Deal } from '@/types/deal';
 import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
+import { useDailyDismissals } from '@/hooks/useDailyDismissals';
+import { X } from 'lucide-react';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -125,11 +127,16 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   const { digestMap, rawByDeal, isLoading: digestsLoading } = usePipelineDigests(sorted, sorted.length > 0);
   const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
+  const { dismiss, isDismissed } = useDailyDismissals('rundown-deal');
 
-  if (sorted.length === 0) {
+  const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
+
+  if (visible.length === 0) {
     return (
       <div className="rounded-xl py-12 px-4 text-center">
-        <p className="text-muted-foreground text-sm italic">{emptyMessage}</p>
+        <p className="text-muted-foreground text-sm italic">
+          {sorted.length === 0 ? emptyMessage : 'All deals dismissed for today. They’ll return after the 5 AM ET reset.'}
+        </p>
       </div>
     );
   }
@@ -140,17 +147,32 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
       style={{ overscrollBehavior: 'contain' }}
     >
       <div className="max-w-[1100px] mx-auto flex flex-col gap-3">
-        {sorted.map((deal, index) => (
-          <PipelineMemoCard
-            key={deal.id}
-            deal={deal}
-            digest={digestMap.get(deal.id)}
-            rawDigest={rawByDeal.get(deal.id)}
-            tasks={tasksByDeal?.get(deal.id) || []}
-            isDigestLoading={digestsLoading}
-            showLiveDot={index === 0}
-            onOpenDeal={onOpenDeal}
-          />
+        {visible.map((deal, index) => (
+          <div key={deal.id} className="relative group/dismiss">
+            <button
+              type="button"
+              aria-label="Dismiss for today"
+              title="Dismiss for today (returns at 5 AM ET)"
+              onClick={(e) => {
+                e.stopPropagation();
+                dismiss(deal.id);
+              }}
+              onPointerDown={(e) => e.stopPropagation()}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="absolute top-2 right-2 z-10 inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-muted/60 opacity-0 group-hover/dismiss:opacity-100 focus:opacity-100 transition-opacity"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+            <PipelineMemoCard
+              deal={deal}
+              digest={digestMap.get(deal.id)}
+              rawDigest={rawByDeal.get(deal.id)}
+              tasks={tasksByDeal?.get(deal.id) || []}
+              isDigestLoading={digestsLoading}
+              showLiveDot={index === 0}
+              onOpenDeal={onOpenDeal}
+            />
+          </div>
         ))}
       </div>
     </div>
