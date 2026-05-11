@@ -1,29 +1,82 @@
-import { useMemo, useState } from 'react';
-import { format, subMonths } from 'date-fns';
-import type { DateRange } from 'react-day-picker';
-import { Calendar as CalendarIcon, ChevronDown, Loader2 } from 'lucide-react';
+import { useMemo } from 'react';
+import { Calendar as CalendarIcon, Loader2 } from 'lucide-react';
 import { useIsFetching } from '@tanstack/react-query';
-import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import {
+  reportingPeriodHelpers,
   useInsightsTimeframe,
   type InsightsTimeframeId,
 } from '@/contexts/InsightsTimeframeContext';
 
-const PRESETS: { id: InsightsTimeframeId; label: string; short: string }[] = [
-  { id: '7d',  label: 'Last 7 days',  short: '7D'  },
-  { id: '30d', label: 'Last 30 days', short: '30D' },
-  { id: '90d', label: 'Last 90 days', short: '90D' },
-  { id: 'mtd', label: 'Month to date', short: 'MTD' },
-  { id: 'qtd', label: 'Quarter to date', short: 'QTD' },
-  { id: 'ytd', label: 'Year to date', short: 'YTD' },
+/**
+ * Single executive-friendly timeframe dropdown.
+ *
+ * Options:
+ *   • YTD, Last 3 / 6 / 12 Months  (rolling)
+ *   • Specific Quarter (Q1 2026, Q2 2026, …)
+ *   • Specific Month (Apr 2026, Mar 2026, …)
+ *
+ * Drives the entire dashboard via `useInsightsTimeframe`. There is no
+ * day-level or arbitrary calendar selector.
+ */
+
+type Token =
+  | `tf:${InsightsTimeframeId}`
+  | `month:${string}` // YYYY-MM
+  | `quarter:${string}`; // YYYY-Qn
+
+const ROLLING: { token: Token; label: string }[] = [
+  { token: 'tf:ytd',     label: 'Year to Date (YTD)' },
+  { token: 'tf:last3m',  label: 'Last 3 Months' },
+  { token: 'tf:last6m',  label: 'Last 6 Months' },
+  { token: 'tf:last12m', label: 'Last 12 Months' },
 ];
 
+function pad(n: number) { return String(n).padStart(2, '0'); }
+
+function buildMonthOptions(count = 18): { token: Token; label: string }[] {
+  const now = new Date();
+  const out: { token: Token; label: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const m1 = d.getMonth() + 1;
+    out.push({
+      token: `month:${y}-${pad(m1)}`,
+      label: d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' }),
+    });
+  }
+  return out;
+}
+
+function buildQuarterOptions(count = 8): { token: Token; label: string }[] {
+  const now = new Date();
+  const seen = new Set<string>();
+  const out: { token: Token; label: string }[] = [];
+  for (let i = 0; i < count * 3; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const y = d.getFullYear();
+    const q = Math.floor(d.getMonth() / 3) + 1;
+    const key = `${y}-Q${q}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ token: `quarter:${key}`, label: `Q${q} ${y}` });
+    if (out.length >= count) break;
+  }
+  return out;
+}
+
 export function InsightsTimeframePicker({ className }: { className?: string }) {
-  const { timeframe, setTimeframe } = useInsightsTimeframe();
-  const [open, setOpen] = useState(false);
+  const { timeframe, setTimeframe, reportingPeriod, setReportingPeriod } = useInsightsTimeframe();
 
   const fetchingCount = useIsFetching({
     predicate: (q) => {
@@ -41,33 +94,39 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
   });
   const isRefreshing = fetchingCount > 0;
 
-  const [range, setRange] = useState<DateRange | undefined>(
-    timeframe.id === 'custom'
-      ? {
-          from: new Date(timeframe.start + 'T00:00:00'),
-          to: new Date(timeframe.end + 'T00:00:00'),
-        }
-      : undefined,
-  );
-  // Default the two-month view to (previous month, current month) so the
-  // panes never duplicate the same month.
-  const defaultMonth = useMemo(() => subMonths(new Date(), 1), []);
+  const months = useMemo(() => buildMonthOptions(18), []);
+  const quarters = useMemo(() => buildQuarterOptions(8), []);
 
-  const fmtY = (d: Date) =>
-    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  // Resolve the currently selected token. Reporting period (Month/Quarter)
+  // always wins because it represents an explicit calendar selection.
+  const activeToken: Token = useMemo(() => {
+    if (reportingPeriod) {
+      return reportingPeriod.view === 'month'
+        ? `month:${reportingPeriod.period}`
+        : `quarter:${reportingPeriod.period}`;
+    }
+    return `tf:${timeframe.id}`;
+  }, [timeframe.id, reportingPeriod]);
 
-  const applyCustom = () => {
-    if (!range?.from || !range?.to) return;
-    const [s, e] = range.from <= range.to ? [range.from, range.to] : [range.to, range.from];
-    setTimeframe('custom', { start: fmtY(s), end: fmtY(e) });
-    setOpen(false);
+  const handleChange = (token: string) => {
+    if (token.startsWith('tf:')) {
+      const id = token.slice(3) as InsightsTimeframeId;
+      // Clear any active month/quarter so the rolling timeframe takes over.
+      setReportingPeriod(null);
+      setTimeframe(id);
+      return;
+    }
+    if (token.startsWith('month:')) {
+      const period = token.slice('month:'.length);
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('month', period));
+      return;
+    }
+    if (token.startsWith('quarter:')) {
+      const period = token.slice('quarter:'.length);
+      setReportingPeriod(reportingPeriodHelpers.computeReportingPeriod('quarter', period));
+      return;
+    }
   };
-
-  const triggerLabel = useMemo(() => {
-    if (timeframe.id === 'custom') return timeframe.label;
-    const p = PRESETS.find(p => p.id === timeframe.id);
-    return p?.label ?? timeframe.label;
-  }, [timeframe]);
 
   return (
     <div className={cn('flex items-center gap-2', className)}>
@@ -76,70 +135,50 @@ export function InsightsTimeframePicker({ className }: { className?: string }) {
       ) : (
         <CalendarIcon className="h-4 w-4 text-muted-foreground" />
       )}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className={cn(
-              'h-9 text-xs justify-between min-w-[180px] transition-colors',
-              isRefreshing && 'border-primary/40 text-primary',
-            )}
-            aria-busy={isRefreshing}
-          >
-            <span className="truncate">{triggerLabel}</span>
-            <ChevronDown className="h-3.5 w-3.5 ml-2 opacity-60" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent
-          className="w-auto p-3 pointer-events-auto max-w-[calc(100vw-2rem)]"
-          align="end"
+      <Select value={activeToken} onValueChange={handleChange}>
+        <SelectTrigger
+          aria-label="Dashboard timeframe"
+          aria-busy={isRefreshing}
+          className={cn(
+            'h-9 min-w-[200px] text-xs',
+            isRefreshing && 'border-primary/40 text-primary',
+          )}
         >
-          <div className="w-[min(640px,calc(100vw-2rem))] space-y-3">
-            <div className="grid grid-cols-3 gap-1.5">
-              {PRESETS.map(p => {
-                const active = timeframe.id === p.id;
-                return (
-                  <Button
-                    key={p.id}
-                    variant={active ? 'default' : 'outline'}
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => { setTimeframe(p.id); setOpen(false); }}
-                  >
-                    {p.short}
-                  </Button>
-                );
-              })}
-            </div>
-            <div className="border-t border-border pt-3 space-y-2">
-              <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                Custom range
-              </div>
-              <div className="rounded-md border overflow-x-auto">
-                <Calendar
-                  mode="range"
-                  numberOfMonths={2}
-                  defaultMonth={range?.from ?? defaultMonth}
-                  selected={range}
-                  onSelect={setRange}
-                  className="p-2 pointer-events-auto"
-                />
-              </div>
-              <div className="flex items-center justify-between pt-1">
-                <div className="text-[11px] text-muted-foreground">
-                  {range?.from && range?.to
-                    ? `${format(range.from, 'MMM d, yyyy')} – ${format(range.to, 'MMM d, yyyy')}`
-                    : 'Pick a start and end date'}
-                </div>
-                <Button size="sm" className="h-7 text-xs" disabled={!range?.from || !range?.to} onClick={applyCustom}>
-                  Apply
-                </Button>
-              </div>
-            </div>
-          </div>
-        </PopoverContent>
-      </Popover>
+          <SelectValue placeholder="Select timeframe" />
+        </SelectTrigger>
+        <SelectContent align="end" className="max-h-[420px]">
+          <SelectGroup>
+            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Rolling
+            </SelectLabel>
+            {ROLLING.map((o) => (
+              <SelectItem key={o.token} value={o.token} className="text-xs">
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+          <SelectGroup>
+            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Quarter
+            </SelectLabel>
+            {quarters.map((o) => (
+              <SelectItem key={o.token} value={o.token} className="text-xs">
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+          <SelectGroup>
+            <SelectLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+              Month
+            </SelectLabel>
+            {months.map((o) => (
+              <SelectItem key={o.token} value={o.token} className="text-xs">
+                {o.label}
+              </SelectItem>
+            ))}
+          </SelectGroup>
+        </SelectContent>
+      </Select>
     </div>
   );
 }
