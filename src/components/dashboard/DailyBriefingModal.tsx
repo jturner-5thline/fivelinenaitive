@@ -1727,7 +1727,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                     />
                   )}
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} />}
+                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} briefingType={briefingType} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
                 </div>
               </ScrollArea>
