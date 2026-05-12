@@ -185,6 +185,12 @@ export function CashFlowManager() {
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => normalizeSidebarData(deepClone(SEED_SIDEBAR_DATA)));
   const sidebarLoadedRef = useRef(false);
   const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // Forward-declared so the autosave effects below (which run before the
+  // useFinanceLiveSync hook is wired up) can still emit broadcasts. The
+  // ref is populated immediately once the live-sync hook returns.
+  const broadcastRef = useRef<(resource: 'scheduled' | 'cash_in' | 'sidebar' | 'daily') => void>(
+    () => {},
+  );
 
   // Load persisted sidebar data from DB. Wrapped in a useCallback so the
   // live-sync subscriber can re-invoke it when Mark/James push edits.
@@ -236,8 +242,8 @@ export function CashFlowManager() {
             notes: sidebarData.notes,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
-        // Live-sync — only Mark/James actually emit (no-op for everyone else).
-        broadcastFinanceEdit('sidebar');
+          // Live-sync — only Mark/James actually emit (no-op for everyone else).
+          broadcastRef.current('sidebar');
       } catch (err) {
         console.error('Error saving sidebar data:', err);
       }
@@ -246,7 +252,7 @@ export function CashFlowManager() {
     return () => {
       if (sidebarSaveTimerRef.current) clearTimeout(sidebarSaveTimerRef.current);
     };
-  }, [company?.id, sidebarData, broadcastFinanceEdit]);
+  }, [company?.id, sidebarData]);
 
   // --- Daily data + recurring tags persistence ---
   const dailySaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
@@ -314,6 +320,12 @@ export function CashFlowManager() {
     onSidebarChange: loadSidebarData,
     onDailyChange: loadDailyData,
   });
+  // Keep the forward-declared broadcaster ref in sync so write paths
+  // anywhere in this component (including effects defined before this
+  // hook call) can emit.
+  useEffect(() => {
+    broadcastRef.current = broadcastFinanceEdit;
+  }, [broadcastFinanceEdit]);
 
 
 
