@@ -78,6 +78,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const [contactTitle, setContactTitle] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactEmailError, setContactEmailError] = useState<string | null>(null);
+  const [pricing, setPricing] = useState('');
   const [icpCategory, setIcpCategory] = useState('');
   const [prospectType, setProspectType] = useState('');
   // Section 2
@@ -105,6 +106,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const reset = () => {
     setCompanyName(''); setContactName(''); setContactTitle('');
     setContactEmail(''); setContactEmailError(null);
+    setPricing('');
     setIcpCategory(''); setProspectType('');
     setOwnedBy(''); setSource('');
     setStage(defaultStage || stages[0]?.id || '');
@@ -122,6 +124,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     setContactTitle(deal.contactTitle || '');
     setContactEmail((deal as any).contactEmail || (deal as any).contact_email || '');
     setIcpCategory(deal.icpCategory || '');
+    setPricing(((deal as any).pricing as string) || '');
     setProspectType(deal.prospectType || '');
     setOwnedBy(deal.ownedBy || deal.manager || '');
     setSource(deal.sourcedVia || '');
@@ -186,6 +189,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
         contact_title: contactTitle.trim() || null,
         contact_email: email,
         icp_category: icpCategory,
+        pricing: pricing.trim() || null,
         prospect_type: prospectType,
         owned_by: ownedBy,
         manager: ownedBy,
@@ -267,6 +271,9 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
             <div className="grid grid-cols-2 gap-3">
               <Field label="Company Name" required>
                 <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." />
+              </Field>
+              <Field label="Pricing">
+                <Input value={pricing} onChange={(e) => setPricing(e.target.value)} placeholder="e.g. $10k retainer + 2% success" />
               </Field>
               <Field label="Contact Name" required>
                 <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jane Doe" />
