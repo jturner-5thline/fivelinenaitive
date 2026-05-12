@@ -833,6 +833,36 @@ export function ScheduledCashFlowsModal({
                           onCommit={(n) => updateRow(d._draftId, { amount: n })}
                           className="pl-6 h-9 w-full text-right tabular-nums"
                         />
+                        {(() => {
+                          const ovs = d.frequency_config?.amount_overrides || {};
+                          const keys = Object.keys(ovs).sort();
+                          if (keys.length === 0) return null;
+                          const tooltip = keys
+                            .map((k) => `${k}: $${Number(ovs[k]).toLocaleString()}`)
+                            .join('\n');
+                          return (
+                            <div className="mt-1 flex items-center gap-1">
+                              <span
+                                title={`Per-period overrides:\n${tooltip}`}
+                                className="inline-flex items-center gap-1 rounded-full border border-amber-500/40 bg-amber-500/10 px-1.5 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400"
+                              >
+                                {keys.length} period override{keys.length === 1 ? '' : 's'}
+                              </span>
+                              <button
+                                type="button"
+                                title="Clear all per-period overrides for this entry"
+                                className="text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+                                onClick={() => {
+                                  const next = { ...(d.frequency_config || {}) };
+                                  delete (next as any).amount_overrides;
+                                  updateRow(d._draftId, { frequency_config: next });
+                                }}
+                              >
+                                Clear
+                              </button>
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Frequency type */}
