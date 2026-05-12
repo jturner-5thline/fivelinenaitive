@@ -412,12 +412,16 @@ export function CashFlowManager() {
 
 
 
-  // Inject cash-in DB items + manual sidebar items into dailyData and roll them through dependent cash rows
+  // Inject manual sidebar cash-in items into dailyData and roll them through
+  // dependent cash rows. NOTE: deal-based DB cash-in items
+  // (cashflow_cash_in_items) are intentionally excluded here — they are routed
+  // through `mergeScheduledIntoWeekly` (via combinedScheduledItems) so they
+  // land in their correct fee row (Retainers / Milestones / Closing Fees) in
+  // the right week bucket. Including them here too would double-count.
   const enhancedDailyData = useMemo(() => {
     const safeDailyData = normalizeDailyData(dailyData);
     const safeSidebarData = normalizeSidebarData(sidebarData);
     const allCashInItems = [
-      ...(cashInDbItems || []).map(i => ({ date: i.target_date, amount: i.amount })),
       ...safeSidebarData.cash_in_next_8_weeks.map(i => ({ date: i.date, amount: i.amount })),
     ];
     if (allCashInItems.length === 0 || !safeDailyData.rows) return safeDailyData;
@@ -515,7 +519,7 @@ export function CashFlowManager() {
       ...safeDailyData,
       rows: updatedRows,
     };
-  }, [dailyData, cashInDbItems, sidebarData.cash_in_next_8_weeks]);
+  }, [dailyData, sidebarData.cash_in_next_8_weeks]);
 
   // Weekly data derived from enhanced daily (includes cash-in items)
   const weeklyData = useMemo(() => aggregateDailyToWeekly(normalizeDailyData(enhancedDailyData)), [enhancedDailyData]);
