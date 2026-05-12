@@ -444,12 +444,7 @@ export function mergeScheduledIntoWeekly(
       // what makes a Configure "Retainer" entry land in the visible
       // "Retainers" row, "Payroll Expense" in "Payroll - Salaries", etc.
       const cat = resolveCategoryToGridRow(entry.category);
-      const baseAmt = Number(entry.amount) || 0;
-      const amt = applyVariance(
-        baseAmt,
-        entry.frequency_config?.variance_pct,
-        `${entry.id || entry.category}:${occ}`,
-      );
+      const amt = getOccurrenceAmount(entry, occ);
       target[cat] = (Number(target[cat]) || 0) + amt;
       if (isDev) {
         traceRows.push({
