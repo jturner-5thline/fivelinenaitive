@@ -155,7 +155,7 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
   const [history, setHistory] = useState<NarrativeRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [tab, setTab] = useState<'narrative' | 'analysis' | 'qual-demo' | 'did-not-move' | 'history'>('narrative');
+  const [tab, setTab] = useState<'agenda' | 'narrative' | 'analysis' | 'qual-demo' | 'did-not-move' | 'history'>('agenda');
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -474,13 +474,18 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-5 h-8">
+          <TabsList className="grid w-full grid-cols-6 h-8">
+            <TabsTrigger value="agenda" className="text-xs gap-1"><ListChecks className="h-3 w-3" />Agenda</TabsTrigger>
             <TabsTrigger value="narrative" className="text-xs gap-1"><Pencil className="h-3 w-3" />Narrative</TabsTrigger>
             <TabsTrigger value="analysis" className="text-xs gap-1"><Sparkles className="h-3 w-3" />AI Analysis</TabsTrigger>
             <TabsTrigger value="qual-demo" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Qual → Demo</TabsTrigger>
             <TabsTrigger value="did-not-move" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Did Not Move</TabsTrigger>
             <TabsTrigger value="history" className="text-xs gap-1"><HistoryIcon className="h-3 w-3" />History</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="agenda" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
+            <AgendaPanel periodType={current.type} periodKey={current.key} periodLabel={current.label} />
+          </TabsContent>
 
           <TabsContent value="narrative" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
             <div className="flex flex-wrap items-center gap-0.5 border border-border rounded-t-md bg-muted/30 px-1.5 py-1">
