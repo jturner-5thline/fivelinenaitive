@@ -242,15 +242,6 @@
     @apply border-border;
   }
 
-  /* Force the dark color-scheme everywhere so the published build never
-     briefly paints with the browser/UA light defaults before next-themes
-     applies the `dark` class. Matches `forcedTheme="dark"` in App.tsx and
-     the `class="dark"` set on <html> in index.html. */
-  :root,
-  html {
-    color-scheme: dark;
-  }
-
   html,
   body,
   #root {
