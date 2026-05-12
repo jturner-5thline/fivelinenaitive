@@ -3659,6 +3659,7 @@ export default function DealDetail() {
                                     user.id,
                                   );
                                   await refreshOutstandingItems();
+                                  await checklistPhaseControls.refresh();
                                   if (r.inserted > 0) {
                                     toast({
                                       title: 'Checklist applied',
@@ -3674,6 +3675,7 @@ export default function DealDetail() {
                                     });
                                   }
                                 }}
+                                phaseControls={checklistPhaseControls}
                               />
                             </div>
                           );
