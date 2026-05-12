@@ -17,6 +17,10 @@ import {
   Sparkles, RefreshCw, History as HistoryIcon, Pencil,
   RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { ListChecks, Plus, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, subWeeks, subMonths, subQuarters, getISOWeek, getISOWeekYear } from 'date-fns';
