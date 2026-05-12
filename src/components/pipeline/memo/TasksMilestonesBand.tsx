@@ -14,6 +14,58 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { AddFollowupInlineForm } from './AddFollowupInlineForm';
 import { prefillFollowupTitle } from '@/lib/dealNextBestAction';
+import { getAsanaSyncContext } from '@/hooks/useAsanaTaskSync';
+import { updateTaskInAsana } from '@/hooks/useAsanaTaskUpdate';
+import type { DealTaskItem as DealTaskItemType } from '@/hooks/usePipelineDealTasks';
+
+function shortName(full?: string | null): string | null {
+  if (!full) return null;
+  const parts = full.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0];
+  return `${parts[0][0]}. ${parts[parts.length - 1]}`;
+}
+
+/**
+ * Best-effort: after a task field write, push the same change to Asana
+ * if this task is linked to an Asana task and the workspace has Asana
+ * sync configured. Mirrors the logic in useTasks.updateTask.
+ */
+async function syncTaskFieldToAsana(
+  taskId: string,
+  updates: { due_date?: string | null; assigned_to?: string | null | undefined },
+) {
+  try {
+    const { data: row } = await supabase
+      .from('tasks')
+      .select('asana_task_gid, sync_source, company_id')
+      .eq('id', taskId)
+      .maybeSingle();
+    const asanaGid = (row as any)?.asana_task_gid;
+    const syncSource = (row as any)?.sync_source;
+    if (!asanaGid || syncSource === 'asana') return;
+    const ctx = await getAsanaSyncContext((row as any)?.company_id || null);
+    if (!ctx) return;
+    const payload: { due_date?: string | null; assignee_email?: string | null } = {};
+    if ('due_date' in updates) payload.due_date = updates.due_date ?? null;
+    if ('assigned_to' in updates) {
+      if (updates.assigned_to) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('email')
+          .eq('user_id', updates.assigned_to)
+          .maybeSingle();
+        payload.assignee_email = (profile as any)?.email || null;
+      } else {
+        payload.assignee_email = null;
+      }
+    }
+    if (Object.keys(payload).length === 0) return;
+    await updateTaskInAsana(ctx, asanaGid, payload);
+    await supabase.from('tasks').update({ sync_source: null }).eq('id', taskId);
+  } catch (err) {
+    console.warn('[TasksMilestonesBand] Asana field sync failed:', err);
+  }
+}
 
 interface TasksMilestonesBandProps {
   deal: Deal;
@@ -186,6 +238,28 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
       queryClient.invalidateQueries({ queryKey: ['outstanding-items'] }),
       queryClient.invalidateQueries({ queryKey: ['pipeline-digests'] }),
     ]);
+  };
+
+  /**
+   * Optimistically patch the cached `pipeline-deal-tasks` Map so the
+   * row updates immediately, before the supabase round-trip completes.
+   */
+  const patchTaskInCache = (taskId: string, patch: Partial<DealTaskItemType>) => {
+    queryClient.setQueriesData<Map<string, DealTaskItemType[]>>(
+      { queryKey: ['pipeline-deal-tasks'] },
+      (current) => {
+        if (!current) return current;
+        const next = new Map(current);
+        for (const [dealId, items] of next.entries()) {
+          if (!items.some((t) => t.id === taskId)) continue;
+          next.set(
+            dealId,
+            items.map((t) => (t.id === taskId ? { ...t, ...patch } : t)),
+          );
+        }
+        return next;
+      },
+    );
   };
 
   const completeTaskItem = async (task: DealTaskItem) => {
@@ -376,14 +450,20 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
 
     setEditingDateId(null);
     const dueDate = date ? format(date, 'yyyy-MM-dd') : null;
+
+    // Optimistic UI: update the cached row immediately.
+    patchTaskInCache(task.id, { dueDate });
+
     const { error } = await supabase.from('tasks').update({ due_date: dueDate }).eq('id', task.id);
 
     if (error) {
       toast.error('Failed to update due date');
+      await refreshTasks();
       return;
     }
 
     toast.success('Due date updated');
+    void syncTaskFieldToAsana(task.id, { due_date: dueDate });
     await refreshTasks();
   };
 
@@ -391,14 +471,27 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
     if (task.kind !== 'task') return;
 
     setEditingAssigneeId(null);
+
+    // Optimistic UI: patch the cached row with the new assignee name/id
+    // so the chip updates without waiting for the server.
+    const newAssigneeName = userId
+      ? shortName(members.find((m) => m.id === userId)?.name || null)
+      : null;
+    patchTaskInCache(task.id, {
+      assignedToId: userId,
+      assignedToName: newAssigneeName,
+    });
+
     const { error } = await supabase.from('tasks').update({ assigned_to: userId }).eq('id', task.id);
 
     if (error) {
       toast.error('Failed to update assignee');
+      await refreshTasks();
       return;
     }
 
     toast.success('Assignee updated');
+    void syncTaskFieldToAsana(task.id, { assigned_to: userId });
     await refreshTasks();
   };
 
@@ -545,13 +638,16 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                           setEditingDateId(null);
                           setEditingAssigneeId(task.id);
                         }}
-                        className="flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground hover:text-foreground whitespace-nowrap shrink-0"
+                        className="group/assignee flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] text-muted-foreground transition-colors hover:text-foreground hover:border-primary/50 hover:bg-muted whitespace-nowrap shrink-0"
                         title={assigneeLabel || 'Assign'}
                       >
                         <span className="inline-flex items-center justify-center h-4 w-4 rounded-full bg-muted text-[8px] font-semibold text-muted-foreground/90">
                           {initialsOf(assigneeLabel) || '?'}
                         </span>
-                        <span className="truncate max-w-[84px]">{assigneeLabel || 'Unassigned'}</span>
+                        <span className="truncate max-w-[84px] group-hover/assignee:underline decoration-dotted underline-offset-2">
+                          {assigneeLabel || 'Unassigned'}
+                        </span>
+                        <Pencil className="h-2.5 w-2.5 text-muted-foreground/60 opacity-0 group-hover/assignee:opacity-100 transition-opacity" />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent
@@ -615,12 +711,15 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                           setEditingDateId(task.id);
                         }}
                         className={cn(
-                          'rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0 transition-colors hover:text-foreground',
+                          'group/date inline-flex items-center gap-1 rounded-full border border-border/60 bg-muted/50 px-1.5 py-0.5 text-[10px] whitespace-nowrap shrink-0 transition-colors hover:text-foreground hover:border-primary/50 hover:bg-muted',
                           isOverdue ? 'text-destructive font-medium' : 'text-muted-foreground'
                         )}
                         title={dueDate ? format(dueDate, 'MMM d, yyyy') : 'Set due date'}
                       >
-                        {dueDate ? format(dueDate, 'MMM d') : '+ date'}
+                        <span className="group-hover/date:underline decoration-dotted underline-offset-2">
+                          {dueDate ? format(dueDate, 'MMM d') : '+ date'}
+                        </span>
+                        <Pencil className="h-2.5 w-2.5 text-muted-foreground/60 opacity-0 group-hover/date:opacity-100 transition-opacity" />
                       </button>
                     </PopoverTrigger>
                     <PopoverContent
