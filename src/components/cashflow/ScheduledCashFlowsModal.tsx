@@ -693,31 +693,54 @@ export function ScheduledCashFlowsModal({
                 </Button>
               </div>
 
-              {/* Column Headers */}
-              <div className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-center px-2 pb-2 mb-1 border-b border-border">
-                <span />
-                <SortHeader label="Account" k="account" />
-                <SortHeader label="Category" k="category" />
-                <SortHeader label="Description" k="description" />
-                <SortHeader label="Amount" k="amount" />
-                <div className="flex items-center gap-3">
-                  <SortHeader label="Frequency" k="frequency" />
-                  <SortHeader label="Date" k="date" />
-                </div>
-                <SortHeader label="Type" k="type" />
-                <span />
-              </div>
+              {/*
+                Spreadsheet-style fixed column grid. Header and every row
+                use the SAME template so columns align exactly. The whole
+                grid lives inside a horizontal scroll container with
+                min-w-max so columns never collapse or wrap; if the modal
+                is narrower than the grid, internal horizontal scroll
+                appears instead.
+              */}
+              <div className="overflow-x-auto -mx-2 pb-1">
+                <div
+                  className="min-w-max"
+                  style={{
+                    // drag | account | category | description | amount | frequency | when | start | end | variance | type | delete
+                    ['--cf-cols' as any]:
+                      '16px 150px 180px 220px 120px 160px 150px 140px 140px 110px 120px 36px',
+                  }}
+                >
+                  {/* Column Headers */}
+                  <div
+                    className="grid items-center gap-2 px-2 pb-2 mb-1 border-b border-border whitespace-nowrap"
+                    style={{ gridTemplateColumns: 'var(--cf-cols)' }}
+                  >
+                    <span />
+                    <SortHeader label="Account" k="account" />
+                    <SortHeader label="Category" k="category" />
+                    <SortHeader label="Description" k="description" />
+                    <SortHeader label="Amount" k="amount" />
+                    <SortHeader label="Frequency" k="frequency" />
+                    <SortHeader label="When" k="date" />
+                    <span className="text-xs uppercase tracking-wide font-medium text-muted-foreground">Start</span>
+                    <span className="text-xs uppercase tracking-wide font-medium text-muted-foreground">End</span>
+                    <span className="text-xs uppercase tracking-wide font-medium text-muted-foreground">Variance</span>
+                    <SortHeader label="Type" k="type" />
+                    <span />
+                  </div>
 
-              {/* Rows */}
-              <div className="flex flex-col">
-                {sortedDrafts.map((d) => {
-                  return (
-                    <div
-                      key={d._draftId}
-                      className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-start px-2 py-3 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md"
-                    >
+                  {/* Rows */}
+                  <div className="flex flex-col">
+                    {sortedDrafts.map((d) => {
+                      const isOneTime = d.frequency_type === 'one_time';
+                      return (
+                        <div
+                          key={d._draftId}
+                          className="grid items-center gap-2 px-2 py-2.5 border-b border-border/60 hover:bg-muted/40 transition-colors rounded-md whitespace-nowrap"
+                          style={{ gridTemplateColumns: 'var(--cf-cols)' }}
+                        >
                       {/* Drag handle */}
-                      <div className="flex items-center justify-center pt-2 text-muted-foreground/50 cursor-grab">
+                      <div className="flex items-center justify-center text-muted-foreground/50 cursor-grab">
                         <GripVertical className="h-4 w-4" />
                       </div>
 
@@ -726,8 +749,8 @@ export function ScheduledCashFlowsModal({
                         value={d.account}
                         onValueChange={(v) => updateRow(d._draftId, { account: v })}
                       >
-                        <SelectTrigger className="h-9">
-                          <div className="flex items-center gap-2 min-w-0">
+                        <SelectTrigger className="h-9 w-full min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 truncate">
                             <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                             <SelectValue />
                           </div>
@@ -746,8 +769,8 @@ export function ScheduledCashFlowsModal({
                         value={d.category}
                         onValueChange={(v) => updateRow(d._draftId, { category: v })}
                       >
-                        <SelectTrigger className="h-9">
-                          <div className="flex items-center gap-2 min-w-0">
+                        <SelectTrigger className="h-9 w-full min-w-0">
+                          <div className="flex items-center gap-2 min-w-0 truncate">
                             <Tag className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                             <SelectValue />
                           </div>
@@ -789,11 +812,11 @@ export function ScheduledCashFlowsModal({
                         onChange={(e) =>
                           updateRow(d._draftId, { notes: e.target.value || null })
                         }
-                        className="h-9"
+                        className="h-9 w-full min-w-0"
                       />
 
                       {/* Amount */}
-                      <div className="relative">
+                      <div className="relative w-full min-w-0">
                         <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
                           $
                         </span>
@@ -802,152 +825,155 @@ export function ScheduledCashFlowsModal({
                           placeholder="0"
                           ariaLabel="Amount"
                           onCommit={(n) => updateRow(d._draftId, { amount: n })}
-                          className="pl-6 h-9 text-right tabular-nums"
+                          className="pl-6 h-9 w-full text-right tabular-nums"
                         />
                       </div>
 
-                      {/* Frequency */}
-                      <div className="flex flex-col gap-2 min-w-0">
-                        <div className="flex gap-2 min-w-0">
+                      {/* Frequency type */}
+                      <Select
+                        value={d.frequency_type}
+                        onValueChange={(v) =>
+                          handleFrequencyChange(d._draftId, v as FrequencyType)
+                        }
+                      >
+                        <SelectTrigger className="h-9 w-full min-w-0">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="one_time">1-Time</SelectItem>
+                          <SelectItem value="weekly">Weekly on [Day]</SelectItem>
+                          <SelectItem value="bi_weekly">Bi-Weekly on [Day]</SelectItem>
+                          <SelectItem value="monthly_first">Monthly — First [Day]</SelectItem>
+                          <SelectItem value="monthly_last">Monthly — Last [Day]</SelectItem>
+                          <SelectItem value="monthly_day">Monthly on the [X] day</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {/* When (date / day-of-week / day-of-month, depends on frequency) */}
+                      <div className="w-full min-w-0">
+                        {isOneTime && (
+                          <DatePickerField
+                            value={d.frequency_config?.one_time_date}
+                            onChange={(iso) =>
+                              updateConfig(d._draftId, { one_time_date: iso || '' })
+                            }
+                          />
+                        )}
+                        {(d.frequency_type === 'weekly' || d.frequency_type === 'bi_weekly') && (
                           <Select
-                            value={d.frequency_type}
+                            value={String(d.frequency_config?.day_of_week ?? 1)}
                             onValueChange={(v) =>
-                              handleFrequencyChange(d._draftId, v as FrequencyType)
+                              updateConfig(d._draftId, { day_of_week: Number(v) })
                             }
                           >
-                            <SelectTrigger className="h-9 flex-1">
+                            <SelectTrigger className="h-9 w-full min-w-0">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="one_time">1-Time</SelectItem>
-                              <SelectItem value="weekly">Weekly on [Day]</SelectItem>
-                              <SelectItem value="bi_weekly">Bi-Weekly on [Day]</SelectItem>
-                              <SelectItem value="monthly_first">Monthly — First [Day]</SelectItem>
-                              <SelectItem value="monthly_last">Monthly — Last [Day]</SelectItem>
-                              <SelectItem value="monthly_day">Monthly on the [X] day</SelectItem>
+                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
+                                <SelectItem key={idx} value={String(idx)}>
+                                  {label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
+                        )}
+                        {(d.frequency_type === 'monthly_first' ||
+                          d.frequency_type === 'monthly_last') && (
+                          <Select
+                            value={String(d.frequency_config?.ordinal_day_of_week ?? 1)}
+                            onValueChange={(v) =>
+                              updateConfig(d._draftId, { ordinal_day_of_week: Number(v) })
+                            }
+                          >
+                            <SelectTrigger className="h-9 w-full min-w-0">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DAY_OF_WEEK_LABELS.map((label, idx) => (
+                                <SelectItem key={idx} value={String(idx)}>
+                                  {label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {d.frequency_type === 'monthly_day' && (
+                          <Input
+                            type="number"
+                            min={1}
+                            max={31}
+                            className="h-9 w-full"
+                            value={d.frequency_config?.day_of_month ?? 1}
+                            onChange={(e) =>
+                              updateConfig(d._draftId, {
+                                day_of_month: Math.min(31, Math.max(1, Number(e.target.value))),
+                              })
+                            }
+                          />
+                        )}
+                      </div>
 
-                          {d.frequency_type === 'one_time' && (
-                            <div className="flex-1 min-w-0">
-                              <DatePickerField
-                                value={d.frequency_config?.one_time_date}
-                                onChange={(iso) =>
-                                  updateConfig(d._draftId, { one_time_date: iso || '' })
-                                }
-                              />
-                            </div>
-                          )}
+                      {/* Start date (only for recurring) */}
+                      <div className="w-full min-w-0">
+                        {!isOneTime ? (
+                          <DatePickerField
+                            value={d.start_date}
+                            onChange={(iso) => updateRow(d._draftId, { start_date: iso })}
+                            placeholder="Start date"
+                          />
+                        ) : (
+                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
+                        )}
+                      </div>
 
-                          {(d.frequency_type === 'weekly' || d.frequency_type === 'bi_weekly') && (
-                            <Select
-                              value={String(d.frequency_config?.day_of_week ?? 1)}
-                              onValueChange={(v) =>
-                                updateConfig(d._draftId, { day_of_week: Number(v) })
-                              }
-                            >
-                              <SelectTrigger className="h-9 flex-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {DAY_OF_WEEK_LABELS.map((label, idx) => (
-                                  <SelectItem key={idx} value={String(idx)}>
-                                    {label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
+                      {/* End date (only for recurring) */}
+                      <div className="w-full min-w-0">
+                        {!isOneTime ? (
+                          <DatePickerField
+                            value={d.end_date}
+                            onChange={(iso) => updateRow(d._draftId, { end_date: iso })}
+                            placeholder="End (opt.)"
+                          />
+                        ) : (
+                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
+                        )}
+                      </div>
 
-                          {(d.frequency_type === 'monthly_first' ||
-                            d.frequency_type === 'monthly_last') && (
-                            <Select
-                              value={String(d.frequency_config?.ordinal_day_of_week ?? 1)}
-                              onValueChange={(v) =>
-                                updateConfig(d._draftId, { ordinal_day_of_week: Number(v) })
-                              }
-                            >
-                              <SelectTrigger className="h-9 flex-1">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {DAY_OF_WEEK_LABELS.map((label, idx) => (
-                                  <SelectItem key={idx} value={String(idx)}>
-                                    {label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          )}
-
-                          {d.frequency_type === 'monthly_day' && (
+                      {/* Variance ± (only for recurring) */}
+                      <div className="w-full min-w-0">
+                        {!isOneTime ? (
+                          <div className="relative w-full">
                             <Input
                               type="number"
-                              min={1}
-                              max={31}
-                              className="h-9 flex-1"
-                              value={d.frequency_config?.day_of_month ?? 1}
-                              onChange={(e) =>
-                                updateConfig(d._draftId, {
-                                  day_of_month: Math.min(31, Math.max(1, Number(e.target.value))),
-                                })
+                              min={0}
+                              max={100}
+                              step="0.1"
+                              value={
+                                d.frequency_config?.variance_pct === undefined ||
+                                d.frequency_config?.variance_pct === null
+                                  ? ''
+                                  : d.frequency_config.variance_pct
                               }
-                            />
-                          )}
-                        </div>
-
-                        {d.frequency_type !== 'one_time' && (
-                          <div className="flex gap-2">
-                            <DatePickerField
-                              value={d.start_date}
-                              onChange={(iso) => updateRow(d._draftId, { start_date: iso })}
-                              placeholder="Start date"
-                            />
-                            <DatePickerField
-                              value={d.end_date}
-                              onChange={(iso) => updateRow(d._draftId, { end_date: iso })}
-                              placeholder="End date (optional)"
-                            />
-                          </div>
-                        )}
-
-                        {d.frequency_type !== 'one_time' && (
-                          <div className="flex items-center gap-2">
-                            <label className="text-xs text-muted-foreground whitespace-nowrap">
-                              Variance ±
-                            </label>
-                            <div className="relative w-28">
-                              <Input
-                                type="number"
-                                min={0}
-                                max={100}
-                                step="0.1"
-                                value={
-                                  d.frequency_config?.variance_pct === undefined ||
-                                  d.frequency_config?.variance_pct === null
-                                    ? ''
-                                    : d.frequency_config.variance_pct
+                              placeholder="0"
+                              aria-label="Variance percent"
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                if (raw === '') {
+                                  updateConfig(d._draftId, { variance_pct: undefined });
+                                } else {
+                                  const n = Math.max(0, Math.min(100, Number(raw)));
+                                  updateConfig(d._draftId, { variance_pct: n });
                                 }
-                                placeholder="0"
-                                onChange={(e) => {
-                                  const raw = e.target.value;
-                                  if (raw === '') {
-                                    updateConfig(d._draftId, { variance_pct: undefined });
-                                  } else {
-                                    const n = Math.max(0, Math.min(100, Number(raw)));
-                                    updateConfig(d._draftId, { variance_pct: n });
-                                  }
-                                }}
-                                className="h-9 pr-6 text-right tabular-nums"
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                %
-                              </span>
-                            </div>
-                            <span className="text-[11px] text-muted-foreground">
-                              optional fluctuation per occurrence
+                              }}
+                              className="h-9 w-full pr-6 text-right tabular-nums"
+                            />
+                            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                              %
                             </span>
                           </div>
+                        ) : (
+                          <div className="h-9 w-full rounded-md border border-dashed border-border/60 bg-muted/20" />
                         )}
                       </div>
 
@@ -956,7 +982,7 @@ export function ScheduledCashFlowsModal({
                         type="single"
                         value={d.flow_type}
                         onValueChange={(v) => v && handleFlowChange(d._draftId, v as FlowType)}
-                        className="grid grid-cols-2 gap-1 h-9"
+                        className="grid grid-cols-2 gap-1 h-9 w-full"
                       >
                         <ToggleGroupItem
                           value="cash_in"
@@ -991,13 +1017,15 @@ export function ScheduledCashFlowsModal({
                         size="icon"
                         onClick={() => deleteRow(d._draftId)}
                         title="Delete row"
-                        className="h-9 w-9 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                        className="h-9 w-9 justify-self-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
-                  );
-                })}
+                      );
+                    })}
+                  </div>
+                </div>
               </div>
             </div>
           )}
