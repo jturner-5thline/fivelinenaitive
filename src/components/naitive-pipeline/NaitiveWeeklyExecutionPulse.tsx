@@ -451,6 +451,22 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
     [deals],
   );
 
+  // ── Why Moving Forward (accelerator) ───────────────────────────
+  const { rows: advanceRows } = useWorkspaceAdvanceReasons();
+  const accelerator = useMemo(
+    () => topAdvance(advanceRows, thisWeekFrom, thisWeekTo),
+    [advanceRows],
+  );
+  const acceleratorLast = useMemo(
+    () => topAdvance(advanceRows, lastWeekFrom, lastWeekTo),
+    [advanceRows],
+  );
+  const acceleratorBreakdown = useMemo(
+    () => advanceBreakdown(advanceRows, thisWeekFrom, thisWeekTo),
+    [advanceRows],
+  );
+  const [breakdownOpen, setBreakdownOpen] = useState(false);
+
   // Per-category accelerator deals (this week) for drill-down
   const acceleratorDealsByCategory = useMemo(() => {
     const map = new Map<AdvanceReasonCategory, { deal: Deal; notes?: string | null; createdAt: string }[]>();
@@ -507,22 +523,6 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       })),
     });
   }, [acceleratorDealsByCategory]);
-
-  // ── Why Moving Forward (accelerator) ───────────────────────────
-  const { rows: advanceRows } = useWorkspaceAdvanceReasons();
-  const accelerator = useMemo(
-    () => topAdvance(advanceRows, thisWeekFrom, thisWeekTo),
-    [advanceRows],
-  );
-  const acceleratorLast = useMemo(
-    () => topAdvance(advanceRows, lastWeekFrom, lastWeekTo),
-    [advanceRows],
-  );
-  const acceleratorBreakdown = useMemo(
-    () => advanceBreakdown(advanceRows, thisWeekFrom, thisWeekTo),
-    [advanceRows],
-  );
-  const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   return (
     <section className="space-y-4">
