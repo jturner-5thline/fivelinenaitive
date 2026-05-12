@@ -785,13 +785,13 @@ export default function Dashboard() {
         <meta name="description" content="Your personal dashboard for managing deals and workflows." />
       </Helmet>
 
-      <div className="bg-transparent flex flex-col items-center px-3 sm:px-4 py-6 sm:py-8">
-        <div className="w-full max-w-6xl space-y-4 sm:space-y-6">
+      <div className="bg-transparent flex flex-col items-center px-3 sm:px-4 py-3 sm:py-4">
+        <div className="w-full max-w-6xl space-y-2 sm:space-y-3">
           {/* Hero: Greeting + AI Input + Quick Actions */}
-          <div className="text-center space-y-2 pt-2">
+          <div className="text-center space-y-1 pt-1">
             <p className="text-base sm:text-lg text-muted-foreground">{getTimeBasedGreeting()}, <span className="whitespace-nowrap">{firstName}</span></p>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-serif text-foreground">What can I do for you?</h1>
-            <p className="text-sm text-muted-foreground/50 mt-1">Ask me anything about your deals, pipeline, lenders, or market research</p>
+            <p className="text-sm text-muted-foreground/50">Ask me anything about your deals, pipeline, lenders, or market research</p>
           </div>
 
           <HintTooltip
@@ -934,7 +934,12 @@ export default function Dashboard() {
           })()}
           </HintTooltip>
 
-          <DashboardAIInput />
+          <div
+            className="sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 backdrop-blur-md bg-background/60 supports-[backdrop-filter]:bg-background/40 rounded-xl"
+            style={{ top: 'var(--app-top-bar-height, 0px)' }}
+          >
+            <DashboardAIInput />
+          </div>
 
           {/* ─── Dashboard navigation ──────────────────────────────────
               Single navigation row: preset tabs (My Dashboard, …)

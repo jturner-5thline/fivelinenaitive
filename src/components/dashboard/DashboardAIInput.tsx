@@ -35,7 +35,7 @@ export function DashboardAIInput(_props: DashboardAIInputProps = {}) {
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-3">
+    <div className="w-full h-full flex items-center justify-center p-1">
       <AskNaitiveBar
         inputRef={inputRef}
         value={value}
