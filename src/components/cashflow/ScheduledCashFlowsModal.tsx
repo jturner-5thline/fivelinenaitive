@@ -565,7 +565,8 @@ export function ScheduledCashFlowsModal({
                 No facilities configured. Click “Add Facility” to start.
               </p>
             ) : (
-              <div className="flex flex-col gap-3">
+              <div className="overflow-x-auto">
+                <div className="flex flex-col gap-3 min-w-max">
                 {facilityDrafts.map((f) => {
                   const total = Math.max(0, Number(f.facility_amount) || 0);
                   const drawn = Math.max(0, Math.min(total, Number(f.initial_drawn) || 0));
@@ -573,18 +574,22 @@ export function ScheduledCashFlowsModal({
                   return (
                     <div
                       key={f.id}
-                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end p-3 rounded-lg border border-border bg-card flex-nowrap"
+                      className="grid gap-2 items-end p-3 rounded-lg border border-border bg-card whitespace-nowrap"
+                      style={{
+                        gridTemplateColumns:
+                          '260px 150px 150px 150px 150px 150px 36px',
+                      }}
                     >
-                      <div className="sm:col-span-3 min-w-0">
+                      <div className="min-w-0">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Facility name</label>
                         <Input
                           value={f.name}
                           placeholder="e.g. SVB Line of Credit"
                           onChange={(e) => updateFacility(f.id, { name: e.target.value })}
-                          className="h-9 mt-1"
+                          className="h-9 w-full mt-1"
                         />
                       </div>
-                      <div className="sm:col-span-2 min-w-[110px]">
+                      <div className="min-w-0">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Total facility</label>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
@@ -593,11 +598,11 @@ export function ScheduledCashFlowsModal({
                             placeholder="500,000"
                             ariaLabel="Total facility amount"
                             onCommit={(n) => updateFacility(f.id, { facility_amount: n })}
-                            className="pl-6 h-9 text-right tabular-nums"
+                            className="pl-6 h-9 w-full text-right tabular-nums"
                           />
                         </div>
                       </div>
-                      <div className="sm:col-span-2 min-w-[110px]">
+                      <div className="min-w-0">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Currently drawn</label>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
@@ -606,18 +611,18 @@ export function ScheduledCashFlowsModal({
                             placeholder="0"
                             ariaLabel="Currently drawn amount"
                             onCommit={(n) => updateFacility(f.id, { initial_drawn: n })}
-                            className="pl-6 h-9 text-right tabular-nums"
+                            className="pl-6 h-9 w-full text-right tabular-nums"
                           />
                         </div>
                       </div>
-                      <div className="sm:col-span-2 min-w-[110px]">
+                      <div className="min-w-0">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Available LOC</label>
                         <div className="h-9 mt-1 px-3 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 text-amber-300 flex items-center justify-end gap-1.5 text-sm font-medium tabular-nums">
                           <Lock className="h-3 w-3" />
                           {available.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
                         </div>
                       </div>
-                      <div className="sm:col-span-1 min-w-[110px]">
+                      <div className="min-w-0">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Start date</label>
                         <div className="mt-1">
                           <DatePickerField
@@ -627,7 +632,7 @@ export function ScheduledCashFlowsModal({
                           />
                         </div>
                       </div>
-                      <div className="sm:col-span-1 min-w-[110px]">
+                      <div className="min-w-0">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Maturity (end)</label>
                         <div className="mt-1">
                           <DatePickerField
@@ -643,13 +648,14 @@ export function ScheduledCashFlowsModal({
                         size="icon"
                         onClick={() => removeFacility(f.id)}
                         title="Remove facility"
-                        className="sm:col-span-1 h-9 w-9 justify-self-end text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                        className="h-9 w-9 self-end justify-self-center text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   );
                 })}
+                </div>
               </div>
             )}
           </section>
