@@ -425,12 +425,10 @@ export function ScheduledCashFlowsModal({
     setDrafts((prev) =>
       prev.map((d) => {
         if (d._draftId !== draftId) return d;
-        const baseCats = flow === 'cash_in' ? CASH_IN_CATEGORIES : CASH_OUT_CATEGORIES;
-        const extras = flow === 'cash_in' ? extraCashInCategories : extraCashOutCategories;
-        const validCats = [...baseCats, ...extras];
-        const category = (validCats as readonly string[]).includes(d.category)
+        const validCats = flow === 'cash_in' ? dedupedCashIn : dedupedCashOut;
+        const category = validCats.includes(d.category)
           ? d.category
-          : validCats[0];
+          : (validCats[0] ?? '');
         return { ...d, flow_type: flow, category };
       }),
     );
