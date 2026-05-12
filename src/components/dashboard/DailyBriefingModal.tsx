@@ -1285,20 +1285,19 @@ function FollowupTiles({
   onNavigate: (path: string) => void;
   assigneeName: string;
 }) {
-  const { dismiss, isDismissed } = useDailyDismissals('rundown-followup');
+  const { dismiss, isDismissed, restore } = useDailyDismissals('rundown-followup');
   const allTiles = groups.flatMap(g =>
     g.items.map(it => ({ ...it, company: g.company, stage: g.stage })),
   );
   const tiles = allTiles.filter(t => !isDismissed(t.key));
-  if (tiles.length === 0 && allTiles.length > 0) {
-    return (
-      <p className="text-xs italic text-muted-foreground px-1 py-2">
-        All follow-ups dismissed for today. They’ll return after the 5 AM ET reset.
-      </p>
-    );
-  }
+  const clearedTiles = allTiles.filter(t => isDismissed(t.key));
   return (
     <div>
+      {tiles.length === 0 && clearedTiles.length > 0 && (
+        <p className="text-xs italic text-muted-foreground px-1 py-2">
+          All follow-ups cleared for today. See the Cleared section below — they’ll return after the 5 AM ET reset.
+        </p>
+      )}
       {tiles.map(t => {
         const due = t.dueAt ? new Date(t.dueAt) : null;
         const overdue = due ? isPast(due) && !isToday(due) : false;
@@ -1352,6 +1351,58 @@ function FollowupTiles({
           </div>
         );
       })}
+      {clearedTiles.length > 0 && (
+        <div className="mt-3 pt-3 border-t border-white/10">
+          <div className="flex items-center justify-between mb-2 px-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">
+              Cleared today ({clearedTiles.length})
+            </span>
+            <span className="text-[10px] text-muted-foreground/70">Resets 5 AM ET</span>
+          </div>
+          {clearedTiles.map(t => {
+            const due = t.dueAt ? new Date(t.dueAt) : null;
+            return (
+              <div key={t.key} className="relative group/restore mb-2">
+                <button
+                  type="button"
+                  aria-label="Restore"
+                  title="Restore to active follow-ups"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    restore(t.key);
+                  }}
+                  className="absolute top-1.5 right-1.5 z-10 text-[10px] text-white/60 hover:text-white px-1.5 py-0.5 rounded hover:bg-white/10 opacity-0 group-hover/restore:opacity-100 focus:opacity-100 transition-opacity"
+                >
+                  Restore
+                </button>
+                <button
+                  type="button"
+                  onClick={() => t.dealId && onNavigate(`/deal/${t.dealId}`)}
+                  className="block w-full text-left rounded-lg bg-white/[0.02] border border-white/5 p-3 pr-16 hover:bg-white/[0.05] transition-colors opacity-60"
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-sm font-semibold text-white/80 truncate line-through decoration-white/30">
+                      {t.company}
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-medium border border-white/15 text-white/60 whitespace-nowrap">
+                      Cleared
+                    </span>
+                  </div>
+                  <div className="text-sm text-white/70 truncate mb-1.5">{t.title}</div>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-xs text-muted-foreground">
+                      {due ? `Due ${format(due, 'MMM d, h:mm a')}` : 'No due date'}
+                    </span>
+                    <span className="text-xs text-muted-foreground truncate max-w-[50%]">
+                      {assigneeName}
+                    </span>
+                  </div>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
