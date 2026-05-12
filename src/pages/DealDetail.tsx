@@ -3767,19 +3767,14 @@ export default function DealDetail() {
               <div className="flex gap-6">
               <div className="w-[70%] space-y-6">
               {/* Lenders Card */}
-                <Card className="max-h-[750px] flex flex-col">
-                  <CardHeader className="pb-4">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg">
-                            Lenders
-                          </CardTitle>
-                          {deal.lenders && deal.lenders.length > 0 && (
-                            <span className="text-sm font-normal text-muted-foreground">
-                              ({deal.lenders.length})
-                            </span>
-                          )}
-                        </div>
+                 <Card className="max-h-[750px] flex flex-col">
+                   <CardHeader className="pb-3 pt-3">
+                     <div className="flex items-center gap-2">
+                       {deal.lenders && deal.lenders.length > 0 && (
+                         <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0">
+                           {deal.lenders.length}
+                         </span>
+                       )}
                       <LenderSearchInput
                         lenderNames={lenderNames}
                         existingLenderNames={existingLenderNames}
@@ -3857,19 +3852,26 @@ export default function DealDetail() {
                               onAddLender={addLender}
                             />
                           )}
-                          <Select value={lenderSort} onValueChange={(v) => setLenderSort(v as 'none' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest')}>
-                            <SelectTrigger className="h-8 w-[200px] text-xs">
-                              <ArrowDownUp className="h-3.5 w-3.5 mr-1.5 shrink-0" />
-                              <SelectValue placeholder="Sort By" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">No Sort</SelectItem>
-                              <SelectItem value="updated-desc">Last Updated: Newest to Oldest</SelectItem>
-                              <SelectItem value="updated-asc">Last Updated: Oldest to Newest</SelectItem>
-                              <SelectItem value="stage-furthest">Stage: Furthest to Slowest</SelectItem>
-                              <SelectItem value="stage-slowest">Stage: Slowest to Furthest</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Sort lenders"
+                                title="Sort lenders"
+                              >
+                                <ArrowDownUp className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="text-xs">
+                              <DropdownMenuItem onSelect={() => setLenderSort('none')}>No Sort</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('updated-desc')}>Last Updated: Newest to Oldest</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('updated-asc')}>Last Updated: Oldest to Newest</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('stage-furthest')}>Stage: Furthest to Slowest</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('stage-slowest')}>Stage: Slowest to Furthest</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                           <Button 
                             variant="ghost" 
                             size="icon" 
