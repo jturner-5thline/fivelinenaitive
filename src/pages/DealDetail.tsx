@@ -3792,8 +3792,9 @@ export default function DealDetail() {
                         onRemoveLender={removeLenderFromDeal}
                         dealLenders={(deal.lenders || []).map(l => ({ id: l.id, name: l.name }))}
                       />
-                      <div className="flex items-center gap-2 ml-auto">
+                      <div className="flex items-center gap-2 ml-auto min-w-0">
                       {deal.lenders && deal.lenders.length > 0 && (
+                        <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin">
                         <ToggleGroup
                           type="multiple"
                           value={Array.from(lenderGroupFilters)}
@@ -3802,7 +3803,7 @@ export default function DealDetail() {
                             // Clear individual stage filters whenever group chips change to keep semantics simple
                             setLenderStageFilters(new Set());
                           }}
-                          className="flex flex-wrap gap-1"
+                          className="flex flex-nowrap items-center gap-1 w-max"
                         >
                           {(() => {
                             const groupOrder = ['excluded', 'active', 'on-hold', 'on-deck', 'passed'];
@@ -3828,7 +3829,7 @@ export default function DealDetail() {
                                   size="sm"
                                   variant="outline"
                                   aria-label={`Filter by ${label}`}
-                                  className="h-8 px-2.5 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+                                  className="h-8 px-2.5 text-xs whitespace-nowrap shrink-0 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
                                 >
                                   {group?.color && <span className={`h-2 w-2 rounded-full mr-1.5 ${group.color}`} />}
                                   {label}
@@ -3838,8 +3839,9 @@ export default function DealDetail() {
                             });
                           })()}
                         </ToggleGroup>
+                        </div>
                       )}
-                          {hasLenderMatchingAccess && (
+                          {hasLenderMatchingAccess && hasNaitivePipelineAccess && (
                             <LenderSuggestionsPanel
                               dealId={id}
                               criteria={{
