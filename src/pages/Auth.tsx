@@ -137,7 +137,6 @@ const Auth = () => {
       if (error) throw error;
       toast.success("Welcome back!");
       navigate(redirectUrl);
-      navigate("/deals");
     } catch (error: any) {
       toast.error(error.message || "Invalid verification code.");
     } finally {
@@ -262,7 +261,12 @@ const Auth = () => {
   const handleGoogleSignIn = async () => {
     setGoogleLoading(true);
     try {
-      const redirectUri = `${window.location.origin}/auth`;
+      // Preserve the post-login redirect target through the OAuth round-trip
+      // so users coming from email CTAs (e.g. /insights) land on the right page.
+      const redirectQuery = redirectUrl && redirectUrl !== '/deals'
+        ? `?redirect=${encodeURIComponent(redirectUrl)}`
+        : '';
+      const redirectUri = `${window.location.origin}/auth${redirectQuery}`;
       console.log("[GoogleSSO] Starting sign-in, redirect_uri:", redirectUri);
       const result = await lovable.auth.signInWithOAuth("google", {
         redirect_uri: redirectUri,
