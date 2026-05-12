@@ -4327,13 +4327,6 @@ export default function DealDetail() {
                                     return (
                                        <div key={lender.id} className="relative rounded-xl border border-blue-500/25 bg-gradient-to-br from-[hsl(220,30%,10%)] to-[hsl(260,15%,5%)] p-4 shadow-md hover:shadow-lg transition-all">
                                          <div className="absolute right-3 top-3 flex items-center gap-1 z-10">
-                                           <CreateLenderTaskButton
-                                             dealId={deal.id}
-                                             lenderId={lender.id}
-                                             lenderName={lender.name}
-                                           />
-                                         </div>
-                                         <div className="absolute bottom-3 right-4 z-10">
                                            <LenderFollowUpPopover
                                              dealId={deal.id}
                                              dealName={deal.name}
@@ -4344,6 +4337,11 @@ export default function DealDetail() {
                                              lenderNotes={lender.notes}
                                              lenderUpdatedAt={lender.updatedAt}
                                              onSent={() => refreshDeals?.()}
+                                           />
+                                           <CreateLenderTaskButton
+                                             dealId={deal.id}
+                                             lenderId={lender.id}
+                                             lenderName={lender.name}
                                            />
                                          </div>
                                          <div className="grid grid-cols-[160px_160px_140px_1fr] items-center gap-3 pr-16">
