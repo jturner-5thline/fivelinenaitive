@@ -68,10 +68,14 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: require CRON_SECRET for scheduled invocations
-  const authHeader = req.headers.get("Authorization");
-  const expectedSecret = Deno.env.get("CRON_SECRET");
-  if (expectedSecret && authHeader !== `Bearer ${expectedSecret}`) {
+  // Auth: require either CRON_SECRET or the project anon key (cron-friendly)
+  const authHeader = req.headers.get("Authorization") ?? "";
+  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
+  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+  const valid =
+    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
+    (anonKey && authHeader === `Bearer ${anonKey}`);
+  if (!valid) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json", ...corsHeaders },
