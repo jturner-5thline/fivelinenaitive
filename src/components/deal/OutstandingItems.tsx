@@ -1057,6 +1057,70 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
             activeItems.map((item) => renderItemRow(item))
           )}
 
+          {/* Phase progression controls (Fix 3) and retroactive banner (Fix 4) */}
+          {phaseControls && !readOnly && (
+            <div className="space-y-2 pt-2">
+              {phaseControls.showRetroBanner && (
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3 text-xs">
+                  <p className="font-medium text-amber-700 dark:text-amber-400">
+                    This deal has all checklist phases loaded.
+                  </p>
+                  <p className="text-muted-foreground mt-0.5">
+                    You may want to archive Phase 2 and Phase 3 items until needed. Archiving hides them — nothing is deleted.
+                  </p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {(Object.keys(phaseControls.phases) as unknown as ChecklistPhase[])
+                      .filter((p) => Number(p) === 2 || Number(p) === 3)
+                      .map((p) => {
+                        const ph = Number(p) as ChecklistPhase;
+                        const present = phaseControls.phases[ph].present;
+                        if (present === 0) return null;
+                        return (
+                          <Button
+                            key={`arch-${ph}`}
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5"
+                            onClick={() => phaseControls.archivePhase(ph)}
+                          >
+                            <Archive className="h-3.5 w-3.5" />
+                            Archive Phase {ph} Items ({present})
+                          </Button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {([2, 3] as ChecklistPhase[]).map((ph) => {
+                  const remaining = phaseControls.phases[ph].remaining;
+                  if (remaining === 0) return null;
+                  // Only show "Add Phase N" once the prior phase has at least one item present.
+                  const priorPresent =
+                    ph === 2
+                      ? phaseControls.phases[1].present + phaseControls.phases[1].archived > 0 ||
+                        items.length > 0
+                      : phaseControls.phases[2].present + phaseControls.phases[2].archived > 0;
+                  if (!priorPresent) return null;
+                  return (
+                    <Button
+                      key={`add-${ph}`}
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="gap-1.5 border-dashed"
+                      onClick={() => phaseControls.addPhase(ph)}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Add Phase {ph} Items ({remaining})
+                    </Button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Completed Items Section */}
           {completedItems.length > 0 && (
             <Collapsible open={isCompletedExpanded} onOpenChange={setIsCompletedExpanded}>
