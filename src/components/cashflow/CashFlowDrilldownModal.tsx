@@ -626,6 +626,44 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
         <div className="mt-2 text-xs text-muted-foreground">
           Cell total shown in grid: <span className="tabular-nums">{fmt(context.cellValue)}</span>
         </div>
+        {scopePrompt && (
+          <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 space-y-2">
+            <div className="text-sm font-medium">Apply amount change to…</div>
+            <div className="text-xs text-muted-foreground">
+              This is a recurring entry. Pick whether the new amount of{' '}
+              <span className="tabular-nums font-medium text-foreground">
+                {fmt(scopePrompt.newAmount)}
+              </span>{' '}
+              should override only the {formatNiceDate(scopePrompt.occurrenceDate)} occurrence
+              or update the recurring base going forward.
+            </div>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => applyScope('this_period')}
+                disabled={busyId === scopePrompt.entryId}
+              >
+                For this Period Only
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => applyScope('going_forward')}
+                disabled={busyId === scopePrompt.entryId}
+              >
+                Going Forward
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setScopePrompt(null)}
+                disabled={busyId === scopePrompt.entryId}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
