@@ -1,4 +1,4 @@
-import { useMemo, useState, ReactNode } from 'react';
+import { useMemo, useState, useCallback, ReactNode } from 'react';
 import { Deal } from '@/types/deal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -307,8 +307,9 @@ function blockerBreakdown(
   deals: Deal[],
   from: Date,
   to: Date,
-): { label: string; count: number }[] {
+): { label: string; count: number; deals: BlockerDealHit[] }[] {
   const counts = new Map<string, number>();
+  const dealsByHead = new Map<string, BlockerDealHit[]>();
   for (const d of deals) {
     try {
       const u = new Date(d.updatedAt);
@@ -320,11 +321,14 @@ function blockerBreakdown(
         if (!head || seen.has(head)) continue;
         seen.add(head);
         counts.set(head, (counts.get(head) || 0) + 1);
+        const arr = dealsByHead.get(head) || [];
+        arr.push({ deal: d, reasons: tokens });
+        dealsByHead.set(head, arr);
       }
     } catch { /* skip */ }
   }
   return Array.from(counts.entries())
-    .map(([label, count]) => ({ label, count }))
+    .map(([label, count]) => ({ label, count, deals: dealsByHead.get(label) || [] }))
     .sort((a, b) => b.count - a.count);
 }
 
@@ -337,9 +341,10 @@ const PIE_COLORS = [
   'hsl(180, 60%, 45%)',
 ];
 
-function ReasonPie({ data, emptyText }: {
+function ReasonPie({ data, emptyText, onSliceClick }: {
   data: { label: string; count: number }[];
   emptyText: string;
+  onSliceClick?: (label: string) => void;
 }) {
   if (data.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-6">{emptyText}</p>;
@@ -363,6 +368,8 @@ function ReasonPie({ data, emptyText }: {
             paddingAngle={data.length > 1 ? 2 : 0}
             stroke="hsl(var(--card))"
             strokeWidth={1}
+            onClick={onSliceClick ? (slice: any) => onSliceClick(slice?.label ?? slice?.payload?.label) : undefined}
+            cursor={onSliceClick ? 'pointer' : undefined}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
@@ -459,6 +466,63 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
     [advanceRows],
   );
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+
+  // Per-category accelerator deals (this week) for drill-down
+  const acceleratorDealsByCategory = useMemo(() => {
+    const map = new Map<AdvanceReasonCategory, { deal: Deal; notes?: string | null; createdAt: string }[]>();
+    const dealById = new Map(deals.map((d) => [d.id, d]));
+    for (const r of advanceRows) {
+      const t = new Date(r.createdAt);
+      if (!inRange(t, thisWeekFrom, thisWeekTo)) continue;
+      const d = dealById.get(r.dealId);
+      if (!d) continue;
+      const arr = map.get(r.category) || [];
+      arr.push({ deal: d, notes: r.notes, createdAt: r.createdAt });
+      map.set(r.category, arr);
+    }
+    return map;
+  }, [advanceRows, deals]);
+
+  // Unified slice drill-down
+  const [drill, setDrill] = useState<{
+    title: string;
+    description: string;
+    tone: 'blocker' | 'accelerator';
+    deals: { deal: Deal; lines: string[]; date: string }[];
+  } | null>(null);
+
+  const openBlockerSlice = useCallback((label: string) => {
+    const entry = blockerBreakdownThis.find((b) => b.label === label);
+    if (!entry || entry.deals.length === 0) return;
+    setDrill({
+      title: `${label} · ${entry.count} ${entry.count === 1 ? 'mention' : 'mentions'}`,
+      description: 'Deals updated this week that cited this reason in "Why Not Moving Forward".',
+      tone: 'blocker',
+      deals: entry.deals.map(({ deal, reasons }) => ({
+        deal,
+        lines: reasons,
+        date: deal.updatedAt,
+      })),
+    });
+  }, [blockerBreakdownThis]);
+
+  const openAcceleratorSlice = useCallback((label: string) => {
+    const category = (Object.keys(ADVANCE_REASON_LABELS) as AdvanceReasonCategory[])
+      .find((c) => ADVANCE_REASON_LABELS[c] === label);
+    if (!category) return;
+    const list = acceleratorDealsByCategory.get(category) || [];
+    if (list.length === 0) return;
+    setDrill({
+      title: `${label} · ${list.length} ${list.length === 1 ? 'deal' : 'deals'}`,
+      description: 'Deals with this advance reason logged this week.',
+      tone: 'accelerator',
+      deals: list.map(({ deal, notes, createdAt }) => ({
+        deal,
+        lines: notes ? [notes] : [],
+        date: createdAt,
+      })),
+    });
+  }, [acceleratorDealsByCategory]);
 
   return (
     <section className="space-y-4">
@@ -605,7 +669,11 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
           )}
         </button>
         <div className="px-4 pb-3">
-          <ReasonPie data={blockerBreakdownThis} emptyText="No data this week" />
+          <ReasonPie
+            data={blockerBreakdownThis.map((b) => ({ label: b.label, count: b.count }))}
+            emptyText="No data this week"
+            onSliceClick={openBlockerSlice}
+          />
         </div>
       </Card>
 
@@ -660,11 +728,75 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                   count: b.count,
                 }))}
                 emptyText="No data this week"
+                onSliceClick={openAcceleratorSlice}
               />
             </div>
           </div>
         </Card>
       </div>
+
+      <Dialog open={!!drill} onOpenChange={(o) => { if (!o) setDrill(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className={cn(
+              'text-base',
+              drill?.tone === 'accelerator' && 'text-emerald-600 dark:text-emerald-400',
+              drill?.tone === 'blocker' && 'text-primary',
+            )}>
+              {drill?.title}
+            </DialogTitle>
+            <DialogDescription>{drill?.description}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
+            {drill && drill.deals.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {drill.deals.map(({ deal, lines, date }) => (
+                  <li key={deal.id + date} className="py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          to={`/deal/${deal.id}`}
+                          className="text-sm font-semibold text-foreground hover:text-primary truncate block"
+                          onClick={() => setDrill(null)}
+                        >
+                          {deal.company || 'Untitled deal'}
+                        </Link>
+                        {deal.stage && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Stage: {formatSlug(deal.stage)}
+                          </p>
+                        )}
+                        {lines.length > 0 && (
+                          <ul className="mt-2 space-y-1">
+                            {lines.map((r, i) => (
+                              <li
+                                key={i}
+                                className={cn(
+                                  'text-xs text-foreground/90 leading-snug pl-3 border-l-2',
+                                  drill.tone === 'accelerator'
+                                    ? 'border-emerald-500/40'
+                                    : 'border-primary/40',
+                                )}
+                              >
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                        {format(new Date(date), 'MMM d')}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground py-6 text-center">No deals.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
         <DialogContent className="max-w-2xl">
