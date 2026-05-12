@@ -35,7 +35,6 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 const AddWidgetDialog = lazy(() =>
   import('@/components/dashboard/AddWidgetDialog').then(m => ({ default: m.AddWidgetDialog })),
 );
-import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
