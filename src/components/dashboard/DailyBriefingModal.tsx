@@ -84,6 +84,14 @@ interface DailyBriefingModalProps {
    * excluded or unknown, falls back to the first available tab.
    */
   initialTab?: 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
+  /**
+   * Identifies which briefing surface this modal represents. Used to scope
+   * per-day dismissal state so dismissing an item in one briefing surface
+   * (e.g. the regular Daily Briefing) does NOT also hide it in another
+   * surface (e.g. Niki's Daily Briefing). Both still read the same live
+   * underlying deal activity. Defaults to 'daily_briefing'.
+   */
+  briefingType?: string;
 }
 
 // Initial tab to open with. Defaults to the first available tab.
