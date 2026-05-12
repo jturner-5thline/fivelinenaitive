@@ -3839,15 +3839,15 @@ export default function DealDetail() {
                                   size="sm"
                                   variant="outline"
                                   aria-label={`Filter by ${label}`}
-                                  className="h-8 px-2.5 text-xs whitespace-nowrap shrink-0 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+                                  className="h-8 px-1.5 text-xs whitespace-nowrap shrink-0 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
                                 >
                                   {(id === 'passed' || group?.color) && (
                                     <span
-                                      className={`h-2 w-2 rounded-full mr-1.5 ${id === 'passed' ? 'bg-destructive' : group!.color}`}
+                                      className={`h-1.5 w-1.5 rounded-full mr-1 ${id === 'passed' ? 'bg-destructive' : group!.color}`}
                                     />
                                   )}
                                   {label}
-                                  {count > 0 && <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{count}</span>}
+                                  {count > 0 && <span className="ml-1 text-[10px] opacity-70 tabular-nums">{count}</span>}
                                 </ToggleGroupItem>
                               );
                             });
