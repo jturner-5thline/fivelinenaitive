@@ -1,5 +1,6 @@
 // v3 - with pending company join request redirect
 import { Navigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProfile } from '@/hooks/useProfile';
 import { useIsApproved } from '@/hooks/useUserApproval';
@@ -21,6 +22,7 @@ export function ProtectedRoute({
   const { profile, isLoading: profileLoading } = useProfile();
   const { data: isApproved, isLoading: approvalLoading } = useIsApproved();
   const { data: joinRequests, isLoading: joinRequestsLoading } = useMyJoinRequests();
+  const location = useLocation();
 
   // Check if user is a 5thline.co user (auto-approved)
   const is5thLineUser = user?.email?.endsWith('@5thline.co') ?? false;
@@ -36,7 +38,11 @@ export function ProtectedRoute({
   }
 
   if (!user) {
-    return <Navigate to="/login" replace />;
+    // Preserve the originally requested path so the auth flow returns
+    // the user back here after sign-in (e.g. email CTA -> /insights).
+    const target = `${location.pathname}${location.search}${location.hash}`;
+    const redirectQuery = target && target !== '/' ? `?redirect=${encodeURIComponent(target)}` : '';
+    return <Navigate to={`/login${redirectQuery}`} replace />;
   }
 
   // Check approval status (skip for 5thline.co users or if explicitly skipped)
