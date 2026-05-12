@@ -3786,6 +3786,24 @@ export default function DealDetail() {
                         onAddLender={addLender}
                         onRemoveLender={removeLenderFromDeal}
                         dealLenders={(deal.lenders || []).map(l => ({ id: l.id, name: l.name }))}
+                        aiSearchSlot={
+                          hasLenderMatchingAccess && hasNaitivePipelineAccess ? (
+                            <LenderSuggestionsPanel
+                              dealId={id}
+                              criteria={{
+                                industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
+                                dealValue: deal.value || undefined,
+                                capitalAsk: dealWriteUpData.capitalAsk || undefined,
+                                dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
+                                geo: dealWriteUpData.location || undefined,
+                                cashBurnOk: savedMatchingCriteria.cashBurnOk,
+                                sponsorship: savedMatchingCriteria.sponsorship,
+                              }}
+                              existingLenderNames={deal.lenders?.map(l => l.name) || []}
+                              onAddLender={addLender}
+                            />
+                          ) : null
+                        }
                       />
                       <div className="flex items-center gap-2 ml-auto min-w-0">
                       {deal.lenders && deal.lenders.length > 0 && (
@@ -3836,22 +3854,6 @@ export default function DealDetail() {
                         </ToggleGroup>
                         </div>
                       )}
-                          {hasLenderMatchingAccess && hasNaitivePipelineAccess && (
-                            <LenderSuggestionsPanel
-                              dealId={id}
-                              criteria={{
-                                industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-                                dealValue: deal.value || undefined,
-                                capitalAsk: dealWriteUpData.capitalAsk || undefined,
-                                dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
-                                geo: dealWriteUpData.location || undefined,
-                                cashBurnOk: savedMatchingCriteria.cashBurnOk,
-                                sponsorship: savedMatchingCriteria.sponsorship,
-                              }}
-                              existingLenderNames={deal.lenders?.map(l => l.name) || []}
-                              onAddLender={addLender}
-                            />
-                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
