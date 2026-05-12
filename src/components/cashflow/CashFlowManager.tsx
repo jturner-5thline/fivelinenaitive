@@ -11,7 +11,7 @@ import { IMPORTED_DAILY_DATA, IMPORTED_ROW_STRUCTURE } from './importedCashFlowD
 import { aggregateDailyToWeekly } from './dailyToWeekly';
 import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
-import { WeeklyReportTab } from './WeeklyReportTab';
+import { WeeklyReportTab, WEEKLY_ROW_ORDER } from './WeeklyReportTab';
 import { ExportModal } from './ExportModal';
 import { ActivityLogDialog } from './ActivityLogDialog';
 import { AddCashInModal } from './AddCashInModal';
@@ -1458,8 +1458,44 @@ export function CashFlowManager() {
           open={scheduledModalOpen}
           initialEntries={scheduledItems}
           onClose={() => setScheduledModalOpen(false)}
-          extraCashInCategories={customRows.receipts}
-          extraCashOutCategories={customRows.disbursements}
+          cashInCategories={(() => {
+            // Source: visible Line item rows under "Cash Receipts" in the
+            // Cash Flow table. Excludes header/summary/system rows
+            // (BEGINNING/ENDING CASH, NET CHANGE, TOTAL CASH ON HAND,
+            // CASH RECEIPTS / CASH DISBURSEMENTS headers, Internal
+            // Transfers, Add Row footers, parents, spacers, LOC sub-rows,
+            // transfer accounts).
+            const items = WEEKLY_ROW_ORDER
+              .filter((r) =>
+                r.section === 'receipts' &&
+                !r.isHeader &&
+                !r.isSpacer &&
+                !r.isParent &&
+                !r.isAddRowFooter &&
+                !r.isTransferAccount &&
+                !r.isLocFacility &&
+                !r.isNetChange,
+              )
+              .map((r) => r.label || r.key)
+              .filter((l) => !l.startsWith('__'));
+            return [...items, ...customRows.receipts];
+          })()}
+          cashOutCategories={(() => {
+            const items = WEEKLY_ROW_ORDER
+              .filter((r) =>
+                r.section === 'disbursements' &&
+                !r.isHeader &&
+                !r.isSpacer &&
+                !r.isParent &&
+                !r.isAddRowFooter &&
+                !r.isTransferAccount &&
+                !r.isLocFacility &&
+                !r.isNetChange,
+              )
+              .map((r) => r.label || r.key)
+              .filter((l) => !l.startsWith('__'));
+            return [...items, ...customRows.disbursements];
+          })()}
           creditFacilities={creditFacilities}
           onCreditFacilitiesChange={(next) => {
             pushUndo('Update credit facilities');
