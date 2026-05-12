@@ -307,8 +307,9 @@ function blockerBreakdown(
   deals: Deal[],
   from: Date,
   to: Date,
-): { label: string; count: number }[] {
+): { label: string; count: number; deals: BlockerDealHit[] }[] {
   const counts = new Map<string, number>();
+  const dealsByHead = new Map<string, BlockerDealHit[]>();
   for (const d of deals) {
     try {
       const u = new Date(d.updatedAt);
@@ -320,11 +321,14 @@ function blockerBreakdown(
         if (!head || seen.has(head)) continue;
         seen.add(head);
         counts.set(head, (counts.get(head) || 0) + 1);
+        const arr = dealsByHead.get(head) || [];
+        arr.push({ deal: d, reasons: tokens });
+        dealsByHead.set(head, arr);
       }
     } catch { /* skip */ }
   }
   return Array.from(counts.entries())
-    .map(([label, count]) => ({ label, count }))
+    .map(([label, count]) => ({ label, count, deals: dealsByHead.get(label) || [] }))
     .sort((a, b) => b.count - a.count);
 }
 
