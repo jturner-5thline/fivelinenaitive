@@ -4274,6 +4274,17 @@ export default function DealDetail() {
                                         </div>
                                         {/* Create Task Button - top right */}
                                         <div className="flex items-start gap-1 shrink-0">
+                                          <LenderFollowUpPopover
+                                            dealId={deal.id}
+                                            dealName={deal.name}
+                                            company={deal.company}
+                                            dealLenderId={lender.id}
+                                            lenderName={lender.name}
+                                            lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
+                                            lenderNotes={lender.notes}
+                                            lenderUpdatedAt={lender.updatedAt}
+                                            onSent={() => refreshDeals?.()}
+                                          />
                                           <CreateLenderTaskButton
                                             dealId={deal.id}
                                             lenderId={lender.id}
@@ -4282,19 +4293,6 @@ export default function DealDetail() {
                                         </div>
                                       </div>
                                     </div>
-                                      <div className="absolute bottom-3 right-4 z-10">
-                                        <LenderFollowUpPopover
-                                          dealId={deal.id}
-                                          dealName={deal.name}
-                                          company={deal.company}
-                                          dealLenderId={lender.id}
-                                          lenderName={lender.name}
-                                          lenderStage={configuredStages.find(s => s.id === lender.stage)?.label || lender.stage}
-                                          lenderNotes={lender.notes}
-                                          lenderUpdatedAt={lender.updatedAt}
-                                          onSent={() => refreshDeals?.()}
-                                        />
-                                      </div>
                                   </SortableLenderItem>
                                 );
                               })}
