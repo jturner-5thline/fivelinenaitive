@@ -604,6 +604,9 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
             <p className="text-sm text-muted-foreground mt-1">No "Why Not Moving Forward" reasons logged this week yet.</p>
           )}
         </button>
+        <div className="px-4 pb-3">
+          <ReasonPie data={blockerBreakdownThis} emptyText="No data this week" />
+        </div>
       </Card>
 
         {/* This Week's #1 Accelerator — symmetrical to the blocker card */}
@@ -650,6 +653,15 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                 ))}
               </ul>
             )}
+            <div className="mt-2">
+              <ReasonPie
+                data={acceleratorBreakdown.map((b) => ({
+                  label: ADVANCE_REASON_LABELS[b.category],
+                  count: b.count,
+                }))}
+                emptyText="No data this week"
+              />
+            </div>
           </div>
         </Card>
       </div>
