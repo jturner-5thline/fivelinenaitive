@@ -1107,7 +1107,7 @@ export default function Dashboard() {
           <InboxDialog open onOpenChange={handleCarouselDialogOpenChange} />
         )}
         {isJTurner && isWidgetActive('daily-briefing') && (
-          <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} />
+          <DailyBriefingModal open onOpenChange={handleCarouselDialogOpenChange} briefingType="daily_briefing" />
         )}
         {canSeeNiki && isWidgetActive('niki-briefing') && (
           <DailyBriefingModal
@@ -1117,6 +1117,7 @@ export default function Dashboard() {
             targetUserId={NIKI_USER_ID}
             targetAssigneeName={NIKI_ASSIGNEE_NAME}
             excludeTabs={['financial']}
+            briefingType="niki_daily_briefing"
           />
         )}
         {is5thLine && isWidgetActive('deal-rundown') && (
@@ -1125,6 +1126,7 @@ export default function Dashboard() {
             onOpenChange={handleCarouselDialogOpenChange}
             title="Deal Rundown"
             initialTab="pipeline"
+            briefingType="deal_rundown"
           />
         )}
         <WidgetCarouselChrome />
