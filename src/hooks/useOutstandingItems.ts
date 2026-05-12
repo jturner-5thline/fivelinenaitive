@@ -88,6 +88,7 @@ export function useOutstandingItems(dealId: string | undefined) {
         .from('outstanding_items')
         .select('*')
         .eq('deal_id', dealId)
+        .eq('is_archived', false)
         .order('position', { ascending: true });
 
       if (error) throw error;
