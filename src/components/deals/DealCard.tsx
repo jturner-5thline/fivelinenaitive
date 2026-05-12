@@ -355,17 +355,17 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`h-6 w-6 shrink-0 relative ${activeFlagCount > 0 ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                      className={`h-6 w-6 shrink-0 relative ${showFlagIndicator ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setIsFlagDialogOpen(true);
                       }}
                     >
-                      <Flag className={`h-3.5 w-3.5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
-                      {activeFlagCount > 1 && (
+                      <Flag className={`h-3.5 w-3.5 ${showFlagIndicator ? 'fill-current' : ''}`} />
+                      {displayFlagCount > 1 && (
                         <span className="absolute -top-1 -right-1 h-3.5 min-w-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
-                          {activeFlagCount}
+                          {displayFlagCount}
                         </span>
                       )}
                     </Button>
