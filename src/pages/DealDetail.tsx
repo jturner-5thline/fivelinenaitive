@@ -148,6 +148,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -3793,113 +3794,50 @@ export default function DealDetail() {
                       />
                       <div className="flex items-center gap-2 ml-auto">
                       {deal.lenders && deal.lenders.length > 0 && (
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-                              <Filter className="h-3.5 w-3.5" />
-                              Stage
-                              {(lenderGroupFilters.size > 0 || lenderStageFilters.size > 0) && (
-                                <span className="ml-1 rounded-full bg-primary text-primary-foreground px-1.5 py-0.5 text-[10px] leading-none font-medium">
-                                  {lenderGroupFilters.size + lenderStageFilters.size}
-                                </span>
-                              )}
-                            </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-56 p-2" align="start">
-                            <div className="space-y-1">
-                              <button
-                                onClick={() => { setLenderGroupFilters(new Set()); setLenderStageFilters(new Set()); }}
-                                className={cn(
-                                  "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
-                                  lenderGroupFilters.size === 0 && lenderStageFilters.size === 0
-                                    ? "bg-accent text-accent-foreground"
-                                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                                )}
-                              >
-                                All
-                              </button>
-                              {stageGroups.map((group) => {
-                                const groupStages = configuredStages.filter(s => s.group === group.id);
-                                const count = deal.lenders?.filter(l => {
-                                  const stage = configuredStages.find(s => s.id === l.stage);
-                                  return stage?.group === group.id;
-                                }).length || 0;
-                                const isGroupActive = lenderGroupFilters.has(group.id);
-                                return (
-                                  <div key={group.id}>
-                                    <button
-                                      onClick={() => {
-                                        setLenderGroupFilters(prev => {
-                                          const next = new Set(prev);
-                                          if (next.has(group.id)) {
-                                            next.delete(group.id);
-                                          } else {
-                                            next.add(group.id);
-                                          }
-                                          return next;
-                                        });
-                                        // Clear individual stage filters for this group when toggling group
-                                        setLenderStageFilters(prev => {
-                                          const next = new Set(prev);
-                                          groupStages.forEach(s => next.delete(s.id));
-                                          return next;
-                                        });
-                                      }}
-                                      className={cn(
-                                        "w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded-md transition-colors",
-                                        isGroupActive
-                                          ? "bg-accent text-accent-foreground"
-                                          : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                                      )}
-                                    >
-                                      <Checkbox checked={isGroupActive} className="h-3.5 w-3.5 pointer-events-none" />
-                                      <span className={`h-2 w-2 rounded-full ${group.color}`} />
-                                      {group.label}
-                                      {count > 0 && <span className="ml-auto font-medium">{count}</span>}
-                                    </button>
-                                    {/* Individual stages within this group */}
-                                    {groupStages.map(stage => {
-                                      const stageCount = deal.lenders?.filter(l => l.stage === stage.id).length || 0;
-                                      const isStageActive = lenderStageFilters.has(stage.id);
-                                      return (
-                                        <button
-                                          key={stage.id}
-                                          onClick={() => {
-                                            setLenderStageFilters(prev => {
-                                              const next = new Set(prev);
-                                              if (next.has(stage.id)) {
-                                                next.delete(stage.id);
-                                              } else {
-                                                next.add(stage.id);
-                                              }
-                                              return next;
-                                            });
-                                            // Clear group filter if selecting individual stages
-                                            setLenderGroupFilters(prev => {
-                                              const next = new Set(prev);
-                                              next.delete(group.id);
-                                              return next;
-                                            });
-                                          }}
-                                          className={cn(
-                                            "w-full flex items-center gap-2 pl-7 pr-2 py-1 text-[11px] rounded-md transition-colors",
-                                            isStageActive
-                                              ? "bg-accent/70 text-accent-foreground"
-                                              : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                                          )}
-                                        >
-                                          <Checkbox checked={isStageActive} className="h-3 w-3 pointer-events-none" />
-                                          <span className="truncate">{stage.label}</span>
-                                          {stageCount > 0 && <span className="ml-auto font-medium tabular-nums">{stageCount}</span>}
-                                        </button>
-                                      );
-                                    })}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </PopoverContent>
-                        </Popover>
+                        <ToggleGroup
+                          type="multiple"
+                          value={Array.from(lenderGroupFilters)}
+                          onValueChange={(vals) => {
+                            setLenderGroupFilters(new Set(vals as StageGroup[]));
+                            // Clear individual stage filters whenever group chips change to keep semantics simple
+                            setLenderStageFilters(new Set());
+                          }}
+                          className="flex flex-wrap gap-1"
+                        >
+                          {(() => {
+                            const groupOrder = ['excluded', 'active', 'on-hold', 'on-deck', 'passed'];
+                            const groupLabels: Record<string, string> = {
+                              'excluded': 'Excluded',
+                              'active': 'Active',
+                              'on-hold': 'On Hold',
+                              'on-deck': 'On Deck',
+                              'passed': 'Passed',
+                            };
+                            const byId = new Map(stageGroups.map(g => [g.id, g]));
+                            return groupOrder.map(id => {
+                              const group = byId.get(id);
+                              const label = group?.label || groupLabels[id];
+                              const count = deal.lenders?.filter(l => {
+                                const stage = configuredStages.find(s => s.id === l.stage);
+                                return stage?.group === id;
+                              }).length || 0;
+                              return (
+                                <ToggleGroupItem
+                                  key={id}
+                                  value={id}
+                                  size="sm"
+                                  variant="outline"
+                                  aria-label={`Filter by ${label}`}
+                                  className="h-8 px-2.5 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+                                >
+                                  {group?.color && <span className={`h-2 w-2 rounded-full mr-1.5 ${group.color}`} />}
+                                  {label}
+                                  {count > 0 && <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{count}</span>}
+                                </ToggleGroupItem>
+                              );
+                            });
+                          })()}
+                        </ToggleGroup>
                       )}
                           {hasLenderMatchingAccess && (
                             <LenderSuggestionsPanel
