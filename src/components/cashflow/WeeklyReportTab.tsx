@@ -198,7 +198,7 @@ type WeeklyRow = {
   facilityName?: string;
 };
 
-const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
+export const WEEKLY_ROW_ORDER: Array<WeeklyRow> = [
   { key: 'BEGINNING CASH', section: 'position', isTotal: true },
   { key: 'ENDING CASH', section: 'position', isTotal: true },
   { key: 'NET CHANGE', section: 'position', isTotal: true, isNetChange: true },
