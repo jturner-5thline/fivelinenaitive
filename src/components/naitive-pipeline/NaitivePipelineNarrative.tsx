@@ -834,6 +834,7 @@ interface AgendaItemRow {
   sort_index: number;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
 }
 
 function AgendaPanel({
@@ -843,13 +844,14 @@ function AgendaPanel({
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [creatorNames, setCreatorNames] = useState<Record<string, string>>({});
   const notesTimer = useRef<number | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     const { data, error } = await (supabase as any)
       .from('naitive_pipeline_agenda_items')
-      .select('id, title, notes, completed, sort_index, created_at, updated_at')
+      .select('id, title, notes, completed, sort_index, created_at, updated_at, created_by')
       .eq('company_id', FIFTH_LINE_COMPANY_ID)
       .eq('period_type', periodType)
       .eq('period_key', periodKey)
@@ -859,6 +861,35 @@ function AgendaPanel({
     setItems((data || []) as AgendaItemRow[]);
     setLoading(false);
   }, [periodType, periodKey]);
+
+  // Resolve creator display names from profiles for any unknown user ids.
+  useEffect(() => {
+    const ids = Array.from(new Set(items.map((i) => i.created_by).filter((v): v is string => !!v)));
+    const missing = ids.filter((id) => !(id in creatorNames));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, display_name, full_name, first_name, last_name, email')
+        .in('id', missing);
+      if (cancelled || error || !data) return;
+      const next: Record<string, string> = {};
+      for (const p of data as any[]) {
+        const name = p.display_name
+          || p.full_name
+          || [p.first_name, p.last_name].filter(Boolean).join(' ').trim()
+          || p.email
+          || 'Unknown';
+        next[p.id] = name;
+      }
+      setCreatorNames((prev) => ({ ...prev, ...next }));
+    })();
+    return () => { cancelled = true; };
+  }, [items, creatorNames]);
+
+  const creatorLabel = (item: AgendaItemRow) =>
+    item.created_by ? (creatorNames[item.created_by] || '…') : 'Unknown';
 
   useEffect(() => {
     setSelectedId(null);
@@ -881,7 +912,7 @@ function AgendaPanel({
         sort_index: nextIndex,
         created_by: userData.user?.id ?? null,
       })
-      .select('id, title, notes, completed, sort_index, created_at, updated_at')
+      .select('id, title, notes, completed, sort_index, created_at, updated_at, created_by')
       .single();
     if (error) {
       console.error('[agenda] insert failed', error);
@@ -977,6 +1008,9 @@ function AgendaPanel({
                       )}>
                         {item.title || <span className="italic text-muted-foreground">Untitled</span>}
                       </p>
+                      <p className="text-[10px] text-muted-foreground/80 mt-0.5 truncate">
+                        Added by: <span className="text-foreground/70">{creatorLabel(item)}</span>
+                      </p>
                       {item.notes && (
                         <p className={cn(
                           'text-[11px] truncate mt-0.5',
@@ -1019,9 +1053,14 @@ function AgendaPanel({
                 placeholder="Notes / details for this talking point…"
                 className="flex-1 text-xs resize-none min-h-[140px]"
               />
-              <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
-                <span>Created {formatDistanceToNow(new Date(selected.created_at), { addSuffix: true })}</span>
-                <span>Updated {formatDistanceToNow(new Date(selected.updated_at), { addSuffix: true })}</span>
+              <div className="mt-2 space-y-1 text-[10px] text-muted-foreground">
+                <div className="text-foreground/80">
+                  Added by: <span className="font-medium text-foreground">{creatorLabel(selected)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Created {formatDistanceToNow(new Date(selected.created_at), { addSuffix: true })}</span>
+                  <span>Updated {formatDistanceToNow(new Date(selected.updated_at), { addSuffix: true })}</span>
+                </div>
               </div>
             </>
           ) : (
