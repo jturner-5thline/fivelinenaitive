@@ -1,4 +1,4 @@
-import { useMemo, useState, ReactNode } from 'react';
+import { useMemo, useState, useCallback, ReactNode } from 'react';
 import { Deal } from '@/types/deal';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
