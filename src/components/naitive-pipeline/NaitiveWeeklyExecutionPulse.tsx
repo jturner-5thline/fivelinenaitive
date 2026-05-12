@@ -20,6 +20,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, ReferenceLine,
 } from 'recharts';
+import { PieChart, Pie, Cell } from 'recharts';
 import type { NaitiveStageHistoryRow } from '@/hooks/useNaitiveStageHistory';
 import { useWorkspaceAdvanceReasons } from '@/hooks/useAdvanceReasons';
 import { ADVANCE_REASON_LABELS, AdvanceReasonCategory, AdvanceReason } from '@/types/deal';
