@@ -43,9 +43,6 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import {
   ACCOUNT_OPTIONS,
-  CASH_IN_GROUPED_OPTIONS,
-  CASH_IN_CATEGORIES,
-  CASH_OUT_CATEGORIES,
   DAY_OF_WEEK_LABELS,
   type ScheduledCashFlow,
   type FrequencyType,
@@ -58,10 +55,18 @@ interface Props {
   open: boolean;
   initialEntries: ScheduledCashFlow[];
   onClose: () => void;
-  /** Extra user-defined Cash-In category labels to append to the dropdown. */
-  extraCashInCategories?: string[];
-  /** Extra user-defined Cash-Out category labels to append to the dropdown. */
-  extraCashOutCategories?: string[];
+  /**
+   * The complete list of Category dropdown options for Cash-In, sourced
+   * from the visible Line item rows under "Cash Receipts" in the cash
+   * flow table. No built-in/hardcoded fallback is used.
+   */
+  cashInCategories?: string[];
+  /**
+   * The complete list of Category dropdown options for Cash-Out, sourced
+   * from the visible Line item rows under "Cash Disbursements" in the
+   * cash flow table. No built-in/hardcoded fallback is used.
+   */
+  cashOutCategories?: string[];
   /** Configured credit facilities (LOCs). */
   creditFacilities?: CreditFacility[];
   /** Persist updated facilities. */
