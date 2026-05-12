@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
-  Search as SearchIcon,
   Briefcase,
   Building2,
   ArrowRight,
@@ -15,6 +14,7 @@ import { useLenders } from '@/contexts/LendersContext';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import { cn } from '@/lib/utils';
 import { AICopilotPanel } from '@/components/AICopilotPanel';
+import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
   { name: 'Dashboard', path: '/dashboard' },
