@@ -41,6 +41,9 @@ import {
 import { cn } from '@/lib/utils';
 import { OutstandingItem, ItemPriority } from '@/hooks/useOutstandingItems';
 import { OutstandingItemDialog } from './OutstandingItemDialog';
+import type { ChecklistPhaseControls } from '@/hooks/useChecklistPhaseControls';
+import type { ChecklistPhase } from '@/utils/applyDefaultChecklist';
+import { Archive } from 'lucide-react';
 
 export type { OutstandingItem };
 
@@ -84,6 +87,12 @@ interface OutstandingItemsProps {
    * (deal-type → standard fallback) as the create-deal flow.
    */
   onApplyDefaultChecklist?: () => Promise<void> | void;
+  /**
+   * Controls for phase-based checklist progression. When provided, renders
+   * "+ Add Phase 2/3 Items" buttons and (for over-loaded deals created
+   * after the phase rollout) a retroactive bulk-archive banner.
+   */
+  phaseControls?: ChecklistPhaseControls;
   /**
    * When true, all add/edit/delete affordances are hidden or disabled and
    * a banner is shown at the top explaining why. Existing items remain
@@ -321,7 +330,7 @@ function KanbanBoard({
   );
 }
 
-export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, readOnly = false, readOnlyReason }: OutstandingItemsProps) {
+export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOnAdd, onUpdate: rawOnUpdate, onDelete: rawOnDelete, onBulkAdd: rawOnBulkAdd, onReorder: rawOnReorder, teamMembers, onApplyDefaultChecklist, phaseControls, readOnly = false, readOnlyReason }: OutstandingItemsProps) {
   // When readOnly, neuter all mutators so any leftover handler (kanban
   // drag, checkbox toggles, etc.) cannot mutate items. Also disable the
   // top-level add/bulk handlers so banner/empty-state CTAs no-op.
