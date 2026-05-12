@@ -4,6 +4,7 @@ import type { Deal, DealLender, LenderTrackingStatus } from '@/types/deal';
 import { LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -64,6 +65,20 @@ function LenderRow({
   const [noteDraft, setNoteDraft] = useState(lender.notes || '');
   const [saving, setSaving] = useState(false);
   const hasNote = !!(lender.notes && lender.notes.trim().length > 0);
+  const [noteHoverOpen, setNoteHoverOpen] = useState(false);
+  const noteUpdatedLabel = (() => {
+    const ts = lender.notesUpdatedAt || lender.updatedAt;
+    if (!ts) return null;
+    const d = new Date(ts);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  })();
 
   const handleStatusChange = async (next: LenderTrackingStatus) => {
     setStatusOpen(false);
@@ -105,9 +120,47 @@ function LenderRow({
         />
       )}
       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${meta.dot}`} />
-      <span className="flex-1 text-xs text-foreground truncate" title={lender.name}>
-        {lender.name}
-      </span>
+      <HoverCard openDelay={250} closeDelay={80} open={noteHoverOpen} onOpenChange={setNoteHoverOpen}>
+        <HoverCardTrigger asChild>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setNoteHoverOpen((o) => !o);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="flex-1 min-w-0 text-left text-xs text-foreground truncate cursor-help decoration-dotted decoration-muted-foreground/50 underline-offset-[3px] hover:underline hover:text-foreground focus-visible:underline focus-visible:outline-none focus-visible:text-foreground transition-colors"
+            aria-label={`${lender.name} status note`}
+          >
+            {lender.name}
+          </button>
+        </HoverCardTrigger>
+        <HoverCardContent
+          align="start"
+          side="top"
+          collisionPadding={8}
+          className="w-64 p-3 text-xs pointer-events-auto"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+            {lender.name}
+          </div>
+          {hasNote ? (
+            <p className="text-xs text-foreground whitespace-pre-wrap break-words leading-snug">
+              {lender.notes}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground italic">No current status note.</p>
+          )}
+          {noteUpdatedLabel && (
+            <div className="mt-2 text-[10px] text-muted-foreground">
+              Updated {noteUpdatedLabel}
+            </div>
+          )}
+        </HoverCardContent>
+      </HoverCard>
 
       <Popover
         open={notesOpen}
