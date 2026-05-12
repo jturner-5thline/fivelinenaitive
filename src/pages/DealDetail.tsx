@@ -3958,7 +3958,11 @@ export default function DealDetail() {
                                       >
                                         {lender.name}
                                       </button>
-                                      {lender.trackingStatus !== 'passed' && (() => {
+                                       {(() => {
+                                         const stageCfg = configuredStages.find(s => s.id === lender.stage);
+                                         const stageLabel = (stageCfg?.label || '').toLowerCase();
+                                         const isTerminal = stageCfg?.group === 'passed' || stageCfg?.group === 'excluded' || lender.trackingStatus === 'passed' || stageLabel.includes('not a fit');
+                                         if (isTerminal) return null;
                                         const timeInfo = getLenderTimeInfo(lender.updatedAt);
                                         return timeInfo.text ? (
                                           <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
@@ -4377,7 +4381,11 @@ export default function DealDetail() {
                                               >
                                                 {lender.name}
                                               </button>
-                                              {lender.trackingStatus !== 'passed' && (() => {
+                                              {(() => {
+                                                const stageCfg = configuredStages.find(s => s.id === lender.stage);
+                                                const stageLabel = (stageCfg?.label || '').toLowerCase();
+                                                const isTerminal = stageCfg?.group === 'passed' || stageCfg?.group === 'excluded' || lender.trackingStatus === 'passed' || stageLabel.includes('not a fit');
+                                                if (isTerminal) return null;
                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
                                                 return timeInfo.text ? (
                                                   <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
