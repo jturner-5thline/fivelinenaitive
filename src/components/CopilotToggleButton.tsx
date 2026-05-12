@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import {
-  Search as SearchIcon,
   Briefcase,
   Building2,
   ArrowRight,
@@ -15,6 +14,7 @@ import { useLenders } from '@/contexts/LendersContext';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import { cn } from '@/lib/utils';
 import { AICopilotPanel } from '@/components/AICopilotPanel';
+import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
 
 const QUICK_PAGES: { name: string; path: string }[] = [
   { name: 'Dashboard', path: '/dashboard' },
@@ -409,163 +409,60 @@ export function CopilotToggleButton() {
           </div>
         )}
 
-        <div
+        <AskNaitiveBar
           ref={barRef}
-          role="search"
-          aria-label="Search or ask naitive AI"
-          data-tour="ask-ai"
-          className={cn(
-            'group relative overflow-hidden',
-            'h-11 rounded-full',
-            'flex items-center gap-3 pl-1.5 pr-4',
-            'text-left',
-            'flex-none shrink-0',
-            'opacity-70 hover:opacity-100 focus-within:opacity-100',
-            'transition-[opacity,box-shadow] duration-200 ease-out',
-            'hover:shadow-[0_16px_40px_rgba(0,0,0,0.55),0_4px_10px_rgba(0,0,0,0.35),inset_0_1px_0_rgba(255,255,255,0.10),0_0_0_1px_rgba(0,0,0,0.28)]',
-            'animate-in fade-in duration-150',
-          )}
-          style={{
-            width: `${barWidth}px`,
-            maxWidth: 'calc(100% - 32px)',
-            background: 'rgba(14, 16, 24, 0.6)',
-            backdropFilter: 'blur(18px) saturate(1.4)',
-            WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
-            border: '1px solid rgba(255, 255, 255, 0.22)',
-            boxShadow:
-              '0 10px 32px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.25)',
-            transition: 'opacity 180ms ease-out',
-            // When the AI popup is expanded, force the bar into its focused
-            // appearance (full opacity) so it visually reads as the active
-            // input — exact same look as clicking into it.
-            opacity: (isOpen && !isMinimized) ? 1 : undefined,
+          inputRef={inputRef}
+          value={demoMode ? demoTypedPrompt : value}
+          onChange={(next) => { if (!demoMode) setValue(next); }}
+          onSubmit={submit}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setTimeout(() => setFocused(false), 120)}
+          onExtraKeyDown={(e) => {
+            if (showDropdown && e.key === 'ArrowDown') {
+              e.preventDefault();
+              setActiveIndex((i) => (i + 1) % dropdownItemCount);
+            } else if (showDropdown && e.key === 'ArrowUp') {
+              e.preventDefault();
+              setActiveIndex((i) => (i - 1 + dropdownItemCount) % dropdownItemCount);
+            }
           }}
-          onClick={() => inputRef.current?.focus()}
-        >
-          {/* Left-edge resize handle. Drag to resize; double-click to reset. */}
-          <div
-            role="separator"
-            aria-label="Resize Ask naitive AI bar"
-            aria-orientation="vertical"
-            onPointerDown={onResizeStart}
-            onDoubleClick={onResizeDoubleClick}
-            onClick={(e) => e.stopPropagation()}
-            className="absolute left-0 top-0 z-10 h-full w-2 cursor-ew-resize opacity-0 hover:opacity-100 focus:opacity-100 transition-opacity"
-            style={{ touchAction: 'none' }}
-            title="Drag to resize • Double-click to reset"
-          >
-            <div
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-5 w-[2px] rounded-full"
-              style={{ background: 'rgba(255,255,255,0.45)' }}
-            />
-          </div>
-
-          {/* Centered watermark emblem */}
-          <span
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-0 flex items-center justify-center"
-          >
-            <img
-              src={naitiveAiIcon}
-              alt=""
-              className="h-5 w-5 brightness-0 invert opacity-[0.06] transition-opacity duration-200 group-hover:opacity-[0.09]"
-            />
-          </span>
-
-          {/* Left gradient logo badge.
-              - If panel is closed → opens it.
-              - If minimized → expands it (no new conversation).
-              - If open and expanded → minimizes (toggle behaviour).
-              While minimized + processing OR with unread messages, show a
-              subtle pulse / badge so the user knows AI work is happening
-              behind the scenes. */}
-          <button
-            type="button"
-            aria-label={isMinimized ? `Expand naitive AI${unreadCount > 0 ? ` (${unreadCount} new)` : ''}` : 'Open naitive AI'}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (isMinimized) expandPanel();
-              else togglePanel();
-            }}
-            className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_10px_hsl(270_65%_55%/0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-            style={{
-              background:
-                'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
-            }}
-          >
-            <img
-              src={naitiveAiIcon}
-              alt=""
-              className={cn(
-                'h-4 w-4 brightness-0 invert',
-                isMinimized && isProcessing && 'animate-pulse',
+          readOnly={demoMode}
+          disabled={demoMode}
+          placeholder={demoMode ? 'Demo running — sample prompt' : 'Search or ask naitive AI…'}
+          ariaExpanded={showDropdown}
+          ariaControls="naitive-unified-suggestions"
+          dataTour="ask-ai"
+          forceFocused={isOpen && !isMinimized}
+          style={{ width: `${barWidth}px`, maxWidth: 'calc(100% - 32px)' }}
+          onResizeStart={onResizeStart}
+          onResizeDoubleClick={onResizeDoubleClick}
+          onLogoClick={() => {
+            if (isMinimized) expandPanel();
+            else togglePanel();
+          }}
+          logoAriaLabel={isMinimized ? `Expand naitive AI${unreadCount > 0 ? ` (${unreadCount} new)` : ''}` : 'Open naitive AI'}
+          logoOverlay={
+            <>
+              {isMinimized && isProcessing && (
+                <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full animate-pulse" />
               )}
-            />
-            {isMinimized && unreadCount > 0 && (
-              <span
-                aria-hidden="true"
-                className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow"
-              >
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-            {isMinimized && isProcessing && unreadCount === 0 && (
-              <span
-                aria-hidden="true"
-                className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary animate-pulse"
-              />
-            )}
-          </button>
-
-          {/* Search affordance */}
-          <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-white/40 group-hover:text-white/55 transition-colors" />
-
-          {/* Inline input */}
-          <input
-            ref={inputRef}
-            type="text"
-            value={demoMode ? demoTypedPrompt : value}
-            onChange={(e) => { if (!demoMode) setValue(e.target.value); }}
-            readOnly={demoMode}
-            disabled={demoMode}
-            onFocus={() => setFocused(true)}
-            onBlur={() => {
-              // Delay to allow mousedown handlers on suggestions to fire first.
-              setTimeout(() => setFocused(false), 120);
-            }}
-            onKeyDown={(e) => {
-              if (demoMode) { e.preventDefault(); return; }
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                submit();
-                return;
-              }
-              if (e.key === 'Escape') {
-                if (value) setValue('');
-                else inputRef.current?.blur();
-                return;
-              }
-              if (showDropdown && e.key === 'ArrowDown') {
-                e.preventDefault();
-                setActiveIndex((i) => (i + 1) % dropdownItemCount);
-              } else if (showDropdown && e.key === 'ArrowUp') {
-                e.preventDefault();
-                setActiveIndex((i) => (i - 1 + dropdownItemCount) % dropdownItemCount);
-              }
-            }}
-            placeholder={demoMode ? 'Demo running — sample prompt' : 'Search or ask naitive AI…'}
-            aria-label="Search or ask naitive AI"
-            aria-autocomplete="list"
-            aria-expanded={showDropdown}
-            aria-controls="naitive-unified-suggestions"
-            className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] font-normal text-white/85 placeholder:text-white/45"
-          />
-
-          {/* Keyboard hint */}
-          <kbd className="relative z-10 hidden sm:inline-flex items-center gap-0.5 rounded border border-white/10 bg-white/[0.04] px-1.5 py-0.5 text-[10px] font-medium text-white/40 group-hover:text-white/55 transition-colors shrink-0">
-            ⌘J
-          </kbd>
-        </div>
+              {isMinimized && unreadCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow"
+                >
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+              {isMinimized && isProcessing && unreadCount === 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-primary animate-pulse"
+                />
+              )}
+            </>
+          }
+        />
       </div>
     </div>
     {debug && debugView && createPortal(
