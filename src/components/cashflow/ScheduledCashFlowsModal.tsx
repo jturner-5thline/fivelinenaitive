@@ -172,7 +172,7 @@ function newDraft(): DraftEntry {
   return {
     _draftId: `d_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
     account: ACCOUNT_OPTIONS[0],
-    category: CASH_IN_CATEGORIES[0],
+    category: '',
     amount: 0,
     frequency_type: 'one_time',
     frequency_config: { one_time_date: today },
@@ -244,8 +244,8 @@ export function ScheduledCashFlowsModal({
   initialEntries,
   onClose,
   onSave,
-  extraCashInCategories = [],
-  extraCashOutCategories = [],
+  cashInCategories = [],
+  cashOutCategories = [],
   creditFacilities = [],
   onCreditFacilitiesChange,
 }: Props) {
@@ -277,55 +277,29 @@ export function ScheduledCashFlowsModal({
    * then LOC entries.
    */
   const normalizeCat = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
-  const dedupedCashInGroups = useMemo(() => {
+  // Dedupe each list by a normalized key (trim + collapse whitespace +
+  // lowercase) while preserving the first-seen original label for display.
+  // These are the SOLE source of Category dropdown options — no built-in,
+  // hardcoded, or external category list is mixed in.
+  const dedupeByNormalized = (labels: string[]): string[] => {
     const seen = new Set<string>();
-    return CASH_IN_GROUPED_OPTIONS
-      .map((g) => ({
-        ...g,
-        options: g.options.filter((c) => {
-          const k = normalizeCat(c);
-          if (!k || seen.has(k)) return false;
-          seen.add(k);
-          return true;
-        }),
-      }))
-      .filter((g) => g.options.length > 0);
-  }, []);
-  const cashInBuiltInSeen = useMemo(
-    () => new Set(dedupedCashInGroups.flatMap((g) => g.options).map(normalizeCat)),
-    [dedupedCashInGroups],
+    const out: string[] = [];
+    for (const c of labels) {
+      const k = normalizeCat(c);
+      if (!k || seen.has(k)) continue;
+      seen.add(k);
+      out.push(c);
+    }
+    return out;
+  };
+  const dedupedCashIn = useMemo(
+    () => dedupeByNormalized(cashInCategories),
+    [cashInCategories],
   );
-  const dedupedExtraCashIn = useMemo(() => {
-    const seen = new Set(cashInBuiltInSeen);
-    return extraCashInCategories.filter((c) => {
-      const k = normalizeCat(c);
-      if (!k || seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  }, [extraCashInCategories, cashInBuiltInSeen]);
-  const dedupedCashOut = useMemo(() => {
-    const seen = new Set<string>();
-    return CASH_OUT_CATEGORIES.filter((c) => {
-      const k = normalizeCat(c);
-      if (!k || seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  }, []);
-  const cashOutBuiltInSeen = useMemo(
-    () => new Set(dedupedCashOut.map(normalizeCat)),
-    [dedupedCashOut],
+  const dedupedCashOut = useMemo(
+    () => dedupeByNormalized(cashOutCategories),
+    [cashOutCategories],
   );
-  const dedupedExtraCashOut = useMemo(() => {
-    const seen = new Set(cashOutBuiltInSeen);
-    return extraCashOutCategories.filter((c) => {
-      const k = normalizeCat(c);
-      if (!k || seen.has(k)) return false;
-      seen.add(k);
-      return true;
-    });
-  }, [extraCashOutCategories, cashOutBuiltInSeen]);
   const draftDateValue = (d: DraftEntry): string => {
     if (d.frequency_type === 'one_time') return d.frequency_config?.one_time_date || '';
     return d.start_date || '';
