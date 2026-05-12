@@ -927,7 +927,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                     <th key={key}>
                       <div>Wk {entry.week_num}</div>
                       <div style={{ fontSize: '9px' }}>
-                        {new Date(entry.week_ending).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {(() => {
+                          // Display-only: shift the header label forward by 1 day.
+                          // Underlying `entry.week_ending` is unchanged so all
+                          // bucketing, ordering, and cash-flow logic is unaffected.
+                          const d = new Date(entry.week_ending);
+                          d.setDate(d.getDate() + 1);
+                          return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                        })()}
                       </div>
                     </th>
                   ))}
