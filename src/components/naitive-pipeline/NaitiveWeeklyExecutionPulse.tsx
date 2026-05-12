@@ -20,6 +20,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Legend, ReferenceLine,
 } from 'recharts';
+import { PieChart, Pie, Cell } from 'recharts';
 import type { NaitiveStageHistoryRow } from '@/hooks/useNaitiveStageHistory';
 import { useWorkspaceAdvanceReasons } from '@/hooks/useAdvanceReasons';
 import { ADVANCE_REASON_LABELS, AdvanceReasonCategory, AdvanceReason } from '@/types/deal';
@@ -302,6 +303,82 @@ function advanceBreakdown(
     .sort((a, b) => b.count - a.count);
 }
 
+function blockerBreakdown(
+  deals: Deal[],
+  from: Date,
+  to: Date,
+): { label: string; count: number }[] {
+  const counts = new Map<string, number>();
+  for (const d of deals) {
+    try {
+      const u = new Date(d.updatedAt);
+      if (!inRange(u, from, to)) continue;
+      const tokens = normalizeReasons(d.whyNotMovingForward);
+      const seen = new Set<string>();
+      for (const tok of tokens) {
+        const head = tok.split('—')[0].trim();
+        if (!head || seen.has(head)) continue;
+        seen.add(head);
+        counts.set(head, (counts.get(head) || 0) + 1);
+      }
+    } catch { /* skip */ }
+  }
+  return Array.from(counts.entries())
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+const PIE_COLORS = [
+  'hsl(var(--primary))',
+  'hsl(var(--chart-2))',
+  'hsl(var(--chart-3))',
+  'hsl(var(--chart-4))',
+  'hsl(var(--chart-5))',
+  'hsl(180, 60%, 45%)',
+];
+
+function ReasonPie({ data, emptyText }: {
+  data: { label: string; count: number }[];
+  emptyText: string;
+}) {
+  if (data.length === 0) {
+    return <p className="text-xs text-muted-foreground text-center py-6">{emptyText}</p>;
+  }
+  return (
+    <div className="w-full" style={{ height: 160 }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Tooltip
+            contentStyle={TOOLTIP_STYLE}
+            formatter={(v: number, name: string) => [`${v} ${v === 1 ? 'deal' : 'deals'}`, name]}
+          />
+          <Pie
+            data={data}
+            dataKey="count"
+            nameKey="label"
+            cx="50%"
+            cy="45%"
+            outerRadius={50}
+            innerRadius={26}
+            paddingAngle={data.length > 1 ? 2 : 0}
+            stroke="hsl(var(--card))"
+            strokeWidth={1}
+          >
+            {data.map((_, i) => (
+              <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+            ))}
+          </Pie>
+          <Legend
+            verticalAlign="bottom"
+            iconSize={8}
+            wrapperStyle={{ fontSize: 10, color: 'hsl(var(--muted-foreground))' }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
 function StatCard({ label, value, prev, isPercent }: {
   label: string; value: number; prev: number; isPercent?: boolean;
 }) {
@@ -362,6 +439,10 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   const blockerThis = useMemo(() => topReason(deals, thisWeekFrom, thisWeekTo), [deals]);
   const blockerLast = useMemo(() => topReason(deals, lastWeekFrom, lastWeekTo), [deals]);
   const [blockerOpen, setBlockerOpen] = useState(false);
+  const blockerBreakdownThis = useMemo(
+    () => blockerBreakdown(deals, thisWeekFrom, thisWeekTo),
+    [deals],
+  );
 
   // ── Why Moving Forward (accelerator) ───────────────────────────
   const { rows: advanceRows } = useWorkspaceAdvanceReasons();
@@ -523,6 +604,9 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
             <p className="text-sm text-muted-foreground mt-1">No "Why Not Moving Forward" reasons logged this week yet.</p>
           )}
         </button>
+        <div className="px-4 pb-3">
+          <ReasonPie data={blockerBreakdownThis} emptyText="No data this week" />
+        </div>
       </Card>
 
         {/* This Week's #1 Accelerator — symmetrical to the blocker card */}
@@ -569,6 +653,15 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                 ))}
               </ul>
             )}
+            <div className="mt-2">
+              <ReasonPie
+                data={acceleratorBreakdown.map((b) => ({
+                  label: ADVANCE_REASON_LABELS[b.category],
+                  count: b.count,
+                }))}
+                emptyText="No data this week"
+              />
+            </div>
           </div>
         </Card>
       </div>
