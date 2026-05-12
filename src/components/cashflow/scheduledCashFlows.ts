@@ -100,6 +100,7 @@ export const CASH_OUT_CATEGORIES = [
   'Professional Services',
   'Software',
   'Healthcare',
+  'Insurance',
   '401k',
   'Ramp',
   'Other Cash Out',
@@ -126,7 +127,6 @@ export const CATEGORY_ALIASES: Record<string, string> = {
   'Office & Admin': 'Other Cash Out',
   'Travel & Entertainment': 'Other Cash Out',
   'Rent & Occupancy': 'Other Cash Out',
-  Insurance: 'Other Cash Out',
   'Other Disbursements': 'Other Cash Out',
   Other: 'Other Cash Out',
 };
@@ -156,6 +156,7 @@ export const CANONICAL_TO_GRID_ROW: Record<string, string> = {
   Software: 'Software & Technology',
   'Professional Services': 'Legal & Professional',
   'Other Cash Out': 'Other Disbursements',
+  Insurance: 'Insurance',
 };
 
 /**
@@ -193,7 +194,6 @@ const GRID_ROW_TO_CANONICAL: Record<string, string> = (() => {
   out['Office & Admin'] = 'Other Cash Out';
   out['Travel & Entertainment'] = 'Other Cash Out';
   out['Rent & Occupancy'] = 'Other Cash Out';
-  out['Insurance'] = 'Other Cash Out';
   return out;
 })();
 
