@@ -3769,16 +3769,17 @@ export default function DealDetail() {
               {/* Lenders Card */}
                  <Card className="max-h-[750px] flex flex-col">
                    <CardHeader className="pb-3 pt-3">
-                     <div className="flex items-center gap-2">
-                      <div className="flex-1 min-w-0 max-w-[260px]">
-                       <LenderSearchInput
-                        lenderNames={lenderNames}
-                        existingLenderNames={existingLenderNames}
-                        onAddLender={addLender}
-                        isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
-                      />
-                      </div>
-                      <LenderDirectoryDialog
+                      <div className="flex items-center gap-2">
+                       <div className="flex items-center gap-1 flex-1 min-w-0 max-w-[280px]">
+                         <div className="flex-1 min-w-0">
+                           <LenderSearchInput
+                             lenderNames={lenderNames}
+                             existingLenderNames={existingLenderNames}
+                             onAddLender={addLender}
+                             isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
+                           />
+                         </div>
+                         <LenderDirectoryDialog
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
                         onRemoveLender={removeLenderFromDeal}
@@ -3802,6 +3803,7 @@ export default function DealDetail() {
                           ) : null
                         }
                       />
+                       </div>
                       <div className="flex items-center gap-1.5 ml-auto min-w-0">
                       {deal.lenders && deal.lenders.length > 0 && (
                         <div className="min-w-0">
@@ -3839,7 +3841,7 @@ export default function DealDetail() {
                                   size="sm"
                                   variant="outline"
                                   aria-label={`Filter by ${label}`}
-                                  className="h-8 px-1.5 text-xs whitespace-nowrap shrink-0 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+                                  className="h-8 px-2 text-xs whitespace-nowrap shrink-0 rounded-md border-white/10 bg-background/40 backdrop-blur-sm hover:bg-muted/40 hover:border-white/20 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
                                 >
                                   {(id === 'passed' || group?.color) && (
                                     <span
