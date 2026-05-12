@@ -32,6 +32,10 @@ export const HomepageHero = () => {
     setErrorMsg(null);
     sessionStorage.setItem("hero-work-email", trimmed);
     setIsSubmitting(true);
+    // Open HubSpot scheduler synchronously inside the click handler so popup
+    // blockers don't intercept it. We then fire-and-forget the Supabase log.
+    const hubspotUrl = `https://meetings.hubspot.com/florencia-fustinoni/round-robin-for-website-demo?email=${encodeURIComponent(trimmed)}`;
+    window.open(hubspotUrl, "_blank", "noopener,noreferrer");
     try {
       const submittedAt = new Date().toISOString();
       const { error } = await supabase.functions.invoke("send-transactional-email", {
@@ -109,9 +113,11 @@ export const HomepageHero = () => {
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your work email"
+      placeholder="Enter your work email"
                 disabled={isSubmitting}
-                className="flex-1 min-w-0 h-12 px-4 rounded-lg bg-white/5 border border-white/15 text-white placeholder:text-white/40 text-sm sm:text-base outline-none transition-colors focus:border-white/40 focus:bg-white/10"
+                aria-invalid={!!errorMsg}
+                onChange={(e) => { setEmail(e.target.value); if (errorMsg) setErrorMsg(null); }}
+                className={`flex-1 min-w-0 h-12 px-4 rounded-lg bg-white/5 border text-white placeholder:text-white/40 text-sm sm:text-base outline-none transition-colors focus:bg-white/10 ${errorMsg ? "border-red-400/70 focus:border-red-400" : "border-white/15 focus:border-white/40"}`}
               />
               <Button
                 type="submit"
