@@ -541,7 +541,6 @@ export default function DealDetail() {
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const { pipelines } = usePipelineContext();
   const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
-  const { hasAccess: isFifthLineUser } = useNaitivePipelineAccess();
   const { hasPageAccess } = usePageAccessFlags();
   const hasDealSpaceAccess = hasPageAccess('deal_space');
   const hasDealManagementAccess = hasPageAccess('deal_management');
