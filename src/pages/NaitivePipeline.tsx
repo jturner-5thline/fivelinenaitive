@@ -388,6 +388,7 @@ export default function NaitivePipeline() {
               getMilestonesForDeal={getMilestonesForDeal}
               onToggleMilestone={toggleMilestone}
               onOpenEdit={openDealFromPipeline}
+              onDeleted={refetch}
             />
           ))}
         </div>
