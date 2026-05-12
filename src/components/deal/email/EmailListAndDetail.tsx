@@ -2234,7 +2234,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // Keyboard shortcut for reply
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+      // Ignore shortcuts when focus is in any editable surface (input, textarea,
+      // contenteditable, role=textbox, or anywhere inside the composer).
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (
+          tag === 'INPUT' ||
+          tag === 'TEXTAREA' ||
+          tag === 'SELECT' ||
+          target.isContentEditable ||
+          target.getAttribute?.('role') === 'textbox' ||
+          target.closest?.('input, textarea, select, [contenteditable="true"], [role="textbox"]')
+        ) {
+          return;
+        }
+      }
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleReply();
