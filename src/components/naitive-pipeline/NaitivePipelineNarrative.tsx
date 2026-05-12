@@ -17,6 +17,10 @@ import {
   Sparkles, RefreshCw, History as HistoryIcon, Pencil,
   RotateCcw, ChevronDown, ChevronUp,
 } from 'lucide-react';
+import { ListChecks, Plus, Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
 import { supabase } from '@/integrations/supabase/client';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { format, formatDistanceToNow, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter, subWeeks, subMonths, subQuarters, getISOWeek, getISOWeekYear } from 'date-fns';
@@ -151,7 +155,7 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
   const [history, setHistory] = useState<NarrativeRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [tab, setTab] = useState<'narrative' | 'analysis' | 'qual-demo' | 'did-not-move' | 'history'>('narrative');
+  const [tab, setTab] = useState<'agenda' | 'narrative' | 'analysis' | 'qual-demo' | 'did-not-move' | 'history'>('agenda');
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -470,13 +474,18 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-5 h-8">
+          <TabsList className="grid w-full grid-cols-6 h-8">
+            <TabsTrigger value="agenda" className="text-xs gap-1"><ListChecks className="h-3 w-3" />Agenda</TabsTrigger>
             <TabsTrigger value="narrative" className="text-xs gap-1"><Pencil className="h-3 w-3" />Narrative</TabsTrigger>
             <TabsTrigger value="analysis" className="text-xs gap-1"><Sparkles className="h-3 w-3" />AI Analysis</TabsTrigger>
             <TabsTrigger value="qual-demo" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Qual → Demo</TabsTrigger>
             <TabsTrigger value="did-not-move" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Did Not Move</TabsTrigger>
             <TabsTrigger value="history" className="text-xs gap-1"><HistoryIcon className="h-3 w-3" />History</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="agenda" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
+            <AgendaPanel periodType={current.type} periodKey={current.key} periodLabel={current.label} />
+          </TabsContent>
 
           <TabsContent value="narrative" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
             <div className="flex flex-wrap items-center gap-0.5 border border-border rounded-t-md bg-muted/30 px-1.5 py-1">
@@ -771,6 +780,215 @@ function HistoryPanel({
             })}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+interface AgendaItemRow {
+  id: string;
+  title: string;
+  notes: string;
+  completed: boolean;
+  sort_index: number;
+  created_at: string;
+  updated_at: string;
+}
+
+function AgendaPanel({
+  periodType, periodKey, periodLabel,
+}: { periodType: string; periodKey: string; periodLabel: string }) {
+  const [items, setItems] = useState<AgendaItemRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newTitle, setNewTitle] = useState('');
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const notesTimer = useRef<number | null>(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    const { data, error } = await (supabase as any)
+      .from('naitive_pipeline_agenda_items')
+      .select('id, title, notes, completed, sort_index, created_at, updated_at')
+      .eq('company_id', FIFTH_LINE_COMPANY_ID)
+      .eq('period_type', periodType)
+      .eq('period_key', periodKey)
+      .order('sort_index', { ascending: true })
+      .order('created_at', { ascending: true });
+    if (error) console.error('[agenda] load failed', error);
+    setItems((data || []) as AgendaItemRow[]);
+    setLoading(false);
+  }, [periodType, periodKey]);
+
+  useEffect(() => {
+    setSelectedId(null);
+    void load();
+  }, [load]);
+
+  const addItem = useCallback(async () => {
+    const title = newTitle.trim();
+    if (!title) return;
+    setNewTitle('');
+    const { data: userData } = await supabase.auth.getUser();
+    const nextIndex = items.length > 0 ? Math.max(...items.map((i) => i.sort_index)) + 1 : 0;
+    const { data, error } = await (supabase as any)
+      .from('naitive_pipeline_agenda_items')
+      .insert({
+        company_id: FIFTH_LINE_COMPANY_ID,
+        period_type: periodType,
+        period_key: periodKey,
+        title,
+        sort_index: nextIndex,
+        created_by: userData.user?.id ?? null,
+      })
+      .select('id, title, notes, completed, sort_index, created_at, updated_at')
+      .single();
+    if (error) {
+      console.error('[agenda] insert failed', error);
+      return;
+    }
+    setItems((prev) => [...prev, data as AgendaItemRow]);
+    setSelectedId((data as AgendaItemRow).id);
+  }, [newTitle, items, periodType, periodKey]);
+
+  const toggleComplete = useCallback(async (item: AgendaItemRow) => {
+    const next = !item.completed;
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, completed: next } : i)));
+    const { error } = await (supabase as any)
+      .from('naitive_pipeline_agenda_items')
+      .update({ completed: next })
+      .eq('id', item.id);
+    if (error) console.error('[agenda] toggle failed', error);
+  }, []);
+
+  const updateField = useCallback((id: string, patch: Partial<AgendaItemRow>) => {
+    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+    if (notesTimer.current) window.clearTimeout(notesTimer.current);
+    notesTimer.current = window.setTimeout(async () => {
+      const { error } = await (supabase as any)
+        .from('naitive_pipeline_agenda_items')
+        .update(patch)
+        .eq('id', id);
+      if (error) console.error('[agenda] update failed', error);
+    }, 500);
+  }, []);
+
+  const removeItem = useCallback(async (id: string) => {
+    setItems((prev) => prev.filter((i) => i.id !== id));
+    if (selectedId === id) setSelectedId(null);
+    const { error } = await (supabase as any)
+      .from('naitive_pipeline_agenda_items')
+      .delete()
+      .eq('id', id);
+    if (error) console.error('[agenda] delete failed', error);
+  }, [selectedId]);
+
+  const selected = items.find((i) => i.id === selectedId) || null;
+
+  return (
+    <div className="flex-1 flex flex-col min-h-0 gap-3">
+      <div className="flex items-center gap-2">
+        <Input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); void addItem(); } }}
+          placeholder={`Add talking point for ${periodLabel}…`}
+          className="h-8 text-xs"
+        />
+        <Button size="sm" className="h-8 px-2 gap-1" onClick={() => void addItem()} disabled={!newTitle.trim()}>
+          <Plus className="h-3 w-3" /> Add
+        </Button>
+      </div>
+
+      <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3 min-h-0">
+        {/* List */}
+        <div className="border border-border rounded-md bg-card/40 overflow-y-auto max-h-[460px] min-h-[200px]">
+          {loading ? (
+            <div className="flex items-center justify-center h-32 text-xs text-muted-foreground gap-2">
+              <Loader2 className="h-3 w-3 animate-spin" /> Loading…
+            </div>
+          ) : items.length === 0 ? (
+            <div className="p-6 text-center text-xs text-muted-foreground">
+              No agenda items yet — add talking points for this period.
+            </div>
+          ) : (
+            <ul className="divide-y divide-border">
+              {items.map((item) => {
+                const isSelected = item.id === selectedId;
+                return (
+                  <li
+                    key={item.id}
+                    className={cn(
+                      'group flex items-start gap-2 p-2.5 cursor-pointer transition-colors',
+                      isSelected ? 'bg-primary/10' : 'hover:bg-muted/40',
+                    )}
+                    onClick={() => setSelectedId(item.id)}
+                  >
+                    <Checkbox
+                      checked={item.completed}
+                      onCheckedChange={() => void toggleComplete(item)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mt-0.5"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className={cn(
+                        'text-xs font-medium truncate',
+                        item.completed ? 'text-muted-foreground line-through' : 'text-foreground',
+                      )}>
+                        {item.title || <span className="italic text-muted-foreground">Untitled</span>}
+                      </p>
+                      {item.notes && (
+                        <p className={cn(
+                          'text-[11px] truncate mt-0.5',
+                          item.completed ? 'text-muted-foreground/70' : 'text-muted-foreground',
+                        )}>
+                          {item.notes.split('\n')[0]}
+                        </p>
+                      )}
+                    </div>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => { e.stopPropagation(); void removeItem(item.id); }}
+                      title="Delete"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Detail editor */}
+        <div className="border border-border rounded-md bg-background p-3 flex flex-col min-h-[200px] max-h-[460px]">
+          {selected ? (
+            <>
+              <Input
+                value={selected.title}
+                onChange={(e) => updateField(selected.id, { title: e.target.value })}
+                placeholder="Talking point"
+                className="h-8 text-xs font-medium mb-2"
+              />
+              <Textarea
+                value={selected.notes}
+                onChange={(e) => updateField(selected.id, { notes: e.target.value })}
+                placeholder="Notes / details for this talking point…"
+                className="flex-1 text-xs resize-none min-h-[140px]"
+              />
+              <div className="flex items-center justify-between mt-2 text-[10px] text-muted-foreground">
+                <span>Created {formatDistanceToNow(new Date(selected.created_at), { addSuffix: true })}</span>
+                <span>Updated {formatDistanceToNow(new Date(selected.updated_at), { addSuffix: true })}</span>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-xs text-muted-foreground text-center px-4">
+              Select an agenda item to add notes, or add a new talking point above.
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

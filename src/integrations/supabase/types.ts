@@ -13703,6 +13703,48 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_pipeline_agenda_items: {
+        Row: {
+          company_id: string
+          completed: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string
+          period_key: string
+          period_type: string
+          sort_index: number
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          completed?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string
+          period_key: string
+          period_type: string
+          sort_index?: number
+          title?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          completed?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string
+          period_key?: string
+          period_type?: string
+          sort_index?: number
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       naitive_pipeline_narrative_snapshots: {
         Row: {
           company_id: string
