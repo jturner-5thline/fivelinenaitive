@@ -156,7 +156,9 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
   const [history, setHistory] = useState<NarrativeRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [tab, setTab] = useState<'agenda' | 'narrative' | 'analysis' | 'qual-demo' | 'did-not-move' | 'history'>('agenda');
+  const [tab, setTab] = useState<'agenda' | 'narrative' | 'analysis' | 'history'>('agenda');
+  const [qualDemoOpen, setQualDemoOpen] = useState(false);
+  const [didNotMoveOpen, setDidNotMoveOpen] = useState(false);
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
