@@ -693,11 +693,14 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     <Button type="button" variant="ghost" size="sm" className="w-full justify-between text-muted-foreground hover:text-foreground">
                       <span className="flex items-center gap-2">
                         <ListChecks className="h-4 w-4" />
-                        {checklistPreview.items.length} outstanding item{checklistPreview.items.length !== 1 ? 's' : ''} will be added ({checklistPreview.sourceLabel})
+                       {checklistPreview.items.length} outstanding item{checklistPreview.items.length !== 1 ? 's' : ''} will be added ({checklistPreview.sourceLabel})
                       </span>
                       <span className="text-xs">{showChecklistPreview ? 'Hide' : 'Preview'}</span>
                     </Button>
                   </CollapsibleTrigger>
+                  <p className="px-2 text-[11px] text-muted-foreground">
+                    Showing Phase 1 initial items. Additional items can be added as the deal progresses.
+                  </p>
                   <CollapsibleContent className="mt-2">
                     <div className="rounded-lg border bg-muted/30 p-3 space-y-1.5 max-h-56 overflow-y-auto">
                       {checklistPreview.items.map((it, idx) => (

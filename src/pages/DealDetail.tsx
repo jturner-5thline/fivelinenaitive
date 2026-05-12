@@ -190,6 +190,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { toast } from '@/hooks/use-toast';
 import { applyDefaultChecklistToOutstandingItems } from '@/utils/applyDefaultChecklist';
+import { useChecklistPhaseControls } from '@/hooks/useChecklistPhaseControls';
 import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycle';
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
@@ -1152,6 +1153,16 @@ export default function DealDetail() {
   
   // Outstanding items persistence
   const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems } = useOutstandingItems(id);
+
+  // Phase-aware checklist controls (Add Phase 2/3 + retroactive archive banner)
+  const checklistPhaseControls = useChecklistPhaseControls(
+    id,
+    company?.id,
+    user?.id,
+    deal?.createdAt as string | undefined,
+    deal?.dealTypes,
+    refreshOutstandingItems,
+  );
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -3648,6 +3659,7 @@ export default function DealDetail() {
                                     user.id,
                                   );
                                   await refreshOutstandingItems();
+                                  await checklistPhaseControls.refresh();
                                   if (r.inserted > 0) {
                                     toast({
                                       title: 'Checklist applied',
@@ -3663,6 +3675,7 @@ export default function DealDetail() {
                                     });
                                   }
                                 }}
+                                phaseControls={checklistPhaseControls}
                               />
                             </div>
                           );

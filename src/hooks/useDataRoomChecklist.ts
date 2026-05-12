@@ -12,6 +12,8 @@ export interface ChecklistItem {
   description: string | null;
   is_required: boolean;
   position: number;
+  /** 1 = Initial / First Round, 2 = Full Due Diligence (default), 3 = Closing */
+  phase: 1 | 2 | 3;
   created_at: string;
   updated_at: string;
 }
@@ -45,6 +47,7 @@ export interface ChecklistItemInsert {
   description?: string | null;
   is_required?: boolean;
   position?: number;
+  phase?: 1 | 2 | 3;
 }
 
 export function useDataRoomChecklist() {

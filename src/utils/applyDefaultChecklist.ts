@@ -26,6 +26,14 @@ export interface ApplyChecklistResult {
   sourceLabel: string;
 }
 
+export type ChecklistPhase = 1 | 2 | 3;
+
+export const PHASE_LABELS: Record<ChecklistPhase, string> = {
+  1: 'Initial / First Round',
+  2: 'Full Due Diligence',
+  3: 'Closing',
+};
+
 function parseConfig(raw: unknown): DefaultChecklistConfigV2 {
   if (!raw) return { version: 2, configs: [] };
   const obj = raw as Record<string, unknown>;
@@ -54,6 +62,7 @@ export interface ChecklistPreview {
 export async function getChecklistPreview(
   companyId: string,
   dealTypes: string[],
+  phase: ChecklistPhase = 1,
 ): Promise<ChecklistPreview> {
   // 1. Try deal-type configs
   const { data: settings } = await supabase
@@ -63,6 +72,8 @@ export async function getChecklistPreview(
     .maybeSingle();
 
   const parsed = parseConfig(settings?.data_room_default_checklists);
+  // Deal-type configs only feed the "Initial Items" round (Phase 1).
+  if (phase === 1) {
   for (const dt of dealTypes) {
     const matched = findMatchingConfig(parsed.configs, normalizeText(dt));
     if (matched) {
@@ -82,19 +93,23 @@ export async function getChecklistPreview(
       }
     }
   }
+  }
 
-  // 2. Standard Checklist
+  // 2. Standard Checklist (filtered by phase)
   const { data: stdItems } = await supabase
     .from('data_room_checklist_items')
-    .select('name, category, is_required, position')
+    .select('name, category, is_required, position, phase')
     .eq('company_id', companyId)
     .order('position', { ascending: true });
 
-  if (stdItems && stdItems.length > 0) {
+  const phaseFiltered = (stdItems || []).filter(
+    (i: any) => ((i.phase as number | null) ?? 2) === phase,
+  );
+  if (phaseFiltered.length > 0) {
     return {
       source: 'standard',
-      sourceLabel: 'Standard Checklist',
-      items: stdItems.map((i: any) => ({
+      sourceLabel: `Standard Checklist · Phase ${phase}`,
+      items: phaseFiltered.map((i: any) => ({
         label: i.name,
         category: i.category,
         required: !!i.is_required,
@@ -115,9 +130,10 @@ export async function applyDefaultChecklistToOutstandingItems(
   dealTypes: string[],
   companyId: string,
   userId: string,
+  phase: ChecklistPhase = 1,
 ): Promise<ApplyChecklistResult> {
-  // 1. Deal-Type config first — reuses existing logic for parity with
-  //    the Active Pipeline auto-population.
+  // 1. Deal-Type config first — only for Phase 1 (Initial Items round).
+  if (phase === 1) {
   for (const dt of dealTypes) {
     const r = await autoPopulateOutstandingItems(dealId, [dt], companyId, userId, 'initial items');
     if (r.matchedDealType && r.sourceItemCount > 0) {
@@ -128,16 +144,24 @@ export async function applyDefaultChecklistToOutstandingItems(
       };
     }
   }
+  }
 
-  // 2. Standard Checklist fallback.
+  // 2. Standard Checklist fallback — filtered by phase.
   const { data: stdItems, error: stdErr } = await supabase
     .from('data_room_checklist_items')
-    .select('name, category, is_required, position')
+    .select('name, category, is_required, position, phase')
     .eq('company_id', companyId)
     .order('position', { ascending: true });
 
   if (stdErr || !stdItems || stdItems.length === 0) {
     return { inserted: 0, source: 'none', sourceLabel: '' };
+  }
+
+  const phaseItems = stdItems.filter(
+    (i: any) => ((i.phase as number | null) ?? 2) === phase,
+  );
+  if (phaseItems.length === 0) {
+    return { inserted: 0, source: 'standard', sourceLabel: `Standard Checklist · Phase ${phase}` };
   }
 
   // Dedup against existing items.
@@ -166,7 +190,7 @@ export async function applyDefaultChecklistToOutstandingItems(
   });
 
   const inserts: Array<Record<string, unknown>> = [];
-  for (const item of stdItems) {
+  for (const item of phaseItems) {
     const key = itemKey((item as any).name);
     if (existingKeys.has(`standard::${key}`)) continue;
     if (existingDesc.has(normalizeText((item as any).name))) continue;
@@ -177,18 +201,19 @@ export async function applyDefaultChecklistToOutstandingItems(
       user_id: userId,
       priority: 'normal',
       position: nextPosition + inserts.length,
-      notes: `Auto-created from Standard Checklist${(item as any).category ? ` — ${(item as any).category}` : ''}`,
+      notes: `Auto-created from Standard Checklist · Phase ${phase}${(item as any).category ? ` — ${(item as any).category}` : ''}`,
       source_metadata: {
         source_type: 'standard_checklist',
         source_item_key: key,
         source_category: (item as any).category ?? null,
         source_required: !!(item as any).is_required,
+        source_phase: ((item as any).phase as number | null) ?? 2,
       },
     });
   }
 
   if (inserts.length === 0) {
-    return { inserted: 0, source: 'standard', sourceLabel: 'Standard Checklist' };
+    return { inserted: 0, source: 'standard', sourceLabel: `Standard Checklist · Phase ${phase}` };
   }
 
   const { error: insertErr } = await supabase
@@ -197,12 +222,12 @@ export async function applyDefaultChecklistToOutstandingItems(
 
   if (insertErr) {
     console.error('[applyDefaultChecklist] Standard insert failed:', insertErr);
-    return { inserted: 0, source: 'standard', sourceLabel: 'Standard Checklist' };
+    return { inserted: 0, source: 'standard', sourceLabel: `Standard Checklist · Phase ${phase}` };
   }
 
   return {
     inserted: inserts.length,
     source: 'standard',
-    sourceLabel: 'Standard Checklist',
+    sourceLabel: `Standard Checklist · Phase ${phase}`,
   };
 }
