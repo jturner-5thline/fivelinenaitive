@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
-import { Diamond, Pencil, Square, Check, Plus } from 'lucide-react';
+import { Diamond, Pencil, Check, Plus } from 'lucide-react';
 import { format, differenceInCalendarDays } from 'date-fns';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -67,6 +67,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const queryClient = useQueryClient();
   const { company } = useCompany();
   const [activeFilter, setActiveFilter] = useState<'task' | 'milestone' | 'outstanding' | null>(null);
+  // Optimistically hide rows that the user just completed inline.
+  const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
+  const [completingMilestoneIds, setCompletingMilestoneIds] = useState<Set<string>>(new Set());
 
   const nextMilestone = nextUpcomingMilestone(deal.milestones);
   const allIncompleteMilestones = (deal.milestones || [])
@@ -77,8 +80,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
       return ta - tb;
     });
 
-  const taskOnlyItems = tasks.filter((t) => t.kind === 'task');
-  const outstandingOnlyItems = tasks.filter((t) => {
+  const visibleTaskPool = tasks.filter((t) => !completingIds.has(t.id));
+  const taskOnlyItems = visibleTaskPool.filter((t) => t.kind === 'task');
+  const outstandingOnlyItems = visibleTaskPool.filter((t) => {
     if (t.kind === 'outstanding') return true;
     if (t.kind === 'task' && t.dueDate) {
       return differenceInCalendarDays(new Date(t.dueDate), new Date()) < 0;
@@ -93,13 +97,14 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
       ? outstandingOnlyItems
       : activeFilter === 'milestone'
       ? []
-      : tasks;
-  const milestonesToRender =
+      : visibleTaskPool;
+  const milestonesToRender = (
     activeFilter === 'milestone'
       ? allIncompleteMilestones
       : activeFilter === null && nextMilestone
       ? [nextMilestone]
-      : [];
+      : []
+  ).filter((m) => !completingMilestoneIds.has(m.id || ''));
   const hasContent = visibleTasks.length > 0 || milestonesToRender.length > 0;
   // Show ~2 rows by default; scroll the rest. Each row ≈ 36px + 6px gap.
   const totalItems = visibleTasks.length + milestonesToRender.length;
@@ -178,7 +183,161 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
       queryClient.invalidateQueries({ queryKey: ['pipeline-deal-tasks'] }),
       queryClient.invalidateQueries({ queryKey: ['tasks'] }),
       queryClient.invalidateQueries({ queryKey: ['deal-tasks'] }),
+      queryClient.invalidateQueries({ queryKey: ['outstanding-items'] }),
+      queryClient.invalidateQueries({ queryKey: ['pipeline-digests'] }),
     ]);
+  };
+
+  const completeTaskItem = async (task: DealTaskItem) => {
+    // Optimistically hide
+    setCompletingIds((prev) => {
+      const n = new Set(prev);
+      n.add(task.id);
+      return n;
+    });
+
+    let undone = false;
+    const restore = () => {
+      undone = true;
+      setCompletingIds((prev) => {
+        const n = new Set(prev);
+        n.delete(task.id);
+        return n;
+      });
+    };
+
+    try {
+      if (task.kind === 'task') {
+        const { error } = await supabase
+          .from('tasks')
+          .update({ status: 'complete', completed_at: new Date().toISOString() })
+          .eq('id', task.id);
+        if (error) throw error;
+      } else {
+        // outstanding: id is prefixed with "o-"
+        const realId = task.id.startsWith('o-') ? task.id.slice(2) : task.id;
+        const { data: row, error: fetchErr } = await supabase
+          .from('outstanding_items')
+          .select('status')
+          .eq('id', realId)
+          .maybeSingle();
+        if (fetchErr) throw fetchErr;
+        let parsed: any = {};
+        try { parsed = row?.status ? JSON.parse(row.status) : {}; } catch { parsed = {}; }
+        const nextStatus = JSON.stringify({
+          received: true,
+          approved: true,
+          deliveredToLenders: parsed.deliveredToLenders ?? [],
+          requestedBy: parsed.requestedBy ?? [],
+        });
+        const { error } = await supabase
+          .from('outstanding_items')
+          .update({ status: nextStatus })
+          .eq('id', realId);
+        if (error) throw error;
+      }
+
+      toast.success(task.kind === 'task' ? 'Task completed' : 'Item completed', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              if (task.kind === 'task') {
+                await supabase
+                  .from('tasks')
+                  .update({ status: 'not_started', completed_at: null })
+                  .eq('id', task.id);
+              } else {
+                const realId = task.id.startsWith('o-') ? task.id.slice(2) : task.id;
+                const { data: row } = await supabase
+                  .from('outstanding_items')
+                  .select('status')
+                  .eq('id', realId)
+                  .maybeSingle();
+                let parsed: any = {};
+                try { parsed = row?.status ? JSON.parse(row.status) : {}; } catch { parsed = {}; }
+                const nextStatus = JSON.stringify({
+                  received: false,
+                  approved: false,
+                  deliveredToLenders: parsed.deliveredToLenders ?? [],
+                  requestedBy: parsed.requestedBy ?? [],
+                });
+                await supabase
+                  .from('outstanding_items')
+                  .update({ status: nextStatus })
+                  .eq('id', realId);
+              }
+              restore();
+              await refreshTasks();
+            } catch {
+              toast.error('Failed to undo');
+            }
+          },
+        },
+      });
+      await refreshTasks();
+    } catch (err) {
+      console.error('Inline complete failed:', err);
+      if (!undone) restore();
+      toast.error('Failed to complete');
+    }
+  };
+
+  const completeMilestone = async (m: DealMilestone) => {
+    if (!m.id) return;
+    const id = m.id;
+    setCompletingMilestoneIds((prev) => {
+      const n = new Set(prev);
+      n.add(id);
+      return n;
+    });
+    const restore = () => {
+      setCompletingMilestoneIds((prev) => {
+        const n = new Set(prev);
+        n.delete(id);
+        return n;
+      });
+    };
+    try {
+      const { error } = await supabase
+        .from('deal_milestones')
+        .update({ completed: true, completed_at: new Date().toISOString() })
+        .eq('id', id);
+      if (error) throw error;
+
+      // Trigger DealsContext refresh so deal.milestones updates everywhere.
+      window.dispatchEvent(
+        new CustomEvent('copilot-action-completed', {
+          detail: { actionType: 'add_milestone', params: { deal_id: deal.id } },
+        }),
+      );
+
+      toast.success('Milestone completed', {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            try {
+              await supabase
+                .from('deal_milestones')
+                .update({ completed: false, completed_at: null })
+                .eq('id', id);
+              restore();
+              window.dispatchEvent(
+                new CustomEvent('copilot-action-completed', {
+                  detail: { actionType: 'add_milestone', params: { deal_id: deal.id } },
+                }),
+              );
+            } catch {
+              toast.error('Failed to undo');
+            }
+          },
+        },
+      });
+    } catch (err) {
+      console.error('Inline milestone complete failed:', err);
+      restore();
+      toast.error('Failed to complete milestone');
+    }
   };
 
   const startTitleEdit = (task: DealTaskItem) => {
@@ -319,7 +478,21 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
               >
-                <Square className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={false}
+                  aria-label={`Mark "${task.title}" complete`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void completeTaskItem(task);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="shrink-0 inline-flex items-center justify-center h-4 w-4 rounded border border-muted-foreground/50 bg-transparent hover:border-primary hover:bg-primary/10 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <Check className="h-3 w-3 text-primary opacity-0 hover:opacity-100" strokeWidth={3} />
+                </button>
 
                 {editingTitleId === task.id && task.kind === 'task' ? (
                   <input
@@ -505,7 +678,22 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
           {milestonesToRender.map((m, idx) => (
             <div key={m.id || `${m.title}-${idx}`} className="grid items-center gap-2 grid-cols-[1fr_28px]">
               <div className="min-w-0 flex items-center gap-2.5 rounded-md bg-primary/10 border border-primary/20 px-2.5 py-1.5">
-                <Diamond className="h-3.5 w-3.5 text-primary shrink-0 fill-primary" />
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={false}
+                  aria-label={`Mark milestone "${m.title}" complete`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void completeMilestone(m);
+                  }}
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  className="shrink-0 inline-flex items-center justify-center h-4 w-4 rounded-sm border border-primary/60 bg-transparent hover:bg-primary/20 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  title="Mark milestone complete"
+                >
+                  <Diamond className="h-3 w-3 text-primary fill-primary" />
+                </button>
                 <span className="flex-1 text-xs text-foreground font-medium truncate" title={m.title}>
                   {m.title}
                   {m.dueDate && ` · ${format(new Date(m.dueDate), 'MMM d')}`}
