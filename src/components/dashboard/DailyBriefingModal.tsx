@@ -84,6 +84,14 @@ interface DailyBriefingModalProps {
    * excluded or unknown, falls back to the first available tab.
    */
   initialTab?: 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
+  /**
+   * Identifies which briefing surface this modal represents. Used to scope
+   * per-day dismissal state so dismissing an item in one briefing surface
+   * (e.g. the regular Daily Briefing) does NOT also hide it in another
+   * surface (e.g. Niki's Daily Briefing). Both still read the same live
+   * underlying deal activity. Defaults to 'daily_briefing'.
+   */
+  briefingType?: string;
 }
 
 // Initial tab to open with. Defaults to the first available tab.
@@ -1151,10 +1159,12 @@ function PipelineTab({
   enabled,
   onNavigate,
   targetDealOwnerName,
+  briefingType = 'daily_briefing',
 }: {
   enabled: boolean;
   onNavigate: (path: string) => void;
   targetDealOwnerName?: string;
+  briefingType?: string;
 }) {
   const { data, isLoading } = usePipelineData(enabled, targetDealOwnerName);
 
@@ -1207,6 +1217,7 @@ function PipelineTab({
         >
           <PipelineMemoView
             deals={scopedDeals as any}
+            dismissalScope={`rundown-deal:${briefingType}`}
             emptyMessage={
               isDelegated
                 ? `No active deals for ${targetDealOwnerName}.`
@@ -1225,6 +1236,7 @@ function PipelineTab({
               <FollowupTiles
                 groups={followupGroups}
                 onNavigate={onNavigate}
+                briefingType={briefingType}
                 assigneeName={
                   (user?.user_metadata as any)?.full_name ||
                   user?.email?.split('@')[0] ||
@@ -1280,12 +1292,14 @@ function FollowupTiles({
   groups,
   onNavigate,
   assigneeName,
+  briefingType = 'daily_briefing',
 }: {
   groups: FollowupDealGroup[];
   onNavigate: (path: string) => void;
   assigneeName: string;
+  briefingType?: string;
 }) {
-  const { dismiss, isDismissed, restore } = useDailyDismissals('rundown-followup');
+  const { dismiss, isDismissed, restore } = useDailyDismissals(`rundown-followup:${briefingType}`);
   const allTiles = groups.flatMap(g =>
     g.items.map(it => ({ ...it, company: g.company, stage: g.stage })),
   );
@@ -1444,7 +1458,7 @@ const ALL_TABS = [
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
-export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName, excludeTabs, initialTab }: DailyBriefingModalProps) {
+export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
   const TABS = useMemo(
@@ -1719,7 +1733,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                     />
                   )}
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} />}
+                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} briefingType={briefingType} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
                 </div>
               </ScrollArea>
