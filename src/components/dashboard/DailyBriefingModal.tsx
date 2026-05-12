@@ -1159,10 +1159,12 @@ function PipelineTab({
   enabled,
   onNavigate,
   targetDealOwnerName,
+  briefingType = 'daily_briefing',
 }: {
   enabled: boolean;
   onNavigate: (path: string) => void;
   targetDealOwnerName?: string;
+  briefingType?: string;
 }) {
   const { data, isLoading } = usePipelineData(enabled, targetDealOwnerName);
 
@@ -1215,6 +1217,7 @@ function PipelineTab({
         >
           <PipelineMemoView
             deals={scopedDeals as any}
+            dismissalScope={`rundown-deal:${briefingType}`}
             emptyMessage={
               isDelegated
                 ? `No active deals for ${targetDealOwnerName}.`
@@ -1233,6 +1236,7 @@ function PipelineTab({
               <FollowupTiles
                 groups={followupGroups}
                 onNavigate={onNavigate}
+                briefingType={briefingType}
                 assigneeName={
                   (user?.user_metadata as any)?.full_name ||
                   user?.email?.split('@')[0] ||
