@@ -89,10 +89,10 @@ export function CreateLenderTaskButton({ dealId, lenderId, lenderName }: CreateL
     <>
       <button
         onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}
-        className="relative overflow-hidden h-6 w-6 flex items-center justify-center rounded-md border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(272,40%,18%,0.5)_0%,hsl(260,30%,12%,0.6)_100%)] text-[hsl(272,100%,85%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(272,80%,75%,0.15),0_2px_12px_hsl(272,60%,35%,0.2)] hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(272,45%,22%,0.6)_0%,hsl(260,35%,16%,0.7)_100%)] hover:shadow-[inset_0_1px_1px_hsl(272,80%,80%,0.25),0_4px_20px_hsl(272,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,80%,0.12)_0%,transparent_50%,hsl(272,70%,55%,0.06)_100%)] transition-all"
+        className="relative overflow-hidden h-8 w-8 flex items-center justify-center rounded-md border border-[hsl(272,100%,80%,0.35)] bg-[linear-gradient(145deg,hsl(272,40%,18%,0.5)_0%,hsl(260,30%,12%,0.6)_100%)] text-[hsl(272,100%,85%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(272,80%,75%,0.15),0_2px_12px_hsl(272,60%,35%,0.2)] hover:border-[hsl(272,100%,80%,0.55)] hover:bg-[linear-gradient(145deg,hsl(272,45%,22%,0.6)_0%,hsl(260,35%,16%,0.7)_100%)] hover:shadow-[inset_0_1px_1px_hsl(272,80%,80%,0.25),0_4px_20px_hsl(272,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(272,80%,80%,0.12)_0%,transparent_50%,hsl(272,70%,55%,0.06)_100%)] transition-all"
         title={`Create task for ${lenderName}`}
       >
-        <Plus className="h-3 w-3" />
+        <Plus className="h-4 w-4" />
       </button>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
