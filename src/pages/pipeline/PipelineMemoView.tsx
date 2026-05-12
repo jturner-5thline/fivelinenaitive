@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Deal } from '@/types/deal';
@@ -6,19 +6,7 @@ import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
-import { X, Trash2 } from 'lucide-react';
-import { useDealsContext } from '@/contexts/DealsContext';
-import { toast } from 'sonner';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
+import { X } from 'lucide-react';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -140,9 +128,6 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   const { digestMap, rawByDeal, isLoading: digestsLoading } = usePipelineDigests(sorted, sorted.length > 0);
   const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
   const { dismiss, isDismissed } = useDailyDismissals('rundown-deal');
-  const { deleteDeal } = useDealsContext();
-  const [pendingDelete, setPendingDelete] = useState<Deal | null>(null);
-  const [deleting, setDeleting] = useState(false);
 
   const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
 
@@ -165,20 +150,6 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
         {visible.map((deal, index) => (
           <div key={deal.id} className="relative group/dismiss">
             <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover/dismiss:opacity-100 focus-within:opacity-100 transition-opacity">
-              <button
-                type="button"
-                aria-label={`Delete deal ${deal.company || deal.name}`}
-                title="Delete deal permanently"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPendingDelete(deal);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/70 hover:text-destructive hover:bg-destructive/10 transition-colors"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
               <button
                 type="button"
                 aria-label="Dismiss for today"
@@ -206,43 +177,6 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
           </div>
         ))}
       </div>
-      <AlertDialog open={!!pendingDelete} onOpenChange={(open) => { if (!open && !deleting) setPendingDelete(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete this deal?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently remove{' '}
-              <span className="font-semibold text-foreground">
-                {pendingDelete?.company || pendingDelete?.name}
-              </span>{' '}
-              from the pipeline and all related deal views. This action cannot be undone from the UI.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              disabled={deleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              onClick={async (e) => {
-                e.preventDefault();
-                if (!pendingDelete) return;
-                setDeleting(true);
-                try {
-                  await deleteDeal(pendingDelete.id);
-                  toast.success(`Deleted ${pendingDelete.company || pendingDelete.name}`);
-                  setPendingDelete(null);
-                } catch (err: any) {
-                  toast.error(err?.message || 'Failed to delete deal');
-                } finally {
-                  setDeleting(false);
-                }
-              }}
-            >
-              {deleting ? 'Deleting…' : 'Delete deal'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
