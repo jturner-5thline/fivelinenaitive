@@ -293,6 +293,26 @@ export function CashFlowManager() {
     loadDailyData();
   }, [loadDailyData]);
 
+  // ---------------------------------------------------------------------
+  // Live collaboration — restricted publisher allowlist (Mark + James)
+  //
+  // Subscribes every viewer of this company's finance experience to a
+  // realtime channel scoped to `finance:${companyId}`. When Mark or James
+  // saves an edit, their client emits a small broadcast describing which
+  // resource changed, and every other subscribed client refetches just
+  // that slice — preserving local UI state (scroll, open modals, active
+  // tab, selected weeks).
+  //
+  // Edits made by other users persist normally but do NOT trigger the
+  // live broadcast pipeline.
+  // ---------------------------------------------------------------------
+  const { broadcast: broadcastFinanceEdit } = useFinanceLiveSync(company?.id, {
+    onScheduledChange: refreshScheduledItems,
+    onCashInChange: refreshCashInItems,
+    onSidebarChange: loadSidebarData,
+    onDailyChange: loadDailyData,
+  });
+
 
 
 
