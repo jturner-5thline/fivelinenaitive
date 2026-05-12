@@ -263,6 +263,64 @@ export function ScheduledCashFlowsModal({
     setSortKey(null);
     setSortDir('asc');
   };
+
+  /**
+   * Deduplicate category labels by a normalized key (trimmed, collapsed
+   * whitespace, case-insensitive). The first occurrence's display label is
+   * kept verbatim; subsequent duplicates are dropped. Order across sources:
+   * built-in grouped/list options first, then user-defined custom labels,
+   * then LOC entries.
+   */
+  const normalizeCat = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
+  const dedupedCashInGroups = useMemo(() => {
+    const seen = new Set<string>();
+    return CASH_IN_GROUPED_OPTIONS
+      .map((g) => ({
+        ...g,
+        options: g.options.filter((c) => {
+          const k = normalizeCat(c);
+          if (!k || seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        }),
+      }))
+      .filter((g) => g.options.length > 0);
+  }, []);
+  const cashInBuiltInSeen = useMemo(
+    () => new Set(dedupedCashInGroups.flatMap((g) => g.options).map(normalizeCat)),
+    [dedupedCashInGroups],
+  );
+  const dedupedExtraCashIn = useMemo(() => {
+    const seen = new Set(cashInBuiltInSeen);
+    return extraCashInCategories.filter((c) => {
+      const k = normalizeCat(c);
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [extraCashInCategories, cashInBuiltInSeen]);
+  const dedupedCashOut = useMemo(() => {
+    const seen = new Set<string>();
+    return CASH_OUT_CATEGORIES.filter((c) => {
+      const k = normalizeCat(c);
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, []);
+  const cashOutBuiltInSeen = useMemo(
+    () => new Set(dedupedCashOut.map(normalizeCat)),
+    [dedupedCashOut],
+  );
+  const dedupedExtraCashOut = useMemo(() => {
+    const seen = new Set(cashOutBuiltInSeen);
+    return extraCashOutCategories.filter((c) => {
+      const k = normalizeCat(c);
+      if (!k || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }, [extraCashOutCategories, cashOutBuiltInSeen]);
   const draftDateValue = (d: DraftEntry): string => {
     if (d.frequency_type === 'one_time') return d.frequency_config?.one_time_date || '';
     return d.start_date || '';
@@ -721,7 +779,7 @@ export function ScheduledCashFlowsModal({
                         </SelectTrigger>
                         <SelectContent>
                           {d.flow_type === 'cash_in'
-                            ? CASH_IN_GROUPED_OPTIONS.map((g, gi) =>
+                            ? dedupedCashInGroups.map((g, gi) =>
                                 g.group ? (
                                   <SelectGroup key={`${gi}-${g.group}`}>
                                     <SelectLabel>{g.group}</SelectLabel>
@@ -741,25 +799,25 @@ export function ScheduledCashFlowsModal({
                                   </SelectGroup>
                                 ),
                               )
-                            : CASH_OUT_CATEGORIES.map((c) => (
+                            : dedupedCashOut.map((c) => (
                                 <SelectItem key={c} value={c}>
                                   {c}
                                 </SelectItem>
                               ))}
-                          {d.flow_type === 'cash_in' && extraCashInCategories.length > 0 && (
+                          {d.flow_type === 'cash_in' && dedupedExtraCashIn.length > 0 && (
                             <SelectGroup>
                               <SelectLabel>Custom</SelectLabel>
-                              {extraCashInCategories.map((c) => (
+                              {dedupedExtraCashIn.map((c) => (
                                 <SelectItem key={`custom-in-${c}`} value={c}>
                                   {c}
                                 </SelectItem>
                               ))}
                             </SelectGroup>
                           )}
-                          {d.flow_type === 'cash_out' && extraCashOutCategories.length > 0 && (
+                          {d.flow_type === 'cash_out' && dedupedExtraCashOut.length > 0 && (
                             <SelectGroup>
                               <SelectLabel>Custom</SelectLabel>
-                              {extraCashOutCategories.map((c) => (
+                              {dedupedExtraCashOut.map((c) => (
                                 <SelectItem key={`custom-out-${c}`} value={c}>
                                   {c}
                                 </SelectItem>
