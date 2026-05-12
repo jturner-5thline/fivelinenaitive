@@ -3770,8 +3770,8 @@ export default function DealDetail() {
                  <Card className="max-h-[750px] flex flex-col">
                    <CardHeader className="pb-3 pt-3">
                       <div className="flex items-center gap-2">
-                       <div className="flex items-center gap-1 flex-1 min-w-0 max-w-[280px]">
-                         <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-0.5 flex-1 min-w-0 max-w-[280px] -ml-1">
+                          <div className="flex-1 min-w-0">
                            <LenderSearchInput
                              lenderNames={lenderNames}
                              existingLenderNames={existingLenderNames}
