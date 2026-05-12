@@ -736,6 +736,73 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
       </div>
 
       <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
+        {/* placeholder kept below; drill-down dialog precedes */}
+      </Dialog>
+
+      <Dialog open={!!drill} onOpenChange={(o) => { if (!o) setDrill(null); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className={cn(
+              'text-base',
+              drill?.tone === 'accelerator' && 'text-emerald-600 dark:text-emerald-400',
+              drill?.tone === 'blocker' && 'text-primary',
+            )}>
+              {drill?.title}
+            </DialogTitle>
+            <DialogDescription>{drill?.description}</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto -mx-2 px-2">
+            {drill && drill.deals.length > 0 ? (
+              <ul className="divide-y divide-border">
+                {drill.deals.map(({ deal, lines, date }) => (
+                  <li key={deal.id + date} className="py-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          to={`/deal/${deal.id}`}
+                          className="text-sm font-semibold text-foreground hover:text-primary truncate block"
+                          onClick={() => setDrill(null)}
+                        >
+                          {deal.company || 'Untitled deal'}
+                        </Link>
+                        {deal.stage && (
+                          <p className="text-[11px] text-muted-foreground mt-0.5">
+                            Stage: {formatSlug(deal.stage)}
+                          </p>
+                        )}
+                        {lines.length > 0 && (
+                          <ul className="mt-2 space-y-1">
+                            {lines.map((r, i) => (
+                              <li
+                                key={i}
+                                className={cn(
+                                  'text-xs text-foreground/90 leading-snug pl-3 border-l-2',
+                                  drill.tone === 'accelerator'
+                                    ? 'border-emerald-500/40'
+                                    : 'border-primary/40',
+                                )}
+                              >
+                                {r}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-muted-foreground shrink-0 tabular-nums">
+                        {format(new Date(date), 'MMM d')}
+                      </span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground py-6 text-center">No deals.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle className="text-base">
