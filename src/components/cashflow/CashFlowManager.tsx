@@ -250,44 +250,48 @@ export function CashFlowManager() {
   const dailySaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const dailyLoadedRef = useRef(false);
 
-  // Load persisted daily data + recurring tags from DB
-  useEffect(() => {
+  // Load persisted daily data + recurring tags from DB. Wrapped in a
+  // callback so the live-sync subscriber can re-invoke it when Mark/James
+  // push edits.
+  const loadDailyData = useCallback(async () => {
     if (!company?.id) return;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('cash_flow_imports' as any)
-          .select('daily_data, recurring_tags, weekly_overrides, credit_facilities')
-          .eq('company_id', company.id)
-          .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('cash_flow_imports' as any)
+        .select('daily_data, recurring_tags, weekly_overrides, credit_facilities')
+        .eq('company_id', company.id)
+        .maybeSingle();
 
-        if (error) { console.error('Error loading daily data:', error); }
+      if (error) { console.error('Error loading daily data:', error); }
 
-        if (data) {
-          const dd = (data as any).daily_data;
-          if (dd && typeof dd === 'object' && Array.isArray(dd.dates)) {
-            setDailyData(normalizeDailyData(dd));
-          }
-          const rt = (data as any).recurring_tags;
-          if (Array.isArray(rt)) {
-            setRecurringTags(rt);
-          }
-          const wo = (data as any).weekly_overrides;
-          if (wo && typeof wo === 'object' && !Array.isArray(wo)) {
-            setWeeklyOverrides(wo as WeeklyOverrides);
-          }
-          const cf = (data as any).credit_facilities;
-          if (Array.isArray(cf)) {
-            setCreditFacilities(cf as CreditFacility[]);
-          }
+      if (data) {
+        const dd = (data as any).daily_data;
+        if (dd && typeof dd === 'object' && Array.isArray(dd.dates)) {
+          setDailyData(normalizeDailyData(dd));
         }
-      } catch (err) {
-        console.error('Error loading daily data:', err);
-      } finally {
-        dailyLoadedRef.current = true;
+        const rt = (data as any).recurring_tags;
+        if (Array.isArray(rt)) {
+          setRecurringTags(rt);
+        }
+        const wo = (data as any).weekly_overrides;
+        if (wo && typeof wo === 'object' && !Array.isArray(wo)) {
+          setWeeklyOverrides(wo as WeeklyOverrides);
+        }
+        const cf = (data as any).credit_facilities;
+        if (Array.isArray(cf)) {
+          setCreditFacilities(cf as CreditFacility[]);
+        }
       }
-    })();
+    } catch (err) {
+      console.error('Error loading daily data:', err);
+    } finally {
+      dailyLoadedRef.current = true;
+    }
   }, [company?.id]);
+
+  useEffect(() => {
+    loadDailyData();
+  }, [loadDailyData]);
 
 
 
