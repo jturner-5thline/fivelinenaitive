@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import mammoth from "https://esm.sh/mammoth@1.6.0";
 import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
@@ -39,8 +38,33 @@ async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
 
 async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<string> {
   try {
-    const r = await mammoth.extractRawText({ arrayBuffer });
-    return r.value || "";
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const parts: string[] = [];
+    // Main document + headers/footers/footnotes/endnotes
+    const candidates = Object.keys(zip.files).filter((p) =>
+      /^word\/(document|header\d*|footer\d*|footnotes|endnotes|comments)\.xml$/i.test(p)
+    );
+    for (const path of candidates) {
+      const f = zip.file(path);
+      if (!f) continue;
+      const xml = await f.async("string");
+      // Insert paragraph breaks
+      const withBreaks = xml
+        .replace(/<w:p[ >]/g, "\n<w:p ")
+        .replace(/<w:br[^>]*\/>/g, "\n");
+      // Pull all <w:t>...</w:t> contents
+      for (const m of withBreaks.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)) {
+        const txt = m[1]
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'");
+        parts.push(txt);
+      }
+      parts.push("\n");
+    }
+    return parts.join("").replace(/\n{3,}/g, "\n\n").trim();
   } catch (err) {
     console.error("DOCX extraction error:", err);
     return "";
