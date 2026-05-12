@@ -71,5 +71,22 @@ export function useDailyDismissals(scope: string) {
 
   const isDismissed = useCallback((id: string) => dismissed.has(id), [dismissed]);
 
-  return { dismissed, dismiss, isDismissed };
+  const restore = useCallback(
+    (id: string) => {
+      setDismissed((prev) => {
+        if (!prev.has(id)) return prev;
+        const next = new Set(prev);
+        next.delete(id);
+        try {
+          localStorage.setItem(storageKey, JSON.stringify(Array.from(next)));
+        } catch {
+          /* ignore */
+        }
+        return next;
+      });
+    },
+    [storageKey],
+  );
+
+  return { dismissed, dismiss, isDismissed, restore };
 }
