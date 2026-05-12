@@ -341,9 +341,10 @@ const PIE_COLORS = [
   'hsl(180, 60%, 45%)',
 ];
 
-function ReasonPie({ data, emptyText }: {
+function ReasonPie({ data, emptyText, onSliceClick }: {
   data: { label: string; count: number }[];
   emptyText: string;
+  onSliceClick?: (label: string) => void;
 }) {
   if (data.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-6">{emptyText}</p>;
@@ -367,6 +368,8 @@ function ReasonPie({ data, emptyText }: {
             paddingAngle={data.length > 1 ? 2 : 0}
             stroke="hsl(var(--card))"
             strokeWidth={1}
+            onClick={onSliceClick ? (slice: any) => onSliceClick(slice?.label ?? slice?.payload?.label) : undefined}
+            cursor={onSliceClick ? 'pointer' : undefined}
           >
             {data.map((_, i) => (
               <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
