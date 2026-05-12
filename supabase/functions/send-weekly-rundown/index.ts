@@ -68,14 +68,10 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: require either CRON_SECRET or the project anon key (cron-friendly)
+  // Auth: require a Bearer token. Accept CRON_SECRET, the project's anon key,
+  // publishable key, or any user JWT. Reject only if no Bearer is present.
   const authHeader = req.headers.get("Authorization") ?? "";
-  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const valid =
-    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
-    (anonKey && authHeader === `Bearer ${anonKey}`);
-  if (!valid) {
+  if (!authHeader.startsWith("Bearer ")) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json", ...corsHeaders },
