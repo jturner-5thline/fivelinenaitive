@@ -94,10 +94,11 @@ function shouldIgnoreCardOpen(target: EventTarget | null, currentTarget?: HTMLEl
   return true;
 }
 
-function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone, onOpenEdit }: {
+function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleMilestone, onOpenEdit, onDeleted }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
   milestones: DealStageMilestone[]; onToggleMilestone: (dealId: string, stage: string, key: string) => void;
   onOpenEdit: (deal: Deal) => void;
+  onDeleted?: () => void;
 }) {
   const { attributes, listeners, setNodeRef } = useDraggable({ id: deal.id, data: { deal } });
   // DragOverlay handles the moving copy — keep the source in place but hide
@@ -136,7 +137,7 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
-      <NaitiveDealCard deal={deal} disableLink>
+      <NaitiveDealCard deal={deal} disableLink onDeleted={onDeleted}>
         {milestones.length > 0 && (
           <div className="pt-1">
             <NaitiveMilestoneDiamonds
@@ -153,7 +154,7 @@ function DraggableCard({ deal, onStatusChange, isDragging, milestones, onToggleM
 
 function StageColumn({
   stage, deals, onStatusChange, onStageChange, activeDealId, isOver, fullscreen,
-  getMilestonesForDeal, onToggleMilestone, onOpenEdit,
+  getMilestonesForDeal, onToggleMilestone, onOpenEdit, onDeleted,
 }: {
   stage: DealStageOption; deals: Deal[];
   onStatusChange: (id: string, s: DealStatus) => void;
@@ -162,6 +163,7 @@ function StageColumn({
   getMilestonesForDeal: (dealId: string, stage: string) => DealStageMilestone[];
   onToggleMilestone: (dealId: string, stage: string, key: string) => void;
   onOpenEdit: (deal: Deal) => void;
+  onDeleted?: () => void;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
 
@@ -189,6 +191,7 @@ function StageColumn({
               milestones={getMilestonesForDeal(deal.id, deal.stage)}
               onToggleMilestone={onToggleMilestone}
               onOpenEdit={onOpenEdit}
+              onDeleted={onDeleted}
             />
           ))}
         </div>
@@ -385,6 +388,7 @@ export default function NaitivePipeline() {
               getMilestonesForDeal={getMilestonesForDeal}
               onToggleMilestone={toggleMilestone}
               onOpenEdit={openDealFromPipeline}
+              onDeleted={refetch}
             />
           ))}
         </div>
