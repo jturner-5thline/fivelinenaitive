@@ -305,13 +305,13 @@ export function LenderFollowUpPopover({
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
           title="Follow Up"
+          aria-label="Follow Up"
           className={
             className ||
-            'inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary hover:bg-primary/20 transition-colors'
+            'inline-flex items-center justify-center h-6 w-6 rounded-md border border-white/10 bg-background/40 backdrop-blur-sm text-muted-foreground hover:text-primary hover:bg-muted/40 hover:border-white/20 transition-colors'
           }
         >
-          <Mail className="h-3 w-3" />
-          Follow Up
+          <Mail className="h-3.5 w-3.5" />
         </button>
       </PopoverTrigger>
       <PopoverContent
