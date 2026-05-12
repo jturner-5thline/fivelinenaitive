@@ -104,13 +104,25 @@ export function AddCashInModal({ open, onClose, onItemsAdded }: AddCashInModalPr
           // Initialize row state for all deals
           const init: Record<string, RowState> = {};
           d.forEach(deal => {
+            const retainer = Number(deal.retainer_fee) || 0;
+            const milestone = Number(deal.milestone_fee) || 0;
+            const totalFee = Number(deal.total_fee) || 0;
+            const value = Number(deal.value) || 0;
+            const sfPct = Number(deal.success_fee_percent);
+            // Closing = explicit success fee (value * success_fee_percent),
+            // otherwise the residual of total_fee after retainer & milestone.
+            const closingFromPct = Number.isFinite(sfPct) && sfPct > 0
+              ? value * (sfPct / 100)
+              : 0;
+            const closingResidual = Math.max(0, totalFee - retainer - milestone);
+            const closingAmt = closingFromPct > 0 ? closingFromPct : closingResidual;
             init[deal.id] = {
               retainerEnabled: false,
-              retainerAmt: deal.retainer_fee || 0,
+              retainerAmt: retainer,
               milestoneEnabled: false,
-              milestoneAmt: deal.milestone_fee || 0,
+              milestoneAmt: milestone,
               closingEnabled: false,
-              closingAmt: deal.total_fee || 0,
+              closingAmt: closingAmt,
               date: todayStr,
             };
           });
