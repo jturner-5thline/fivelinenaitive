@@ -109,6 +109,7 @@ export const CASH_OUT_CATEGORIES = [
   'Software',
   'Healthcare',
   'Insurance',
+  'Office & Admin',
   '401k',
   'Ramp',
   'Other Cash Out',
@@ -132,16 +133,51 @@ export const CATEGORY_ALIASES: Record<string, string> = {
   'Contractors & Consultants': 'Contractor Expense',
   'Software & Technology': 'Software',
   'Legal & Professional': 'Professional Services',
-  'Office & Admin': 'Other Cash Out',
   'Travel & Entertainment': 'Other Cash Out',
   'Rent & Occupancy': 'Other Cash Out',
   'Other Disbursements': 'Other Cash Out',
   Other: 'Other Cash Out',
+  // Normalized variants of "Office & Admin" — handled additionally by
+  // resolveCategoryAlias's normalized lookup, but listed here for clarity
+  // and so exact-string matches stay O(1).
+  'Office and Admin': 'Office & Admin',
+  'Office/Admin': 'Office & Admin',
+  'Office & Administration': 'Office & Admin',
+  'Office Admin': 'Office & Admin',
 };
+
+/** Lowercase + collapse whitespace + strip surrounding punctuation noise. */
+function normalizeCategoryKey(s: string): string {
+  return String(s || '')
+    .toLowerCase()
+    .replace(/[\s_/\-&]+/g, ' ')
+    .trim();
+}
+
+// Pre-computed normalized alias map: normalized(input) -> canonical category.
+// Lets us catch "office and admin", "OFFICE & ADMIN", "office/admin", etc.
+const NORMALIZED_ALIAS_MAP: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(CATEGORY_ALIASES)) {
+    out[normalizeCategoryKey(k)] = v;
+  }
+  return out;
+})();
 
 /** Resolve any incoming category label to its canonical weekly row key. */
 export function resolveCategoryAlias(category: string): string {
-  return CATEGORY_ALIASES[category] || category;
+  if (CATEGORY_ALIASES[category]) return CATEGORY_ALIASES[category];
+  const norm = normalizeCategoryKey(category);
+  if (NORMALIZED_ALIAS_MAP[norm]) return NORMALIZED_ALIAS_MAP[norm];
+  // Also match canonical category labels by normalized form so "office & admin"
+  // typed in any case/spacing maps to the canonical "Office & Admin".
+  for (const c of CASH_OUT_CATEGORIES) {
+    if (normalizeCategoryKey(c) === norm) return c;
+  }
+  for (const c of CASH_IN_CATEGORIES) {
+    if (normalizeCategoryKey(c) === norm) return c;
+  }
+  return category;
 }
 
 /**
@@ -165,6 +201,7 @@ export const CANONICAL_TO_GRID_ROW: Record<string, string> = {
   'Professional Services': 'Legal & Professional',
   'Other Cash Out': 'Other Disbursements',
   Insurance: 'Insurance',
+  'Office & Admin': 'Office & Admin',
 };
 
 /**
@@ -199,7 +236,6 @@ const GRID_ROW_TO_CANONICAL: Record<string, string> = (() => {
   // canonical for the dropdown. The CANONICAL_TO_GRID_ROW pass above already
   // covers most cases; explicit overrides go here.
   out['Payroll - Taxes & Benefits'] = 'Payroll Expense';
-  out['Office & Admin'] = 'Other Cash Out';
   out['Travel & Entertainment'] = 'Other Cash Out';
   out['Rent & Occupancy'] = 'Other Cash Out';
   return out;
