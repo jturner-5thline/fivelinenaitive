@@ -514,6 +514,27 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
                 rows={3}
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="phase">Phase</Label>
+              <Select
+                value={String(formData.phase ?? 2)}
+                onValueChange={(value) =>
+                  setFormData(prev => ({ ...prev, phase: Number(value) as 1 | 2 | 3 }))
+                }
+              >
+                <SelectTrigger id="phase">
+                  <SelectValue placeholder="Select phase" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Phase 1 — Initial / First Round</SelectItem>
+                  <SelectItem value="2">Phase 2 — Full Due Diligence</SelectItem>
+                  <SelectItem value="3">Phase 3 — Closing</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Only Phase 1 items auto-populate when a deal is created. Other phases can be added later.
+              </p>
+            </div>
             <div className="flex items-center gap-2">
               <Checkbox
                 id="is_required"
