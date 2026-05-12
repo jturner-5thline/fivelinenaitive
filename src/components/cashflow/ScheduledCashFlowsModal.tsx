@@ -15,6 +15,7 @@ import {
   ArrowUp,
   ArrowDown,
   ChevronsUpDown,
+  X,
 } from 'lucide-react';
 import {
   Dialog,
@@ -258,6 +259,10 @@ export function ScheduledCashFlowsModal({
       setSortDir('asc');
     }
   };
+  const clearSort = () => {
+    setSortKey(null);
+    setSortDir('asc');
+  };
   const draftDateValue = (d: DraftEntry): string => {
     if (d.frequency_type === 'one_time') return d.frequency_config?.one_time_date || '';
     return d.start_date || '';
@@ -479,7 +484,7 @@ export function ScheduledCashFlowsModal({
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent
-        className="max-w-7xl w-[96vw] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl"
+        className="max-w-[1400px] w-[97vw] p-0 gap-0 overflow-hidden border-border bg-card shadow-2xl rounded-2xl"
         style={{ maxHeight: '90vh' }}
       >
         {/* Header */}
@@ -535,9 +540,9 @@ export function ScheduledCashFlowsModal({
                   return (
                     <div
                       key={f.id}
-                      className="grid grid-cols-1 md:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,1fr))_repeat(2,minmax(0,1fr))_32px] gap-2 items-end p-3 rounded-lg border border-border bg-card"
+                      className="grid grid-cols-1 sm:grid-cols-12 gap-2 items-end p-3 rounded-lg border border-border bg-card flex-nowrap"
                     >
-                      <div>
+                      <div className="sm:col-span-3 min-w-0">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Facility name</label>
                         <Input
                           value={f.name}
@@ -546,7 +551,7 @@ export function ScheduledCashFlowsModal({
                           className="h-9 mt-1"
                         />
                       </div>
-                      <div>
+                      <div className="sm:col-span-2 min-w-[110px]">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Total facility</label>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
@@ -559,7 +564,7 @@ export function ScheduledCashFlowsModal({
                           />
                         </div>
                       </div>
-                      <div>
+                      <div className="sm:col-span-2 min-w-[110px]">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Currently drawn</label>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">$</span>
@@ -572,14 +577,14 @@ export function ScheduledCashFlowsModal({
                           />
                         </div>
                       </div>
-                      <div>
+                      <div className="sm:col-span-2 min-w-[110px]">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Available LOC</label>
                         <div className="h-9 mt-1 px-3 rounded-md border border-dashed border-amber-500/40 bg-amber-500/5 text-amber-300 flex items-center justify-end gap-1.5 text-sm font-medium tabular-nums">
                           <Lock className="h-3 w-3" />
                           {available.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
                         </div>
                       </div>
-                      <div>
+                      <div className="sm:col-span-1 min-w-[110px]">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Start date</label>
                         <div className="mt-1">
                           <DatePickerField
@@ -589,7 +594,7 @@ export function ScheduledCashFlowsModal({
                           />
                         </div>
                       </div>
-                      <div>
+                      <div className="sm:col-span-1 min-w-[110px]">
                         <label className="text-[11px] uppercase tracking-wide text-muted-foreground font-medium">Maturity (end)</label>
                         <div className="mt-1">
                           <DatePickerField
@@ -605,7 +610,7 @@ export function ScheduledCashFlowsModal({
                         size="icon"
                         onClick={() => removeFacility(f.id)}
                         title="Remove facility"
-                        className="h-9 w-9 text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
+                        className="sm:col-span-1 h-9 w-9 justify-self-end text-muted-foreground hover:text-red-400 hover:bg-red-500/10"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -635,6 +640,26 @@ export function ScheduledCashFlowsModal({
             </div>
           ) : (
             <div className="flex flex-col">
+              {/* Sort status / clear */}
+              <div className="flex items-center justify-between gap-2 px-2 pb-1.5">
+                <span className="text-[11px] text-muted-foreground">
+                  {sortKey
+                    ? <>Sorted by <span className="text-foreground font-medium capitalize">{sortKey}</span> · {sortDir === 'asc' ? 'Ascending' : 'Descending'}</>
+                    : 'Click a column header to sort'}
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSort}
+                  disabled={!sortKey}
+                  className="h-6 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground disabled:opacity-40"
+                >
+                  <X className="h-3 w-3" />
+                  Clear sort
+                </Button>
+              </div>
+
               {/* Column Headers */}
               <div className="grid grid-cols-[16px_minmax(0,1.1fr)_minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,2fr)_140px_32px] gap-2 items-center px-2 pb-2 mb-1 border-b border-border">
                 <span />
