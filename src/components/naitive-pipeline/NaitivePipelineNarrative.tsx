@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
@@ -155,7 +156,9 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
   const [history, setHistory] = useState<NarrativeRow[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
-  const [tab, setTab] = useState<'agenda' | 'narrative' | 'analysis' | 'qual-demo' | 'did-not-move' | 'history'>('agenda');
+  const [tab, setTab] = useState<'agenda' | 'narrative' | 'analysis' | 'history'>('agenda');
+  const [qualDemoOpen, setQualDemoOpen] = useState(false);
+  const [didNotMoveOpen, setDidNotMoveOpen] = useState(false);
 
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
   const [analysisLoading, setAnalysisLoading] = useState(false);
@@ -474,14 +477,32 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
       </CardHeader>
       <CardContent className="px-5 pb-5 pt-1 flex-1 flex flex-col min-h-0">
         <Tabs value={tab} onValueChange={(v) => setTab(v as any)} className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-6 h-8">
-            <TabsTrigger value="agenda" className="text-xs gap-1"><ListChecks className="h-3 w-3" />Agenda</TabsTrigger>
-            <TabsTrigger value="narrative" className="text-xs gap-1"><Pencil className="h-3 w-3" />Narrative</TabsTrigger>
-            <TabsTrigger value="analysis" className="text-xs gap-1"><Sparkles className="h-3 w-3" />AI Analysis</TabsTrigger>
-            <TabsTrigger value="qual-demo" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Qual → Demo</TabsTrigger>
-            <TabsTrigger value="did-not-move" className="text-xs gap-1"><Sparkles className="h-3 w-3" />Did Not Move</TabsTrigger>
-            <TabsTrigger value="history" className="text-xs gap-1"><HistoryIcon className="h-3 w-3" />History</TabsTrigger>
-          </TabsList>
+            <div className="flex items-center gap-2">
+              <TabsList className="grid flex-1 grid-cols-4 h-8">
+                <TabsTrigger value="agenda" className="text-xs gap-1"><ListChecks className="h-3 w-3" />Agenda</TabsTrigger>
+                <TabsTrigger value="narrative" className="text-xs gap-1"><Pencil className="h-3 w-3" />Narrative</TabsTrigger>
+                <TabsTrigger value="analysis" className="text-xs gap-1"><Sparkles className="h-3 w-3" />AI Analysis</TabsTrigger>
+                <TabsTrigger value="history" className="text-xs gap-1"><HistoryIcon className="h-3 w-3" />History</TabsTrigger>
+              </TabsList>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setQualDemoOpen(true)}
+                className="h-8 text-xs gap-1 border-dashed border-primary/40 hover:bg-primary/5 text-foreground/90"
+              >
+                <Sparkles className="h-3 w-3" />Qual → Demo
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setDidNotMoveOpen(true)}
+                className="h-8 text-xs gap-1 border-dashed border-amber-400/40 hover:bg-amber-400/5 text-foreground/90"
+              >
+                <Sparkles className="h-3 w-3" />Did Not Move
+              </Button>
+            </div>
 
           <TabsContent value="agenda" className="mt-3 flex-1 flex flex-col min-h-0 data-[state=inactive]:hidden">
             <AgendaPanel periodType={current.type} periodKey={current.key} periodLabel={current.label} />
@@ -526,22 +547,6 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
             />
           </TabsContent>
 
-          <TabsContent value="qual-demo" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            {deals.length > 0 ? (
-              <NaitiveQualToDemoInsights deals={deals} />
-            ) : (
-              <p className="text-sm text-muted-foreground py-8 text-center">No data yet for this view.</p>
-            )}
-          </TabsContent>
-
-          <TabsContent value="did-not-move" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
-            {deals.length > 0 ? (
-              <NaitiveDidNotMoveInsights deals={deals} />
-            ) : (
-              <p className="text-sm text-muted-foreground py-8 text-center">No data yet for this view.</p>
-            )}
-          </TabsContent>
-
           <TabsContent value="history" className="mt-3 flex-1 overflow-y-auto data-[state=inactive]:hidden">
             <HistoryPanel
               rows={history}
@@ -553,6 +558,42 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
           </TabsContent>
         </Tabs>
       </CardContent>
+
+      <Dialog open={qualDemoOpen} onOpenChange={setQualDemoOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Qual → Demo · {current.label}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
+            {deals.length > 0 ? (
+              <NaitiveQualToDemoInsights deals={deals} />
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">No data yet for this view.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={didNotMoveOpen} onOpenChange={setDidNotMoveOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-amber-400" />
+              Did Not Move · {current.label}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="pt-2">
+            {deals.length > 0 ? (
+              <NaitiveDidNotMoveInsights deals={deals} />
+            ) : (
+              <p className="text-sm text-muted-foreground py-8 text-center">No data yet for this view.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
