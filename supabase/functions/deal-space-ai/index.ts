@@ -252,8 +252,32 @@ async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<ExtractedConten
 
 async function extractDocxText(arrayBuffer: ArrayBuffer): Promise<ExtractedContent> {
   try {
-    const result = await mammoth.extractRawText({ arrayBuffer });
-    return { text: result.value || "" };
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const parts: string[] = [];
+    const candidates = Object.keys(zip.files).filter((p) =>
+      /^word\/(document|header\d*|footer\d*|footnotes|endnotes|comments)\.xml$/i.test(p)
+    );
+    for (const path of candidates) {
+      const f = zip.file(path);
+      if (!f) continue;
+      const xml = await f.async("string");
+      const withBreaks = xml
+        .replace(/<w:p[ >]/g, "\n<w:p ")
+        .replace(/<w:br[^>]*\/>/g, "\n");
+      for (const m of withBreaks.matchAll(/<w:t[^>]*>([\s\S]*?)<\/w:t>/g)) {
+        parts.push(
+          m[1]
+            .replace(/&amp;/g, "&")
+            .replace(/&lt;/g, "<")
+            .replace(/&gt;/g, ">")
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'"),
+        );
+      }
+      parts.push("\n");
+    }
+    const text = parts.join("").replace(/\n{3,}/g, "\n\n").trim();
+    return { text: text || "" };
   } catch (error) {
     console.error("DOCX extraction error:", error);
     return { text: "[Word document content could not be extracted]" };
