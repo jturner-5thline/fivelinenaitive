@@ -102,7 +102,6 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   const isTasksPage = location.pathname === '/tasks' || location.pathname.startsWith('/tasks/');
   // The dashboard already exposes the primary assistant composer inline,
   // so suppress the floating AI Copilot panel + toggle on that route only.
-  const isDashboardPage = location.pathname === '/dashboard';
 
   // Log a page_view activity event whenever the route changes.
   React.useEffect(() => {
@@ -150,7 +149,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
 
       <div className="flex w-full h-full min-h-0 bg-transparent pt-2 pb-2 pl-2 pr-0 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
-        <MainContent className={mainClassName} showCopilotBar={!isDashboardPage}>{children}</MainContent>
+        <MainContent className={mainClassName} showCopilotBar={true}>{children}</MainContent>
       </div>
       <TaskAssignmentBanner />
       <PlatformTour />

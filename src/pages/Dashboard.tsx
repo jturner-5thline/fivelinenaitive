@@ -35,7 +35,6 @@ import { DashboardGrid } from '@/components/dashboard/DashboardGrid';
 const AddWidgetDialog = lazy(() =>
   import('@/components/dashboard/AddWidgetDialog').then(m => ({ default: m.AddWidgetDialog })),
 );
-import { DashboardAIInput } from '@/components/dashboard/DashboardAIInput';
 import { EmailIntelligenceWidget } from '@/components/dashboard/EmailIntelligenceWidget';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
@@ -933,13 +932,6 @@ export default function Dashboard() {
             );
           })()}
           </HintTooltip>
-
-          <div
-            className="sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 backdrop-blur-md bg-background/60 supports-[backdrop-filter]:bg-background/40 rounded-xl"
-            style={{ top: 'var(--app-top-bar-height, 0px)' }}
-          >
-            <DashboardAIInput />
-          </div>
 
           {/* ─── Dashboard navigation ──────────────────────────────────
               Single navigation row: preset tabs (My Dashboard, …)
