@@ -3,6 +3,14 @@ import { Deal } from '@/types/deal';
 import { Card } from '@/components/ui/card';
 import { differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useState } from 'react';
+import { Trash2, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const ICP_STYLES: Record<string, string> = {
   'Debt Advisory': 'bg-blue-500/15 text-blue-300 border-blue-500/30',
@@ -41,13 +49,43 @@ function formatNextDate(d?: string | null) {
   } catch { return null; }
 }
 
-export function NaitiveDealCard({ deal, children, disableLink }: { deal: Deal; children?: React.ReactNode; disableLink?: boolean }) {
+export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { deal: Deal; children?: React.ReactNode; disableLink?: boolean; onDeleted?: () => void }) {
   const lastActivity = formatLastActivity(deal.updatedAt);
   const nextDate = formatNextDate(deal.nextStepDate);
   const owner = deal.ownedBy || deal.manager;
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase.from('deals').delete().eq('id', deal.id);
+      if (error) throw error;
+      toast.success('Deal deleted');
+      setConfirmOpen(false);
+      onDeleted?.();
+    } catch (e: any) {
+      console.error('[naitive] delete deal failed', e);
+      toast.error(e?.message || 'Failed to delete deal');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const inner = (
     <Card className="deal-glass group cursor-pointer transition-all duration-200 hover:-translate-y-0.5 p-3 space-y-2">
+        {onDeleted && (
+          <button
+            type="button"
+            data-no-card-open
+            onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmOpen(true); }}
+            className="absolute right-10 top-2 z-20 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground shadow-sm opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 focus-visible:opacity-100 group-hover:opacity-100"
+            aria-label={`Delete ${deal.company || 'deal'}`}
+            title="Delete deal"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
         {/* Line 1 */}
         <div className="min-w-0">
           <h3 className="text-sm font-bold leading-tight truncate" style={{ color: '#f1f6fc' }}>
@@ -94,12 +132,38 @@ export function NaitiveDealCard({ deal, children, disableLink }: { deal: Deal; c
     </Card>
   );
 
+  const wrapped = onDeleted ? (
+    <>
+      {inner}
+      <AlertDialog open={confirmOpen} onOpenChange={(o) => { if (!deleting) setConfirmOpen(o); }}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete deal?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <span className="font-semibold text-foreground">{deal.company || 'this deal'}</span>? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? (<><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Deleting…</>) : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  ) : inner;
+
   if (disableLink) {
-    return <div className="block w-full min-w-0">{inner}</div>;
+    return <div className="block w-full min-w-0">{wrapped}</div>;
   }
   return (
     <Link to={`/deal/${deal.id}`} className="block w-full min-w-0">
-      {inner}
+      {wrapped}
     </Link>
   );
 }
