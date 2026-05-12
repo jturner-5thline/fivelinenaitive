@@ -185,6 +185,13 @@ export function CashFlowManager() {
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => normalizeSidebarData(deepClone(SEED_SIDEBAR_DATA)));
   const sidebarLoadedRef = useRef(false);
   const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // Diff guard — last payload we actually persisted/broadcast for sidebar.
+  // Prevents the autosave effect (which fires on every state mutation,
+  // including post-load setState) from re-upserting and re-broadcasting
+  // a payload that is byte-for-byte identical to what's already in the
+  // database. This is what was causing the "[user] updated this view"
+  // toast to fire on innocuous re-renders / refreshes.
+  const lastSavedSidebarRef = useRef<string | null>(null);
   // Forward-declared so the autosave effects below (which run before the
   // useFinanceLiveSync hook is wired up) can still emit broadcasts. The
   // ref is populated immediately once the live-sync hook returns.
@@ -209,10 +216,19 @@ export function CashFlowManager() {
         const cashInItems = (data as any).cash_in_items;
         const notes = (data as any).notes;
         if (Array.isArray(cashInItems) || Array.isArray(notes)) {
-          setSidebarData({
+          const loaded = {
             cash_in_next_8_weeks: Array.isArray(cashInItems) ? cashInItems : [],
             notes: Array.isArray(notes) ? notes : [],
-          });
+          };
+          setSidebarData(loaded);
+          // Prime the diff snapshot so the autosave effect that fires from
+          // this setState does not treat freshly-loaded data as an edit.
+          try {
+            lastSavedSidebarRef.current = JSON.stringify({
+              cash_in_items: loaded.cash_in_next_8_weeks,
+              notes: loaded.notes,
+            });
+          } catch { /* ignore */ }
         }
       }
       // If no data found, keep SEED_SIDEBAR_DATA as fallback
@@ -230,9 +246,19 @@ export function CashFlowManager() {
   // Auto-save sidebar data to DB when it changes (debounced)
   useEffect(() => {
     if (!company?.id || !sidebarLoadedRef.current) return;
-    
+
     if (sidebarSaveTimerRef.current) clearTimeout(sidebarSaveTimerRef.current);
     sidebarSaveTimerRef.current = setTimeout(async () => {
+      // Diff-guard: skip both the DB upsert and the live broadcast when
+      // the serialized payload is identical to what we last persisted.
+      let nextSnapshot = '';
+      try {
+        nextSnapshot = JSON.stringify({
+          cash_in_items: sidebarData.cash_in_next_8_weeks,
+          notes: sidebarData.notes,
+        });
+      } catch { /* fall through and save */ }
+      if (nextSnapshot && nextSnapshot === lastSavedSidebarRef.current) return;
       try {
         await supabase
           .from('cashflow_sidebar_data' as any)
@@ -242,8 +268,10 @@ export function CashFlowManager() {
             notes: sidebarData.notes,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
-          // Live-sync — only Mark/James actually emit (no-op for everyone else).
-          broadcastRef.current('sidebar');
+        if (nextSnapshot) lastSavedSidebarRef.current = nextSnapshot;
+        // Live-sync — only Mark/James actually emit (no-op for everyone else).
+        // Only fires when the payload genuinely changed (diff above).
+        broadcastRef.current('sidebar');
       } catch (err) {
         console.error('Error saving sidebar data:', err);
       }
@@ -257,6 +285,10 @@ export function CashFlowManager() {
   // --- Daily data + recurring tags persistence ---
   const dailySaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const dailyLoadedRef = useRef(false);
+  // Diff guard for the daily/recurring/overrides/credit-facilities blob.
+  // Same rationale as lastSavedSidebarRef: prevents no-op autosaves from
+  // emitting spurious "[user] updated this view" toasts.
+  const lastSavedDailyRef = useRef<string | null>(null);
 
   // Load persisted daily data + recurring tags from DB. Wrapped in a
   // callback so the live-sync subscriber can re-invoke it when Mark/James
@@ -289,6 +321,16 @@ export function CashFlowManager() {
         if (Array.isArray(cf)) {
           setCreditFacilities(cf as CreditFacility[]);
         }
+        // Prime the diff snapshot from what's now in DB so the autosave
+        // effect fired by these setStates is a no-op until a real edit.
+        try {
+          lastSavedDailyRef.current = JSON.stringify({
+            daily_data: (data as any).daily_data ?? null,
+            recurring_tags: (data as any).recurring_tags ?? null,
+            weekly_overrides: (data as any).weekly_overrides ?? null,
+            credit_facilities: (data as any).credit_facilities ?? null,
+          });
+        } catch { /* ignore */ }
       }
     } catch (err) {
       console.error('Error loading daily data:', err);
@@ -505,6 +547,17 @@ export function CashFlowManager() {
 
     if (dailySaveTimerRef.current) clearTimeout(dailySaveTimerRef.current);
     dailySaveTimerRef.current = setTimeout(async () => {
+      // Diff-guard: only persist + broadcast on a real content change.
+      let nextSnapshot = '';
+      try {
+        nextSnapshot = JSON.stringify({
+          daily_data: dailyData,
+          recurring_tags: recurringTags,
+          weekly_overrides: weeklyOverrides,
+          credit_facilities: creditFacilities,
+        });
+      } catch { /* fall through and save */ }
+      if (nextSnapshot && nextSnapshot === lastSavedDailyRef.current) return;
       try {
         await supabase
           .from('cash_flow_imports' as any)
@@ -516,6 +569,7 @@ export function CashFlowManager() {
             credit_facilities: creditFacilities,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
+        if (nextSnapshot) lastSavedDailyRef.current = nextSnapshot;
         broadcastRef.current('daily');
       } catch (err) {
         console.error('Error saving daily data:', err);
