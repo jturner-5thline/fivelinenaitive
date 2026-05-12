@@ -236,6 +236,8 @@ export function CashFlowManager() {
             notes: sidebarData.notes,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
+        // Live-sync — only Mark/James actually emit (no-op for everyone else).
+        broadcastFinanceEdit('sidebar');
       } catch (err) {
         console.error('Error saving sidebar data:', err);
       }
@@ -244,7 +246,7 @@ export function CashFlowManager() {
     return () => {
       if (sidebarSaveTimerRef.current) clearTimeout(sidebarSaveTimerRef.current);
     };
-  }, [company?.id, sidebarData]);
+  }, [company?.id, sidebarData, broadcastFinanceEdit]);
 
   // --- Daily data + recurring tags persistence ---
   const dailySaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
