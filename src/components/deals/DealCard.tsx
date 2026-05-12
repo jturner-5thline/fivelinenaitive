@@ -51,6 +51,10 @@ interface DealCardProps {
 export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, hideStatus = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
+  // Show the corner indicator if either source of truth says flagged:
+  // the legacy `deals.is_flagged` boolean OR an active row in `deal_flag_notes`.
+  const showFlagIndicator = activeFlagCount > 0 || !!deal.isFlagged;
+  const displayFlagCount = Math.max(activeFlagCount, deal.isFlagged ? 1 : 0);
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isEditDrawerMounted, setIsEditDrawerMounted] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
@@ -196,7 +200,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
           via useFlagNotes(dealId), so it works without a parent handler.
           Color matches the toolbar's flag filter (red-400).
         */}
-        {activeFlagCount > 0 && (
+        {showFlagIndicator && (
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -212,9 +216,9 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                   style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
                 >
                   <Flag className="h-3 w-3 fill-current" />
-                  {activeFlagCount > 1 && (
+                  {displayFlagCount > 1 && (
                     <span className="absolute -bottom-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-background text-red-400 text-[9px] font-bold flex items-center justify-center ring-1 ring-red-500/50 tabular-nums">
-                      {activeFlagCount > 9 ? '9+' : activeFlagCount}
+                      {displayFlagCount > 9 ? '9+' : displayFlagCount}
                     </span>
                   )}
                 </button>
@@ -351,17 +355,17 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`h-6 w-6 shrink-0 relative ${activeFlagCount > 0 ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
+                      className={`h-6 w-6 shrink-0 relative ${showFlagIndicator ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
                       onClick={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
                         setIsFlagDialogOpen(true);
                       }}
                     >
-                      <Flag className={`h-3.5 w-3.5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
-                      {activeFlagCount > 1 && (
+                      <Flag className={`h-3.5 w-3.5 ${showFlagIndicator ? 'fill-current' : ''}`} />
+                      {displayFlagCount > 1 && (
                         <span className="absolute -top-1 -right-1 h-3.5 min-w-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
-                          {activeFlagCount}
+                          {displayFlagCount}
                         </span>
                       )}
                     </Button>

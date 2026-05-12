@@ -34,7 +34,7 @@ export function FlagNoteDialog({
   const [isSaving, setIsSaving] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const { activeFlags, resolvedFlags, addFlagNote, resolveFlagNote, deleteFlagNote, refetch } = useFlagNotes(dealId);
+  const { activeFlags, resolvedFlags, isLoading, addFlagNote, resolveFlagNote, deleteFlagNote, refetch } = useFlagNotes(dealId);
   const authorIds = [...activeFlags, ...resolvedFlags].map(f => f.user_id).filter(Boolean) as string[];
   const authors = useFlagAuthors(authorIds, isOpen);
 
@@ -46,8 +46,12 @@ export function FlagNoteDialog({
   }, [isOpen]);
 
   useEffect(() => {
+    // Don't emit while the initial fetch is still in flight — otherwise we
+    // would clobber the seed count derived from `deal.isFlagged` and hide
+    // the flag indicator on cards before the real count loads.
+    if (isLoading) return;
     onFlagCountChange?.(activeFlags.length);
-  }, [activeFlags.length, onFlagCountChange]);
+  }, [activeFlags.length, isLoading, onFlagCountChange]);
 
   const handleAddFlag = async () => {
     if (!newNote.trim()) return;
