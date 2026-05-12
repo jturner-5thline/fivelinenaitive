@@ -10,7 +10,7 @@ import {
   CASH_IN_CATEGORIES,
   CASH_OUT_CATEGORIES,
   CANONICAL_TO_GRID_ROW,
-  applyVariance,
+  getOccurrenceAmount,
   type ScheduledCashFlow,
   type FrequencyType,
   type FlowType,
@@ -113,8 +113,25 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     category: string;
     frequency_type: FrequencyType;
     flow_type: FlowType;
+    /** Occurrence date (YYYY-MM-DD) of the row being edited. Required for
+     *  the "For this Period Only" scope so we can write a per-occurrence
+     *  override on `frequency_config.amount_overrides`. */
+    occurrenceDate: string;
+    /** Snapshot of the original amount when edit started, used to detect
+     *  whether the amount actually changed and trigger the scope prompt. */
+    originalAmount: number;
   } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  /** Pending scope decision when a user changes Amount on a recurring entry. */
+  const [scopePrompt, setScopePrompt] = useState<{
+    entryId: string;
+    occurrenceDate: string;
+    newAmount: number;
+    /** Patch for non-amount field changes that always go to the base entry. */
+    otherPatch: Partial<ScheduledCashFlow>;
+    /** Existing entry, used to merge frequency_config when writing override. */
+    entry: ScheduledCashFlow;
+  } | null>(null);
 
   // Reset filters when context changes
   useEffect(() => {
@@ -157,12 +174,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
 
       const occurrences = generateOccurrences(entry, rangeStart, rangeEnd);
       for (const occ of occurrences) {
-        const base = Number(entry.amount) || 0;
-        const amt = applyVariance(
-          base,
-          entry.frequency_config?.variance_pct,
-          `${entry.id || entry.category}:${occ}`,
-        );
+        const amt = getOccurrenceAmount(entry, occ);
         const id = String(entry.id || '');
         let source: 'quickbooks' | 'deal' | 'manual' = 'manual';
         let sourceLabel = 'Manual — Configure';
@@ -220,10 +232,12 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     setEditingEntryId(r.entryId);
     setEditDraft({
       description: r.entry.notes || '',
-      amount: String(Math.abs(Number(r.entry.amount) || 0)),
+      amount: String(Math.abs(getOccurrenceAmount(r.entry, r.date))),
       category: r.entry.category,
       frequency_type: r.entry.frequency_type,
       flow_type: r.entry.flow_type,
+      occurrenceDate: r.date,
+      originalAmount: Math.abs(getOccurrenceAmount(r.entry, r.date)),
     });
   };
   const cancelEdit = () => {
@@ -234,15 +248,63 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     if (!onUpdateEntry || !editDraft) return;
     const amt = Number(editDraft.amount);
     if (!Number.isFinite(amt) || amt < 0) return;
-    setBusyId(entryId);
-    const ok = await onUpdateEntry(entryId, {
+    const otherPatch: Partial<ScheduledCashFlow> = {
       notes: editDraft.description.trim() || null,
-      amount: amt,
       category: editDraft.category,
       frequency_type: editDraft.frequency_type,
       flow_type: editDraft.flow_type,
+    };
+    const amountChanged = Math.abs(amt - editDraft.originalAmount) > 0.0049;
+    const isRecurring = editDraft.frequency_type !== 'one_time';
+    // Only recurring + amount-changed edits need the scope prompt.
+    if (amountChanged && isRecurring) {
+      const entry = items.find((e) => e.id === entryId);
+      if (entry) {
+        setScopePrompt({
+          entryId,
+          occurrenceDate: editDraft.occurrenceDate,
+          newAmount: amt,
+          otherPatch,
+          entry,
+        });
+        return;
+      }
+    }
+    setBusyId(entryId);
+    const ok = await onUpdateEntry(entryId, {
+      ...otherPatch,
+      amount: amt,
     });
     setBusyId(null);
+    if (ok) cancelEdit();
+  };
+
+  /** Resolve the pending scope prompt by writing the patch through the same
+   *  shared state that powers both this drilldown and the Configure modal. */
+  const applyScope = async (scope: 'this_period' | 'going_forward') => {
+    if (!scopePrompt) return;
+    const { entryId, occurrenceDate, newAmount, otherPatch, entry } = scopePrompt;
+    setBusyId(entryId);
+    let patch: Partial<ScheduledCashFlow>;
+    if (scope === 'this_period') {
+      const existing = entry.frequency_config?.amount_overrides || {};
+      patch = {
+        ...otherPatch,
+        // Keep recurring base amount unchanged; pin this single occurrence.
+        frequency_config: {
+          ...(entry.frequency_config || {}),
+          amount_overrides: { ...existing, [occurrenceDate]: newAmount },
+        },
+      };
+    } else {
+      // Going forward — update the recurring base. We deliberately do NOT
+      // wipe existing per-period overrides; users can clear those from the
+      // Configure modal.
+      patch = { ...otherPatch, amount: newAmount };
+    }
+    const ok = await onUpdateEntry!(entryId, patch);
+    setBusyId(null);
+    setScopePrompt(null);
     if (ok) cancelEdit();
   };
   const handleDelete = async (entryId: string) => {
