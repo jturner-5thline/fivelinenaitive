@@ -123,16 +123,16 @@
        LIQUID GLASS — Teal Accent Dark Theme
        ═══════════════════════════════════════════════ */
 
-    /* Surface 1: page background — #0A0C14 */
-    --background: 228 33% 6%;
+    /* Surface 1: page background — lifted slate */
+    --background: 228 22% 14%;
     --foreground: 0 0% 100%;
 
-    /* Surface 2: card glass layer — rgba(255,255,255,0.04) mapped to HSL */
-    --card: 230 20% 10%;
+    /* Surface 2: card glass layer */
+    --card: 230 18% 18%;
     --card-foreground: 0 0% 100%;
 
-    /* Surface 3: elevated — rgba(255,255,255,0.07) */
-    --popover: 230 18% 12%;
+    /* Surface 3: elevated */
+    --popover: 230 16% 20%;
     --popover-foreground: 0 0% 100%;
 
     /* Primary: Logo blue accent #7EB8F7 */
@@ -140,12 +140,12 @@
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: glass-elevated surface */
-    --secondary: 230 16% 14%;
+    --secondary: 230 15% 22%;
     --secondary-foreground: 0 0% 85%;
 
     /* Muted */
-    --muted: 230 16% 12%;
-    --muted-foreground: 0 0% 50%;
+    --muted: 230 15% 20%;
+    --muted-foreground: 0 0% 60%;
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
@@ -165,7 +165,7 @@
     --ring: 213 90% 70%;
 
     /* Sidebar */
-    --sidebar-background: 260 30% 7%;
+    --sidebar-background: 260 18% 15%;
     --sidebar-foreground: 0 0% 85%;
     --sidebar-primary: 213 90% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
@@ -187,7 +187,7 @@
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(213 90% 70%), hsl(213 80% 55%));
     --gradient-accent: linear-gradient(135deg, hsl(213 90% 75%), hsl(213 80% 60%));
-    --gradient-hero: linear-gradient(180deg, #0A0C14 0%, #080A10 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(228 22% 16%) 0%, hsl(228 22% 13%) 100%);
 
     /* Email / Outlook tokens — dark mode (tuned for readability) */
     --outlook-blue: 213 90% 72%;
