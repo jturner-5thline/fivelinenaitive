@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { Deal, DealMilestone } from '@/types/deal';
 import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
@@ -110,6 +110,12 @@ function relativeDays(dueDate: string): string {
   return `${Math.abs(days)} days overdue`;
 }
 
+function parseStoredDate(dateValue?: string | null): Date | null {
+  if (!dateValue) return null;
+  const parsed = new Date(`${dateValue}T00:00:00`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
 /**
  * Tasks & milestones band rendered between the card header and the
  * 3-column insights row. Lists open tasks/outstanding items (capped) and
@@ -171,6 +177,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editingDateId, setEditingDateId] = useState<string | null>(null);
   const [editingAssigneeId, setEditingAssigneeId] = useState<string | null>(null);
+  const [dateDrafts, setDateDrafts] = useState<Record<string, Date | null>>({});
+  const [assigneeDrafts, setAssigneeDrafts] = useState<Record<string, string | null>>({});
+  const [savingFieldIds, setSavingFieldIds] = useState<Set<string>>(new Set());
   const [titleDraft, setTitleDraft] = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
@@ -229,6 +238,35 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
         .sort((a, b) => a.name.localeCompare(b.name));
     },
   });
+
+  const taskItemsById = useMemo(
+    () => new Map(tasks.filter((task): task is DealTaskItemType & { kind: 'task' } => task.kind === 'task').map((task) => [task.id, task])),
+    [tasks],
+  );
+  const memberNameById = useMemo(() => new Map(members.map((member) => [member.id, member.name])), [members]);
+
+  const setFieldSaving = (taskId: string, isSaving: boolean) => {
+    setSavingFieldIds((prev) => {
+      const next = new Set(prev);
+      if (isSaving) next.add(taskId);
+      else next.delete(taskId);
+      return next;
+    });
+  };
+
+  const startAssigneeEdit = (taskId: string, currentAssigneeId?: string | null) => {
+    setEditingTitleId(null);
+    setEditingDateId(null);
+    setAssigneeDrafts((prev) => ({ ...prev, [taskId]: currentAssigneeId ?? null }));
+    setEditingAssigneeId(taskId);
+  };
+
+  const startDateEdit = (taskId: string, currentDueDate?: string | null) => {
+    setEditingTitleId(null);
+    setEditingAssigneeId(null);
+    setDateDrafts((prev) => ({ ...prev, [taskId]: parseStoredDate(currentDueDate) }));
+    setEditingDateId(taskId);
+  };
 
   const refreshTasks = async () => {
     await Promise.all([
@@ -445,54 +483,77 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
     await refreshTasks();
   };
 
-  const saveDueDate = async (task: DealTaskItem, date?: Date) => {
-    if (task.kind !== 'task') return;
+  const saveDueDate = async (taskId: string, date: Date | null) => {
+    const task = taskItemsById.get(taskId);
+    if (!task) return;
+
+    const previousDueDate = task.dueDate ?? null;
+    const nextDueDate = date ? format(date, 'yyyy-MM-dd') : null;
 
     setEditingDateId(null);
-    const dueDate = date ? format(date, 'yyyy-MM-dd') : null;
+    setDateDrafts((prev) => ({ ...prev, [taskId]: date }));
 
-    // Optimistic UI: update the cached row immediately.
-    patchTaskInCache(task.id, { dueDate });
+    if (nextDueDate === previousDueDate) return;
 
-    const { error } = await supabase.from('tasks').update({ due_date: dueDate }).eq('id', task.id);
+    patchTaskInCache(taskId, { dueDate: nextDueDate });
+    setFieldSaving(taskId, true);
 
-    if (error) {
+    try {
+      const { error } = await supabase.from('tasks').update({ due_date: nextDueDate }).eq('id', taskId);
+      if (error) throw error;
+
+      toast.success('Due date updated');
+      void syncTaskFieldToAsana(taskId, { due_date: nextDueDate });
+      await refreshTasks();
+    } catch (error) {
+      console.error('Failed to update due date:', error);
+      patchTaskInCache(taskId, { dueDate: previousDueDate });
+      setDateDrafts((prev) => ({ ...prev, [taskId]: parseStoredDate(previousDueDate) }));
       toast.error('Failed to update due date');
       await refreshTasks();
-      return;
+    } finally {
+      setFieldSaving(taskId, false);
     }
-
-    toast.success('Due date updated');
-    void syncTaskFieldToAsana(task.id, { due_date: dueDate });
-    await refreshTasks();
   };
 
-  const saveAssignee = async (task: DealTaskItem, userId: string | null) => {
-    if (task.kind !== 'task') return;
+  const saveAssignee = async (taskId: string, userId: string | null) => {
+    const task = taskItemsById.get(taskId);
+    if (!task) return;
+
+    const previousAssignedToId = task.assignedToId ?? null;
+    const previousAssignedToName = task.assignedToName ?? null;
+    const nextAssignedToName = userId ? shortName(memberNameById.get(userId) || null) : null;
 
     setEditingAssigneeId(null);
+    setAssigneeDrafts((prev) => ({ ...prev, [taskId]: userId }));
 
-    // Optimistic UI: patch the cached row with the new assignee name/id
-    // so the chip updates without waiting for the server.
-    const newAssigneeName = userId
-      ? shortName(members.find((m) => m.id === userId)?.name || null)
-      : null;
-    patchTaskInCache(task.id, {
+    if (userId === previousAssignedToId) return;
+
+    patchTaskInCache(taskId, {
       assignedToId: userId,
-      assignedToName: newAssigneeName,
+      assignedToName: nextAssignedToName,
     });
+    setFieldSaving(taskId, true);
 
-    const { error } = await supabase.from('tasks').update({ assigned_to: userId }).eq('id', task.id);
+    try {
+      const { error } = await supabase.from('tasks').update({ assigned_to: userId }).eq('id', taskId);
+      if (error) throw error;
 
-    if (error) {
+      toast.success('Assignee updated');
+      void syncTaskFieldToAsana(taskId, { assigned_to: userId });
+      await refreshTasks();
+    } catch (error) {
+      console.error('Failed to update assignee:', error);
+      patchTaskInCache(taskId, {
+        assignedToId: previousAssignedToId,
+        assignedToName: previousAssignedToName,
+      });
+      setAssigneeDrafts((prev) => ({ ...prev, [taskId]: previousAssignedToId }));
       toast.error('Failed to update assignee');
       await refreshTasks();
-      return;
+    } finally {
+      setFieldSaving(taskId, false);
     }
-
-    toast.success('Assignee updated');
-    void syncTaskFieldToAsana(task.id, { assigned_to: userId });
-    await refreshTasks();
   };
 
   return (
