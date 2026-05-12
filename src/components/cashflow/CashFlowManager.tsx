@@ -11,7 +11,7 @@ import { IMPORTED_DAILY_DATA, IMPORTED_ROW_STRUCTURE } from './importedCashFlowD
 import { aggregateDailyToWeekly } from './dailyToWeekly';
 import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
-import { WeeklyReportTab } from './WeeklyReportTab';
+import { WeeklyReportTab, WEEKLY_ROW_ORDER } from './WeeklyReportTab';
 import { ExportModal } from './ExportModal';
 import { ActivityLogDialog } from './ActivityLogDialog';
 import { AddCashInModal } from './AddCashInModal';
