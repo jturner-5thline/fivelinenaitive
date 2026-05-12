@@ -8441,6 +8441,7 @@ export type Database = {
           pipeline_id: string | null
           post_signing_hours: number | null
           pre_signing_hours: number | null
+          pricing: string | null
           product_gap_flagged: string | null
           projected_close_date: string | null
           prospect_type: string | null
@@ -8520,6 +8521,7 @@ export type Database = {
           pipeline_id?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
+          pricing?: string | null
           product_gap_flagged?: string | null
           projected_close_date?: string | null
           prospect_type?: string | null
@@ -8599,6 +8601,7 @@ export type Database = {
           pipeline_id?: string | null
           post_signing_hours?: number | null
           pre_signing_hours?: number | null
+          pricing?: string | null
           product_gap_flagged?: string | null
           projected_close_date?: string | null
           prospect_type?: string | null
