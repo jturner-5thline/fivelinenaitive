@@ -17,6 +17,14 @@ export interface FrequencyConfig {
   day_of_month?: number;        // 1..31 for monthly_day
   /** Optional ± variance percentage applied per occurrence (e.g. 10 = ±10%). */
   variance_pct?: number;
+  /**
+   * Per-occurrence amount overrides keyed by occurrence date (YYYY-MM-DD).
+   * Set when a user edits the Amount in the cell drilldown for a single
+   * period via the "For this Period Only" scope. When present for a given
+   * occurrence, `getOccurrenceAmount` returns this value verbatim instead
+   * of applying the recurring base + variance.
+   */
+  amount_overrides?: Record<string, number>;
 }
 
 export interface ScheduledCashFlow {
@@ -240,6 +248,30 @@ export function applyVariance(
   return Math.max(0, baseAmount * factor);
 }
 
+/**
+ * Resolve the effective amount for a single occurrence of an entry.
+ * Priority: per-occurrence override (frequency_config.amount_overrides[date])
+ *           > variance-adjusted base amount.
+ * Used by both the Weekly Report grid and the cell drilldown so the two
+ * stay in lockstep with whatever scope the user picked at save time.
+ */
+export function getOccurrenceAmount(
+  entry: ScheduledCashFlow,
+  occDate: string,
+): number {
+  const overrides = entry.frequency_config?.amount_overrides;
+  if (overrides && Object.prototype.hasOwnProperty.call(overrides, occDate)) {
+    const v = Number(overrides[occDate]);
+    if (Number.isFinite(v)) return Math.max(0, v);
+  }
+  const base = Number(entry.amount) || 0;
+  return applyVariance(
+    base,
+    entry.frequency_config?.variance_pct,
+    `${entry.id || entry.category}:${occDate}`,
+  );
+}
+
 function parseDate(s: string): Date {
   return new Date(s + 'T00:00:00');
 }
@@ -412,12 +444,7 @@ export function mergeScheduledIntoWeekly(
       // what makes a Configure "Retainer" entry land in the visible
       // "Retainers" row, "Payroll Expense" in "Payroll - Salaries", etc.
       const cat = resolveCategoryToGridRow(entry.category);
-      const baseAmt = Number(entry.amount) || 0;
-      const amt = applyVariance(
-        baseAmt,
-        entry.frequency_config?.variance_pct,
-        `${entry.id || entry.category}:${occ}`,
-      );
+      const amt = getOccurrenceAmount(entry, occ);
       target[cat] = (Number(target[cat]) || 0) + amt;
       if (isDev) {
         traceRows.push({
