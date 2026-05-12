@@ -13,6 +13,13 @@ interface PipelineMemoViewProps {
   /** Empty-state message when no deals match the filter. */
   emptyMessage?: string;
   onOpenDeal?: (dealId: string) => void;
+  /**
+   * Per-day dismissal scope key. Different briefing surfaces (e.g. the
+   * regular Daily Briefing vs Niki's Daily Briefing) must pass distinct
+   * scopes so a dismissal in one surface does not hide the same deal in
+   * the other. Defaults to 'rundown-deal' for backwards compatibility.
+   */
+  dismissalScope?: string;
 }
 
 /**
@@ -25,7 +32,7 @@ interface PipelineMemoViewProps {
  * under every state — expanded lenders, long task lists, multiple groups,
  * empty sections — at the cost of mounting every card up front.
  */
-export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.', onOpenDeal }: PipelineMemoViewProps) {
+export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.', onOpenDeal, dismissalScope = 'rundown-deal' }: PipelineMemoViewProps) {
   const dealIds = useMemo(() => deals.map(d => d.id).filter(Boolean), [deals]);
   const idsKey = useMemo(() => dealIds.slice().sort().join(','), [dealIds]);
 
@@ -127,7 +134,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   const { digestMap, rawByDeal, isLoading: digestsLoading } = usePipelineDigests(sorted, sorted.length > 0);
   const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
-  const { dismiss, isDismissed } = useDailyDismissals('rundown-deal');
+  const { dismiss, isDismissed } = useDailyDismissals(dismissalScope);
 
   const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
 
