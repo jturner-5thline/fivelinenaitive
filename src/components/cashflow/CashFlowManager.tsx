@@ -27,6 +27,7 @@ import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHis
 import { computeFacilityWeekStates, totalAvailableLocForWeek } from './creditFacilities';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
+import { useFinanceLiveSync } from './financeLiveSync';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FilterMultiSelect } from './FilterMultiSelect';
 import './cashflow.css';
