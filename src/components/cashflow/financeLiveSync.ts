@@ -127,6 +127,18 @@ export function useFinanceLiveSync(
   }, []);
 
   const channelRef = useRef<RealtimeChannel | null>(null);
+  // Publisher-side dedupe: when a single user action touches multiple
+  // slices (e.g. a scheduled save that also nudges daily autosave) we
+  // can fire several broadcasts within a few hundred ms. Suppress
+  // identical resource emits inside a short window so receivers don't
+  // see a burst of "[user] updated this view" toasts for one logical
+  // edit. Real distinct edits >1.5s apart still go through.
+  const lastBroadcastRef = useRef<Record<FinanceLiveResource, number>>({
+    scheduled: 0,
+    cash_in: 0,
+    sidebar: 0,
+    daily: 0,
+  });
 
   useEffect(() => {
     if (!companyId) return;
@@ -190,6 +202,10 @@ export function useFinanceLiveSync(
       if (!isPrivilegedPublisher) return;
       const ch = channelRef.current;
       if (!ch) return;
+      const now = Date.now();
+      const last = lastBroadcastRef.current[resource] || 0;
+      if (now - last < 1500) return; // dedupe burst from one logical save
+      lastBroadcastRef.current[resource] = now;
       try {
         ch.send({
           type: 'broadcast',
@@ -198,7 +214,7 @@ export function useFinanceLiveSync(
             resource,
             senderId: me.id,
             senderEmail: me.email,
-            at: Date.now(),
+            at: now,
           },
         });
       } catch (err) {
