@@ -1,6 +1,8 @@
-import { useEffect, useRef, memo, useMemo } from 'react';
+import { useEffect, useRef, memo, useMemo, useState } from 'react';
 import { Chart, registerables } from 'chart.js';
 import type { WeeklyData, ThemeMode } from './types';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Maximize2 } from 'lucide-react';
 
 Chart.register(...registerables);
 
@@ -18,19 +20,20 @@ interface WeeklyChartsProps {
   peakWeekKey?: string | null;
   /** Week key (entry of weeklyData) of the low Ending Cash in the visible window. */
   lowWeekKey?: string | null;
-  /** When true, the low marker is rendered with a pulsing radius to draw attention. */
+  /** Deprecated — pulsing animation is no longer used. Kept for prop back-compat. */
   lowWeekBelowCaution?: boolean;
 }
 
 export const WeeklyCharts = memo(function WeeklyCharts({
   weeklyData, theme, visibleWeekKeys,
-  peakWeekKey = null, lowWeekKey = null, lowWeekBelowCaution = false,
+  peakWeekKey = null, lowWeekKey = null,
 }: WeeklyChartsProps) {
   const chart1Ref = useRef<HTMLCanvasElement>(null);
   const chart2Ref = useRef<HTMLCanvasElement>(null);
-  const chart1Instance = useRef<Chart | null>(null);
-  const chart2Instance = useRef<Chart | null>(null);
-  const pulseFrame = useRef<number | null>(null);
+  const chart1ModalRef = useRef<HTMLCanvasElement>(null);
+  const chart2ModalRef = useRef<HTMLCanvasElement>(null);
+  const instances = useRef<Chart[]>([]);
+  const [expanded, setExpanded] = useState<null | 'liquidity' | 'flow'>(null);
 
   // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
@@ -58,12 +61,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
   }, [weeklyData, visibleWeekKeys, peakWeekKey, lowWeekKey]);
 
   useEffect(() => {
-    const canvas1 = chart1Ref.current;
-    const canvas2 = chart2Ref.current;
-    if (!canvas1 || !canvas2) return;
-
-    chart1Instance.current?.destroy();
-    chart2Instance.current?.destroy();
+    instances.current.forEach((c) => c.destroy());
+    instances.current = [];
 
     const { labels, endingCash, totalLiquidity, cashIn, cashOut, peakIdx, lowIdx } = chartData;
 
@@ -121,8 +120,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     };
 
-    chart1Instance.current = new Chart(canvas1, {
-      type: 'line',
+    const buildLiquidityConfig = () => ({
+      type: 'line' as const,
       data: {
         labels,
         datasets: [
@@ -209,8 +208,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     });
 
-    chart2Instance.current = new Chart(canvas2, {
-      type: 'line',
+    const buildFlowConfig = () => ({
+      type: 'line' as const,
       data: {
         labels,
         datasets: [
@@ -259,55 +258,74 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     });
 
-    // Pulse the Low Cash marker when it's below the caution threshold so the
-    // user's eye is drawn to the at-risk week. We mutate the dataset's
-    // pointRadius/pointHoverRadius on each animation frame and re-render
-    // without animation transitions (cheap on a single point).
-    if (lowWeekBelowCaution && chartData.lowIdx >= 0) {
-      const chart = chart1Instance.current!;
-      const lowDsIdx = chart.data.datasets.findIndex((d: any) => d.label === 'Low Cash');
-      if (lowDsIdx >= 0) {
-        const start = performance.now();
-        const tick = (now: number) => {
-          const t = (now - start) / 1000;
-          // 9px → 14px sine pulse at ~1.4Hz
-          const r = 9 + (Math.sin(t * Math.PI * 1.4) + 1) * 2.5;
-          const ds: any = chart.data.datasets[lowDsIdx];
-          ds.pointRadius = r;
-          ds.pointHoverRadius = r + 2;
-          chart.update('none');
-          pulseFrame.current = requestAnimationFrame(tick);
-        };
-        pulseFrame.current = requestAnimationFrame(tick);
-      }
-    }
+    const targets: Array<[HTMLCanvasElement | null, () => any]> = [
+      [chart1Ref.current, buildLiquidityConfig],
+      [chart2Ref.current, buildFlowConfig],
+      [expanded === 'liquidity' ? chart1ModalRef.current : null, buildLiquidityConfig],
+      [expanded === 'flow' ? chart2ModalRef.current : null, buildFlowConfig],
+    ];
+    targets.forEach(([canvas, build]) => {
+      if (!canvas) return;
+      instances.current.push(new Chart(canvas, build()));
+    });
 
     return () => {
-      if (pulseFrame.current !== null) {
-        cancelAnimationFrame(pulseFrame.current);
-        pulseFrame.current = null;
-      }
-      chart1Instance.current?.destroy();
-      chart2Instance.current?.destroy();
+      instances.current.forEach((c) => c.destroy());
+      instances.current = [];
     };
-  }, [chartData, theme, lowWeekBelowCaution]);
+  }, [chartData, theme, expanded]);
 
   return (
     <>
       <div className="cf-charts-row">
         <div className="cf-chart-card">
-          <div className="cf-chart-title">Cash Balance & Liquidity</div>
+          <div className="cf-chart-title flex items-center justify-between">
+            <span>Cash Balance & Liquidity</span>
+            <button
+              type="button"
+              onClick={() => setExpanded('liquidity')}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 -m-1 rounded"
+              aria-label="Expand Cash Balance & Liquidity chart"
+              title="Expand"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <div style={{ height: 200 }}>
             <canvas ref={chart1Ref} />
           </div>
         </div>
         <div className="cf-chart-card">
-          <div className="cf-chart-title">Cash In vs Cash Out</div>
+          <div className="cf-chart-title flex items-center justify-between">
+            <span>Cash In vs Cash Out</span>
+            <button
+              type="button"
+              onClick={() => setExpanded('flow')}
+              className="text-muted-foreground hover:text-foreground transition-colors p-1 -m-1 rounded"
+              aria-label="Expand Cash In vs Cash Out chart"
+              title="Expand"
+            >
+              <Maximize2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
           <div style={{ height: 200 }}>
             <canvas ref={chart2Ref} />
           </div>
         </div>
       </div>
+      <Dialog open={expanded !== null} onOpenChange={(o) => !o && setExpanded(null)}>
+        <DialogContent className="max-w-[min(96vw,1400px)] w-[min(96vw,1400px)]">
+          <DialogHeader>
+            <DialogTitle>
+              {expanded === 'liquidity' ? 'Cash Balance & Liquidity' : 'Cash In vs Cash Out'}
+            </DialogTitle>
+          </DialogHeader>
+          <div style={{ height: 'min(70vh, 640px)' }} className="w-full">
+            {expanded === 'liquidity' && <canvas ref={chart1ModalRef} />}
+            {expanded === 'flow' && <canvas ref={chart2ModalRef} />}
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 });
