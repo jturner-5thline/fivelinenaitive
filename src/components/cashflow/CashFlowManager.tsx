@@ -914,24 +914,128 @@ export function CashFlowManager() {
   }, [role]);
 
   const pushUndo = useCallback((description: string) => {
+    // Capture a complete pre-image of every server-persisted slice that
+    // a saved cash-flow edit can touch. This is what makes Undo *real*:
+    //  - scheduled rows (recurring + one-time, incl. per-period
+    //    amount_overrides used by the "For this Period Only" flow)
+    //  - weekly cell overrides
+    //  - credit facilities
+    //  - daily/sidebar/recurring tags (already captured)
+    // Non-material UI actions (opening modals, switching tabs, scrolling,
+    // filter changes, passive refreshes) deliberately do NOT call
+    // pushUndo, so they never enter the stack.
     setUndoStack(prev => [...prev.slice(-49), {
       description,
       dailyData: deepClone(dailyData),
       weeklyData: deepClone(weeklyData),
       sidebarData: deepClone(sidebarData),
       recurringTags: deepClone(recurringTags),
+      scheduledItems: deepClone(scheduledItems || []),
+      weeklyOverrides: deepClone(weeklyOverrides),
+      creditFacilities: deepClone(creditFacilities),
     }]);
-  }, [dailyData, weeklyData, sidebarData, recurringTags]);
+  }, [dailyData, weeklyData, sidebarData, recurringTags, scheduledItems, weeklyOverrides, creditFacilities]);
 
-  const performUndo = useCallback(() => {
+  const performUndo = useCallback(async () => {
     if (undoStack.length === 0) return;
     const snapshot = undoStack[undoStack.length - 1];
     setUndoStack(prev => prev.slice(0, -1));
+
+    // 1) Restore client-managed slices. The diff-guarded autosave
+    //    effects (sidebar + daily blob) will persist these to the DB,
+    //    refresh dependent grids/charts, and broadcast to live viewers.
     setDailyData(snapshot.dailyData);
     setSidebarData(snapshot.sidebarData);
     setRecurringTags(snapshot.recurringTags);
+    if (snapshot.weeklyOverrides) setWeeklyOverrides(snapshot.weeklyOverrides as WeeklyOverrides);
+    if (snapshot.creditFacilities) setCreditFacilities(snapshot.creditFacilities as CreditFacility[]);
+
+    // 2) Restore server-side scheduled cash flows by diffing snapshot
+    //    pre-image against the current rows. Adds since the snapshot →
+    //    delete; edits → revert via update; deletes → re-insert with
+    //    the original id so downstream references stay stable.
+    try {
+      if (company?.id && Array.isArray(snapshot.scheduledItems)) {
+        const before: ScheduledCashFlow[] = snapshot.scheduledItems as ScheduledCashFlow[];
+        const now = scheduledItems || [];
+        const beforeById = new Map(before.filter(e => e.id).map(e => [e.id as string, e]));
+        const nowById = new Map(now.filter(e => e.id).map(e => [e.id as string, e]));
+
+        // Rows present now but absent in snapshot → user added them; delete.
+        const idsToDelete = [...nowById.keys()].filter(id => !beforeById.has(id));
+        if (idsToDelete.length > 0) {
+          await supabase
+            .from('scheduled_cash_flows' as any)
+            .delete()
+            .in('id', idsToDelete)
+            .eq('company_id', company.id);
+        }
+
+        // Rows present in snapshot but missing now → user deleted them;
+        // re-insert with their original id so the UI restores cleanly.
+        const reinsertRows = before
+          .filter(e => e.id && !nowById.has(e.id as string))
+          .map(e => ({
+            id: e.id,
+            company_id: company.id,
+            account: e.account,
+            category: e.category,
+            amount: e.amount,
+            frequency_type: e.frequency_type,
+            frequency_config: e.frequency_config || {},
+            flow_type: e.flow_type,
+            start_date: e.start_date,
+            end_date: e.end_date,
+            notes: e.notes,
+          }));
+        if (reinsertRows.length > 0) {
+          await supabase.from('scheduled_cash_flows' as any).insert(reinsertRows as any);
+        }
+
+        // Rows present in both with any field drift → revert via update.
+        // This covers both "Going Forward" (base amount / config drift)
+        // and "For this Period Only" (amount_overrides map drift).
+        const updates = before.filter(e => {
+          if (!e.id) return false;
+          const cur = nowById.get(e.id as string);
+          if (!cur) return false;
+          return JSON.stringify({
+            account: cur.account, category: cur.category, amount: cur.amount,
+            frequency_type: cur.frequency_type, frequency_config: cur.frequency_config || {},
+            flow_type: cur.flow_type, start_date: cur.start_date, end_date: cur.end_date,
+            notes: cur.notes,
+          }) !== JSON.stringify({
+            account: e.account, category: e.category, amount: e.amount,
+            frequency_type: e.frequency_type, frequency_config: e.frequency_config || {},
+            flow_type: e.flow_type, start_date: e.start_date, end_date: e.end_date,
+            notes: e.notes,
+          });
+        });
+        for (const e of updates) {
+          await supabase
+            .from('scheduled_cash_flows' as any)
+            .update({
+              account: e.account, category: e.category, amount: e.amount,
+              frequency_type: e.frequency_type, frequency_config: e.frequency_config || {},
+              flow_type: e.flow_type, start_date: e.start_date, end_date: e.end_date,
+              notes: e.notes,
+            })
+            .eq('id', e.id as string)
+            .eq('company_id', company.id);
+        }
+
+        if (idsToDelete.length || reinsertRows.length || updates.length) {
+          await refreshScheduledItems();
+          // Notify live viewers (no-op unless current user is in allowlist).
+          broadcastRef.current('scheduled');
+        }
+      }
+    } catch (err) {
+      console.error('[CashFlowManager] performUndo scheduled restore failed', err);
+    }
+
     logAction(`Undo: ${snapshot.description}`);
-  }, [undoStack, logAction]);
+  }, [undoStack, logAction, company?.id, scheduledItems, refreshScheduledItems]);
 
   const handleRoleChange = useCallback((newRole: RoleMode) => {
     if (newRole === 'viewer' && role === 'admin') {
