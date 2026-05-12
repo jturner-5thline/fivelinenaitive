@@ -3770,17 +3770,14 @@ export default function DealDetail() {
                  <Card className="max-h-[750px] flex flex-col">
                    <CardHeader className="pb-3 pt-3">
                      <div className="flex items-center gap-2">
-                       {deal.lenders && deal.lenders.length > 0 && (
-                         <span className="text-xs font-medium text-muted-foreground tabular-nums shrink-0">
-                           {deal.lenders.length}
-                         </span>
-                       )}
-                      <LenderSearchInput
+                      <div className="flex-1 min-w-0 max-w-[260px]">
+                       <LenderSearchInput
                         lenderNames={lenderNames}
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
                         isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
                       />
+                      </div>
                       <LenderDirectoryDialog
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
@@ -3805,9 +3802,9 @@ export default function DealDetail() {
                           ) : null
                         }
                       />
-                      <div className="flex items-center gap-2 ml-auto min-w-0">
+                      <div className="flex items-center gap-1.5 ml-auto min-w-0">
                       {deal.lenders && deal.lenders.length > 0 && (
-                        <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin">
+                        <div className="min-w-0">
                         <ToggleGroup
                           type="multiple"
                           value={Array.from(lenderGroupFilters)}
@@ -3816,7 +3813,7 @@ export default function DealDetail() {
                             // Clear individual stage filters whenever group chips change to keep semantics simple
                             setLenderStageFilters(new Set());
                           }}
-                          className="flex flex-nowrap items-center gap-1 w-max"
+                          className="flex flex-nowrap items-center gap-0.5"
                         >
                           {(() => {
                             const groupOrder = ['excluded', 'active', 'on-hold', 'on-deck', 'passed'];
@@ -3842,15 +3839,15 @@ export default function DealDetail() {
                                   size="sm"
                                   variant="outline"
                                   aria-label={`Filter by ${label}`}
-                                  className="h-8 px-2.5 text-xs whitespace-nowrap shrink-0 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
+                                  className="h-8 px-1.5 text-xs whitespace-nowrap shrink-0 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
                                 >
                                   {(id === 'passed' || group?.color) && (
                                     <span
-                                      className={`h-2 w-2 rounded-full mr-1.5 ${id === 'passed' ? 'bg-destructive' : group!.color}`}
+                                      className={`h-1.5 w-1.5 rounded-full mr-1 ${id === 'passed' ? 'bg-destructive' : group!.color}`}
                                     />
                                   )}
                                   {label}
-                                  {count > 0 && <span className="ml-1.5 text-[10px] opacity-70 tabular-nums">{count}</span>}
+                                  {count > 0 && <span className="ml-1 text-[10px] opacity-70 tabular-nums">{count}</span>}
                                 </ToggleGroupItem>
                               );
                             });
