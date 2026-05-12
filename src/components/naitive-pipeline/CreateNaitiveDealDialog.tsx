@@ -76,6 +76,8 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const [companyName, setCompanyName] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactTitle, setContactTitle] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactEmailError, setContactEmailError] = useState<string | null>(null);
   const [icpCategory, setIcpCategory] = useState('');
   const [prospectType, setProspectType] = useState('');
   // Section 2
@@ -102,6 +104,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
 
   const reset = () => {
     setCompanyName(''); setContactName(''); setContactTitle('');
+    setContactEmail(''); setContactEmailError(null);
     setIcpCategory(''); setProspectType('');
     setOwnedBy(''); setSource('');
     setStage(defaultStage || stages[0]?.id || '');
@@ -117,6 +120,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     setCompanyName(deal.company || '');
     setContactName(deal.contact || '');
     setContactTitle(deal.contactTitle || '');
+    setContactEmail((deal as any).contactEmail || (deal as any).contact_email || '');
     setIcpCategory(deal.icpCategory || '');
     setProspectType(deal.prospectType || '');
     setOwnedBy(deal.ownedBy || deal.manager || '');
@@ -149,6 +153,19 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const handleSubmit = async () => {
     if (!companyName.trim()) return toast.error('Company Name is required');
     if (!contactName.trim()) return toast.error('Contact Name is required');
+    const email = contactEmail.trim();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) {
+      setContactEmailError('Contact email is required');
+      document.getElementById('naitive-contact-email')?.focus();
+      return toast.error('Contact Email is required');
+    }
+    if (!emailRe.test(email)) {
+      setContactEmailError('Enter a valid email address');
+      document.getElementById('naitive-contact-email')?.focus();
+      return toast.error('Enter a valid email address');
+    }
+    setContactEmailError(null);
     if (!icpCategory) return toast.error('ICP Category is required');
     if (!prospectType) return toast.error('Prospect Type is required');
     if (!ownedBy) return toast.error('Owned By is required');
@@ -167,6 +184,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
         company: companyName.trim(),
         contact: contactName.trim(),
         contact_title: contactTitle.trim() || null,
+        contact_email: email,
         icp_category: icpCategory,
         prospect_type: prospectType,
         owned_by: ownedBy,
@@ -252,6 +270,16 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
               </Field>
               <Field label="Contact Name" required>
                 <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jane Doe" />
+              </Field>
+              <Field label="Contact Email" required error={contactEmailError || undefined}>
+                <Input
+                  id="naitive-contact-email"
+                  type="email"
+                  value={contactEmail}
+                  onChange={(e) => { setContactEmail(e.target.value); if (contactEmailError) setContactEmailError(null); }}
+                  placeholder="jane@acme.com"
+                  aria-invalid={!!contactEmailError}
+                />
               </Field>
               <Field label="Contact Title">
                 <Input value={contactTitle} onChange={(e) => setContactTitle(e.target.value)} placeholder="VP Finance" />
