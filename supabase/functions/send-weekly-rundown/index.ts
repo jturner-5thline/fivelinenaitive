@@ -8,51 +8,67 @@ const corsHeaders = {
 };
 
 const APP_URL = "https://naitive.co";
+// Link directly to the Insights workspace where the Weekly Rundown lives.
+// If the user is not authenticated (or lacks Insights access) the
+// ProtectedRoute / InsightsAccessGuard will bounce them to /login while
+// preserving this path via ?redirect=, so they land back here after sign-in.
 const INSIGHTS_URL = `${APP_URL}/insights`;
 
 function buildHtml(name: string | null): string {
-  const greeting = name ? `Hi ${name},` : "Hello,";
+  // Light-theme layout mirroring the existing "Daily Briefing" email
+  // (`_shared/transactional-email-templates/daily-briefing-ready.tsx`) so
+  // both Naitive emails share a consistent visual language.
+  const dateString = new Date().toLocaleDateString('en-US', {
+    timeZone: 'America/New_York',
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+  const greeting = name ? `Good morning, ${name}.` : 'Good morning.';
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Your Weekly Rundown is Ready</title>
 </head>
-<body style="margin:0;padding:0;background-color:#0a0a0b;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#e5e7eb;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#0a0a0b;padding:40px 16px;">
+<body style="margin:0;padding:0;background-color:#ffffff;font-family:'Inter','Helvetica Neue',Arial,sans-serif;color:#0f172a;">
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;">Your weekly rundown is ready — ${dateString}</div>
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#ffffff;">
     <tr>
-      <td align="center">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:linear-gradient(180deg,#111114 0%,#0d0d10 100%);border:1px solid #1f1f24;border-radius:16px;overflow:hidden;">
+      <td align="center" style="padding:40px 16px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;">
           <tr>
-            <td style="padding:32px 40px 8px 40px;">
-              <div style="font-size:13px;letter-spacing:0.18em;text-transform:uppercase;color:#8b8b94;font-weight:600;">Naitive</div>
+            <td align="center" style="padding:0 0 8px 0;">
+              <p style="margin:0;font-size:20px;font-weight:700;color:#0f172a;letter-spacing:-0.5px;">naitive</p>
             </td>
           </tr>
           <tr>
-            <td style="padding:8px 40px 0 40px;">
-              <h1 style="margin:0;font-size:24px;line-height:1.3;color:#ffffff;font-weight:600;">Your Weekly Rundown is Ready</h1>
+            <td style="padding:0;">
+              <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 40px 8px 40px;">
-              <p style="margin:0 0 12px 0;font-size:15px;line-height:1.6;color:#c7c7cf;">${greeting}</p>
-              <p style="margin:0;font-size:15px;line-height:1.6;color:#c7c7cf;">Your weekly pipeline performance analytics are now available. Open the Insights workspace to review trends, drivers, and what changed this week.</p>
+            <td>
+              <h1 style="margin:0 0 8px;font-size:26px;font-weight:600;color:#0f172a;line-height:1.3;">${greeting}</h1>
+              <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;font-weight:500;">${dateString}</p>
+              <p style="margin:0 0 16px;font-size:15px;color:#475569;line-height:1.6;">Your Weekly Rundown has been prepared and is ready to review.</p>
             </td>
           </tr>
           <tr>
-            <td align="center" style="padding:32px 40px 8px 40px;">
-              <a href="${INSIGHTS_URL}" style="display:inline-block;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#ffffff;text-decoration:none;font-weight:600;font-size:15px;padding:14px 28px;border-radius:10px;box-shadow:0 4px 14px rgba(37,99,235,0.35);">View Weekly Rundown</a>
+            <td align="center" style="padding:32px 0 16px 0;">
+              <a href="${INSIGHTS_URL}" style="display:inline-block;background-color:#0f172a;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px;padding:14px 32px;border-radius:8px;">View Weekly Rundown</a>
             </td>
           </tr>
           <tr>
-            <td style="padding:8px 40px 32px 40px;">
-              <p style="margin:24px 0 0 0;font-size:12px;line-height:1.6;color:#6b6b74;text-align:center;">If the button doesn't work, copy and paste this link:<br/><a href="${INSIGHTS_URL}" style="color:#9ca3af;text-decoration:underline;">${INSIGHTS_URL}</a></p>
+            <td style="padding:0;">
+              <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0;" />
             </td>
           </tr>
           <tr>
-            <td style="padding:20px 40px;background-color:#08080a;border-top:1px solid #1f1f24;">
-              <p style="margin:0;font-size:11px;color:#5a5a63;text-align:center;">Naitive · Weekly Rundown · Sent every Tuesday</p>
+            <td align="center">
+              <p style="margin:0;font-size:12px;color:#94a3b8;line-height:1.5;">Naitive · Weekly Rundown · Sent every Tuesday</p>
             </td>
           </tr>
         </table>
