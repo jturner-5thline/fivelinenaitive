@@ -832,7 +832,12 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0 ml-1" />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-56 p-2 z-[9999] bg-popover" align="start">
+                    <PopoverContent
+                      className="w-56 p-2 z-[9999] bg-popover"
+                      align="start"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
+                      onCloseAutoFocus={(e) => e.preventDefault()}
+                    >
                       <div className="space-y-1 max-h-60 overflow-y-auto">
                         {LENDER_TYPE_OPTIONS.map((type) => {
                           const current = editForm.lenderType ? editForm.lenderType.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -840,12 +845,21 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                           return (
                             <button
                               key={type}
+                              type="button"
                               className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted/50 text-left"
-                              onClick={() => {
+                              onPointerDown={(e) => {
+                                // Prevent focus shift / outside-close races inside Dialog focus trap
+                                e.preventDefault();
+                                e.stopPropagation();
                                 const newTypes = isSelected
                                   ? current.filter(t => t !== type)
                                   : [...current, type];
                                 setEditForm({ ...editForm, lenderType: newTypes.join(',') });
+                              }}
+                              onClick={(e) => {
+                                // Keyboard activation fallback (Enter/Space)
+                                e.preventDefault();
+                                e.stopPropagation();
                               }}
                             >
                               <Checkbox checked={isSelected} className="pointer-events-none" />
