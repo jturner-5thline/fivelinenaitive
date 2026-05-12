@@ -308,7 +308,7 @@ export function LenderFollowUpPopover({
           aria-label="Follow Up"
           className={
             className ||
-            'inline-flex items-center justify-center h-6 w-6 rounded-md border border-white/10 bg-background/40 backdrop-blur-sm text-muted-foreground hover:text-primary hover:bg-muted/40 hover:border-white/20 transition-colors'
+            'relative overflow-hidden inline-flex items-center justify-center h-6 w-6 rounded-md border border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)] transition-all'
           }
         >
           <Mail className="h-3.5 w-3.5" />
