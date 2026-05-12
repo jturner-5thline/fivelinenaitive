@@ -148,6 +148,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   onAddLender,
   onRemoveLender,
   dealLenders,
+  aiSearchSlot,
 }: LenderDirectoryDialogProps) {
   const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [search, setSearch] = useState('');
