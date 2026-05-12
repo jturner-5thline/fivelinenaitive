@@ -114,10 +114,10 @@ export function usePipelineDealTasks(dealIds: string[], enabled: boolean = true)
       if (userIds.length > 0) {
         const { data: profiles } = await supabase
           .from('profiles')
-          .select('id, display_name')
-          .in('id', userIds);
+          .select('user_id, display_name')
+          .in('user_id', userIds);
         for (const p of profiles || []) {
-          if (p.id) profileMap.set(p.id, p.display_name || '');
+          if (p.user_id) profileMap.set(p.user_id, p.display_name || '');
         }
       }
 
