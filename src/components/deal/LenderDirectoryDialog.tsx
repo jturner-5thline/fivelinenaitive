@@ -53,6 +53,7 @@ interface LenderDirectoryDialogProps {
   onAddLender: (name: string) => void;
   onRemoveLender: (lenderId: string, reason?: string) => void;
   dealLenders: { id: string; name: string }[];
+  aiSearchSlot?: React.ReactNode;
 }
 
 export function LenderDirectoryDialog(props: LenderDirectoryDialogProps) {
@@ -147,6 +148,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
   onAddLender,
   onRemoveLender,
   dealLenders,
+  aiSearchSlot,
 }: LenderDirectoryDialogProps) {
   const { lenders: masterLenders, loading, updateLender } = useMasterLenders();
   const [search, setSearch] = useState('');
@@ -451,6 +453,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
                 {sorted.length.toLocaleString()} {sorted.length === 1 ? 'result' : 'results'}
               </span>
             )}
+            {aiSearchSlot}
             <button
               type="button"
               onClick={() => setGroupByTier(g => !g)}
