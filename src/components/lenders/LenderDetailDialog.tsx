@@ -1003,13 +1003,17 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               return (
                                 <button
                                   key={geo}
+                                  type="button"
                                   className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
-                                  onClick={() => {
+                                  onPointerDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                     const newGeos = isSelected
                                       ? current.filter(t => t !== geo)
                                       : [...current, geo];
                                     setEditForm({ ...editForm, geo: newGeos.join(',') });
-                                  }}
+                                    }}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                 >
                                   <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
                                   {geo}
@@ -1060,13 +1064,17 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               return (
                                 <button
                                   key={industry}
+                                  type="button"
                                   className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
-                                  onClick={() => {
+                                  onPointerDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                     const newIndustries = isSelected
                                       ? current.filter(t => t !== industry)
                                       : [...current, industry];
                                     setEditForm({ ...editForm, industries: newIndustries.join(',') });
-                                  }}
+                                    }}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                 >
                                   <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
                                   {industry}
@@ -1117,13 +1125,17 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               return (
                                 <button
                                   key={loanType}
+                                  type="button"
                                   className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
-                                  onClick={() => {
+                                  onPointerDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                     const newTypes = isSelected
                                       ? current.filter(t => t !== loanType)
                                       : [...current, loanType];
                                     setEditForm({ ...editForm, loanTypes: newTypes.join(',') });
-                                  }}
+                                    }}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                 >
                                   <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
                                   {loanType}
@@ -1196,13 +1208,17 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               return (
                                 <button
                                   key={req}
+                                  type="button"
                                   className="flex items-center gap-2 w-full px-2 py-1 text-xs rounded hover:bg-muted/50 text-left"
-                                  onClick={() => {
+                                  onPointerDown={(e) => {
+                                      e.preventDefault();
+                                      e.stopPropagation();
                                     const newReqs = isSelected
                                       ? current.filter(t => t !== req)
                                       : [...current, req];
                                     setEditForm({ ...editForm, companyRequirements: newReqs.join(',') });
-                                  }}
+                                    }}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                 >
                                   <Checkbox checked={isSelected} className="pointer-events-none h-3.5 w-3.5" />
                                   {req}
