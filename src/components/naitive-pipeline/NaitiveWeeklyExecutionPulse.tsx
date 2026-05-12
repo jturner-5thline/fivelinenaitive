@@ -439,6 +439,10 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
   const blockerThis = useMemo(() => topReason(deals, thisWeekFrom, thisWeekTo), [deals]);
   const blockerLast = useMemo(() => topReason(deals, lastWeekFrom, lastWeekTo), [deals]);
   const [blockerOpen, setBlockerOpen] = useState(false);
+  const blockerBreakdownThis = useMemo(
+    () => blockerBreakdown(deals, thisWeekFrom, thisWeekTo),
+    [deals],
+  );
 
   // ── Why Moving Forward (accelerator) ───────────────────────────
   const { rows: advanceRows } = useWorkspaceAdvanceReasons();
