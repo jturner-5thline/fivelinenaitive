@@ -451,6 +451,63 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
     [deals],
   );
 
+  // Per-category accelerator deals (this week) for drill-down
+  const acceleratorDealsByCategory = useMemo(() => {
+    const map = new Map<AdvanceReasonCategory, { deal: Deal; notes?: string | null; createdAt: string }[]>();
+    const dealById = new Map(deals.map((d) => [d.id, d]));
+    for (const r of advanceRows) {
+      const t = new Date(r.createdAt);
+      if (!inRange(t, thisWeekFrom, thisWeekTo)) continue;
+      const d = dealById.get(r.dealId);
+      if (!d) continue;
+      const arr = map.get(r.category) || [];
+      arr.push({ deal: d, notes: r.notes, createdAt: r.createdAt });
+      map.set(r.category, arr);
+    }
+    return map;
+  }, [advanceRows, deals]);
+
+  // Unified slice drill-down
+  const [drill, setDrill] = useState<{
+    title: string;
+    description: string;
+    tone: 'blocker' | 'accelerator';
+    deals: { deal: Deal; lines: string[]; date: string }[];
+  } | null>(null);
+
+  const openBlockerSlice = useCallback((label: string) => {
+    const entry = blockerBreakdownThis.find((b) => b.label === label);
+    if (!entry || entry.deals.length === 0) return;
+    setDrill({
+      title: `${label} · ${entry.count} ${entry.count === 1 ? 'mention' : 'mentions'}`,
+      description: 'Deals updated this week that cited this reason in "Why Not Moving Forward".',
+      tone: 'blocker',
+      deals: entry.deals.map(({ deal, reasons }) => ({
+        deal,
+        lines: reasons,
+        date: deal.updatedAt,
+      })),
+    });
+  }, [blockerBreakdownThis]);
+
+  const openAcceleratorSlice = useCallback((label: string) => {
+    const category = (Object.keys(ADVANCE_REASON_LABELS) as AdvanceReasonCategory[])
+      .find((c) => ADVANCE_REASON_LABELS[c] === label);
+    if (!category) return;
+    const list = acceleratorDealsByCategory.get(category) || [];
+    if (list.length === 0) return;
+    setDrill({
+      title: `${label} · ${list.length} ${list.length === 1 ? 'deal' : 'deals'}`,
+      description: 'Deals with this advance reason logged this week.',
+      tone: 'accelerator',
+      deals: list.map(({ deal, notes, createdAt }) => ({
+        deal,
+        lines: notes ? [notes] : [],
+        date: createdAt,
+      })),
+    });
+  }, [acceleratorDealsByCategory]);
+
   // ── Why Moving Forward (accelerator) ───────────────────────────
   const { rows: advanceRows } = useWorkspaceAdvanceReasons();
   const accelerator = useMemo(
