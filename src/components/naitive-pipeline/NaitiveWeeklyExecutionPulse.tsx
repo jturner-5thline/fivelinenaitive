@@ -669,7 +669,11 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
           )}
         </button>
         <div className="px-4 pb-3">
-          <ReasonPie data={blockerBreakdownThis} emptyText="No data this week" />
+          <ReasonPie
+            data={blockerBreakdownThis.map((b) => ({ label: b.label, count: b.count }))}
+            emptyText="No data this week"
+            onSliceClick={openBlockerSlice}
+          />
         </div>
       </Card>
 
@@ -724,6 +728,7 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
                   count: b.count,
                 }))}
                 emptyText="No data this week"
+                onSliceClick={openAcceleratorSlice}
               />
             </div>
           </div>
