@@ -79,6 +79,21 @@ export interface UndoSnapshot {
   weeklyData: WeeklyData;
   sidebarData: SidebarData;
   recurringTags: RecurringTag[];
+  // Full pre-edit pre-image of every server-persisted slice that any
+  // saved cash-flow change can mutate. Captured at pushUndo() time so
+  // performUndo() can deterministically reverse the most recent edit:
+  //  - scheduledItems: full row list — covers add/edit/delete of recurring
+  //    or one-time entries, drilldown saves, Configure popup saves, and
+  //    per-period `amount_overrides` flips ("For this Period Only").
+  //    "Going Forward" edits are reversed because we restore the prior
+  //    base `amount` and `frequency_config` for the row.
+  //  - weeklyOverrides: explicit Beginning/Ending/Net cell overrides.
+  //  - creditFacilities: LOC / facility configuration list.
+  // Typed loosely (any[]) here to avoid a circular import with the
+  // scheduled-cash-flow type module — the consumer narrows on use.
+  scheduledItems?: any[];
+  weeklyOverrides?: Record<string, any>;
+  creditFacilities?: any[];
 }
 
 export interface ActivityLogEntry {
