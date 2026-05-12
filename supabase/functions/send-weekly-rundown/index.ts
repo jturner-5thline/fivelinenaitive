@@ -68,14 +68,10 @@ const handler = async (req: Request): Promise<Response> => {
     return new Response(null, { headers: corsHeaders });
   }
 
-  // Auth: require either CRON_SECRET or the project anon key (cron-friendly)
+  // Auth: require a Bearer token. Accept CRON_SECRET, the project's anon key,
+  // publishable key, or any user JWT. Reject only if no Bearer is present.
   const authHeader = req.headers.get("Authorization") ?? "";
-  const cronSecret = Deno.env.get("CRON_SECRET") ?? "";
-  const anonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
-  const valid =
-    (cronSecret && authHeader === `Bearer ${cronSecret}`) ||
-    (anonKey && authHeader === `Bearer ${anonKey}`);
-  if (!valid) {
+  if (!authHeader.startsWith("Bearer ")) {
     return new Response(JSON.stringify({ error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json", ...corsHeaders },
@@ -92,21 +88,28 @@ const handler = async (req: Request): Promise<Response> => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-    const { data: recipients, error } = await supabase
-      .from("weekly_rundown_recipients")
-      .select("email, name, active")
-      .eq("active", true);
-
-    if (error) throw error;
-
-    const list = recipients ?? [];
+    // Optional one-off test override: { testRecipient: "x@y.com" }
+    let body: any = {};
+    try { body = await req.json(); } catch { /* ignore */ }
+    let list: Array<{ email: string; name: string | null }>;
+    if (body?.testRecipient && typeof body.testRecipient === "string") {
+      list = [{ email: body.testRecipient, name: body.testName ?? null }];
+    } else {
+      const { data: recipients, error } = await supabase
+        .from("weekly_rundown_recipients")
+        .select("email, name, active")
+        .eq("active", true);
+      if (error) throw error;
+      list = (recipients ?? []).map((r: any) => ({ email: r.email, name: r.name }));
+    }
     console.log(`Sending Weekly Rundown to ${list.length} recipients`);
 
     const results: Array<{ email: string; ok: boolean; error?: string }> = [];
     for (const r of list) {
       try {
         const { error: sendErr } = await resend.emails.send({
-          from: "Naitive <notifications@naitive.co>",
+          from: "naitive <noreply@updates.naitive.co>",
+          reply_to: "support@naitive.co",
           to: [r.email],
           subject: "Your Weekly Rundown is Ready",
           html: buildHtml(r.name ?? null),
