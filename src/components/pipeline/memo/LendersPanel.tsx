@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { ChevronDown, StickyNote, Check, ListChecks } from 'lucide-react';
 import type { Deal, DealLender, LenderTrackingStatus } from '@/types/deal';
-import { LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { LENDER_TRACKING_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
@@ -39,6 +39,53 @@ const BUCKET_META: Record<
 
 const VISIBLE_PER_BUCKET = 2;
 
+type LenderTagVariant = 'destructive' | 'amber' | 'blue' | 'green' | 'gray';
+
+function humanizeStage(s: string): string {
+  return s
+    .trim()
+    .replace(/[-_]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+/**
+ * Derive the displayed lender tag strictly from the deal-lender relationship
+ * record (per-deal stage + trackingStatus). PASSED always wins and renders red.
+ * Falls back to "No Stage" when no per-deal stage data exists.
+ */
+function deriveLenderTag(l: DealLender): { label: string; variant: LenderTagVariant } {
+  const ts = (l.trackingStatus || '').toString().trim().toLowerCase();
+  const stageRaw = (l.stage || '').toString().trim();
+  const stage = stageRaw.toLowerCase();
+
+  // PASSED — highest priority, red/danger
+  if (ts === 'passed' || /\b(pass(ed)?|declin|reject)\b/.test(stage)) {
+    return { label: 'Passed', variant: 'destructive' };
+  }
+
+  // Prefer the per-deal lender stage label
+  let label: string | null = null;
+  if (stageRaw) {
+    label =
+      LENDER_STAGE_CONFIG[stageRaw]?.label ||
+      humanizeStage(stageRaw);
+  }
+  if (!label && ts) {
+    label = LENDER_TRACKING_STATUS_CONFIG[ts]?.label || humanizeStage(ts);
+  }
+  if (!label) return { label: 'No Stage', variant: 'gray' };
+
+  if (/closed|funded|complet/.test(stage)) return { label, variant: 'green' };
+  if (/term|diligen/.test(stage)) return { label, variant: 'green' };
+  if (/hold/.test(stage) || ts === 'on-hold') return { label, variant: 'amber' };
+  if (/review/.test(stage) || ts === 'active') return { label, variant: 'amber' };
+  if (/deck|outreach|identified|initial/.test(stage) || ts === 'on-deck') {
+    return { label, variant: 'blue' };
+  }
+  return { label, variant: 'gray' };
+}
+
 const STATUS_OPTIONS: { value: LenderTrackingStatus; label: string }[] = [
   { value: 'active', label: 'Reviewing' },
   { value: 'on-deck', label: 'On deck' },
@@ -65,6 +112,8 @@ function LenderRow({
   const [noteDraft, setNoteDraft] = useState(lender.notes || '');
   const [saving, setSaving] = useState(false);
   const hasNote = !!(lender.notes && lender.notes.trim().length > 0);
+  // Tag is always derived from the latest deal-lender record (source of truth).
+  const tag = useMemo(() => deriveLenderTag(lender), [lender.stage, lender.trackingStatus]);
   const [noteHoverOpen, setNoteHoverOpen] = useState(false);
   const noteUpdatedLabel = (() => {
     const ts = lender.notesUpdatedAt || lender.updatedAt;
@@ -220,14 +269,14 @@ function LenderRow({
           <button
             type="button"
             aria-label="Change lender status"
-            title="Change status"
+            title={`Stage: ${tag.label} · click to change`}
             className="shrink-0"
           >
             <Badge
-              variant={meta.badgeVariant}
+              variant={tag.variant}
               className="text-[9px] px-1.5 py-0 rounded-full cursor-pointer hover:brightness-110"
             >
-              {meta.pillLabel}
+              {tag.label}
             </Badge>
           </button>
         </PopoverTrigger>
