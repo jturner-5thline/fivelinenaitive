@@ -1292,12 +1292,14 @@ function FollowupTiles({
   groups,
   onNavigate,
   assigneeName,
+  briefingType = 'daily_briefing',
 }: {
   groups: FollowupDealGroup[];
   onNavigate: (path: string) => void;
   assigneeName: string;
+  briefingType?: string;
 }) {
-  const { dismiss, isDismissed, restore } = useDailyDismissals('rundown-followup');
+  const { dismiss, isDismissed, restore } = useDailyDismissals(`rundown-followup:${briefingType}`);
   const allTiles = groups.flatMap(g =>
     g.items.map(it => ({ ...it, company: g.company, stage: g.stage })),
   );
