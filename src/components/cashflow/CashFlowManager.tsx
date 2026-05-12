@@ -516,6 +516,7 @@ export function CashFlowManager() {
             credit_facilities: creditFacilities,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
+        broadcastRef.current('daily');
       } catch (err) {
         console.error('Error saving daily data:', err);
       }
@@ -1046,11 +1047,13 @@ export function CashFlowManager() {
   const handleCashInItemsAdded = useCallback(() => {
     refreshCashInItems();
     logAction('Added cash-in items from deals');
+    broadcastRef.current('cash_in');
   }, [refreshCashInItems, logAction]);
 
   const handleRemoveCashInDbItem = useCallback(async (id: string) => {
     await removeCashInDbItem(id);
     logAction('Removed cash-in deal item');
+    broadcastRef.current('cash_in');
   }, [removeCashInDbItem, logAction]);
 
   const handleNoteEdit = useCallback((index: number, value: string) => {
@@ -1451,14 +1454,20 @@ export function CashFlowManager() {
             pushUndo(`Edit entry: ${existing.category}`);
             const updated: ScheduledCashFlow = { ...existing, ...patch };
             const ok = await saveScheduledItems([updated], []);
-            if (ok) logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+            if (ok) {
+              logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+              broadcastRef.current('scheduled');
+            }
             return ok;
           }}
           onDeleteScheduledEntry={async (id) => {
             const existing = (scheduledItems || []).find((e) => e.id === id);
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);
-            if (ok && existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
+            if (ok) {
+              if (existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
+              broadcastRef.current('scheduled');
+            }
             return ok;
           }}
         />
@@ -1551,6 +1560,7 @@ export function CashFlowManager() {
               logAction(
                 `Updated scheduled cash flows (${entries.length} kept, ${deleteIds.length} removed)`,
               );
+              broadcastRef.current('scheduled');
             }
             return ok;
           }}
