@@ -1154,6 +1154,16 @@ export default function DealDetail() {
   // Outstanding items persistence
   const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems } = useOutstandingItems(id);
 
+  // Phase-aware checklist controls (Add Phase 2/3 + retroactive archive banner)
+  const checklistPhaseControls = useChecklistPhaseControls(
+    id,
+    company?.id,
+    user?.id,
+    deal?.createdAt as string | undefined,
+    deal?.dealTypes,
+    refreshOutstandingItems,
+  );
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
