@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function InsightsAccessGuard({ children }: Props) {
-  const { isLoading } = useAuth();
+  const { isLoading, user } = useAuth();
   const allowed = useCanAccessInsights();
 
   if (isLoading) {
@@ -19,8 +19,10 @@ export function InsightsAccessGuard({ children }: Props) {
     );
   }
 
-  if (!allowed) {
-    return <Navigate to="/dashboard" replace />;
+  // Send unauthenticated users AND authenticated users without Insights
+  // access to the login page so the email CTA works for both groups.
+  if (!user || !allowed) {
+    return <Navigate to="/login" replace />;
   }
 
   return <>{children}</>;
