@@ -755,52 +755,11 @@ export function ScheduledCashFlowsModal({
                           </div>
                         </SelectTrigger>
                         <SelectContent>
-                          {d.flow_type === 'cash_in'
-                            ? dedupedCashInGroups.map((g, gi) =>
-                                g.group ? (
-                                  <SelectGroup key={`${gi}-${g.group}`}>
-                                    <SelectLabel>{g.group}</SelectLabel>
-                                    {g.options.map((c) => (
-                                      <SelectItem key={c} value={c} className="pl-10">
-                                        {c}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ) : (
-                                  <SelectGroup key={`g-${gi}`}>
-                                    {g.options.map((c) => (
-                                      <SelectItem key={c} value={c}>
-                                        {c}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectGroup>
-                                ),
-                              )
-                            : dedupedCashOut.map((c) => (
-                                <SelectItem key={c} value={c}>
-                                  {c}
-                                </SelectItem>
-                              ))}
-                          {d.flow_type === 'cash_in' && dedupedExtraCashIn.length > 0 && (
-                            <SelectGroup>
-                              <SelectLabel>Custom</SelectLabel>
-                              {dedupedExtraCashIn.map((c) => (
-                                <SelectItem key={`custom-in-${c}`} value={c}>
-                                  {c}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          )}
-                          {d.flow_type === 'cash_out' && dedupedExtraCashOut.length > 0 && (
-                            <SelectGroup>
-                              <SelectLabel>Custom</SelectLabel>
-                              {dedupedExtraCashOut.map((c) => (
-                                <SelectItem key={`custom-out-${c}`} value={c}>
-                                  {c}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          )}
+                          {(d.flow_type === 'cash_in' ? dedupedCashIn : dedupedCashOut).map((c) => (
+                            <SelectItem key={c} value={c}>
+                              {c}
+                            </SelectItem>
+                          ))}
                           {creditFacilities.length > 0 && d.flow_type === 'cash_in' && (
                             <SelectGroup>
                               <SelectLabel>Line of Credit Draws</SelectLabel>
