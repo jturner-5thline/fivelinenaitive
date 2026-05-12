@@ -78,6 +78,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const [contactTitle, setContactTitle] = useState('');
   const [contactEmail, setContactEmail] = useState('');
   const [contactEmailError, setContactEmailError] = useState<string | null>(null);
+  const [pricing, setPricing] = useState('');
   const [icpCategory, setIcpCategory] = useState('');
   const [prospectType, setProspectType] = useState('');
   // Section 2
@@ -105,6 +106,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const reset = () => {
     setCompanyName(''); setContactName(''); setContactTitle('');
     setContactEmail(''); setContactEmailError(null);
+    setPricing('');
     setIcpCategory(''); setProspectType('');
     setOwnedBy(''); setSource('');
     setStage(defaultStage || stages[0]?.id || '');
@@ -122,6 +124,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     setContactTitle(deal.contactTitle || '');
     setContactEmail((deal as any).contactEmail || (deal as any).contact_email || '');
     setIcpCategory(deal.icpCategory || '');
+    setPricing(((deal as any).pricing as string) || '');
     setProspectType(deal.prospectType || '');
     setOwnedBy(deal.ownedBy || deal.manager || '');
     setSource(deal.sourcedVia || '');
@@ -186,6 +189,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
         contact_title: contactTitle.trim() || null,
         contact_email: email,
         icp_category: icpCategory,
+        pricing: pricing.trim() || null,
         prospect_type: prospectType,
         owned_by: ownedBy,
         manager: ownedBy,
