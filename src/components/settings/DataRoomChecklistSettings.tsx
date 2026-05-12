@@ -59,6 +59,7 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
     category: '',
     description: '',
     is_required: true,
+    phase: 2,
   });
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
 
@@ -76,7 +77,7 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
   const loading = itemsLoading || categoriesLoading;
 
   const resetForm = () => {
-    setFormData({ name: '', category: categoryNames[0] || '', description: '', is_required: true });
+    setFormData({ name: '', category: categoryNames[0] || '', description: '', is_required: true, phase: 2 });
   };
 
   const handleOpenAdd = () => {
@@ -90,6 +91,7 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
       category: item.category || '',
       description: item.description || '',
       is_required: item.is_required,
+      phase: (item.phase ?? 2) as 1 | 2 | 3,
     });
     setEditingItem(item);
   };
@@ -292,6 +294,9 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
                                 {item.is_required && (
                                   <Badge variant="secondary" className="text-xs">Required</Badge>
                                 )}
+                                <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
+                                  Phase {item.phase ?? 2}
+                                </Badge>
                               </div>
                               {item.description && (
                                 <p className="text-sm text-muted-foreground truncate">{item.description}</p>
