@@ -186,37 +186,40 @@ export function CashFlowManager() {
   const sidebarLoadedRef = useRef(false);
   const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Load persisted sidebar data from DB
-  useEffect(() => {
+  // Load persisted sidebar data from DB. Wrapped in a useCallback so the
+  // live-sync subscriber can re-invoke it when Mark/James push edits.
+  const loadSidebarData = useCallback(async () => {
     if (!company?.id) return;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('cashflow_sidebar_data' as any)
-          .select('cash_in_items, notes')
-          .eq('company_id', company.id)
-          .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('cashflow_sidebar_data' as any)
+        .select('cash_in_items, notes')
+        .eq('company_id', company.id)
+        .maybeSingle();
 
-        if (error) { console.error('Error loading sidebar data:', error); }
-        
-        if (data) {
-          const cashInItems = (data as any).cash_in_items;
-          const notes = (data as any).notes;
-          if (Array.isArray(cashInItems) || Array.isArray(notes)) {
-            setSidebarData({
-              cash_in_next_8_weeks: Array.isArray(cashInItems) ? cashInItems : [],
-              notes: Array.isArray(notes) ? notes : [],
-            });
-          }
+      if (error) { console.error('Error loading sidebar data:', error); }
+
+      if (data) {
+        const cashInItems = (data as any).cash_in_items;
+        const notes = (data as any).notes;
+        if (Array.isArray(cashInItems) || Array.isArray(notes)) {
+          setSidebarData({
+            cash_in_next_8_weeks: Array.isArray(cashInItems) ? cashInItems : [],
+            notes: Array.isArray(notes) ? notes : [],
+          });
         }
-        // If no data found, keep SEED_SIDEBAR_DATA as fallback
-      } catch (err) {
-        console.error('Error loading sidebar data:', err);
-      } finally {
-        sidebarLoadedRef.current = true;
       }
-    })();
+      // If no data found, keep SEED_SIDEBAR_DATA as fallback
+    } catch (err) {
+      console.error('Error loading sidebar data:', err);
+    } finally {
+      sidebarLoadedRef.current = true;
+    }
   }, [company?.id]);
+
+  useEffect(() => {
+    loadSidebarData();
+  }, [loadSidebarData]);
 
   // Auto-save sidebar data to DB when it changes (debounced)
   useEffect(() => {
