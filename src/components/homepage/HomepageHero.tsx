@@ -112,7 +112,6 @@ export const HomepageHero = () => {
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
       placeholder="Enter your work email"
                 disabled={isSubmitting}
                 aria-invalid={!!errorMsg}
