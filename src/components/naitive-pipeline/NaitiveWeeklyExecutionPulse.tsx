@@ -349,14 +349,32 @@ function ReasonPie({ data, emptyText, onSliceClick }: {
   if (data.length === 0) {
     return <p className="text-xs text-muted-foreground text-center py-6">{emptyText}</p>;
   }
+  const total = data.reduce((s, d) => s + d.count, 0);
+  const renderTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const p = payload[0];
+    const label: string = p?.name ?? p?.payload?.label ?? '';
+    const count: number = p?.value ?? 0;
+    const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+    const color: string = p?.payload?.fill || p?.color || 'hsl(var(--primary))';
+    return (
+      <div className="rounded-lg border border-white/10 bg-slate-900/95 backdrop-blur px-3 py-2 shadow-xl min-w-[140px]">
+        <div className="flex items-center gap-2">
+          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+          <span className="text-[12px] font-semibold text-white leading-tight">{label}</span>
+        </div>
+        <div className="mt-1 text-[12px] text-slate-100">
+          {count} {count === 1 ? 'deal' : 'deals'}
+          <span className="ml-1.5 text-[11px] text-slate-400">({pct}%)</span>
+        </div>
+      </div>
+    );
+  };
   return (
     <div className="w-full" style={{ height: 160 }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Tooltip
-            contentStyle={TOOLTIP_STYLE}
-            formatter={(v: number, name: string) => [`${v} ${v === 1 ? 'deal' : 'deals'}`, name]}
-          />
+          <Tooltip content={renderTooltip} cursor={{ fill: 'hsl(var(--muted) / 0.3)' }} wrapperStyle={{ outline: 'none' }} />
           <Pie
             data={data}
             dataKey="count"
