@@ -735,10 +735,6 @@ export function NaitiveWeeklyExecutionPulse({ deals, history }: Props) {
         </Card>
       </div>
 
-      <Dialog open={blockerOpen} onOpenChange={setBlockerOpen}>
-        {/* placeholder kept below; drill-down dialog precedes */}
-      </Dialog>
-
       <Dialog open={!!drill} onOpenChange={(o) => { if (!o) setDrill(null); }}>
         <DialogContent className="max-w-2xl">
           <DialogHeader>
