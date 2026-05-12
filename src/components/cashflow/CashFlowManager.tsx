@@ -27,6 +27,7 @@ import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHis
 import { computeFacilityWeekStates, totalAvailableLocForWeek } from './creditFacilities';
 import { useCompany } from '@/hooks/useCompany';
 import { supabase } from '@/integrations/supabase/client';
+import { useFinanceLiveSync } from './financeLiveSync';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FilterMultiSelect } from './FilterMultiSelect';
 import './cashflow.css';
@@ -162,7 +163,7 @@ export function CashFlowManager() {
   const { company } = useCompany();
   const { importedDailyData, importedRowStructure, isImported, isImportLoading, importFile } = useCashFlowImport(company?.id);
   const { items: cashInDbItems, fetchItems: refreshCashInItems, removeItem: removeCashInDbItem, toSidebarItems } = useCashInItems();
-  const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem } = useScheduledCashFlows(company?.id);
+  const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem, fetchItems: refreshScheduledItems } = useScheduledCashFlows(company?.id);
   // Auto-populated entries — read-only, stacked on top of manual Configure rows.
   const { items: qbDerivedItems } = useQuickbooksDerivedCashFlows(!!company?.id);
   const { items: dealProjectedItems } = useDealProjectedCashFlows(company?.id, !!company?.id);
@@ -184,38 +185,47 @@ export function CashFlowManager() {
   const [sidebarData, setSidebarData] = useState<SidebarData>(() => normalizeSidebarData(deepClone(SEED_SIDEBAR_DATA)));
   const sidebarLoadedRef = useRef(false);
   const sidebarSaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  // Forward-declared so the autosave effects below (which run before the
+  // useFinanceLiveSync hook is wired up) can still emit broadcasts. The
+  // ref is populated immediately once the live-sync hook returns.
+  const broadcastRef = useRef<(resource: 'scheduled' | 'cash_in' | 'sidebar' | 'daily') => void>(
+    () => {},
+  );
 
-  // Load persisted sidebar data from DB
-  useEffect(() => {
+  // Load persisted sidebar data from DB. Wrapped in a useCallback so the
+  // live-sync subscriber can re-invoke it when Mark/James push edits.
+  const loadSidebarData = useCallback(async () => {
     if (!company?.id) return;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('cashflow_sidebar_data' as any)
-          .select('cash_in_items, notes')
-          .eq('company_id', company.id)
-          .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('cashflow_sidebar_data' as any)
+        .select('cash_in_items, notes')
+        .eq('company_id', company.id)
+        .maybeSingle();
 
-        if (error) { console.error('Error loading sidebar data:', error); }
-        
-        if (data) {
-          const cashInItems = (data as any).cash_in_items;
-          const notes = (data as any).notes;
-          if (Array.isArray(cashInItems) || Array.isArray(notes)) {
-            setSidebarData({
-              cash_in_next_8_weeks: Array.isArray(cashInItems) ? cashInItems : [],
-              notes: Array.isArray(notes) ? notes : [],
-            });
-          }
+      if (error) { console.error('Error loading sidebar data:', error); }
+
+      if (data) {
+        const cashInItems = (data as any).cash_in_items;
+        const notes = (data as any).notes;
+        if (Array.isArray(cashInItems) || Array.isArray(notes)) {
+          setSidebarData({
+            cash_in_next_8_weeks: Array.isArray(cashInItems) ? cashInItems : [],
+            notes: Array.isArray(notes) ? notes : [],
+          });
         }
-        // If no data found, keep SEED_SIDEBAR_DATA as fallback
-      } catch (err) {
-        console.error('Error loading sidebar data:', err);
-      } finally {
-        sidebarLoadedRef.current = true;
       }
-    })();
+      // If no data found, keep SEED_SIDEBAR_DATA as fallback
+    } catch (err) {
+      console.error('Error loading sidebar data:', err);
+    } finally {
+      sidebarLoadedRef.current = true;
+    }
   }, [company?.id]);
+
+  useEffect(() => {
+    loadSidebarData();
+  }, [loadSidebarData]);
 
   // Auto-save sidebar data to DB when it changes (debounced)
   useEffect(() => {
@@ -232,6 +242,8 @@ export function CashFlowManager() {
             notes: sidebarData.notes,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
+          // Live-sync — only Mark/James actually emit (no-op for everyone else).
+          broadcastRef.current('sidebar');
       } catch (err) {
         console.error('Error saving sidebar data:', err);
       }
@@ -246,44 +258,74 @@ export function CashFlowManager() {
   const dailySaveTimerRef = useRef<ReturnType<typeof setTimeout>>();
   const dailyLoadedRef = useRef(false);
 
-  // Load persisted daily data + recurring tags from DB
-  useEffect(() => {
+  // Load persisted daily data + recurring tags from DB. Wrapped in a
+  // callback so the live-sync subscriber can re-invoke it when Mark/James
+  // push edits.
+  const loadDailyData = useCallback(async () => {
     if (!company?.id) return;
-    (async () => {
-      try {
-        const { data, error } = await supabase
-          .from('cash_flow_imports' as any)
-          .select('daily_data, recurring_tags, weekly_overrides, credit_facilities')
-          .eq('company_id', company.id)
-          .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from('cash_flow_imports' as any)
+        .select('daily_data, recurring_tags, weekly_overrides, credit_facilities')
+        .eq('company_id', company.id)
+        .maybeSingle();
 
-        if (error) { console.error('Error loading daily data:', error); }
+      if (error) { console.error('Error loading daily data:', error); }
 
-        if (data) {
-          const dd = (data as any).daily_data;
-          if (dd && typeof dd === 'object' && Array.isArray(dd.dates)) {
-            setDailyData(normalizeDailyData(dd));
-          }
-          const rt = (data as any).recurring_tags;
-          if (Array.isArray(rt)) {
-            setRecurringTags(rt);
-          }
-          const wo = (data as any).weekly_overrides;
-          if (wo && typeof wo === 'object' && !Array.isArray(wo)) {
-            setWeeklyOverrides(wo as WeeklyOverrides);
-          }
-          const cf = (data as any).credit_facilities;
-          if (Array.isArray(cf)) {
-            setCreditFacilities(cf as CreditFacility[]);
-          }
+      if (data) {
+        const dd = (data as any).daily_data;
+        if (dd && typeof dd === 'object' && Array.isArray(dd.dates)) {
+          setDailyData(normalizeDailyData(dd));
         }
-      } catch (err) {
-        console.error('Error loading daily data:', err);
-      } finally {
-        dailyLoadedRef.current = true;
+        const rt = (data as any).recurring_tags;
+        if (Array.isArray(rt)) {
+          setRecurringTags(rt);
+        }
+        const wo = (data as any).weekly_overrides;
+        if (wo && typeof wo === 'object' && !Array.isArray(wo)) {
+          setWeeklyOverrides(wo as WeeklyOverrides);
+        }
+        const cf = (data as any).credit_facilities;
+        if (Array.isArray(cf)) {
+          setCreditFacilities(cf as CreditFacility[]);
+        }
       }
-    })();
+    } catch (err) {
+      console.error('Error loading daily data:', err);
+    } finally {
+      dailyLoadedRef.current = true;
+    }
   }, [company?.id]);
+
+  useEffect(() => {
+    loadDailyData();
+  }, [loadDailyData]);
+
+  // ---------------------------------------------------------------------
+  // Live collaboration — restricted publisher allowlist (Mark + James)
+  //
+  // Subscribes every viewer of this company's finance experience to a
+  // realtime channel scoped to `finance:${companyId}`. When Mark or James
+  // saves an edit, their client emits a small broadcast describing which
+  // resource changed, and every other subscribed client refetches just
+  // that slice — preserving local UI state (scroll, open modals, active
+  // tab, selected weeks).
+  //
+  // Edits made by other users persist normally but do NOT trigger the
+  // live broadcast pipeline.
+  // ---------------------------------------------------------------------
+  const { broadcast: broadcastFinanceEdit } = useFinanceLiveSync(company?.id, {
+    onScheduledChange: refreshScheduledItems,
+    onCashInChange: refreshCashInItems,
+    onSidebarChange: loadSidebarData,
+    onDailyChange: loadDailyData,
+  });
+  // Keep the forward-declared broadcaster ref in sync so write paths
+  // anywhere in this component (including effects defined before this
+  // hook call) can emit.
+  useEffect(() => {
+    broadcastRef.current = broadcastFinanceEdit;
+  }, [broadcastFinanceEdit]);
 
 
 
@@ -474,6 +516,7 @@ export function CashFlowManager() {
             credit_facilities: creditFacilities,
             updated_at: new Date().toISOString(),
           } as any, { onConflict: 'company_id' });
+        broadcastRef.current('daily');
       } catch (err) {
         console.error('Error saving daily data:', err);
       }
@@ -1004,11 +1047,13 @@ export function CashFlowManager() {
   const handleCashInItemsAdded = useCallback(() => {
     refreshCashInItems();
     logAction('Added cash-in items from deals');
+    broadcastRef.current('cash_in');
   }, [refreshCashInItems, logAction]);
 
   const handleRemoveCashInDbItem = useCallback(async (id: string) => {
     await removeCashInDbItem(id);
     logAction('Removed cash-in deal item');
+    broadcastRef.current('cash_in');
   }, [removeCashInDbItem, logAction]);
 
   const handleNoteEdit = useCallback((index: number, value: string) => {
@@ -1409,14 +1454,20 @@ export function CashFlowManager() {
             pushUndo(`Edit entry: ${existing.category}`);
             const updated: ScheduledCashFlow = { ...existing, ...patch };
             const ok = await saveScheduledItems([updated], []);
-            if (ok) logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+            if (ok) {
+              logAction(`Edited scheduled entry: ${updated.category} ($${Number(updated.amount).toLocaleString()})`);
+              broadcastRef.current('scheduled');
+            }
             return ok;
           }}
           onDeleteScheduledEntry={async (id) => {
             const existing = (scheduledItems || []).find((e) => e.id === id);
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);
-            if (ok && existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
+            if (ok) {
+              if (existing) logAction(`Deleted scheduled entry: ${existing.category} ($${Number(existing.amount).toLocaleString()})`);
+              broadcastRef.current('scheduled');
+            }
             return ok;
           }}
         />
@@ -1509,6 +1560,7 @@ export function CashFlowManager() {
               logAction(
                 `Updated scheduled cash flows (${entries.length} kept, ${deleteIds.length} removed)`,
               );
+              broadcastRef.current('scheduled');
             }
             return ok;
           }}
