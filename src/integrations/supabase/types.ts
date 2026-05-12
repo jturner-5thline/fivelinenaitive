@@ -5721,6 +5721,7 @@ export type Database = {
           id: string
           is_required: boolean
           name: string
+          phase: number | null
           position: number
           updated_at: string
           user_id: string
@@ -5734,6 +5735,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           name: string
+          phase?: number | null
           position?: number
           updated_at?: string
           user_id: string
@@ -5747,6 +5749,7 @@ export type Database = {
           id?: string
           is_required?: boolean
           name?: string
+          phase?: number | null
           position?: number
           updated_at?: string
           user_id?: string
@@ -14490,6 +14493,7 @@ export type Database = {
           due_date: string | null
           eta: string | null
           id: string
+          is_archived: boolean
           lender_id: string | null
           notes: string | null
           position: number
@@ -14507,6 +14511,7 @@ export type Database = {
           due_date?: string | null
           eta?: string | null
           id?: string
+          is_archived?: boolean
           lender_id?: string | null
           notes?: string | null
           position?: number
@@ -14524,6 +14529,7 @@ export type Database = {
           due_date?: string | null
           eta?: string | null
           id?: string
+          is_archived?: boolean
           lender_id?: string | null
           notes?: string | null
           position?: number
