@@ -447,11 +447,12 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   );
 }
 
-function Field({ label, required, className, children }: { label: string; required?: boolean; className?: string; children: ReactNode }) {
+function Field({ label, required, className, children, error }: { label: string; required?: boolean; className?: string; children: ReactNode; error?: string }) {
   return (
     <div className={cn('space-y-1.5', className)}>
       <Label className="text-xs">{label}{required && <span className="text-destructive ml-0.5">*</span>}</Label>
       {children}
+      {error && <p className="text-xs text-destructive">{error}</p>}
     </div>
   );
 }
