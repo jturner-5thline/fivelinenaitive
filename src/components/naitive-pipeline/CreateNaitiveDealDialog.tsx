@@ -272,6 +272,9 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
               <Field label="Company Name" required>
                 <Input value={companyName} onChange={(e) => setCompanyName(e.target.value)} placeholder="Acme Inc." />
               </Field>
+              <Field label="Pricing">
+                <Input value={pricing} onChange={(e) => setPricing(e.target.value)} placeholder="e.g. $10k retainer + 2% success" />
+              </Field>
               <Field label="Contact Name" required>
                 <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Jane Doe" />
               </Field>
