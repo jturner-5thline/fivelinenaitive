@@ -934,13 +934,6 @@ export default function Dashboard() {
           })()}
           </HintTooltip>
 
-          <div
-            className="sticky z-30 -mx-3 sm:-mx-4 px-3 sm:px-4 py-1 backdrop-blur-md bg-background/60 supports-[backdrop-filter]:bg-background/40 rounded-xl"
-            style={{ top: 'var(--app-top-bar-height, 0px)' }}
-          >
-            <DashboardAIInput />
-          </div>
-
           {/* ─── Dashboard navigation ──────────────────────────────────
               Single navigation row: preset tabs (My Dashboard, …)
               followed by a sibling
