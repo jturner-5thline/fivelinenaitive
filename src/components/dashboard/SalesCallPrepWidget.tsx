@@ -8,6 +8,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
+import DOMPurify from 'dompurify';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -300,9 +301,12 @@ Keep it concise and actionable. Format with markdown headers.`,
                             {brief.summary && (
                               <div className="prose prose-xs max-w-none text-xs [&>h1]:text-sm [&>h2]:text-xs [&>h3]:text-xs [&>p]:text-xs [&>ul]:text-xs">
                                 <div dangerouslySetInnerHTML={{ 
-                                  __html: brief.summary
-                                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                                    .replace(/\n/g, '<br/>') 
+                                  __html: DOMPurify.sanitize(
+                                    brief.summary
+                                      .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                                      .replace(/\n/g, '<br/>'),
+                                    { USE_PROFILES: { html: true } }
+                                  )
                                 }} />
                               </div>
                             )}
