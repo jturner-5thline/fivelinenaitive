@@ -100,6 +100,13 @@ function BodyScrollLock() {
 export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   const location = useLocation();
   const isTasksPage = location.pathname === '/tasks' || location.pathname.startsWith('/tasks/');
+  // When the route is loaded inside the Naitive deal overlay iframe
+  // (`?embedded=1`), strip the app shell — sidebar, banners, command bar —
+  // so the modal feels like a focused content canvas, not a nested page.
+  const isEmbedded = React.useMemo(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('embedded') === '1';
+  }, [location.search]);
   // The dashboard already exposes the primary assistant composer inline,
   // so suppress the floating AI Copilot panel + toggle on that route only.
 
@@ -132,6 +139,20 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       dwellStartRef.current = Date.now();
     };
   }, [location.pathname]);
+
+  if (isEmbedded) {
+    return (
+      <div className="h-svh w-full overflow-hidden bg-transparent">
+        <BodyScrollLock />
+        <main
+          className={cn('relative h-full w-full overflow-y-auto overflow-x-hidden bg-background', mainClassName)}
+          data-tour="workspace"
+        >
+          {children}
+        </main>
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider defaultOpen={true} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
