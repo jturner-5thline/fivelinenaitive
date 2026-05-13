@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, LayoutDashboard } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck } from 'lucide-react';
 import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
 import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
@@ -67,8 +67,6 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
-import { DashboardModal } from '@/components/dashboard/DashboardModal';
-import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -83,8 +81,6 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
-  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
-  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const { features: companyFeatures } = useCompanyFeatures();
   const [overlaySearchParams, setOverlaySearchParams] = useSearchParams();
   const { stages: overlayStages } = useDealStages();
@@ -527,22 +523,6 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                  {isFifthLine && (
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 rounded-md"
-                          aria-label="Open dashboard"
-                          onClick={() => setIsDashboardOpen(true)}
-                        >
-                          <LayoutDashboard className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Dashboard</TooltipContent>
-                    </Tooltip>
-                  )}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -1047,9 +1027,6 @@ export default function Dashboard() {
               )}
             </div>
       </WorkspacePage>
-      {isFifthLine && (
-        <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />
-      )}
       <NaitiveDealOverlay
         deal={(() => {
           const id = overlaySearchParams.get('deal');
