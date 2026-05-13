@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Settings2, LayoutDashboard } from 'lucide-react';
+import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, NavLink, useLocation } from 'react-router-dom';
 import { Logo } from '@/components/Logo';
 import { useAuth } from '@/contexts/AuthContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
@@ -47,21 +47,70 @@ export function DealsHeader() {
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
 
   return (
-    <header className="sticky top-0 z-50 rounded-b-xl bg-background/92 backdrop-blur supports-[backdrop-filter]:bg-background/75">
+    <header
+      className="sticky top-0 z-50 pointer-events-none"
+      aria-label="Global navigation"
+    >
       {/*
-        Global app shell header — minimal, calm, and consistent.
-        Active tabs use a fully-rounded pill (no top-only / bottom-only
-        radius) so corners match the rest of the platform's card system.
+        Floating glass command bar. Centered pill, dark + opaque, with
+        subtle blur and a soft elevated shadow so it visually detaches
+        from the page beneath it. Slightly wider and more opaque than
+        the Ask naitive AI bar so it reads as the primary global surface.
       */}
-      <div className="relative flex h-[68px] items-center justify-between pl-3 pr-3 sm:pr-6 gap-2 min-w-0">
-        <div className="flex items-center gap-2 shrink-0 min-w-0">
-          <Link to="/deals" className="flex items-center gap-2 shrink-0">
-            <Logo className="h-[60px]" />
+      <div className="pt-3 px-3 sm:px-4 pointer-events-none">
+        <div
+          className="pointer-events-auto mx-auto flex h-14 items-center gap-1 sm:gap-2 px-3 sm:px-4 min-w-0"
+          style={{
+            width: 'min(1120px, calc(100vw - 24px))',
+            borderRadius: 22,
+            background: 'rgba(16, 21, 34, 0.82)',
+            backdropFilter: 'blur(18px) saturate(135%)',
+            WebkitBackdropFilter: 'blur(18px) saturate(135%)',
+            border: '1px solid rgba(255, 255, 255, 0.10)',
+            boxShadow:
+              '0 10px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          }}
+        >
+          <Link to="/deals" className="flex items-center gap-2 shrink-0 pr-1">
+            <Logo className="h-9" />
           </Link>
           <DemoModeBadge />
-        </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
+          {/* Primary quick-access nav — Calendar, Mail, Action Queue, Deals */}
+          <nav className="hidden md:flex items-center gap-0.5 ml-2">
+            {[
+              { to: '/dashboard?view=calendar', label: 'Calendar', Icon: Calendar },
+              { to: '/dashboard?view=mail', label: 'Mail', Icon: Mail },
+              { to: '/tasks', label: 'Action Queue', Icon: Inbox },
+              { to: '/deals', label: 'Deals', Icon: Briefcase },
+            ].map(({ to, label, Icon }) => {
+              const path = to.split('?')[0];
+              const active =
+                path === '/deals'
+                  ? location.pathname === '/deals'
+                  : location.pathname.startsWith(path);
+              return (
+                <Tooltip key={label}>
+                  <TooltipTrigger asChild>
+                    <NavLink
+                      to={to}
+                      aria-label={label}
+                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                        active
+                          ? 'bg-white/10 text-foreground'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.06]'
+                      }`}
+                    >
+                      <Icon className="h-[18px] w-[18px]" />
+                    </NavLink>
+                  </TooltipTrigger>
+                  <TooltipContent>{label}</TooltipContent>
+                </Tooltip>
+              );
+            })}
+          </nav>
+
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
           {isFifthLine && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -119,10 +168,11 @@ export function DealsHeader() {
             )}
           </HintTooltip>
           )}
-          
+
+          </div>
         </div>
       </div>
-      <HeaderNotificationPreview />
+      <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
       {canSeeNiki && (
