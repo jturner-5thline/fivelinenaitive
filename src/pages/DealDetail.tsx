@@ -2557,7 +2557,7 @@ export default function DealDetail() {
 
       <div className="bg-transparent relative">
         <GlobalSaveBar isAnySaving={isAnySaving} />
-        <DealsHeader />
+        {!isEmbedded && <DealsHeader />}
 
         <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden">
           {/* Back button, alerts, and undo - side by side */}
