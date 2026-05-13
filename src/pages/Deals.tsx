@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, LayoutDashboard } from 'lucide-react';
 import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
 import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
@@ -67,6 +67,9 @@ import {
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
+import { DashboardModal } from '@/components/dashboard/DashboardModal';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
