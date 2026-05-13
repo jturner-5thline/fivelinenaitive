@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { isDemoEmail, withDemoLenderContactRow } from '@/lib/demoLenderContact';
 
 export interface LenderContact {
   id: string;
@@ -52,7 +53,9 @@ export function useLenderContacts(lenderId: string | null) {
 
       if (fetchError) throw fetchError;
 
-      setContacts((data as LenderContact[]) ?? []);
+      const rows = (data as LenderContact[]) ?? [];
+      const isDemo = isDemoEmail(user.email);
+      setContacts(rows.map((r) => withDemoLenderContactRow(r, isDemo)));
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch contacts';
       setError(message);
@@ -81,7 +84,8 @@ export function useLenderContacts(lenderId: string | null) {
 
       if (insertError) throw insertError;
 
-      const newContact = data as LenderContact;
+      const isDemo = isDemoEmail(user.email);
+      const newContact = withDemoLenderContactRow(data as LenderContact, isDemo);
       setContacts((prev) => [...prev, newContact]);
       toast.success('Contact added successfully');
       return newContact;

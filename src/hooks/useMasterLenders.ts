@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isDemoEmail, withDemoLenderContact } from '@/lib/demoLenderContact';
 import { toast } from 'sonner';
 import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 
@@ -120,6 +121,7 @@ let cachePromise: Promise<MasterLender[]> | null = null;
 
 export function useMasterLenders(options: UseMasterLendersOptions = {}) {
   const { user } = useAuth();
+  const isDemo = isDemoEmail(user?.email);
 
   const mode = options.mode ?? 'all';
   const pageSize = options.pageSize ?? 100;
@@ -167,7 +169,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         const { data, error: fetchError, count } = await builder;
 
         return {
-          data: (data as MasterLender[] | null) ?? null,
+          data: ((data as MasterLender[] | null) ?? null)?.map((l) => withDemoLenderContact(l, isDemo)) ?? null,
           error: fetchError,
           count: typeof count === 'number' ? count : null,
         };
@@ -183,12 +185,12 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
       const { data, error: fetchError, count } = await builder;
 
       return {
-        data: (data as MasterLender[] | null) ?? null,
+        data: ((data as MasterLender[] | null) ?? null)?.map((l) => withDemoLenderContact(l, isDemo)) ?? null,
         error: fetchError,
         count: typeof count === 'number' ? count : null,
       };
     },
-    [orderAscending, orderColumn, pageSize]
+    [orderAscending, orderColumn, pageSize, isDemo]
   );
 
   const fetchLenders = useCallback(async () => {
@@ -263,7 +265,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
             const batch = (data as MasterLender[] | null) ?? [];
             if (batch.length > 0) {
-              remainingLenders.push(...batch);
+              remainingLenders.push(...batch.map((l) => withDemoLenderContact(l, isDemo)));
               offset += batch.length;
               keepGoing = batch.length === backgroundPageSize;
             } else {
