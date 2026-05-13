@@ -3626,9 +3626,18 @@ export default function DealDetail() {
                           });
 
                           return (
-                            <Card key={id}>
+                            <Card
+                              key={id}
+                              className="rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                              style={{ background: 'rgba(20, 26, 40, 0.74)' }}
+                            >
                               <CardHeader className="flex flex-row items-center justify-between py-4">
-                                <CardTitle className="text-lg">Deal Information</CardTitle>
+                                <CardTitle
+                                  className="text-[15px] font-semibold tracking-[0.01em]"
+                                  style={{ color: 'rgba(226, 232, 240, 0.92)' }}
+                                >
+                                  Deal Information
+                                </CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
