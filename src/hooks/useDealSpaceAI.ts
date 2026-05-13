@@ -2,6 +2,9 @@ import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { logUsage } from '@/lib/usageLogger';
+import { useAuth } from '@/contexts/AuthContext';
+import { isDemoEmail } from '@/lib/demoLenderContact';
+import { matchDemoDealCannedAnswer } from '@/lib/demoDealCannedAnswers';
 
 export type DocumentScope = 'all' | 'financial' | 'transcripts' | 'custom';
 
@@ -18,6 +21,7 @@ export function useDealSpaceAI(dealId: string | undefined) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const [scope, setScope] = useState<DocumentScope>('all');
   const [includeDataRoom, setIncludeDataRoom] = useState<boolean>(true);
+  const { user } = useAuth();
 
   const sendMessage = useCallback(async (
     content: string,
@@ -34,6 +38,22 @@ export function useDealSpaceAI(dealId: string | undefined) {
     
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
+
+    // Demo-only deterministic intercept: when demo@5thline.co is inside any
+    // deal workspace and asks one of the mapped questions, return the exact
+    // canned answer with no AI call. Scoped strictly to demo@5thline.co.
+    if (isDemoEmail(user?.email)) {
+      const canned = matchDemoDealCannedAnswer(content);
+      if (canned) {
+        setMessages(prev => [...prev, {
+          role: 'assistant',
+          content: canned,
+          timestamp: new Date(),
+        }]);
+        setIsLoading(false);
+        return;
+      }
+    }
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
