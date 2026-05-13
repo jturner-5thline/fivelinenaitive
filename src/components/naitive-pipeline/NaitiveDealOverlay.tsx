@@ -232,7 +232,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           (sidebar / global header) via z-[100] on the wrapper. */}
       <div
         className={cn(
-          'relative w-screen h-screen sm:w-[calc(100vw-1rem)] sm:h-[calc(100vh-1rem)] sm:rounded-xl border border-white/10 bg-background shadow-2xl overflow-hidden flex flex-col',
+          'deal-popup-shell relative w-screen h-screen sm:w-[calc(100vw-1rem)] sm:h-[calc(100vh-1rem)] sm:rounded-xl overflow-hidden flex flex-col',
           // Only fall back to the generic scale-in when we have neither a
           // tile-origin transform nor reduced motion — the rect-driven
           // transform already provides the entrance animation.
@@ -246,11 +246,28 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             ? undefined
             : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
           willChange: 'transform',
+          background:
+            'linear-gradient(180deg, rgba(24,30,48,0.88) 0%, rgba(18,24,40,0.84) 42%, rgba(14,19,32,0.92) 100%)',
+          backdropFilter: 'blur(18px) saturate(140%)',
+          WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+          border: '1px solid rgba(255,255,255,0.12)',
+          boxShadow:
+            '0 20px 60px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.10)',
         }}
         onClick={(e) => e.stopPropagation()}
         ref={panelRef}
         tabIndex={-1}
       >
+        {/* Soft top sheen — frosted-glass highlight */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 z-0"
+          style={{
+            borderRadius: 'inherit',
+            background:
+              'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 18%, rgba(255,255,255,0.00) 38%)',
+          }}
+        />
         {/* Floating close — preserves close behavior without adding header chrome */}
         <Button
           ref={closeBtnRef}
@@ -281,7 +298,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             duplicating app shell chrome. */}
         <div
           className={cn(
-            'relative flex-1 min-h-0 w-full bg-background overflow-y-auto overflow-x-hidden',
+            'relative flex-1 min-h-0 w-full bg-transparent overflow-y-auto overflow-x-hidden',
             slideClass,
           )}
           style={{
