@@ -29,6 +29,34 @@ import type { ConversationMutation } from '@/lib/copilot-utils';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
+/**
+ * Demo-only deterministic responder for "What deals need attention?".
+ *
+ * Scoped strictly to the demo@5thline.co user. Returns exactly 3 deals
+ * (the 3 highest-priority by urgency in the demo dataset) as markdown
+ * bullets with one-sentence reasons (<20 words each). No introductions,
+ * summaries, numbering, tables, or extra deals.
+ */
+function isDealsNeedAttentionPrompt(raw: string): boolean {
+  const t = raw.toLowerCase().replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!t.includes('deal')) return false;
+  if (!t.includes('attention')) return false;
+  // Match "what deals need attention", "which deals need attention",
+  // "deals that need attention", "deals needing attention", etc.
+  return /\b(what|which|any)?\s*deals?\s+(that\s+)?(need|needs|needing|require|requires|requiring)\s+(my\s+|some\s+)?attention\b/.test(t)
+    || /\bdeals?\s+need\s+attention\b/.test(t);
+}
+
+const DEMO_DEALS_NEED_ATTENTION_MARKDOWN = [
+  '- BluePeak Logistics',
+  '  - Term sheet expected early next week and the capital partner has not confirmed timing yet.',
+  '  - At-risk flag is active until Meridian Capital responds with a firm date.',
+  '- Harbor Ridge Dental',
+  '  - Underwriting is paused pending owner clarification on add-backs.',
+  '- Northstar HVAC',
+  '  - Lender is waiting on updated trailing twelve-month financials before moving forward.',
+].join('\n');
+
 // Client-side rate limiter: max 20 messages per minute
 const MSG_TIMESTAMPS: number[] = [];
 const RATE_LIMIT = 20;
@@ -1010,6 +1038,20 @@ export function AICopilotPanel() {
     addMessage(userMsg);
     setInput('');
 
+    // Demo-only deterministic intercept: when demo@5thline.co asks
+    // "What deals need attention?" return exactly 3 deals as markdown
+    // bullets with one-sentence reasons. No AI call, no drift.
+    if (user?.email === 'demo@5thline.co' && isDealsNeedAttentionPrompt(text)) {
+      const reply = DEMO_DEALS_NEED_ATTENTION_MARKDOWN;
+      addMessage({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: reply,
+        timestamp: new Date(),
+      });
+      return;
+    }
+
     // Agent mode: instead of streaming a chat reply, push an assistant
     // message that mounts <AgentRunCard /> and runs the chained pipeline.
     if (agentMode) {
@@ -1031,7 +1073,7 @@ export function AICopilotPanel() {
     }
 
     processMessage(text);
-  }, [input, addMessage, processMessage, agentMode]);
+  }, [input, addMessage, processMessage, agentMode, user?.email]);
 
   const handleRetry = useCallback(() => {
     if (!lastFailedMessage) return;
