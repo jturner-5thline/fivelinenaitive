@@ -193,6 +193,7 @@ export function DealsCalendar({ defaultOpen = true }: DealsCalendarProps) {
                           return (
                             <button
                               key={milestone.id}
+                              data-deal-open-id={milestone.deal_id}
                               onClick={() => navigate(`/deal/${milestone.deal_id}`)}
                               className="w-full text-left p-2 rounded-lg border border-border hover:bg-muted/50 transition-colors"
                             >
