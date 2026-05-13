@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
+import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase, CheckSquare } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -17,6 +17,7 @@ import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
+import { TasksOverlay } from '@/components/tasks/TasksOverlay';
 import { Newspaper } from 'lucide-react';
 import {
   canSeeNikiBriefing,
@@ -39,6 +40,7 @@ export function DealsHeader() {
   const isDealsRoute = location.pathname === '/deals';
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
@@ -104,6 +106,23 @@ export function DealsHeader() {
                 </Tooltip>
               );
             })}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  aria-label="Tasks"
+                  onClick={() => setIsTasksOpen(true)}
+                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                    isTasksOpen
+                      ? 'bg-blue-400/15 text-blue-400'
+                      : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
+                  }`}
+                >
+                  <CheckSquare className="h-[18px] w-[18px]" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Tasks</TooltipContent>
+            </Tooltip>
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
