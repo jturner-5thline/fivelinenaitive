@@ -3484,9 +3484,15 @@ export default function DealDetail() {
                                 return (
                                   <div key={fieldId}>
                                     <Separator className="my-4" />
-                                    <div className="space-y-3">
-                                      <h4 className="text-sm font-medium flex items-center gap-2">
-                                        <Clock className="h-4 w-4 text-muted-foreground" />
+                                    <div
+                                      className="space-y-3 rounded-xl border border-white/[0.08] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                                      style={{ background: 'rgba(18, 24, 38, 0.82)' }}
+                                    >
+                                      <h4
+                                        className="text-[13px] font-medium flex items-center gap-2 tracking-[0.01em]"
+                                        style={{ color: 'rgba(148, 163, 184, 0.88)' }}
+                                      >
+                                        <Clock className="h-3.5 w-3.5" />
                                         Hours & Fees
                                       </h4>
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -3626,9 +3632,18 @@ export default function DealDetail() {
                           });
 
                           return (
-                            <Card key={id}>
+                            <Card
+                              key={id}
+                              className="rounded-2xl border-white/[0.08] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]"
+                              style={{ background: 'rgba(20, 26, 40, 0.74)' }}
+                            >
                               <CardHeader className="flex flex-row items-center justify-between py-4">
-                                <CardTitle className="text-lg">Deal Information</CardTitle>
+                                <CardTitle
+                                  className="text-[15px] font-semibold tracking-[0.01em]"
+                                  style={{ color: 'rgba(226, 232, 240, 0.92)' }}
+                                >
+                                  Deal Information
+                                </CardTitle>
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
