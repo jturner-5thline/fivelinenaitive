@@ -2637,6 +2637,7 @@ export default function DealDetail() {
               )}
             </div>
           </div>
+          )}
 
           {/* Deal Pulse Dashboard - hidden per user request */}
 
