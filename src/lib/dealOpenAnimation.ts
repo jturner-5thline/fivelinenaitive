@@ -39,11 +39,25 @@ export function ensureDealOpenAnimationInstalled() {
     (event) => {
       const target = event.target as Element | null;
       if (!target) return;
-      const anchor = target.closest('a[href^="/deal/"]') as HTMLAnchorElement | null;
-      if (!anchor) return;
-      const id = parseDealIdFromHref(anchor.getAttribute('href'));
-      if (!id) return;
-      const r = anchor.getBoundingClientRect();
+      // Prefer explicit opener marker so non-anchor click targets (table
+      // rows, kanban rows, calendar pills, etc.) animate the same way as
+      // <Link to="/deal/...">. Falls back to the legacy anchor capture so
+      // existing card components keep working unchanged.
+      const explicit = target.closest('[data-deal-open-id]') as HTMLElement | null;
+      let id: string | null = null;
+      let originEl: HTMLElement | null = null;
+      if (explicit) {
+        id = explicit.getAttribute('data-deal-open-id');
+        originEl = explicit;
+      } else {
+        const anchor = target.closest('a[href^="/deal/"]') as HTMLAnchorElement | null;
+        if (anchor) {
+          id = parseDealIdFromHref(anchor.getAttribute('href'));
+          originEl = anchor;
+        }
+      }
+      if (!id || !originEl) return;
+      const r = originEl.getBoundingClientRect();
       lastOrigin = {
         id,
         rect: { left: r.left, top: r.top, width: r.width, height: r.height },
