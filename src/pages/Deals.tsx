@@ -1047,6 +1047,9 @@ export default function Dashboard() {
               )}
             </div>
       </WorkspacePage>
+      {isFifthLine && (
+        <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />
+      )}
       <NaitiveDealOverlay
         deal={(() => {
           const id = overlaySearchParams.get('deal');
