@@ -247,12 +247,12 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
           willChange: 'transform',
           background:
-            'linear-gradient(180deg, rgba(24,30,48,0.88) 0%, rgba(18,24,40,0.84) 42%, rgba(14,19,32,0.92) 100%)',
+            'radial-gradient(ellipse at 50% 28%, rgba(34,44,72,0.82) 0%, rgba(18,24,40,0.84) 40%, rgba(10,14,24,0.94) 100%), radial-gradient(circle at 50% 120%, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 45%), rgba(12,16,28,0.92)',
           backdropFilter: 'blur(18px) saturate(140%)',
           WebkitBackdropFilter: 'blur(18px) saturate(140%)',
-          border: '1px solid rgba(255,255,255,0.12)',
+          border: '1px solid rgba(255,255,255,0.10)',
           boxShadow:
-            '0 20px 60px rgba(0,0,0,0.42), inset 0 1px 0 rgba(255,255,255,0.10)',
+            '0 24px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
         }}
         onClick={(e) => e.stopPropagation()}
         ref={panelRef}
@@ -265,7 +265,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           style={{
             borderRadius: 'inherit',
             background:
-              'linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 18%, rgba(255,255,255,0.00) 38%)',
+              'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 18%, rgba(255,255,255,0.00) 38%)',
           }}
         />
         {/* Floating close — preserves close behavior without adding header chrome */}
