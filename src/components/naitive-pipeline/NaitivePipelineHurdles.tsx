@@ -38,6 +38,7 @@ export function NaitivePipelineHurdles({ hurdles }: { hurdles: NaitiveDealHurdle
                   <div
                     key={`${h.dealId}-${i}`}
                     className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                    data-deal-open-id={h.dealId}
                     onClick={() => navigate(`/deal/${h.dealId}`)}
                   >
                     <span className={cn("h-2 w-2 rounded-full flex-shrink-0", style.dot)} />
