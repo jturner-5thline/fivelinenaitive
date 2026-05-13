@@ -152,20 +152,20 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     setOriginBorderRadius(12);
     setContentVisible(false);
 
+    let raf2 = 0;
+    let revealTimeout = 0;
     const raf1 = requestAnimationFrame(() => {
-      const raf2 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
         setOriginTransform(null);
         setOriginBorderRadius(null);
       });
       // Reveal the inner content shortly after the shell starts expanding.
-      const t = window.setTimeout(() => setContentVisible(true), 160);
-      (raf1 as unknown as { _t?: number })._t = t as unknown as number;
-      void raf2;
+      revealTimeout = window.setTimeout(() => setContentVisible(true), 160);
     });
     return () => {
       cancelAnimationFrame(raf1);
-      const t = (raf1 as unknown as { _t?: number })._t;
-      if (t) window.clearTimeout(t);
+      if (raf2) cancelAnimationFrame(raf2);
+      if (revealTimeout) window.clearTimeout(revealTimeout);
     };
   }, [deal?.id, reduceMotion]);
 
