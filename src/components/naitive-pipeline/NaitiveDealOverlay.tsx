@@ -5,6 +5,10 @@ import { DealStageOption } from '@/contexts/DealStagesContext';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  consumeDealOpenOriginRect,
+  ensureDealOpenAnimationInstalled,
+} from '@/lib/dealOpenAnimation';
 
 // Lazy-load the (large) deal detail page so the overlay shell can paint
 // before its chunk is parsed. Once loaded the chunk is cached for the
@@ -33,6 +37,22 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   const [reduceMotion, setReduceMotion] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // Expand-from-tile animation state. When `originTransform` is set, the
+  // panel renders pinned to the clicked tile's rect and then transitions
+  // to its natural full-screen frame on the next frame. `contentVisible`
+  // controls a slight delay before the inner deal content fades in over
+  // the expanding shell — keeps the motion premium, not jittery.
+  const [originTransform, setOriginTransform] = useState<string | null>(null);
+  const [originBorderRadius, setOriginBorderRadius] = useState<number | null>(null);
+  const [contentVisible, setContentVisible] = useState(false);
+  const lastAnimatedDealId = useRef<string | null>(null);
+
+  // Install the global click-rect capture once. Cheap: a single window
+  // mousedown listener.
+  useEffect(() => {
+    ensureDealOpenAnimationInstalled();
+  }, []);
 
   // The matched pathname of the parent route this overlay is rendered in
   // (e.g. "/deals" on the deals page, "/naitive-pipeline" on the pipeline
@@ -78,6 +98,76 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     m.addEventListener?.('change', handler);
     return () => m.removeEventListener?.('change', handler);
   }, []);
+
+  // When the overlay opens for a new deal, attempt to read the rect of
+  // the tile that was just clicked and pin the panel there for one frame
+  // before releasing it to its full-screen position.
+  useEffect(() => {
+    if (!deal) {
+      lastAnimatedDealId.current = null;
+      setOriginTransform(null);
+      setOriginBorderRadius(null);
+      setContentVisible(false);
+      return;
+    }
+    if (lastAnimatedDealId.current === deal.id) return;
+    lastAnimatedDealId.current = deal.id;
+
+    if (reduceMotion) {
+      setOriginTransform(null);
+      setOriginBorderRadius(null);
+      setContentVisible(true);
+      return;
+    }
+
+    const rect = consumeDealOpenOriginRect(deal.id);
+    if (!rect) {
+      setOriginTransform(null);
+      setOriginBorderRadius(null);
+      // Still defer the content fade slightly so the scale-in shell reads
+      // as "container first, then content".
+      setContentVisible(false);
+      const t = window.setTimeout(() => setContentVisible(true), 120);
+      return () => window.clearTimeout(t);
+    }
+
+    // Final panel frame mirrors the className: full screen below `sm`,
+    // 8px inset above. Use viewport size to compute the resting box.
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const isDesktop = vw >= 640;
+    const finalLeft = isDesktop ? 8 : 0;
+    const finalTop = isDesktop ? 8 : 0;
+    const finalWidth = isDesktop ? vw - 16 : vw;
+    const finalHeight = isDesktop ? vh - 16 : vh;
+
+    const sx = Math.max(rect.width / finalWidth, 0.05);
+    const sy = Math.max(rect.height / finalHeight, 0.05);
+    const tx = rect.left - finalLeft;
+    const ty = rect.top - finalTop;
+
+    // Apply the starting transform synchronously, then release on the
+    // next frame so the CSS transition interpolates back to identity.
+    setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
+    setOriginBorderRadius(12);
+    setContentVisible(false);
+
+    const raf1 = requestAnimationFrame(() => {
+      const raf2 = requestAnimationFrame(() => {
+        setOriginTransform(null);
+        setOriginBorderRadius(null);
+      });
+      // Reveal the inner content shortly after the shell starts expanding.
+      const t = window.setTimeout(() => setContentVisible(true), 160);
+      (raf1 as unknown as { _t?: number })._t = t as unknown as number;
+      void raf2;
+    });
+    return () => {
+      cancelAnimationFrame(raf1);
+      const t = (raf1 as unknown as { _t?: number })._t;
+      if (t) window.clearTimeout(t);
+    };
+  }, [deal?.id, reduceMotion]);
 
   const idx = useMemo(
     () => (deal ? orderedDeals.findIndex(d => d.id === deal.id) : -1),
@@ -143,8 +233,20 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       <div
         className={cn(
           'relative w-screen h-screen sm:w-[calc(100vw-1rem)] sm:h-[calc(100vh-1rem)] sm:rounded-xl border border-white/10 bg-background shadow-2xl overflow-hidden flex flex-col',
-          reduceMotion ? '' : 'animate-scale-in',
+          // Only fall back to the generic scale-in when we have neither a
+          // tile-origin transform nor reduced motion — the rect-driven
+          // transform already provides the entrance animation.
+          reduceMotion ? '' : !originTransform && lastAnimatedDealId.current !== deal.id ? 'animate-scale-in' : '',
         )}
+        style={{
+          transformOrigin: 'top left',
+          transform: originTransform ?? undefined,
+          borderRadius: originBorderRadius != null ? `${originBorderRadius}px` : undefined,
+          transition: reduceMotion
+            ? undefined
+            : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+          willChange: 'transform',
+        }}
         onClick={(e) => e.stopPropagation()}
         ref={panelRef}
         tabIndex={-1}
@@ -177,7 +279,19 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         {/* `[&_header]:hidden` strips DealDetail's internal <DealsHeader>
             so the modal starts directly at the deal content area without
             duplicating app shell chrome. */}
-        <div className={cn('relative flex-1 min-h-0 w-full bg-background overflow-y-auto overflow-x-hidden', slideClass)}>
+        <div
+          className={cn(
+            'relative flex-1 min-h-0 w-full bg-background overflow-y-auto overflow-x-hidden',
+            slideClass,
+          )}
+          style={{
+            opacity: reduceMotion ? 1 : contentVisible ? 1 : 0,
+            transform: reduceMotion || contentVisible ? undefined : 'translateY(6px)',
+            transition: reduceMotion
+              ? undefined
+              : 'opacity 220ms ease-out 60ms, transform 260ms cubic-bezier(0.22, 1, 0.36, 1) 60ms',
+          }}
+        >
           <Suspense fallback={<DealOverlayHydrating />}>
             {/* Render DealDetail using a synthetic location so `useParams`
                 resolves to this deal id, while reusing the parent Router
