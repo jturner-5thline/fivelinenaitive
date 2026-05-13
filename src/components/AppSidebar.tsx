@@ -1,4 +1,4 @@
-import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark } from "lucide-react";
+import { LayoutDashboard, Briefcase, BarChart3, Users, Settings, HelpCircle, ShieldCheck, Plug, Newspaper, UserCog, Cog, Workflow, Bot, DollarSign, Menu, CheckSquare, Compass, Video, SlidersHorizontal, Contact, Building2, UserCircle, LogOut, Handshake, Landmark, FileText, PieChart } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
@@ -40,10 +40,12 @@ const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
   { title: "Tasks", url: "/tasks", icon: CheckSquare, featureKey: null }, // Always visible
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
-  // Contacts and Companies hidden from sidebar
-  // { title: "Contacts", url: "/contacts", icon: Contact, featureKey: "sales_bd" },
-  // { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: "sales_bd" },
-  // { title: "News Feed", url: "/dashboard?tab=news-feed", icon: Newspaper, featureKey: "newsfeed" },
+  // Moved out of the global top header into the sidebar, ordered directly under Deals.
+  { title: "Lenders", url: "/lenders", icon: Landmark, featureKey: null },
+  { title: "Contacts", url: "/contacts", icon: Contact, featureKey: null },
+  { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: null },
+  { title: "Analytics", url: "/analytics", icon: PieChart, featureKey: "analytics" },
+  { title: "Reports", url: "/reports", icon: FileText, featureKey: "reports", hideForDemoEmail: true as const },
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },
   { title: "Insights", url: "/insights", icon: BarChart3, featureKey: "metrics" },
@@ -86,6 +88,8 @@ export function AppSidebar() {
   const visibleMenuItems = menuItems.filter(item => {
     // Insights restricted to a specific allowlist
     if (item.url === "/insights" && !canAccessInsights) return false;
+    // Reports hidden for the shared demo account (parity with previous header behavior)
+    if ('hideForDemoEmail' in item && item.hideForDemoEmail && user?.email === 'demo@5thline.co') return false;
     // Check page-level feature flag access
     if (item.featureKey !== null && (isAccessLoading || !hasPageAccess(item.featureKey))) return false;
     // Check company-level feature flag
