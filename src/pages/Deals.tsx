@@ -946,7 +946,8 @@ export default function Dashboard() {
               )}
 
               {/* Deals Grid/List/Pipeline or Milestones */}
-              <div 
+              <div
+                ref={boardScrollContainerRef}
                 className="opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
