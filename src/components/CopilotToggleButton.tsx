@@ -73,7 +73,7 @@ export function CopilotToggleButton() {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { deals } = useDealsContext();
