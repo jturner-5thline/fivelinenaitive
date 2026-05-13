@@ -83,6 +83,8 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const { features: companyFeatures } = useCompanyFeatures();
   const [overlaySearchParams, setOverlaySearchParams] = useSearchParams();
   const { stages: overlayStages } = useDealStages();
@@ -525,6 +527,36 @@ export default function Dashboard() {
               </div>
 
               <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+                  {isFifthLine && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-8 w-8 rounded-md"
+                          aria-label="Open dashboard"
+                          onClick={() => setIsDashboardOpen(true)}
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Dashboard</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 rounded-md"
+                        aria-label="Customize widgets"
+                        onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}
+                      >
+                        <Settings2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Customize widgets</TooltipContent>
+                  </Tooltip>
                   <NotificationsDropdown />
                   <LatestUpdatesDropdown />
 
