@@ -69,7 +69,6 @@ import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '
 import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
