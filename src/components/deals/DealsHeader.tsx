@@ -60,7 +60,7 @@ export function DealsHeader() {
       */}
       <div className="pt-3 px-3 sm:px-4 pointer-events-none">
         <div
-          className="pointer-events-auto mx-auto flex h-14 items-center gap-1 sm:gap-2 px-3 sm:px-4 min-w-0"
+          className="pointer-events-auto mx-auto relative flex h-14 items-center gap-1 sm:gap-2 px-3 sm:px-4 min-w-0"
           style={{
             width: 'min(560px, calc(100vw - 24px))',
             borderRadius: 22,
@@ -72,10 +72,10 @@ export function DealsHeader() {
               '0 10px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
           }}
         >
-          <DemoModeBadge />
+          <div className="flex items-center shrink-0"><DemoModeBadge /></div>
 
-          {/* Primary quick-access nav — Calendar, Mail, Action Queue, Deals */}
-          <nav className="hidden md:flex items-center gap-0.5">
+          {/* Primary quick-access nav — centered absolutely so trailing utilities don't shift it */}
+          <nav className="hidden md:flex items-center gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {[
               { to: '/dashboard?view=calendar', label: 'Calendar', Icon: Calendar },
               { to: '/dashboard?view=mail', label: 'Mail', Icon: Mail },
