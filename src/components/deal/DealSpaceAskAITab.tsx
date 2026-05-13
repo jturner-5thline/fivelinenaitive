@@ -28,6 +28,7 @@ import { DealProactiveNudgesCard } from './DealProactiveNudgesCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { ToastAction } from '@/components/ui/toast';
 import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
@@ -646,8 +647,35 @@ CRITICAL RULES:
       const enriched = await enrichDraftsWithLenderContacts(filteredDrafts);
       setEmailDrafts(enriched);
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to draft submission email';
-      toast({ title: 'Draft failed', description: message, variant: 'destructive' });
+      const rawMessage = err instanceof Error ? err.message : 'Failed to draft submission email';
+      const lower = rawMessage.toLowerCase();
+      const isTimeout =
+        lower.includes('timeout') ||
+        lower.includes('timed out') ||
+        lower.includes('deadline') ||
+        lower.includes('aborted') ||
+        lower.includes('504');
+      const isRateLimited = lower.includes('rate limit') || lower.includes('429');
+      const isAiCredits = lower.includes('credits') || lower.includes('402');
+
+      if (isTimeout) {
+        toast({
+          title: 'Draft generation timed out',
+          description: 'Please try again.',
+          variant: 'destructive',
+          action: (
+            <ToastAction altText="Retry" onClick={() => { void draftSubmissionEmails(); }}>
+              Retry
+            </ToastAction>
+          ),
+        });
+      } else if (isRateLimited) {
+        toast({ title: 'Too many requests', description: 'Please wait a moment and try again.', variant: 'destructive' });
+      } else if (isAiCredits) {
+        toast({ title: 'AI credits exhausted', description: 'Add credits to continue drafting.', variant: 'destructive' });
+      } else {
+        toast({ title: 'Draft failed', description: rawMessage, variant: 'destructive' });
+      }
       setIsDraftDialogOpen(false);
     } finally {
       setIsDraftingEmail(false);
@@ -730,11 +758,34 @@ CRITICAL RULES:
         return next === -1 ? curr : next;
       });
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to send email';
+      const rawMessage = err instanceof Error ? err.message : 'Failed to send email';
+      const lower = rawMessage.toLowerCase();
+      const isGmailMissing =
+        lower.includes('gmail') ||
+        lower.includes('not connected') ||
+        lower.includes('no email account') ||
+        lower.includes('grant_id') ||
+        lower.includes('nylas') ||
+        lower.includes('reauthorize') ||
+        lower.includes('connect your');
+      const friendly = isGmailMissing ? 'Connect your Gmail to draft emails' : rawMessage;
       setEmailDrafts((prev) => prev.map((d, i) => (
-        i === index ? { ...d, status: 'failed', errorMessage: message } : d
+        i === index ? { ...d, status: 'failed', errorMessage: friendly } : d
       )));
-      toast({ title: 'Send failed', description: message, variant: 'destructive' });
+      if (isGmailMissing) {
+        toast({
+          title: 'Gmail not connected',
+          description: 'Connect your Gmail to draft and send lender emails.',
+          variant: 'destructive',
+          action: (
+            <ToastAction altText="Open integrations" onClick={() => { window.location.href = '/integrations'; }}>
+              Connect Gmail
+            </ToastAction>
+          ),
+        });
+      } else {
+        toast({ title: 'Send failed', description: rawMessage, variant: 'destructive' });
+      }
     }
   }, [emailDrafts]);
 
