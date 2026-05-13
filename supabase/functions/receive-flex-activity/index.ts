@@ -274,13 +274,10 @@ Deno.serve(async (req) => {
     // Validate API key or JWT auth
     const apiKey = req.headers.get("x-flex-api-key") || req.headers.get("authorization")?.replace("Bearer ", "");
     const expectedKey = Deno.env.get("FLEX_API_KEY");
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
-    
-    // Allow access if: valid FLEX API key, or if it's a Supabase JWT (for testing from the app)
-    const isValidApiKey = apiKey && apiKey === expectedKey;
-    const isSupabaseJwt = apiKey && apiKey !== supabaseAnonKey && apiKey.startsWith("eyJ"); // JWT format
-    
-    if (!isValidApiKey && !isSupabaseJwt) {
+
+    // Strict: only accept the shared FLEX_API_KEY. The previous "isSupabaseJwt"
+    // branch only validated the format ("eyJ..."), which is trivially bypassable.
+    if (!expectedKey || !apiKey || apiKey !== expectedKey) {
       console.error("Invalid or missing API key");
       return new Response(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,

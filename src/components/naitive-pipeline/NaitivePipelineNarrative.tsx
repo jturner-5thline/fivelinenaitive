@@ -3,6 +3,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
+import DOMPurify from 'dompurify';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -773,7 +774,7 @@ function HistoryPanel({
                 </div>
                 <div
                   className="text-xs text-foreground/80 line-clamp-3 prose prose-xs dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: s.content || '<em class="text-muted-foreground">Empty</em>' }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(s.content || '<em class="text-muted-foreground">Empty</em>', { USE_PROFILES: { html: true } }) }}
                 />
               </div>
             ))}
@@ -814,7 +815,7 @@ function HistoryPanel({
             </div>
             <div
               className="text-xs text-foreground/80 line-clamp-3 prose prose-xs dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: r.content || '<em class="text-muted-foreground">Empty</em>' }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.content || '<em class="text-muted-foreground">Empty</em>', { USE_PROFILES: { html: true } }) }}
             />
           </div>
         );

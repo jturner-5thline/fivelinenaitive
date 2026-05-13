@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 interface EmailDraft {
   to_name: string;
@@ -90,7 +91,7 @@ export function EmailDraftCard({ draft, onSend }: Props) {
         ) : (
           <div
             className="text-xs text-muted-foreground leading-relaxed max-h-[150px] overflow-y-auto"
-            dangerouslySetInnerHTML={{ __html: draft.body.includes('<') ? draft.body : `<p>${draft.body}</p>` }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(draft.body.includes('<') ? draft.body : `<p>${draft.body}</p>`, { USE_PROFILES: { html: true } }) }}
           />
         )}
       </div>

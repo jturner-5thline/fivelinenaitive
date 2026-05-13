@@ -8,6 +8,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import DOMPurify from 'dompurify';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Textarea } from '@/components/ui/textarea';
@@ -161,7 +162,7 @@ function DraftPreviewDialog({
           <div className="border border-border/30 rounded-md p-4 bg-background">
             <div
               className="text-sm prose prose-sm max-w-none"
-              dangerouslySetInnerHTML={{ __html: draft.body_html }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(draft.body_html || '', { USE_PROFILES: { html: true } }) }}
             />
           </div>
 

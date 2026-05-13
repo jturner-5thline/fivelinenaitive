@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, Copy, Check, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 interface EmailDraft {
   to_name: string;
@@ -96,7 +97,7 @@ export function CopilotEmailDraft({ draft }: Props) {
           maxHeight: 180,
           overflowY: 'auto',
         }}
-        dangerouslySetInnerHTML={{ __html: draft.body.includes('<') ? draft.body : `<p>${draft.body}</p>` }}
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(draft.body.includes('<') ? draft.body : `<p>${draft.body}</p>`, { USE_PROFILES: { html: true } }) }}
       />
     </div>
   );
