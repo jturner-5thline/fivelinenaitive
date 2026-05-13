@@ -87,21 +87,35 @@ const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
 const FieldLayoutEditorPage = lazy(lazyRetry(() => import("./pages/FieldLayoutEditorPage")));
 const HubspotSyncHealth = lazy(lazyRetry(() => import("./pages/HubspotSyncHealth")));
-/** Forces DealDetail to fully remount when navigating between deals */
-function DealDetailKeyedWrapper() {
-  const { id } = useParams<{ id: string }>();
-  return <DealDetail key={id} />;
-}
-
-function LegacyDealDetailRedirect() {
-  const { id } = useParams<{ id: string }>();
+/**
+ * Deals are modal-first: every deal opens as an overlay on top of `/deals`.
+ * Standalone `/deal/:id` and `/deals/:id` routes are no longer rendered as
+ * full pages — they redirect to `/deals?deal=<id>` (merging any existing
+ * query string + hash) so the shared overlay opens. This guarantees that
+ * legacy links from notifications, emails, tasks, search results and
+ * bookmarks all funnel through the same modal experience without breaking
+ * backward compatibility.
+ */
+function NavigateToDealOverlay() {
+  const params = useParams<{ id?: string; dealId?: string }>();
   const location = useLocation();
+  const dealId = params.id || params.dealId;
 
-  if (!id) {
+  if (!dealId) {
     return <Navigate to="/deals" replace />;
   }
 
-  return <Navigate to={`/deal/${id}${location.search}${location.hash}`} replace state={location.state} />;
+  // Preserve query string params (tab, highlight, action, etc.) by merging
+  // them onto `/deals?deal=<id>`. The embedded DealDetail inside the
+  // overlay reads these the same way it would on the standalone route.
+  const incoming = new URLSearchParams(location.search);
+  incoming.delete('deal'); // avoid duplicate keys if a caller already set it
+  const merged = new URLSearchParams();
+  merged.set('deal', dealId);
+  for (const [k, v] of incoming.entries()) merged.append(k, v);
+
+  const target = `/deals?${merged.toString()}${location.hash}`;
+  return <Navigate to={target} replace state={location.state} />;
 }
 
 
@@ -266,11 +280,20 @@ const App = () => (
                           <Route path="/operations" element={
                             <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>
                           } />
+                          {/* Standalone deal routes are deprecated — every
+                              entry point now opens the shared overlay on
+                              `/deals`. These redirects keep all existing
+                              links (notifications, emails, tasks, deep
+                              links, bookmarks) working without rendering a
+                              second deal surface. */}
                           <Route path="/deal/:id" element={
-                            <ProtectedRoute><AppLayout><DealDetailKeyedWrapper /></AppLayout></ProtectedRoute>
+                            <ProtectedRoute><NavigateToDealOverlay /></ProtectedRoute>
+                          } />
+                          <Route path="/deal/:dealId" element={
+                            <ProtectedRoute><NavigateToDealOverlay /></ProtectedRoute>
                           } />
                           <Route path="/deals/:id" element={
-                            <ProtectedRoute><LegacyDealDetailRedirect /></ProtectedRoute>
+                            <ProtectedRoute><NavigateToDealOverlay /></ProtectedRoute>
                           } />
                           <Route path="/settings" element={
                             <ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>
