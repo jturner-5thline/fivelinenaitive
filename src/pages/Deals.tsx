@@ -71,11 +71,16 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CheckSquare } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams } from 'react-router-dom';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import { useDealStages } from '@/contexts/DealStagesContext';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const { features: companyFeatures } = useCompanyFeatures();
+  const [overlaySearchParams, setOverlaySearchParams] = useSearchParams();
+  const { stages: overlayStages } = useDealStages();
 
   // Deal size confirmation — match stage labels (case-insensitive) for 5th Line only
   const DEAL_SIZE_CONFIRM_STAGE_LABELS = ['proposal issued', 'terms issued', 'in diligence', 'in due diligence'];
@@ -999,6 +1004,26 @@ export default function Dashboard() {
               )}
             </div>
       </WorkspacePage>
+      <NaitiveDealOverlay
+        deal={(() => {
+          const id = overlaySearchParams.get('deal');
+          if (!id) return null;
+          return allDeals.find(d => d.id === id) || null;
+        })()}
+        orderedDeals={deals}
+        stages={overlayStages}
+        onClose={() => {
+          const next = new URLSearchParams(overlaySearchParams);
+          next.delete('deal');
+          setOverlaySearchParams(next, { replace: false });
+        }}
+        onNavigate={(d) => {
+          const next = new URLSearchParams(overlaySearchParams);
+          next.set('deal', d.id);
+          setOverlaySearchParams(next, { replace: true });
+        }}
+        onStageChange={handleStageChange}
+      />
     </>
   );
 }
