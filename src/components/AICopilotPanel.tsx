@@ -1010,6 +1010,20 @@ export function AICopilotPanel() {
     addMessage(userMsg);
     setInput('');
 
+    // Demo-only deterministic intercept: when demo@5thline.co asks
+    // "What deals need attention?" return exactly 3 deals as markdown
+    // bullets with one-sentence reasons. No AI call, no drift.
+    if (user?.email === 'demo@5thline.co' && isDealsNeedAttentionPrompt(text)) {
+      const reply = DEMO_DEALS_NEED_ATTENTION_MARKDOWN;
+      addMessage({
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: reply,
+        timestamp: new Date(),
+      });
+      return;
+    }
+
     // Agent mode: instead of streaming a chat reply, push an assistant
     // message that mounts <AgentRunCard /> and runs the chained pipeline.
     if (agentMode) {
@@ -1031,7 +1045,7 @@ export function AICopilotPanel() {
     }
 
     processMessage(text);
-  }, [input, addMessage, processMessage, agentMode]);
+  }, [input, addMessage, processMessage, agentMode, user?.email]);
 
   const handleRetry = useCallback(() => {
     if (!lastFailedMessage) return;
