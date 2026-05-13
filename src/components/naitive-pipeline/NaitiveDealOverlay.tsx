@@ -121,11 +121,7 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
   const lastActivity = formatLastActivity(deal.updatedAt);
   const nextDate = formatDate(deal.nextStepDate);
 
-  const slideClass = reduceMotion || !slideDir
-    ? ''
-    : slideDir === 'left'
-      ? 'animate-[slide-from-right_180ms_ease-in-out]'
-      : 'animate-[slide-from-left_180ms_ease-in-out]';
+  const slideClass = reduceMotion || !slideDir ? '' : 'animate-fade-in';
 
   return (
     <div
