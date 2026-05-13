@@ -3,12 +3,13 @@ import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { AgendaIntel } from './AgendaIntel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Newspaper, Mail, DollarSign, GitBranch, ListChecks,
+  Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
   Check, Clock, ArrowUpRight,
@@ -78,12 +79,12 @@ interface DailyBriefingModalProps {
    * Tab values to hide from this briefing instance (e.g., ['financial']).
    * Hidden tabs do not render their content and skip data fetching entirely.
    */
-  excludeTabs?: Array<'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
+  excludeTabs?: Array<'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational'>;
   /**
    * Tab to select when the modal opens (and re-opens). If the value is
    * excluded or unknown, falls back to the first available tab.
    */
-  initialTab?: 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
+  initialTab?: 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
   /**
    * Identifies which briefing surface this modal represents. Used to scope
    * per-day dismissal state so dismissing an item in one briefing surface
@@ -95,7 +96,7 @@ interface DailyBriefingModalProps {
 }
 
 // Initial tab to open with. Defaults to the first available tab.
-export type BriefingTabValue = 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
+export type BriefingTabValue = 'agenda' | 'catchup' | 'email' | 'financial' | 'pipeline' | 'operational';
 
 // ── Glass surface classes ──────────────────────────────────────
 // Borders are intentionally near-invisible — depth comes from translucent
@@ -1484,6 +1485,7 @@ function OperationalTab({ enabled, onNavigate, targetAssigneeName }: { enabled: 
 
 // ── Tab icons & labels ─────────────────────────────────────────
 const ALL_TABS = [
+  { value: 'agenda', label: 'Agenda', icon: CalendarDays },
   { value: 'catchup', label: 'Catch Up & News', icon: Newspaper },
   { value: 'email', label: 'Email', icon: Mail },
   { value: 'financial', label: 'Financial', icon: DollarSign },
@@ -1756,6 +1758,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                     slideDirection === 'right' && 'animate-slide-in-from-left',
                   )}
                 >
+                  {activeTab === 'agenda' && <div className="h-[70vh] min-h-[500px]"><AgendaIntel /></div>}
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'email' && (
                     <EmailTab

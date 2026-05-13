@@ -40,6 +40,16 @@ Be concise. Use markdown formatting. Max 100 words per meeting.`;
 - **Optimal meeting times**: Best slots for new meetings
 Keep suggestions actionable and brief. Use bullet points. Max 150 words.`;
       userPrompt = `Analyze this schedule for ${current_date} and suggest optimizations:\n${JSON.stringify(events, null, 2)}`;
+    } else if (action === "meeting_intel_card") {
+      systemPrompt = `You are an executive meeting prep assistant for a deal/finance team at 5th Line.
+Given a single upcoming meeting plus optional context (linked deal, recent emails, notes), return ONLY 2-3 short, specific bullet points the user should know going in.
+Rules:
+- Output plain markdown bullets (use "- ").
+- 2-3 bullets max. Each bullet under 22 words.
+- Be concrete; cite the deal stage, last activity, or attendee role when present.
+- If context is sparse, infer from attendees + title but stay grounded; never fabricate dollar amounts, dates, or names.
+- No preamble, no headings, no closing summary.`;
+      userPrompt = `Generate prep bullets for this meeting:\n${JSON.stringify(events, null, 2)}`;
     } else if (action === "conflict_check") {
       systemPrompt = `You are a calendar conflict detection assistant. Analyze events and identify:
 - **Overlapping events**: Any double-bookings

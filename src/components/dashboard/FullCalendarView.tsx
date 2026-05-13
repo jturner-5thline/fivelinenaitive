@@ -88,10 +88,11 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import ReactMarkdown from 'react-markdown';
 import { CalendarEventDialog } from '@/components/integrations/CalendarEventDialog';
+import { AgendaIntel } from './AgendaIntel';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 
 // ─── Types ───────────────────────────────────────────────────
-type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda';
+type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda' | 'intel';
 
 interface FullCalendarViewProps {
   open: boolean;
@@ -1627,7 +1628,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           </TooltipProvider>
 
           <div className="flex items-center bg-muted rounded-lg p-0.5">
-            {(['day', 'week', 'month', 'agenda'] as CalendarViewMode[]).map(v => (
+            {(['day', 'week', 'month', 'agenda', 'intel'] as CalendarViewMode[]).map(v => (
               <button
                 key={v}
                 onClick={() => setView(v)}
@@ -1636,7 +1637,13 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                   view === v ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {v === 'agenda' ? <span className="flex items-center gap-1"><List className="h-3 w-3" />Agenda</span> : v}
+                {v === 'agenda' ? (
+                  <span className="flex items-center gap-1"><List className="h-3 w-3" />Agenda</span>
+                ) : v === 'intel' ? (
+                  <span className="flex items-center gap-1"><Sparkles className="h-3 w-3" />Agenda + Intel</span>
+                ) : (
+                  v
+                )}
               </button>
             ))}
           </div>
@@ -1768,7 +1775,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 </div>
               )}
 
-            {view === 'month' ? (
+            {view === 'intel' ? (
+              <div className="flex-1 min-h-0 px-4 pt-3 pb-2 overflow-hidden">
+                <AgendaIntel />
+              </div>
+            ) : view === 'month' ? (
               <MonthView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} onDayClick={handleDayClick} calendarColors={calendarColors} />
             ) : view === 'agenda' ? (
               <AgendaView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} calendarColors={calendarColors} />
