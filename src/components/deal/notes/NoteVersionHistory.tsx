@@ -5,6 +5,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { NoteVersion } from '@/hooks/useDealSpaceNotes';
 import { format } from 'date-fns';
 import { History, RotateCcw } from 'lucide-react';
+import DOMPurify from 'dompurify';
 
 interface NoteVersionHistoryProps {
   open: boolean;
@@ -65,7 +66,7 @@ export function NoteVersionHistory({ open, onOpenChange, noteId, fetchVersions, 
                   </Button>
                 </div>
                 <ScrollArea className="flex-1 border rounded-md p-4">
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-xs" dangerouslySetInnerHTML={{ __html: selectedVersion.content }} />
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-xs" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedVersion.content || '', { USE_PROFILES: { html: true } }) }} />
                 </ScrollArea>
               </>
             ) : (
