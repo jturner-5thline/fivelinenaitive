@@ -1047,14 +1047,15 @@ CRITICAL RULES:
             )}
           </ScrollArea>
 
-          <div className="flex gap-2">
-            <Input
+          <div className="flex gap-2 items-end">
+            <Textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Ask about this deal..."
               disabled={isAILoading}
-              className="flex-1"
+              rows={1}
+              className="flex-1 min-h-9 max-h-40 resize-none"
             />
             <Button
               onClick={handleSendQuestion}
