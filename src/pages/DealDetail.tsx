@@ -972,15 +972,24 @@ export default function DealDetail() {
     // Persist active tab to URL so refresh / shared links land on the
     // same panel (especially Deal Space, which is access-gated and
     // would otherwise fall back to Deal Info on reload).
-    setSearchParams(
-      (prev) => {
-        const next = new URLSearchParams(prev);
-        next.set('tab', newTab);
-        return next;
-      },
-      { replace: true },
-    );
-  }, [setSearchParams]);
+    //
+    // EMBEDDED MODE: the overlay renders this component inside a
+    // synthetic <Routes> with a fake pathname (`/deals/__overlay/<id>`)
+    // that does not exist in the real router. Calling setSearchParams
+    // here would navigate the parent URL to that fake pathname and
+    // produce a 404. Skip URL sync entirely when embedded — tabs are
+    // pure local state inside the popup.
+    if (!isEmbedded) {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.set('tab', newTab);
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [setSearchParams, isEmbedded]);
 
   // When access flags finish loading after mount, reconcile the active
   // tab with the URL `?tab=` param. The initial useState ran before
@@ -1330,12 +1339,15 @@ export default function DealDetail() {
   useEffect(() => {
     if (deleteAction) {
       setIsDeleteDialogOpen(true);
-      // Clear the action param from URL
-      const newParams = new URLSearchParams(searchParams);
-      newParams.delete('action');
-      setSearchParams(newParams, { replace: true });
+      // Clear the action param from URL — but skip in embedded mode for
+      // the same reason as handleTabChange above (synthetic pathname).
+      if (!isEmbedded) {
+        const newParams = new URLSearchParams(searchParams);
+        newParams.delete('action');
+        setSearchParams(newParams, { replace: true });
+      }
     }
-  }, [deleteAction, searchParams, setSearchParams]);
+  }, [deleteAction, searchParams, setSearchParams, isEmbedded]);
 
   // NOTE: View tracking removed - only log actual changes (updates, additions, deletions)
 
