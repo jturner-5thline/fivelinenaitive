@@ -189,6 +189,7 @@ export function DealsHeader() {
       </div>
       <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
+      <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
       {canSeeNiki && (
         <DailyBriefingModal
