@@ -111,7 +111,7 @@ export function DealsHeader() {
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
-          {isFifthLine && (
+          {isFifthLine && !isDealsRoute && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -127,7 +127,7 @@ export function DealsHeader() {
               <TooltipContent>Dashboard</TooltipContent>
             </Tooltip>
           )}
-          {!location.pathname.startsWith('/deal/') && (
+          {!location.pathname.startsWith('/deal/') && !isDealsRoute && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
