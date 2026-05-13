@@ -687,6 +687,51 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
     // Use pre-extracted text from the database (populated by deal-document-extract).
     // This lets us inject PDF/DOCX/XLSX content without runtime CPU pressure.
     const docsWithText = docsToFetch.filter((d: any) => d.extracted_text && d.extracted_text.length > 50);
+
+    // Inline fallback for plain-text files (.txt/.md/.csv) that have no
+    // extracted_text yet — read them synchronously from storage so the AI can
+    // answer immediately, even if the upload-time extraction job hasn't run.
+    // Bounded by a 30s wall-clock budget across all fallback reads to avoid
+    // hanging the request; whatever was retrieved within the budget is used
+    // and the rest is reported as "partial".
+    const PLAIN_TEXT_RE = /\.(txt|md|csv|log)$/i;
+    const plainTextPending = docsToFetch.filter((d: any) =>
+      (!d.extracted_text || d.extracted_text.length < 50) &&
+      PLAIN_TEXT_RE.test(d.name || '')
+    );
+    let partialExtraction = false;
+    if (plainTextPending.length > 0 && opts.supabaseService) {
+      const TIMEOUT_MS = 30_000;
+      const deadline = Date.now() + TIMEOUT_MS;
+      for (const doc of plainTextPending) {
+        if (Date.now() >= deadline) { partialExtraction = true; break; }
+        try {
+          const bucket = doc._origin === 'data_room' ? 'deal-attachments' : 'deal-space';
+          const remaining = Math.max(1000, deadline - Date.now());
+          const dl: any = await Promise.race([
+            opts.supabaseService.storage.from(bucket).download(doc.file_path),
+            new Promise((resolve) => setTimeout(() => resolve({ data: null, error: { message: 'timeout' } }), remaining)),
+          ]);
+          if (!dl?.data) { partialExtraction = true; continue; }
+          const text = await dl.data.text();
+          if (text && text.trim().length > 0) {
+            doc.extracted_text = text.length > 200_000 ? text.slice(0, 200_000) + '\n...[truncated]' : text;
+            docsWithText.push(doc);
+            // Persist for next time (fire-and-forget; ignore errors).
+            const table = doc._origin === 'data_room' ? 'deal_attachments' : 'deal_space_documents';
+            opts.supabaseService.from(table).update({
+              extracted_text: doc.extracted_text,
+              extraction_status: 'success',
+              extracted_at: new Date().toISOString(),
+            }).eq('id', doc.id).then(() => {}, () => {});
+          }
+        } catch (err) {
+          console.warn('[deal-space-ai] inline txt extract failed:', err);
+          partialExtraction = true;
+        }
+      }
+    }
+
     const chunks: string[] = [];
     let totalChars = 0;
     for (const doc of docsWithText) {
@@ -704,6 +749,9 @@ ${Object.entries(byCategory).map(([cat, items]) => `  ${cat}:\n${(items as strin
     const pendingCount = docsToFetch.length - docsWithText.length;
     if (pendingCount > 0) {
       docContentBlock += `\n[${pendingCount} additional document${pendingCount === 1 ? '' : 's'} attached but text not yet extracted — they will become searchable shortly after upload.]`;
+    }
+    if (partialExtraction) {
+      docContentBlock += `\nNote: document processing was partial — some content may be missing.`;
     }
   }
 
