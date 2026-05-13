@@ -34,9 +34,9 @@ serve(async (req) => {
   try {
     const apiKey = req.headers.get('x-api-key') || req.headers.get('authorization')?.replace('Bearer ', '');
     const expectedKey = Deno.env.get('EXTERNAL_SYNC_API_KEY');
-    
-    if (expectedKey && apiKey !== expectedKey) {
-      console.error('Invalid API key provided');
+
+    if (!expectedKey || !apiKey || apiKey !== expectedKey) {
+      console.error('Invalid or missing API key');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
