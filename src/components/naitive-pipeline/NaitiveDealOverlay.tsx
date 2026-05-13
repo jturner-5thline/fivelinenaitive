@@ -298,7 +298,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             duplicating app shell chrome. */}
         <div
           className={cn(
-            'relative flex-1 min-h-0 w-full bg-transparent overflow-y-auto overflow-x-hidden',
+            'deal-popup-scroll relative flex-1 min-h-0 w-full bg-transparent overflow-y-auto overflow-x-hidden',
             slideClass,
           )}
           style={{
