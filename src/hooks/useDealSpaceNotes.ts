@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
+import { isDemoEmail } from '@/lib/demoLenderContact';
+import { buildDemoSeedNotes, isDemoSeedNoteId } from '@/lib/demoDealSeedContent';
 
 export interface DealSpaceNote {
   id: string;
@@ -56,7 +58,15 @@ export function useDealSpaceNotes(dealId: string | undefined) {
         .order('is_pinned', { ascending: false })
         .order('updated_at', { ascending: false });
       if (error) throw error;
-      setNotes((data as DealSpaceNote[]) || []);
+      const rows = (data as DealSpaceNote[]) || [];
+      // Demo-only: when no real notes exist, render seeded synthetic
+      // notes so the section never appears empty during demos. These
+      // are visual placeholders only — never written to the database.
+      if (rows.length === 0 && isDemoEmail(user.email)) {
+        setNotes(buildDemoSeedNotes(dealId));
+      } else {
+        setNotes(rows);
+      }
     } catch (error) {
       console.error('Error fetching notes:', error);
     } finally {
@@ -99,7 +109,8 @@ export function useDealSpaceNotes(dealId: string | undefined) {
         .single();
       if (error) throw error;
       const note = data as DealSpaceNote;
-      setNotes(prev => [note, ...prev]);
+      // Drop seeded demo placeholders the moment a real note exists.
+      setNotes(prev => [note, ...prev.filter(n => !isDemoSeedNoteId(n.id))]);
       return note;
     } catch (error) {
       console.error('Error creating note:', error);
@@ -109,6 +120,11 @@ export function useDealSpaceNotes(dealId: string | undefined) {
   }, [dealId, user]);
 
   const updateNote = useCallback(async (noteId: string, updates: Partial<Pick<DealSpaceNote, 'title' | 'content' | 'is_pinned' | 'folder' | 'tags' | 'position' | 'linked_lender_id' | 'is_shared'>>) => {
+    // Seeded demo notes are visual-only — mutate local state, never DB.
+    if (isDemoSeedNoteId(noteId)) {
+      setNotes(prev => prev.map(n => n.id === noteId ? { ...n, ...updates, updated_at: new Date().toISOString() } : n));
+      return;
+    }
     try {
       const { error } = await supabase
         .from('deal_space_notes')
@@ -123,6 +139,11 @@ export function useDealSpaceNotes(dealId: string | undefined) {
   }, []);
 
   const deleteNote = useCallback(async (noteId: string) => {
+    if (isDemoSeedNoteId(noteId)) {
+      setNotes(prev => prev.filter(n => n.id !== noteId));
+      toast({ title: 'Note deleted' });
+      return;
+    }
     try {
       const { error } = await supabase
         .from('deal_space_notes')
