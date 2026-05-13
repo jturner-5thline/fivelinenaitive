@@ -16,6 +16,7 @@ import { DealsPipelineView } from '@/components/deals/DealsPipelineView';
 import { DealsTimelineView } from '@/components/deals/DealsTimelineView';
 import { DealsListSkeleton } from '@/components/deals/DealsListSkeleton';
 import { SortField, SortDirection } from '@/hooks/useDeals';
+import type { Deal } from '@/types/deal';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { WidgetsSection } from '@/components/deals/WidgetsSection';
 import { WidgetsSectionSkeleton } from '@/components/deals/WidgetsSectionSkeleton';
@@ -1008,7 +1009,13 @@ export default function Dashboard() {
         deal={(() => {
           const id = overlaySearchParams.get('deal');
           if (!id) return null;
-          return allDeals.find(d => d.id === id) || null;
+          const found = allDeals.find(d => d.id === id);
+          if (found) return found;
+          // Deep-link fallback: open the overlay even when the deal isn't
+          // present in the current filtered set or hasn't loaded yet. The
+          // embedded /deal/:id route fetches its own data, so a minimal stub
+          // is enough to render the iframe reliably.
+          return { id, company: 'Deal' } as unknown as Deal;
         })()}
         orderedDeals={deals}
         stages={overlayStages}

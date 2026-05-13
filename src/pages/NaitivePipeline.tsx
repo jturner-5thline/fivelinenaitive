@@ -340,7 +340,16 @@ export default function NaitivePipeline() {
 
   const openDealId = searchParams.get('deal');
   const openDeal = useMemo(
-    () => (openDealId ? deals.find(d => d.id === openDealId) || null : null),
+    () => {
+      if (!openDealId) return null;
+      const found = deals.find(d => d.id === openDealId);
+      if (found) return found;
+      // Deep-link fallback: render a minimal stub so the overlay opens even
+      // when the deal isn't in the loaded pipeline (filtered out, different
+      // pipeline, or still loading). The embedded /deal/:id page fetches
+      // its own data.
+      return { id: openDealId, company: 'Deal' } as unknown as Deal;
+    },
     [openDealId, deals],
   );
 
