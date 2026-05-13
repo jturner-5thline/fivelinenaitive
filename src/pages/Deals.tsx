@@ -1008,7 +1008,13 @@ export default function Dashboard() {
         deal={(() => {
           const id = overlaySearchParams.get('deal');
           if (!id) return null;
-          return allDeals.find(d => d.id === id) || null;
+          const found = allDeals.find(d => d.id === id);
+          if (found) return found;
+          // Deep-link fallback: open the overlay even when the deal isn't
+          // present in the current filtered set or hasn't loaded yet. The
+          // embedded /deal/:id route fetches its own data, so a minimal stub
+          // is enough to render the iframe reliably.
+          return { id, company: 'Deal' } as unknown as Deal;
         })()}
         orderedDeals={deals}
         stages={overlayStages}
