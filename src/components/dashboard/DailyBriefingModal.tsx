@@ -512,7 +512,7 @@ function FeaturedNewsTile({ item, onDismiss }: { item: NewsfeedItem; onDismiss: 
 }
 
 // ── Standard grid news tile ────────────────────────────────────
-function StandardNewsTile({ item }: { item: NewsfeedItem }) {
+function StandardNewsTile({ item, onDismiss }: { item: NewsfeedItem; onDismiss: (id: string) => void }) {
   return (
     <a
       href={item.url !== '#' ? item.url : undefined}
@@ -520,11 +520,20 @@ function StandardNewsTile({ item }: { item: NewsfeedItem }) {
       rel="noopener noreferrer"
       className={cn(
         GLASS_ROW,
-        'group overflow-hidden flex gap-0 transition-all duration-200',
+        'group relative overflow-hidden flex gap-0 transition-all duration-200',
         'hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_2px_12px_hsl(var(--primary)/0.06)]',
         item.url !== '#' && 'cursor-pointer',
       )}
     >
+      <button
+        type="button"
+        aria-label="Dismiss for today"
+        title="Dismiss for today"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(item.id); }}
+        className="absolute top-1.5 right-1.5 z-10 h-5 w-5 rounded-full flex items-center justify-center bg-black/40 text-white/70 hover:text-white hover:bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <X className="h-3 w-3" />
+      </button>
       <NewsImage src={item.image_url} topic={item.topic} className="w-20 min-h-full shrink-0 rounded-l-lg" variant="standard" />
       <div className="p-3 flex flex-col flex-1 min-w-0">
         <div className="flex items-center gap-1.5 mb-1">
@@ -590,6 +599,8 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
   const { items, isLoading, error, refresh } = useNewsfeedData(enabled);
   const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set(ALL_TOPICS));
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const { dismissed, dismiss, isDismissed } = useDailyDismissals('news');
+  const [showDismissed, setShowDismissed] = useState(false);
 
   const handleRefresh = async () => {
     setIsRefreshing(true);
@@ -606,7 +617,9 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
     });
   };
 
-  const filtered = items.filter(item => activeTopics.has(item.topic));
+  const topicFiltered = items.filter(item => activeTopics.has(item.topic));
+  const filtered = showDismissed ? topicFiltered : topicFiltered.filter(item => !isDismissed(item.id));
+  const hiddenCount = topicFiltered.length - (showDismissed ? topicFiltered.length : filtered.length);
   const featured = filtered.slice(0, 2);
   const standard = filtered.slice(2);
 
@@ -655,21 +668,33 @@ function CatchUpTab({ enabled }: { enabled: boolean; onNavigate: (path: string) 
         </Button>
       </div>
 
+      {dismissed.size > 0 && (
+        <div className="flex items-center justify-end -mt-1">
+          <button
+            type="button"
+            onClick={() => setShowDismissed(v => !v)}
+            className="text-[11px] text-muted-foreground/60 hover:text-foreground transition-colors"
+          >
+            {showDismissed ? `Hide ${dismissed.size} dismissed` : `Show ${dismissed.size} dismissed`}
+          </button>
+        </div>
+      )}
+
       {filtered.length === 0 ? (
-        <EmptySection message="No news items match your selected topics" />
+        <EmptySection message={hiddenCount > 0 ? "All articles dismissed for today" : "No news items match your selected topics"} />
       ) : (
         <>
           {/* Featured tiles — top 2 stories */}
           {featured.length > 0 && (
             <div className={cn('grid gap-3', featured.length === 1 ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2')}>
-              {featured.map(item => <FeaturedNewsTile key={item.id} item={item} />)}
+              {featured.map(item => <FeaturedNewsTile key={item.id} item={item} onDismiss={dismiss} />)}
             </div>
           )}
 
           {/* Standard compact grid */}
           {standard.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-              {standard.map(item => <StandardNewsTile key={item.id} item={item} />)}
+              {standard.map(item => <StandardNewsTile key={item.id} item={item} onDismiss={dismiss} />)}
             </div>
           )}
         </>
