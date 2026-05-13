@@ -1004,6 +1004,26 @@ export default function Dashboard() {
               )}
             </div>
       </WorkspacePage>
+      <NaitiveDealOverlay
+        deal={(() => {
+          const id = overlaySearchParams.get('deal');
+          if (!id) return null;
+          return allDeals.find(d => d.id === id) || null;
+        })()}
+        orderedDeals={deals}
+        stages={overlayStages}
+        onClose={() => {
+          const next = new URLSearchParams(overlaySearchParams);
+          next.delete('deal');
+          setOverlaySearchParams(next, { replace: false });
+        }}
+        onNavigate={(d) => {
+          const next = new URLSearchParams(overlaySearchParams);
+          next.set('deal', d.id);
+          setOverlaySearchParams(next, { replace: true });
+        }}
+        onStageChange={handleStageChange}
+      />
     </>
   );
 }
