@@ -226,6 +226,7 @@ function CarouselInner({ deals, onClose, initialIndex = 0 }: {
                     ? 'w-[380px] md:w-[480px] min-h-[420px] md:min-h-[480px] shadow-2xl z-10'
                     : 'w-[280px] md:w-[320px] min-h-[320px] md:min-h-[360px] shadow-md'
                 }`}
+                data-deal-open-id={deal.id}
                 onClick={() => handleCardClick(deal, index)}
               >
                 <CardContent className="p-6 h-full flex flex-col">

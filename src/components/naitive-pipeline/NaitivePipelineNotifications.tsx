@@ -39,6 +39,7 @@ export function NaitivePipelineNotifications({ notifications }: { notifications:
                   <div
                     key={n.id}
                     className={cn("flex items-start gap-2 p-2 rounded-md border cursor-pointer hover:bg-muted/50 transition-colors", config.bg, config.border)}
+                    data-deal-open-id={n.dealId}
                     onClick={() => navigate(`/deal/${n.dealId}`)}
                   >
                     <Icon className={cn("h-3.5 w-3.5 mt-0.5 flex-shrink-0", config.color)} />
