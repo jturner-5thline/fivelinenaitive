@@ -1758,6 +1758,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing
                     slideDirection === 'right' && 'animate-slide-in-from-left',
                   )}
                 >
+                  {activeTab === 'agenda' && <div className="h-[70vh] min-h-[500px]"><AgendaIntel /></div>}
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'email' && (
                     <EmailTab
