@@ -2560,7 +2560,10 @@ export default function DealDetail() {
         {!isEmbedded && <DealsHeader />}
 
         <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden">
-          {/* Back button, alerts, and undo - side by side */}
+          {/* Back button, alerts, and undo - side by side. Hidden in
+              embedded (overlay) mode — the modal provides its own close
+              affordance and we don't want a duplicate route header. */}
+          {!isEmbedded && (
           <div className="flex items-center gap-3 mb-1 flex-wrap">
             {dealOrigin ? (
               <Button
@@ -2634,6 +2637,7 @@ export default function DealDetail() {
               )}
             </div>
           </div>
+          )}
 
           {/* Deal Pulse Dashboard - hidden per user request */}
 
