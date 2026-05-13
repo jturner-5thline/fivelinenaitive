@@ -965,7 +965,33 @@ export default function DealDetail() {
     
     prevTabRef.current = newTab;
     setDealInfoTab(newTab);
-  }, []);
+    // Persist active tab to URL so refresh / shared links land on the
+    // same panel (especially Deal Space, which is access-gated and
+    // would otherwise fall back to Deal Info on reload).
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', newTab);
+        return next;
+      },
+      { replace: true },
+    );
+  }, [setSearchParams]);
+
+  // When access flags finish loading after mount, reconcile the active
+  // tab with the URL `?tab=` param. The initial useState ran before
+  // `hasDealSpaceAccess` resolved, so a refresh on `?tab=deal-space`
+  // would otherwise be stuck on Deal Info even after access is granted.
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') as typeof dealInfoTab | null;
+    if (!urlTab) return;
+    if (urlTab === dealInfoTab) return;
+    if (urlTab === 'deal-space' && !hasDealSpaceAccess) return;
+    if (!DEAL_TABS.includes(urlTab as any) && urlTab !== 'activity-log' && urlTab !== 'crm-search') return;
+    prevTabRef.current = urlTab;
+    setDealInfoTab(urlTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDealSpaceAccess, searchParams]);
 
   // Auto-scroll to first stale lender when navigating from a notification
   useEffect(() => {
