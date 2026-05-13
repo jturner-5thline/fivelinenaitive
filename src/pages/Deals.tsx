@@ -126,6 +126,10 @@ export default function Dashboard() {
   const [allExpanded, setAllExpanded] = useState(true);
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
+
+  // Persist board scroll position when the deal overlay opens/closes.
+  const boardScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  usePipelineScrollPersistence(boardScrollContainerRef, !!overlaySearchParams.get('deal'));
   const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
