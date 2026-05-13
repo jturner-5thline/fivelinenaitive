@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Mail, Copy, Check, Edit3 } from 'lucide-react';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 interface EmailDraft {
   to_name: string;
