@@ -4,7 +4,7 @@ import { toast } from '@/hooks/use-toast';
 import { logUsage } from '@/lib/usageLogger';
 import { useAuth } from '@/contexts/AuthContext';
 import { isDemoEmail } from '@/lib/demoLenderContact';
-import { matchDemoDealCannedAnswer } from '@/lib/demoDealCannedAnswers';
+import { matchDemoDealCannedAnswer, matchDemoDealBulletAnswers } from '@/lib/demoDealCannedAnswers';
 
 export type DocumentScope = 'all' | 'financial' | 'transcripts' | 'custom';
 
@@ -43,7 +43,8 @@ export function useDealSpaceAI(dealId: string | undefined) {
     // deal workspace and asks one of the mapped questions, return the exact
     // canned answer with no AI call. Scoped strictly to demo@5thline.co.
     if (isDemoEmail(user?.email)) {
-      const canned = matchDemoDealCannedAnswer(content);
+      const bulleted = matchDemoDealBulletAnswers(content);
+      const canned = bulleted ?? matchDemoDealCannedAnswer(content);
       if (canned) {
         setMessages(prev => [...prev, {
           role: 'assistant',
