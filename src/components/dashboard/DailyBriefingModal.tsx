@@ -3,6 +3,7 @@ import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { AgendaIntel } from './AgendaIntel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
