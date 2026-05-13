@@ -26,6 +26,46 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
   const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // Focus trap: remember the previously-focused element, move focus into the
+  // panel when the overlay opens, restore on close, and keep Tab cycling
+  // between the close button and the iframe so keyboard users can't escape
+  // the modal into the page behind it.
+  useEffect(() => {
+    if (!deal) return;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    // Defer to next tick so the panel is mounted.
+    const t = window.setTimeout(() => closeBtnRef.current?.focus(), 0);
+
+    const onTrap = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab') return;
+      const panel = panelRef.current;
+      if (!panel) return;
+      const active = document.activeElement as HTMLElement | null;
+      const inPanel = !!active && panel.contains(active);
+      // Cycle: close button <-> iframe (only two focusables in the panel).
+      if (!inPanel) {
+        e.preventDefault();
+        closeBtnRef.current?.focus();
+        return;
+      }
+      if (e.shiftKey && active === closeBtnRef.current) {
+        e.preventDefault();
+        iframeRef.current?.focus();
+      } else if (!e.shiftKey && active === iframeRef.current) {
+        e.preventDefault();
+        closeBtnRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onTrap, true);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener('keydown', onTrap, true);
+      previouslyFocused?.focus?.();
+    };
+  }, [deal?.id]);
 
   // Forward Esc from inside the iframe to the parent so the overlay closes
   // even when focus is within the embedded deal page.
@@ -118,9 +158,12 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
           reduceMotion ? '' : 'animate-scale-in',
         )}
         onClick={(e) => e.stopPropagation()}
+        ref={panelRef}
+        tabIndex={-1}
       >
         {/* Floating close — preserves close behavior without adding header chrome */}
         <Button
+          ref={closeBtnRef}
           variant="ghost"
           size="icon"
           className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur hover:bg-background"
