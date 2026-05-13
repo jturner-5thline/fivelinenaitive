@@ -118,7 +118,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center"
+      className="fixed inset-0 z-[100] flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-label={`Deal details for ${deal.company || 'deal'}`}
@@ -132,10 +132,11 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         onClick={onClose}
       />
 
-      {/* Panel — single-column content canvas, no header / footer / sidebar */}
+      {/* Panel — near full-screen canvas. Sits above all app chrome
+          (sidebar / global header) via z-[100] on the wrapper. */}
       <div
         className={cn(
-          'relative w-[95vw] h-[92vh] rounded-xl border border-white/10 bg-background shadow-2xl overflow-hidden',
+          'relative w-screen h-screen sm:w-[calc(100vw-1rem)] sm:h-[calc(100vh-1rem)] sm:rounded-xl border border-white/10 bg-background shadow-2xl overflow-hidden',
           reduceMotion ? '' : 'animate-scale-in',
         )}
         onClick={(e) => e.stopPropagation()}
@@ -167,7 +168,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             useSearchParams to the modal so DealDetail's internal "back" /
             "delete" / tab navigation stays inside the overlay and never
             disturbs the parent URL. */}
-        <div className={cn('relative h-full w-full bg-background overflow-hidden', slideClass)}>
+        {/* `[&_header]:hidden` strips DealDetail's internal <DealsHeader>
+            so the modal starts directly at the deal content area without
+            duplicating app shell chrome. */}
+        <div className={cn('relative h-full w-full bg-background overflow-hidden [&_header]:hidden', slideClass)}>
           <DealOverlaySummary deal={deal} />
           <MemoryRouter
             key={deal.id}
