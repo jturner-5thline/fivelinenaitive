@@ -142,7 +142,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           (sidebar / global header) via z-[100] on the wrapper. */}
       <div
         className={cn(
-          'relative w-screen h-screen sm:w-[calc(100vw-1rem)] sm:h-[calc(100vh-1rem)] sm:rounded-xl border border-white/10 bg-background shadow-2xl overflow-hidden',
+          'relative w-screen h-screen sm:w-[calc(100vw-1rem)] sm:h-[calc(100vh-1rem)] sm:rounded-xl border border-white/10 bg-background shadow-2xl overflow-hidden flex flex-col',
           reduceMotion ? '' : 'animate-scale-in',
         )}
         onClick={(e) => e.stopPropagation()}
@@ -177,7 +177,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         {/* `[&_header]:hidden` strips DealDetail's internal <DealsHeader>
             so the modal starts directly at the deal content area without
             duplicating app shell chrome. */}
-        <div className={cn('relative h-full w-full bg-background overflow-hidden [&_header]:hidden', slideClass)}>
+        <div className={cn('relative flex-1 min-h-0 w-full bg-background overflow-y-auto overflow-x-hidden', slideClass)}>
           <DealOverlaySummary deal={deal} />
           <Suspense fallback={<DealOverlayHydrating />}>
             {/* Render DealDetail using a synthetic location so `useParams`
