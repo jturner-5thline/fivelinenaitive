@@ -526,6 +526,27 @@ export function useGmail() {
     if (!user) return false;
 
     try {
+      // Persist to local cache FIRST and synchronously for the UI. This
+      // is the durable source of truth that survives both session restarts
+      // and the periodic Gmail `sync_state` reconcile — without it, a
+      // background poll that races ahead of Gmail's mark-as-read
+      // propagation will flip the message back to unread and make the
+      // unread badge oscillate.
+      setMessages(prev => prev.map(m =>
+        m.id === messageId ? { ...m, is_read: read } : m
+      ));
+
+      // Best-effort write to email_cache so the read state survives a
+      // page reload. Non-blocking; failures are silent.
+      void supabase
+        .from('email_cache')
+        .update({ is_read: read })
+        .eq('user_id', user.id)
+        .eq('gmail_message_id', messageId)
+        .then(() => {}, () => {});
+
+      // Fire the Gmail PATCH in the background. We do NOT await it for
+      // the UI — the optimistic update above is what the user sees.
       const { error } = await supabase.functions.invoke('gmail-messages', {
         body: {
           action: read ? 'mark_read' : 'mark_unread',
@@ -534,11 +555,6 @@ export function useGmail() {
       });
 
       if (error) throw error;
-      
-      // Update local state
-      setMessages(prev => prev.map(m => 
-        m.id === messageId ? { ...m, is_read: read } : m
-      ));
       return true;
     } catch (err: any) {
       console.error('Gmail mark read error:', err);
