@@ -1,9 +1,15 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { MemoryRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { Button } from '@/components/ui/button';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+// Lazy-load the (large) deal detail page so the overlay shell can paint
+// before its chunk is parsed. Once loaded the chunk is cached for the
+// session, so subsequent opens skip this cost entirely.
+const DealDetail = lazy(() => import('@/pages/DealDetail'));
 
 interface Props {
   /** Currently open deal. Null when overlay is closed. */
@@ -22,10 +28,9 @@ interface Props {
  * iframe is loaded with `?embedded=1` so the inner app shell suppresses its
  * sidebar too. Keyboard ←/→ still navigates between deals; Esc closes.
  */
-export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavigate, onStageChange }: Props) {
+function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigate, onStageChange }: Props) {
   const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
-  const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
 
@@ -45,16 +50,9 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
       if (!panel) return;
       const active = document.activeElement as HTMLElement | null;
       const inPanel = !!active && panel.contains(active);
-      // Cycle: close button <-> iframe (only two focusables in the panel).
+      // If focus escapes the panel, pull it back in. Tab cycling within
+      // the panel is handled natively now that DealDetail renders inline.
       if (!inPanel) {
-        e.preventDefault();
-        closeBtnRef.current?.focus();
-        return;
-      }
-      if (e.shiftKey && active === closeBtnRef.current) {
-        e.preventDefault();
-        iframeRef.current?.focus();
-      } else if (!e.shiftKey && active === iframeRef.current) {
         e.preventDefault();
         closeBtnRef.current?.focus();
       }
@@ -66,23 +64,6 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
       previouslyFocused?.focus?.();
     };
   }, [deal?.id]);
-
-  // Forward Esc from inside the iframe to the parent so the overlay closes
-  // even when focus is within the embedded deal page.
-  const attachIframeEscListener = () => {
-    const win = iframeRef.current?.contentWindow;
-    if (!win) return;
-    try {
-      win.document.addEventListener('keydown', (e: KeyboardEvent) => {
-        if (e.key === 'Escape') {
-          e.preventDefault();
-          onClose();
-        }
-      });
-    } catch {
-      // Cross-origin — ignore.
-    }
-  };
 
   useEffect(() => {
     const m = window.matchMedia('(prefers-reduced-motion: reduce)');
@@ -174,20 +155,102 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
           <X className="h-4 w-4" />
         </Button>
 
-        {/* Body — embeds the existing deal detail page so every tab/feature
-            (Deal Info, Deal Space, Lenders, Management, Write Up, Data Room…)
-            stays identical to the standalone /deal/:id route. */}
-        <div className={cn('relative h-full w-full bg-background', slideClass)}>
-          <iframe
+        {/* Body — render the deal detail page directly in the same React
+            tree (was previously an iframe). This shares the parent app's
+            QueryClient, DealsContext, StagesContext, etc., so:
+              • the deal row already loaded by the kanban is reused with
+                zero refetch (instant primary paint),
+              • secondary react-query caches (activity, milestones, lenders…)
+                persist across opens — reopening a recent deal is instant,
+              • we don't pay for a second JS execution context / provider tree.
+            An isolated MemoryRouter scopes useParams / useNavigate /
+            useSearchParams to the modal so DealDetail's internal "back" /
+            "delete" / tab navigation stays inside the overlay and never
+            disturbs the parent URL. */}
+        <div className={cn('relative h-full w-full bg-background overflow-hidden', slideClass)}>
+          <DealOverlaySummary deal={deal} />
+          <MemoryRouter
             key={deal.id}
-            ref={iframeRef}
-            src={`/deal/${deal.id}?embedded=1`}
-            title={`Deal ${deal.company || deal.id}`}
-            className="absolute inset-0 h-full w-full border-0"
-            onLoad={attachIframeEscListener}
-          />
+            initialEntries={[`/deal/${deal.id}?embedded=1`]}
+          >
+            <Suspense fallback={<DealOverlayHydrating />}>
+              <Routes>
+                <Route
+                  path="/deal/:id"
+                  element={
+                    <OverlayNavGuard onLeave={onClose}>
+                      <DealDetail />
+                    </OverlayNavGuard>
+                  }
+                />
+                {/* Any internal navigation away from the deal route closes
+                    the overlay (e.g. DealDetail's "Back to Pipeline" or
+                    post-delete navigate('/deals')). */}
+                <Route path="*" element={<OverlayLeaveTrigger onLeave={onClose} />} />
+              </Routes>
+            </Suspense>
+          </MemoryRouter>
         </div>
       </div>
     </div>
   );
 }
+
+/** Instant header summary using data already known to the parent so the
+ *  user sees real deal info before DealDetail finishes mounting. Sits
+ *  behind the lazy chunk and is hidden once DealDetail paints over it. */
+function DealOverlaySummary({ deal }: { deal: Deal }) {
+  // Hidden visually once DealDetail paints (it covers the full panel),
+  // but rendered first so the very first frame after click is meaningful.
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute inset-0 z-0 px-8 pt-6"
+    >
+      <div className="text-2xl font-semibold text-foreground/90 truncate">
+        {deal.company || 'Deal'}
+      </div>
+      <div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
+        {deal.stage && <span className="rounded-full border border-white/10 px-2 py-0.5">{deal.stage}</span>}
+        {deal.manager && <span>Owner: {deal.manager}</span>}
+        {deal.value != null && <span>Value: {String(deal.value)}</span>}
+      </div>
+    </div>
+  );
+}
+
+function DealOverlayHydrating() {
+  return (
+    <div className="absolute inset-0 z-0 flex items-start justify-center pt-32 text-xs text-muted-foreground">
+      Loading deal…
+    </div>
+  );
+}
+
+/** Closes the overlay if DealDetail (or anything else inside the
+ *  MemoryRouter) navigates away from `/deal/:id`. Lets us preserve the
+ *  existing "Back to Pipeline" / post-delete UX without modifying
+ *  DealDetail itself. */
+function OverlayNavGuard({ onLeave, children }: { onLeave: () => void; children: React.ReactNode }) {
+  const location = useLocation();
+  const initialPath = useRef(location.pathname);
+  useEffect(() => {
+    if (location.pathname !== initialPath.current) onLeave();
+  }, [location.pathname, onLeave]);
+  return <>{children}</>;
+}
+
+function OverlayLeaveTrigger({ onLeave }: { onLeave: () => void }) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    onLeave();
+    // Keep the inner router in a stable state for any in-flight renders.
+    navigate('.', { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  return null;
+}
+
+// Memoize so unrelated parent re-renders (filter changes, kanban resorts)
+// don't rebuild the overlay subtree or unmount the embedded DealDetail.
+export const NaitiveDealOverlay = memo(NaitiveDealOverlayImpl);

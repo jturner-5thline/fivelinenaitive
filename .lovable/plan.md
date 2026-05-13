@@ -1,53 +1,73 @@
-## Goal
-Surface Microsoft emails + calendar in the same UI as Gmail/Google Calendar via unified tables, without modifying Gmail code.
+# Optimize the deal pop-up modal
 
-## 1. Unified DB schema (new migration)
-Create two new tables (Gmail keeps writing to `gmail_messages` — we will NOT touch it):
+## Root-cause measurement
 
-- `public.emails` — provider-agnostic message store
-  - `id`, `user_id`, `provider` (gmail|microsoft), `message_id`, `thread_id`,
-    `subject`, `from_email`, `from_name`, `to_emails text[]`,
-    `preview text`, `received_at`, `is_read bool`, `has_attachments bool`,
-    `created_at`, `updated_at`
-  - Unique `(user_id, provider, message_id)`
-  - RLS: users select own; service role full
+The current overlay (`src/components/naitive-pipeline/NaitiveDealOverlay.tsx`) embeds the deal page via an `<iframe src="/deal/:id?embedded=1">`. Every open re-instantiates the entire React app inside the iframe:
 
-- `public.calendar_events` — provider-agnostic event store
-  - `id`, `user_id`, `provider`, `event_id`, `title`,
-    `start_time`, `end_time`, `organizer_email`, `attendees text[]`,
-    `location`, `meeting_url`, `is_all_day`, `is_cancelled`,
-    `created_at`, `updated_at`
-  - Unique `(user_id, provider, event_id)`
-  - RLS: users select own; service role full
+- New JS execution context (no shared bundle parse cache after first mount)
+- Re-creates every `*Provider` (Auth, Deals, Stages, Pipelines, Lenders, Charts, Widgets, Tooltip, Theme, QueryClient, etc.) — ~25 providers
+- Brand-new React Query cache → all `deals`, `lenders`, `stages`, `documents`, `activity`, `write-up`, `vdr`, `comments` queries refetch from scratch
+- No reuse of the deal row already present in the parent page's `useDealsContext()`
 
-- Keep `ms_synced_emails` / `ms_synced_calendar_events` for now (no breakage); remove later.
+This is why opening a deal feels "as slow as a full page navigation" — it literally is one. No iframe-side optimization can fix shared-cache reuse; we have to render `DealDetail` in the same React tree.
 
-## 2. Repoint Microsoft sync edge functions
-- `microsoft-sync-emails`: upsert into `public.emails` with `provider='microsoft'` (instead of `ms_synced_emails`).
-- `microsoft-sync-calendar`: upsert into `public.calendar_events` (instead of `ms_synced_calendar_events`), mapping `organizer.emailAddress.address` → `organizer_email`, attendee addresses → `attendees text[]`, `onlineMeeting.joinUrl` when `isOnlineMeeting` → `meeting_url`.
-- Add 429 backoff: respect `Retry-After`, retry once, then defer to next cron.
+## Change
 
-## 3. InboxDialog: show Microsoft alongside Gmail
-The existing inbox uses the `gmail-messages` edge function (live Gmail API), not a DB table. To respect "do NOT change Gmail":
-- Extend `inboxCacheStore` with a parallel fetch from `public.emails WHERE provider='microsoft'` (via supabase-js, RLS-scoped).
-- Merge Microsoft rows into the same in-memory inbox/sent lists, sorted by `received_at desc`.
-- Add a `provider` field to the cached message shape; render an Outlook icon badge in `InboxDialog` rows when `provider==='microsoft'`.
+### 1. Replace iframe with in-tree render
 
-## 4. Calendar surface
-- The project has no Google calendar events table; calendar UIs read live. To deliver visible value now, render upcoming Microsoft events inside the Microsoft card on `/integrations` (small list with provider icon, time, title). A full unified calendar view in the AI Calendar surface can come in a follow-up — flag this so the user can confirm.
+Render `<DealDetail>` directly inside `NaitiveDealOverlay`. Wrap it in an isolated **`MemoryRouter`** seeded with `/deal/:id?…` so:
 
-## 5. Cron
-Already scheduled (5min email / 15min calendar) in the previous pass. No changes.
+- `useParams()` returns the right deal id without changing the parent URL
+- `useSearchParams()` (used for the tab state inside DealDetail) stays scoped to the modal
+- The 3 `navigate('/deals')` / `navigate(returnTo)` call sites are intercepted via a `<Routes>` 404 fallback that calls the parent's `onClose()`
 
-## Out of scope / explicit non-goals
-- Migrating Gmail to write into `public.emails` (would violate "do NOT change Gmail").
-- Full body fetch / search action additions on `microsoft-auth` — not required for the inbox merge; can add if requested.
-- Vault encryption of access tokens (current schema stores plaintext like Gmail; tracked as a separate hardening task).
+This keeps the rest of the parent app (Auth, QueryClient, DealsContext, StagesContext, etc.) shared, so the deal record already in `useDealsContext()` is reused instantly with zero refetch.
+
+### 2. Instant skeleton + summary header
+
+Render an immediate header with already-known fields from the deal prop (company, value, stage badge, owner, last-updated) before `DealDetail` paints. Wrap `DealDetail` in `<Suspense fallback={<DealOverlaySkeleton />}>` so its lazy chunk doesn't block first paint.
+
+### 3. Recent-deal cache
+
+`DealDetail` already reads from React Query / `useDealsContext`, both shared with the parent → reopening the same deal is instant by construction. No new cache layer needed; we just stop spawning a new iframe per open.
+
+### 4. Hover/mousedown prefetch
+
+On `NaitiveDealCard` and `DealCard`, add `onMouseEnter` / `onFocus` / `onTouchStart` handlers that call `queryClient.prefetchQuery` for the deal's primary query keys (`['deal', id]`, `['deal-activity', id]`, `['deal-documents-summary', id]`). Light, idempotent, fires once per card per session.
+
+### 5. Cheap render perf passes (only inside the modal)
+
+- Wrap `NaitiveDealOverlay` in `React.memo`
+- `useCallback` the `onNavigate` / `onClose` / `onStageChange` props from `Deals.tsx` and `NaitivePipeline.tsx` so the memo holds
+- Keep heavy DealDetail tab panels lazy: they already use route state, but ensure unmount when not active (no behavior change)
+
+## Out of scope
+
+- No edits to `DealDetail.tsx` business logic
+- No edits to other pages, AppLayout, or providers
+- No changes to permissions, save flows, or integrations
+- No new dependencies
 
 ## Files touched
-- new migration: create `emails`, `calendar_events` + RLS
-- `supabase/functions/microsoft-sync-emails/index.ts`
-- `supabase/functions/microsoft-sync-calendar/index.ts`
-- `src/stores/inboxCacheStore.ts`
-- `src/components/dashboard/InboxDialog.tsx` (provider icon badge)
-- `src/pages/Integrations.tsx` (Microsoft card upcoming-events preview)
+
+- `src/components/naitive-pipeline/NaitiveDealOverlay.tsx` — swap iframe for MemoryRouter+DealDetail+skeleton header, focus-trap stays
+- `src/components/naitive-pipeline/NaitiveDealCard.tsx` — hover/focus/touch prefetch
+- `src/components/deals/DealCard.tsx` — hover/focus/touch prefetch
+- `src/pages/Deals.tsx` / `src/pages/NaitivePipeline.tsx` — wrap overlay handlers in `useCallback` (already partly done in Naitive)
+- (new) `src/components/naitive-pipeline/DealOverlaySkeleton.tsx`
+
+## Verification
+
+1. Open any deal from the kanban — header summary visible in <100 ms, full DealDetail hydrates without a network round-trip for fields already in `useDealsContext`.
+2. Reopen same deal — instant (shared cache).
+3. Switch deals via ←/→ — only deal-scoped queries refetch; providers stay mounted.
+4. Confirm no broken navigation: "Back to Pipeline" closes the modal; delete still works and closes the modal.
+5. Browser performance profile before/after to quantify the win.
+
+## Acceptance check
+
+- Click → modal visible immediately ✓
+- Primary fields visible immediately ✓
+- Recently opened deal reopen instant ✓
+- Secondary tabs lazy ✓ (no change vs today, just no longer behind an iframe boot)
+- No regressions to save, permissions, integrations ✓
