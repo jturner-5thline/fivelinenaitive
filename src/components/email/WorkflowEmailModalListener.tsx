@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Send, Save, X, Mail, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { applyDemoLenderSalutation } from '@/lib/demoLenderSalutation';
 
 interface Recipient {
   name?: string;
@@ -81,9 +82,18 @@ export function WorkflowEmailModalListener() {
     if ((data as any).status !== 'pending') return;
 
     const p = data as unknown as PromptRecord;
+    // Demo-only: rewrite any "Dear …" greeting in the saved draft to use
+    // a deterministic fake lender contact name (seeded off the lender /
+    // recipient name) before the user sees the editable body.
+    const lenderSeed =
+      (p.metadata as any)?.lender_name ||
+      (Array.isArray(p.recipients_json) ? p.recipients_json[0]?.name : '') ||
+      '';
     setPrompt(p);
     setSubject(p.merged_subject || '');
-    setBody(stripHtml(p.merged_body_html || ''));
+    setBody(
+      stripHtml(applyDemoLenderSalutation(p.merged_body_html || '', lenderSeed, p.company_id)),
+    );
     setRecipients(Array.isArray(p.recipients_json) ? p.recipients_json.filter(r => r?.email) : []);
     setCcs(Array.isArray(p.cc_json) ? p.cc_json.filter(r => r?.email) : []);
 

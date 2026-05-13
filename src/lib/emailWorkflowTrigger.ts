@@ -8,6 +8,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { EMAIL_WORKFLOW_DEFINITIONS, type EmailWorkflowDefinition } from './emailWorkflowConfig';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+import { applyDemoLenderSalutation } from './demoLenderSalutation';
 
 /**
  * Guard for legacy code-defined workflows that are 5th-Line-specific.
@@ -186,7 +187,7 @@ async function createPromptFromWorkflow(
 }
 
 function mergeTemplate(text: string, ctx: TriggerContext): string {
-  return text
+  const merged = text
     .replace(/\[COMPANY NAME\]/gi, ctx.dealName || '')
     .replace(/\[CLIENT NAME\]/gi, ctx.clientName || '')
     .replace(/\[CLIENT CONTACT INFO\]/gi, ctx.clientContactInfo || '')
@@ -199,6 +200,9 @@ function mergeTemplate(text: string, ctx: TriggerContext): string {
     .replace(/\[LENDER NAME\]/gi, ctx.lenderName || '')
     .replace(/LENDER NAME/g, ctx.lenderName || 'LENDER NAME')
     .replace(/\[OUTSTANDING ITEMS COUNT\]/gi, String(ctx.outstandingItemsCount || 0));
+  // Demo-only: rewrite the salutation to address a deterministic fake
+  // lender contact instead of the lender company / placeholder.
+  return applyDemoLenderSalutation(merged, ctx.lenderName, ctx.companyId);
 }
 
 async function resolveRecipients(

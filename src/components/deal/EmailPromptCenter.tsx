@@ -19,6 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import DOMPurify from 'dompurify';
+import { applyDemoLenderSalutation } from '@/lib/demoLenderSalutation';
 
 interface EmailPromptCenterProps {
   dealId: string;
@@ -179,7 +180,19 @@ function EmailPromptList({ dealId }: { dealId: string }) {
 
 function PromptCard({ prompt }: { prompt: DealEmailPrompt }) {
   const [expanded, setExpanded] = useState(false);
-  const [editedBody, setEditedBody] = useState(prompt.merged_body_html);
+  // Demo-only: rewrite "Dear …" salutations to a deterministic fake
+  // lender contact name so the demo workspace never shows a bracketed
+  // placeholder or lender-company-name greeting.
+  const lenderSeed =
+    (prompt.metadata as any)?.lender_name ||
+    (Array.isArray(prompt.recipients_json) ? (prompt.recipients_json as any[])[0]?.name : '') ||
+    '';
+  const displayBody = applyDemoLenderSalutation(
+    prompt.merged_body_html,
+    lenderSeed,
+    prompt.company_id,
+  );
+  const [editedBody, setEditedBody] = useState(displayBody);
   const [isEditing, setIsEditing] = useState(false);
   const dismiss = useDismissEmailPrompt();
   const markSent = useMarkEmailSent();
@@ -193,7 +206,7 @@ function PromptCard({ prompt }: { prompt: DealEmailPrompt }) {
   const status = statusConfig[prompt.status];
   const StatusIcon = status.icon;
 
-  const sanitizedHtml = DOMPurify.sanitize(prompt.merged_body_html, {
+  const sanitizedHtml = DOMPurify.sanitize(displayBody, {
     ALLOWED_TAGS: ['p', 'br', 'strong', 'em', 'u', 'a', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'span', 'div', 'blockquote'],
     ALLOWED_ATTR: ['href', 'target', 'style', 'class'],
   });
