@@ -71,11 +71,16 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { CheckSquare } from 'lucide-react';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSearchParams } from 'react-router-dom';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import { useDealStages } from '@/contexts/DealStagesContext';
 
 export default function Dashboard() {
   const { user } = useAuth();
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const { features: companyFeatures } = useCompanyFeatures();
+  const [overlaySearchParams, setOverlaySearchParams] = useSearchParams();
+  const { stages: overlayStages } = useDealStages();
 
   // Deal size confirmation — match stage labels (case-insensitive) for 5th Line only
   const DEAL_SIZE_CONFIRM_STAGE_LABELS = ['proposal issued', 'terms issued', 'in diligence', 'in due diligence'];
