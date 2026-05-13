@@ -1,5 +1,5 @@
 import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
-import { MemoryRouter, Routes, Route, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { Button } from '@/components/ui/button';
@@ -173,27 +173,23 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             duplicating app shell chrome. */}
         <div className={cn('relative h-full w-full bg-background overflow-hidden [&_header]:hidden', slideClass)}>
           <DealOverlaySummary deal={deal} />
-          <MemoryRouter
-            key={deal.id}
-            initialEntries={[`/deal/${deal.id}?embedded=1`]}
-          >
-            <Suspense fallback={<DealOverlayHydrating />}>
-              <Routes>
-                <Route
-                  path="/deal/:id"
-                  element={
-                    <OverlayNavGuard onLeave={onClose}>
-                      <DealDetail />
-                    </OverlayNavGuard>
-                  }
-                />
-                {/* Any internal navigation away from the deal route closes
-                    the overlay (e.g. DealDetail's "Back to Pipeline" or
-                    post-delete navigate('/deals')). */}
-                <Route path="*" element={<OverlayLeaveTrigger onLeave={onClose} />} />
-              </Routes>
-            </Suspense>
-          </MemoryRouter>
+          <Suspense fallback={<DealOverlayHydrating />}>
+            {/* Render DealDetail using a synthetic location so `useParams`
+                resolves to this deal id, while reusing the parent Router
+                (React Router forbids nested <Router> instances). */}
+            <Routes
+              key={deal.id}
+              location={{
+                pathname: `/deal/${deal.id}`,
+                search: '?embedded=1',
+                hash: '',
+                state: null,
+                key: deal.id,
+              }}
+            >
+              <Route path="/deal/:id" element={<DealDetail />} />
+            </Routes>
+          </Suspense>
         </div>
       </div>
     </div>
@@ -229,30 +225,6 @@ function DealOverlayHydrating() {
       Loading deal…
     </div>
   );
-}
-
-/** Closes the overlay if DealDetail (or anything else inside the
- *  MemoryRouter) navigates away from `/deal/:id`. Lets us preserve the
- *  existing "Back to Pipeline" / post-delete UX without modifying
- *  DealDetail itself. */
-function OverlayNavGuard({ onLeave, children }: { onLeave: () => void; children: React.ReactNode }) {
-  const location = useLocation();
-  const initialPath = useRef(location.pathname);
-  useEffect(() => {
-    if (location.pathname !== initialPath.current) onLeave();
-  }, [location.pathname, onLeave]);
-  return <>{children}</>;
-}
-
-function OverlayLeaveTrigger({ onLeave }: { onLeave: () => void }) {
-  const navigate = useNavigate();
-  useEffect(() => {
-    onLeave();
-    // Keep the inner router in a stable state for any in-flight renders.
-    navigate('.', { replace: true });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  return null;
 }
 
 // Memoize so unrelated parent re-renders (filter changes, kanban resorts)
