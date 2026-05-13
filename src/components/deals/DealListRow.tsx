@@ -279,6 +279,7 @@ export function DealListRow({ deal, onStatusChange, onStageChange, onMarkReviewe
   return (
     <TableRow 
       className={`group cursor-pointer rounded-md shadow-[inset_0_0_0_1px_rgba(59,130,246,0.25)] bg-transparent hover:shadow-[inset_0_0_0_1px_hsl(292,46%,72%,0.6)] transition-colors duration-200 ${timeAgoData.isStale ? 'bg-warning/5' : ''} ${isSelected ? 'bg-primary/10 shadow-[inset_0_0_0_1px_hsl(272,100%,70%,0.5)]' : ''} [&>td:first-child]:rounded-l-md [&>td:last-child]:rounded-r-md`}
+      data-deal-open-id={deal.id}
       onClick={() => navigate(`/deal/${deal.id}`)}
     >
       {onToggleSelect && (
