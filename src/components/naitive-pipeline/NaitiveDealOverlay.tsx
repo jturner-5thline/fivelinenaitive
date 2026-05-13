@@ -28,7 +28,7 @@ interface Props {
  * iframe is loaded with `?embedded=1` so the inner app shell suppresses its
  * sidebar too. Keyboard ←/→ still navigates between deals; Esc closes.
  */
-export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavigate, onStageChange }: Props) {
+function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigate, onStageChange }: Props) {
   const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
@@ -251,7 +251,6 @@ function OverlayLeaveTrigger({ onLeave }: { onLeave: () => void }) {
   return null;
 }
 
-// Memoize so parent re-renders (filter changes, kanban resorts) don't
-// rebuild the overlay subtree.
-const NaitiveDealOverlayMemo = memo(NaitiveDealOverlay);
-export { NaitiveDealOverlayMemo };
+// Memoize so unrelated parent re-renders (filter changes, kanban resorts)
+// don't rebuild the overlay subtree or unmount the embedded DealDetail.
+export const NaitiveDealOverlay = memo(NaitiveDealOverlayImpl);
