@@ -438,7 +438,7 @@ function NewsImage({ src, topic, className, variant = 'standard' }: { src?: stri
 }
 
 // ── Featured news tile ─────────────────────────────────────────
-function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
+function FeaturedNewsTile({ item, onDismiss }: { item: NewsfeedItem; onDismiss: (id: string) => void }) {
   const hasImage = !!item.image_url;
   return (
     <a
@@ -447,11 +447,20 @@ function FeaturedNewsTile({ item }: { item: NewsfeedItem }) {
       rel="noopener noreferrer"
       className={cn(
         GLASS_CARD,
-        'group overflow-hidden flex flex-col transition-all duration-200',
+        'group relative overflow-hidden flex flex-col transition-all duration-200',
         'hover:bg-white/[0.06] hover:glass-border-soft hover:shadow-[0_4px_20px_hsl(var(--primary)/0.1)]',
         item.url !== '#' && 'cursor-pointer',
       )}
     >
+      <button
+        type="button"
+        aria-label="Dismiss for today"
+        title="Dismiss for today"
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); onDismiss(item.id); }}
+        className="absolute top-2 right-2 z-10 h-6 w-6 rounded-full flex items-center justify-center bg-black/40 text-white/70 hover:text-white hover:bg-black/60 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-opacity"
+      >
+        <X className="h-3.5 w-3.5" />
+      </button>
       <div className="relative">
         <NewsImage src={item.image_url} topic={item.topic} className="w-full aspect-[2.4/1] rounded-t-lg" variant="featured" />
         {hasImage && (
