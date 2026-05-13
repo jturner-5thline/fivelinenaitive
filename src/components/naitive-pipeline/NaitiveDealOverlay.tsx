@@ -247,12 +247,13 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
           willChange: 'transform',
           background:
-            'radial-gradient(ellipse at 50% 28%, rgba(34,44,72,0.82) 0%, rgba(18,24,40,0.84) 40%, rgba(10,14,24,0.94) 100%), radial-gradient(circle at 50% 120%, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0) 45%), rgba(12,16,28,0.92)',
-          backdropFilter: 'blur(18px) saturate(140%)',
-          WebkitBackdropFilter: 'blur(18px) saturate(140%)',
+            'radial-gradient(circle at 12% 10%, rgba(36,46,74,0.88) 0%, rgba(24,32,54,0.84) 28%, rgba(15,21,37,0.90) 62%, rgba(9,13,22,0.95) 100%)',
+          backdropFilter: 'blur(18px) saturate(135%)',
+          WebkitBackdropFilter: 'blur(18px) saturate(135%)',
           border: '1px solid rgba(255,255,255,0.10)',
           boxShadow:
-            '0 24px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.08)',
+            '0 24px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07)',
+          animation: 'none',
         }}
         onClick={(e) => e.stopPropagation()}
         ref={panelRef}
