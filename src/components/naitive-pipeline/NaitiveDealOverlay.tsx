@@ -1,4 +1,5 @@
 import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Routes, Route, useResolvedPath } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
@@ -136,10 +137,11 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     const vw = window.innerWidth;
     const vh = window.innerHeight;
     const isDesktop = vw >= 640;
-    const finalLeft = isDesktop ? 8 : 0;
-    const finalTop = isDesktop ? 8 : 0;
-    const finalWidth = isDesktop ? vw - 16 : vw;
-    const finalHeight = isDesktop ? vh - 16 : vh;
+    const inset = isDesktop ? 24 : 0;
+    const finalLeft = inset;
+    const finalTop = inset;
+    const finalWidth = vw - inset * 2;
+    const finalHeight = vh - inset * 2;
 
     const sx = Math.max(rect.width / finalWidth, 0.05);
     const sy = Math.max(rect.height / finalHeight, 0.05);
@@ -149,7 +151,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     // Apply the starting transform synchronously, then release on the
     // next frame so the CSS transition interpolates back to identity.
     setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
-    setOriginBorderRadius(12);
+    setOriginBorderRadius(16);
     setContentVisible(false);
 
     let raf2 = 0;
@@ -212,9 +214,9 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
 
   const slideClass = reduceMotion || !slideDir ? '' : 'animate-fade-in';
 
-  return (
+  const overlay = (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center"
+      className="fixed inset-0 z-[2147483000] flex items-center justify-center isolate"
       role="dialog"
       aria-modal="true"
       aria-label={`Deal details for ${deal.company || 'deal'}`}
@@ -222,7 +224,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       {/* Backdrop */}
       <div
         className={cn(
-          'absolute inset-0 bg-black/55 backdrop-blur-sm',
+          'absolute inset-0 bg-black/75 backdrop-blur-md',
           reduceMotion ? '' : 'animate-fade-in',
         )}
         onClick={onClose}
@@ -232,7 +234,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           (sidebar / global header) via z-[100] on the wrapper. */}
       <div
         className={cn(
-          'deal-popup-shell relative w-screen h-screen sm:w-[calc(100vw-1rem)] sm:h-[calc(100vh-1rem)] sm:rounded-xl overflow-hidden flex flex-col',
+          'deal-popup-shell relative w-screen h-screen sm:w-[calc(100vw-3rem)] sm:h-[calc(100vh-3rem)] sm:rounded-2xl overflow-hidden flex flex-col',
           // Only fall back to the generic scale-in when we have neither a
           // tile-origin transform nor reduced motion — the rect-driven
           // transform already provides the entrance animation.
@@ -250,9 +252,9 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             'radial-gradient(circle at 12% 10%, rgba(24,31,49,0.90) 0%, rgba(18,24,40,0.92) 32%, rgba(12,17,28,0.95) 66%, rgba(7,10,18,0.98) 100%)',
           backdropFilter: 'blur(18px) saturate(135%)',
           WebkitBackdropFilter: 'blur(18px) saturate(135%)',
-          border: '1px solid rgba(255,255,255,0.10)',
+          border: '1px solid rgba(255,255,255,0.12)',
           boxShadow:
-            '0 24px 64px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07)',
+            '0 40px 120px rgba(0,0,0,0.65), 0 12px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07)',
           animation: 'none',
         }}
         onClick={(e) => e.stopPropagation()}
@@ -338,6 +340,12 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       </div>
     </div>
   );
+
+  // Portal to <body> so the overlay sits above the entire app shell
+  // (sidebar, global header, route chrome) regardless of where it was
+  // mounted in the React tree.
+  if (typeof document === 'undefined') return overlay;
+  return createPortal(overlay, document.body);
 }
 
 /** Instant header summary using data already known to the parent so the
