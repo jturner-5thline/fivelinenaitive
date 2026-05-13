@@ -1,5 +1,5 @@
 import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useResolvedPath } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,12 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   const [reduceMotion, setReduceMotion] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // The matched pathname of the parent route this overlay is rendered in
+  // (e.g. "/deals" on the deals page, "/naitive-pipeline" on the pipeline
+  // page). React Router requires any synthetic <Routes location> pathname
+  // to start with this base, otherwise it throws an invariant.
+  const parentBase = useResolvedPath('.').pathname.replace(/\/$/, '');
 
   // Focus trap: remember the previously-focused element, move focus into the
   // panel when the overlay opens, restore on close, and keep Tab cycling
@@ -187,14 +193,14 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             <Routes
               key={deal.id}
               location={{
-                pathname: `${typeof window !== 'undefined' ? window.location.pathname.split('/').slice(0, 2).join('/') : ''}/${deal.id}/__overlay`,
+                pathname: `${parentBase}/__overlay/${deal.id}`,
                 search: '?embedded=1',
                 hash: '',
                 state: null,
                 key: deal.id,
               }}
             >
-              <Route path=":id/__overlay" element={<DealDetail />} />
+              <Route path="__overlay/:id" element={<DealDetail />} />
             </Routes>
           </Suspense>
         </div>
