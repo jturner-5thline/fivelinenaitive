@@ -178,7 +178,6 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             so the modal starts directly at the deal content area without
             duplicating app shell chrome. */}
         <div className={cn('relative flex-1 min-h-0 w-full bg-background overflow-y-auto overflow-x-hidden', slideClass)}>
-          <DealOverlaySummary deal={deal} />
           <Suspense fallback={<DealOverlayHydrating />}>
             {/* Render DealDetail using a synthetic location so `useParams`
                 resolves to this deal id, while reusing the parent Router
