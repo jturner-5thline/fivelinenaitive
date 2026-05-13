@@ -74,6 +74,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
 
 export default function Dashboard() {
