@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check } from 'lucide-react';
 import DOMPurify from 'dompurify';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks } from 'date-fns';
 import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG } from '@/types/deal';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
@@ -185,9 +185,23 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
     return stripHtml(deal.notes);
   }, [deal.notes]);
 
+  const __location = useLocation();
+  const [, __setSearchParams] = useSearchParams();
+  const __isOverlayRoute = __location.pathname === '/deals' || __location.pathname.startsWith('/naitive-pipeline');
+  const __handleCardClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (isEditingStatus) { e.preventDefault(); return; }
+    // Allow new-tab / open-in-new-window via modifier keys.
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || (e as any).button === 1) return;
+    if (!__isOverlayRoute) return;
+    e.preventDefault();
+    const next = new URLSearchParams(window.location.search);
+    next.set('deal', deal.id);
+    __setSearchParams(next, { replace: false });
+  };
+
   return (
     <>
-    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full" onClick={(e) => { if (isEditingStatus) { e.preventDefault(); } }}>
+    <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full" onClick={__handleCardClick}>
       <Card
         className={`deal-glass group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
