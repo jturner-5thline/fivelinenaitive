@@ -371,12 +371,14 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate]);
 
   // On close we tear down the in-flight fetch flags but DELIBERATELY keep
-  // local state intact — the next mount re-seeds from the cache store, so
-  // clearing here would only cause a needless flash. The shared cache is
-  // the durable source of truth between opens.
+  // local state intact AND keep `hasLoadedRef.current = true` so reopening
+  // the popup does NOT trigger a fresh page-1 Gmail fetch. The shared
+  // cache + the periodic background sync remain the durable source of
+  // truth between opens. Re-fetching on every close→reopen was the root
+  // cause of the unread badge "jumping" (e.g. 36 → 35 → 44) when the
+  // user closed an email they had just marked read.
   useEffect(() => {
     if (!open) {
-      hasLoadedRef.current = false;
       isMountedRef.current = false;
       isPaginatingRef.current = false;
       setIsLoadingMore(false);
@@ -440,7 +442,13 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // emails read or marked unread elsewhere (Gmail web, mobile) reflect
   // here in near-real time. Lightweight delta sync — only fetches state
   // for already-loaded message IDs, never the full mailbox.
-  const SYNC_INTERVAL_MS = 15_000;
+  // 5-minute background reconcile cadence. The previous 15s interval was
+  // aggressive enough that a Gmail mark-as-read PATCH issued when the user
+  // opened a thread sometimes hadn't propagated server-side before the next
+  // sync_state poll, which then flipped the message back to unread and made
+  // the badge oscillate. 5 minutes is well past Gmail's read-state
+  // consistency window while still surfacing externally-read mail promptly.
+  const SYNC_INTERVAL_MS = 300_000;
   const SYNC_BATCH_LIMIT = 150; // most-recent N messages per cycle
   const syncInFlightRef = useRef(false);
   // Hold the latest inboxMessages snapshot in a ref so the sync effect
@@ -506,24 +514,18 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       }
     };
 
-    // Run once shortly after open so quick external reads sync fast,
-    // then on a steady interval.
+    // Sync once a few seconds after the popup opens (so externally-read
+    // mail surfaces quickly), then every SYNC_INTERVAL_MS. We intentionally
+    // do NOT re-run on tab focus / visibility change anymore — those were
+    // the loudest sources of the "unread count jumping on close" bug,
+    // because closing an email pane often coincides with a focus event.
     const kickoff = setTimeout(runSync, 4_000);
     const interval = setInterval(runSync, SYNC_INTERVAL_MS);
-
-    // Also sync immediately when the tab/window regains focus.
-    const onVisibility = () => {
-      if (document.visibilityState === 'visible') runSync();
-    };
-    document.addEventListener('visibilitychange', onVisibility);
-    window.addEventListener('focus', runSync);
 
     return () => {
       cancelled = true;
       clearTimeout(kickoff);
       clearInterval(interval);
-      document.removeEventListener('visibilitychange', onVisibility);
-      window.removeEventListener('focus', runSync);
     };
     // Intentionally omit `inboxMessages` from deps — we read it via ref so
     // pagination updates do not tear down/recreate this effect's listeners.
