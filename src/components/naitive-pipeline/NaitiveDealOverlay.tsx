@@ -211,7 +211,6 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   if (!deal) return null;
 
   const slideClass = reduceMotion || !slideDir ? '' : 'animate-fade-in';
-  const isAnimatingOpen = originTransform !== null;
 
   return (
     <div
