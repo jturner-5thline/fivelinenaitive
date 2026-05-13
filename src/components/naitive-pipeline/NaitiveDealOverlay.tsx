@@ -1,5 +1,5 @@
 import { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useResolvedPath } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,12 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   const [reduceMotion, setReduceMotion] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  // The matched pathname of the parent route this overlay is rendered in
+  // (e.g. "/deals" on the deals page, "/naitive-pipeline" on the pipeline
+  // page). React Router requires any synthetic <Routes location> pathname
+  // to start with this base, otherwise it throws an invariant.
+  const parentBase = useResolvedPath('.').pathname.replace(/\/$/, '');
 
   // Focus trap: remember the previously-focused element, move focus into the
   // panel when the overlay opens, restore on close, and keep Tab cycling
@@ -177,17 +183,24 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             {/* Render DealDetail using a synthetic location so `useParams`
                 resolves to this deal id, while reusing the parent Router
                 (React Router forbids nested <Router> instances). */}
+            {/* Synthetic location must start with the parent's matched
+                pathname base (e.g. "/deals" or "/naitive-pipeline") to
+                satisfy React Router's invariant. We append the deal id so
+                `useParams().id` resolves to it. The trailing `/__overlay`
+                segment lets the overlay render even when the parent route
+                itself is `/deals/:id` (a sibling route — would otherwise
+                produce an ambiguous match). */}
             <Routes
               key={deal.id}
               location={{
-                pathname: `/deal/${deal.id}`,
+                pathname: `${parentBase}/__overlay/${deal.id}`,
                 search: '?embedded=1',
                 hash: '',
                 state: null,
                 key: deal.id,
               }}
             >
-              <Route path="/deal/:id" element={<DealDetail />} />
+              <Route path="__overlay/:id" element={<DealDetail />} />
             </Routes>
           </Suspense>
         </div>
