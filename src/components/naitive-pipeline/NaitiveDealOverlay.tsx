@@ -177,17 +177,24 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             {/* Render DealDetail using a synthetic location so `useParams`
                 resolves to this deal id, while reusing the parent Router
                 (React Router forbids nested <Router> instances). */}
+            {/* Synthetic location must start with the parent's matched
+                pathname base (e.g. "/deals" or "/naitive-pipeline") to
+                satisfy React Router's invariant. We append the deal id so
+                `useParams().id` resolves to it. The trailing `/__overlay`
+                segment lets the overlay render even when the parent route
+                itself is `/deals/:id` (a sibling route — would otherwise
+                produce an ambiguous match). */}
             <Routes
               key={deal.id}
               location={{
-                pathname: `/deal/${deal.id}`,
+                pathname: `${typeof window !== 'undefined' ? window.location.pathname.split('/').slice(0, 2).join('/') : ''}/${deal.id}/__overlay`,
                 search: '?embedded=1',
                 hash: '',
                 state: null,
                 key: deal.id,
               }}
             >
-              <Route path="/deal/:id" element={<DealDetail />} />
+              <Route path=":id/__overlay" element={<DealDetail />} />
             </Routes>
           </Suspense>
         </div>
