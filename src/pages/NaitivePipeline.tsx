@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
@@ -11,6 +11,7 @@ import { Deal, DealStatus } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { CreateNaitiveDealDialog } from '@/components/naitive-pipeline/CreateNaitiveDealDialog';
 import { NaitiveDealCard } from '@/components/naitive-pipeline/NaitiveDealCard';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
@@ -208,6 +209,7 @@ export default function NaitivePipeline() {
   const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const { history: stageHistory } = useNaitiveStageHistory(pipelineId);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
   const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
 
@@ -279,17 +281,26 @@ export default function NaitivePipeline() {
     setTimeout(() => setSlideDirection(null), 350);
   }, [activeView]);
 
+  // Open the deal in an overlay on top of the kanban (keeps board mounted
+  // so users can sweep through deals via ←/→ without losing context).
   const openDealFromPipeline = useCallback((deal: Deal) => {
     persistNaitivePipelineView(1);
-    navigate(`/deal/${deal.id}`, {
-      state: {
-        dealOrigin: {
-          label: 'Back to Naitive Pipeline',
-          returnTo: '/naitive-pipeline',
-        },
-      },
-    });
-  }, [navigate]);
+    const next = new URLSearchParams(searchParams);
+    next.set('deal', deal.id);
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams]);
+
+  const closeDealOverlay = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete('deal');
+    setSearchParams(next, { replace: false });
+  }, [searchParams, setSearchParams]);
+
+  const navigateOverlayTo = useCallback((deal: Deal) => {
+    const next = new URLSearchParams(searchParams);
+    next.set('deal', deal.id);
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   useEffect(() => {
     persistNaitivePipelineView(activeView);
@@ -315,6 +326,23 @@ export default function NaitivePipeline() {
     });
     return grouped;
   }, [filteredDeals, stages]);
+
+  // Flat ordered list (column-by-column, top-to-bottom) used by the overlay
+  // for prev/next navigation between deals.
+  const orderedDeals = useMemo(() => {
+    const out: Deal[] = [];
+    stages.forEach(s => {
+      const arr = dealsByStage.get(s.id) || [];
+      arr.forEach(d => out.push(d));
+    });
+    return out;
+  }, [stages, dealsByStage]);
+
+  const openDealId = searchParams.get('deal');
+  const openDeal = useMemo(
+    () => (openDealId ? deals.find(d => d.id === openDealId) || null : null),
+    [openDealId, deals],
+  );
 
   const handleStageChange = async (dealId: string, newStage: string) => {
     try {
@@ -652,6 +680,17 @@ export default function NaitivePipeline() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Deal detail overlay — embeds /deal/:id so every existing tab stays
+          identical. Backdrop click / Esc / arrow keys handled inside. */}
+      <NaitiveDealOverlay
+        deal={openDeal}
+        orderedDeals={orderedDeals}
+        stages={stages}
+        onClose={closeDealOverlay}
+        onNavigate={navigateOverlayTo}
+        onStageChange={handleStageChange}
+      />
     </>
   );
 }
