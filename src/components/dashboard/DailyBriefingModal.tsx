@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  Newspaper, Mail, DollarSign, GitBranch, ListChecks,
+  Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
   Check, Clock, ArrowUpRight,
