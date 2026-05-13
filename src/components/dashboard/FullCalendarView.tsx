@@ -1775,7 +1775,11 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
                 </div>
               )}
 
-            {view === 'month' ? (
+            {view === 'intel' ? (
+              <div className="flex-1 min-h-0 px-4 pt-3 pb-2 overflow-hidden">
+                <AgendaIntel />
+              </div>
+            ) : view === 'month' ? (
               <MonthView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} onDayClick={handleDayClick} calendarColors={calendarColors} />
             ) : view === 'agenda' ? (
               <AgendaView currentDate={currentDate} events={allEvents} onEventClick={setSelectedEvent} calendarColors={calendarColors} />
