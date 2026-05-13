@@ -8,6 +8,14 @@ const corsHeaders = {
 };
 
 const MAX_STORE_CHARS = 200_000; // hard cap on what we persist per file
+const EXTRACT_TIMEOUT_MS = 30_000; // 30s ceiling per document
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return Promise.race([
+    p,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label}_timeout`)), ms)),
+  ]);
+}
 
 // ── Extraction helpers (mirror deal-space-ai but kept local) ──
 async function extractPdfText(arrayBuffer: ArrayBuffer): Promise<string> {
@@ -158,13 +166,30 @@ async function processOne(supabaseService: any, doc: DocRow): Promise<{ ok: bool
       return { ok: false, chars: 0, error: dlErr?.message };
     }
 
-    let text = await extractContent(blob, doc.name);
+    let text = "";
+    let timedOut = false;
+    try {
+      text = await withTimeout(extractContent(blob, doc.name), EXTRACT_TIMEOUT_MS, "extract");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.includes("timeout")) {
+        timedOut = true;
+        // Best-effort: capture whatever raw text we can decode for plain-text-like files.
+        try {
+          const raw = await blob.text();
+          text = raw || "";
+        } catch { /* ignore */ }
+      } else {
+        throw err;
+      }
+    }
     if (text.length > MAX_STORE_CHARS) text = text.slice(0, MAX_STORE_CHARS) + "\n...[truncated]";
+    if (timedOut && text) text += "\nNote: document processing was partial — some content may be missing.";
 
     await supabaseService.from(table).update({
       extracted_text: text || null,
-      extraction_status: text ? "success" : "empty",
-      extraction_error: null,
+      extraction_status: timedOut ? "partial" : (text ? "success" : "empty"),
+      extraction_error: timedOut ? "timeout_30s" : null,
       extracted_at: new Date().toISOString(),
     }).eq("id", doc.id);
 
