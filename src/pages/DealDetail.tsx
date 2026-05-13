@@ -983,13 +983,14 @@ export default function DealDetail() {
   // `hasDealSpaceAccess` resolved, so a refresh on `?tab=deal-space`
   // would otherwise be stuck on Deal Info even after access is granted.
   useEffect(() => {
-    const urlTab = searchParams.get('tab') as typeof dealInfoTab | null;
+    const urlTab = searchParams.get('tab');
     if (!urlTab) return;
     if (urlTab === dealInfoTab) return;
     if (urlTab === 'deal-space' && !hasDealSpaceAccess) return;
-    if (!DEAL_TABS.includes(urlTab as any) && urlTab !== 'activity-log' && urlTab !== 'crm-search') return;
-    prevTabRef.current = urlTab;
-    setDealInfoTab(urlTab);
+    const allowed = [...DEAL_TABS, 'activity-log', 'crm-search'];
+    if (!allowed.includes(urlTab)) return;
+    prevTabRef.current = urlTab as typeof dealInfoTab;
+    setDealInfoTab(urlTab as typeof dealInfoTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasDealSpaceAccess, searchParams]);
 
