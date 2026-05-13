@@ -664,7 +664,7 @@ CRITICAL RULES:
           description: 'Please try again.',
           variant: 'destructive',
           action: (
-            <ToastAction altText="Retry" onClick={() => { void draftSubmissionEmails(); }}>
+            <ToastAction altText="Retry" onClick={() => { void handleDraftSubmission(); }}>
               Retry
             </ToastAction>
           ),
