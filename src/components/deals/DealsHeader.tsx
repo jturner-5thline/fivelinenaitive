@@ -33,6 +33,11 @@ export function DealsHeader() {
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   const isNaitivePipelineRoute = location.pathname.startsWith('/naitive-pipeline');
+  // The /deals page now renders its own + New Deal button inline with the
+  // page-level action row (Export / Notifications / Activity). Suppress
+  // the duplicate header button there so the CTA lives with the other
+  // operational controls instead of the top chrome.
+  const isDealsRoute = location.pathname === '/deals';
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
@@ -88,6 +93,7 @@ export function DealsHeader() {
               <TooltipContent>Customize widgets</TooltipContent>
             </Tooltip>
           )}
+          {!isDealsRoute && (
           <HintTooltip
             hint="Start here! Click to create your first deal and begin tracking your pipeline."
             visible={isHintVisible('new-deal-button')}
@@ -112,6 +118,7 @@ export function DealsHeader() {
               <CreateDealDialog />
             )}
           </HintTooltip>
+          )}
           
         </div>
       </div>
