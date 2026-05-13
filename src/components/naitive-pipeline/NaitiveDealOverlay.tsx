@@ -247,7 +247,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
           willChange: 'transform',
           background:
-            'radial-gradient(circle at 12% 10%, rgba(36,46,74,0.88) 0%, rgba(24,32,54,0.84) 28%, rgba(15,21,37,0.90) 62%, rgba(9,13,22,0.95) 100%)',
+            'radial-gradient(circle at 12% 10%, rgba(24,31,49,0.90) 0%, rgba(18,24,40,0.92) 32%, rgba(12,17,28,0.95) 66%, rgba(7,10,18,0.98) 100%)',
           backdropFilter: 'blur(18px) saturate(135%)',
           WebkitBackdropFilter: 'blur(18px) saturate(135%)',
           border: '1px solid rgba(255,255,255,0.10)',
@@ -266,7 +266,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           style={{
             borderRadius: 'inherit',
             background:
-              'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 18%, rgba(255,255,255,0.00) 38%)',
+              'linear-gradient(180deg, rgba(255,255,255,0.035) 0%, rgba(255,255,255,0.015) 18%, rgba(255,255,255,0) 40%)',
           }}
         />
         {/* Floating close — preserves close behavior without adding header chrome */}
