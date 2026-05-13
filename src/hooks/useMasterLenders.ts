@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { isDemoEmail, withDemoLenderContact } from '@/lib/demoLenderContact';
 import { toast } from 'sonner';
 import { extractFlexSyncErrorPayload } from '@/utils/flexSyncError';
 
