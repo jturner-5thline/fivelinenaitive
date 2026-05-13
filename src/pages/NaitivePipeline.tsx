@@ -416,7 +416,7 @@ export default function NaitivePipeline() {
 
   const pipelineContent = (fullscreen: boolean) => (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
-      <ScrollArea className="w-full">
+      <ScrollArea className="w-full" ref={boardScrollRef as unknown as React.RefObject<HTMLDivElement>}>
         <div className="flex gap-4 pb-4 min-w-max">
           {stages.map(stage => (
             <StageColumn
