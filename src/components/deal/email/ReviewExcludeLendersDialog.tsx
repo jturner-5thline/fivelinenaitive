@@ -324,17 +324,22 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
                     )}
                   >
                     <Checkbox
-                      checked={r.excluded}
-                      onCheckedChange={(v) => toggleExcluded(r.id, v === true)}
-                      aria-label={`Exclude ${r.name}`}
+                      checked={!r.excluded}
+                      disabled={r.status === 'passed'}
+                      onCheckedChange={(v) => toggleExcluded(r.id, !(v === true))}
+                      aria-label={
+                        r.status === 'passed'
+                          ? `${r.name} is passed and excluded from this submission`
+                          : `Include ${r.name}`
+                      }
                     />
                     <div className="flex-1 min-w-0">
                       <div className={cn('text-sm font-medium truncate', r.excluded && 'line-through')}>
                         {r.name}
                       </div>
-                      {r.passReason && r.status === 'passed' && (
+                      {r.status === 'passed' && (
                         <div className="text-[11px] text-muted-foreground truncate">
-                          {r.passReason}
+                          Passed — excluded{r.passReason ? ` · ${r.passReason}` : ''}
                         </div>
                       )}
                     </div>
