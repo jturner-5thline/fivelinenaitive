@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { isDemoEmail } from '@/lib/demoLenderContact';
+import { buildDemoSeedDocuments, isDemoSeedDocId } from '@/lib/demoDealSeedContent';
 
 export interface DealSpaceDocument {
   id: string;
@@ -130,7 +132,20 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
       );
 
-      setDocuments(allDocuments);
+      // Demo-only: when no real files exist, render seeded synthetic
+      // documents so the section never appears empty during demos.
+      // These are visual placeholders only — never written to storage
+      // or the database; downstream actions are short-circuited below.
+      if (allDocuments.length === 0) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (isDemoEmail(user?.email)) {
+          setDocuments(buildDemoSeedDocuments(dealId));
+        } else {
+          setDocuments(allDocuments);
+        }
+      } else {
+        setDocuments(allDocuments);
+      }
     } catch (error) {
       console.error('Error fetching deal space documents:', error);
     } finally {
@@ -231,6 +246,12 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
 
   // Delete document
   const deleteDocument = useCallback(async (doc: DealSpaceDocument) => {
+    // Seeded demo documents are visual-only — drop from local state.
+    if (isDemoSeedDocId(doc.id)) {
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+      toast({ title: 'Document removed' });
+      return;
+    }
     try {
       // Internal (vdr_documents) and Data Room (deal_attachments) files
       // are owned by their respective surfaces. Deletes in Deal Space
@@ -280,6 +301,13 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
 
   // Get signed URL for download - uses the correct bucket based on source
   const getDownloadUrl = useCallback(async (doc: DealSpaceDocument) => {
+    if (isDemoSeedDocId(doc.id)) {
+      toast({
+        title: 'Demo document',
+        description: 'This is a seeded demo file with no underlying content.',
+      });
+      return null;
+    }
     try {
       const bucket = doc.storage_bucket || 'deal-space';
       if (!doc.file_path) return null;
