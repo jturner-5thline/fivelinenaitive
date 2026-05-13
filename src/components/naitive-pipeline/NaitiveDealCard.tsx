@@ -4,9 +4,10 @@ import { Card } from '@/components/ui/card';
 import { differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { Trash2, Loader2 } from 'lucide-react';
+import { Trash2, Loader2, Archive as ArchiveIcon, AlertTriangle } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAdminRole } from '@/hooks/useAdminRole';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -54,21 +55,60 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
   const nextDate = formatNextDate(deal.nextStepDate);
   const owner = deal.ownedBy || deal.manager;
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [working, setWorking] = useState(false);
+  const { isAdmin } = useAdminRole();
 
-  const handleDelete = async () => {
-    setDeleting(true);
+  const handleArchive = async () => {
+    setWorking(true);
+    try {
+      const prevStatus = deal.status;
+      const { error } = await supabase
+        .from('deals')
+        .update({ status: 'archived' })
+        .eq('id', deal.id);
+      if (error) throw error;
+      setConfirmOpen(false);
+      onDeleted?.();
+      toast.success(`${deal.company || 'Deal'} archived`, {
+        action: {
+          label: 'Undo',
+          onClick: async () => {
+            const { error: undoErr } = await supabase
+              .from('deals')
+              .update({ status: prevStatus || 'on-track' })
+              .eq('id', deal.id);
+            if (undoErr) {
+              toast.error('Failed to undo archive');
+            } else {
+              toast.success('Archive undone');
+              onDeleted?.();
+            }
+          },
+        },
+      });
+    } catch (e: any) {
+      console.error('[naitive] archive deal failed', e);
+      toast.error(e?.message || 'Failed to archive deal');
+    } finally {
+      setWorking(false);
+    }
+  };
+
+  const handleDeleteForever = async () => {
+    setWorking(true);
     try {
       const { error } = await supabase.from('deals').delete().eq('id', deal.id);
       if (error) throw error;
-      toast.success('Deal deleted');
+      toast.success('Deal permanently deleted');
+      setConfirmDeleteOpen(false);
       setConfirmOpen(false);
       onDeleted?.();
     } catch (e: any) {
       console.error('[naitive] delete deal failed', e);
       toast.error(e?.message || 'Failed to delete deal');
     } finally {
-      setDeleting(false);
+      setWorking(false);
     }
   };
 
@@ -135,22 +175,71 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
   const wrapped = onDeleted ? (
     <>
       {inner}
-      <AlertDialog open={confirmOpen} onOpenChange={(o) => { if (!deleting) setConfirmOpen(o); }}>
+      <AlertDialog open={confirmOpen} onOpenChange={(o) => { if (!working) setConfirmOpen(o); }}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete deal?</AlertDialogTitle>
+            <AlertDialogTitle>Remove deal?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete <span className="font-semibold text-foreground">{deal.company || 'this deal'}</span>? This action cannot be undone.
+              Choose how to remove <span className="font-semibold text-foreground">{deal.company || 'this deal'}</span> from the active pipeline.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            <button
+              type="button"
+              disabled={working}
+              onClick={(e) => { e.preventDefault(); void handleArchive(); }}
+              className="w-full text-left rounded-md border border-border/60 bg-background/40 hover:bg-accent/40 transition p-3 disabled:opacity-50"
+            >
+              <div className="flex items-center gap-2 text-sm font-medium">
+                <ArchiveIcon className="h-4 w-4" />
+                Archive
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">
+                Hide from active deals but keep all data. You can restore it later.
+              </p>
+            </button>
+            {isAdmin && (
+              <button
+                type="button"
+                disabled={working}
+                onClick={(e) => { e.preventDefault(); setConfirmDeleteOpen(true); }}
+                className="w-full text-left rounded-md border border-destructive/40 bg-destructive/5 hover:bg-destructive/10 transition p-3 disabled:opacity-50"
+              >
+                <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                  <Trash2 className="h-4 w-4" />
+                  Delete permanently
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Remove this deal and all its data. This cannot be undone.
+                </p>
+              </button>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={working}>Cancel</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={(o) => { if (!working) setConfirmDeleteOpen(o); }}>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              Are you sure?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete <span className="font-semibold text-foreground">{deal.company || 'this deal'}</span> and all associated lenders, notes, documents, and activity. This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={working}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={deleting}
-              onClick={(e) => { e.preventDefault(); void handleDelete(); }}
+              disabled={working}
+              onClick={(e) => { e.preventDefault(); void handleDeleteForever(); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              {deleting ? (<><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Deleting…</>) : 'Delete'}
+              {working ? (<><Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />Deleting…</>) : 'Delete Forever'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
