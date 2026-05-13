@@ -66,6 +66,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
+import { CreateDealDialog } from '@/components/deals/CreateDealDialog';
 import { useDealNotificationCounts } from '@/hooks/useDealNotificationCounts';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
@@ -555,6 +556,7 @@ export default function Dashboard() {
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
+                  <CreateDealDialog />
               </div>
             </div>
 
