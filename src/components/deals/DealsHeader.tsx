@@ -61,7 +61,7 @@ export function DealsHeader() {
         <div
           className="pointer-events-auto mx-auto flex h-14 items-center gap-1 sm:gap-2 px-3 sm:px-4 min-w-0"
           style={{
-            width: 'min(1120px, calc(100vw - 24px))',
+            width: 'min(560px, calc(100vw - 24px))',
             borderRadius: 22,
             background: 'rgba(16, 21, 34, 0.82)',
             backdropFilter: 'blur(18px) saturate(135%)',
@@ -71,13 +71,10 @@ export function DealsHeader() {
               '0 10px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
           }}
         >
-          <Link to="/deals" className="flex items-center gap-2 shrink-0 pr-1">
-            <Logo className="h-9" />
-          </Link>
           <DemoModeBadge />
 
           {/* Primary quick-access nav — Calendar, Mail, Action Queue, Deals */}
-          <nav className="hidden md:flex items-center gap-0.5 ml-2">
+          <nav className="hidden md:flex items-center gap-0.5">
             {[
               { to: '/dashboard?view=calendar', label: 'Calendar', Icon: Calendar },
               { to: '/dashboard?view=mail', label: 'Mail', Icon: Mail },
@@ -97,8 +94,8 @@ export function DealsHeader() {
                       aria-label={label}
                       className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
                         active
-                          ? 'bg-white/10 text-foreground'
-                          : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.06]'
+                          ? 'bg-blue-400/15 text-blue-400'
+                          : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
                       }`}
                     >
                       <Icon className="h-[18px] w-[18px]" />
