@@ -1000,7 +1000,7 @@ export default function DealDetail() {
     if (!urlTab) return;
     if (urlTab === dealInfoTab) return;
     if (urlTab === 'deal-space' && !hasDealSpaceAccess) return;
-    const allowed = [...DEAL_TABS, 'activity-log', 'crm-search'];
+    const allowed = [...DEAL_TABS, 'activity-log'];
     if (!allowed.includes(urlTab)) return;
     prevTabRef.current = urlTab as typeof dealInfoTab;
     setDealInfoTab(urlTab as typeof dealInfoTab);
@@ -2931,12 +2931,6 @@ export default function DealDetail() {
                       <History className="h-3.5 w-3.5" />
                       Activity
                     </TabsTrigger>
-                    {!isDemoAccount && (
-                      <TabsTrigger value="crm-search" className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-8 text-sm">
-                        <Search className="h-3.5 w-3.5" />
-                        CRM Search
-                      </TabsTrigger>
-                    )}
                   </TabsList>
                   </HintTooltip>
                    <div className="flex items-center gap-2 ml-auto flex-shrink-0">
