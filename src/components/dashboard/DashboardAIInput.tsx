@@ -19,7 +19,7 @@ interface DashboardAIInputProps {
 }
 
 export function DashboardAIInput(_props: DashboardAIInputProps = {}) {
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [value, setValue] = useState('');
   const openPanelWithPrompt = useCopilotStore((s) => s.openPanelWithPrompt);
   const togglePanel = useCopilotStore((s) => s.togglePanel);

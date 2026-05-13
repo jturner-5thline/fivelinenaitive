@@ -1,4 +1,4 @@
-import { forwardRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import { forwardRef, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
 import { Search as SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
@@ -22,8 +22,8 @@ export interface AskNaitiveBarProps {
   onFocus?: () => void;
   onBlur?: () => void;
   /** Custom keydown handler invoked AFTER built-in Enter/Escape handling. */
-  onExtraKeyDown?: (e: KeyboardEvent<HTMLInputElement>) => void;
-  inputRef?: RefObject<HTMLInputElement>;
+  onExtraKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  inputRef?: RefObject<HTMLTextAreaElement>;
   placeholder?: string;
   ariaLabel?: string;
   ariaExpanded?: boolean;
@@ -85,9 +85,13 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       aria-label={ariaLabel}
       data-tour={dataTour}
       className={cn(
-        'group relative overflow-hidden',
-        'h-11 rounded-full',
-        'flex items-center gap-3 pl-1.5 pr-4',
+        'group relative',
+        // Multi-line composer: keep the resting pill height, but allow the
+        // bar to grow downward when the textarea wraps. Rounded radius is
+        // pinned to the resting half-height so the shape stays consistent
+        // when expanded instead of warping into giant semicircles.
+        'min-h-11 rounded-[22px]',
+        'flex items-center gap-3 pl-1.5 pr-4 py-1',
         'text-left flex-none shrink-0',
         'opacity-70 hover:opacity-100 focus-within:opacity-100',
         'transition-[opacity,box-shadow] duration-200 ease-out',
@@ -159,39 +163,24 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       {/* Search affordance */}
       <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-white/40 group-hover:text-white/55 transition-colors" />
 
-      {/* Inline input */}
-      <input
-        ref={inputRef}
-        type="text"
+      {/* Inline composer — multi-line textarea so Shift+Enter inserts a
+          newline, pasted bullet lists keep their breaks, and long prompts
+          wrap visually instead of scrolling sideways. Enter (without
+          Shift) still submits. Auto-grows up to ~7 lines, then scrolls. */}
+      <AskNaitiveBarTextarea
+        forwardedRef={inputRef}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={onChange}
+        onSubmit={onSubmit}
+        onExtraKeyDown={onExtraKeyDown}
         readOnly={readOnly}
         disabled={disabled}
         onFocus={onFocus}
         onBlur={onBlur}
-        onKeyDown={(e) => {
-          if (disabled) {
-            e.preventDefault();
-            return;
-          }
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            onSubmit();
-            return;
-          }
-          if (e.key === 'Escape') {
-            if (value) onChange('');
-            else inputRef?.current?.blur();
-            return;
-          }
-          onExtraKeyDown?.(e);
-        }}
         placeholder={placeholder}
-        aria-label={ariaLabel}
-        aria-autocomplete={ariaControls ? 'list' : undefined}
-        aria-expanded={ariaExpanded}
-        aria-controls={ariaControls}
-        className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none text-[13px] font-normal text-white/85 placeholder:text-white/45"
+        ariaLabel={ariaLabel}
+        ariaExpanded={ariaExpanded}
+        ariaControls={ariaControls}
       />
 
       {showShortcutHint && (
@@ -202,3 +191,93 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
     </div>
   );
 });
+
+interface AskNaitiveBarTextareaProps {
+  forwardedRef?: RefObject<HTMLTextAreaElement>;
+  value: string;
+  onChange: (next: string) => void;
+  onSubmit: () => void;
+  onExtraKeyDown?: (e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  readOnly?: boolean;
+  disabled?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
+  placeholder?: string;
+  ariaLabel?: string;
+  ariaExpanded?: boolean;
+  ariaControls?: string;
+}
+
+/** Auto-resizing single-line-at-rest textarea. */
+function AskNaitiveBarTextarea({
+  forwardedRef,
+  value,
+  onChange,
+  onSubmit,
+  onExtraKeyDown,
+  readOnly,
+  disabled,
+  onFocus,
+  onBlur,
+  placeholder,
+  ariaLabel,
+  ariaExpanded,
+  ariaControls,
+}: AskNaitiveBarTextareaProps) {
+  const internalRef = useRef<HTMLTextAreaElement>(null);
+
+  const setRef = (el: HTMLTextAreaElement | null) => {
+    (internalRef as { current: HTMLTextAreaElement | null }).current = el;
+    if (forwardedRef) {
+      (forwardedRef as { current: HTMLTextAreaElement | null }).current = el;
+    }
+  };
+
+  // Resize whenever the controlled value changes (typing, paste, reset).
+  useLayoutEffect(() => {
+    const el = internalRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const max = 168; // ~7 lines at 24px line-height
+    el.style.height = `${Math.min(el.scrollHeight, max)}px`;
+    el.style.overflowY = el.scrollHeight > max ? 'auto' : 'hidden';
+  }, [value]);
+
+  return (
+    <textarea
+      ref={setRef}
+      rows={1}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      readOnly={readOnly}
+      disabled={disabled}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onKeyDown={(e) => {
+        if (disabled) {
+          e.preventDefault();
+          return;
+        }
+        // Enter submits; Shift+Enter inserts a newline (default behavior).
+        if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
+          e.preventDefault();
+          onSubmit();
+          return;
+        }
+        if (e.key === 'Escape') {
+          if (value) onChange('');
+          else internalRef.current?.blur();
+          return;
+        }
+        onExtraKeyDown?.(e);
+      }}
+      placeholder={placeholder}
+      aria-label={ariaLabel}
+      aria-autocomplete={ariaControls ? 'list' : undefined}
+      aria-expanded={ariaExpanded}
+      aria-controls={ariaControls}
+      className="relative z-10 flex-1 min-w-0 bg-transparent border-0 outline-none resize-none text-[13px] leading-6 font-normal text-white/85 placeholder:text-white/45 py-1"
+      style={{ maxHeight: 168 }}
+    />
+  );
+}
