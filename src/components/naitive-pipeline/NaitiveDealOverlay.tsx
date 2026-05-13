@@ -27,6 +27,23 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
   const [reduceMotion, setReduceMotion] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
+  // Forward Esc from inside the iframe to the parent so the overlay closes
+  // even when focus is within the embedded deal page.
+  const attachIframeEscListener = () => {
+    const win = iframeRef.current?.contentWindow;
+    if (!win) return;
+    try {
+      win.document.addEventListener('keydown', (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          onClose();
+        }
+      });
+    } catch {
+      // Cross-origin — ignore.
+    }
+  };
+
   useEffect(() => {
     const m = window.matchMedia('(prefers-reduced-motion: reduce)');
     setReduceMotion(m.matches);
@@ -124,6 +141,7 @@ export function NaitiveDealOverlay({ deal, orderedDeals, stages, onClose, onNavi
             src={`/deal/${deal.id}?embedded=1`}
             title={`Deal ${deal.company || deal.id}`}
             className="absolute inset-0 h-full w-full border-0"
+            onLoad={attachIframeEscListener}
           />
         </div>
       </div>
