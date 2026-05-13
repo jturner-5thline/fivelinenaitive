@@ -56,58 +56,6 @@ export function DealsHeader() {
           <DemoModeBadge />
         </div>
 
-        <nav className="hidden items-center gap-0.5 lg:flex shrink-0">
-          {(() => {
-            const navItemBase =
-              "h-8 px-3 rounded-md text-[13px] font-medium transition-colors";
-            const activeCls =
-              "bg-foreground/10 text-foreground";
-            const inactiveCls =
-              "text-muted-foreground hover:text-foreground hover:bg-foreground/5";
-            const isActive = (match: (p: string) => boolean) => match(location.pathname);
-            return (
-              <>
-                <Button variant="ghost" size="sm" asChild
-                  className={`${navItemBase} ${isActive(p => p === '/deals') ? activeCls : inactiveCls}`}>
-                  <Link to="/deals">Deals</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild
-                  className={`${navItemBase} ${isActive(p => p === '/lenders') ? activeCls : inactiveCls}`}>
-                  <Link to="/lenders">Lenders</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild
-                  className={`${navItemBase} ${isActive(p => p.startsWith('/contacts')) ? activeCls : inactiveCls}`}>
-                  <Link to="/contacts">Contacts</Link>
-                </Button>
-                <Button variant="ghost" size="sm" asChild
-                  className={`${navItemBase} ${isActive(p => p.startsWith('/crm-companies')) ? activeCls : inactiveCls}`}>
-                  <Link to="/crm-companies">Companies</Link>
-                </Button>
-                {hasPageAccess('analytics') && (
-                  <HintTooltip
-                    hint="View charts, metrics, and performance insights for your deals."
-                    visible={isHintVisible('analytics-nav')}
-                    onDismiss={() => dismissHint('analytics-nav')}
-                    side="bottom"
-                    align="center"
-                    showDelay={1500}
-                  >
-                    <Button variant="ghost" size="sm" asChild
-                      className={`${navItemBase} ${isActive(p => p === '/analytics') ? activeCls : inactiveCls}`}>
-                      <Link to="/analytics">Analytics</Link>
-                    </Button>
-                  </HintTooltip>
-                )}
-                {hasPageAccess('reports') && user?.email !== 'demo@5thline.co' && (
-                  <Button variant="ghost" size="sm" asChild
-                    className={`${navItemBase} ${isActive(p => p === '/reports') ? activeCls : inactiveCls}`}>
-                    <Link to="/reports">Reports</Link>
-                  </Button>
-                )}
-              </>
-            );
-          })()}
-        </nav>
         <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
           {isFifthLine && (
             <Tooltip>
