@@ -4,7 +4,7 @@ import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, 
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
-import { useMemo, useState, useCallback, useEffect } from 'react';
+import { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Deal, DealStatus } from '@/types/deal';
@@ -32,6 +32,7 @@ import { NaitivePipelineNarrative } from '@/components/naitive-pipeline/NaitiveP
 import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUpCard';
 import { NaitivePipelineFilterBar } from '@/components/naitive-pipeline/NaitivePipelineFilterBar';
 import { useNaitivePipelineFilters } from '@/hooks/useNaitivePipelineFilters';
+import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import {
   DndContext,
   DragOverlay,
@@ -353,6 +354,11 @@ export default function NaitivePipeline() {
     [openDealId, deals],
   );
 
+  // Snapshot board scroll positions when the overlay opens and restore them
+  // when it closes so the kanban returns to where the user left it.
+  const boardScrollRef = useRef<HTMLDivElement | null>(null);
+  usePipelineScrollPersistence(boardScrollRef, !!openDealId);
+
   const handleStageChange = async (dealId: string, newStage: string) => {
     try {
       const { error } = await supabase.from('deals').update({ stage: newStage, updated_at: new Date().toISOString() }).eq('id', dealId);
@@ -410,7 +416,7 @@ export default function NaitivePipeline() {
 
   const pipelineContent = (fullscreen: boolean) => (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd} onDragCancel={handleDragCancel}>
-      <ScrollArea className="w-full">
+      <ScrollArea className="w-full" ref={boardScrollRef as unknown as React.RefObject<HTMLDivElement>}>
         <div className="flex gap-4 pb-4 min-w-max">
           {stages.map(stage => (
             <StageColumn

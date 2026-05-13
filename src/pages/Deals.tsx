@@ -74,6 +74,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSearchParams } from 'react-router-dom';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
+import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import { useDealStages } from '@/contexts/DealStagesContext';
 
 export default function Dashboard() {
@@ -125,6 +126,10 @@ export default function Dashboard() {
   const [allExpanded, setAllExpanded] = useState(true);
   const [mergeDrawerOpen, setMergeDrawerOpen] = useState(false);
   const { deals: allDeals, isLoading, refreshDeals, updateDeal } = useDealsContext();
+
+  // Persist board scroll position when the deal overlay opens/closes.
+  const boardScrollContainerRef = useRef<HTMLDivElement | null>(null);
+  usePipelineScrollPersistence(boardScrollContainerRef, !!overlaySearchParams.get('deal'));
   const { isLoading: widgetsLoading } = useWidgets();
   const { profile, isLoading: profileLoading, completeOnboarding } = useProfile();
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
@@ -941,7 +946,8 @@ export default function Dashboard() {
               )}
 
               {/* Deals Grid/List/Pipeline or Milestones */}
-              <div 
+              <div
+                ref={boardScrollContainerRef}
                 className="opacity-0"
                 style={{ animation: 'fadeInUp 0.4s ease-out 0.3s forwards' }}
               >
