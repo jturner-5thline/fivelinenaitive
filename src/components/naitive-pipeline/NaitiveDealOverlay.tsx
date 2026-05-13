@@ -212,7 +212,7 @@ function DealOverlaySummary({ deal }: { deal: Deal }) {
       </div>
       <div className="mt-2 flex flex-wrap gap-3 text-sm text-muted-foreground">
         {deal.stage && <span className="rounded-full border border-white/10 px-2 py-0.5">{deal.stage}</span>}
-        {deal.dealManager && <span>Owner: {deal.dealManager}</span>}
+        {deal.manager && <span>Owner: {deal.manager}</span>}
         {deal.value != null && <span>Value: {String(deal.value)}</span>}
       </div>
     </div>
