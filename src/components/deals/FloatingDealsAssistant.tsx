@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Send, Loader2, ChevronLeft, ChevronRight, Check, X, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import {
   Popover,
   PopoverContent,
@@ -299,12 +300,13 @@ export function FloatingDealsAssistant() {
 
             <div className="p-3 border-t border-primary/10">
               <div className="flex gap-2">
-                <Input
+                <Textarea
                   value={question}
                   onChange={(e) => setQuestion(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder="Ask or command: 'Move Niki's Store to...'..."
-                  className="flex-1 h-9 text-sm border-primary/20 bg-background/80 focus-visible:ring-primary/30"
+                  rows={1}
+                  className="flex-1 min-h-9 max-h-40 resize-none text-sm border-primary/20 bg-background/80 focus-visible:ring-primary/30"
                   disabled={isLoading || isExecuting}
                 />
                 <Button
