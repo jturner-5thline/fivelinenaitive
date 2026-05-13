@@ -56,3 +56,46 @@ export function matchDemoDealCannedAnswer(question: string): string | null {
   }
   return null;
 }
+
+/**
+ * Detect bullet-style multi-question prompts (lines starting with ·, •, -, *,
+ * or "o ") and, if found, return a formatted bullet/sub-bullet response where
+ * every question is repeated verbatim under a "·" line and each answer is
+ * placed on the following "o" line. Unknown questions get a neutral fallback
+ * so the structure stays 1:1 with the input.
+ *
+ * Returns null when the input is not a bullet list of questions.
+ */
+const BULLET_LINE_RE = /^[\s]*([·•\-\*]|o\b)[\s\t]+(.+\S)\s*$/i;
+
+export function matchDemoDealBulletAnswers(question: string): string | null {
+  if (!question) return null;
+  const lines = question.split(/\r?\n/);
+  const questions: string[] = [];
+  let bulletCount = 0;
+  for (const raw of lines) {
+    const line = raw.replace(/\u00a0/g, ' ');
+    if (!line.trim()) continue;
+    const m = line.match(BULLET_LINE_RE);
+    if (!m) {
+      // Any non-bullet, non-empty line disqualifies bullet-mode.
+      return null;
+    }
+    const marker = m[1].toLowerCase();
+    if (marker === 'o') continue; // ignore stray sub-bullet lines from paste
+    bulletCount++;
+    questions.push(m[2].trim());
+  }
+  if (bulletCount < 2 || questions.length === 0) return null;
+
+  const out: string[] = [];
+  for (const q of questions) {
+    const answer =
+      matchDemoDealCannedAnswer(q) ??
+      "I don't have a specific figure for that yet — let me know which document or metric to pull from.";
+    out.push(`·\t${q}`);
+    out.push(`o\t${answer}`);
+    out.push('');
+  }
+  return out.join('\n').trimEnd();
+}
