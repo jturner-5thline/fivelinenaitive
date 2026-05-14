@@ -43,14 +43,18 @@ export function WorkspacePage({
   afterMain,
 }: WorkspacePageProps) {
   return (
-    <div className="bg-transparent">
-      {/* Persistent brand anchor — flush to the top-left of the main content
-          module, sized as a clear (~3x) brand mark. Sits inside the surface,
+    <div className="relative bg-transparent">
+      {/* Persistent brand anchor — pinned to the top-left of the main content
+          module and pulled up so its vertical baseline aligns with the
+          floating header pill across the top edge. Sits inside the surface,
           not in the floating header. */}
-      <div className="px-3 pt-3 sm:px-4 sm:pt-4" aria-hidden="true">
+      <div
+        className="absolute left-3 sm:left-4 -top-[60px] z-20 pointer-events-none"
+        aria-hidden="true"
+      >
         <Logo className="h-28" />
       </div>
-      <main className="w-full px-4 pt-3 pb-3 sm:px-6">
+      <main className="w-full px-4 pt-5 pb-3 sm:px-6">
         {beforeContent}
         <div className={cn('space-y-5', contentClassName)}>{children}</div>
       </main>
