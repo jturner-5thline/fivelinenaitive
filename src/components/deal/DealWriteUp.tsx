@@ -108,6 +108,8 @@ export interface DealWriteUpData {
   status: string;
   useOfFunds: string;
   existingDebtDetails: string;
+  existingDebtItems: ExistingDebtItem[];
+  existingDebtLegacyDismissed: boolean;
   description: string;
   keyItems: KeyItem[];
   companyHighlights: CompanyHighlight[];
