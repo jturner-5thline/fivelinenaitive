@@ -236,7 +236,9 @@ export default function FinServ() {
       <Helmet>
         <title>FinServ | naitive</title>
       </Helmet>
-      <div className="bg-background">
+      {/* Transparent canvas — lets the shared diagonal gradient backdrop
+          rendered by <AppLayout> show through, matching the /deals page. */}
+      <div className="bg-transparent">
         <DashboardPage
           padding="sm"
           wrapper={(children) => (
