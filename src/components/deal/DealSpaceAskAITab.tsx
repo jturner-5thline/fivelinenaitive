@@ -24,7 +24,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DealSpaceConversationHistory } from './DealSpaceConversationHistory';
 import { DealSpaceDocumentPreview } from './DealSpaceDocumentPreview';
-import { DealProactiveNudgesCard } from './DealProactiveNudgesCard';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
