@@ -41,7 +41,8 @@ const Index = lazy(lazyRetry(() => import("./pages/Index")));
 const Auth = lazy(lazyRetry(() => import("./pages/Auth")));
 const Onboarding = lazy(lazyRetry(() => import("./pages/Onboarding")));
 const Deals = lazy(lazyRetry(() => import("./pages/Deals")));
-const Dashboard = lazy(lazyRetry(() => import("./pages/Dashboard")));
+// /dashboard route removed — global popup overlays now live in the floating
+// header so dashboard widgets are reachable from every page.
 const DealDetail = lazy(lazyRetry(() => import("./pages/DealDetail")));
 const Settings = lazy(lazyRetry(() => import("./pages/Settings")));
 const Account = lazy(lazyRetry(() => import("./pages/Account")));
@@ -214,8 +215,9 @@ const App = () => (
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
-                          <Route path="/dashboard" element={
-                            <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
+                          <Route path="/dashboard" element={<Navigate to="/pipeline" replace />} />
+                          <Route path="/pipeline" element={
+                            <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/news-feed" element={
                             <ProtectedRoute><AppLayout><NewsFeed /></AppLayout></ProtectedRoute>

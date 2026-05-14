@@ -18,7 +18,7 @@ export default function PendingApproval() {
   // Redirect if approved
   useEffect(() => {
     if (isApproved) {
-      navigate("/dashboard", { replace: true });
+      navigate("/pipeline", { replace: true });
     }
   }, [isApproved, navigate]);
 
