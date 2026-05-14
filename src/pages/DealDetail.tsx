@@ -74,6 +74,7 @@ import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary
 const LendersKanban = lazy(() => import('@/components/deal/LendersKanban').then(m => ({ default: m.LendersKanban })));
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
+import { AddLenderSlideOver } from '@/components/deal/AddLenderSlideOver';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
@@ -987,6 +988,7 @@ export default function DealDetail() {
   const [expandedLenderHistory, setExpandedLenderHistory] = useState<Set<string>>(new Set());
   const [selectedReferrer, setSelectedReferrer] = useState<Referrer | null>(null);
   const [isLendersKanbanOpen, setIsLendersKanbanOpen] = useState(false);
+  const [isAddLenderSlideOverOpen, setIsAddLenderSlideOverOpen] = useState(false);
   const [dealInfoTab, setDealInfoTab] = useState<'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication'>((initialTab === 'deal-space' && !hasDealSpaceAccess) ? 'deal-info' : (initialTab || 'deal-info'));
   const prevTabRef = useRef<typeof dealInfoTab>(dealInfoTab);
   const [tabDirection, setTabDirection] = useState<'left' | 'right' | 'none'>('none');
@@ -4055,6 +4057,16 @@ export default function DealDetail() {
                           >
                             <LayoutGrid className="h-4 w-4" />
                           </Button>
+                          <Button
+                            type="button"
+                            variant="liquid-glass"
+                            size="sm"
+                            className="gap-2 h-8"
+                            onClick={() => setIsAddLenderSlideOverOpen(true)}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add Lender
+                          </Button>
                       </div>
                     </div>
                   </CardHeader>
@@ -5449,6 +5461,26 @@ export default function DealDetail() {
         ) : []}
         lenderName={requestedItemsDrawerLender || ''}
         onUpdateItem={updateOutstandingItem}
+      />
+
+      {/* Add Lender slide-out panel */}
+      <AddLenderSlideOver
+        open={isAddLenderSlideOverOpen}
+        onOpenChange={setIsAddLenderSlideOverOpen}
+        dealName={deal?.name || 'this deal'}
+        criteria={{
+          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
+          dealValue: deal?.value || undefined,
+          capitalAsk: dealWriteUpData.capitalAsk || undefined,
+          dealTypes: deal?.dealTypes || dealWriteUpData.dealTypes || undefined,
+          geo: dealWriteUpData.location || undefined,
+          cashBurnOk: savedMatchingCriteria.cashBurnOk,
+          sponsorship: savedMatchingCriteria.sponsorship,
+        }}
+        existingLenderNames={existingLenderNames}
+        configuredStages={configuredStages}
+        defaultStageId={preferences.defaultLenderStage}
+        onAddLender={addLenderWithStage}
       />
 
       {/* Lenders Kanban Dialog */}
