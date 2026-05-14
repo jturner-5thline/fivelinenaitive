@@ -16,7 +16,6 @@ import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
 import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
-import { DashboardFlyoutMenu } from "@/components/sidebar/DashboardFlyoutMenu";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
 import { FeedbackButton } from "@/components/FeedbackButton";
 
