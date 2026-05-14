@@ -310,6 +310,16 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
+  // Lender count gates the "Generate Status Report" quick action — the report
+  // is only meaningful once at least one lender has been added to the deal.
+  const { summary: dealContextSummary } = useDealContextSummary(dealId);
+  const hasLenders = (dealContextSummary?.lenderCounts.total ?? 0) > 0;
+
+  const openStatusReport = useCallback(() => {
+    window.dispatchEvent(
+      new CustomEvent('naitive:open-status-report', { detail: { dealId } }),
+    );
+  }, [dealId]);
   const {
     messages, sendMessage, clearMessages, isLoading: isAILoading,
     setMessages, scope, setScope,
