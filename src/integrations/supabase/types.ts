@@ -8659,30 +8659,36 @@ export type Database = {
           company_id: string
           created_at: string
           days_from_creation: number | null
+          days_from_stage: number | null
           id: string
           position: number
           timing_type: string
           title: string
+          trigger_stage: string | null
           updated_at: string
         }
         Insert: {
           company_id: string
           created_at?: string
           days_from_creation?: number | null
+          days_from_stage?: number | null
           id?: string
           position?: number
           timing_type?: string
           title: string
+          trigger_stage?: string | null
           updated_at?: string
         }
         Update: {
           company_id?: string
           created_at?: string
           days_from_creation?: number | null
+          days_from_stage?: number | null
           id?: string
           position?: number
           timing_type?: string
           title?: string
+          trigger_stage?: string | null
           updated_at?: string
         }
         Relationships: [
