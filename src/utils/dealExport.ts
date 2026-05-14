@@ -892,7 +892,8 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
   }
 
   // ─── Key Lenders – Process Status & Next Actions ────────────────────────
-  const showLenderTable = editableContent ? editableContent.sectionsVisible.lenderTable : true;
+  // Removed per product decision: section omitted from preview and export.
+  const showLenderTable = false;
   if (showLenderTable) {
     yPos += 8;
     if (yPos > pageHeight - 60) { doc.addPage(); yPos = 20; }
