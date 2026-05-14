@@ -233,6 +233,7 @@ export default function Lenders() {
     return (saved === 'grid' || saved === 'list' || saved === 'spreadsheet') ? saved : 'list';
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
   const [isSideBySideMergeOpen, setIsSideBySideMergeOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1217,6 +1218,15 @@ export default function Lenders() {
                 <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
                   Configuration
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setIsAnalyticsOpen(true)}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
                 </Button>
                 <Button
                   onClick={openAddDialog}
