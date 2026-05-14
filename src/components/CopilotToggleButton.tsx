@@ -136,18 +136,21 @@ export function CopilotToggleButton() {
   useEffect(() => {
     const findActiveMain = (): HTMLElement | null => {
       const mains = Array.from(document.querySelectorAll('main')) as HTMLElement[];
-      if (mains.length === 0) return null;
-      // Prefer the visible main with the largest rendered width — when an
-      // overlay/modal is open its <main> sits above (and is wider than)
-      // any background page main inside the layout shell.
-      let best: { el: HTMLElement; area: number } | null = null;
-      for (const el of mains) {
+      const visible = mains.filter((el) => {
         const r = el.getBoundingClientRect();
-        if (r.width <= 0 || r.height <= 0) continue;
-        const area = r.width * r.height;
-        if (!best || area > best.area) best = { el, area };
-      }
-      return best?.el ?? null;
+        return r.width > 0 && r.height > 0;
+      });
+      if (visible.length === 0) return null;
+      // Prefer a <main> that lives inside an open dialog / modal overlay —
+      // those are painted on top of the regular page shell and are what
+      // the user is actually looking at.
+      const inDialog = visible.find((el) =>
+        el.closest('[role="dialog"], [aria-modal="true"]') != null,
+      );
+      if (inDialog) return inDialog;
+      // Otherwise fall back to the last-rendered (top-most in DOM order)
+      // visible main — this is the active route's main content area.
+      return visible[visible.length - 1];
     };
 
     const update = () => {
