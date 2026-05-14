@@ -41,6 +41,9 @@ export interface NoteComment {
   resolved_by: string | null;
   created_at: string;
   updated_at: string;
+  parent_comment_id: string | null;
+  author_display_name?: string;
+  author_avatar_url?: string | null;
 }
 
 export function useDealSpaceNotes(dealId: string | undefined) {
@@ -182,14 +185,28 @@ export function useDealSpaceNotes(dealId: string | undefined) {
       .eq('note_id', noteId)
       .order('created_at', { ascending: true });
     if (error) { console.error(error); return []; }
-    return (data as NoteComment[]) || [];
+    const rows = (data as any[]) || [];
+    const userIds = [...new Set(rows.map(c => c.user_id))];
+    let profiles: Record<string, { display_name: string; avatar_url: string | null }> = {};
+    if (userIds.length) {
+      const { data: pd } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, avatar_url')
+        .in('user_id', userIds);
+      if (pd) profiles = Object.fromEntries(pd.map((p: any) => [p.user_id, { display_name: p.display_name || 'Unknown', avatar_url: p.avatar_url }]));
+    }
+    return rows.map(c => ({
+      ...c,
+      author_display_name: profiles[c.user_id]?.display_name || 'Unknown',
+      author_avatar_url: profiles[c.user_id]?.avatar_url || null,
+    })) as NoteComment[];
   }, []);
 
-  const addComment = useCallback(async (noteId: string, content: string, quoteText?: string) => {
+  const addComment = useCallback(async (noteId: string, content: string, quoteText?: string, parentCommentId?: string) => {
     if (!user) return null;
     const { data, error } = await supabase
       .from('deal_space_note_comments')
-      .insert({ note_id: noteId, user_id: user.id, content, quote_text: quoteText || null })
+      .insert({ note_id: noteId, user_id: user.id, content, quote_text: quoteText || null, parent_comment_id: parentCommentId || null } as any)
       .select()
       .single();
     if (error) { console.error(error); toast({ title: 'Failed to add comment', variant: 'destructive' }); return null; }
