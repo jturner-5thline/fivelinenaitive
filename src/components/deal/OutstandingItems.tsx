@@ -989,7 +989,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 }}
                 className="flex-1"
               />
-              <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
+              <Popover key={requesterPopoverKey}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
