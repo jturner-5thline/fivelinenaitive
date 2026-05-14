@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Trash2, Pencil, FileText, Check, X } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { NOTE_TEMPLATES } from './NoteTemplates';
 import { useCustomNoteTemplates, CustomNoteTemplate } from '@/hooks/useCustomNoteTemplates';
@@ -64,7 +65,7 @@ export function TemplatePickerDialog({ open, onOpenChange, onPick }: {
           <div className="border rounded-md overflow-hidden flex flex-col">
             <div className="px-3 py-2 border-b bg-muted/30 text-xs font-medium text-muted-foreground">Preview</div>
             <ScrollArea className="flex-1">
-              <div className="prose prose-sm dark:prose-invert max-w-none p-4" dangerouslySetInnerHTML={{ __html: selected?.content || '' }} />
+              <div className="prose prose-sm dark:prose-invert max-w-none p-4" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selected?.content || '', { USE_PROFILES: { html: true } }) }} />
             </ScrollArea>
           </div>
         </div>

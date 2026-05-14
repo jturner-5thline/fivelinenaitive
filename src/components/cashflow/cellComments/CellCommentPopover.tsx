@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Trash2, Send, X } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { RichTextEditor, type RichTextEditorHandle } from './RichTextEditor';
 import type { CellComment } from './types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,8 +90,7 @@ export function CellCommentPopover({ anchor, mode, comments, onSubmit, onDelete,
                   </div>
                   <div
                     className="cc-comment-html"
-                    // sanitized at write-time; rendering as HTML is safe here
-                    dangerouslySetInnerHTML={{ __html: c.content_html }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content_html || '', { USE_PROFILES: { html: true } }) }}
                   />
                 </div>
                 {canDelete && (

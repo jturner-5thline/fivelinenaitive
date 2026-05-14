@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Mail, Copy, Check, ExternalLink } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import DOMPurify from 'dompurify';
 import type { Deal } from '@/types/deal';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 
@@ -313,7 +314,10 @@ export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Pro
 
         <div className="flex-1 overflow-y-auto px-6 pb-4">
           <div className="rounded-lg border border-border bg-white p-5 shadow-sm">
-            <div ref={previewRef} dangerouslySetInnerHTML={{ __html: html }} />
+            <div
+              ref={previewRef}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html || '', { USE_PROFILES: { html: true } }) }}
+            />
           </div>
         </div>
 

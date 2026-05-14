@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, HelpCircle, RotateCcw, PlayCircle, FileText, Shield, BookOpen, MessageSquare } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -279,7 +280,7 @@ export default function Help() {
           {selectedArticle && (
             <div
               className="prose prose-sm dark:prose-invert max-w-none"
-              dangerouslySetInnerHTML={{ __html: selectedArticle.body_html }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(selectedArticle.body_html || '', { USE_PROFILES: { html: true } }) }}
             />
           )}
         </DialogContent>

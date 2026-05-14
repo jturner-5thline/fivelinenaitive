@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { MessageSquare, Trash2 } from 'lucide-react';
+import DOMPurify from 'dompurify';
 import type { SidebarData } from './types';
 import type { CellComment } from './cellComments/types';
 import { fmtShort, fmtAbbrev } from './formatters';
@@ -228,7 +229,7 @@ export const NotesPanel = memo(function NotesPanel({
                 </div>
                 <div
                   className="cf-cell-comment-body"
-                  dangerouslySetInnerHTML={{ __html: c.content_html }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content_html || '', { USE_PROFILES: { html: true } }) }}
                 />
                 <div className="cf-cell-comment-footer">
                   <span className="cf-cell-comment-author-avatar" aria-hidden>{authorInitials(c)}</span>
@@ -449,7 +450,7 @@ export const WeeklySidebar = memo(function WeeklySidebar({
                   </div>
                   <div
                     className="cf-cell-comment-body"
-                    dangerouslySetInnerHTML={{ __html: c.content_html }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(c.content_html || '', { USE_PROFILES: { html: true } }) }}
                   />
                   <div className="cf-cell-comment-footer">
                     <span className="cf-cell-comment-author-avatar" aria-hidden>{authorInitials(c)}</span>

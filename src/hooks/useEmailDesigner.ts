@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
+import DOMPurify from 'dompurify';
 
 export interface EmailBlock {
   id: string;
@@ -153,7 +154,7 @@ export function renderMergeTags(text: string, context: Record<string, any>): str
 
 /** Convert blocks to HTML preview */
 export function blocksToHtml(blocks: EmailBlock[]): string {
-  return blocks.map(block => {
+  const raw = blocks.map(block => {
     switch (block.type) {
       case 'text':
         return `<div style="text-align:${block.props.align || 'left'};font-size:${block.props.fontSize || 14}px">${block.props.content || ''}</div>`;
@@ -169,4 +170,10 @@ export function blocksToHtml(blocks: EmailBlock[]): string {
         return '';
     }
   }).join('');
+  // Sanitize merged HTML to prevent stored XSS from malicious template fields.
+  // Restrict URI schemes to http(s) and mailto so javascript:/data: are stripped.
+  return DOMPurify.sanitize(raw, {
+    USE_PROFILES: { html: true },
+    ALLOWED_URI_REGEXP: /^(?:https?:|mailto:|#)/i,
+  });
 }
