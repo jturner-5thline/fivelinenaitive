@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2, Plus, FileX, Maximize2, Minimize2 } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useFinServPipelineData } from '@/hooks/useFinServPipelineData';
@@ -23,6 +23,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { FinServDashboard } from '@/components/finserv/FinServDashboard';
+import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 import {
   DndContext,
   DragOverlay,
@@ -115,6 +116,7 @@ export default function FinServ() {
   const { hasAccess, isLoading: accessLoading } = useNaitivePipelineAccess();
   const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useFinServPipelineData();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'pipeline'>('dashboard');
   const [activeDealId, setActiveDealId] = useState<string | null>(null);
@@ -347,6 +349,36 @@ export default function FinServ() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Animated deal pop-up overlay — same component used by /deals so the
+          open animation, keyboard nav, and perceived performance match.
+          Opens immediately on click via the ?deal=<id> query param the
+          DealCard sets; data hydrates inside the overlay's lazy DealDetail
+          while the shell is already painted. */}
+      <NaitiveDealOverlay
+        deal={(() => {
+          const id = searchParams.get('deal');
+          if (!id) return null;
+          const found = deals.find((d) => d.id === id);
+          if (found) return found;
+          // Deep-link fallback: render the overlay shell immediately even
+          // before the FinServ deals list has loaded the matching record.
+          return { id, company: 'Deal' } as unknown as Deal;
+        })()}
+        orderedDeals={deals}
+        stages={stages}
+        onClose={() => {
+          const next = new URLSearchParams(searchParams);
+          next.delete('deal');
+          setSearchParams(next, { replace: false });
+        }}
+        onNavigate={(d) => {
+          const next = new URLSearchParams(searchParams);
+          next.set('deal', d.id);
+          setSearchParams(next, { replace: true });
+        }}
+        onStageChange={handleStageChange}
+      />
     </>
   );
 }
