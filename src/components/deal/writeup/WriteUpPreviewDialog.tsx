@@ -196,13 +196,13 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
     if (isExporting) return;
     setIsExporting(true);
     try {
-      await exportWriteUpToPdf({ data, owners, totalEquityRaised, dealManager, disclaimer });
+      await printElementAsPdf(contentRef.current, `${companyName} — Write-Up`);
     } catch (err) {
       console.error('PDF export failed:', err);
     } finally {
       setIsExporting(false);
     }
-  }, [data, owners, totalEquityRaised, dealManager, disclaimer, isExporting]);
+  }, [companyName, isExporting]);
 
   // Parse financial data for charts — add A/P suffix to year labels
   const chartData = useMemo(() => {
