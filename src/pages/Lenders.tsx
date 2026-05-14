@@ -1094,20 +1094,20 @@ export default function Lenders() {
         header chrome, or padding rhythm.
       */}
       <WorkspacePage contentClassName="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="lg-toolbar flex flex-wrap items-center justify-between gap-3 px-4 py-3">
               <div>
-                <h1 className="text-2xl font-semibold flex items-center gap-2 text-foreground">
-                  <Building2 className="h-6 w-6 text-foreground" />
+                <h1 className="text-base font-semibold flex items-center gap-2 text-foreground tracking-tight">
+                  <Building2 className="h-4 w-4 text-foreground/80" />
                   Lender Directory
                   <BetaBadge featureKey="page_lenders" />
                 </h1>
-                <p className="text-muted-foreground">Manage your lender directory</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Manage your lender directory</p>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 {/* Import dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1">
+                    <Button variant="outline" size="sm" className="lg-pill gap-1">
                       <Upload className="h-4 w-4" />
                       Import
                       <ChevronDown className="h-3 w-3 ml-1" />
@@ -1149,7 +1149,7 @@ export default function Lenders() {
                 {/* Merge dropdown */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-1">
+                    <Button variant="outline" size="sm" className="lg-pill gap-1">
                       <Columns className="h-4 w-4" />
                       Merge
                       <ChevronDown className="h-3 w-3 ml-1" />
@@ -1177,7 +1177,7 @@ export default function Lenders() {
                     <Button 
                       variant="outline"
                       size="sm" 
-                      className="gap-1 relative bg-white/[0.03] hover:bg-white/[0.06] border-white/10 hover:border-white/20 text-foreground/80 hover:text-foreground shadow-none transition-colors"
+                      className="lg-pill gap-1 relative"
                     >
                       <RefreshCw className="h-4 w-4" />
                       Sync
@@ -1217,14 +1217,14 @@ export default function Lenders() {
                   </DropdownMenuContent>
                 </DropdownMenu>
                 )}
-                <Button variant="outline" size="sm" className="gap-1" onClick={() => navigate('/lenders/config')}>
+                <Button variant="outline" size="sm" className="lg-pill gap-1" onClick={() => navigate('/lenders/config')}>
                   <Settings className="h-4 w-4" />
                   Configuration
                 </Button>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="gap-1"
+                  className="lg-pill gap-1"
                   onClick={(e) => { analyticsOrigin.capture(e); setIsAnalyticsOpen(true); }}
                 >
                   <BarChart3 className="h-4 w-4" />
@@ -1233,7 +1233,7 @@ export default function Lenders() {
                 <Button
                   onClick={openAddDialog}
                   size="sm"
-                  className="gap-1 bg-white/[0.08] hover:bg-white/[0.12] border border-white/15 hover:border-white/25 text-foreground shadow-none transition-colors"
+                  className="lg-cta gap-1"
                 >
                   <Plus className="h-4 w-4" />
                   Add Lender
@@ -1241,7 +1241,7 @@ export default function Lenders() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="lg-shell px-4 py-4 space-y-4">
                 {/* Flex Sync Requests Panel - show when toggled or has pending requests */}
                 {canSeeFlexSync && (showSyncPanel || syncPendingCount > 0) && (
                   <LenderSyncRequestsPanel onLenderApproved={refetchMasterLenders} />
@@ -1254,7 +1254,7 @@ export default function Lenders() {
                   lenders={masterLenders}
                 />
                 {/* Search and Sort Controls */}
-                <div className="flex flex-col sm:flex-row gap-3 mb-4">
+                <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <div className="relative flex-1">
@@ -1263,7 +1263,7 @@ export default function Lenders() {
                           placeholder="Search name, contacts, email, geo, type, loan types, industries, notes, pass reasons, deals…"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="pl-9 pr-9"
+                          className="lg-input h-10 pl-9 pr-9"
                         />
                         {searchQuery && (
                           <Button
@@ -1282,9 +1282,9 @@ export default function Lenders() {
                     </TooltipContent>
                   </Tooltip>
                   <Button
-                    variant={showActiveDealsOnly ? 'default' : 'outline'}
+                    variant="outline"
                     size="sm"
-                    className="gap-2 whitespace-nowrap"
+                    className={`gap-2 whitespace-nowrap h-10 ${showActiveDealsOnly ? 'lg-cta' : 'lg-pill'}`}
                     onClick={() => setShowActiveDealsOnly(!showActiveDealsOnly)}
                   >
                     <Zap className="h-4 w-4" />
@@ -1294,7 +1294,7 @@ export default function Lenders() {
                     )}
                   </Button>
                   <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
-                    <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectTrigger className="lg-input h-10 w-full sm:w-[180px]">
                       <ArrowUpDown className="h-4 w-4 mr-2" />
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
@@ -1305,29 +1305,29 @@ export default function Lenders() {
                       <SelectItem value="deals-asc">Fewest Active Deals</SelectItem>
                     </SelectContent>
                   </Select>
-                  <div className="flex border rounded-md">
+                  <div className="lg-segmented">
                     <Button
-                      variant={viewMode === 'list' ? 'secondary' : 'ghost'}
+                      variant="ghost"
                       size="icon"
-                      className="h-10 w-10 rounded-r-none"
+                      data-active={viewMode === 'list'}
                       onClick={() => handleViewModeChange('list')}
                       title="List view"
                     >
                       <List className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
+                      variant="ghost"
                       size="icon"
-                      className="h-10 w-10 rounded-none border-l border-r"
+                      data-active={viewMode === 'grid'}
                       onClick={() => handleViewModeChange('grid')}
                       title="Grid view"
                     >
                       <LayoutGrid className="h-4 w-4" />
                     </Button>
                     <Button
-                      variant={viewMode === 'spreadsheet' ? 'secondary' : 'ghost'}
+                      variant="ghost"
                       size="icon"
-                      className="h-10 w-10 rounded-l-none"
+                      data-active={viewMode === 'spreadsheet'}
                       onClick={() => handleViewModeChange('spreadsheet')}
                       title="Spreadsheet view"
                     >

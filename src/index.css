@@ -1211,3 +1211,127 @@
   height: 0;
   display: none;                  /* Chrome/Safari */
 }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Liquid-glass workspace primitives
+   --------------------------------------------------------------------
+   Reusable shell, toolbar, control, and table surfaces for data-heavy
+   directory views. First adopted by /lenders; intended to be reused by
+   Contacts, CRM Companies, and other directory-style workspaces so the
+   whole platform reads as one cohesive glass system.
+   ───────────────────────────────────────────────────────────────────── */
+.lg-shell {
+  position: relative;
+  border-radius: 14px;
+  background: rgba(20, 32, 56, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.05),
+    0 1px 0 0 rgba(0, 0, 0, 0.20),
+    0 12px 32px -18px rgba(0, 0, 0, 0.55);
+}
+.lg-toolbar {
+  position: relative;
+  border-radius: 12px;
+  background: rgba(28, 44, 74, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.06),
+    0 1px 0 0 rgba(0, 0, 0, 0.18),
+    0 8px 24px -16px rgba(0, 0, 0, 0.50);
+}
+/* Secondary glass pill button (Import / Merge / Sync / Configuration / Analytics) */
+.lg-pill {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.10) !important;
+  color: hsl(var(--foreground) / 0.85) !important;
+  border-radius: 9px !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 1px 0 0 rgba(0, 0, 0, 0.18) !important;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+}
+.lg-pill:hover {
+  background: rgba(255, 255, 255, 0.07) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: hsl(var(--foreground)) !important;
+}
+/* Primary filled glass CTA (Add Lender) */
+.lg-cta {
+  background: linear-gradient(180deg, rgba(150, 195, 255, 0.28), rgba(120, 170, 240, 0.18)) !important;
+  border: 1px solid rgba(170, 205, 255, 0.42) !important;
+  color: #fff !important;
+  border-radius: 9px !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.22),
+    0 1px 0 0 rgba(0, 0, 0, 0.25),
+    0 6px 16px -8px rgba(60, 120, 220, 0.55) !important;
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  transition: background 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+.lg-cta:hover {
+  background: linear-gradient(180deg, rgba(170, 210, 255, 0.36), rgba(140, 185, 245, 0.24)) !important;
+  border-color: rgba(195, 220, 255, 0.55) !important;
+}
+/* Glass input/select trigger */
+.lg-input,
+.lg-input:focus-visible {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  color: hsl(var(--foreground)) !important;
+  border-radius: 9px !important;
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03) !important;
+  transition: background-color 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+.lg-input:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+}
+.lg-input:focus-visible {
+  border-color: rgba(170, 205, 255, 0.55) !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.04),
+    0 0 0 3px rgba(120, 170, 240, 0.18) !important;
+  outline: none !important;
+}
+/* Segmented glass control wrapper (List / Grid / Spreadsheet) */
+.lg-segmented {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+.lg-segmented > button {
+  height: 30px !important;
+  width: 34px !important;
+  border-radius: 7px !important;
+  background: transparent !important;
+  color: hsl(var(--foreground) / 0.6) !important;
+  border: none !important;
+  box-shadow: none !important;
+  transition: background-color 150ms ease, color 150ms ease;
+}
+.lg-segmented > button:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: hsl(var(--foreground) / 0.9) !important;
+}
+.lg-segmented > button[data-active='true'] {
+  background: linear-gradient(180deg, rgba(150, 195, 255, 0.22), rgba(120, 170, 240, 0.14)) !important;
+  color: #fff !important;
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.18),
+    0 1px 0 0 rgba(0, 0, 0, 0.22) !important;
+}
