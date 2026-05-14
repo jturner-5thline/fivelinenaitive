@@ -31,7 +31,7 @@ interface Props {
 export function DealsPageOverlay({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="p-0 gap-0 max-w-none w-[calc(100vw-32px)] h-[calc(100vh-32px)] sm:w-[calc(100vw-48px)] sm:h-[calc(100vh-48px)] rounded-2xl overflow-hidden border border-white/10 bg-background">
+      <DialogContent className="popup-shell-surface p-0 gap-0 max-w-none w-[calc(100vw-32px)] h-[calc(100vh-32px)] sm:w-[calc(100vw-48px)] sm:h-[calc(100vh-48px)] rounded-2xl overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20">
         <VisuallyHidden>
           <DialogTitle>Deals</DialogTitle>
         </VisuallyHidden>

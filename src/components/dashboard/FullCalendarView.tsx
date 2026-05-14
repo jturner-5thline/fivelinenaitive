@@ -1530,7 +1530,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className={cn(useCarouselSwipeClass(), "max-w-[98vw] w-[1600px] h-[92vh] p-0 gap-0 flex flex-col overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20")}>
+      <DialogContent className={cn(useCarouselSwipeClass(), "popup-shell-surface max-w-[98vw] w-[1600px] h-[92vh] p-0 gap-0 flex flex-col overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20")}>
         {/* ─── Toolbar ─── */}
         <div className="flex items-center gap-3 px-4 py-3 glass-divider-b bg-background/60 backdrop-blur-xl shrink-0">
           <div className="flex items-center gap-1.5">
