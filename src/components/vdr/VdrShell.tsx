@@ -355,7 +355,7 @@ export function VdrShell({ dealId, embedded = false }: VdrShellProps) {
   const isSingleFile = pendingFiles?.length === 1;
 
   return (
-    <div className={cn("flex overflow-hidden divide-x divide-border/50", embedded ? "h-full w-full bg-background" : "h-screen w-screen bg-background")}>
+    <div className={cn("flex overflow-hidden divide-x divide-border/50", embedded ? "h-full w-full bg-card text-card-foreground" : "h-screen w-screen bg-background")}>
       <div className="flex-1 flex min-w-0 min-h-0">
         <ResizablePanelGroup direction="horizontal" className="flex-1">
           <ResizablePanel defaultSize={previewDoc ? 65 : 100} minSize={40}>
