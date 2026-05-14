@@ -920,32 +920,32 @@
   background:
     radial-gradient(
       circle at 14% 12%,
-      rgba(60, 90, 150, 0.22) 0%,
-      rgba(40, 60, 100, 0.12) 28%,
-      rgba(24, 36, 60, 0.04) 48%,
+      rgba(36, 50, 80, 0.14) 0%,
+      rgba(28, 40, 64, 0.08) 26%,
+      rgba(18, 26, 42, 0.03) 46%,
       rgba(0, 0, 0, 0) 60%
     ),
     linear-gradient(
       135deg,
-      rgba(34, 52, 86, 0.94) 0%,
-      rgba(22, 34, 58, 0.96) 58%,
-      rgba(10, 16, 28, 1) 100%
+      rgba(21, 30, 47, 0.97) 0%,
+      rgba(14, 20, 33, 0.99) 58%,
+      rgba(8, 12, 20, 1) 100%
     ) !important;
 }
 .deal-tile.deal-glass:hover {
   background:
     radial-gradient(
       circle at 14% 12%,
-      rgba(70, 105, 170, 0.26) 0%,
-      rgba(46, 70, 116, 0.14) 28%,
-      rgba(28, 42, 70, 0.05) 48%,
+      rgba(44, 62, 96, 0.18) 0%,
+      rgba(32, 46, 74, 0.10) 26%,
+      rgba(20, 30, 48, 0.04) 46%,
       rgba(0, 0, 0, 0) 60%
     ),
     linear-gradient(
       135deg,
-      rgba(40, 62, 102, 0.96) 0%,
-      rgba(26, 40, 68, 0.98) 58%,
-      rgba(12, 18, 32, 1) 100%
+      rgba(26, 38, 58, 0.98) 0%,
+      rgba(18, 26, 42, 1) 58%,
+      rgba(10, 14, 24, 1) 100%
     ) !important;
 }
 
