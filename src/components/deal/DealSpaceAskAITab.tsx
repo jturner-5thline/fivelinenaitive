@@ -420,7 +420,10 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   }, [handleSendQuestion]);
 
   const openDraftSubmissionModal = useCallback(() => {
-    setIsDraftDialogOpen(true);
+    // Always route through the Review & Exclude step so drafts are actually
+    // generated. Opening the drafts dialog directly would leave it empty
+    // (no AI call fires) and surface the "No drafts generated." empty state.
+    setIsReviewOpen(true);
   }, []);
 
   const openStatusReportModal = useCallback(() => {
