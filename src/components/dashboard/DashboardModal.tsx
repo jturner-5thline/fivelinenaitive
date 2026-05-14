@@ -200,11 +200,11 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="popup-shell-surface max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden border-transparent"
+        className="popup-shell-surface w-[min(1100px,calc(100vw-32px))] max-w-[min(1100px,calc(100vw-32px))] h-[92vh] max-h-[92vh] p-0 overflow-hidden border-transparent box-border"
         overlayClassName="bg-black/80"
         aria-label="Deal Pipeline"
       >
-        <div className="db-root flex flex-col" style={{ height: '100%', borderRadius: 'inherit' }}>
+        <div className="db-root flex flex-col min-w-0 max-w-full" style={{ height: '100%', borderRadius: 'inherit', boxSizing: 'border-box' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
@@ -227,9 +227,9 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
             <TabsContent
               value="dashboard"
               forceMount
-              className="db-tab-panel flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden bg-transparent"
+              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
             >
-              <div className="db-r min-w-max">
+              <div className="db-r min-w-0 max-w-full">
             {/* KPI STRIP */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
               {[
