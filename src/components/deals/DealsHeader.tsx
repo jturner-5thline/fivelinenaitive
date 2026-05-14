@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -116,21 +116,6 @@ export function DealsHeader() {
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
-          {!location.pathname.startsWith('/deal/') && !isDealsRoute && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}
-                >
-                  <Settings2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Customize widgets</TooltipContent>
-            </Tooltip>
-          )}
           {isNaitivePipelineRoute && naitivePipelineId && (
             <HintTooltip
               hint="Start here! Click to create your first deal and begin tracking your pipeline."
