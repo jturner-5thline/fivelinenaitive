@@ -114,7 +114,7 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
     `;
   };
 
-  const passedItems = lenders.filter((l) => l.stage === 'passed');
+  const passedItems = lenders.filter((l) => l.trackingStatus === 'passed');
 
   const pipelineTable =
     onDeck.length + inReview.length + termsIssued.length === 0 && passedCount === 0
