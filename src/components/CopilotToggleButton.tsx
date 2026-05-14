@@ -464,7 +464,8 @@ export function CopilotToggleButton() {
           }
         />
       </div>
-    </div>
+    </div>,
+    document.body)}
     {debug && debugView && createPortal(
       <div className="pointer-events-none fixed inset-0 z-[100000]">
         {/* Main content vertical center line */}
