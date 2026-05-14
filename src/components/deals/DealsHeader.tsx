@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase, Newspaper, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase, Newspaper, Sparkles, CheckSquare } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -147,6 +147,7 @@ export function DealsHeader() {
               ...(isFifthLine
                 ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
                 : []),
+              { label: 'Tasks', Icon: CheckSquare, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
               ...(canSeeBriefingHeaderItems
                 ? [
                     { label: 'Daily Briefing', Icon: Newspaper, isOpen: isBriefingOpen, onClick: () => setIsBriefingOpen(true) },
