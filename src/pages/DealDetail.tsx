@@ -195,7 +195,11 @@ import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycl
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
-import { StatusEmailDraftModal } from '@/components/deal/StatusEmailDraftModal';
+import {
+  buildStatusEmailHtml,
+  buildStatusEmailSubject,
+} from '@/components/deal/StatusEmailDraftModal';
+import { DraftAndSendDialog, type DraftAndSendInitial } from '@/components/deal/DraftAndSendDialog';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
@@ -5538,12 +5542,18 @@ export default function DealDetail() {
         />
       )}
 
-      {deal && (
-        <StatusEmailDraftModal
+      {deal && statusEmailContent && (
+        <DraftAndSendDialog
           open={!!statusEmailContent}
           onOpenChange={(o) => { if (!o) setStatusEmailContent(null); }}
-          deal={deal}
-          content={statusEmailContent}
+          contextLabel="Status Update"
+          initial={{
+            subject: buildStatusEmailSubject(deal),
+            bodyHtml: buildStatusEmailHtml(deal, statusEmailContent),
+            to: (deal as any).contact_email ? [(deal as any).contact_email] : [],
+            dealId: deal.id,
+          } as DraftAndSendInitial}
+          onSent={() => setStatusEmailContent(null)}
         />
       )}
 
