@@ -1155,7 +1155,7 @@ CRITICAL RULES:
               className="flex-1 min-h-9 max-h-40 resize-none"
             />
             <Button
-              onClick={handleSendQuestion}
+              onClick={() => handleSendQuestion()}
               disabled={!question.trim() || isAILoading}
             >
               {isAILoading ? (
