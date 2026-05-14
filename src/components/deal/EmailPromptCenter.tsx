@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import DOMPurify from 'dompurify';
 import { applyDemoLenderSalutation } from '@/lib/demoLenderSalutation';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface EmailPromptCenterProps {
   dealId: string;
@@ -77,19 +78,21 @@ export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterP
 
   return (
     <>
-      <Button
-        variant="outline"
-        size="icon"
-        className="relative overflow-visible h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]"
-        title="Email Prompt Center"
-        onClick={handleClick}
-        onContextMenu={(e) => {
-          // Right-click → always open the prompt-center list, even when
-          // there are pending prompts.
-          e.preventDefault();
-          setIsOpen(true);
-        }}
-      >
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Email Prompt Center"
+            className="relative overflow-visible h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]"
+            onClick={handleClick}
+            onContextMenu={(e) => {
+              // Right-click → always open the prompt-center list, even when
+              // there are pending prompts.
+              e.preventDefault();
+              setIsOpen(true);
+            }}
+          >
         <Mail className="h-4 w-4" />
         {pendingCount > 0 && (
           <span className="absolute -top-1.5 -right-1.5 h-[18px] min-w-[18px] px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center ring-2 ring-background z-10 pointer-events-none">
