@@ -1213,6 +1213,12 @@ CRITICAL RULES:
         onClose={() => setCitedDoc(null)}
         onDownload={handleDownloadCitedDocument}
       />
+
+      <PostCallFollowupModal
+        open={isPostCallModalOpen}
+        onOpenChange={setIsPostCallModalOpen}
+        dealId={dealId}
+      />
     </Card>
   );
 }
