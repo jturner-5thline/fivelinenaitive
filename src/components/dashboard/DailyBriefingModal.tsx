@@ -1241,8 +1241,6 @@ export function PipelineTab({
     try { localStorage.removeItem('ui_pref_briefing_pipeline_view_mode'); } catch { /* ignore */ }
   }, []);
 
-  if (isLoading && !data) return <TabSkeleton />;
-
   const { scopedDeals, newDeals, riskDeals, stageChanges, recentActivity } = data || {
     newDeals: [], riskDeals: [], stageChanges: [], recentActivity: [], scopedDeals: [],
   };
@@ -1285,6 +1283,9 @@ export function PipelineTab({
       return (effectiveOwnerName && owner === effectiveOwnerName) || taskSet.has(d.id);
     });
   }, [scopedDeals, effectiveOwnerName, assignedTaskDealIds]);
+
+  // All hooks above this line. Conditional early returns are safe below.
+  if (isLoading && !data) return <TabSkeleton />;
 
   // Empty state for delegated view with no owned/managed deals.
   const isDelegated = !!targetDealOwnerName;
