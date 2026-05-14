@@ -86,7 +86,7 @@ export function CopilotToggleButton() {
   const BAR_WIDTH_KEY = 'naitive:bar-width';
   const BAR_WIDTH_MIN = 280;
   const BAR_WIDTH_MAX = 960;
-  const BAR_WIDTH_DEFAULT = 432;
+  const BAR_WIDTH_DEFAULT = 402;
   const [barWidth, setBarWidth] = useState<number>(() => {
     if (typeof window === 'undefined') return BAR_WIDTH_DEFAULT;
     const raw = window.localStorage.getItem(BAR_WIDTH_KEY);
@@ -363,7 +363,7 @@ export function CopilotToggleButton() {
       aria-hidden={false}
       className="pointer-events-none fixed inset-x-0 z-[1200] flex justify-center"
       style={{
-        bottom: 'calc(56px + max(16px, env(safe-area-inset-bottom)))',
+        bottom: 'calc(44px + max(16px, env(safe-area-inset-bottom)))',
       }}
     >
       <div
