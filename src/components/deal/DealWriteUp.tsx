@@ -89,10 +89,6 @@ export interface TeamMember {
   linkedin: string;
 }
 
-export interface DealWriteUpData {
-  // (interface continues below)
-}
-
 export interface ExistingDebtItem {
   id: string;
   lender: string;
@@ -102,7 +98,7 @@ export interface ExistingDebtItem {
   notes: string;
 }
 
-// (re-open extension via merge below not allowed) — instead, redeclare:
+export interface DealWriteUpData {
   companyName: string;
   companyUrl: string;
   linkedinUrl: string;
