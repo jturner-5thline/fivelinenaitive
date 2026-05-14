@@ -6976,6 +6976,33 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_lender_recommendation_exclusions: {
+        Row: {
+          created_at: string
+          deal_id: string
+          excluded_by: string
+          id: string
+          lender_id: string | null
+          lender_name: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          excluded_by: string
+          id?: string
+          lender_id?: string | null
+          lender_name: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          excluded_by?: string
+          id?: string
+          lender_id?: string | null
+          lender_name?: string
+        }
+        Relationships: []
+      }
       deal_lenders: {
         Row: {
           created_at: string

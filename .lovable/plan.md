@@ -1,143 +1,65 @@
-# Header pop-up swipe navigation
+## AI Recommended Lenders — Lenders tab
 
-Make the floating header's pop-ups behave as one ordered sequence so the
-user can move between them (click, keyboard, or swipe) with a horizontal
-slide animation instead of a close-then-open jump.
+Add a new collapsible **AI Recommended** section pinned above the existing lenders board on the Lenders tab of the deal detail page. It calls Claude (via the existing centralized proxy) with the deal context + master lender directory and renders the top 5–10 ranked matches with one-click add/skip.
 
-## Scope
+### Database (1 new table)
 
-In scope (the icons in the floating header on `/deals`, `/naitive-pipeline`, etc.):
+`deal_lender_recommendation_exclusions`
+- `deal_id uuid` (indexed)
+- `lender_name text` (case-insensitive unique per deal)
+- `excluded_by uuid` (auth.uid())
+- `org_company_id uuid` (RLS scoping consistent with deals)
+- standard timestamps
+- RLS: members of the deal's `org_company_id` can read/insert/delete
 
-```text
-[ Calendar ] [ Mail ] [ Action Queue ] [ Tasks ] [ Deal Rundown ]
-            [ Dashboard* ] [ Daily Rundown** ] [ Niki's Rundown** ]
-```
+Used for the Skip action and the "Reset exclusions" control. No cache table — recommendations are recomputed on demand.
 
-`*` 5th Line only · `**` allowlisted users only — order is whatever the
-header actually renders for the current user.
+### Edge function: `recommend-lenders`
 
-Out of scope: deal overlay (already has its own ←/→ tile-aware nav), the
-notification banner, in-overlay internal navigation (e.g. Calendar's
-month arrows keep working unchanged).
+- `verify_jwt` enabled, validates `supabase.auth.getUser()`
+- Input: `{ dealId }`
+- Server pulls:
+  - deal record (type, size, industry, sponsorship, narrative, write-up sections)
+  - data-room document titles + summaries
+  - master lender directory (shared + workspace lenders)
+  - exclusion list + lenders already on the deal (excluded automatically)
+- Calls Claude with a strict JSON schema and the weighted scoring rubric in the system prompt:
+  - Deal type alignment 40%
+  - Deal size fit 30%
+  - Industry match 20%
+  - Recent activity in naitive (last 90d) 10%
+- Returns `{ recommendations: [{ lenderId, lenderName, logoUrl, matchScore, rationale, components }], generatedAt, sufficiency: { ok, missing[] } }`
+- Caps to 10 items, filters anything below 50% score.
 
-## Behavior
+### Frontend
 
-1. While any header overlay is open, the user can move to the adjacent
-   header pop-up via:
-   - clicking a small **prev / next chevron pill** that floats just
-     under the header (only the chevron for an existing neighbour
-     renders; both hidden when only one overlay is enabled for the user),
-   - pressing **←** / **→** when focus isn't in an editable field,
-   - **horizontal swipe / two-finger trackpad swipe** on the overlay
-     surface, past a clear threshold (≈80px or velocity > 0.3),
-   - clicking another header icon while an overlay is already open
-     (today this is blocked because the header is hidden — we'll keep
-     the header visible while overlays are open so cross-icon clicks
-     route through the same animated transition).
-2. Direction is derived from icon order: moving right uses a
-   right-to-left slide-in, moving left uses left-to-right.
-3. The transition is a coordinated swap: outgoing overlay slides + fades
-   out in the travel direction, incoming overlay slides + fades in from
-   the opposite side. ~220ms with `cubic-bezier(0.16, 1, 0.3, 1)`.
-4. Swipe is gated so it never fires while the user is scrolling
-   vertically inside an overlay (axis-lock: ignore the gesture if
-   `|dy| > |dx|` in the first 12px of movement).
-5. `prefers-reduced-motion` collapses the slide to an instant swap.
+New `src/components/deal/AiRecommendedLendersSection.tsx`:
+- Collapsible card (Liquid Glass styling) with header: title, count badge, Refresh, Reset exclusions, Collapse toggle.
+- Persists collapsed state in `user_ui_preferences`.
+- Auto-runs on mount when sufficiency check passes (deal type + deal size + at least one of: Deal Space financials, Write Up narrative, Data Room documents).
+- Friendly empty state when sufficiency fails listing what's missing.
+- Each recommendation card:
+  - Lender logo + name
+  - Match score chip (85+ green, 70+ blue, 50+ amber)
+  - One-line rationale from Claude
+  - **+ Add to Deal** → small stage selector popover (default: "NDA/Needs List Sent" if present, else first stage). On confirm calls existing `addLenderToDeal`, optimistically removes the card, shows "✓ Added" toast.
+  - **✕ Skip** → inserts into exclusions table, removes the card.
+- Loading shows skeletons; errors show retry CTA.
 
-## Technical changes
+Integration in `DealDetail.tsx`:
+- Render `<AiRecommendedLendersSection />` at the very top of `TabsContent value="lenders"`, above the current `LenderSuggestionsPanel` trigger and kanban summary.
+- Reuses existing add-lender handler and `existingLenderNames` already wired to the kanban.
 
-### 1. New module `src/lib/headerOverlayNav.ts`
+### Hooks
 
-- `HeaderOverlayId` union of the overlay labels currently in use
-  (`'Calendar' | 'Mail' | 'Action Queue' | 'Tasks' | 'Deal Rundown'
-  | 'Dashboard' | 'Daily Rundown' | "Niki's Daily Rundown"`).
-- Stores the **current direction** (`'left' | 'right' | null`) and
-  exposes `setDirection(dir)` + `getDirection()`. Used by the global
-  CSS rules below to drive enter/exit animation direction without
-  threading props through every overlay.
+- `useAiRecommendedLenders(dealId)` — React Query; invokes `recommend-lenders`; exposes `data`, `isLoading`, `refetch`, and a `skip(lenderName)` mutation.
+- `useDealRecommendationExclusions(dealId)` — list + reset.
 
-### 2. `src/components/deals/DealsHeader.tsx`
+### Out of scope
 
-- Build an ordered array `overlayOrder` from the same nav `[{label, ...}]`
-  array that already drives the icon row, so the order is automatically
-  the visible left-to-right icon order for the current user.
-- Add helpers:
-  - `currentOverlayId()` derives the active id from the existing
-    `is*Open` booleans (single source of truth — no duplicated state).
-  - `goToOverlay(dir: 1 | -1)` finds the current index, picks the
-    neighbour, sets the slide direction, then in a `requestAnimationFrame`
-    closes the current `setIs…Open(false)` and opens the next.
-- Stop hiding the header when an overlay is open (`isHeaderOverlayOpen`
-  branch). Keep the header visible so cross-icon clicks route through
-  `goToOverlay` based on which icon was clicked. Today's behaviour of
-  hiding the header was a stylistic choice; with the new swipe flow we
-  want the icons reachable.
-- Render a small `OverlayNavChevrons` floater just under the header
-  (portaled to body) showing left/right chevrons for the available
-  neighbours and current overlay name. Hidden when there's no neighbour
-  in that direction. Only renders while an overlay is open.
-- Install global keyboard listener for ←/→ that calls `goToOverlay`,
-  guarded against editable focus and only active while an overlay is
-  open. Uses capture phase so it wins over individual overlays' own
-  arrow handlers (each overlay we touch needs to skip its own ←/→
-  binding when this is active — verified per overlay below).
+- Existing rule-based `LenderSuggestionsPanel` dialog stays as-is — the new section sits above it.
+- No changes to other tabs, kanban internals, or unrelated pages.
 
-### 3. Swipe layer
+### Open question
 
-- A `useHeaderOverlaySwipe()` hook attached at the header level
-  installs `pointerdown`/`pointermove`/`pointerup` listeners on
-  `document` while an overlay is open. Tracks dx/dy from pointerdown:
-  - If `|dy| > |dx|` after 12px → release (vertical scroll wins).
-  - If `|dx| > 80` or `vx > 0.3` at pointerup → call `goToOverlay`.
-- Skips when the pointer started inside an `<input>`, `<textarea>`,
-  `[contenteditable]`, scrollable list with horizontal overflow, or
-  inside `[data-no-overlay-swipe]` (escape hatch for nested
-  carousels/drag handles in any overlay that needs it).
-
-### 4. Slide animation in CSS (`src/index.css`)
-
-Add two keyframes (`slide-in-from-right`, `slide-in-from-left`) plus
-matching `slide-out-to-left` / `slide-out-to-right`, ~220ms with
-`cubic-bezier(0.16, 1, 0.3, 1)`. Target the existing dialog content
-class via attribute selectors stamped on `<html>`:
-
-```text
-html[data-header-overlay-dir="right"] [data-radix-dialog-content][data-state="open"]  → slide-in-from-right
-html[data-header-overlay-dir="right"] [data-radix-dialog-content][data-state="closed"] → slide-out-to-left
-html[data-header-overlay-dir="left"]  ... mirrored
-```
-
-This avoids touching each overlay component individually — every one of
-them already uses Radix Dialog (or a near-equivalent) under the hood.
-Cleared after the close transition completes (`transitionend` listener).
-
-For `prefers-reduced-motion: reduce`, the keyframes degrade to
-`opacity 0 → 1` only.
-
-### 5. Per-overlay tweaks (minimal)
-
-- `FullCalendarView`: it already binds ←/→ for month navigation. Wrap
-  that handler with a check `if (event.target?.closest('[data-no-overlay-swipe]'))`
-  and add `data-no-overlay-swipe` to its calendar grid so its arrows
-  keep working inside the calendar but ←/→ outside the grid trigger
-  the overlay swap.
-- `InboxDialog`, `TasksOverlay`, `DailyBriefingModal`,
-  `ActionQueuePanel`, `DashboardModal`: no internal ←/→ bindings to
-  preserve — no changes needed beyond ensuring their root content
-  carries the standard Radix `data-radix-dialog-content` attribute
-  (already true for all of them).
-
-## Acceptance checks
-
-- Open Calendar → press → → Mail slides in from the right; Calendar
-  slides out to the left. Press → again → Action Queue. Press ← →
-  Mail returns from the left.
-- Open Calendar → click the **Mail** icon in the still-visible header →
-  same right-direction transition (skipping past intermediate icons is
-  fine — direction is just based on relative index).
-- Two-finger trackpad swipe left on the open overlay → next overlay.
-- Vertical scroll inside any overlay never triggers a swap.
-- Inside Calendar's grid, ←/→ still moves months. Outside it, ←/→ jumps
-  overlays.
-- With `prefers-reduced-motion: reduce`, transitions are instant.
-- ESC still closes the overlay entirely, not switches it.
+Use the existing Anthropic proxy (`claude-chat` per the **Claude AI Engine** memory) or create a dedicated `recommend-lenders` function calling the same upstream? Plan assumes a new dedicated function so the prompt and JSON schema stay server-side and auditable.
