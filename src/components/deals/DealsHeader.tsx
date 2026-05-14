@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import { createPortal } from 'react-dom';
 import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, ListChecks, Newspaper, Sparkles } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
