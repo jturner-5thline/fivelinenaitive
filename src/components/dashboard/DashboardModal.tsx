@@ -187,7 +187,7 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden glass-module"
+        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden popup-shell-surface"
         overlayClassName="bg-black/80"
         aria-label="Deal Pipeline"
       >
