@@ -124,6 +124,59 @@ export function CopilotToggleButton() {
   };
   const onResizeDoubleClick = () => setBarWidth(BAR_WIDTH_DEFAULT);
 
+  // ── Align bar center with the active <main> content area ───────────────
+  // The bar is portal-mounted to <body> and centered on the viewport. When
+  // the active page lives inside an offset container (e.g. the deal
+  // overlay modal which is inset from the viewport, or any layout whose
+  // <main> is shifted by a sidebar / scrollbar), centering on the
+  // viewport produces a visible horizontal offset between the page header
+  // content and this bar. Track the visible <main> element and shift the
+  // bar so its center matches the main's center.
+  const [centerOffset, setCenterOffset] = useState(0);
+  useEffect(() => {
+    const findActiveMain = (): HTMLElement | null => {
+      const mains = Array.from(document.querySelectorAll('main')) as HTMLElement[];
+      if (mains.length === 0) return null;
+      // Prefer the visible main with the largest rendered width — when an
+      // overlay/modal is open its <main> sits above (and is wider than)
+      // any background page main inside the layout shell.
+      let best: { el: HTMLElement; area: number } | null = null;
+      for (const el of mains) {
+        const r = el.getBoundingClientRect();
+        if (r.width <= 0 || r.height <= 0) continue;
+        const area = r.width * r.height;
+        if (!best || area > best.area) best = { el, area };
+      }
+      return best?.el ?? null;
+    };
+
+    const update = () => {
+      const mainEl = findActiveMain();
+      if (!mainEl) {
+        setCenterOffset(0);
+        return;
+      }
+      const r = mainEl.getBoundingClientRect();
+      const mainCenter = r.left + r.width / 2;
+      const viewportCenter = window.innerWidth / 2;
+      setCenterOffset(Math.round(mainCenter - viewportCenter));
+    };
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(document.body);
+    const mo = new MutationObserver(update);
+    mo.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', update);
+    const interval = window.setInterval(update, 400);
+    return () => {
+      ro.disconnect();
+      mo.disconnect();
+      window.removeEventListener('resize', update);
+      window.clearInterval(interval);
+    };
+  }, []);
+
   // ── Debug centering overlay ────────────────────────────────────────────
   // Toggle with Shift+Ctrl+D / Shift+Cmd+D. Draws the main content's
   // center line, the bar's center line, and the pixel delta so we can
@@ -312,7 +365,10 @@ export function CopilotToggleButton() {
     >
       <div
         className="pointer-events-auto flex flex-col items-center gap-2"
-        style={{ width: `min(${barWidth}px, calc(100% - 32px))` }}
+        style={{
+          width: `min(${barWidth}px, calc(100% - 32px))`,
+          transform: centerOffset ? `translateX(${centerOffset}px)` : undefined,
+        }}
       >
         {/* AI transcript panel — rendered inside the same width-defining
             wrapper as the Ask bar so it inherits identical horizontal
