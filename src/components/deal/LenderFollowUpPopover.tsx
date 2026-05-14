@@ -421,6 +421,70 @@ export function LenderFollowUpPopover({
           <Badge variant="secondary" className="text-[10px]">Suggested: {category}</Badge>
         </div>
 
+        {/* Thread reply selection */}
+        <div className="space-y-1.5 mb-2">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Reply to existing thread
+          </Label>
+          {threadsLoading ? (
+            <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> Searching for prior threads…
+            </div>
+          ) : threads.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              No prior thread found — will start a new email.
+            </p>
+          ) : threads.length === 1 ? (
+            <div className="text-[11px]">
+              {selectedThreadId === NEW_THREAD ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Starting a new thread.</span>
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setSelectedThreadId(threads[0].thread_id)}
+                  >
+                    Reply to existing instead
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">Replying to: {threads[0].subject}</div>
+                    <div className="text-muted-foreground">
+                      {threads[0].message_count} message{threads[0].message_count === 1 ? '' : 's'}
+                      {threads[0].latest_date ? ` · last ${formatDistanceToNowStrict(new Date(threads[0].latest_date))} ago` : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-primary hover:underline whitespace-nowrap"
+                    onClick={() => setSelectedThreadId(NEW_THREAD)}
+                  >
+                    Start new thread
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Select value={selectedThreadId} onValueChange={setSelectedThreadId}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Pick a thread" />
+              </SelectTrigger>
+              <SelectContent className="z-[10001] max-h-60">
+                {threads.map((t) => (
+                  <SelectItem key={t.thread_id} value={t.thread_id} className="text-xs">
+                    {t.subject}
+                    {t.latest_date ? ` · ${new Date(t.latest_date).toLocaleDateString()}` : ''}
+                    {` · ${t.message_count} msg`}
+                  </SelectItem>
+                ))}
+                <SelectItem value={NEW_THREAD} className="text-xs">+ Start new thread</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
         {/* Recipient */}
         <div className="space-y-1.5 mb-2">
           <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">To</Label>
