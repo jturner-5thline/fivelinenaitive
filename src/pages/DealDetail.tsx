@@ -545,6 +545,11 @@ export default function DealDetail() {
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const { pipelines } = usePipelineContext();
   const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
+  const { is5thLineUser } = useFeatureAccess('deal_status_stage_mirror');
+  // Human-in-the-loop sync between Deal Status (on-hold) and Deal Stage (on-hold).
+  // Restricted to 5th Line tenant only. The mirrored update only happens after
+  // explicit user confirmation, and is marked as user-confirmed in the audit log.
+  const [pendingMirror, setPendingMirror] = useState<null | { direction: 'status->stage' | 'stage->status' }>(null);
   const { hasPageAccess } = usePageAccessFlags();
   const hasDealSpaceAccess = hasPageAccess('deal_space');
   const hasDealManagementAccess = hasPageAccess('deal_management');
@@ -2588,6 +2593,52 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* 5th Line only — Status/Stage On Hold mirror confirmation */}
+      <AlertDialog open={!!pendingMirror} onOpenChange={(open) => { if (!open) setPendingMirror(null); }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingMirror?.direction === 'status->stage'
+                ? 'Also move Deal Stage to Deal Paused / On Hold?'
+                : 'Also move Deal Status to On Hold?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You changed{' '}
+              {pendingMirror?.direction === 'status->stage' ? 'Deal Status to On Hold' : 'Deal Stage to Deal Paused / On Hold'}.
+              Would you like to keep the matching field in sync? This will update the second field only after you confirm.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingMirror(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (!pendingMirror || !deal) { setPendingMirror(null); return; }
+              if (pendingMirror.direction === 'status->stage') {
+                updateDeal('stage', 'on-hold');
+                logActivity('deal_updated', 'Deal Stage mirrored to On Hold (user confirmed)', {
+                  field: 'stage',
+                  newValue: 'on-hold',
+                  system_assisted: true,
+                  user_confirmed: true,
+                  mirrored_from: 'status',
+                });
+              } else {
+                updateDeal('status', 'on-hold');
+                logActivity('deal_updated', 'Deal Status mirrored to On Hold (user confirmed)', {
+                  field: 'status',
+                  newValue: 'on-hold',
+                  system_assisted: true,
+                  user_confirmed: true,
+                  mirrored_from: 'stage',
+                });
+              }
+              setPendingMirror(null);
+            }}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="bg-transparent relative">
         <GlobalSaveBar isAnySaving={isAnySaving} />
 
@@ -2718,7 +2769,12 @@ export default function DealDetail() {
                 <div className="flex items-center gap-2 flex-wrap">
                 <Select
                   value={deal.status}
-                  onValueChange={(value: DealStatus) => updateDeal('status', value)}
+                  onValueChange={(value: DealStatus) => {
+                    updateDeal('status', value);
+                    if (is5thLineUser && value === 'on-hold' && deal.stage !== 'on-hold') {
+                      setPendingMirror({ direction: 'status->stage' });
+                    }
+                  }}
                 >
                   <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>
                     <SelectValue>
@@ -2762,7 +2818,12 @@ export default function DealDetail() {
                       return stagesForDeal.map((stage) => (
                         <DropdownMenuItem
                           key={stage.id}
-                          onClick={() => updateDeal('stage', stage.id)}
+                          onClick={() => {
+                            updateDeal('stage', stage.id);
+                            if (is5thLineUser && stage.id === 'on-hold' && deal.status !== 'on-hold') {
+                              setPendingMirror({ direction: 'stage->status' });
+                            }
+                          }}
                           className={cn("text-xs", deal.stage === stage.id && "bg-accent font-medium")}
                         >
                           {stage.label}
