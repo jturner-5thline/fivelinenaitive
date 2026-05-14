@@ -1884,6 +1884,12 @@ export default function Lenders() {
         onImport={importLenders}
       />
 
+      <LenderAnalyticsDialog
+        open={isAnalyticsOpen}
+        onOpenChange={setIsAnalyticsOpen}
+        lenders={masterLenders}
+      />
+
       <DuplicateLendersDialog
         open={isDuplicatesDialogOpen}
         onOpenChange={setIsDuplicatesDialogOpen}
