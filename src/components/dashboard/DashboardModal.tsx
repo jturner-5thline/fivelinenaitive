@@ -427,7 +427,13 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
 }
 
 const DASHBOARD_CSS = `
-.db-root { background: hsl(var(--background)); }
+/* Let the shared .popup-shell-surface background show through. */
+.db-root { background: transparent; }
+.db-root .db-tab-panel { background: transparent; }
+/* Strip any opaque page-level background from the embedded Analytics page
+   so the shared Deal-style modal surface is what users actually see. */
+.db-root .db-analytics-host > .bg-background,
+.db-root .db-analytics-host .bg-background { background-color: transparent !important; }
 /* Top padding bumped to 24px so the KPI strip sits inside the Insights spacing
    scale (p-6) and clears the floating close (×) button. */
 .db-r { background: transparent; padding: 24px 20px 20px; color: hsl(var(--foreground)); font-family: system-ui, sans-serif; min-width: 860px; }
