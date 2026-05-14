@@ -90,6 +90,19 @@ export interface TeamMember {
 }
 
 export interface DealWriteUpData {
+  // (interface continues below)
+}
+
+export interface ExistingDebtItem {
+  id: string;
+  lender: string;
+  amount: string; // formatted currency string e.g. "$3.00MM"
+  type: string;
+  maturityDate: string | null; // ISO yyyy-mm-dd or null
+  notes: string;
+}
+
+// (re-open extension via merge below not allowed) — instead, redeclare:
   companyName: string;
   companyUrl: string;
   linkedinUrl: string;
