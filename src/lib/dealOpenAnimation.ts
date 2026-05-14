@@ -80,3 +80,32 @@ export function consumeDealOpenOriginRect(dealId: string): Rect | null {
   lastOrigin = null;
   return o.rect;
 }
+
+/**
+ * Looks up the live bounding rect of the tile currently representing
+ * `dealId` in the DOM. Used by the overlay's close animation to collapse
+ * the panel back into the originating tile, even after the open-rect
+ * record has been consumed.
+ *
+ * Resolution order matches the click-capture listener:
+ *   1. `[data-deal-open-id="<id>"]` explicit opener marker
+ *   2. `a[href^="/deal/<id>"]` legacy anchor
+ *
+ * Returns null when the tile isn't on screen (filtered out, scrolled
+ * away, list view collapsed, etc.) so the caller can fall back to a
+ * generic shrink-out animation instead of jumping to a stale point.
+ */
+export function findDealTileRect(dealId: string): Rect | null {
+  if (typeof document === 'undefined') return null;
+  const selector =
+    `[data-deal-open-id="${CSS.escape(dealId)}"], a[href^="/deal/${CSS.escape(dealId)}"]`;
+  const el = document.querySelector(selector) as HTMLElement | null;
+  if (!el) return null;
+  const r = el.getBoundingClientRect();
+  // Ignore zero-size or off-screen elements (e.g. virtualized rows that
+  // unmounted while the overlay was open).
+  if (r.width <= 0 || r.height <= 0) return null;
+  if (r.bottom < 0 || r.top > window.innerHeight) return null;
+  if (r.right < 0 || r.left > window.innerWidth) return null;
+  return { left: r.left, top: r.top, width: r.width, height: r.height };
+}
