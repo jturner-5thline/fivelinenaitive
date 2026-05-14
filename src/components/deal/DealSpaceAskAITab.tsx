@@ -945,13 +945,6 @@ CRITICAL RULES:
             </Button>
           </div>
         </div>
-        {/* Info banner */}
-        <div className="flex items-start gap-2 mt-2 p-2 rounded-md bg-muted/40 border border-border/50">
-          <Info className="h-3.5 w-3.5 text-muted-foreground mt-0.5 flex-shrink-0" />
-          <p className="text-[10px] text-muted-foreground leading-relaxed">
-            Ask AI analyzes <strong>lender statuses</strong>, <strong>deal notes</strong>, <strong>data room documents</strong>, <strong>outstanding items</strong>, <strong>call transcripts</strong>, and <strong>deal details</strong> to answer your questions.
-          </p>
-        </div>
         {/* Active scope indicator */}
         {scope !== 'all' && (
           <div className="flex items-center gap-2 mt-2">
