@@ -574,6 +574,7 @@ CRITICAL RULES:
     setEmailDrafts([]);
     setActiveDraftIndex(0);
     setIsDraftDialogOpen(true);
+    setDraftProgress({ completed: 0, total: onlyLenders.length, failed: 0 });
     try {
       // Pre-fetch lender profiles so we can embed them directly in the prompt
       // (instead of the model guessing). Profiles are scoped to the workspace
@@ -582,110 +583,103 @@ CRITICAL RULES:
         ? await fetchLenderProfilesForDeal(dealId, onlyLenders)
         : new Map<string, LenderProfileSnapshot>();
 
-      const promptBase = buildDraftSubmissionPrompt(personalize, profiles);
-
-      const lenderConstraintBlock = onlyLenders.length
-        ? personalize
-          ? `\n\nIMPORTANT — RESTRICTED LENDER LIST:\n` +
-            `Generate drafts ONLY for the following lenders (one entry per name, exact match, no others):\n` +
-            onlyLenders.map((n) => `- ${n}`).join('\n')
-          : `\n\nNOTE: This single draft will be sent to the following ${onlyLenders.length} lender${onlyLenders.length === 1 ? '' : 's'} — keep the body neutral enough to broadcast.`
-        : '';
-      const { data, error } = await supabase.functions.invoke('deal-space-ai', {
-        body: {
-          messages: [{ role: 'user', content: promptBase + lenderConstraintBlock }],
-          dealId,
-          scope: 'all',
-        },
-      });
-      if (error) throw new Error(error.message || 'Failed to draft email');
-      if (data?.error) throw new Error(data.error);
-
-      const raw: string = data?.content || '';
-      // Strip code fences if model added them despite instructions.
-      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-      // Find first '{' and last '}' to be resilient to leading prose.
-      const start = cleaned.indexOf('{');
-      const end = cleaned.lastIndexOf('}');
-      const jsonText = start !== -1 && end !== -1 ? cleaned.slice(start, end + 1) : cleaned;
-
-      let parsed: { drafts?: Array<{ lenderName?: string; subject?: string; body?: string; personalizationRationale?: string }> } = {};
-      try {
-        parsed = JSON.parse(jsonText);
-      } catch {
-        throw new Error('AI response could not be parsed. Please try again.');
-      }
-
-      let drafts: EmailDraft[] = (parsed.drafts || [])
-        .filter((d) => d && (d.body || d.subject))
-        .map((d) => {
-          // Convert AI plain-text body (\n\n paragraphs) into HTML for the rich-text editor.
-          const plain = (d.body || '').trim();
-          const bodyHtml = plain
-            ? plain
-                .split(/\n{2,}/)
-                .map((para) =>
-                  `<p>${para
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n/g, '<br/>')}</p>`
-                )
-                .join('')
-            : '';
-          return {
-            lenderName: d.lenderName?.trim() || 'Lender',
-            to: '',
-            cc: '',
-            bcc: '',
-            subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
-            bodyHtml,
-            status: 'draft' as const,
-            personalizationRationale: (d.personalizationRationale || '').trim() || undefined,
-          } satisfies EmailDraft;
-        });
-
-      if (drafts.length === 0) {
-        throw new Error('No active lenders found to draft emails for.');
-      }
-
+      // ── Per-lender pipeline ───────────────────────────────────────────
+      // We run one AI call per lender (small concurrent batches) instead of
+      // one giant batched JSON response. This way:
+      //   • One malformed reply only kills that lender, not the whole run.
+      //   • The user sees partial successes immediately as drafts stream in.
+      //   • Each call has its own timeout + retry/reformat fallback.
+      // For broadcast mode we still issue one AI call and fan out the
+      // resulting template across the selected lenders.
       let filteredDrafts: EmailDraft[];
+
       if (!personalize) {
-        // Broadcast mode: take the first draft and fan it out to every
-        // selected lender so contact resolution + the per-lender pager in
-        // the modal still work as expected. No personalization rationale.
-        const template = drafts[0];
+        const template = await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
         filteredDrafts = onlyLenders.map((name) => ({
           ...template,
           lenderName: name,
-          // Subject template references the lender name, so refresh it for
-          // each fan-out target. We swap the LENDER INSTITUTION segment
-          // (after "|") with this lender's name when present, otherwise
-          // leave the subject untouched.
           subject: template.subject.includes('|')
             ? template.subject.replace(/\|[^|]+(?= -|$)/, `| ${name}`)
             : template.subject,
           personalizationRationale: undefined,
         }));
+        setDraftProgress({ completed: onlyLenders.length, total: onlyLenders.length, failed: 0 });
       } else {
-        // Hard filter as a safety net — even if the model ignores the
-        // restriction list, we never surface drafts for excluded lenders.
-        const allowedLowercase = new Set(onlyLenders.map((n) => n.toLowerCase().trim()));
-        filteredDrafts = drafts.filter((d) =>
-          allowedLowercase.has((d.lenderName || '').toLowerCase().trim())
-        );
-        if (filteredDrafts.length === 0) {
-          throw new Error('No drafts were generated for the selected lenders.');
+        // Personalized: per-lender concurrent generation with progress updates.
+        const collected: EmailDraft[] = new Array(onlyLenders.length);
+        let completed = 0;
+        let failed = 0;
+        const CONCURRENCY = 3;
+        let cursor = 0;
+
+        const worker = async () => {
+          while (cursor < onlyLenders.length) {
+            const idx = cursor++;
+            const name = onlyLenders[idx];
+            try {
+              const draft = await generateOneDraftPersonalized(
+                dealId,
+                name,
+                profiles,
+                buildDraftSubmissionPrompt,
+              );
+              collected[idx] = draft;
+            } catch (e) {
+              failed += 1;
+              const message = e instanceof Error ? e.message : 'Draft generation failed';
+              // Surface the failure as a placeholder draft so the user can
+              // see exactly which lender broke and retry it from the modal.
+              collected[idx] = {
+                lenderName: name,
+                to: '',
+                cc: '',
+                bcc: '',
+                subject: '',
+                bodyHtml: '',
+                status: 'failed',
+                errorMessage: message,
+              } satisfies EmailDraft;
+            } finally {
+              completed += 1;
+              setDraftProgress({ completed, total: onlyLenders.length, failed });
+              // Stream visible drafts in as soon as they arrive — keep them
+              // in the original lender order to match the pager.
+              setEmailDrafts(collected.filter(Boolean) as EmailDraft[]);
+            }
+          }
+        };
+
+        const workers = Array.from({ length: Math.min(CONCURRENCY, onlyLenders.length) }, worker);
+        await Promise.all(workers);
+
+        const successful = collected.filter((d) => d && d.status !== 'failed') as EmailDraft[];
+        if (successful.length === 0) {
+          throw new Error(
+            `Drafts could not be generated for any of the ${onlyLenders.length} selected lenders. Please retry.`,
+          );
         }
+        if (failed > 0) {
+          toast({
+            title: 'Some drafts failed',
+            description: `${successful.length} draft${successful.length === 1 ? '' : 's'} ready · ${failed} failed. Retry them individually from the dialog.`,
+          });
+        }
+        filteredDrafts = collected.filter(Boolean) as EmailDraft[];
       }
 
-      // ── Resolve each lender's primary contact email from the lender directory.
-      // Match `master_lenders` by case-insensitive name (RLS scopes to the user's
-      // workspace). For each match, pull `lender_contacts` and pre-populate the
-      // To field with the primary contact (or first contact, or legacy
-      // master_lenders.email as a final fallback).
-      const enriched = await enrichDraftsWithLenderContacts(filteredDrafts);
-      setEmailDrafts(enriched);
+      // Enrich only the actionable drafts with lender contacts. Failed
+      // placeholders are passed through untouched so the user still sees
+      // the lender + error in the pager.
+      const successfulOnly = filteredDrafts.filter((d) => d.status !== 'failed');
+      const failedPlaceholders = filteredDrafts.filter((d) => d.status === 'failed');
+      const enriched = await enrichDraftsWithLenderContacts(successfulOnly);
+      // Preserve original lender ordering when merging back.
+      const enrichedByName = new Map(enriched.map((d) => [d.lenderName.toLowerCase(), d]));
+      const merged = filteredDrafts.map((d) =>
+        d.status === 'failed' ? d : enrichedByName.get(d.lenderName.toLowerCase()) || d,
+      );
+      setEmailDrafts(merged);
+      void failedPlaceholders;
     } catch (err) {
       const rawMessage = err instanceof Error ? err.message : 'Failed to draft submission email';
       const lower = rawMessage.toLowerCase();
@@ -714,11 +708,26 @@ CRITICAL RULES:
       } else if (isAiCredits) {
         toast({ title: 'AI credits exhausted', description: 'Add credits to continue drafting.', variant: 'destructive' });
       } else {
-        toast({ title: 'Draft failed', description: rawMessage, variant: 'destructive' });
+        toast({
+          title: 'Draft failed',
+          description: rawMessage,
+          variant: 'destructive',
+          action: (
+            <ToastAction altText="Retry" onClick={() => { void handleDraftSubmission(); }}>
+              Retry
+            </ToastAction>
+          ),
+        });
       }
-      setIsDraftDialogOpen(false);
+      // Keep the dialog open if we already streamed at least one draft —
+      // the user shouldn't lose partial work or have to reselect lenders.
+      setEmailDrafts((prev) => {
+        if (prev.length === 0) setIsDraftDialogOpen(false);
+        return prev;
+      });
     } finally {
       setIsDraftingEmail(false);
+      setDraftProgress(null);
     }
   }, [dealId, buildDraftSubmissionPrompt]);
 
