@@ -61,14 +61,15 @@ export function DealSpaceConversationHistory({
 
   return (
     <div className="flex flex-col h-full">
-      {/* New Conversation Button */}
-      <Button 
+      {/* New Chat Button */}
+      <Button
         onClick={onNewConversation}
-        className="w-full mb-3"
+        variant="liquid-glass"
         size="sm"
+        className="w-full mb-3 gap-2"
       >
-        <Plus className="h-4 w-4 mr-2" />
-        New Conversation
+        <Plus className="h-4 w-4" />
+        New Chat
       </Button>
 
       {/* Conversations List */}
