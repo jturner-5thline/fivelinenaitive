@@ -1,5 +1,5 @@
 import { useState, lazy, Suspense } from 'react';
-import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
