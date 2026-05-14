@@ -4780,13 +4780,13 @@ export default function DealDetail() {
                     side="top"
                   >
                     <TabsList
-                      className="pointer-events-auto inline-flex h-9 items-end justify-start rounded-lg bg-background/70 backdrop-blur-xl p-1 gap-1 border border-white/10 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] max-w-full overflow-x-auto overflow-y-hidden scrollbar-none"
+                      className="pointer-events-auto inline-flex h-auto items-stretch justify-start rounded-xl bg-transparent p-0 gap-1.5 border-0 shadow-none max-w-full overflow-x-auto overflow-y-hidden scrollbar-none"
                       style={{ scrollbarWidth: 'none' }}
                     >
                       {hasDealSpaceAccess && !isSimplifiedDeal && (
                         <TabsTrigger
                           value="deal-space"
-                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3.5 h-9 text-xs rounded-lg font-medium text-white/70 border border-white/10 bg-gradient-to-b from-slate-800/85 to-slate-950/90 backdrop-blur-xl shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:text-white hover:from-slate-700/90 hover:to-slate-900/95 hover:border-white/20 transition-all data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white/25 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-600 data-[state=active]:via-slate-800 data-[state=active]:to-slate-950 data-[state=active]:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_0_0_hsl(var(--primary))_inset]"
                         >
                           <Sparkles className="h-3.5 w-3.5" />
                           Deal Space
@@ -4795,14 +4795,14 @@ export default function DealDetail() {
                       )}
                       <TabsTrigger
                         value="deal-info"
-                        className="whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                        className="whitespace-nowrap flex-shrink-0 px-3.5 h-9 text-xs rounded-lg font-medium text-white/70 border border-white/10 bg-gradient-to-b from-slate-800/85 to-slate-950/90 backdrop-blur-xl shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:text-white hover:from-slate-700/90 hover:to-slate-900/95 hover:border-white/20 transition-all data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white/25 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-600 data-[state=active]:via-slate-800 data-[state=active]:to-slate-950 data-[state=active]:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_0_0_hsl(var(--primary))_inset]"
                       >
                         Deal Info
                       </TabsTrigger>
                       {!isSimplifiedDeal && (
                         <TabsTrigger
                           value="lenders"
-                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3.5 h-9 text-xs rounded-lg font-medium text-white/70 border border-white/10 bg-gradient-to-b from-slate-800/85 to-slate-950/90 backdrop-blur-xl shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:text-white hover:from-slate-700/90 hover:to-slate-900/95 hover:border-white/20 transition-all data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white/25 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-600 data-[state=active]:via-slate-800 data-[state=active]:to-slate-950 data-[state=active]:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_0_0_hsl(var(--primary))_inset]"
                         >
                           Lenders
                           {deal.lenders && deal.lenders.length > 0 && (
@@ -4815,7 +4815,7 @@ export default function DealDetail() {
                       {!isSimplifiedDeal && hasDealManagementAccess && (
                         <TabsTrigger
                           value="deal-management"
-                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3.5 h-9 text-xs rounded-lg font-medium text-white/70 border border-white/10 bg-gradient-to-b from-slate-800/85 to-slate-950/90 backdrop-blur-xl shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:text-white hover:from-slate-700/90 hover:to-slate-900/95 hover:border-white/20 transition-all data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white/25 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-600 data-[state=active]:via-slate-800 data-[state=active]:to-slate-950 data-[state=active]:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_0_0_hsl(var(--primary))_inset]"
                         >
                           Management
                           {infoRequestActionCount > 0 && (
@@ -4828,7 +4828,7 @@ export default function DealDetail() {
                       {!isSimplifiedDeal && (
                         <TabsTrigger
                           value="deal-writeup"
-                          className="whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                          className="whitespace-nowrap flex-shrink-0 px-3.5 h-9 text-xs rounded-lg font-medium text-white/70 border border-white/10 bg-gradient-to-b from-slate-800/85 to-slate-950/90 backdrop-blur-xl shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:text-white hover:from-slate-700/90 hover:to-slate-900/95 hover:border-white/20 transition-all data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white/25 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-600 data-[state=active]:via-slate-800 data-[state=active]:to-slate-950 data-[state=active]:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_0_0_hsl(var(--primary))_inset]"
                         >
                           Write Up
                         </TabsTrigger>
@@ -4836,7 +4836,7 @@ export default function DealDetail() {
                       {!isSimplifiedDeal && (
                         <TabsTrigger
                           value="data-room"
-                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3.5 h-9 text-xs rounded-lg font-medium text-white/70 border border-white/10 bg-gradient-to-b from-slate-800/85 to-slate-950/90 backdrop-blur-xl shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:text-white hover:from-slate-700/90 hover:to-slate-900/95 hover:border-white/20 transition-all data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white/25 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-600 data-[state=active]:via-slate-800 data-[state=active]:to-slate-950 data-[state=active]:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_0_0_hsl(var(--primary))_inset]"
                         >
                           Data Room
                           {attachments.length > 0 && (
@@ -4848,7 +4848,7 @@ export default function DealDetail() {
                       )}
                       <TabsTrigger
                         value="activity-log"
-                        className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                        className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3.5 h-9 text-xs rounded-lg font-medium text-white/70 border border-white/10 bg-gradient-to-b from-slate-800/85 to-slate-950/90 backdrop-blur-xl shadow-[0_4px_14px_-4px_rgba(0,0,0,0.55),inset_0_1px_0_0_rgba(255,255,255,0.06)] hover:text-white hover:from-slate-700/90 hover:to-slate-900/95 hover:border-white/20 transition-all data-[state=active]:text-white data-[state=active]:font-semibold data-[state=active]:border-white/25 data-[state=active]:bg-gradient-to-b data-[state=active]:from-slate-600 data-[state=active]:via-slate-800 data-[state=active]:to-slate-950 data-[state=active]:shadow-[0_8px_22px_-6px_rgba(0,0,0,0.7),inset_0_1px_0_0_rgba(255,255,255,0.18),0_2px_0_0_hsl(var(--primary))_inset]"
                       >
                         <History className="h-3.5 w-3.5" />
                         Activity
