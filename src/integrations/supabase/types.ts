@@ -22084,6 +22084,7 @@ export type Database = {
         Args: { _company_id: string; _scope_type: string; _user_id: string }
         Returns: Database["public"]["Enums"]["data_access_scope"]
       }
+      hard_delete_deal: { Args: { _deal_id: string }; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
