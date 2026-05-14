@@ -13,7 +13,8 @@ export const NaitiveIcon = forwardRef<HTMLImageElement, NaitiveIconProps>(
       <img
         ref={ref}
         src={naitiveFavicon}
-        alt="AI"
+        alt=""
+        aria-hidden="true"
         className={cn('inline-block shrink-0', className)}
         {...props}
       />
