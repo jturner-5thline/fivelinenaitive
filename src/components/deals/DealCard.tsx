@@ -217,35 +217,9 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           via useFlagNotes(dealId), so it works without a parent handler.
           Color matches the toolbar's flag filter (red-400).
         */}
-        {showFlagIndicator && (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Flagged for discussion"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setIsFlagDialogOpen(true);
-                  }}
-                  className="absolute -top-1.5 -left-1.5 z-30 inline-flex h-[22px] w-[22px] items-center justify-center rounded-full bg-red-500/95 text-white ring-[3px] ring-background shadow-[0_0_0_1px_rgba(0,0,0,0.25),0_3px_10px_rgba(239,68,68,0.55)] hover:bg-red-500 transition-colors"
-                  style={{ transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
-                >
-                  <Flag className="h-3 w-3 fill-current" />
-                  {displayFlagCount > 1 && (
-                    <span className="absolute -bottom-1 -right-1 min-w-[14px] h-[14px] px-0.5 rounded-full bg-background text-red-400 text-[9px] font-bold flex items-center justify-center ring-1 ring-red-500/50 tabular-nums">
-                      {displayFlagCount > 9 ? '9+' : displayFlagCount}
-                    </span>
-                  )}
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Flagged for discussion — click to view / unflag</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        )}
+        {/* Corner flag indicator removed for cleaner tile design.
+            Flagged state is preserved in data and remains accessible via
+            the inline Flag action button in the card header. */}
 
         {/* Flag dialog — mounted whenever the card is, so the corner
             indicator can open it even if no onToggleFlag handler exists
