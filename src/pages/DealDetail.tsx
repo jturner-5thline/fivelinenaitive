@@ -538,7 +538,18 @@ export default function DealDetail() {
   const isEffectivelyExpanded = sidebarState === 'expanded' || isHovering;
   const highlightStale = searchParams.get('highlight') === 'stale';
   const deleteAction = searchParams.get('action') === 'delete';
-  const initialTab = searchParams.get('tab') as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
+  const isEmbeddedEarly = searchParams.get('embedded') === '1';
+  // When embedded in the deal-popup overlay, the synthetic location does
+  // not carry a `?tab=` param, so navigating between sibling deals via
+  // the prev/next arrows would always land back on Deal Info. Persist
+  // the last active tab to sessionStorage so the popup re-opens on the
+  // tab the user was just viewing.
+  const EMBEDDED_TAB_KEY = 'naitive:deal-overlay-active-tab';
+  const embeddedRememberedTab = (() => {
+    if (!isEmbeddedEarly || typeof window === 'undefined') return null;
+    try { return window.sessionStorage.getItem(EMBEDDED_TAB_KEY); } catch { return null; }
+  })();
+  const initialTab = (embeddedRememberedTab ?? searchParams.get('tab')) as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication' | null;
   const { getLenderNames, getLenderDetails } = useLenders();
   const { lenders: masterLenders, loading: masterLendersLoading, loadingMore: masterLendersLoadingMore } = useMasterLenders({ eagerAll: true });
   const { stages: configuredStages, substages: configuredSubstages, passReasons, getTrackingStatusConfig, stageGroups } = useLenderStages();
@@ -1012,6 +1023,10 @@ export default function DealDetail() {
         },
         { replace: true },
       );
+    } else {
+      // Embedded mode: persist the choice so prev/next deal navigation
+      // (which remounts DealDetail) lands on the same tab.
+      try { window.sessionStorage.setItem(EMBEDDED_TAB_KEY, newTab); } catch {}
     }
   }, [setSearchParams, isEmbedded]);
 
