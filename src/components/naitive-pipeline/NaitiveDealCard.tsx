@@ -12,6 +12,8 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const ICP_STYLES: Record<string, string> = {
   'Debt Advisory': 'bg-blue-500/15 text-blue-300 border-blue-500/30',
@@ -58,6 +60,8 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const { isAdmin } = useAdminRole();
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const canHardDelete = isAdmin && deleteConfirmText.trim().toUpperCase() === 'DELETE';
 
   const handleArchive = async () => {
     setWorking(true);
@@ -98,11 +102,12 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
   const handleDeleteForever = async () => {
     setWorking(true);
     try {
-      const { error } = await supabase.from('deals').delete().eq('id', deal.id);
+      const { error } = await supabase.rpc('hard_delete_deal', { _deal_id: deal.id });
       if (error) throw error;
       toast.success('Deal permanently deleted');
       setConfirmDeleteOpen(false);
       setConfirmOpen(false);
+      setDeleteConfirmText('');
       onDeleted?.();
     } catch (e: any) {
       console.error('[naitive] delete deal failed', e);
