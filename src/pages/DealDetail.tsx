@@ -572,6 +572,20 @@ export default function DealDetail() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
   const { profile } = useProfile();
+
+  // Allow other deal-scoped components (e.g. the Deal Space Ask AI tab) to
+  // open the Status Report Preview modal via a window event. This avoids
+  // prop-drilling through DealSpaceTab → DealSpaceAskAITab.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ dealId?: string }>).detail;
+      if (!detail?.dealId || detail.dealId === id) {
+        setShowStatusReportPreview(true);
+      }
+    };
+    window.addEventListener('naitive:open-status-report', handler as EventListener);
+    return () => window.removeEventListener('naitive:open-status-report', handler as EventListener);
+  }, [id]);
   const { isAdmin } = useAdminRole();
   const { getLenderSummary } = useLenderAttachmentsSummary();
   const { linkedRecordings: claapLinkedRecordings } = useDealClaapRecordings(id || '');

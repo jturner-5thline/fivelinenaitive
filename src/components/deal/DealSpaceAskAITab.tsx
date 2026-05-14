@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Settings2, Database, Save } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Settings2, Database, Save, FileBarChart } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -18,6 +18,7 @@ import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
 import { useDealSpaceDocuments, type DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 import { useDealAiInstructions } from '@/hooks/useDealAiInstructions';
+import { useDealContextSummary } from '@/hooks/useDealContextSummary';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -309,6 +310,16 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
+  // Lender count gates the "Generate Status Report" quick action — the report
+  // is only meaningful once at least one lender has been added to the deal.
+  const { summary: dealContextSummary } = useDealContextSummary(dealId);
+  const hasLenders = (dealContextSummary?.lenderCounts.total ?? 0) > 0;
+
+  const openStatusReport = useCallback(() => {
+    window.dispatchEvent(
+      new CustomEvent('naitive:open-status-report', { detail: { dealId } }),
+    );
+  }, [dealId]);
   const {
     messages, sendMessage, clearMessages, isLoading: isAILoading,
     setMessages, scope, setScope,
@@ -1002,6 +1013,15 @@ CRITICAL RULES:
                     )}
                     {isDraftingEmail ? 'Drafting submission email…' : 'Draft Submission Email'}
                   </button>
+                  {hasLenders && (
+                    <button
+                      onClick={openStatusReport}
+                      className="w-full text-left text-sm p-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-colors flex items-center gap-2.5 font-medium text-primary"
+                    >
+                      <FileBarChart className="h-4 w-4 flex-shrink-0" />
+                      Generate Status Report
+                    </button>
+                  )}
                   {suggestedQuestions.map((q, i) => (
                     <button
                       key={i}
@@ -1097,6 +1117,20 @@ CRITICAL RULES:
               </div>
             )}
           </ScrollArea>
+
+          {hasLenders && (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={openStatusReport}
+                className="gap-1.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <FileBarChart className="h-3.5 w-3.5" />
+                Generate Status Report
+              </Button>
+            </div>
+          )}
 
           <div className="flex gap-2 items-end">
             <Textarea
