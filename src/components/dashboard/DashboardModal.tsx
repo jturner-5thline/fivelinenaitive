@@ -200,7 +200,8 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="popup-shell-surface flex flex-col w-[min(1100px,calc(100vw-32px))] max-w-[min(1100px,calc(100vw-32px))] h-[calc(100vh-32px)] max-h-[calc(100vh-32px)] min-h-0 p-0 gap-0 overflow-hidden border-transparent box-border"
+        className="popup-shell-surface p-0 gap-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20 h-[92vh] sm:h-[92vh] w-[94vw] max-w-none sm:max-w-none max-h-none min-h-0 overflow-hidden box-border"
+        style={{ width: '94vw' }}
         overlayClassName="bg-black/80"
         aria-label="Deal Pipeline"
       >
