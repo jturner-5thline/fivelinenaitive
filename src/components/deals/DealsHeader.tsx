@@ -17,6 +17,9 @@ import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
+import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
@@ -64,6 +67,8 @@ export function DealsHeader() {
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isTasksListOpen, setIsTasksListOpen] = useState(false);
+  const [isActionQueueOpen, setIsActionQueueOpen] = useState(false);
+  const { data: actionQueueItems = [], refetch: refetchActionQueue } = useAiActionQueue();
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
@@ -139,7 +144,7 @@ export function DealsHeader() {
             {[
               { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
               { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
-              { label: 'Action Queue', Icon: Inbox, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
+              { label: 'Action Queue', Icon: Inbox, isOpen: isActionQueueOpen, onClick: () => { setIsActionQueueOpen(true); refetchActionQueue(); } },
               { label: 'Tasks', Icon: ListChecks, isOpen: isTasksListOpen, onClick: () => setIsTasksListOpen(true) },
               { label: 'Deal Rundown', Icon: ClipboardList, isOpen: isDealRundownOpen, onClick: () => setIsDealRundownOpen(true) },
               ...(isFifthLine
@@ -247,6 +252,14 @@ export function DealsHeader() {
           excludeTabs={['financial']}
         />
       )}
+      <Dialog open={isActionQueueOpen} onOpenChange={setIsActionQueueOpen}>
+        <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Action Queue</DialogTitle>
+          </DialogHeader>
+          <ActionQueuePanel items={actionQueueItems} onClose={() => setIsActionQueueOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </header>
   );
 }
