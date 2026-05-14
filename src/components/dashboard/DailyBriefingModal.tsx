@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo, lazy, Suspense } from 'react';
 import { format, formatDistanceToNow, isPast, isToday } from 'date-fns';
+import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -51,6 +52,7 @@ const PipelineMemoView = lazy(() =>
 import { useAuth } from '@/contexts/AuthContext';
 import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useProfile } from '@/hooks/useProfile';
 import type { Deal } from '@/types/deal';
 import { RecentPipelineActivitySection } from './briefingPrimitives';
 import { formatSlug } from '@/utils/dealTypeLabels';
