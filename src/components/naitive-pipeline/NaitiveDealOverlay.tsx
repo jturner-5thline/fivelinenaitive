@@ -4,7 +4,7 @@ import { Routes, Route, useResolvedPath } from 'react-router-dom';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { Button } from '@/components/ui/button';
-import { X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   consumeDealOpenOriginRect,
