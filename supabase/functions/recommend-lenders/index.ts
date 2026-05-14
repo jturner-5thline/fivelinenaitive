@@ -95,14 +95,14 @@ serve(async (req) => {
     const [{ data: dsDocs }, { data: vdrDocs }] = await Promise.all([
       supabase
         .from("deal_space_documents")
-        .select("filename, folder_path, updated_at")
+        .select("name, created_at")
         .eq("deal_id", dealId)
-        .is("deleted_at", null)
         .limit(50),
       supabase
         .from("vdr_documents")
-        .select("name, updated_at")
+        .select("filename, updated_at")
         .eq("deal_id", dealId)
+        .is("deleted_at", null)
         .limit(50),
     ]);
 
@@ -230,8 +230,8 @@ serve(async (req) => {
       narrative: [deal.narrative, writeup?.description, writeup?.company_highlights, writeup?.team, writeup?.customer_base]
         .filter(Boolean).join("\n\n").slice(0, 4000),
       dataroomDocs: [
-        ...(dsDocs ?? []).map((d: any) => d.filename),
-        ...(vdrDocs ?? []).map((d: any) => d.name),
+        ...(dsDocs ?? []).map((d: any) => d.name),
+        ...(vdrDocs ?? []).map((d: any) => d.filename),
       ].slice(0, 30),
       dataroomDocCount: (dsDocs?.length || 0) + (vdrDocs?.length || 0),
     };
