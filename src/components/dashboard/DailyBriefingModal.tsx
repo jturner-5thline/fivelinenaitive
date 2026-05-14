@@ -1598,10 +1598,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
       <DialogContent
         className={cn(
           useCarouselSwipeClass(),
-          'w-[min(95vw,1600px)] max-w-[95vw] h-[min(92dvh,1000px)] max-h-[92dvh] p-0 overflow-hidden rounded-2xl',
-          'bg-background/60 backdrop-blur-3xl',
-          'border-transparent glass-border-soft',
-          'shadow-[0_32px_80px_-20px_hsl(var(--primary)/0.25),inset_0_1px_0_hsl(0_0%_100%/0.04)]',
+          'popup-shell-surface w-[min(95vw,1600px)] max-w-[95vw] h-[min(92dvh,1000px)] max-h-[92dvh] p-0 overflow-hidden rounded-2xl border-transparent',
         )}
         overlayClassName="bg-black/80"
       >
