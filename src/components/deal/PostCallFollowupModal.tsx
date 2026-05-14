@@ -147,6 +147,16 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
   const [transcriptText, setTranscriptText] = useState('');
   const [transcriptFilename, setTranscriptFilename] = useState('');
   const [isReading, setIsReading] = useState(false);
+  // Intake mode + source typing — distinguishes uploaded files from pasted text
+  // so downstream UI/telemetry can tell them apart. Existing upload path
+  // remains the default and is unchanged.
+  const [intakeMode, setIntakeMode] = useState<'upload' | 'paste'>('upload');
+  const [sourceType, setSourceType] = useState<'file_upload' | 'pasted_text' | null>(null);
+  const [pasteDraft, setPasteDraft] = useState('');
+  const [pasteError, setPasteError] = useState<string | null>(null);
+  // Soft cap on pasted transcripts — keeps payloads under the edge function
+  // request budget. Files bypass this since they're already validated above.
+  const PASTE_MAX_CHARS = 200_000;
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [drafts, setDrafts] = useState<DraftResponse | null>(null);
@@ -223,6 +233,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
     const finish = (text: string) => {
       setTranscriptText(text);
       setTranscriptFilename(file.name);
+      setSourceType('file_upload');
       const guess = parseTranscriptFilename(file.name);
       if (guess.company && !companyName) setCompanyName(guess.company);
       if (guess.lender && !lenderName) setLenderName(guess.lender);
@@ -287,6 +298,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
       const { data, error } = await supabase.functions.invoke('post-call-followup-drafts', {
         body: {
           transcript: transcriptText,
+          source_type: sourceType ?? 'file_upload',
           company_name: companyName,
           lender_name: lenderName,
           client_first_name: clientFirst,
@@ -306,12 +318,34 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
     } finally {
       setIsGenerating(false);
     }
-  }, [transcriptText, companyName, lenderName, clientFirst, lenderFirst, managerName]);
+  }, [transcriptText, sourceType, companyName, lenderName, clientFirst, lenderFirst, managerName]);
 
   const clearTranscript = useCallback(() => {
     setTranscriptText('');
     setTranscriptFilename('');
+    setSourceType(null);
   }, []);
+
+  // Accept the pasted draft as the active transcript. Mirrors handleFile's
+  // contract (sets transcriptText + a synthetic "filename" label) so every
+  // downstream consumer (generate button, char counter, clear action,
+  // edge function payload) keeps working without branches.
+  const handleUsePastedText = useCallback(() => {
+    const trimmed = pasteDraft.trim();
+    if (!trimmed) {
+      setPasteError('No transcript text entered.');
+      return;
+    }
+    if (trimmed.length > PASTE_MAX_CHARS) {
+      setPasteError('This transcript is too long. Split it into smaller sections.');
+      return;
+    }
+    setPasteError(null);
+    setTranscriptText(trimmed);
+    setTranscriptFilename('Pasted transcript');
+    setSourceType('pasted_text');
+    toast({ title: 'Transcript ready', description: 'Pasted text accepted — generate when ready.' });
+  }, [pasteDraft]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
