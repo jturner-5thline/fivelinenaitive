@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { format, startOfDay, endOfDay, parseISO, isBefore, isAfter } from 'date-fns';
 import {
-  Mail, Users, Calendar as CalendarIcon, Loader2, X, Send, ListPlus,
+  Mail, Users, Calendar as CalendarIcon, Loader2, ListPlus,
   PanelRightClose, Sparkles, StickyNote, Video, Plus, Briefcase, ExternalLink, ChevronRight,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
