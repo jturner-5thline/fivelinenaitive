@@ -3064,6 +3064,7 @@ export default function DealDetail() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="flex-1 flex flex-col">
                                   <CardContent className="pt-0 flex-1">
+                                    <Suspense fallback={null}>
                                     <DealResearchPanel
                                       dealId={deal.id}
                                       companyName={deal.company}
@@ -3072,6 +3073,7 @@ export default function DealDetail() {
                                       dealValue={deal.value}
                                       lenders={deal.lenders?.map(l => ({ name: l.name })) || []}
                                     />
+                                    </Suspense>
                                   </CardContent>
                                 </CollapsibleContent>
                               </Card>
@@ -3098,6 +3100,7 @@ export default function DealDetail() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="flex-1 flex flex-col">
                                   <CardContent className="pt-0 flex-1">
+                                    <Suspense fallback={null}>
                                     <DealAssistantPanel
                                       dealContext={{
                                         company: deal.company,
@@ -3110,6 +3113,7 @@ export default function DealDetail() {
                                         notes: deal.notes,
                                       }}
                                     />
+                                    </Suspense>
                                   </CardContent>
                                 </CollapsibleContent>
                               </Card>
