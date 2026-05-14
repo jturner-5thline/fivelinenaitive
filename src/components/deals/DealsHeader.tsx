@@ -68,12 +68,12 @@ export function DealsHeader() {
         from the page beneath it. Slightly wider and more opaque than
         the Ask naitive AI bar so it reads as the primary global surface.
       */}
-      <div className="pt-2 px-3 sm:px-4 pointer-events-none">
+      <div className="pt-2 px-2 sm:px-4 pointer-events-none">
         <div
-          className="pointer-events-auto mx-auto relative flex h-11 items-center gap-1 sm:gap-2 px-3 sm:px-4 min-w-0"
+          className="pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0"
           style={{
-            width: 'min(560px, calc(100vw - 24px))',
-            borderRadius: 22,
+            width: 'min(560px, calc(100vw - 16px))',
+            borderRadius: 20,
             background: 'rgba(16, 21, 34, 0.82)',
             backdropFilter: 'blur(18px) saturate(135%)',
             WebkitBackdropFilter: 'blur(18px) saturate(135%)',
@@ -85,7 +85,7 @@ export function DealsHeader() {
           <div className="flex items-center shrink-0"><DemoModeBadge /></div>
 
           {/* Primary quick-access nav — centered absolutely so trailing utilities don't shift it */}
-          <nav className="hidden md:flex items-center gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <nav className="flex items-center gap-0.5 sm:gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {[
               ...(isFifthLine
                 ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
@@ -101,13 +101,13 @@ export function DealsHeader() {
                     type="button"
                     aria-label={label}
                     onClick={onClick}
-                    className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+                    className={`inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors ${
                       isOpen
                         ? 'bg-blue-400/15 text-blue-400'
                         : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
                     }`}
                   >
-                    <Icon className="h-[27px] w-[27px]" />
+                    <Icon className="h-5 w-5 sm:h-[27px] sm:w-[27px]" />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>{label}</TooltipContent>
