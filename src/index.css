@@ -612,6 +612,37 @@
 }
 
 @keyframes mapping-flash {
+
+/* Origin-anchored dialog expand/collapse: a popup grows from the icon
+   that triggered it (--origin-dx / --origin-dy capture the offset from
+   the viewport center to that icon's center) and collapses back into it. */
+@keyframes origin-zoom-in {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%)
+               translate(var(--origin-dx, 0px), var(--origin-dy, 0px))
+               scale(0.04);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+  }
+}
+@keyframes origin-zoom-out {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, -50%) translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%)
+               translate(var(--origin-dx, 0px), var(--origin-dy, 0px))
+               scale(0.04);
+  }
+}
   0% { background-color: hsl(142 76% 36% / 0.25); }
   100% { background-color: transparent; }
 }
