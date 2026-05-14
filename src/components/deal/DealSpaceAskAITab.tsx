@@ -33,6 +33,7 @@ import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
+import { PostCallFollowupModal } from './PostCallFollowupModal';
 import {
   fetchLenderProfilesForDeal,
   renderLenderProfileBlock,
@@ -359,6 +360,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [isPostCallModalOpen, setIsPostCallModalOpen] = useState(false);
   // ── Pre-flight review step: lets the user exclude specific lenders
   // (auto-skipping anyone already passed) before drafts are generated.
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -1035,6 +1037,15 @@ CRITICAL RULES:
 
                   <button
                     type="button"
+                    onClick={() => setIsPostCallModalOpen(true)}
+                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 font-medium text-primary"
+                  >
+                    <Mail className="h-4 w-4 flex-shrink-0" />
+                    Post-Call Follow-Up Emails
+                  </button>
+
+                  <button
+                    type="button"
                     onClick={() => onQuickPromptClick(lenderMemoQuickPrompt)}
                     className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
                   >
@@ -1201,6 +1212,12 @@ CRITICAL RULES:
         isOpen={citedDoc !== null}
         onClose={() => setCitedDoc(null)}
         onDownload={handleDownloadCitedDocument}
+      />
+
+      <PostCallFollowupModal
+        open={isPostCallModalOpen}
+        onOpenChange={setIsPostCallModalOpen}
+        dealId={dealId}
       />
     </Card>
   );
