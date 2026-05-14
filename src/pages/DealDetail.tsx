@@ -2763,20 +2763,27 @@ export default function DealDetail() {
                     displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
                   {!isDemoAccount && <BetaBadge featureKey="page_deal_detail" />}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-10 w-10 relative ${activeFlagCount > 0 ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
-                    title={activeFlagCount > 0 ? `${activeFlagCount} flag${activeFlagCount > 1 ? 's' : ''} for discussion` : 'Flag for discussion'}
-                    onClick={() => setIsFlagDialogOpen(true)}
-                  >
-                    <Flag className={`h-5 w-5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
-                    {activeFlagCount > 1 && (
-                      <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
-                        {activeFlagCount}
-                      </span>
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={activeFlagCount > 0 ? `${activeFlagCount} flag${activeFlagCount > 1 ? 's' : ''} for discussion` : 'Flag for discussion'}
+                        className={`h-10 w-10 relative ${activeFlagCount > 0 ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+                        onClick={() => setIsFlagDialogOpen(true)}
+                      >
+                        <Flag className={`h-5 w-5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
+                        {activeFlagCount > 1 && (
+                          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
+                            {activeFlagCount}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {activeFlagCount > 0 ? `${activeFlagCount} flag${activeFlagCount > 1 ? 's' : ''} for discussion` : 'Flag for discussion'}
+                    </TooltipContent>
+                  </Tooltip>
                   <FlagNoteDialog
                     dealId={deal.id}
                     dealName={deal.company}
@@ -2986,9 +2993,14 @@ export default function DealDetail() {
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Status Report">
-                          <FileText className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" aria-label="Status Report" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]">
+                              <FileText className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">Status Report</TooltipContent>
+                        </Tooltip>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-popover">
                         <DropdownMenuItem onClick={() => setShowStatusReportPreview(true)}>
@@ -3006,9 +3018,14 @@ export default function DealDetail() {
                     </DropdownMenu>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Export">
-                          <Download className="h-4 w-4" />
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="outline" size="icon" aria-label="Export" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]">
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom">Export</TooltipContent>
+                        </Tooltip>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="bg-popover">
                         <DropdownMenuItem onClick={() => {
@@ -3077,14 +3094,20 @@ export default function DealDetail() {
                   )}
 
                   <div className="flex justify-end">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground"
-                      onClick={() => setIsPanelReorderDialogOpen(true)}
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Reorder panels"
+                          className="h-8 w-8 text-muted-foreground"
+                          onClick={() => setIsPanelReorderDialogOpen(true)}
+                        >
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Reorder panels</TooltipContent>
+                    </Tooltip>
                   </div>
 
                   {/* Panels rendered in custom order - only visible panels */}
