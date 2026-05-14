@@ -72,7 +72,7 @@ serve(async (req) => {
     // Pull the deal (RLS scoped)
     const { data: deal, error: dealErr } = await supabase
       .from("deals")
-      .select("id, company, value, stage, status, company_id, user_id, business_model, deal_type, narrative, engagement_type, geography, deal_class")
+      .select("id, company, value, stage, status, company_id, user_id, business_model, deal_type, narrative, engagement_type, deal_class")
       .eq("id", dealId)
       .maybeSingle();
     if (dealErr || !deal) {
@@ -206,7 +206,7 @@ serve(async (req) => {
       value: overriddenValue,
       dealTypes: sufficiency.dealTypes,
       industry: overrideIndustry || writeup?.industry || deal.business_model || null,
-      location: overrideGeo || writeup?.location || deal.geography || null,
+      location: overrideGeo || writeup?.location || null,
       engagementType: deal.engagement_type || null,
       dealClass: deal.deal_class || null,
       sponsorship: writeup?.sponsorship || null,
