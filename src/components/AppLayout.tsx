@@ -74,7 +74,7 @@ function MainContent({
         }}
       />
       <DealsHeader />
-      <div className="relative z-10 flex-1 flex flex-col min-h-full pt-[60px]">
+      <div className="relative z-10 flex-1 flex flex-col min-h-full pt-[68px]">
         {children}
         {showCopilotBar && <CopilotToggleButton />}
       </div>
