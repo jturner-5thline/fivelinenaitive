@@ -609,3 +609,203 @@ export function EndOfDayTab({
     </div>
   );
 }
+
+// ─────────────────────────────────────────────────────────────
+// Contextual right sidebar shown inside the End of Day tab
+// when an item is selected. Lives inside the popup shell — not
+// a top-level modal — and uses the same Liquid Glass surface.
+// ─────────────────────────────────────────────────────────────
+function EodContextSidebar({
+  event,
+  note,
+  onNoteChange,
+  onClose,
+  onCreateFollowUp,
+  onCreateDeal,
+}: {
+  event: CalendarEvent;
+  note: string;
+  onNoteChange: (v: string) => void;
+  onClose: () => void;
+  onCreateFollowUp: () => void;
+  onCreateDeal: () => void;
+}) {
+  const attendees = event.attendees || [];
+  const externals = attendees.filter((a) => !a.self);
+  const claapLinks = useMemo(() => {
+    const text = `${event.description || ''} ${event.location || ''}`;
+    const re = /https?:\/\/(?:www\.)?claap\.io\/[^\s)]+/gi;
+    return Array.from(new Set((text.match(re) || []).map((s) => s.trim())));
+  }, [event.description, event.location]);
+
+  const insightLines = useMemo(() => {
+    const lines: string[] = [];
+    if (externals.length > 0) {
+      lines.push(
+        `${externals.length} external attendee${externals.length === 1 ? '' : 's'} expected.`,
+      );
+    } else if (attendees.length > 0) {
+      lines.push('Internal-only meeting.');
+    }
+    if (event.hangout_link) lines.push('Video call link is attached.');
+    if (claapLinks.length > 0) lines.push('Linked Claap recording available.');
+    if (lines.length === 0) lines.push('No additional context available yet.');
+    return lines;
+  }, [externals.length, attendees.length, event.hangout_link, claapLinks.length]);
+
+  return (
+    <aside
+      className={cn(
+        'hidden lg:flex flex-col shrink-0 w-[380px] xl:w-[420px] max-h-full',
+        'rounded-xl border border-white/10 bg-background/60 backdrop-blur-xl',
+        'animate-in slide-in-from-right-4 fade-in duration-200',
+      )}
+      style={{ boxShadow: '0 24px 48px -24px hsl(var(--background) / 0.6)' }}
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between gap-2 px-4 pt-3 pb-2 border-b border-white/10">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-widest text-muted-foreground/70 font-semibold">
+            Meeting context
+          </p>
+          <h3 className="text-sm font-semibold text-foreground truncate mt-0.5">
+            {event.summary || '(No title)'}
+          </h3>
+          <p className="text-[11px] text-muted-foreground/80 mt-0.5">
+            {event.all_day
+              ? 'All day'
+              : `${fmtTime(event.start, false)}${event.end ? ` – ${fmtTime(event.end, false)}` : ''}`}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+          onClick={onClose}
+          aria-label="Close context panel"
+        >
+          <PanelRightClose className="h-4 w-4" />
+        </Button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4">
+        {/* Insights */}
+        <section>
+          <div className="flex items-center gap-1.5 mb-2">
+            <Sparkles className="h-3 w-3 text-primary" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+              Insights
+            </span>
+          </div>
+          <ul className="space-y-1">
+            {insightLines.map((l, i) => (
+              <li key={i} className="text-xs text-foreground/85 leading-snug flex gap-1.5">
+                <span className="text-primary/60 mt-1.5 h-1 w-1 rounded-full bg-primary/60 shrink-0" />
+                <span>{l}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        {/* Notes */}
+        <section>
+          <div className="flex items-center gap-1.5 mb-2">
+            <StickyNote className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+              Notes
+            </span>
+          </div>
+          <Textarea
+            value={note}
+            onChange={(e) => onNoteChange(e.target.value)}
+            placeholder="Jot a quick takeaway from this meeting…"
+            className="min-h-[110px] text-xs resize-y bg-white/[0.02]"
+          />
+          <p className="text-[10px] text-muted-foreground/50 mt-1">
+            Notes stay with you for this session.
+          </p>
+        </section>
+
+        {/* Linked Claap */}
+        <section>
+          <div className="flex items-center gap-1.5 mb-2">
+            <Video className="h-3 w-3 text-muted-foreground" />
+            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+              Linked Claap
+            </span>
+          </div>
+          {claapLinks.length === 0 ? (
+            <div className="text-[11px] text-muted-foreground/60 italic rounded-md border border-dashed border-white/10 px-3 py-2">
+              No Claap recording linked to this meeting.
+            </div>
+          ) : (
+            <ul className="space-y-1.5">
+              {claapLinks.map((url) => (
+                <li key={url}>
+                  <a
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1.5 text-xs text-primary hover:underline truncate"
+                  >
+                    <ExternalLink className="h-3 w-3 shrink-0" />
+                    <span className="truncate">{url.replace(/^https?:\/\/(www\.)?/, '')}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Attendees quick view */}
+        {attendees.length > 0 && (
+          <section>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Users className="h-3 w-3 text-muted-foreground" />
+              <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
+                Attendees ({attendees.length})
+              </span>
+            </div>
+            <ul className="space-y-1">
+              {attendees.slice(0, 6).map((a, i) => (
+                <li key={i} className="text-[11px] text-foreground/80 truncate">
+                  {a.display_name || a.email}
+                </li>
+              ))}
+              {attendees.length > 6 && (
+                <li className="text-[10px] text-muted-foreground/60">
+                  +{attendees.length - 6} more
+                </li>
+              )}
+            </ul>
+          </section>
+        )}
+      </div>
+
+      {/* Quick actions */}
+      <div className="border-t border-white/10 px-3 py-2.5 space-y-1.5">
+        <Button
+          type="button"
+          size="sm"
+          variant="secondary"
+          className="w-full justify-start h-8 text-xs gap-2"
+          onClick={onCreateFollowUp}
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Create task
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="w-full justify-start h-8 text-xs gap-2"
+          onClick={onCreateDeal}
+        >
+          <Briefcase className="h-3.5 w-3.5" />
+          Create deal
+        </Button>
+      </div>
+    </aside>
+  );
+}
