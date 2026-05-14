@@ -1809,7 +1809,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                     />
                   )}
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
-                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} briefingType={briefingType} />}
+                  {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} targetUserId={targetUserId} briefingType={briefingType} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
                   {activeTab === 'end_of_day' && (
                     <EndOfDayTab
