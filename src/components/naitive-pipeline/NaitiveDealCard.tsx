@@ -123,8 +123,11 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
           <button
             type="button"
             data-no-card-open
+            onPointerDown={(e) => { e.stopPropagation(); }}
+            onMouseDown={(e) => { e.stopPropagation(); }}
             onClick={(e) => { e.stopPropagation(); e.preventDefault(); setConfirmOpen(true); }}
-            className="absolute right-10 top-2 z-20 inline-flex h-7 w-7 items-center justify-center rounded-md border border-border/60 bg-background/70 text-muted-foreground shadow-sm opacity-0 transition-all hover:bg-destructive/10 hover:text-destructive hover:border-destructive/40 focus-visible:opacity-100 group-hover:opacity-100"
+            style={{ zIndex: 30 }}
+            className="absolute right-10 top-1.5 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border/60 bg-background/80 text-muted-foreground shadow-sm opacity-60 pointer-events-auto transition-all hover:opacity-100 hover:bg-destructive/15 hover:text-destructive hover:border-destructive/50 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive/60 group-hover:opacity-100"
             aria-label={`Delete ${deal.company || 'deal'}`}
             title="Delete deal"
           >
