@@ -431,3 +431,17 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     </TableRow>
   );
 }
+
+/**
+ * Memoized export — same rationale as DealCard. Without this every keystroke
+ * in the toolbar search re-renders every row in the deals list.
+ */
+export const DealListRow = memo(DealListRowImpl, (prev, next) => {
+  return (
+    prev.deal === next.deal &&
+    prev.flexEngagement === next.flexEngagement &&
+    prev.notificationCount === next.notificationCount &&
+    prev.columnOrder === next.columnOrder &&
+    prev.isSelected === next.isSelected
+  );
+});
