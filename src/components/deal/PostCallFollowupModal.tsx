@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Upload, Copy, Check, FileText, X, Mail } from 'lucide-react';
+import { Loader2, Upload, Copy, Check, FileText, X, Mail, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { DraftAndSendDialog, type DraftAndSendInitial } from './DraftAndSendDialog';
 
 interface PostCallFollowupModalProps {
   open: boolean;
@@ -81,11 +82,13 @@ function EmailPane({
   recipient,
   draft,
   onChange,
+  onDraftAndSend,
 }: {
   title: string;
   recipient: string;
   draft: DraftEmail;
   onChange: (next: DraftEmail) => void;
+  onDraftAndSend: () => void;
 }) {
   const fullText = useMemo(
     () => `Subject: ${draft.subject}\n\n${draft.body}`,
@@ -98,7 +101,18 @@ function EmailPane({
           <div className="text-xs uppercase tracking-wide text-muted-foreground">{title}</div>
           <div className="text-sm font-medium truncate">{recipient}</div>
         </div>
-        <CopyButton getText={() => fullText} />
+        <div className="flex items-center gap-1.5">
+          <CopyButton getText={() => fullText} />
+          <Button
+            type="button"
+            size="sm"
+            onClick={onDraftAndSend}
+            className="h-7 px-2 text-xs"
+          >
+            <Send className="h-3.5 w-3.5 mr-1" />
+            Draft &amp; Send
+          </Button>
+        </div>
       </div>
       <div className="p-3 space-y-2 flex-1 min-h-0 flex flex-col">
         <div>
@@ -135,6 +149,11 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [drafts, setDrafts] = useState<DraftResponse | null>(null);
+  const [contactEmail, setContactEmail] = useState('');
+  const [composer, setComposer] = useState<{
+    initial: DraftAndSendInitial;
+    label: string;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -146,7 +165,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
       try {
         const { data: deal } = await supabase
           .from('deals')
-          .select('company, manager, deal_owner, contact')
+          .select('company, manager, deal_owner, contact, contactEmail')
           .eq('id', dealId)
           .maybeSingle();
         if (cancelled || !deal) return;
@@ -157,6 +176,8 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
           const first = String(deal.contact).trim().split(/\s+/)[0];
           if (first) setClientFirst(first);
         }
+        const ce = (deal as any).contactEmail as string | undefined;
+        if (ce) setContactEmail(ce);
       } catch {
         // best-effort prefill only
       }
@@ -434,12 +455,28 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
                   recipient={`To: ${clientFirst || 'Client'}${companyName ? ` · ${companyName}` : ''}`}
                   draft={drafts.client_email}
                   onChange={(next) => setDrafts({ ...drafts, client_email: next })}
+                  onDraftAndSend={() => setComposer({
+                    label: 'Client follow-up',
+                    initial: {
+                      to: contactEmail ? [contactEmail] : [],
+                      subject: drafts.client_email.subject,
+                      body: drafts.client_email.body,
+                    },
+                  })}
                 />
                 <EmailPane
                   title="Lender Email"
                   recipient={`To: ${lenderFirst || 'Lender'}${lenderName ? ` · ${lenderName}` : ''}`}
                   draft={drafts.lender_email}
                   onChange={(next) => setDrafts({ ...drafts, lender_email: next })}
+                  onDraftAndSend={() => setComposer({
+                    label: 'Lender follow-up',
+                    initial: {
+                      to: [],
+                      subject: drafts.lender_email.subject,
+                      body: drafts.lender_email.body,
+                    },
+                  })}
                 />
               </div>
             ) : (
@@ -454,6 +491,12 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
           </div>
         </div>
       </DialogContent>
+      <DraftAndSendDialog
+        open={!!composer}
+        onOpenChange={(v) => { if (!v) setComposer(null); }}
+        initial={composer?.initial ?? null}
+        contextLabel={composer?.label}
+      />
     </Dialog>
   );
 }
