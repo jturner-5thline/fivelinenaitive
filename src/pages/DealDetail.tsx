@@ -995,6 +995,13 @@ export default function DealDetail() {
   // `hasDealSpaceAccess` resolved, so a refresh on `?tab=deal-space`
   // would otherwise be stuck on Deal Info even after access is granted.
   useEffect(() => {
+    // In embedded (overlay) mode the local dealInfoTab is the source of
+    // truth — the parent URL's `?tab=` param belongs to whatever page is
+    // hosting the overlay and must not override the user's tab clicks.
+    // Without this guard, every tab click was instantly reverted back to
+    // the parent URL's tab value (typically 'deal-info'), breaking all
+    // tab navigation inside the deal popup.
+    if (isEmbedded) return;
     const urlTab = searchParams.get('tab');
     if (!urlTab) return;
     if (urlTab === dealInfoTab) return;
@@ -1004,7 +1011,7 @@ export default function DealDetail() {
     prevTabRef.current = urlTab as typeof dealInfoTab;
     setDealInfoTab(urlTab as typeof dealInfoTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasDealSpaceAccess, searchParams]);
+  }, [hasDealSpaceAccess, searchParams, isEmbedded]);
 
   // Auto-scroll to first stale lender when navigating from a notification
   useEffect(() => {
