@@ -1,11 +1,11 @@
-import { useState } from 'react';
-import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase, CheckSquare } from 'lucide-react';
+import { useState, lazy, Suspense } from 'react';
+import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { NavLink, useLocation } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
@@ -18,6 +18,13 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { TasksOverlay } from '@/components/tasks/TasksOverlay';
+import { DealsPageOverlay } from '@/components/deals/DealsPageOverlay';
+const FullCalendarView = lazy(() =>
+  import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }))
+);
+const InboxDialog = lazy(() =>
+  import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog }))
+);
 import { Newspaper } from 'lucide-react';
 import {
   canSeeNikiBriefing,
@@ -41,6 +48,9 @@ export function DealsHeader() {
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isMailOpen, setIsMailOpen] = useState(false);
+  const [isDealsOverlayOpen, setIsDealsOverlayOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
@@ -77,52 +87,29 @@ export function DealsHeader() {
           {/* Primary quick-access nav — centered absolutely so trailing utilities don't shift it */}
           <nav className="hidden md:flex items-center gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {[
-              { to: '/dashboard?view=calendar', label: 'Calendar', Icon: Calendar },
-              { to: '/dashboard?view=mail', label: 'Mail', Icon: Mail },
-              { to: '/tasks', label: 'Action Queue', Icon: Inbox },
-              { to: '/deals', label: 'Deals', Icon: Briefcase },
-            ].map(({ to, label, Icon }) => {
-              const path = to.split('?')[0];
-              const active =
-                path === '/deals'
-                  ? location.pathname === '/deals'
-                  : location.pathname.startsWith(path);
-              return (
-                <Tooltip key={label}>
-                  <TooltipTrigger asChild>
-                    <NavLink
-                      to={to}
-                      aria-label={label}
-                      className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
-                        active
-                          ? 'bg-blue-400/15 text-blue-400'
-                          : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
-                      }`}
-                    >
-                      <Icon className="h-[27px] w-[27px]" />
-                    </NavLink>
-                  </TooltipTrigger>
-                  <TooltipContent>{label}</TooltipContent>
-                </Tooltip>
-              );
-            })}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  type="button"
-                  aria-label="Tasks"
-                  onClick={() => setIsTasksOpen(true)}
-                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
-                    isTasksOpen
-                      ? 'bg-blue-400/15 text-blue-400'
-                      : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
-                  }`}
-                >
-                  <CheckSquare className="h-[27px] w-[27px]" />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Tasks</TooltipContent>
-            </Tooltip>
+              { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
+              { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
+              { label: 'Action Queue', Icon: Inbox, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
+              { label: 'Deals', Icon: Briefcase, isOpen: isDealsOverlayOpen, onClick: () => setIsDealsOverlayOpen(true) },
+            ].map(({ label, Icon, isOpen, onClick }) => (
+              <Tooltip key={label}>
+                <TooltipTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label={label}
+                    onClick={onClick}
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
+                      isOpen
+                        ? 'bg-blue-400/15 text-blue-400'
+                        : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
+                    }`}
+                  >
+                    <Icon className="h-[27px] w-[27px]" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{label}</TooltipContent>
+              </Tooltip>
+            ))}
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
@@ -190,6 +177,17 @@ export function DealsHeader() {
       <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
       <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
+      <DealsPageOverlay open={isDealsOverlayOpen} onOpenChange={setIsDealsOverlayOpen} />
+      {isCalendarOpen && (
+        <Suspense fallback={null}>
+          <FullCalendarView open={isCalendarOpen} onOpenChange={setIsCalendarOpen} />
+        </Suspense>
+      )}
+      {isMailOpen && (
+        <Suspense fallback={null}>
+          <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
+        </Suspense>
+      )}
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
       {canSeeNiki && (
         <DailyBriefingModal
