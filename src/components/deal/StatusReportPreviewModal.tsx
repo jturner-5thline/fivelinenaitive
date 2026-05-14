@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { FileText, Download, Plus, X, Eye, EyeOff } from 'lucide-react';
+import { FileText, Mail, Plus, X, Eye, EyeOff } from 'lucide-react';
 import { Deal, LENDER_STAGE_CONFIG } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
 
@@ -301,8 +301,8 @@ export function StatusReportPreviewModal({
             Cancel
           </Button>
           <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export PDF
+            <Mail className="h-4 w-4" />
+            Generate Status Email
           </Button>
         </DialogFooter>
       </DialogContent>

@@ -195,6 +195,7 @@ import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycl
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
+import { StatusEmailDraftModal } from '@/components/deal/StatusEmailDraftModal';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
@@ -571,6 +572,7 @@ export default function DealDetail() {
   const [mentionNoteContext, setMentionNoteContext] = useState('');
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
+  const [statusEmailContent, setStatusEmailContent] = useState<StatusReportEditableContent | null>(null);
   const { profile } = useProfile();
 
   // Allow other deal-scoped components (e.g. the Deal Space Ask AI tab) to
@@ -5442,10 +5444,19 @@ export default function DealDetail() {
           configuredSubstages={configuredSubstages}
           outstandingItems={outstandingItems}
           onExport={(editableContent) => {
-            exportStatusReportToPDF(deal, configuredStages, configuredSubstages, outstandingItems, editableContent);
+            setStatusEmailContent(editableContent);
             setShowStatusReportPreview(false);
-            toast({ title: "PDF exported", description: "Status report exported to PDF." });
+            toast({ title: 'Status email ready', description: 'Formatted email draft generated.' });
           }}
+        />
+      )}
+
+      {deal && (
+        <StatusEmailDraftModal
+          open={!!statusEmailContent}
+          onOpenChange={(o) => { if (!o) setStatusEmailContent(null); }}
+          deal={deal}
+          content={statusEmailContent}
         />
       )}
 
