@@ -612,6 +612,9 @@
 }
 
 @keyframes mapping-flash {
+  0% { background-color: hsl(142 76% 36% / 0.25); }
+  100% { background-color: transparent; }
+}
 
 /* Origin-anchored dialog expand/collapse: a popup grows from the icon
    that triggered it (--origin-dx / --origin-dy capture the offset from
@@ -623,9 +626,7 @@
                translate(var(--origin-dx, 0px), var(--origin-dy, 0px))
                scale(0.04);
   }
-  60% {
-    opacity: 1;
-  }
+  60% { opacity: 1; }
   100% {
     opacity: 1;
     transform: translate(-50%, -50%) translate(0, 0) scale(1);
@@ -642,9 +643,6 @@
                translate(var(--origin-dx, 0px), var(--origin-dy, 0px))
                scale(0.04);
   }
-}
-  0% { background-color: hsl(142 76% 36% / 0.25); }
-  100% { background-color: transparent; }
 }
 
 /* react-grid-layout resize handle */
