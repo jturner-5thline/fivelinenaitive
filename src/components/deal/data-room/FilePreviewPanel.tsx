@@ -3,6 +3,7 @@ import { X, Download, ExternalLink, Loader2, ChevronRight, ChevronLeft } from 'l
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import DOMPurify from 'dompurify';
 import { formatBytes } from './helpers';
 import { supabase } from '@/integrations/supabase/client';
 import type { DealAttachment } from '@/hooks/useDealAttachments';
@@ -166,7 +167,7 @@ export function FilePreviewPanel({ file, onClose, onDownload }: FilePreviewPanel
                   )}
                   <div
                     className="prose prose-xs dark:prose-invert max-w-none text-xs leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(summary) }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(renderMarkdown(summary), { USE_PROFILES: { html: true } }) }}
                   />
                 </div>
               ) : null}

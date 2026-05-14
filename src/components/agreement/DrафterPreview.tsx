@@ -2,6 +2,10 @@ import { forwardRef } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AgreementSection } from './types';
 import { resolveTemplate, renderQualifierList } from './templateResolver';
+import DOMPurify from 'dompurify';
+
+const sanitize = (html: string) =>
+  DOMPurify.sanitize(html, { USE_PROFILES: { html: true } });
 
 interface Props {
   sections: AgreementSection[];
@@ -27,20 +31,20 @@ export const DrафterPreview = forwardRef<HTMLDivElement, Props>(({ sections, v
             {/* Sections */}
             {enabledSections.map((section, idx) => {
               const isExhibit = section.section_id.startsWith('exhibit_');
-              const resolvedText = resolveTemplate(section.template_text, values, true);
+              const resolvedText = sanitize(resolveTemplate(section.template_text, values, true));
 
               return (
                 <div key={section.section_id} data-section={section.section_id} className="transition-all rounded-md">
                   {isExhibit ? (
                     <div className="mt-6 pt-4 border-t">
-                      <h3 className="text-center text-xs font-bold uppercase tracking-wider mb-3"
+                       <h3 className="text-center text-xs font-bold uppercase tracking-wider mb-3"
                         dangerouslySetInnerHTML={{ __html: resolvedText }}
                       />
                       {/* Render qualifier list */}
                       {section.qualifiers && section.qualifiers.length > 0 && (
                         <div className="text-[11px] leading-relaxed text-muted-foreground whitespace-pre-line"
                           dangerouslySetInnerHTML={{
-                            __html: resolveTemplate(
+                            __html: sanitize(resolveTemplate(
                               renderQualifierList(
                                 section.qualifiers,
                                 section.section_id === 'exhibit_a' ? 'exhibit_a' : 'exhibit_b',
@@ -48,7 +52,7 @@ export const DrафterPreview = forwardRef<HTMLDivElement, Props>(({ sections, v
                               ),
                               values,
                               true
-                            )
+                            ))
                           }}
                         />
                       )}
@@ -60,10 +64,10 @@ export const DrафterPreview = forwardRef<HTMLDivElement, Props>(({ sections, v
                         dangerouslySetInnerHTML={{ __html: resolvedText }}
                       />
                       {/* Render subsections */}
-                      {section.subsections && section.subsections.filter(s => s.enabled).map((sub, si) => (
+                       {section.subsections && section.subsections.filter(s => s.enabled).map((sub, si) => (
                         <div key={sub.id} className="ml-4 mt-2 text-[11px] leading-relaxed text-foreground/80">
                           <span className="text-muted-foreground font-medium">({String.fromCharCode(105 + si)}) </span>
-                          <span dangerouslySetInnerHTML={{ __html: resolveTemplate(sub.template_text, values, true) }} />
+                          <span dangerouslySetInnerHTML={{ __html: sanitize(resolveTemplate(sub.template_text, values, true)) }} />
                         </div>
                       ))}
                     </div>

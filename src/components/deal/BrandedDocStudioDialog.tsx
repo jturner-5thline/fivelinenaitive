@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2, Sparkles, Upload, Globe, Palette, Save, FileDown, Trash2, FileText, Link2, Cloud } from "lucide-react";
+import DOMPurify from "dompurify";
 import {
   Dialog,
   DialogContent,
@@ -552,7 +553,7 @@ export function BrandedDocStudioDialog({ open, onOpenChange, dealId, companyName
                   suppressContentEditableWarning
                   className="bg-white rounded-md shadow-sm text-black"
                   style={{ minHeight: "60vh", outline: "none" }}
-                  dangerouslySetInnerHTML={{ __html: html }}
+                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(html || "", { USE_PROFILES: { html: true } }) }}
                 />
               </div>
             </ScrollArea>
