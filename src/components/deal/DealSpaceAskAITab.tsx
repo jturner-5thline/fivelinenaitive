@@ -1117,9 +1117,12 @@ CRITICAL RULES:
               />
             </div>
 
+            {/* Mobile-only toggle: on desktop the conversations panel is
+                always visible, so the explicit open/close button is hidden. */}
             <Button
               variant="outline"
               size="sm"
+              className="md:hidden"
               onClick={() => setIsHistoryOpen(!isHistoryOpen)}
             >
               <History className="h-4 w-4 mr-2" />
@@ -1144,26 +1147,37 @@ CRITICAL RULES:
         )}
       </CardHeader>
       <CardContent className="flex-1 flex gap-4 overflow-hidden">
-        {/* Conversation History Sidebar */}
-        {isHistoryOpen && (
-          <div className="w-64 flex-shrink-0 border-r pr-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-sm font-medium">Conversations</span>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setIsHistoryOpen(false)}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <DealSpaceConversationHistory
-              conversations={deduplicatedConversations}
-              isLoading={isConversationsLoading}
-              selectedConversationId={selectedConversationId}
-              onSelectConversation={handleSelectConversation}
-              onNewConversation={handleNewConversation}
-              onDeleteConversation={deleteConversation}
-              onUpdateTitle={updateConversationTitle}
-            />
+        {/* Conversation History Sidebar — persistent on desktop/tablet,
+            collapsible on mobile via the header toggle. Previous
+            conversations are core navigation, not optional chrome. */}
+        <div
+          className={cn(
+            'w-64 flex-shrink-0 border-r pr-4',
+            'md:block',
+            isHistoryOpen ? 'block' : 'hidden',
+          )}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium">Conversations</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 md:hidden"
+              onClick={() => setIsHistoryOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </div>
-        )}
+          <DealSpaceConversationHistory
+            conversations={deduplicatedConversations}
+            isLoading={isConversationsLoading}
+            selectedConversationId={selectedConversationId}
+            onSelectConversation={handleSelectConversation}
+            onNewConversation={handleNewConversation}
+            onDeleteConversation={deleteConversation}
+            onUpdateTitle={updateConversationTitle}
+          />
+        </div>
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
