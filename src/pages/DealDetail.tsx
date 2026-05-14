@@ -4721,22 +4721,19 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="data-room" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`data-room-${tabDirection}`}>
-                  <div
-                    className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden"
-                    style={{ height: 'calc(100vh - 190px)' }}
-                  >
+                  <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 190px)' }}>
                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading data room…</div>}>
                       <VdrShell dealId={id!} embedded />
                     </Suspense>
-                  </div>
+                  </Card>
                 </TabsContent>
 
                 <TabsContent value="activity-log" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
-                  <div className="rounded-lg border bg-card text-card-foreground shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 190px)' }}>
+                  <Card className="w-full max-w-full overflow-hidden p-0" style={{ height: 'calc(100vh - 190px)' }}>
                     <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
                       <DealActivityLogTab dealId={id!} />
                     </Suspense>
-                  </div>
+                  </Card>
                 </TabsContent>
 
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
