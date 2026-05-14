@@ -179,7 +179,7 @@ const Auth = () => {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
         toast.success("Password updated successfully!");
-        navigate("/deals");
+        navigate("/deals", { replace: true });
       } else {
         const validation = authSchema.safeParse({ email, password });
         if (!validation.success) {
