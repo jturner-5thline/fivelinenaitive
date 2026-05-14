@@ -37,94 +37,172 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
   const nextSteps = (content.nextSteps || []).filter(Boolean);
   const action = (content.actionItems || '').trim();
 
-  // Pipeline snapshot groups
+  // ── Pipeline snapshot groups ─────────────────────────────────────────────
+  // Compact, single-row stage summary instead of four boxed cards. Passed
+  // lenders are intentionally collapsed to a count line so the email never
+  // turns into a wall of declined institutions — the client cares about
+  // who is moving forward, not the long tail of "no".
   const lenders = deal.lenders || [];
-  const groups = [
-    { label: 'On Deck', color: '#1d4ed8', items: lenders.filter(l => l.trackingStatus === 'on-deck') },
-    { label: 'In Review', color: '#1d4ed8', items: lenders.filter(l => l.trackingStatus === 'active') },
-    { label: 'Terms Issued', color: '#15803d', items: lenders.filter(l => l.stage === 'term-sheets' || l.stage === 'draft-terms') },
-    { label: 'Passed', color: '#b91c1c', items: lenders.filter(l => l.trackingStatus === 'passed') },
-  ];
+  const onDeck = lenders.filter((l) => l.trackingStatus === 'on-deck');
+  const inReview = lenders.filter((l) => l.trackingStatus === 'active');
+  const termsIssued = lenders.filter(
+    (l) => l.stage === 'term-sheets' || l.stage === 'draft-terms',
+  );
+  const passedCount = lenders.filter((l) => l.trackingStatus === 'passed').length;
 
-  const sectionTitle = (label: string) => `
-    <h2 style="font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;color:#0f172a;margin:24px 0 10px 0;letter-spacing:.02em;text-transform:uppercase;border-bottom:2px solid #2563eb;padding-bottom:6px;">${label}</h2>
+  // Shared design tokens — restrained palette, single accent, generous rhythm.
+  const FONT = `-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif`;
+  const INK = '#0f172a';
+  const BODY = '#334155';
+  const MUTED = '#64748b';
+  const RULE = '#e2e8f0';
+  const ACCENT = '#0f172a';
+
+  const sectionLabel = (label: string) => `
+    <div style="font-family:${FONT};font-size:11px;font-weight:600;color:${MUTED};letter-spacing:.12em;text-transform:uppercase;margin:28px 0 10px 0;">
+      ${label}
+    </div>
   `;
 
-  const bulletList = (items: string[]) => `
-    <ul style="margin:0 0 4px 18px;padding:0;color:#1f2937;font-family:Helvetica,Arial,sans-serif;font-size:14px;line-height:1.55;">
-      ${items.map(i => `<li style="margin:0 0 6px 0;">${escapeHtml(i).replace(/\n/g, '<br/>')}</li>`).join('')}
+  const cleanList = (items: string[]) => `
+    <ul style="margin:0;padding:0 0 0 18px;color:${BODY};font-family:${FONT};font-size:15px;line-height:1.65;">
+      ${items
+        .map(
+          (i) =>
+            `<li style="margin:0 0 8px 0;padding-left:2px;">${escapeHtml(i).replace(/\n/g, '<br/>')}</li>`,
+        )
+        .join('')}
     </ul>
   `;
 
-  const pipelineCards = `
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:8px;">
+  // One row per non-empty stage. Inline names, comma-separated. Reads like a
+  // sentence instead of a grid: "On Deck (3) — Acme Capital, Boreal, Crestwood".
+  const pipelineRow = (label: string, items: typeof lenders) => {
+    if (items.length === 0) return '';
+    const names = items
+      .slice(0, 6)
+      .map((l) => escapeHtml(l.name))
+      .join(', ');
+    const overflow = items.length > 6 ? `, +${items.length - 6} more` : '';
+    return `
       <tr>
-        ${groups.map(g => `
-          <td valign="top" width="25%" style="background:#f8fafc;border:1px solid #e5e7eb;border-left:4px solid ${g.color};border-radius:6px;padding:10px 12px;font-family:Helvetica,Arial,sans-serif;">
-            <div style="font-size:12px;font-weight:700;color:#0f172a;margin-bottom:6px;">${g.label} <span style="color:#64748b;font-weight:500;">(${g.items.length})</span></div>
-            ${g.items.length === 0
-              ? '<div style="font-size:12px;color:#94a3b8;">—</div>'
-              : g.items.map((l, i) => `<div style="font-size:12px;color:#334155;line-height:1.5;">${i + 1}. ${escapeHtml(l.name)}</div>`).join('')
-            }
-          </td>
-        `).join('')}
+        <td style="font-family:${FONT};font-size:13px;font-weight:600;color:${INK};padding:6px 14px 6px 0;white-space:nowrap;vertical-align:top;width:1%;">
+          ${label}
+          <span style="color:${MUTED};font-weight:500;margin-left:4px;">(${items.length})</span>
+        </td>
+        <td style="font-family:${FONT};font-size:13px;color:${BODY};padding:6px 0;line-height:1.55;">
+          ${names}${overflow}
+        </td>
       </tr>
-    </table>
-  `;
+    `;
+  };
+
+  const pipelineTable =
+    onDeck.length + inReview.length + termsIssued.length === 0 && passedCount === 0
+      ? `<div style="font-family:${FONT};font-size:13px;color:${MUTED};">No active lender activity yet.</div>`
+      : `
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-top:1px solid ${RULE};border-bottom:1px solid ${RULE};">
+          ${pipelineRow('Terms Issued', termsIssued)}
+          ${pipelineRow('In Review', inReview)}
+          ${pipelineRow('On Deck', onDeck)}
+          ${
+            passedCount > 0
+              ? `
+                <tr>
+                  <td style="font-family:${FONT};font-size:12px;color:${MUTED};padding:6px 14px 6px 0;white-space:nowrap;vertical-align:top;width:1%;">
+                    Passed
+                    <span style="margin-left:4px;">(${passedCount})</span>
+                  </td>
+                  <td style="font-family:${FONT};font-size:12px;color:${MUTED};padding:6px 0;font-style:italic;">
+                    Detail available on request.
+                  </td>
+                </tr>
+              `
+              : ''
+          }
+        </table>
+      `;
+
+  // ── Intro line ──
+  // Pull the first key update as the lead sentence when available, otherwise
+  // fall back to a neutral one-liner. Keeps the opening tight.
+  const lead =
+    keyUpdates[0]?.trim() ||
+    `Quick update on where things stand with ${company}.`;
+
+  // Drop the lead from the bulleted list so it isn't repeated.
+  const remainingKeyUpdates =
+    keyUpdates.length > 1 ? keyUpdates.slice(1, 5) : keyUpdates.length === 1 ? [] : [];
 
   return `
-<div style="background:#ffffff;padding:0;font-family:Helvetica,Arial,sans-serif;color:#1f2937;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:680px;margin:0 auto;">
-    <tr><td style="padding:4px 0 0 0;">
+<div style="background:#ffffff;padding:0;font-family:${FONT};color:${INK};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:640px;margin:0 auto;">
+    <tr><td style="padding:0;">
 
       <!-- Header -->
-      <div style="border-top:4px solid #2563eb;padding-top:12px;margin-bottom:14px;">
-        <div style="font-size:11px;font-weight:700;color:#2563eb;letter-spacing:.14em;">5ᵀᴴ | LINE</div>
-        <h1 style="font-size:20px;line-height:1.3;font-weight:700;color:#0f172a;margin:6px 0 0 0;">
-          ${escapeHtml(company)} — Status Update:
-          <span style="color:#2563eb;">${dateStr}</span>
+      <div style="margin:0 0 22px 0;">
+        <h1 style="font-family:${FONT};font-size:22px;line-height:1.3;font-weight:600;color:${ACCENT};margin:0;letter-spacing:-0.01em;">
+          ${escapeHtml(company)} Status Update
         </h1>
+        <div style="font-family:${FONT};font-size:13px;color:${MUTED};margin-top:4px;">
+          ${dateStr}
+        </div>
       </div>
 
-      <p style="font-size:14px;color:#334155;line-height:1.55;margin:0 0 8px 0;">Hi team,</p>
-      <p style="font-size:14px;color:#334155;line-height:1.55;margin:0 0 12px 0;">
-        Please find below the latest status update for <strong>${escapeHtml(company)}</strong>.
+      <p style="font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;margin:0;">
+        ${escapeHtml(lead)}
       </p>
 
-      ${v.keyUpdates && keyUpdates.length > 0 ? `
-        ${sectionTitle('Key Updates')}
-        ${bulletList(keyUpdates)}
-      ` : ''}
+      ${
+        v.keyUpdates && remainingKeyUpdates.length > 0
+          ? `
+            ${sectionLabel('Key Updates')}
+            ${cleanList(remainingKeyUpdates)}
+          `
+          : ''
+      }
 
-      ${v.pipelineSnapshot ? `
-        ${sectionTitle('Lender Pipeline Snapshot')}
-        ${pipelineCards}
-      ` : ''}
+      ${
+        v.pipelineSnapshot
+          ? `
+            ${sectionLabel('Lender Pipeline')}
+            ${pipelineTable}
+          `
+          : ''
+      }
 
-      ${v.milestones && milestones.length > 0 ? `
-        ${sectionTitle('Recent Milestones')}
-        ${bulletList(milestones)}
-      ` : ''}
+      ${
+        v.milestones && milestones.length > 0
+          ? `
+            ${sectionLabel('Recent Milestones')}
+            ${cleanList(milestones.slice(0, 5))}
+          `
+          : ''
+      }
 
-      ${v.nextSteps && nextSteps.length > 0 ? `
-        ${sectionTitle('Next Steps')}
-        ${bulletList(nextSteps)}
-      ` : ''}
+      ${
+        v.nextSteps && nextSteps.length > 0
+          ? `
+            ${sectionLabel('Next Steps')}
+            ${cleanList(nextSteps.slice(0, 5))}
+          `
+          : ''
+      }
 
-      ${v.actionItems && action ? `
-        ${sectionTitle('What We Need From You')}
-        <div style="font-size:14px;color:#1f2937;line-height:1.55;background:#fffbeb;border:1px solid #fde68a;border-radius:6px;padding:12px 14px;">
-          ${textToHtml(action)}
-        </div>
-      ` : ''}
+      ${
+        v.actionItems && action
+          ? `
+            ${sectionLabel('What We Need From You')}
+            <div style="font-family:${FONT};font-size:15px;color:${INK};line-height:1.65;border-left:2px solid ${ACCENT};padding:2px 0 2px 14px;">
+              ${textToHtml(action)}
+            </div>
+          `
+          : ''
+      }
 
-      <div style="margin:28px 0 8px 0;font-size:14px;color:#334155;line-height:1.55;">
-        Happy to discuss any of the above — just reply to this email.
-      </div>
-      <div style="font-size:14px;color:#0f172a;font-weight:600;margin-top:16px;">
-        Best,<br/>
-        <span style="font-weight:500;color:#475569;">5th Line</span>
-      </div>
+      <p style="font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;margin:28px 0 0 0;">
+        Happy to jump on a call if helpful — otherwise, just reply with any questions.
+      </p>
 
     </td></tr>
   </table>
