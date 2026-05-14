@@ -116,16 +116,20 @@ export function DealsHeader() {
       */}
       <div className="pt-2 px-2 sm:px-4 pointer-events-none">
         <div
-          className="pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0"
+          className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0"
           style={{
-            width: 'min(560px, calc(100vw - 16px))',
+            // Match the Ask naitive AI bar's default width (432px) so the
+            // two surfaces read as one visual family. Stay responsive on
+            // narrower viewports so the icon cluster never clips.
+            width: 'min(432px, calc(100vw - 16px))',
             borderRadius: 20,
-            background: 'rgba(16, 21, 34, 0.82)',
-            backdropFilter: 'blur(18px) saturate(135%)',
-            WebkitBackdropFilter: 'blur(18px) saturate(135%)',
-            border: '1px solid rgba(255, 255, 255, 0.10)',
+            background:
+              'linear-gradient(180deg, rgba(20, 34, 58, 0.72) 0%, rgba(14, 24, 42, 0.66) 100%)',
+            backdropFilter: 'blur(20px) saturate(150%)',
+            WebkitBackdropFilter: 'blur(20px) saturate(150%)',
+            border: '1px solid rgba(120, 170, 255, 0.16)',
             boxShadow:
-              '0 10px 30px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+              '0 10px 28px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
           }}
         >
           <div className="flex items-center shrink-0"><DemoModeBadge /></div>
