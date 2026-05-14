@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { format, startOfDay, endOfDay, parseISO, isBefore, isAfter } from 'date-fns';
-import { Mail, Users, Calendar as CalendarIcon, Loader2 } from 'lucide-react';
+import { Mail, Users, Calendar as CalendarIcon, Loader2, X, Send } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
 import { GLASS_CARD, EmptySection, Section } from './briefingPrimitives';
 import { cn } from '@/lib/utils';
 
@@ -12,6 +16,128 @@ interface ContactInfo {
   fullName: string | null;
   jobTitle: string | null;
   companyName: string | null;
+}
+
+function firstNameOf(name: string | null | undefined, fallbackEmail?: string): string {
+  const n = (name || '').trim();
+  if (n) return n.split(/\s+/)[0];
+  if (fallbackEmail) return fallbackEmail.split('@')[0];
+  return 'there';
+}
+
+function InlineComposer({
+  to,
+  defaultSubject,
+  recipientLabel,
+  onClose,
+}: {
+  to: string;
+  defaultSubject: string;
+  recipientLabel: string;
+  onClose: () => void;
+}) {
+  const [toField, setToField] = useState(to);
+  const [subject, setSubject] = useState(defaultSubject);
+  const [body, setBody] = useState('');
+  const [sending, setSending] = useState(false);
+
+  const handleSend = async () => {
+    if (!toField.trim() || !subject.trim()) {
+      toast.error('To and subject are required');
+      return;
+    }
+    setSending(true);
+    try {
+      const { error } = await supabase.functions.invoke('gmail-messages', {
+        body: {
+          action: 'send',
+          to: [toField.trim()],
+          subject: subject.trim(),
+          body: body.replace(/\n/g, '<br/>'),
+        },
+      });
+      if (error) throw error;
+      toast.success(`Email sent to ${recipientLabel}`);
+      onClose();
+    } catch (err: any) {
+      console.error('EOD inline send failed:', err);
+      toast.error(err?.message || 'Failed to send email');
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="mt-2 rounded-lg border border-primary/30 bg-background/80 backdrop-blur-md p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+          Quick Reply
+        </span>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="h-6 w-6"
+          onClick={onClose}
+          aria-label="Close composer"
+          disabled={sending}
+        >
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-muted-foreground w-12 shrink-0">To</span>
+        <Input
+          value={toField}
+          onChange={(e) => setToField(e.target.value)}
+          className="h-7 text-xs"
+          disabled={sending}
+        />
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="text-[11px] text-muted-foreground w-12 shrink-0">Subject</span>
+        <Input
+          value={subject}
+          onChange={(e) => setSubject(e.target.value)}
+          className="h-7 text-xs"
+          disabled={sending}
+        />
+      </div>
+      <Textarea
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="Write your message…"
+        className="min-h-[120px] text-xs resize-y"
+        disabled={sending}
+      />
+      <div className="flex items-center justify-end gap-2">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={onClose}
+          disabled={sending}
+          className="h-7 text-xs"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          onClick={handleSend}
+          disabled={sending}
+          className="h-7 text-xs gap-1.5"
+        >
+          {sending ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <Send className="h-3 w-3" />
+          )}
+          Send
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 function fmtTime(iso: string, allDay: boolean) {
@@ -27,6 +153,14 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
   const { events: hookEvents, listEvents, status } = useGoogleCalendar();
   const [events, setEvents] = useState<CalendarEvent[]>(hookEvents || []);
   const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
+  // composerKey = `${eventId}::${attendeeEmail}` so only one composer is open at a time
+  const [composerKey, setComposerKey] = useState<string | null>(null);
+
+  const userFirstName = useMemo(() => {
+    const meta: any = user?.user_metadata || {};
+    return firstNameOf(meta.full_name || meta.name, user?.email || undefined);
+  }, [user]);
 
   // Reuse the same calendar data already fetched by AgendaIntel via the
   // module-level cache in useGoogleCalendar. Only trigger a fetch if the
@@ -203,11 +337,13 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
                     const matched = contactsByEmail[emailKey];
                     const name =
                       matched?.fullName || a.display_name || a.email || 'Unknown';
+                    const rowKey = `${ev.id}::${emailKey || idx}`;
+                    const isComposing = composerKey === rowKey;
+                    const attendeeFirst = firstNameOf(name, a.email || undefined);
+                    const defaultSubject = `${attendeeFirst} & ${userFirstName} Follow Up`;
                     return (
-                      <div
-                        key={`${ev.id}-${emailKey || idx}`}
-                        className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] glass-border-softer px-2.5 py-1.5"
-                      >
+                      <div key={rowKey}>
+                        <div className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] glass-border-softer px-2.5 py-1.5">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-medium text-foreground truncate">
@@ -234,13 +370,28 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                          className={cn(
+                            'h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground',
+                            isComposing && 'text-primary',
+                          )}
                           aria-label={`Email ${name}`}
-                          disabled
-                          title="Email (coming soon)"
+                          disabled={!a.email}
+                          title={a.email ? `Email ${name}` : 'No email available'}
+                          onClick={() =>
+                            setComposerKey(isComposing ? null : rowKey)
+                          }
                         >
                           <Mail className="h-3.5 w-3.5" />
                         </Button>
+                        </div>
+                        {isComposing && a.email && (
+                          <InlineComposer
+                            to={a.email}
+                            defaultSubject={defaultSubject}
+                            recipientLabel={name}
+                            onClose={() => setComposerKey(null)}
+                          />
+                        )}
                       </div>
                     );
                   })}
