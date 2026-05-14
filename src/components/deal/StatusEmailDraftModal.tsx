@@ -64,14 +64,34 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
     </div>
   `;
 
+  // Split a single bullet's text into a primary line and any sub-bullets
+  // (lines starting with "- ", "* ", or indented "  - "). Keeps the email
+  // structured and skimmable instead of flat paragraphs.
+  const renderBulletItem = (raw: string) => {
+    const lines = raw.split(/\n/).map((l) => l.replace(/\s+$/, '')).filter((l) => l.length > 0);
+    if (lines.length === 0) return '';
+    const primary = lines[0].replace(/^[-*•]\s+/, '');
+    const subs: string[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const t = lines[i].trim();
+      if (/^[-*•]\s+/.test(t) || /^\s{2,}/.test(lines[i])) {
+        subs.push(t.replace(/^[-*•]\s+/, ''));
+      } else {
+        // continuation of primary
+        subs.push(t);
+      }
+    }
+    const subList = subs.length
+      ? `<ul style="margin:6px 0 0 0;padding:0 0 0 18px;color:${MUTED};font-family:${FONT};font-size:14px;line-height:1.55;">
+          ${subs.map((s) => `<li style="margin:0 0 4px 0;">${escapeHtml(s)}</li>`).join('')}
+        </ul>`
+      : '';
+    return `<li style="margin:0 0 10px 0;padding-left:2px;">${escapeHtml(primary)}${subList}</li>`;
+  };
+
   const cleanList = (items: string[]) => `
     <ul style="margin:0;padding:0 0 0 18px;color:${BODY};font-family:${FONT};font-size:15px;line-height:1.65;">
-      ${items
-        .map(
-          (i) =>
-            `<li style="margin:0 0 8px 0;padding-left:2px;">${escapeHtml(i).replace(/\n/g, '<br/>')}</li>`,
-        )
-        .join('')}
+      ${items.map(renderBulletItem).join('')}
     </ul>
   `;
 
@@ -202,8 +222,12 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
         v.actionItems && action
           ? `
             ${sectionLabel('What We Need From You')}
-            <div style="font-family:${FONT};font-size:15px;color:${INK};line-height:1.65;border-left:2px solid ${ACCENT};padding:2px 0 2px 14px;">
-              ${textToHtml(action)}
+            <div style="font-family:${FONT};font-size:15px;color:${INK};line-height:1.65;background:#f8fafc;border:1px solid ${RULE};border-left:3px solid ${ACCENT};border-radius:6px;padding:14px 16px;">
+              ${
+                action.includes('\n')
+                  ? cleanList(action.split(/\n(?=[-*•]\s|\S)/).map((s) => s.trim()).filter(Boolean))
+                  : textToHtml(action)
+              }
             </div>
           `
           : ''
