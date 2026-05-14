@@ -330,8 +330,7 @@ export function JamesBriefingModal({ open, onOpenChange }: JamesBriefingModalPro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-        'max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl',
-        'bg-background/60 backdrop-blur-3xl border-white/5',
+        'popup-shell-surface max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden rounded-2xl border-transparent',
       )}>
         <div className="flex flex-col h-full">
           {/* Header */}
