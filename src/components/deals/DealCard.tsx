@@ -613,3 +613,22 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
     </>
   );
 }
+
+/**
+ * Memoized export. Skips re-render when sibling cards or unrelated parent
+ * state changes; only re-renders when this deal's reference, its FLEx data,
+ * or one of the small visual flags actually change. Callback prop identity
+ * is intentionally excluded so parents don't have to wrap handlers in
+ * useCallback to benefit.
+ */
+export const DealCard = memo(DealCardImpl, (prev, next) => {
+  return (
+    prev.deal === next.deal &&
+    prev.flexEngagement === next.flexEngagement &&
+    prev.flexNotificationCount === next.flexNotificationCount &&
+    prev.compact === next.compact &&
+    prev.hideStatus === next.hideStatus &&
+    prev.mentionUsers === next.mentionUsers &&
+    prev.children === next.children
+  );
+});
