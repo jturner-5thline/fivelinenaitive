@@ -423,14 +423,90 @@ Deno.serve(async (req) => {
     Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
   );
 
+  // Read raw body once so we can both verify HMAC and parse JSON
+  const rawBody = await req.text();
   let payload: ClaapWebhookPayload;
   try {
-    payload = await req.json();
+    payload = JSON.parse(rawBody);
   } catch {
     return new Response(JSON.stringify({ ok: true, note: "invalid json" }), {
       status: 200,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
+  }
+
+  const eventTypePreview = payload?.event;
+  const authHeader = req.headers.get("Authorization");
+  let authenticatedUserId: string | null = null;
+
+  // Internal UI calls (force_sync) must come with a valid Supabase JWT.
+  if (eventTypePreview === "force_sync") {
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const supabaseAuth = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } }
+    );
+    const { data: userData, error: userErr } = await supabaseAuth.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    authenticatedUserId = userData.user.id;
+  } else {
+    // External Claap webhook: require HMAC-SHA256 signature when secret is configured.
+    const webhookSecret = Deno.env.get("CLAAP_WEBHOOK_SECRET");
+    const signature = req.headers.get("x-claap-signature");
+    if (!webhookSecret) {
+      console.error("CLAAP_WEBHOOK_SECRET is not configured; rejecting unauthenticated webhook");
+      return new Response(JSON.stringify({ error: "Webhook signature verification not configured" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    if (!signature) {
+      return new Response(JSON.stringify({ error: "Missing x-claap-signature" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    try {
+      const key = await crypto.subtle.importKey(
+        "raw",
+        new TextEncoder().encode(webhookSecret),
+        { name: "HMAC", hash: "SHA-256" },
+        false,
+        ["sign"],
+      );
+      const sigBuf = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(rawBody));
+      const expected = Array.from(new Uint8Array(sigBuf))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
+      const provided = signature.replace(/^sha256=/, "").toLowerCase();
+      // Constant-time comparison
+      if (expected.length !== provided.length) {
+        return new Response(JSON.stringify({ error: "Invalid signature" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      let mismatch = 0;
+      for (let i = 0; i < expected.length; i++) {
+        mismatch |= expected.charCodeAt(i) ^ provided.charCodeAt(i);
+      }
+      if (mismatch !== 0) {
+        return new Response(JSON.stringify({ error: "Invalid signature" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    } catch (e) {
+      console.error("Signature verification failed:", e);
+      return new Response(JSON.stringify({ error: "Signature verification error" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
   }
 
   try {
@@ -439,7 +515,8 @@ Deno.serve(async (req) => {
     // Handle force-sync from UI
     if (eventType === "force_sync") {
       const skippedCallId = (payload.data as unknown as { skipped_call_id: string }).skipped_call_id;
-      const userId = (payload.data as unknown as { user_id: string }).user_id;
+      // Use the authenticated user's id, never trust the body
+      const userId = authenticatedUserId;
 
       if (!skippedCallId) throw new Error("Missing skipped_call_id");
 
