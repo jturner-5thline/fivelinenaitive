@@ -499,6 +499,8 @@ export function EndOfDayTab({
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [prefillTitle, setPrefillTitle] = useState('');
   const [prefillDealId, setPrefillDealId] = useState<string | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [notesByEvent, setNotesByEvent] = useState<Record<string, string>>({});
 
   const handleCreateFollowUp = useCallback(
     (ev: CalendarEvent, attendeeEmails: string[]) => {
@@ -536,18 +538,50 @@ export function EndOfDayTab({
   );
 
   return (
-    <div className="space-y-4">
-      <EndOfDayAgendaSection enabled={enabled} onCreateFollowUp={handleCreateFollowUp} />
-
-      <div className="pt-2 border-t border-white/10">
-        <PipelineTab
+    <div className="flex gap-3 min-h-0">
+      <div
+        className={cn(
+          'space-y-4 transition-all duration-300 ease-out min-w-0',
+          selectedEvent ? 'flex-1 lg:max-w-[58%]' : 'flex-1',
+        )}
+      >
+        <EndOfDayAgendaSection
           enabled={enabled}
-          onNavigate={onNavigate || (() => {})}
-          targetDealOwnerName={targetAssigneeName}
-          targetUserId={targetUserId}
-          briefingType={briefingType}
+          onCreateFollowUp={handleCreateFollowUp}
+          selectedEventId={selectedEvent?.id || null}
+          onSelectEvent={(ev) => setSelectedEvent(ev)}
         />
+
+        <div className="pt-2 border-t border-white/10">
+          <PipelineTab
+            enabled={enabled}
+            onNavigate={onNavigate || (() => {})}
+            targetDealOwnerName={targetAssigneeName}
+            targetUserId={targetUserId}
+            briefingType={briefingType}
+          />
+        </div>
       </div>
+
+      {selectedEvent && (
+        <EodContextSidebar
+          event={selectedEvent}
+          note={notesByEvent[selectedEvent.id] || ''}
+          onNoteChange={(v) =>
+            setNotesByEvent((prev) => ({ ...prev, [selectedEvent.id]: v }))
+          }
+          onClose={() => setSelectedEvent(null)}
+          onCreateFollowUp={() =>
+            handleCreateFollowUp(
+              selectedEvent,
+              (selectedEvent.attendees || [])
+                .map((a) => (a.email || '').trim().toLowerCase())
+                .filter(Boolean),
+            )
+          }
+          onCreateDeal={() => onNavigate?.('/deals?new=1')}
+        />
+      )}
 
       <QuickCreateTaskDialog
         open={followUpOpen}
