@@ -1,4 +1,4 @@
-import { useState, lazy, Suspense } from 'react';
+import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
@@ -15,16 +15,36 @@ import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
-import { DashboardModal } from '@/components/dashboard/DashboardModal';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
-import { TasksOverlay } from '@/components/tasks/TasksOverlay';
-import { DealsPageOverlay } from '@/components/deals/DealsPageOverlay';
-const FullCalendarView = lazy(() =>
-  import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }))
-);
-const InboxDialog = lazy(() =>
-  import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog }))
-);
+import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
+
+// Lazy-loaded overlay modules. Each is code-split so the header itself
+// stays cheap and the overlay shell can render an instant skeleton while
+// the real component's chunk + data hydrate in the background.
+const loadDashboard = () =>
+  import('@/components/dashboard/DashboardModal').then((m) => ({ default: m.DashboardModal }));
+const loadTasks = () =>
+  import('@/components/tasks/TasksOverlay').then((m) => ({ default: m.TasksOverlay }));
+const loadDeals = () =>
+  import('@/components/deals/DealsPageOverlay').then((m) => ({ default: m.DealsPageOverlay }));
+const loadCalendar = () =>
+  import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }));
+const loadMail = () =>
+  import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog }));
+
+const DashboardModal = lazy(loadDashboard);
+const TasksOverlay = lazy(loadTasks);
+const DealsPageOverlay = lazy(loadDeals);
+const FullCalendarView = lazy(loadCalendar);
+const InboxDialog = lazy(loadMail);
+
+const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
+  Dashboard: loadDashboard,
+  Calendar: loadCalendar,
+  Mail: loadMail,
+  'Action Queue': loadTasks,
+  Deals: loadDeals,
+};
 import { Newspaper } from 'lucide-react';
 import {
   canSeeNikiBriefing,
@@ -56,6 +76,32 @@ export function DealsHeader() {
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
+
+  // Prefetch overlay chunks in the background on idle so the very first
+  // click renders the real component instead of waiting on a network
+  // round-trip. Subsequent opens hit the in-memory module cache.
+  useEffect(() => {
+    const idle =
+      (window as unknown as {
+        requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number;
+      }).requestIdleCallback ?? ((cb: () => void) => window.setTimeout(cb, 1200));
+    const handle = idle(() => {
+      Object.values(OVERLAY_PREFETCHERS).forEach((load) => {
+        load().catch(() => {});
+      });
+    }, { timeout: 2500 });
+    return () => {
+      const cancel =
+        (window as unknown as { cancelIdleCallback?: (h: number) => void }).cancelIdleCallback;
+      if (cancel) cancel(handle as number);
+      else window.clearTimeout(handle as number);
+    };
+  }, []);
+
+  const prefetchOverlay = useCallback((label: string) => {
+    const load = OVERLAY_PREFETCHERS[label];
+    if (load) load().catch(() => {});
+  }, []);
 
   return (
     <header
@@ -101,6 +147,8 @@ export function DealsHeader() {
                     type="button"
                     aria-label={label}
                     onClick={onClick}
+                    onMouseEnter={() => prefetchOverlay(label)}
+                    onFocus={() => prefetchOverlay(label)}
                     className={`inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors ${
                       isOpen
                         ? 'bg-blue-400/15 text-blue-400'
@@ -143,16 +191,28 @@ export function DealsHeader() {
         </div>
       </div>
       <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
-      {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
-      <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
-      <DealsPageOverlay open={isDealsOverlayOpen} onOpenChange={setIsDealsOverlayOpen} />
+      {isFifthLine && isDashboardOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
+          <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />
+        </Suspense>
+      )}
+      {isTasksOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} />}>
+          <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
+        </Suspense>
+      )}
+      {isDealsOverlayOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="deals" onClose={() => setIsDealsOverlayOpen(false)} />}>
+          <DealsPageOverlay open={isDealsOverlayOpen} onOpenChange={setIsDealsOverlayOpen} />
+        </Suspense>
+      )}
       {isCalendarOpen && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<OverlayLoadingShell kind="calendar" onClose={() => setIsCalendarOpen(false)} />}>
           <FullCalendarView open={isCalendarOpen} onOpenChange={setIsCalendarOpen} />
         </Suspense>
       )}
       {isMailOpen && (
-        <Suspense fallback={null}>
+        <Suspense fallback={<OverlayLoadingShell kind="mail" onClose={() => setIsMailOpen(false)} />}>
           <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
         </Suspense>
       )}
