@@ -49,7 +49,7 @@ export function WorkspacePage({
           floating header pill across the top edge. Sits inside the surface,
           not in the floating header. */}
       <div
-        className="absolute left-3 sm:left-4 -top-[60px] z-20 pointer-events-none"
+        className="absolute left-3 sm:left-4 -top-[88px] z-20 pointer-events-none"
         aria-hidden="true"
       >
         <Logo className="h-28" />
