@@ -334,10 +334,10 @@ function useDerivedMetrics(data: OperationalData | null, projectFilters: string[
 
     return {
       kpis: [
-        { label: 'Milestones Next 2 Weeks', value: String(milestonesNext2Weeks), description: 'Open milestones due within 14 days', items: milestonesNext2WeeksItems, kind: 'task' as const },
-        { label: 'Overdue Milestones', value: String(overdueMilestones), description: 'Incomplete milestones past due', items: overdueMilestonesItems, kind: 'task' as const },
-        { label: 'Avg. Time to Comp. Milestone', value: completedMilestones.length > 0 ? `${avgTimeToComplete.toFixed(2)} d` : '— d', description: 'Avg duration open → completed', items: completedMilestones, kind: 'task' as const },
-        { label: 'Completed Projects', value: String(completedProjects), description: 'Projects with completed status', items: completedProjectsItems, kind: 'project' as const },
+        { label: 'Milestones Next 2 Weeks', value: String(milestonesNext2Weeks), description: 'Open milestones due within 14 days', accent: 'hsl(var(--primary))', items: milestonesNext2WeeksItems, kind: 'task' as const },
+        { label: 'Overdue Milestones', value: String(overdueMilestones), description: 'Incomplete milestones past due', accent: 'hsl(var(--destructive))', items: overdueMilestonesItems, kind: 'task' as const },
+        { label: 'Avg. Time to Comp. Milestone', value: completedMilestones.length > 0 ? `${avgTimeToComplete.toFixed(1)}d` : '—', description: 'Avg duration open → completed', accent: 'hsl(45, 93%, 55%)', items: completedMilestones, kind: 'task' as const },
+        { label: 'Completed Projects', value: String(completedProjects), description: 'Projects with completed status', accent: 'hsl(var(--success))', items: completedProjectsItems, kind: 'project' as const },
       ],
       milestoneOwnership,
       overdueBuckets,
