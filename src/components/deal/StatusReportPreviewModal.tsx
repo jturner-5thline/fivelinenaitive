@@ -140,7 +140,10 @@ export function StatusReportPreviewModal({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent
+        className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden z-[2147483600]"
+        overlayClassName="z-[2147483500]"
+      >
         <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
