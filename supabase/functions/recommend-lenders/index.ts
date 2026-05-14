@@ -72,7 +72,7 @@ serve(async (req) => {
     // Pull the deal (RLS scoped)
     const { data: deal, error: dealErr } = await supabase
       .from("deals")
-      .select("id, company, value, stage, status, company_id, user_id, business_model, deal_type, narrative, engagement_type, geography, deal_class")
+      .select("id, company, value, stage, status, company_id, user_id, business_model, deal_type, narrative, engagement_type, deal_class")
       .eq("id", dealId)
       .maybeSingle();
     if (dealErr || !deal) {
