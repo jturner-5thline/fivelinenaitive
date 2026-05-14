@@ -299,7 +299,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
 
   const overlay = (
     <div
-      className="fixed inset-0 z-[2147483000] flex items-center justify-center isolate"
+      className="fixed inset-0 z-50 flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-label={`Deal details for ${deal.company || 'deal'}`}
