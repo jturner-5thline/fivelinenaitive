@@ -2,7 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, ReactNode 
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 
-export type MilestoneTimingType = 'from_creation' | 'after_previous';
+export type MilestoneTimingType = 'from_creation' | 'after_previous' | 'from_stage_entry';
 
 export interface DefaultMilestone {
   id: string;
@@ -10,6 +10,8 @@ export interface DefaultMilestone {
   daysFromCreation: number | null;
   timingType: MilestoneTimingType;
   position: number;
+  triggerStage?: string | null;
+  daysFromStage?: number | null;
 }
 
 interface DefaultMilestonesContextType {
@@ -30,6 +32,8 @@ function mapRow(row: any): DefaultMilestone {
     daysFromCreation: row.days_from_creation,
     timingType: (row.timing_type as MilestoneTimingType) || 'from_creation',
     position: row.position,
+    triggerStage: row.trigger_stage ?? null,
+    daysFromStage: row.days_from_stage ?? null,
   };
 }
 
@@ -82,6 +86,8 @@ export function DefaultMilestonesProvider({ children }: { children: ReactNode })
         days_from_creation: milestone.daysFromCreation,
         timing_type: milestone.timingType || 'from_creation',
         position: maxPosition + 1,
+        trigger_stage: milestone.triggerStage ?? null,
+        days_from_stage: milestone.daysFromStage ?? null,
       });
 
     if (error) {
@@ -97,6 +103,8 @@ export function DefaultMilestonesProvider({ children }: { children: ReactNode })
     if (updates.daysFromCreation !== undefined) dbUpdates.days_from_creation = updates.daysFromCreation;
     if (updates.timingType !== undefined) dbUpdates.timing_type = updates.timingType;
     if (updates.position !== undefined) dbUpdates.position = updates.position;
+    if (updates.triggerStage !== undefined) dbUpdates.trigger_stage = updates.triggerStage;
+    if (updates.daysFromStage !== undefined) dbUpdates.days_from_stage = updates.daysFromStage;
 
     const { error } = await supabase
       .from('default_milestones' as any)

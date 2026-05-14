@@ -27,6 +27,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { useDefaultMilestones, DefaultMilestone, MilestoneTimingType } from '@/contexts/DefaultMilestonesContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   DndContext,
   closestCenter,
@@ -71,6 +73,14 @@ function SortableMilestoneItem({ milestone, index, previousMilestone, onEdit, on
   };
 
   const getTimingDescription = () => {
+    if (milestone.timingType === 'from_stage_entry') {
+      const days = milestone.daysFromStage;
+      const stageLabel = milestone.triggerStage || 'stage';
+      if (days === null || days === undefined) {
+        return `Added with no due date when deal enters "${stageLabel}"`;
+      }
+      return `Added with due date +${days} day(s) when deal enters "${stageLabel}"`;
+    }
     if (milestone.daysFromCreation === null) {
       return 'No due date';
     }
@@ -159,6 +169,16 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
     deleteDefaultMilestone,
     reorderDefaultMilestones,
   } = useDefaultMilestones();
+  const { pipelines } = usePipelineContext();
+  const stageOptions = (() => {
+    const seen = new Map<string, string>();
+    pipelines.forEach((p) => {
+      (p.stages || []).forEach((s: any) => {
+        if (!seen.has(s.id)) seen.set(s.id, s.label);
+      });
+    });
+    return Array.from(seen.entries()).map(([id, label]) => ({ id, label }));
+  })();
 
   const [isOpen, setIsOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -167,6 +187,8 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
   const [daysFromCreation, setDaysFromCreation] = useState<number | null>(7);
   const [hasDate, setHasDate] = useState(true);
   const [timingType, setTimingType] = useState<MilestoneTimingType>('from_creation');
+  const [triggerStage, setTriggerStage] = useState<string | null>(null);
+  const [daysFromStage, setDaysFromStage] = useState<number | null>(14);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -184,6 +206,8 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
     setDaysFromCreation(7);
     setHasDate(true);
     setTimingType('from_creation');
+    setTriggerStage(null);
+    setDaysFromStage(14);
     setIsDialogOpen(true);
   };
 
@@ -193,8 +217,14 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
       setEditingId(id);
       setTitle(milestone.title);
       setDaysFromCreation(milestone.daysFromCreation);
-      setHasDate(milestone.daysFromCreation !== null);
+      setHasDate(
+        milestone.timingType === 'from_stage_entry'
+          ? milestone.daysFromStage !== null && milestone.daysFromStage !== undefined
+          : milestone.daysFromCreation !== null
+      );
       setTimingType(milestone.timingType || 'from_creation');
+      setTriggerStage(milestone.triggerStage ?? null);
+      setDaysFromStage(milestone.daysFromStage ?? 14);
       setIsDialogOpen(true);
     }
   };
@@ -205,18 +235,31 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
       return;
     }
 
-    const finalDays = hasDate ? (daysFromCreation ?? 0) : null;
-
-    if (hasDate && finalDays !== null && finalDays < 0) {
-      toast({ title: 'Error', description: 'Days must be 0 or greater', variant: 'destructive' });
+    if (timingType === 'from_stage_entry' && !triggerStage) {
+      toast({ title: 'Error', description: 'Pick a trigger stage', variant: 'destructive' });
       return;
     }
 
+    const finalDays = timingType === 'from_stage_entry'
+      ? null
+      : (hasDate ? (daysFromCreation ?? 0) : null);
+    const finalStageDays = timingType === 'from_stage_entry'
+      ? (hasDate ? (daysFromStage ?? 0) : null)
+      : null;
+
+    const payload = {
+      title: title.trim(),
+      daysFromCreation: finalDays,
+      timingType,
+      triggerStage: timingType === 'from_stage_entry' ? triggerStage : null,
+      daysFromStage: finalStageDays,
+    };
+
     if (editingId) {
-      updateDefaultMilestone(editingId, { title: title.trim(), daysFromCreation: finalDays, timingType });
+      updateDefaultMilestone(editingId, payload);
       toast({ title: 'Default milestone updated' });
     } else {
-      addDefaultMilestone({ title: title.trim(), daysFromCreation: finalDays, timingType });
+      addDefaultMilestone(payload);
       toast({ title: 'Default milestone added' });
     }
 
@@ -225,6 +268,8 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
     setDaysFromCreation(7);
     setHasDate(true);
     setTimingType('from_creation');
+    setTriggerStage(null);
+    setDaysFromStage(14);
     setEditingId(null);
   };
 
@@ -340,8 +385,29 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
                     Days after previous milestone is completed
                   </Label>
                 </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="from_stage_entry" id="from_stage_entry" />
+                  <Label htmlFor="from_stage_entry" className="font-normal cursor-pointer">
+                    Triggered when deal enters a stage
+                  </Label>
+                </div>
               </RadioGroup>
             </div>
+            {timingType === 'from_stage_entry' && (
+              <div className="space-y-2">
+                <Label>Trigger Stage *</Label>
+                <Select value={triggerStage ?? ''} onValueChange={(v) => setTriggerStage(v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Pick a stage" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-popover max-h-72 overflow-y-auto">
+                    {stageOptions.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="space-y-2">
               <div className="flex items-center space-x-2">
                 <Checkbox
@@ -356,19 +422,29 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
               {hasDate && (
                 <>
                   <Label htmlFor="daysFromCreation">
-                    {timingType === 'from_creation' ? 'Days After Deal Creation' : 'Days After Previous Milestone'}
+                    {timingType === 'from_creation'
+                      ? 'Days After Deal Creation'
+                      : timingType === 'after_previous'
+                      ? 'Days After Previous Milestone'
+                      : 'Days After Stage Entry'}
                   </Label>
                   <Input
                     id="daysFromCreation"
                     type="number"
                     min={0}
-                    value={daysFromCreation ?? 0}
-                    onChange={(e) => setDaysFromCreation(parseInt(e.target.value) || 0)}
+                    value={timingType === 'from_stage_entry' ? (daysFromStage ?? 0) : (daysFromCreation ?? 0)}
+                    onChange={(e) => {
+                      const n = parseInt(e.target.value) || 0;
+                      if (timingType === 'from_stage_entry') setDaysFromStage(n);
+                      else setDaysFromCreation(n);
+                    }}
                   />
                   <p className="text-xs text-muted-foreground">
-                    {timingType === 'from_creation' 
+                    {timingType === 'from_creation'
                       ? 'The due date will be set this many days after the deal is created'
-                      : 'The due date will be set this many days after the previous milestone is marked complete'}
+                      : timingType === 'after_previous'
+                      ? 'The due date will be set this many days after the previous milestone is marked complete'
+                      : 'The due date will be set this many days after the deal enters the trigger stage'}
                   </p>
                 </>
               )}
