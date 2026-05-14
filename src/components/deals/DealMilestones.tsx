@@ -381,7 +381,7 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                          </Button>
                        </PopoverTrigger>
                        <PopoverContent
-                         className="w-auto p-0 z-[60] pointer-events-auto"
+                         className="w-auto p-0 pointer-events-auto"
                          align="end"
                          onOpenAutoFocus={(e) => e.preventDefault()}
                        >
@@ -537,7 +537,7 @@ function SortableMilestoneItem({
               </Button>
             </PopoverTrigger>
             <PopoverContent
-              className="w-auto p-0 z-[60] pointer-events-auto"
+              className="w-auto p-0 pointer-events-auto"
               align="end"
               onOpenAutoFocus={(e) => e.preventDefault()}
             >
@@ -629,7 +629,7 @@ function SortableMilestoneItem({
                 </Button>
               </PopoverTrigger>
               <PopoverContent
-                className="w-auto p-0 z-[60] pointer-events-auto"
+                className="w-auto p-0 pointer-events-auto"
                 align="end"
                 onOpenAutoFocus={(e) => e.preventDefault()}
               >

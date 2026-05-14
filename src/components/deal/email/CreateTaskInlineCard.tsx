@@ -332,7 +332,7 @@ export function CreateTaskInlineCard({
               {format(dueDate, 'EEE, MMM d')}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 z-[80] pointer-events-auto" align="start">
+          <PopoverContent className="w-auto p-0 pointer-events-auto" align="start">
             <Calendar
               mode="single"
               selected={dueDate}
@@ -355,7 +355,7 @@ export function CreateTaskInlineCard({
               <ChevronDown className="h-3 w-3 opacity-60" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0 z-[80] pointer-events-auto" align="start">
+          <PopoverContent className="w-[240px] p-0 pointer-events-auto" align="start">
             <Command>
               <CommandInput placeholder="Search teammates..." className="h-8 text-[12px]" />
               <CommandList>

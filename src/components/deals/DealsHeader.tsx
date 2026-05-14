@@ -399,7 +399,7 @@ export function DealsHeader() {
                     )}
                   </button>
                 </TooltipTrigger>
-                <TooltipContent side="bottom" sideOffset={6} className="z-[1100]">
+                <TooltipContent side="bottom" sideOffset={6} className="">
                   {label}
                 </TooltipContent>
               </Tooltip>
