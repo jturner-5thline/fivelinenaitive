@@ -60,14 +60,18 @@ export function DealsHeader() {
   // so it slides in sync with the sidebar (matching the Ask naitive AI
   // bar's behaviour). When the sidebar collapses to icon-only, the
   // header narrows; when it expands, the header shifts right.
-  const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar();
+  const { state: sidebarState, isMobile: sidebarIsMobile, isHovering: sidebarIsHovering } = useSidebar();
   // Mirror the math in `src/components/ui/sidebar.tsx`:
   //   expanded → var(--sidebar-width) (14rem)
   //   collapsed (icon) → calc(var(--sidebar-width-icon) + theme(spacing.4)) (3rem + 1rem)
   //   mobile → off-canvas, header spans full viewport
+  // Effective width = pinned-open OR hover-expanded, matching the
+  // sidebar's own "effectiveState" logic in `src/components/ui/sidebar.tsx`.
+  const sidebarEffectivelyExpanded =
+    sidebarState === 'expanded' || sidebarIsHovering;
   const headerLeftOffset = sidebarIsMobile
     ? '0px'
-    : sidebarState === 'expanded'
+    : sidebarEffectivelyExpanded
       ? 'var(--sidebar-width, 14rem)'
       : 'calc(var(--sidebar-width-icon, 3rem) + 1rem)';
   const { isHintVisible, dismissHint } = useFirstTimeHints();
