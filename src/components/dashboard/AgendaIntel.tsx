@@ -26,6 +26,15 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { supabase } from '@/integrations/supabase/client';
@@ -327,6 +336,8 @@ export function AgendaIntel() {
   const [loading, setLoading] = useState(false);
   const [deals, setDeals] = useState<DealRow[]>([]);
   const [dealLinkOverrides, setDealLinkOverrides] = useState<Record<string, string>>({});
+  const [linkPickerEventId, setLinkPickerEventId] = useState<string | null>(null);
+  const [linkPickerQuery, setLinkPickerQuery] = useState('');
   const [prepCache, setPrepCache] = useState<Record<string, PrepCacheEntry>>(() =>
     loadPrepCache(),
   );
@@ -490,14 +501,18 @@ export function AgendaIntel() {
   };
 
   const handleLinkDeal = (eventId: string) => {
-    const name = window.prompt('Type a deal name to link to this meeting:');
-    if (!name) return;
-    const match = deals.find(d => d.name.toLowerCase().includes(name.toLowerCase()));
-    if (!match) {
-      alert('No matching deal found.');
-      return;
-    }
-    setDealLinkOverrides(prev => ({ ...prev, [eventId]: match.id }));
+    if (!eventId) return;
+    setLinkPickerQuery('');
+    setLinkPickerEventId(eventId);
+  };
+
+  const handlePickDeal = (dealId: string) => {
+    if (!linkPickerEventId || !dealId) return;
+    const match = deals.find(d => d.id === dealId);
+    setDealLinkOverrides(prev => ({ ...prev, [linkPickerEventId]: dealId }));
+    setLinkPickerEventId(null);
+    setLinkPickerQuery('');
+    if (match) toast.success(`Linked to ${match.name}`);
   };
 
   // ── Render ─────────────────────────────────────────────────
@@ -576,6 +591,39 @@ export function AgendaIntel() {
           </div>
         )}
       </ScrollArea>
+      <CommandDialog
+        open={!!linkPickerEventId}
+        onOpenChange={(open) => {
+          if (!open) {
+            setLinkPickerEventId(null);
+            setLinkPickerQuery('');
+          }
+        }}
+      >
+        <CommandInput
+          placeholder="Search deals to link..."
+          value={linkPickerQuery}
+          onValueChange={setLinkPickerQuery}
+        />
+        <CommandList>
+          <CommandEmpty>
+            {deals.length === 0 ? 'No deals available.' : 'No matching deals.'}
+          </CommandEmpty>
+          <CommandGroup heading="Deals">
+            {deals.map(d => (
+              <CommandItem
+                key={d.id}
+                value={`${d.name} ${d.stage}`}
+                onSelect={() => handlePickDeal(d.id)}
+              >
+                <Briefcase className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                <span className="flex-1 truncate">{d.name}</span>
+                <span className="text-xs text-muted-foreground ml-2">{d.stage}</span>
+              </CommandItem>
+            ))}
+          </CommandGroup>
+        </CommandList>
+      </CommandDialog>
     </div>
   );
 }
