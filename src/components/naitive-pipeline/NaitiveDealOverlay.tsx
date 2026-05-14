@@ -304,7 +304,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           borderRadius: originBorderRadius != null ? `${originBorderRadius}px` : undefined,
           transition: reduceMotion
             ? undefined
-            : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+            : isClosing
+              ? 'transform 240ms cubic-bezier(0.4, 0, 0.2, 1), border-radius 240ms cubic-bezier(0.4, 0, 0.2, 1), opacity 220ms ease-out'
+              : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
+          opacity: isClosing ? 0.92 : 1,
           willChange: 'transform',
           animation: 'none',
         }}
