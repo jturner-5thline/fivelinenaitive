@@ -505,20 +505,6 @@ export default function NaitivePipeline() {
                     </button>
                   ))}
                 </div>
-                {pipelineId && (
-                  <CreateNaitiveDealDialog
-                    pipelineId={pipelineId}
-                    stages={stages}
-                    defaultStage={stages[0]?.id}
-                    onCreated={refetch}
-                    trigger={
-                      <Button size="sm" className="gap-1.5">
-                        <Plus className="h-4 w-4" />
-                        Add Deal
-                      </Button>
-                    }
-                  />
-                )}
               </div>
             </div>
           }
