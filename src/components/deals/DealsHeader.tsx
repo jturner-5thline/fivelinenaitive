@@ -17,6 +17,8 @@ import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
+import { usePipelineData } from '@/hooks/useDailyBriefingData';
+import { useDailyDismissedIds } from '@/hooks/useDailyDismissals';
 import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
@@ -118,6 +120,23 @@ export function DealsHeader() {
   const canSeeBriefingHeaderItems = briefingUserEmails.includes(
     user?.email?.toLowerCase() ?? ''
   );
+
+  // ─── Daily Rundown completion badges ───────────────────────────────
+  // Show a red "1" badge on the Daily Rundown / Niki's Daily Rundown
+  // header icons whenever today's rundown has at least one undismissed
+  // deal in its deal section. Clears immediately when the user dismisses
+  // the last remaining deal (event-driven via useDailyDismissedIds).
+  // Both variants share the same dismissal scope (`rundown-deal:daily_briefing`)
+  // because both render through DailyBriefingModal with the default type;
+  // per-variant incompleteness is determined by each variant's own
+  // scopedDeals list (self vs. Niki).
+  const dismissedRundownDealIds = useDailyDismissedIds('rundown-deal:daily_briefing');
+  const { data: selfRundownData } = usePipelineData(canSeeBriefingHeaderItems);
+  const { data: nikiRundownData } = usePipelineData(canSeeNiki, NIKI_ASSIGNEE_NAME);
+  const hasIncompleteRundown = (deals: { id: string }[] | undefined) =>
+    !!(deals && deals.length > 0 && deals.some(d => !dismissedRundownDealIds.has(d.id)));
+  const dailyRundownHasBadge = canSeeBriefingHeaderItems && hasIncompleteRundown(selfRundownData?.scopedDeals as any);
+  const nikiRundownHasBadge = canSeeNiki && hasIncompleteRundown(nikiRundownData?.scopedDeals as any);
 
   // Prefetch overlay chunks in the background on idle so the very first
   // click renders the real component instead of waiting on a network
