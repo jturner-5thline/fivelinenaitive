@@ -69,6 +69,10 @@ interface Props {
   setActiveIndex: React.Dispatch<React.SetStateAction<number>>;
   /** Callback invoked when the user clicks "Send" for a single draft. */
   onSend: (index: number) => void | Promise<void>;
+  /** Live progress for the per-lender draft generation pipeline. */
+  progress?: { completed: number; total: number; failed: number } | null;
+  /** Re-run AI generation for a single draft (used to retry failed lenders). */
+  onRegenerate?: (index: number) => void | Promise<void>;
 }
 
 const EMAILS_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,6 +84,7 @@ function validateEmails(value: string): boolean {
 
 export function DraftSubmissionEmailsModal({
   open, onOpenChange, isGenerating, drafts, setDrafts, activeIndex, setActiveIndex, onSend,
+  progress, onRegenerate,
 }: Props) {
   const [appliedField, setAppliedField] = useState<AppliedField>(null);
   const [showCc, setShowCc] = useState(false);
