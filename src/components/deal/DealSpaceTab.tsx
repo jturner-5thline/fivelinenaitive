@@ -6,6 +6,7 @@ import { DealSpaceDocumentsTab } from './DealSpaceDocumentsTab';
 import { DealSpaceNotesTab } from './DealSpaceNotesTab';
 import { GammaIntegrationPanel } from './GammaIntegrationPanel';
 import { SaaSModelTab } from './saas-model/SaaSModelTab';
+import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 
 interface DealSpaceTabProps {
   dealId: string;
@@ -23,6 +24,7 @@ interface DealSpaceTabProps {
 }
 
 export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
   return (
     <Tabs defaultValue="ask-ai" className="w-full">
       <TabsList className="mb-2 rounded-sm">
@@ -57,7 +59,14 @@ export function DealSpaceTab({ dealId, dealData }: DealSpaceTabProps) {
       </TabsContent>
 
       <TabsContent value="financials">
-        <SaaSModelTab dealId={dealId} dealData={dealData ? { company: dealData.company, value: dealData.value, stage: dealData.stage } : undefined} />
+        {isFifthLine ? (
+          <SaaSModelTab dealId={dealId} dealData={dealData ? { company: dealData.company, value: dealData.value, stage: dealData.stage } : undefined} />
+        ) : (
+          <div className="flex flex-col items-center justify-center min-h-[420px] rounded-lg border border-border/50 bg-card/30 px-6 py-16 text-center">
+            <p className="text-3xl font-semibold tracking-tight text-foreground">COMING SOON!</p>
+            <p className="mt-2 text-sm text-muted-foreground">Deal analysis is on its way.</p>
+          </div>
+        )}
       </TabsContent>
 
       <TabsContent value="documents">
