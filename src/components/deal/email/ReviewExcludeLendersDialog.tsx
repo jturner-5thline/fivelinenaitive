@@ -246,6 +246,32 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, excluded: value } : r)));
   };
 
+  /**
+   * Tri-state master toggle. Operates only on currently-visible rows
+   * (so it respects the "All lenders" filter) and skips rows the user
+   * cannot toggle (Passed lenders, whose checkbox is disabled).
+   */
+  const toggleableVisible = useMemo(
+    () => visibleRows.filter((r) => r.status !== 'passed'),
+    [visibleRows]
+  );
+  const visibleSelectedCount = toggleableVisible.filter((r) => !r.excluded).length;
+  const masterState: boolean | 'indeterminate' =
+    toggleableVisible.length === 0
+      ? false
+      : visibleSelectedCount === 0
+        ? false
+        : visibleSelectedCount === toggleableVisible.length
+          ? true
+          : 'indeterminate';
+
+  const toggleAllVisible = (next: boolean) => {
+    const ids = new Set(toggleableVisible.map((r) => r.id));
+    setRows((prev) =>
+      prev.map((r) => (ids.has(r.id) ? { ...r, excluded: !next } : r))
+    );
+  };
+
   const handleConfirm = async () => {
     if (summary.includedCount === 0) {
       toast({
@@ -344,13 +370,25 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
         ) : (
           <ScrollArea className="flex-1 -mx-6 px-6">
             <div className="flex items-center justify-between py-2 mb-1 border-b border-border/40">
-              <span className="text-[11px] text-muted-foreground">
-                {showAll
-                  ? `Showing all ${rows.length} lender${rows.length === 1 ? '' : 's'}`
-                  : `Showing ${visibleRows.length} eligible${
-                      hiddenCount > 0 ? ` · ${hiddenCount} hidden (Passed / Not a Fit)` : ''
-                    }`}
-              </span>
+              <label className="flex items-center gap-2 text-[11px] text-foreground/80 cursor-pointer">
+                <Checkbox
+                  checked={masterState}
+                  disabled={toggleableVisible.length === 0}
+                  onCheckedChange={(v) => toggleAllVisible(masterState !== true)}
+                  aria-label={masterState === true ? 'Unselect all visible lenders' : 'Select all visible lenders'}
+                />
+                <span className="font-medium">
+                  {masterState === true ? 'Unselect all' : 'Select all'}
+                </span>
+                <span className="text-muted-foreground">
+                  ·{' '}
+                  {showAll
+                    ? `${rows.length} lender${rows.length === 1 ? '' : 's'}`
+                    : `${visibleRows.length} eligible${
+                        hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''
+                      }`}
+                </span>
+              </label>
               <label className="flex items-center gap-2 text-[11px] text-foreground/80 cursor-pointer">
                 <Switch checked={showAll} onCheckedChange={setShowAll} />
                 <span>All lenders</span>
