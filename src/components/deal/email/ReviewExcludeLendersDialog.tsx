@@ -36,6 +36,12 @@ export interface LenderReviewRow {
   lastContactAt: string | null;
   /** True by default for `passed`; user can flip. */
   excluded: boolean;
+  /**
+   * Snapshot of whether this lender was auto-excluded on load (Passed,
+   * disqualified, or otherwise non-actionable). Used to hide non-eligible
+   * rows from the default view; the "All lenders" toggle reveals them.
+   */
+  initiallyExcluded: boolean;
 }
 
 interface Props {
@@ -79,6 +85,12 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
   // Default ON — per-lender personalization is the higher-quality choice
   // and matches how senior bankers actually pitch deals.
   const [personalize, setPersonalize] = useState(true);
+  /**
+   * When false (default), hide non-actionable lenders (Passed, pre-excluded,
+   * Not-a-Fit) so the reviewer only scans eligible candidates. Toggle to
+   * reveal the full directory of lenders attached to the deal.
+   */
+  const [showAll, setShowAll] = useState(false);
 
   /**
    * Per-lender warning dismissals for this dialog session, keyed by
@@ -92,6 +104,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
     if (!open) {
       setDismissedWarnings(new Set());
       setPreflightOpen(true);
+      setShowAll(false);
     }
   }, [open]);
 
@@ -111,6 +124,17 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
         if (cancelled) return;
         const distilled: LenderReviewRow[] = (data || []).map((r: any) => {
           const status = distillStatus(r);
+          const ts = (r.tracking_status || '').toLowerCase();
+          const sub = (r.substage || '').toLowerCase();
+          // Treat as non-actionable for default view: passed, disqualified,
+          // or "not a fit"-style substages.
+          const nonActionable =
+            status === 'passed' ||
+            ts === 'disqualified' ||
+            ts === 'not-a-fit' ||
+            ts === 'not_a_fit' ||
+            sub.includes('not a fit') ||
+            sub.includes('not-a-fit');
           return {
             id: r.id,
             name: r.name,
@@ -119,8 +143,9 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             substage: r.substage ?? null,
             passReason: r.pass_reason ?? null,
             lastContactAt: r.last_contact_at ?? null,
-            // Auto-exclude passed lenders by default.
-            excluded: status === 'passed',
+            // Auto-exclude passed / non-actionable lenders by default.
+            excluded: nonActionable,
+            initiallyExcluded: nonActionable,
           };
         });
         setRows(distilled);
@@ -136,6 +161,12 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
     })();
     return () => { cancelled = true; };
   }, [open, dealId]);
+
+  const visibleRows = useMemo(
+    () => (showAll ? rows : rows.filter((r) => !r.initiallyExcluded)),
+    [rows, showAll]
+  );
+  const hiddenCount = rows.length - visibleRows.length;
 
   const summary = useMemo(() => {
     const included = rows.filter((r) => !r.excluded);
