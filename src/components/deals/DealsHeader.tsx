@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase, Newspaper, Sparkles } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -45,7 +45,6 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   'Action Queue': loadTasks,
   Deals: loadDeals,
 };
-import { Newspaper } from 'lucide-react';
 import {
   canSeeNikiBriefing,
   NIKI_USER_ID,
@@ -76,6 +75,10 @@ export function DealsHeader() {
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
+  const briefingUserEmails = ['jturner@5thline.co', 'nheikali@5thline.co'];
+  const canSeeBriefingHeaderItems = briefingUserEmails.includes(
+    user?.email?.toLowerCase() ?? ''
+  );
 
   // Prefetch overlay chunks in the background on idle so the very first
   // click renders the real component instead of waiting on a network
@@ -137,13 +140,19 @@ export function DealsHeader() {
           {/* Primary quick-access nav — centered absolutely so trailing utilities don't shift it */}
           <nav className="flex items-center gap-0.5 sm:gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {[
-              ...(isFifthLine
-                ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
-                : []),
               { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
               { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
               { label: 'Action Queue', Icon: Inbox, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
               { label: 'Deals', Icon: Briefcase, isOpen: isDealsOverlayOpen, onClick: () => setIsDealsOverlayOpen(true) },
+              ...(isFifthLine
+                ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
+                : []),
+              ...(canSeeBriefingHeaderItems
+                ? [
+                    { label: 'Daily Briefing', Icon: Newspaper, isOpen: isBriefingOpen, onClick: () => setIsBriefingOpen(true) },
+                    { label: "Niki's Daily Briefing", Icon: Sparkles, isOpen: isNikiBriefingOpen, onClick: () => setIsNikiBriefingOpen(true) },
+                  ]
+                : []),
             ].map(({ label, Icon, isOpen, onClick }) => (
               <Tooltip key={label}>
                 <TooltipTrigger asChild>
@@ -220,7 +229,7 @@ export function DealsHeader() {
           <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
         </Suspense>
       )}
-      {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
+      {canSeeBriefingHeaderItems && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
       {canSeeNiki && (
         <DailyBriefingModal
           open={isNikiBriefingOpen}
