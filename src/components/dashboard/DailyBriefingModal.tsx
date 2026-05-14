@@ -923,7 +923,7 @@ function EmailTab({
   subTab: EmailCategoryTab;
   unreadOnly: boolean;
 }) {
-  const { data, isLoading } = useEmailData(enabled, targetUserId);
+  const { data, isLoading, isFetching } = useEmailData(enabled, targetUserId);
   const [detail, setDetail] = useState<any>(null);
   const { entities: classifierEntities, orgCtx } = useEmailClassifierData();
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
@@ -988,7 +988,7 @@ function EmailTab({
 
   if (isLoading || !data) return <TabSkeleton />;
 
-  const { emails } = data;
+  const { emails, syncFailed } = data;
 
   // Apply the unread-only visibility filter BEFORE classification/grouping
   // so counts, groupings, and the rendered list all stay consistent.
@@ -1029,6 +1029,21 @@ function EmailTab({
         onOpenChange={(o) => { if (!o) setTaskEmail(null); }}
         email={taskEmail}
       />
+      {/* Live-sync status: subtle inline indicator while a background Gmail
+          refresh is in flight, plus a warning banner when the live fetch
+          failed and we're showing cached results. */}
+      {isFetching && (
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground/70 px-1 pb-2">
+          <RefreshCw className="h-3 w-3 animate-spin" />
+          <span>Syncing latest emails…</span>
+        </div>
+      )}
+      {syncFailed && !isFetching && (
+        <div className="flex items-center gap-2 text-[11px] text-amber-300/90 bg-amber-500/10 border border-amber-500/20 rounded-md px-2 py-1 mb-2">
+          <AlertCircle className="h-3 w-3" />
+          <span>Email sync may be delayed</span>
+        </div>
+      )}
       {/* Email list */}
       {/* Workspace: when no email is selected, the grouped list takes the full
           width. When an email IS selected, we switch to the same 3-column
