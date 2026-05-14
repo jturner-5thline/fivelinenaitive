@@ -27,6 +27,15 @@ export interface WorkspacePageProps {
   /** Optional override for the inner `space-y-*` rhythm. */
   contentClassName?: string;
   /**
+   * Optional action cluster rendered in the top-right of the workspace
+   * module, vertically aligned with the persistent naitive logo brand
+   * anchor in the top-left. Use this for page-level controls (export,
+   * notifications, "New Deal", etc.) that should read as part of the
+   * unified module header rather than as a separate row above the page
+   * content.
+   */
+  headerActions?: React.ReactNode;
+  /**
    * Optional content rendered AFTER `<main>` (still inside the canvas
    * wrapper) — e.g. floating dialogs / drawers / hint buttons that should
    * live within the page's stacking context but outside the padded scroll
@@ -40,9 +49,17 @@ export function WorkspacePage({
   beforeContent,
   contentClassName,
   afterMain,
+  headerActions,
 }: WorkspacePageProps) {
   return (
     <div className="relative bg-transparent">
+      {headerActions && (
+        <div
+          className="absolute right-3 sm:right-4 -top-[88px] h-28 z-20 flex items-center pointer-events-auto"
+        >
+          {headerActions}
+        </div>
+      )}
       <main className="w-full px-4 pt-5 pb-3 sm:px-6">
         {beforeContent}
         <div className={cn('space-y-5', contentClassName)}>{children}</div>
