@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   consumeDealOpenOriginRect,
   ensureDealOpenAnimationInstalled,
+  findDealTileRect,
 } from '@/lib/dealOpenAnimation';
 
 // Lazy-load the (large) deal detail page so the overlay shell can paint
@@ -48,6 +49,48 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   const [originBorderRadius, setOriginBorderRadius] = useState<number | null>(null);
   const [contentVisible, setContentVisible] = useState(false);
   const lastAnimatedDealId = useRef<string | null>(null);
+  // Close animation state. While `isClosing` is true the panel collapses
+  // back into the originating tile (or shrinks in place when the tile
+  // isn't in the DOM anymore) before `onClose` is actually invoked.
+  const [isClosing, setIsClosing] = useState(false);
+  const closingDealIdRef = useRef<string | null>(null);
+
+  // Animate the panel back into the tile, then call the parent's onClose.
+  // Snappier than open (220ms vs 360ms) so dismissal feels crisp.
+  const animateClose = () => {
+    if (isClosing) return;
+    const id = deal?.id ?? null;
+    closingDealIdRef.current = id;
+    if (reduceMotion || !id) {
+      onClose();
+      return;
+    }
+    const rect = findDealTileRect(id);
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+    const isDesktop = vw >= 640;
+    const inset = isDesktop ? 24 : 0;
+    const finalLeft = inset;
+    const finalTop = inset;
+    const finalWidth = vw - inset * 2;
+    const finalHeight = vh - inset * 2;
+
+    if (rect) {
+      const sx = Math.max(rect.width / finalWidth, 0.05);
+      const sy = Math.max(rect.height / finalHeight, 0.05);
+      const tx = rect.left - finalLeft;
+      const ty = rect.top - finalTop;
+      setOriginTransform(`translate3d(${tx}px, ${ty}px, 0) scale(${sx}, ${sy})`);
+      setOriginBorderRadius(16);
+    } else {
+      // No tile to land on — gently shrink in place toward the panel center.
+      setOriginTransform('scale(0.94)');
+      setOriginBorderRadius(20);
+    }
+    setContentVisible(false);
+    setIsClosing(true);
+    window.setTimeout(() => onClose(), 240);
+  };
 
   // Install the global click-rect capture once. Cheap: a single window
   // mousedown listener.
@@ -109,7 +152,14 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       setOriginTransform(null);
       setOriginBorderRadius(null);
       setContentVisible(false);
+      setIsClosing(false);
+      closingDealIdRef.current = null;
       return;
+    }
+    // Re-opening (or navigating to a sibling) cancels any in-flight close.
+    if (isClosing) {
+      setIsClosing(false);
+      closingDealIdRef.current = null;
     }
     if (lastAnimatedDealId.current === deal.id) return;
     lastAnimatedDealId.current = deal.id;
@@ -196,7 +246,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
   useEffect(() => {
     if (!deal) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+      if (e.key === 'Escape') { e.preventDefault(); animateClose(); return; }
       const ae = document.activeElement as HTMLElement | null;
       if (ae) {
         const tag = ae.tagName;
@@ -208,7 +258,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deal?.id, prevDeal?.id, nextDeal?.id]);
+  }, [deal?.id, prevDeal?.id, nextDeal?.id, isClosing, reduceMotion]);
 
   if (!deal) return null;
 
@@ -232,8 +282,10 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             'radial-gradient(circle at 50% 40%, rgba(10, 14, 24, 0.18) 0%, rgba(7, 10, 18, 0.34) 58%, rgba(4, 6, 12, 0.46) 100%)',
           backdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
           WebkitBackdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
+          opacity: reduceMotion ? 1 : isClosing ? 0 : 1,
+          transition: reduceMotion ? undefined : 'opacity 220ms ease-out',
         }}
-        onClick={onClose}
+        onClick={animateClose}
       />
 
       {/* Panel — near full-screen canvas. Sits above all app chrome
@@ -276,7 +328,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           variant="ghost"
           size="icon"
           className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur hover:bg-background"
-          onClick={onClose}
+          onClick={animateClose}
           aria-label="Close"
           title="Close (Esc)"
         >
