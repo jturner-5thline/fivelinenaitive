@@ -58,9 +58,9 @@ export function DealsHeader() {
         from the page beneath it. Slightly wider and more opaque than
         the Ask naitive AI bar so it reads as the primary global surface.
       */}
-      <div className="pt-3 px-3 sm:px-4 pointer-events-none">
+      <div className="pt-2 px-3 sm:px-4 pointer-events-none">
         <div
-          className="pointer-events-auto mx-auto relative flex h-14 items-center gap-1 sm:gap-2 px-3 sm:px-4 min-w-0"
+          className="pointer-events-auto mx-auto relative flex h-11 items-center gap-1 sm:gap-2 px-3 sm:px-4 min-w-0"
           style={{
             width: 'min(560px, calc(100vw - 24px))',
             borderRadius: 22,
@@ -93,13 +93,13 @@ export function DealsHeader() {
                     <NavLink
                       to={to}
                       aria-label={label}
-                      className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                      className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
                         active
                           ? 'bg-blue-400/15 text-blue-400'
                           : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
                       }`}
                     >
-                      <Icon className="h-[18px] w-[18px]" />
+                      <Icon className="h-[27px] w-[27px]" />
                     </NavLink>
                   </TooltipTrigger>
                   <TooltipContent>{label}</TooltipContent>
@@ -112,13 +112,13 @@ export function DealsHeader() {
                   type="button"
                   aria-label="Tasks"
                   onClick={() => setIsTasksOpen(true)}
-                  className={`inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors ${
+                  className={`inline-flex h-10 w-10 items-center justify-center rounded-full transition-colors ${
                     isTasksOpen
                       ? 'bg-blue-400/15 text-blue-400'
                       : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
                   }`}
                 >
-                  <CheckSquare className="h-[18px] w-[18px]" />
+                  <CheckSquare className="h-[27px] w-[27px]" />
                 </button>
               </TooltipTrigger>
               <TooltipContent>Tasks</TooltipContent>
