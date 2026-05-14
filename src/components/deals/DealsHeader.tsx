@@ -252,7 +252,14 @@ export function DealsHeader() {
       <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
       {isFifthLine && isDashboardOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
-          <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />
+          <DashboardModal
+            open={isDashboardOpen}
+            onOpenChange={(o) => {
+              setIsDashboardOpen(o);
+              if (!o) setDashboardInitialTab('dashboard');
+            }}
+            initialTab={dashboardInitialTab}
+          />
         </Suspense>
       )}
       {isTasksOpen && (
