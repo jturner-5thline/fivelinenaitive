@@ -7,6 +7,55 @@ export interface NoteTemplate {
 
 export const NOTE_TEMPLATES: NoteTemplate[] = [
   {
+    name: 'kickoff_questions',
+    title: 'Kick-Off Questions',
+    icon: '🚀',
+    content: `<h2>Deal Kick-Off Questions</h2>
+<p><strong>Date:</strong> </p>
+<p><strong>Client:</strong> </p>
+<hr>
+<ol>
+<li><p><strong>What is the primary use of funds?</strong></p><p></p></li>
+<li><p><strong>What is the target close date?</strong></p><p></p></li>
+<li><p><strong>What is the existing debt structure?</strong></p><p></p></li>
+<li><p><strong>What lenders have been approached?</strong></p><p></p></li>
+<li><p><strong>What is the management team structure?</strong></p><p></p></li>
+</ol>`,
+  },
+  {
+    name: 'lender_call_notes',
+    title: 'Lender Call Notes',
+    icon: '🏦',
+    content: `<h2>Lender Call Notes</h2>
+<p><strong>Lender Name:</strong> </p>
+<p><strong>Date:</strong> </p>
+<hr>
+<h3>Key Points Discussed</h3>
+<ul><li></li></ul>
+<h3>Follow-Up Actions</h3>
+<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><div></div></li>
+</ul>
+<h3>Next Steps</h3>
+<ul><li></li></ul>`,
+  },
+  {
+    name: 'client_check_in',
+    title: 'Client Check-In',
+    icon: '✅',
+    content: `<h2>Client Check-In</h2>
+<p><strong>Date:</strong> </p>
+<hr>
+<h3>Topics Covered</h3>
+<ul><li></li></ul>
+<h3>Client Concerns</h3>
+<ul><li></li></ul>
+<h3>Action Items</h3>
+<ul data-type="taskList">
+<li data-type="taskItem" data-checked="false"><label><input type="checkbox"><span></span></label><div></div></li>
+</ul>`,
+  },
+  {
     name: 'call_notes',
     title: 'Call Notes',
     icon: '📞',
