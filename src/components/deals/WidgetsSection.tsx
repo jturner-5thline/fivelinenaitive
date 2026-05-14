@@ -642,7 +642,9 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                         onClick={() => { setChartGroupBy(g); setDrilldownStage(null); }}
                         className={`px-2 py-1 text-[11px] rounded transition-colors ${
                           chartGroupBy === g
-                            ? 'bg-primary/10 text-primary font-medium'
+                            ? (chartDialogTitle === 'Active Deal Volume'
+                                ? 'bg-[rgba(126,184,247,0.12)] border border-[rgba(126,184,247,0.35)] text-foreground font-medium backdrop-blur-xl shadow-glass'
+                                : 'bg-primary/10 text-primary font-medium')
                             : 'text-muted-foreground hover:text-foreground'
                         }`}
                       >
@@ -653,7 +655,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                 )}
                 <div className="flex items-center gap-1 border border-border rounded-lg p-1">
                   <Button
-                    variant={chartViewType === 'pie' ? 'default' : 'ghost'}
+                    variant={chartViewType === 'pie' ? (chartDialogTitle === 'Active Deal Volume' ? 'liquid-glass' : 'default') : 'ghost'}
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => setChartViewType('pie')}
@@ -661,7 +663,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                     <PieChartIcon className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant={chartViewType === 'bar' ? 'default' : 'ghost'}
+                    variant={chartViewType === 'bar' ? (chartDialogTitle === 'Active Deal Volume' ? 'liquid-glass' : 'default') : 'ghost'}
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => setChartViewType('bar')}
@@ -669,7 +671,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                     <BarChart3 className="h-4 w-4" />
                   </Button>
                   <Button
-                    variant={chartViewType === 'line' ? 'default' : 'ghost'}
+                    variant={chartViewType === 'line' ? (chartDialogTitle === 'Active Deal Volume' ? 'liquid-glass' : 'default') : 'ghost'}
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => setChartViewType('line')}
@@ -679,7 +681,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-7 w-7">
+                    <Button variant={chartDialogTitle === 'Active Deal Volume' ? 'liquid-glass' : 'outline'} size="icon" className="h-7 w-7">
                       <Download className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
