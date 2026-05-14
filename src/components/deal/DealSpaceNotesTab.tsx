@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { FileText, Loader2 } from 'lucide-react';
 import { useDealSpaceNotes, DealSpaceNote } from '@/hooks/useDealSpaceNotes';
+import { useNoteCommentCounts } from '@/hooks/useNoteCommentCounts';
 import { DealSpaceNoteEditor } from './DealSpaceNoteEditor';
 import { NotesSidebar } from './notes/NotesSidebar';
 import { NoteComments } from './notes/NoteComments';
@@ -24,9 +25,11 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [showComments, setShowComments] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [pendingQuote, setPendingQuote] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
+  const { data: commentCounts = {} } = useNoteCommentCounts(dealId, notes.map(n => n.id));
 
   const handleCreateNote = async (title?: string, content?: string) => {
     const note = await createNote(title, content);
@@ -148,6 +151,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
           onDownload={handleDownloadDocx}
           onUpload={() => fileInputRef.current?.click()}
           fileInputRef={fileInputRef}
+          commentCounts={commentCounts}
         />
 
         {/* Main editor */}
@@ -164,6 +168,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
               onToggleComments={() => setShowComments(!showComments)}
               fetchVersions={fetchVersions}
               restoreVersion={restoreVersion}
+              onRequestComment={(text) => { setPendingQuote(text); setShowComments(true); }}
             />
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
@@ -177,10 +182,14 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
         {selectedNote && showComments && (
           <NoteComments
             noteId={selectedNote.id}
+            dealId={dealId}
+            noteTitle={selectedNote.title}
             fetchComments={fetchComments}
             addComment={addComment}
             resolveComment={resolveComment}
             deleteComment={deleteComment}
+            pendingQuote={pendingQuote}
+            onPendingQuoteConsumed={() => setPendingQuote(null)}
           />
         )}
       </div>

@@ -124,6 +124,7 @@ interface DealSpaceNoteEditorProps {
   onToggleComments: () => void;
   fetchVersions: (noteId: string) => Promise<NoteVersion[]>;
   restoreVersion: (noteId: string, version: NoteVersion) => Promise<void>;
+  onRequestComment?: (quoteText: string) => void;
 }
 
 export function DealSpaceNoteEditor({
@@ -131,6 +132,7 @@ export function DealSpaceNoteEditor({
   isFullscreen, onToggleFullscreen,
   showComments, onToggleComments,
   fetchVersions, restoreVersion,
+  onRequestComment,
 }: DealSpaceNoteEditorProps) {
   const { user } = useAuth();
   const [title, setTitle] = useState(note.title);
@@ -150,6 +152,8 @@ export function DealSpaceNoteEditor({
   const lastSavedContentRef = useRef(note.content);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const seenMentionIdsRef = useRef<Set<string>>(new Set());
+  const [selectionToolbar, setSelectionToolbar] = useState<{ top: number; left: number; text: string } | null>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
 
   // Initialize seen mentions from existing content
   useEffect(() => {
@@ -374,6 +378,29 @@ export function DealSpaceNoteEditor({
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
+
+  // Floating "Add comment" toolbar on text selection
+  useEffect(() => {
+    if (!editor) return;
+    const update = () => {
+      const { from, to, empty } = editor.state.selection;
+      if (empty || from === to) { setSelectionToolbar(null); return; }
+      const text = editor.state.doc.textBetween(from, to, ' ').trim();
+      if (!text) { setSelectionToolbar(null); return; }
+      try {
+        const start = editor.view.coordsAtPos(from);
+        const end = editor.view.coordsAtPos(to);
+        const containerRect = editorContainerRef.current?.getBoundingClientRect();
+        if (!containerRect) return;
+        const top = Math.min(start.top, end.top) - containerRect.top - 38;
+        const left = (start.left + end.right) / 2 - containerRect.left;
+        setSelectionToolbar({ top: Math.max(top, 4), left, text });
+      } catch { setSelectionToolbar(null); }
+    };
+    editor.on('selectionUpdate', update);
+    editor.on('blur', () => setTimeout(() => setSelectionToolbar(null), 150));
+    return () => { editor.off('selectionUpdate', update); };
+  }, [editor]);
 
   const handleFind = () => { if (findText) try { (window as any).find(findText); } catch {} };
   const handleReplace = () => { if (!editor || !findText) return; editor.commands.setContent(editor.getHTML().replace(findText, replaceText)); };
@@ -625,8 +652,28 @@ export function DealSpaceNoteEditor({
       </div>
 
       {/* ═══ Editor ═══ */}
-      <div className="flex-1 overflow-auto">
+      <div ref={editorContainerRef} className="flex-1 overflow-auto relative">
         <EditorContent editor={editor} className="h-full" />
+        {selectionToolbar && (
+          <div
+            className="absolute z-30 bg-popover border border-border shadow-lg rounded-md flex items-center"
+            style={{ top: selectionToolbar.top, left: selectionToolbar.left, transform: 'translateX(-50%)' }}
+            onMouseDown={(e) => e.preventDefault()}
+          >
+            <button
+              type="button"
+              className="px-2.5 py-1.5 text-xs flex items-center gap-1.5 hover:bg-accent/60 rounded-md transition-colors"
+              onClick={() => {
+                if (onRequestComment && selectionToolbar) {
+                  onRequestComment(selectionToolbar.text);
+                  setSelectionToolbar(null);
+                }
+              }}
+            >
+              <MessageSquare className="h-3.5 w-3.5" /> Add comment
+            </button>
+          </div>
+        )}
       </div>
 
       {/* ═══ Status Bar ═══ */}
