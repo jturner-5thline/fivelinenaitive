@@ -131,6 +131,11 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
 </div>`.trim();
 }
 
+export function buildStatusEmailSubject(deal: Deal): string {
+  const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+  return `${deal.company || deal.name} — Status Update: ${dateStr}`;
+}
+
 export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Props) {
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
