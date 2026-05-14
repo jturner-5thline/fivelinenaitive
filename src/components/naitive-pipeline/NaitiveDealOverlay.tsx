@@ -255,7 +255,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
           willChange: 'transform',
           background:
-            'radial-gradient(circle at 12% 10%, rgba(24,31,49,0.90) 0%, rgba(18,24,40,0.92) 32%, rgba(12,17,28,0.95) 66%, rgba(7,10,18,0.98) 100%)',
+            'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
           backdropFilter: 'blur(18px) saturate(135%)',
           WebkitBackdropFilter: 'blur(18px) saturate(135%)',
           border: '1px solid rgba(255,255,255,0.12)',
