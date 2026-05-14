@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, formatDistanceToNowStrict } from 'date-fns';
 
 interface LenderContactRow {
   id: string;
@@ -20,6 +20,18 @@ interface LenderContactRow {
   title: string | null;
   is_primary: boolean | null;
 }
+
+interface ThreadMatch {
+  thread_id: string;
+  latest_message_id: string;
+  subject: string;
+  latest_date: string | null; // ISO
+  message_count: number;
+  from_email: string;
+  to_emails: string[];
+}
+
+const NEW_THREAD = '__new__';
 
 interface Props {
   dealId: string;
@@ -72,6 +84,11 @@ export function LenderFollowUpPopover({
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
 
+  // Thread reply state
+  const [threads, setThreads] = useState<ThreadMatch[]>([]);
+  const [threadsLoading, setThreadsLoading] = useState(false);
+  const [selectedThreadId, setSelectedThreadId] = useState<string>(NEW_THREAD);
+
   const daysSinceContact = useMemo(() => {
     if (!lenderUpdatedAt) return null;
     try {
@@ -120,6 +137,72 @@ export function LenderFollowUpPopover({
   }, [open, lenderName]);
 
   const selectedContact = contacts.find((c) => c.id === selectedContactId) || null;
+
+  // Search Gmail for existing threads with this lender about this deal.
+  // Runs in background as soon as we know a recipient email/domain.
+  useEffect(() => {
+    if (!open) return;
+    const recipient = selectedContact?.email || manualEmail.trim();
+    const domain = recipient.includes('@')
+      ? recipient.split('@')[1].trim().toLowerCase()
+      : '';
+    if (!domain || !dealName) return;
+    let cancelled = false;
+    (async () => {
+      setThreadsLoading(true);
+      try {
+        const q = `(from:${domain} OR to:${domain}) "${dealName}"`;
+        const { data } = await supabase.functions.invoke('gmail-messages', {
+          body: { action: 'list', query: q, max_results: 25, search_all_mail: true },
+        });
+        if (cancelled) return;
+        const items: any[] = data?.messages || data?.data || [];
+        // Group by thread_id, keep most recent message per thread.
+        const byThread = new Map<string, ThreadMatch>();
+        for (const m of items) {
+          const tid = m.thread_id || m.id;
+          if (!tid) continue;
+          const existing = byThread.get(tid);
+          const dateIso = m.received_at || (m.date ? new Date(m.date * 1000).toISOString() : null);
+          if (!existing) {
+            byThread.set(tid, {
+              thread_id: tid,
+              latest_message_id: m.id,
+              subject: m.subject || '(no subject)',
+              latest_date: dateIso,
+              message_count: 1,
+              from_email: m.from_email || '',
+              to_emails: m.to_emails || [],
+            });
+          } else {
+            existing.message_count += 1;
+            const newer = dateIso && (!existing.latest_date || dateIso > existing.latest_date);
+            if (newer) {
+              existing.latest_message_id = m.id;
+              existing.latest_date = dateIso;
+              existing.subject = m.subject || existing.subject;
+              existing.from_email = m.from_email || existing.from_email;
+              existing.to_emails = m.to_emails || existing.to_emails;
+            }
+          }
+        }
+        const sorted = Array.from(byThread.values())
+          .sort((a, b) => (b.latest_date || '').localeCompare(a.latest_date || ''))
+          .slice(0, 5);
+        setThreads(sorted);
+        // Auto-select most recent thread if any exist.
+        if (sorted.length > 0) setSelectedThreadId(sorted[0].thread_id);
+        else setSelectedThreadId(NEW_THREAD);
+      } catch {
+        if (!cancelled) setThreads([]);
+      } finally {
+        if (!cancelled) setThreadsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, dealName, selectedContact?.email, manualEmail]);
+
+  const selectedThread = threads.find((t) => t.thread_id === selectedThreadId) || null;
 
   // Auto-generate the AI draft when the popover opens and we know a recipient.
   useEffect(() => {
@@ -198,6 +281,8 @@ export function LenderFollowUpPopover({
     setContacts([]);
     setMasterLenderId(null);
     setCategory('Touch Base');
+    setThreads([]);
+    setSelectedThreadId(NEW_THREAD);
   };
 
   const handleOpenChange = (v: boolean) => {
@@ -205,12 +290,21 @@ export function LenderFollowUpPopover({
     if (!v) resetState();
   };
 
-  const recipientEmail = selectedContact?.email || manualEmail.trim();
+  // When replying to a thread, prefer the lender's email from that thread.
+  const threadRecipient = selectedThread
+    ? (selectedThread.from_email || selectedThread.to_emails[0] || '')
+    : '';
+  const recipientEmail = threadRecipient || selectedContact?.email || manualEmail.trim();
   const recipientLabel = selectedContact
     ? `${selectedContact.name}${selectedContact.email ? ` <${selectedContact.email}>` : ''}`
     : (manualName || manualEmail
         ? `${manualName || ''}${manualEmail ? ` <${manualEmail}>` : ''}`.trim()
         : '');
+
+  // When a thread is selected, send subject should match thread (with Re:).
+  const effectiveSubject = selectedThread
+    ? (/^re:/i.test(selectedThread.subject) ? selectedThread.subject : `Re: ${selectedThread.subject}`)
+    : subject.trim();
 
   const handleSend = async () => {
     if (!recipientEmail) {
@@ -228,8 +322,9 @@ export function LenderFollowUpPopover({
         body: {
           action: 'send',
           to: [recipientEmail],
-          subject: subject.trim(),
+          subject: effectiveSubject || subject.trim(),
           body: body,
+          ...(selectedThread ? { reply_to_message_id: selectedThread.latest_message_id } : {}),
         },
       });
       if (sendErr) throw sendErr;
@@ -324,6 +419,70 @@ export function LenderFollowUpPopover({
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-semibold">Follow up · {lenderName}</div>
           <Badge variant="secondary" className="text-[10px]">Suggested: {category}</Badge>
+        </div>
+
+        {/* Thread reply selection */}
+        <div className="space-y-1.5 mb-2">
+          <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            Reply to existing thread
+          </Label>
+          {threadsLoading ? (
+            <div className="text-xs text-muted-foreground flex items-center gap-1.5">
+              <Loader2 className="h-3 w-3 animate-spin" /> Searching for prior threads…
+            </div>
+          ) : threads.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground">
+              No prior thread found — will start a new email.
+            </p>
+          ) : threads.length === 1 ? (
+            <div className="text-[11px]">
+              {selectedThreadId === NEW_THREAD ? (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-muted-foreground">Starting a new thread.</span>
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => setSelectedThreadId(threads[0].thread_id)}
+                  >
+                    Reply to existing instead
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate font-medium">Replying to: {threads[0].subject}</div>
+                    <div className="text-muted-foreground">
+                      {threads[0].message_count} message{threads[0].message_count === 1 ? '' : 's'}
+                      {threads[0].latest_date ? ` · last ${formatDistanceToNowStrict(new Date(threads[0].latest_date))} ago` : ''}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="text-primary hover:underline whitespace-nowrap"
+                    onClick={() => setSelectedThreadId(NEW_THREAD)}
+                  >
+                    Start new thread
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Select value={selectedThreadId} onValueChange={setSelectedThreadId}>
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder="Pick a thread" />
+              </SelectTrigger>
+              <SelectContent className="z-[10001] max-h-60">
+                {threads.map((t) => (
+                  <SelectItem key={t.thread_id} value={t.thread_id} className="text-xs">
+                    {t.subject}
+                    {t.latest_date ? ` · ${new Date(t.latest_date).toLocaleDateString()}` : ''}
+                    {` · ${t.message_count} msg`}
+                  </SelectItem>
+                ))}
+                <SelectItem value={NEW_THREAD} className="text-xs">+ Start new thread</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Recipient */}
