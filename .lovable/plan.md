@@ -1,73 +1,143 @@
-# Optimize the deal pop-up modal
+# Header pop-up swipe navigation
 
-## Root-cause measurement
+Make the floating header's pop-ups behave as one ordered sequence so the
+user can move between them (click, keyboard, or swipe) with a horizontal
+slide animation instead of a close-then-open jump.
 
-The current overlay (`src/components/naitive-pipeline/NaitiveDealOverlay.tsx`) embeds the deal page via an `<iframe src="/deal/:id?embedded=1">`. Every open re-instantiates the entire React app inside the iframe:
+## Scope
 
-- New JS execution context (no shared bundle parse cache after first mount)
-- Re-creates every `*Provider` (Auth, Deals, Stages, Pipelines, Lenders, Charts, Widgets, Tooltip, Theme, QueryClient, etc.) — ~25 providers
-- Brand-new React Query cache → all `deals`, `lenders`, `stages`, `documents`, `activity`, `write-up`, `vdr`, `comments` queries refetch from scratch
-- No reuse of the deal row already present in the parent page's `useDealsContext()`
+In scope (the icons in the floating header on `/deals`, `/naitive-pipeline`, etc.):
 
-This is why opening a deal feels "as slow as a full page navigation" — it literally is one. No iframe-side optimization can fix shared-cache reuse; we have to render `DealDetail` in the same React tree.
+```text
+[ Calendar ] [ Mail ] [ Action Queue ] [ Tasks ] [ Deal Rundown ]
+            [ Dashboard* ] [ Daily Rundown** ] [ Niki's Rundown** ]
+```
 
-## Change
+`*` 5th Line only · `**` allowlisted users only — order is whatever the
+header actually renders for the current user.
 
-### 1. Replace iframe with in-tree render
+Out of scope: deal overlay (already has its own ←/→ tile-aware nav), the
+notification banner, in-overlay internal navigation (e.g. Calendar's
+month arrows keep working unchanged).
 
-Render `<DealDetail>` directly inside `NaitiveDealOverlay`. Wrap it in an isolated **`MemoryRouter`** seeded with `/deal/:id?…` so:
+## Behavior
 
-- `useParams()` returns the right deal id without changing the parent URL
-- `useSearchParams()` (used for the tab state inside DealDetail) stays scoped to the modal
-- The 3 `navigate('/deals')` / `navigate(returnTo)` call sites are intercepted via a `<Routes>` 404 fallback that calls the parent's `onClose()`
+1. While any header overlay is open, the user can move to the adjacent
+   header pop-up via:
+   - clicking a small **prev / next chevron pill** that floats just
+     under the header (only the chevron for an existing neighbour
+     renders; both hidden when only one overlay is enabled for the user),
+   - pressing **←** / **→** when focus isn't in an editable field,
+   - **horizontal swipe / two-finger trackpad swipe** on the overlay
+     surface, past a clear threshold (≈80px or velocity > 0.3),
+   - clicking another header icon while an overlay is already open
+     (today this is blocked because the header is hidden — we'll keep
+     the header visible while overlays are open so cross-icon clicks
+     route through the same animated transition).
+2. Direction is derived from icon order: moving right uses a
+   right-to-left slide-in, moving left uses left-to-right.
+3. The transition is a coordinated swap: outgoing overlay slides + fades
+   out in the travel direction, incoming overlay slides + fades in from
+   the opposite side. ~220ms with `cubic-bezier(0.16, 1, 0.3, 1)`.
+4. Swipe is gated so it never fires while the user is scrolling
+   vertically inside an overlay (axis-lock: ignore the gesture if
+   `|dy| > |dx|` in the first 12px of movement).
+5. `prefers-reduced-motion` collapses the slide to an instant swap.
 
-This keeps the rest of the parent app (Auth, QueryClient, DealsContext, StagesContext, etc.) shared, so the deal record already in `useDealsContext()` is reused instantly with zero refetch.
+## Technical changes
 
-### 2. Instant skeleton + summary header
+### 1. New module `src/lib/headerOverlayNav.ts`
 
-Render an immediate header with already-known fields from the deal prop (company, value, stage badge, owner, last-updated) before `DealDetail` paints. Wrap `DealDetail` in `<Suspense fallback={<DealOverlaySkeleton />}>` so its lazy chunk doesn't block first paint.
+- `HeaderOverlayId` union of the overlay labels currently in use
+  (`'Calendar' | 'Mail' | 'Action Queue' | 'Tasks' | 'Deal Rundown'
+  | 'Dashboard' | 'Daily Rundown' | "Niki's Daily Rundown"`).
+- Stores the **current direction** (`'left' | 'right' | null`) and
+  exposes `setDirection(dir)` + `getDirection()`. Used by the global
+  CSS rules below to drive enter/exit animation direction without
+  threading props through every overlay.
 
-### 3. Recent-deal cache
+### 2. `src/components/deals/DealsHeader.tsx`
 
-`DealDetail` already reads from React Query / `useDealsContext`, both shared with the parent → reopening the same deal is instant by construction. No new cache layer needed; we just stop spawning a new iframe per open.
+- Build an ordered array `overlayOrder` from the same nav `[{label, ...}]`
+  array that already drives the icon row, so the order is automatically
+  the visible left-to-right icon order for the current user.
+- Add helpers:
+  - `currentOverlayId()` derives the active id from the existing
+    `is*Open` booleans (single source of truth — no duplicated state).
+  - `goToOverlay(dir: 1 | -1)` finds the current index, picks the
+    neighbour, sets the slide direction, then in a `requestAnimationFrame`
+    closes the current `setIs…Open(false)` and opens the next.
+- Stop hiding the header when an overlay is open (`isHeaderOverlayOpen`
+  branch). Keep the header visible so cross-icon clicks route through
+  `goToOverlay` based on which icon was clicked. Today's behaviour of
+  hiding the header was a stylistic choice; with the new swipe flow we
+  want the icons reachable.
+- Render a small `OverlayNavChevrons` floater just under the header
+  (portaled to body) showing left/right chevrons for the available
+  neighbours and current overlay name. Hidden when there's no neighbour
+  in that direction. Only renders while an overlay is open.
+- Install global keyboard listener for ←/→ that calls `goToOverlay`,
+  guarded against editable focus and only active while an overlay is
+  open. Uses capture phase so it wins over individual overlays' own
+  arrow handlers (each overlay we touch needs to skip its own ←/→
+  binding when this is active — verified per overlay below).
 
-### 4. Hover/mousedown prefetch
+### 3. Swipe layer
 
-On `NaitiveDealCard` and `DealCard`, add `onMouseEnter` / `onFocus` / `onTouchStart` handlers that call `queryClient.prefetchQuery` for the deal's primary query keys (`['deal', id]`, `['deal-activity', id]`, `['deal-documents-summary', id]`). Light, idempotent, fires once per card per session.
+- A `useHeaderOverlaySwipe()` hook attached at the header level
+  installs `pointerdown`/`pointermove`/`pointerup` listeners on
+  `document` while an overlay is open. Tracks dx/dy from pointerdown:
+  - If `|dy| > |dx|` after 12px → release (vertical scroll wins).
+  - If `|dx| > 80` or `vx > 0.3` at pointerup → call `goToOverlay`.
+- Skips when the pointer started inside an `<input>`, `<textarea>`,
+  `[contenteditable]`, scrollable list with horizontal overflow, or
+  inside `[data-no-overlay-swipe]` (escape hatch for nested
+  carousels/drag handles in any overlay that needs it).
 
-### 5. Cheap render perf passes (only inside the modal)
+### 4. Slide animation in CSS (`src/index.css`)
 
-- Wrap `NaitiveDealOverlay` in `React.memo`
-- `useCallback` the `onNavigate` / `onClose` / `onStageChange` props from `Deals.tsx` and `NaitivePipeline.tsx` so the memo holds
-- Keep heavy DealDetail tab panels lazy: they already use route state, but ensure unmount when not active (no behavior change)
+Add two keyframes (`slide-in-from-right`, `slide-in-from-left`) plus
+matching `slide-out-to-left` / `slide-out-to-right`, ~220ms with
+`cubic-bezier(0.16, 1, 0.3, 1)`. Target the existing dialog content
+class via attribute selectors stamped on `<html>`:
 
-## Out of scope
+```text
+html[data-header-overlay-dir="right"] [data-radix-dialog-content][data-state="open"]  → slide-in-from-right
+html[data-header-overlay-dir="right"] [data-radix-dialog-content][data-state="closed"] → slide-out-to-left
+html[data-header-overlay-dir="left"]  ... mirrored
+```
 
-- No edits to `DealDetail.tsx` business logic
-- No edits to other pages, AppLayout, or providers
-- No changes to permissions, save flows, or integrations
-- No new dependencies
+This avoids touching each overlay component individually — every one of
+them already uses Radix Dialog (or a near-equivalent) under the hood.
+Cleared after the close transition completes (`transitionend` listener).
 
-## Files touched
+For `prefers-reduced-motion: reduce`, the keyframes degrade to
+`opacity 0 → 1` only.
 
-- `src/components/naitive-pipeline/NaitiveDealOverlay.tsx` — swap iframe for MemoryRouter+DealDetail+skeleton header, focus-trap stays
-- `src/components/naitive-pipeline/NaitiveDealCard.tsx` — hover/focus/touch prefetch
-- `src/components/deals/DealCard.tsx` — hover/focus/touch prefetch
-- `src/pages/Deals.tsx` / `src/pages/NaitivePipeline.tsx` — wrap overlay handlers in `useCallback` (already partly done in Naitive)
-- (new) `src/components/naitive-pipeline/DealOverlaySkeleton.tsx`
+### 5. Per-overlay tweaks (minimal)
 
-## Verification
+- `FullCalendarView`: it already binds ←/→ for month navigation. Wrap
+  that handler with a check `if (event.target?.closest('[data-no-overlay-swipe]'))`
+  and add `data-no-overlay-swipe` to its calendar grid so its arrows
+  keep working inside the calendar but ←/→ outside the grid trigger
+  the overlay swap.
+- `InboxDialog`, `TasksOverlay`, `DailyBriefingModal`,
+  `ActionQueuePanel`, `DashboardModal`: no internal ←/→ bindings to
+  preserve — no changes needed beyond ensuring their root content
+  carries the standard Radix `data-radix-dialog-content` attribute
+  (already true for all of them).
 
-1. Open any deal from the kanban — header summary visible in <100 ms, full DealDetail hydrates without a network round-trip for fields already in `useDealsContext`.
-2. Reopen same deal — instant (shared cache).
-3. Switch deals via ←/→ — only deal-scoped queries refetch; providers stay mounted.
-4. Confirm no broken navigation: "Back to Pipeline" closes the modal; delete still works and closes the modal.
-5. Browser performance profile before/after to quantify the win.
+## Acceptance checks
 
-## Acceptance check
-
-- Click → modal visible immediately ✓
-- Primary fields visible immediately ✓
-- Recently opened deal reopen instant ✓
-- Secondary tabs lazy ✓ (no change vs today, just no longer behind an iframe boot)
-- No regressions to save, permissions, integrations ✓
+- Open Calendar → press → → Mail slides in from the right; Calendar
+  slides out to the left. Press → again → Action Queue. Press ← →
+  Mail returns from the left.
+- Open Calendar → click the **Mail** icon in the still-visible header →
+  same right-direction transition (skipping past intermediate icons is
+  fine — direction is just based on relative index).
+- Two-finger trackpad swipe left on the open overlay → next overlay.
+- Vertical scroll inside any overlay never triggers a swap.
+- Inside Calendar's grid, ←/→ still moves months. Outside it, ←/→ jumps
+  overlays.
+- With `prefers-reduced-motion: reduce`, transitions are instant.
+- ESC still closes the overlay entirely, not switches it.
