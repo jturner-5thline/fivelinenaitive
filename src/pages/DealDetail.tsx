@@ -2593,6 +2593,52 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* 5th Line only — Status/Stage On Hold mirror confirmation */}
+      <AlertDialog open={!!pendingMirror} onOpenChange={(open) => { if (!open) setPendingMirror(null); }}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pendingMirror?.direction === 'status->stage'
+                ? 'Also move Deal Stage to Deal Paused / On Hold?'
+                : 'Also move Deal Status to On Hold?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              You changed{' '}
+              {pendingMirror?.direction === 'status->stage' ? 'Deal Status to On Hold' : 'Deal Stage to Deal Paused / On Hold'}.
+              Would you like to keep the matching field in sync? This will update the second field only after you confirm.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingMirror(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => {
+              if (!pendingMirror || !deal) { setPendingMirror(null); return; }
+              if (pendingMirror.direction === 'status->stage') {
+                updateDeal('stage', 'on-hold');
+                logActivity('deal_updated', 'Deal Stage mirrored to On Hold (user confirmed)', {
+                  field: 'stage',
+                  newValue: 'on-hold',
+                  system_assisted: true,
+                  user_confirmed: true,
+                  mirrored_from: 'status',
+                });
+              } else {
+                updateDeal('status', 'on-hold');
+                logActivity('deal_updated', 'Deal Status mirrored to On Hold (user confirmed)', {
+                  field: 'status',
+                  newValue: 'on-hold',
+                  system_assisted: true,
+                  user_confirmed: true,
+                  mirrored_from: 'stage',
+                });
+              }
+              setPendingMirror(null);
+            }}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="bg-transparent relative">
         <GlobalSaveBar isAnySaving={isAnySaving} />
 
