@@ -326,10 +326,16 @@ export function EndOfDayAgendaSection({
                     'p-4 transition-opacity',
                     isPast && 'opacity-50',
                     isCurrent && 'ring-1 ring-primary/40 bg-primary/[0.04]',
+                    selectedEventId === ev.id && 'ring-2 ring-primary/60 bg-primary/[0.06]',
                   )}
                 >
               <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => onSelectEvent?.(selectedEventId === ev.id ? null : ev)}
+                  className="min-w-0 flex-1 text-left rounded-md -mx-1 px-1 py-0.5 hover:bg-white/[0.03] transition-colors"
+                  title="Open meeting insights"
+                >
                   <div className="flex items-center gap-2 min-w-0">
                     <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <h4 className="text-sm font-semibold text-foreground truncate">
@@ -340,6 +346,10 @@ export function EndOfDayAgendaSection({
                         Now
                       </span>
                     )}
+                    <ChevronRight className={cn(
+                      'h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform',
+                      selectedEventId === ev.id && 'rotate-90 text-primary',
+                    )} />
                   </div>
                   <div className="text-[11px] text-muted-foreground mt-0.5 ml-5">
                     {ev.all_day
@@ -348,7 +358,7 @@ export function EndOfDayAgendaSection({
                           ev.end ? ` – ${fmtTime(ev.end, false)}` : ''
                         }`}
                   </div>
-                </div>
+                </button>
                 <div className="flex items-center gap-2 shrink-0">
                   <Button
                     type="button"
