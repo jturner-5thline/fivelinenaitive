@@ -2860,7 +2860,9 @@ export default function DealDetail() {
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
                   {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
-                    <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+                    <Suspense fallback={null}>
+                      <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+                    </Suspense>
                   )}
                 </div>
               </div>
@@ -2934,7 +2936,9 @@ export default function DealDetail() {
                     <CreateTaskButton dealId={id!} dealName={deal?.company} />
                     {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} />}
                     {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
-                      <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
+                      <Suspense fallback={null}>
+                        <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
+                      </Suspense>
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
