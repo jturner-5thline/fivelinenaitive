@@ -894,6 +894,7 @@ export default function Dashboard() {
                 </Select>
                 <Button
                   size="sm"
+                  variant="liquid-glass"
                   className="gap-2 h-9 shrink-0"
                   onClick={() => setShowMilestones(!showMilestones)}
                 >
