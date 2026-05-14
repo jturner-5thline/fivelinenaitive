@@ -10,6 +10,7 @@ import { useMyTasks, type Task } from '@/hooks/useTasks';
 import { useGoogleCalendar, type CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useClientContactStaleness } from '@/hooks/useClientContactStaleness';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { isToday, parseISO, isPast, format, differenceInDays } from 'date-fns';
 
@@ -234,6 +235,14 @@ export function MorningBriefing({ aiSummary }: MorningBriefingProps) {
 
   const staleDays = preferences.staleDealsDays ?? 14;
 
+  const cadenceInputs = useMemo(
+    () => deals
+      .filter(d => d.stage !== 'closed-won' && d.stage !== 'closed-lost' && d.contactEmail)
+      .map(d => ({ dealId: d.id, contactEmail: d.contactEmail })),
+    [deals],
+  );
+  const staleness = useClientContactStaleness(cadenceInputs);
+
   const dealsNeedingAttention = useMemo(() => {
     const now = new Date();
     const results: { id: string; company: string; status: string; stage: string; reason: string; lastUpdated: string }[] = [];
@@ -257,6 +266,11 @@ export function MorningBriefing({ aiSummary }: MorningBriefingProps) {
       );
       if (dealOverdueTasks.length > 0) reasons.push(`${dealOverdueTasks.length} overdue task${dealOverdueTasks.length !== 1 ? 's' : ''}`);
 
+      const stale = staleness.get(deal.id);
+      if (stale?.businessDaysSince != null && stale.businessDaysSince >= 8) {
+        reasons.push(`No client contact in ${stale.businessDaysSince} business days — relationship risk`);
+      }
+
       if (reasons.length > 0) {
         results.push({
           id: deal.id,
@@ -275,7 +289,7 @@ export function MorningBriefing({ aiSummary }: MorningBriefingProps) {
       if (b.status === 'at-risk' && a.status !== 'at-risk') return 1;
       return 0;
     });
-  }, [deals, tasks, staleDays]);
+  }, [deals, tasks, staleDays, staleness]);
 
   const isLoading = tasksLoading || calLoading;
 

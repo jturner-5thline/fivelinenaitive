@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Settings2, Database, Save, FileBarChart } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Settings2, Database, Save, FileBarChart, Clock } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -34,6 +34,8 @@ import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, 
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import { PostCallFollowupModal } from './PostCallFollowupModal';
 import { CheckInOutstandingItemsModal } from './CheckInOutstandingItemsModal';
+import { ClientCheckInDraftModal } from './ClientCheckInDraftModal';
+import { useDealClientCadence } from '@/hooks/useDealClientCadence';
 import {
   fetchLenderProfilesForDeal,
   renderLenderProfileBlock,
@@ -533,6 +535,35 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   } | null>(null);
   const [isPostCallModalOpen, setIsPostCallModalOpen] = useState(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
+  const [isClientCheckInOpen, setIsClientCheckInOpen] = useState(false);
+  const [cadenceDismissedAt, setCadenceDismissedAt] = useState<string | null>(null);
+  // Resolve the deal's primary borrower contact so we can monitor cadence.
+  const [dealMeta, setDealMeta] = useState<{ company: string; contact: string; contactEmail: string | null }>({
+    company: '', contact: '', contactEmail: null,
+  });
+  useEffect(() => {
+    if (!dealId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('company, contact, contact_email')
+        .eq('id', dealId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setDealMeta({
+        company: data.company || '',
+        contact: data.contact || '',
+        contactEmail: data.contact_email || null,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [dealId]);
+  const cadence = useDealClientCadence(dealId, dealMeta.contactEmail);
+  const cadenceVisible =
+    cadence.isStale &&
+    !!dealMeta.contactEmail &&
+    cadence.lastContactAt !== cadenceDismissedAt;
   // ── Pre-flight review step: lets the user exclude specific lenders
   // (auto-skipping anyone already passed) before drafts are generated.
   const [isReviewOpen, setIsReviewOpen] = useState(false);
@@ -1192,6 +1223,36 @@ CRITICAL RULES:
         {/* Chat Area */}
         <div className="flex-1 flex flex-col min-h-0 min-w-0">
           <ScrollArea className="flex-1 mb-4">
+            {cadenceVisible && (
+              <div className="mb-3 mr-4 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 flex items-start gap-3">
+                <Clock className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm text-foreground">
+                    No contact with{' '}
+                    <span className="font-medium">
+                      {dealMeta.contact || dealMeta.company || 'the client'}
+                    </span>
+                    {dealMeta.company && dealMeta.contact ? ` (${dealMeta.company})` : ''} on{' '}
+                    <span className="font-medium">{dealMeta.company || 'this deal'}</span> in{' '}
+                    <span className="font-medium">{cadence.daysSince}</span> day
+                    {cadence.daysSince === 1 ? '' : 's'}. Want to send a check-in?
+                  </div>
+                  <div className="mt-2 flex items-center gap-2">
+                    <Button size="sm" className="h-7 gap-1" onClick={() => setIsClientCheckInOpen(true)}>
+                      <Mail className="h-3.5 w-3.5" /> Draft check-in
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-muted-foreground"
+                      onClick={() => setCadenceDismissedAt(cadence.lastContactAt)}
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-8">
                 <Bot className="h-12 w-12 text-muted-foreground/50 mb-4" />
@@ -1424,6 +1485,16 @@ CRITICAL RULES:
         open={isCheckInModalOpen}
         onOpenChange={setIsCheckInModalOpen}
         dealId={dealId}
+      />
+
+      <ClientCheckInDraftModal
+        open={isClientCheckInOpen}
+        onOpenChange={setIsClientCheckInOpen}
+        dealId={dealId}
+        dealName={dealMeta.company || 'your deal'}
+        contactName={dealMeta.contact}
+        contactEmail={dealMeta.contactEmail || ''}
+        onSent={() => { cadence.refresh(); setCadenceDismissedAt(cadence.lastContactAt); }}
       />
     </Card>
   );
