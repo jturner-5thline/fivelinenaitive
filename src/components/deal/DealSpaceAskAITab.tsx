@@ -18,7 +18,6 @@ import { useDealSpaceConversations } from '@/hooks/useDealSpaceConversations';
 import { useDealSpaceDocuments, type DealSpaceDocument } from '@/hooks/useDealSpaceDocuments';
 import { useDealSpaceFinancials } from '@/hooks/useDealSpaceFinancials';
 import { useDealAiInstructions } from '@/hooks/useDealAiInstructions';
-import { useDealContextSummary } from '@/hooks/useDealContextSummary';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -310,10 +309,6 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
-  // Lender count gates the "Generate Status Report" quick action — the report
-  // is only meaningful once at least one lender has been added to the deal.
-  const { summary: dealContextSummary } = useDealContextSummary(dealId);
-  const hasLenders = (dealContextSummary?.lenderCounts.total ?? 0) > 0;
 
   const openStatusReport = useCallback(() => {
     window.dispatchEvent(
@@ -806,12 +801,43 @@ CRITICAL RULES:
     }
   }, [emailDrafts]);
 
-  const suggestedQuestions: { label: string; action: 'ask' | 'status-report' | 'draft-submission'; disabled?: boolean }[] = [
-    { label: "Draft Submission Email", action: 'draft-submission', disabled: isDraftingEmail },
-    ...(hasLenders ? [{ label: "Generate Status Report", action: 'status-report' as const }] : []),
-    { label: "Generate a full lender-ready memo for this deal", action: 'ask' as const },
-    { label: "What are the key risks & hurdles for this deal?", action: 'ask' as const },
-    { label: "What outstanding items need attention?", action: 'ask' as const },
+  type QuickPromptAction =
+    | 'draft-submission'
+    | 'status-report'
+    | 'lender-memo'
+    | 'key-risks'
+    | 'outstanding-items';
+
+  const QUICK_PROMPT_LABELS: Record<Exclude<QuickPromptAction, 'draft-submission' | 'status-report'>, string> = {
+    'lender-memo': 'Generate a full lender-ready memo for this deal',
+    'key-risks': 'What are the key risks & hurdles for this deal?',
+    'outstanding-items': 'What outstanding items need attention?',
+  };
+
+  const handleQuickPrompt = useCallback((action: QuickPromptAction) => {
+    switch (action) {
+      case 'draft-submission':
+        void handleDraftSubmission();
+        return;
+      case 'status-report':
+        openStatusReport();
+        return;
+      case 'lender-memo':
+      case 'key-risks':
+      case 'outstanding-items':
+        runQuickPrompt(QUICK_PROMPT_LABELS[action]);
+        return;
+      default:
+        return;
+    }
+  }, [handleDraftSubmission, openStatusReport, runQuickPrompt]);
+
+  const suggestedQuestions: { label: string; action: QuickPromptAction; disabled?: boolean }[] = [
+    { label: 'Draft Submission Email', action: 'draft-submission', disabled: isDraftingEmail },
+    { label: 'Generate Status Report', action: 'status-report' },
+    { label: QUICK_PROMPT_LABELS['lender-memo'], action: 'lender-memo' },
+    { label: QUICK_PROMPT_LABELS['key-risks'], action: 'key-risks' },
+    { label: QUICK_PROMPT_LABELS['outstanding-items'], action: 'outstanding-items' },
   ];
 
   return (
@@ -1014,13 +1040,7 @@ CRITICAL RULES:
                       type="button"
                       disabled={q.disabled}
                       onClick={() => {
-                        if (q.action === 'status-report') {
-                          openStatusReport();
-                        } else if (q.action === 'draft-submission') {
-                          void handleDraftSubmission();
-                        } else {
-                          runQuickPrompt(q.label);
-                        }
+                        handleQuickPrompt(q.action);
                       }}
                       className={cn(
                         "w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 disabled:opacity-50",
