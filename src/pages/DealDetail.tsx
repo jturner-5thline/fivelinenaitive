@@ -545,6 +545,11 @@ export default function DealDetail() {
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const { pipelines } = usePipelineContext();
   const { hasAccess: hasLenderMatchingAccess } = useFeatureAccess('lender_matching');
+  const { is5thLineUser } = useFeatureAccess('deal_status_stage_mirror');
+  // Human-in-the-loop sync between Deal Status (on-hold) and Deal Stage (on-hold).
+  // Restricted to 5th Line tenant only. The mirrored update only happens after
+  // explicit user confirmation, and is marked as user-confirmed in the audit log.
+  const [pendingMirror, setPendingMirror] = useState<null | { direction: 'status->stage' | 'stage->status' }>(null);
   const { hasPageAccess } = usePageAccessFlags();
   const hasDealSpaceAccess = hasPageAccess('deal_space');
   const hasDealManagementAccess = hasPageAccess('deal_management');
