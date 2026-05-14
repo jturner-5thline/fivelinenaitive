@@ -99,6 +99,22 @@ export function useFlagNotes(dealId: string | null) {
     }
   }, [dealId, user, fetchFlagNotes]);
 
+  // Clear the legacy `deals.is_flagged` boolean when no active flag notes
+  // remain. Without this the pipeline tile keeps showing flagged even after
+  // every flag has been resolved or deleted, because the tile still trusts
+  // the boolean as a fallback seed.
+  const syncLegacyFlagBoolean = useCallback(async () => {
+    if (!dealId) return;
+    try {
+      await supabase
+        .from('deals')
+        .update({ is_flagged: false })
+        .eq('id', dealId);
+    } catch (err) {
+      console.error('Error clearing legacy is_flagged:', err);
+    }
+  }, [dealId]);
+
   const resolveFlagNote = useCallback(async (noteId: string) => {
     if (!user) return;
     try {
@@ -112,11 +128,15 @@ export function useFlagNotes(dealId: string | null) {
         .eq('id', noteId);
 
       if (error) throw error;
-      setFlagNotes(prev => prev.map(n => n.id === noteId ? { ...n, resolved: true, resolved_at: new Date().toISOString(), resolved_by: user.id } : n));
+      const next = flagNotes.map(n => n.id === noteId ? { ...n, resolved: true, resolved_at: new Date().toISOString(), resolved_by: user.id } : n);
+      setFlagNotes(next);
+      if (next.filter(n => !n.resolved).length === 0) {
+        await syncLegacyFlagBoolean();
+      }
     } catch (error) {
       console.error('Error resolving flag note:', error);
     }
-  }, [user]);
+  }, [user, flagNotes, syncLegacyFlagBoolean]);
 
   const deleteFlagNote = useCallback(async (noteId: string) => {
     try {
@@ -126,11 +146,15 @@ export function useFlagNotes(dealId: string | null) {
         .eq('id', noteId);
 
       if (error) throw error;
-      setFlagNotes(prev => prev.filter(n => n.id !== noteId));
+      const next = flagNotes.filter(n => n.id !== noteId);
+      setFlagNotes(next);
+      if (next.filter(n => !n.resolved).length === 0) {
+        await syncLegacyFlagBoolean();
+      }
     } catch (error) {
       console.error('Error deleting flag note:', error);
     }
-  }, []);
+  }, [flagNotes, syncLegacyFlagBoolean]);
 
   return {
     flagNotes,
