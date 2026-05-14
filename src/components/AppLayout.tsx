@@ -7,6 +7,7 @@ import { PlatformTour } from "@/components/PlatformTour";
 import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRoutingTasksBadge";
 import { CopilotToggleButton } from "@/components/CopilotToggleButton";
 import { CommandBar } from "@/components/CommandBar";
+import { DealsHeader } from "@/components/deals/DealsHeader";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLogger";
 
@@ -67,6 +68,7 @@ function MainContent({
         }}
       />
       <div className="relative z-10 flex-1 flex flex-col min-h-full">
+        <DealsHeader />
         {children}
         {showCopilotBar && <CopilotToggleButton />}
       </div>
