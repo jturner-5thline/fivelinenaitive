@@ -4,6 +4,7 @@ import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { AgendaIntel } from './AgendaIntel';
+import { EndOfDayTab } from './EndOfDayTab';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -1770,11 +1771,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} briefingType={briefingType} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
-                  {activeTab === 'end_of_day' && (
-                    <div className="rounded-xl border border-border/40 bg-muted/30 p-8 text-center text-sm text-muted-foreground">
-                      End of Day content loading...
-                    </div>
-                  )}
+                  {activeTab === 'end_of_day' && <EndOfDayTab enabled={open} />}
                 </div>
               </ScrollArea>
             </div>
