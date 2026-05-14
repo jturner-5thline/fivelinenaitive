@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, Newspaper, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, ListChecks, Newspaper, Sparkles } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -63,6 +63,7 @@ export function DealsHeader() {
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
+  const [isTasksListOpen, setIsTasksListOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
@@ -139,6 +140,7 @@ export function DealsHeader() {
               { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
               { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
               { label: 'Action Queue', Icon: Inbox, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
+              { label: 'Tasks', Icon: ListChecks, isOpen: isTasksListOpen, onClick: () => setIsTasksListOpen(true) },
               { label: 'Deal Rundown', Icon: ClipboardList, isOpen: isDealRundownOpen, onClick: () => setIsDealRundownOpen(true) },
               ...(isFifthLine
                 ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
@@ -208,6 +210,11 @@ export function DealsHeader() {
       {isTasksOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} />}>
           <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
+        </Suspense>
+      )}
+      {isTasksListOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksListOpen(false)} />}>
+          <TasksOverlay open={isTasksListOpen} onOpenChange={setIsTasksListOpen} />
         </Suspense>
       )}
       {isDealRundownOpen && (
