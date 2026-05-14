@@ -4729,7 +4729,9 @@ export default function DealDetail() {
 
                 {hasDealManagementAccess && (
                 <TabsContent value="deal-management" className={cn("mt-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
-                  <DealManagementTab dealId={id!} dealName={deal.company} dealValue={deal.value} dealStage={deal.stage} dealType={deal.dealTypes?.[0]} dealStatus={deal.status} lenderCount={deal.lenders?.length} />
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
+                    <DealManagementTab dealId={id!} dealName={deal.company} dealValue={deal.value} dealStage={deal.stage} dealType={deal.dealTypes?.[0]} dealStatus={deal.status} lenderCount={deal.lenders?.length} />
+                  </Suspense>
                 </TabsContent>
                 )}
 
@@ -4756,27 +4758,34 @@ export default function DealDetail() {
                     className="rounded-lg overflow-hidden mt-3 bg-background border border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]"
                     style={{ height: 'calc(100vh - 190px)' }}
                   >
-                    <VdrShell dealId={id!} embedded />
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading data room…</div>}>
+                      <VdrShell dealId={id!} embedded />
+                    </Suspense>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="activity-log" className={cn("mt-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
                   <div className="rounded-lg overflow-hidden mt-3 bg-card border border-border/30" style={{ height: 'calc(100vh - 190px)' }}>
-                    <DealActivityLogTab dealId={id!} />
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
+                      <DealActivityLogTab dealId={id!} />
+                    </Suspense>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
-                  <DealCrmSearch
-                    dealId={id!}
-                    dealCompany={deal?.company}
-                    dealCrmCompanyId={(deal as any)?.crm_company_id ?? null}
-                    dealContactEmail={(deal as any)?.contactEmail ?? null}
-                  />
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
+                    <DealCrmSearch
+                      dealId={id!}
+                      dealCompany={deal?.company}
+                      dealCrmCompanyId={(deal as any)?.crm_company_id ?? null}
+                      dealContactEmail={(deal as any)?.contactEmail ?? null}
+                    />
+                  </Suspense>
                 </TabsContent>
 
                 {hasDealSpaceAccess && (
                 <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                   <DealSpaceTab dealId={id!} dealData={{
                     company: deal.company,
                     value: deal.value,
@@ -4788,6 +4797,7 @@ export default function DealDetail() {
                     lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage })),
                     milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed })),
                   }} />
+                  </Suspense>
                 </TabsContent>
                 )}
 
