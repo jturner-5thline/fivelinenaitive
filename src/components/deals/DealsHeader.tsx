@@ -2,6 +2,8 @@ import { useState, lazy, Suspense } from 'react';
 import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
+import { NotificationsDropdown } from '@/components/notifications/NotificationsDropdown';
+import { LatestUpdatesDropdown } from '@/components/deals/LatestUpdatesDropdown';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -113,6 +115,8 @@ export function DealsHeader() {
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
+          <NotificationsDropdown />
+          <LatestUpdatesDropdown />
           {isFifthLine && (
             <Tooltip>
               <TooltipTrigger asChild>
