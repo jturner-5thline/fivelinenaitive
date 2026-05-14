@@ -1486,6 +1486,16 @@ CRITICAL RULES:
         onOpenChange={setIsCheckInModalOpen}
         dealId={dealId}
       />
+
+      <ClientCheckInDraftModal
+        open={isClientCheckInOpen}
+        onOpenChange={setIsClientCheckInOpen}
+        dealId={dealId}
+        dealName={dealMeta.company || 'your deal'}
+        contactName={dealMeta.contact}
+        contactEmail={dealMeta.contactEmail || ''}
+        onSent={() => { cadence.refresh(); setCadenceDismissedAt(cadence.lastContactAt); }}
+      />
     </Card>
   );
 }
