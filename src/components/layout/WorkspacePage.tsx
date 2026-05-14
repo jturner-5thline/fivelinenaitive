@@ -48,7 +48,7 @@ export function WorkspacePage({
           module, sized as a clear (~3x) brand mark. Sits inside the surface,
           not in the floating header. */}
       <div className="px-3 pt-3 sm:px-4 sm:pt-4" aria-hidden="true">
-        <Logo className="h-9" />
+        <Logo className="h-28" />
       </div>
       <main className="w-full px-4 pt-3 pb-3 sm:px-6">
         {beforeContent}
