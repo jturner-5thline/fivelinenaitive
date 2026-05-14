@@ -37,7 +37,6 @@ import {
 
 // Map page URLs to feature flag names
 const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
   { title: "Tasks", url: "/tasks", icon: CheckSquare, featureKey: null }, // Always visible
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
   // Moved out of the global top header into the sidebar, ordered directly under Deals.
