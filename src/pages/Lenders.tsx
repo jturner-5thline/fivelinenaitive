@@ -81,6 +81,7 @@ import { useLenderSyncRealtimeNotifications } from '@/hooks/useLenderSyncRealtim
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
+import { useOriginAnimation } from '@/hooks/useOriginAnimation';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -234,6 +235,7 @@ export default function Lenders() {
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
+  const analyticsOrigin = useOriginAnimation();
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
   const [isSideBySideMergeOpen, setIsSideBySideMergeOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1223,7 +1225,7 @@ export default function Lenders() {
                   variant="outline"
                   size="sm"
                   className="gap-1"
-                  onClick={() => setIsAnalyticsOpen(true)}
+                  onClick={(e) => { analyticsOrigin.capture(e); setIsAnalyticsOpen(true); }}
                 >
                   <BarChart3 className="h-4 w-4" />
                   Analytics
@@ -1886,8 +1888,10 @@ export default function Lenders() {
 
       <LenderAnalyticsDialog
         open={isAnalyticsOpen}
-        onOpenChange={setIsAnalyticsOpen}
+        onOpenChange={(v) => { setIsAnalyticsOpen(v); if (!v) setTimeout(() => analyticsOrigin.reset(), 280); }}
         lenders={masterLenders}
+        originStyle={analyticsOrigin.contentStyle}
+        originClassName={analyticsOrigin.contentClassName}
       />
 
       <DuplicateLendersDialog
