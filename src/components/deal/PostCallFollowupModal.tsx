@@ -165,7 +165,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
       try {
         const { data: deal } = await supabase
           .from('deals')
-          .select('company, manager, deal_owner, contact, contactEmail')
+          .select('company, manager, deal_owner, contact, contact_email')
           .eq('id', dealId)
           .maybeSingle();
         if (cancelled || !deal) return;
@@ -176,7 +176,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
           const first = String(deal.contact).trim().split(/\s+/)[0];
           if (first) setClientFirst(first);
         }
-        const ce = (deal as any).contactEmail as string | undefined;
+        const ce = (deal as any).contact_email as string | undefined;
         if (ce) setContactEmail(ce);
       } catch {
         // best-effort prefill only
