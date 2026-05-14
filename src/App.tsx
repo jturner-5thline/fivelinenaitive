@@ -213,9 +213,10 @@ const App = () => (
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
-                          <Route path="/dashboard" element={
-                            <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
-                          } />
+                          {/* /dashboard standalone route removed — header overlays
+                              are global and route-independent. Stale links
+                              redirect to the default workspace landing. */}
+                          <Route path="/dashboard" element={<Navigate to="/deals" replace />} />
                           <Route path="/news-feed" element={
                             <ProtectedRoute><AppLayout><NewsFeed /></AppLayout></ProtectedRoute>
                           } />
