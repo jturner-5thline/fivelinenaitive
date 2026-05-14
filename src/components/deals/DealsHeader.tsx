@@ -89,6 +89,9 @@ export function DealsHeader() {
           {/* Primary quick-access nav — centered absolutely so trailing utilities don't shift it */}
           <nav className="hidden md:flex items-center gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
             {[
+              ...(isFifthLine
+                ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
+                : []),
               { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
               { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
               { label: 'Action Queue', Icon: Inbox, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
@@ -117,22 +120,6 @@ export function DealsHeader() {
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
           <NotificationsDropdown />
           <LatestUpdatesDropdown />
-          {isFifthLine && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8"
-                  aria-label="Open dashboard"
-                  onClick={() => setIsDashboardOpen(true)}
-                >
-                  <LayoutDashboard className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Dashboard</TooltipContent>
-            </Tooltip>
-          )}
           {!location.pathname.startsWith('/deal/') && !isDealsRoute && (
             <Tooltip>
               <TooltipTrigger asChild>
