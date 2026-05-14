@@ -176,7 +176,10 @@ export function DealsHeader() {
         from the page beneath it. Slightly wider and more opaque than
         the Ask naitive AI bar so it reads as the primary global surface.
       */}
-      <div className="pt-4 px-2 sm:px-4 pointer-events-none">
+      <div
+        className="pt-4 px-2 sm:px-4 pointer-events-none"
+        style={{ display: isHeaderOverlayOpen ? 'none' : undefined }}
+      >
         <div
           className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-2xl overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]"
           style={{
@@ -265,7 +268,9 @@ export function DealsHeader() {
           </div>
         </div>
       </div>
-      <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
+      {!isHeaderOverlayOpen && (
+        <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
+      )}
       {isFifthLine && isDashboardOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
           <DashboardModal
