@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { MasterLender } from '@/hooks/useMasterLenders';
 import { cn } from '@/lib/utils';
+import type { CSSProperties } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -53,6 +54,9 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   lenders: MasterLender[];
+  /** Bounds of the trigger element, used to anchor the open/close animation. */
+  originStyle?: CSSProperties;
+  originClassName?: string;
 }
 
 interface DealLenderRow {
@@ -135,7 +139,7 @@ function profileCompletenessScore(l: MasterLender) {
 
 const COLORS = ['hsl(var(--primary))', '#22c55e', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
 
-export function LenderAnalyticsDialog({ open, onOpenChange, lenders }: Props) {
+export function LenderAnalyticsDialog({ open, onOpenChange, lenders, originStyle, originClassName }: Props) {
   const navigate = useNavigate();
   const [dateRange, setDateRange] = useState<DateRange>('90d');
   const [tierFilter, setTierFilter] = useState<string>('all');
@@ -403,7 +407,13 @@ export function LenderAnalyticsDialog({ open, onOpenChange, lenders }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] h-[92vh] flex flex-col p-0 gap-0 border-white/5 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.55)] overflow-hidden">
+      <DialogContent
+        style={originStyle}
+        className={cn(
+          "max-w-[95vw] h-[92vh] flex flex-col p-0 gap-0 border-white/5 bg-background shadow-[0_24px_64px_-20px_rgba(0,0,0,0.55)] overflow-hidden",
+          originClassName,
+        )}
+      >
         <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-0 bg-gradient-to-b from-muted/20 to-transparent border-b border-white/5">
           <div className="flex items-end justify-between gap-6 flex-wrap">
             <div className="flex items-center gap-4">
