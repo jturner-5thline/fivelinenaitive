@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { format, startOfDay, endOfDay, parseISO, isBefore, isAfter } from 'date-fns';
-import { Mail, Users, Calendar as CalendarIcon, Loader2, X, Send, ListPlus } from 'lucide-react';
+import {
+  Mail, Users, Calendar as CalendarIcon, Loader2, X, Send, ListPlus,
+  PanelRightClose, Sparkles, StickyNote, Video, Plus, Briefcase, ExternalLink, ChevronRight,
+} from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
@@ -163,9 +166,13 @@ function fmtTime(iso: string, allDay: boolean) {
 export function EndOfDayAgendaSection({
   enabled,
   onCreateFollowUp,
+  selectedEventId,
+  onSelectEvent,
 }: {
   enabled: boolean;
   onCreateFollowUp?: (ev: CalendarEvent, attendeeEmails: string[]) => void;
+  selectedEventId?: string | null;
+  onSelectEvent?: (ev: CalendarEvent | null) => void;
 }) {
   const { events: hookEvents, listEvents, status } = useGoogleCalendar();
   const [events, setEvents] = useState<CalendarEvent[]>(hookEvents || []);
