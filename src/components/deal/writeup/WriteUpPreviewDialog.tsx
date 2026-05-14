@@ -183,6 +183,148 @@ const SectionDivider: React.FC<{ title: string }> = ({ title }) => (
   </div>
 );
 
+/* ────────────────────────────────────────────────────────────────────────── */
+/* Print-to-PDF helper                                                        */
+/*                                                                            */
+/* We use the browser's native print pipeline instead of generating the PDF   */
+/* programmatically. The on-screen preview is already styled with rich inline */
+/* CSS, so cloning its DOM into a hidden iframe and calling `window.print()`  */
+/* preserves the design 1:1 — fonts, spacing, colors, charts (SVG), the lot. */
+/* The user picks "Save as PDF" in the system dialog, which is the highest-  */
+/* fidelity path the browser offers.                                          */
+/* ────────────────────────────────────────────────────────────────────────── */
+async function printElementAsPdf(element: HTMLElement | null, documentTitle: string): Promise<void> {
+  if (!element) return;
+
+  // Hidden iframe avoids popup-blocker issues and keeps the user in-context.
+  const iframe = document.createElement('iframe');
+  iframe.setAttribute('aria-hidden', 'true');
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0';
+  iframe.style.height = '0';
+  iframe.style.border = '0';
+  iframe.style.opacity = '0';
+  document.body.appendChild(iframe);
+
+  const cleanup = () => {
+    setTimeout(() => {
+      try { document.body.removeChild(iframe); } catch { /* no-op */ }
+    }, 1000);
+  };
+
+  const printDoc = iframe.contentDocument;
+  if (!printDoc) { cleanup(); return; }
+
+  // Print stylesheet — restrained margins, no chrome, sensible page-break
+  // rules so headings/sections don't split awkwardly.
+  const printCss = `
+    @page {
+      size: Letter;
+      margin: 0.55in 0.5in 0.6in 0.5in;
+    }
+    @media print {
+      html, body {
+        background: #ffffff !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+      body {
+        font-family: 'Manrope', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      }
+      /* Hide any UI chrome that might sneak in (interactive controls, etc.). */
+      button, .no-print, [data-no-print] { display: none !important; }
+
+      /* Logical page-break rules — keep cards & headings whole. */
+      [data-pdf-section] {
+        break-inside: avoid;
+        page-break-inside: avoid;
+      }
+      h1, h2, h3, h4 {
+        break-after: avoid-page;
+        page-break-after: avoid;
+      }
+      table, figure, svg, img {
+        break-inside: avoid;
+        page-break-inside: avoid;
+        max-width: 100% !important;
+      }
+      /* Preserve background fills on cards/badges/charts. */
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      /* Keep the preview width predictable inside the printed page. */
+      .print-root {
+        width: 100% !important;
+        max-width: 100% !important;
+        margin: 0 auto !important;
+        padding: 0 !important;
+        background: #ffffff !important;
+      }
+    }
+    /* Screen styles for the iframe doc itself (it never shows on screen
+       but we keep things sane in case the user inspects). */
+    body { background: #ffffff; margin: 0; padding: 0; }
+  `;
+
+  // Reuse stylesheets from the host document so font-faces / icon fonts work.
+  const linkedStyles = Array.from(document.querySelectorAll('link[rel="stylesheet"]'))
+    .map((l) => l.outerHTML)
+    .join('\n');
+  const inlineStyles = Array.from(document.querySelectorAll('style'))
+    .map((s) => s.outerHTML)
+    .join('\n');
+
+  printDoc.open();
+  printDoc.write(`<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>${documentTitle.replace(/[<>]/g, '')}</title>
+    ${linkedStyles}
+    ${inlineStyles}
+    <style>${printCss}</style>
+  </head>
+  <body>
+    <div class="print-root">${element.outerHTML}</div>
+  </body>
+</html>`);
+  printDoc.close();
+
+  // Wait for fonts + images inside the iframe before triggering print, so
+  // the rendered output actually matches the on-screen preview.
+  const win = iframe.contentWindow;
+  if (!win) { cleanup(); return; }
+
+  const fontsReady = (printDoc as Document & { fonts?: { ready?: Promise<unknown> } }).fonts?.ready
+    ?? Promise.resolve();
+  const images = Array.from(printDoc.images || []);
+  const imagesReady = Promise.all(images.map((img) =>
+    img.complete ? Promise.resolve() : new Promise<void>((resolve) => {
+      img.addEventListener('load', () => resolve(), { once: true });
+      img.addEventListener('error', () => resolve(), { once: true });
+    }),
+  ));
+
+  await Promise.race([
+    Promise.all([fontsReady, imagesReady]),
+    new Promise((resolve) => setTimeout(resolve, 1500)),
+  ]);
+
+  // Set the document title last — this becomes the default PDF filename in
+  // the browser's "Save as PDF" dialog.
+  try { printDoc.title = documentTitle; } catch { /* no-op */ }
+
+  win.focus();
+  win.print();
+  cleanup();
+}
+
 /* ── Main component ── */
 export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEquityRaised, dealManager, disclaimer }: WriteUpPreviewDialogProps) {
   const dealTypeLabels = dealTypeIdsToLabels(data.dealTypes);
@@ -191,6 +333,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
   const filteredHighlights = data.companyHighlights.filter(i => i.title.trim());
   const contentRef = useRef<HTMLDivElement>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const companyName = data.publishAsAnonymous ? 'Anonymous Company' : (data.companyName || 'Untitled Company');
 
   const handleDownloadPdf = useCallback(async () => {
     if (isExporting) return;
