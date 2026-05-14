@@ -63,9 +63,13 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
   const [newDate, setNewDate] = useState<Date | undefined>();
   const [editTitle, setEditTitle] = useState('');
   const [editDate, setEditDate] = useState<Date | undefined>();
+  const [isNewDateOpen, setIsNewDateOpen] = useState(false);
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    // Require a small drag distance before starting a sort, otherwise the
+    // PointerSensor can swallow plain clicks on row controls (Date button,
+    // Edit, Delete, Popover triggers) and they appear "broken".
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -360,17 +364,34 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                         if (e.key === 'Escape') setIsAdding(false);
                       }}
                     />
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button variant="outline" size="sm" className="h-7 text-xs">
-                          {newDate ? format(newDate, 'MMM d') : 'Date'}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="end">
+                     <Popover open={isNewDateOpen} onOpenChange={setIsNewDateOpen} modal>
+                       <PopoverTrigger asChild>
+                         <Button
+                           type="button"
+                           variant="outline"
+                           size="sm"
+                           className="h-7 text-xs"
+                           onClick={(e) => {
+                             e.preventDefault();
+                             e.stopPropagation();
+                             setIsNewDateOpen((v) => !v);
+                           }}
+                         >
+                           {newDate ? format(newDate, 'MMM d') : 'Date'}
+                         </Button>
+                       </PopoverTrigger>
+                       <PopoverContent
+                         className="w-auto p-0 z-[60] pointer-events-auto"
+                         align="end"
+                         onOpenAutoFocus={(e) => e.preventDefault()}
+                       >
                         <Calendar
                           mode="single"
                           selected={newDate}
-                          onSelect={setNewDate}
+                          onSelect={(d) => {
+                            setNewDate(d);
+                            setIsNewDateOpen(false);
+                          }}
                           className={cn("p-3 pointer-events-auto")}
                         />
                       </PopoverContent>
@@ -442,6 +463,7 @@ function SortableMilestoneItem({
   onUpdate,
   onDelete,
 }: SortableMilestoneItemProps) {
+  const [isEditDateOpen, setIsEditDateOpen] = useState(false);
   const {
     attributes,
     listeners,
@@ -484,17 +506,34 @@ function SortableMilestoneItem({
             placeholder="Milestone title"
             autoFocus
           />
-          <Popover>
+          <Popover open={isEditDateOpen} onOpenChange={setIsEditDateOpen} modal>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditDateOpen((v) => !v);
+                }}
+              >
                 {editDate ? format(editDate, 'MMM d') : 'Date'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent
+              className="w-auto p-0 z-[60] pointer-events-auto"
+              align="end"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+            >
               <Calendar
                 mode="single"
                 selected={editDate}
-                onSelect={onEditDateChange}
+                onSelect={(d) => {
+                  onEditDateChange(d);
+                  if (d) setIsEditDateOpen(false);
+                }}
                 className={cn("p-3 pointer-events-auto")}
               />
               {editDate && (
