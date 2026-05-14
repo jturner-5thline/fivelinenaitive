@@ -215,8 +215,9 @@ const App = () => (
                           <Route path="/onboarding" element={
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
-                          <Route path="/dashboard" element={
-                            <ProtectedRoute><AppLayout><Dashboard /></AppLayout></ProtectedRoute>
+                          <Route path="/dashboard" element={<Navigate to="/pipeline" replace />} />
+                          <Route path="/pipeline" element={
+                            <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/news-feed" element={
                             <ProtectedRoute><AppLayout><NewsFeed /></AppLayout></ProtectedRoute>
