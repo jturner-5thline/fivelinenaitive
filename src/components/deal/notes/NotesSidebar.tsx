@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, FileText, Trash2, Download, Upload, Pin, PinOff, FolderOpen, Tag, Star, Filter, ChevronDown, GripVertical, LayoutTemplate } from 'lucide-react';
+import { Plus, FileText, Trash2, Download, Upload, Pin, PinOff, FolderOpen, Tag, Star, Filter, ChevronDown, GripVertical, LayoutTemplate, Settings, BookmarkPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DealSpaceNote } from '@/hooks/useDealSpaceNotes';
 import { NOTE_TEMPLATES } from './NoteTemplates';
+import { TemplatePickerDialog, ManageTemplatesDialog, SaveAsTemplateDialog } from './NoteTemplateDialogs';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -34,6 +35,9 @@ export function NotesSidebar({
   const [newTag, setNewTag] = useState('');
   const [showFolderInput, setShowFolderInput] = useState<string | null>(null);
   const [newFolder, setNewFolder] = useState('');
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showManageTemplates, setShowManageTemplates] = useState(false);
+  const [saveAsTemplateNote, setSaveAsTemplateNote] = useState<DealSpaceNote | null>(null);
 
   // Derive unique folders and tags
   const allFolders = [...new Set(notes.map(n => n.folder).filter(Boolean))] as string[];
@@ -145,6 +149,9 @@ export function NotesSidebar({
             <DropdownMenuItem onClick={(e) => { e.stopPropagation(); onDownload(note); }}>
               <Download className="h-3.5 w-3.5 mr-2" /> Download .docx
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setSaveAsTemplateNote(note); }}>
+              <BookmarkPlus className="h-3.5 w-3.5 mr-2" /> Save as template
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <AlertDialog>
@@ -183,13 +190,13 @@ export function NotesSidebar({
               <DropdownMenuItem onClick={() => onCreateNote()}>
                 <FileText className="h-3.5 w-3.5 mr-2" /> Blank note
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setShowTemplatePicker(true)}>
+                <LayoutTemplate className="h-3.5 w-3.5 mr-2" /> From template…
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium">TEMPLATES</p>
-              {NOTE_TEMPLATES.map(t => (
-                <DropdownMenuItem key={t.name} onClick={() => onCreateNote(t.title, t.content)}>
-                  <span className="mr-2">{t.icon}</span> {t.title}
-                </DropdownMenuItem>
-              ))}
+              <DropdownMenuItem onClick={() => setShowManageTemplates(true)}>
+                <Settings className="h-3.5 w-3.5 mr-2" /> Manage templates
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <Button size="sm" variant="outline" className="gap-1.5 shrink-0" onClick={onUpload}>
@@ -310,6 +317,21 @@ export function NotesSidebar({
           </div>
         )}
       </ScrollArea>
+
+      <TemplatePickerDialog
+        open={showTemplatePicker}
+        onOpenChange={setShowTemplatePicker}
+        onPick={(title, content) => onCreateNote(title, content)}
+      />
+      <ManageTemplatesDialog open={showManageTemplates} onOpenChange={setShowManageTemplates} />
+      {saveAsTemplateNote && (
+        <SaveAsTemplateDialog
+          open={!!saveAsTemplateNote}
+          onOpenChange={(v) => { if (!v) setSaveAsTemplateNote(null); }}
+          defaultName={saveAsTemplateNote.title || 'Untitled Template'}
+          content={saveAsTemplateNote.content || ''}
+        />
+      )}
     </div>
   );
 }
