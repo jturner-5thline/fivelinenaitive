@@ -4829,7 +4829,7 @@ export default function DealDetail() {
                 {/* Floating tab rail — fixed to the viewport bottom so it stays
                     visible while the user scrolls the deal popup. No background
                     fill — the tabs themselves carry the styling. */}
-                <div className="fixed bottom-4 left-4 right-4 sm:left-6 z-40 pointer-events-none flex justify-start">
+                <div className="fixed bottom-2 left-2 right-2 sm:left-3 z-40 pointer-events-none flex justify-start">
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
                     visible={isHintVisible('deal-tabs')}
