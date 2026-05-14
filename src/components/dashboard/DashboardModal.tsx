@@ -200,7 +200,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden glass-module"
+        className="max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden glass-border-soft shadow-2xl shadow-black/20"
         overlayClassName="bg-black/80"
         aria-label="Deal Pipeline"
       >
