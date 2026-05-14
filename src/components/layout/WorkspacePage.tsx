@@ -1,5 +1,6 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
+import { Logo } from '@/components/Logo';
 
 /**
  * Shared page wrapper for primary workspace surfaces (Deals, Lender
@@ -44,6 +45,12 @@ export function WorkspacePage({
   return (
     <div className="bg-transparent">
       <main className="w-full px-4 pt-5 pb-3 sm:px-6">
+        {/* Persistent brand anchor for the content module — sits inside the
+            main surface, not in the floating header. Subtle and aligned with
+            the module's top-left padding. */}
+        <div className="mb-3 flex items-center" aria-hidden="true">
+          <Logo className="h-3 opacity-70" />
+        </div>
         {beforeContent}
         <div className={cn('space-y-5', contentClassName)}>{children}</div>
       </main>
