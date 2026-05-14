@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
 import { useSidebar } from '@/components/ui/sidebar';
+import { setHeaderOverlayDirection } from '@/lib/headerOverlayNav';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
@@ -158,6 +159,134 @@ export function DealsHeader() {
     isBriefingOpen ||
     isNikiBriefingOpen;
 
+  // ─── Header pop-up swipe navigation ────────────────────────────────
+  // Treat the header pop-ups as one ordered sequence so the user can
+  // move between adjacent overlays via icon click, Alt+←/→, or a
+  // horizontal swipe / two-finger trackpad gesture. Direction comes from
+  // the icon's left-to-right index in the visible nav.
+  const overlayRegistry = [
+    { label: 'Calendar' as const, isOpen: isCalendarOpen, open: () => setIsCalendarOpen(true), close: () => setIsCalendarOpen(false), available: true },
+    { label: 'Mail' as const, isOpen: isMailOpen, open: () => setIsMailOpen(true), close: () => setIsMailOpen(false), available: true },
+    { label: 'Action Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: true },
+    { label: 'Tasks' as const, isOpen: isTasksListOpen, open: () => setIsTasksListOpen(true), close: () => setIsTasksListOpen(false), available: true },
+    { label: 'Deal Rundown' as const, isOpen: isDealRundownOpen, open: () => setIsDealRundownOpen(true), close: () => setIsDealRundownOpen(false), available: true },
+    { label: 'Dashboard' as const, isOpen: isDashboardOpen, open: () => setIsDashboardOpen(true), close: () => setIsDashboardOpen(false), available: isFifthLine },
+    { label: 'Daily Rundown' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
+    { label: "Niki's Daily Rundown" as const, isOpen: isNikiBriefingOpen, open: () => setIsNikiBriefingOpen(true), close: () => setIsNikiBriefingOpen(false), available: canSeeBriefingHeaderItems },
+  ].filter(o => o.available);
+
+  const currentOverlay = overlayRegistry.find(o => o.isOpen) ?? null;
+
+  const goToOverlay = useCallback((target: string) => {
+    const fromIdx = currentOverlay
+      ? overlayRegistry.findIndex(o => o.label === currentOverlay.label)
+      : -1;
+    const toIdx = overlayRegistry.findIndex(o => o.label === target);
+    if (toIdx < 0) return;
+    const to = overlayRegistry[toIdx];
+    if (fromIdx < 0) {
+      // No overlay open yet — just open the target with no slide.
+      to.open();
+      return;
+    }
+    if (fromIdx === toIdx) return;
+    const from = overlayRegistry[fromIdx];
+    setHeaderOverlayDirection(toIdx > fromIdx ? 'right' : 'left');
+    // Close the outgoing overlay first so its close animation runs in
+    // the same direction as the incoming open. RAF lets the close state
+    // commit before the open does, which keeps Radix's data-state hooks
+    // reliable across the swap.
+    from.close();
+    requestAnimationFrame(() => to.open());
+  }, [currentOverlay, overlayRegistry]);
+
+  const goToAdjacentOverlay = useCallback((delta: -1 | 1) => {
+    if (!currentOverlay) return;
+    const idx = overlayRegistry.findIndex(o => o.label === currentOverlay.label);
+    const nextIdx = idx + delta;
+    if (nextIdx < 0 || nextIdx >= overlayRegistry.length) return;
+    goToOverlay(overlayRegistry[nextIdx].label);
+  }, [currentOverlay, overlayRegistry, goToOverlay]);
+
+  // Alt+←/→ keyboard navigation between adjacent header overlays.
+  // Bare ←/→ is intentionally NOT bound here so it doesn't conflict with
+  // overlays that have their own arrow-key bindings (e.g. Calendar's
+  // month navigation).
+  useEffect(() => {
+    if (!isHeaderOverlayOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!e.altKey || e.metaKey || e.ctrlKey) return;
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const ae = document.activeElement as HTMLElement | null;
+      if (ae && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA' || ae.isContentEditable)) return;
+      e.preventDefault();
+      goToAdjacentOverlay(e.key === 'ArrowRight' ? 1 : -1);
+    };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [isHeaderOverlayOpen, goToAdjacentOverlay]);
+
+  // Horizontal swipe / two-finger trackpad swipe on the active overlay.
+  // Axis-locked: a vertical-dominant gesture (scroll) never triggers a
+  // swap. Threshold is intentionally generous so users don't lose their
+  // place mid-scroll.
+  useEffect(() => {
+    if (!isHeaderOverlayOpen) return;
+    let startX = 0;
+    let startY = 0;
+    let startT = 0;
+    let active = false;
+    let locked: 'h' | 'v' | null = null;
+    const SWIPE_PX = 80;
+    const SWIPE_VX = 0.45; // px/ms
+
+    const onDown = (e: PointerEvent) => {
+      if (e.pointerType === 'mouse') return; // touch / pen only
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      // Skip when starting inside an editable element or anything that
+      // opted out of the swipe gesture.
+      if (t.closest('input, textarea, select, [contenteditable="true"], [data-no-overlay-swipe]')) return;
+      // Only react when the gesture starts inside the active dialog.
+      if (!t.closest('[role="dialog"]')) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      startT = e.timeStamp;
+      active = true;
+      locked = null;
+    };
+    const onMove = (e: PointerEvent) => {
+      if (!active) return;
+      const dx = e.clientX - startX;
+      const dy = e.clientY - startY;
+      if (locked === null && Math.hypot(dx, dy) > 12) {
+        locked = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+      }
+      if (locked === 'v') active = false;
+    };
+    const onUp = (e: PointerEvent) => {
+      if (!active) return;
+      active = false;
+      if (locked !== 'h') return;
+      const dx = e.clientX - startX;
+      const dt = Math.max(1, e.timeStamp - startT);
+      const vx = Math.abs(dx) / dt;
+      if (Math.abs(dx) < SWIPE_PX && vx < SWIPE_VX) return;
+      // Swipe left (dx < 0) → next overlay; swipe right → previous.
+      goToAdjacentOverlay(dx < 0 ? 1 : -1);
+    };
+
+    window.addEventListener('pointerdown', onDown, true);
+    window.addEventListener('pointermove', onMove, true);
+    window.addEventListener('pointerup', onUp, true);
+    window.addEventListener('pointercancel', () => { active = false; }, true);
+    return () => {
+      window.removeEventListener('pointerdown', onDown, true);
+      window.removeEventListener('pointermove', onMove, true);
+      window.removeEventListener('pointerup', onUp, true);
+    };
+  }, [isHeaderOverlayOpen, goToAdjacentOverlay]);
+
   // Render the fixed header into <body> via a portal. The parent <main>
   // sets a `backdrop-filter`, which makes it the containing block for any
   // descendant `position: fixed` element — so without portaling, the
@@ -178,7 +307,6 @@ export function DealsHeader() {
       */}
       <div
         className="pt-4 px-2 sm:px-4 pointer-events-none"
-        style={{ display: isHeaderOverlayOpen ? 'none' : undefined }}
       >
         <div
           className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-2xl overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]"
@@ -201,22 +329,27 @@ export function DealsHeader() {
 
           {/* Primary quick-access nav — centered absolutely so trailing utilities don't shift it */}
           <nav className="flex items-center gap-0.5 sm:gap-1.5 absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-            {[
-              { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
-              { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
-              { label: 'Action Queue', Icon: Inbox, isOpen: isActionQueueOpen, onClick: () => { setIsActionQueueOpen(true); refetchActionQueue(); } },
-              { label: 'Tasks', Icon: ListChecks, isOpen: isTasksListOpen, onClick: () => setIsTasksListOpen(true) },
-              { label: 'Deal Rundown', Icon: ClipboardList, isOpen: isDealRundownOpen, onClick: () => setIsDealRundownOpen(true) },
-              ...(isFifthLine
-                ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
-                : []),
-              ...(canSeeBriefingHeaderItems
-                ? [
-                    { label: 'Daily Rundown', Icon: Newspaper, isOpen: isBriefingOpen, onClick: () => setIsBriefingOpen(true) },
-                    { label: "Niki's Daily Rundown", Icon: Sparkles, isOpen: isNikiBriefingOpen, onClick: () => setIsNikiBriefingOpen(true) },
-                  ]
-                : []),
-            ].map(({ label, Icon, isOpen, onClick }) => (
+            {(() => {
+              const ICONS: Record<string, typeof Calendar> = {
+                'Calendar': Calendar,
+                'Mail': Mail,
+                'Action Queue': Inbox,
+                'Tasks': ListChecks,
+                'Deal Rundown': ClipboardList,
+                'Dashboard': LayoutDashboard,
+                'Daily Rundown': Newspaper,
+                "Niki's Daily Rundown": Sparkles,
+              };
+              return overlayRegistry.map(({ label, isOpen }) => ({
+                label,
+                Icon: ICONS[label],
+                isOpen,
+                // When some overlay is already open, route the click
+                // through goToOverlay so the swap animates directionally
+                // (and never double-mounts two overlays).
+                onClick: () => goToOverlay(label),
+              }));
+            })().map(({ label, Icon, isOpen, onClick }) => (
               <Tooltip key={label}>
                 <TooltipTrigger asChild>
                   <button
