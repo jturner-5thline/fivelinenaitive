@@ -240,7 +240,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           (sidebar / global header) via z-[100] on the wrapper. */}
       <div
         className={cn(
-          'deal-popup-shell relative w-screen h-screen sm:w-[calc(100vw-3rem)] sm:h-[calc(100vh-3rem)] sm:rounded-2xl overflow-hidden flex flex-col',
+          'popup-shell-surface deal-popup-shell relative w-screen h-screen sm:w-[calc(100vw-3rem)] sm:h-[calc(100vh-3rem)] sm:rounded-2xl overflow-hidden flex flex-col',
           // Only fall back to the generic scale-in when we have neither a
           // tile-origin transform nor reduced motion — the rect-driven
           // transform already provides the entrance animation.
@@ -254,13 +254,6 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             ? undefined
             : 'transform 360ms cubic-bezier(0.22, 1, 0.36, 1), border-radius 360ms cubic-bezier(0.22, 1, 0.36, 1)',
           willChange: 'transform',
-          background:
-            'linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%)',
-          backdropFilter: 'blur(18px) saturate(135%)',
-          WebkitBackdropFilter: 'blur(18px) saturate(135%)',
-          border: '1px solid rgba(255,255,255,0.12)',
-          boxShadow:
-            '0 40px 120px rgba(0,0,0,0.65), 0 12px 32px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.07)',
           animation: 'none',
         }}
         onClick={(e) => e.stopPropagation()}
