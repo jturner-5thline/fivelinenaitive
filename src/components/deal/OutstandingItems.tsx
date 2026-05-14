@@ -353,6 +353,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   const [isItemDialogOpen, setIsItemDialogOpen] = useState(false);
   const [showAllItems, setShowAllItems] = useState(true);
   const [requesterPopoverOpen, setRequesterPopoverOpen] = useState(false);
+  const [requesterPopoverKey, setRequesterPopoverKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [groupBy, setGroupBy] = useState<GroupBy>('none');
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
@@ -500,6 +501,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
       onAdd(newItemText.trim(), updatedRequestedBy);
       setNewItemText('');
       setNewRequestedBy([]);
+      // Bump key to force-close the uncontrolled Popover after auto-add.
+      setRequesterPopoverKey(k => k + 1);
       setRequesterPopoverOpen(false);
     }
   };
@@ -986,7 +989,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                 }}
                 className="flex-1"
               />
-              <Popover open={requesterPopoverOpen} onOpenChange={setRequesterPopoverOpen}>
+              <Popover key={requesterPopoverKey}>
                 <PopoverTrigger asChild>
                   <Button
                     variant="outline"
