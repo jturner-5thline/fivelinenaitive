@@ -587,7 +587,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
                 Link your email in Integrations to access your inbox here.
               </p>
             </div>
-            <Button onClick={() => { onOpenChange(false); navigate('/integrations'); }}>
+            <Button variant="liquid-glass" size="sm" className="gap-2" onClick={() => { onOpenChange(false); navigate('/integrations'); }}>
               Go to Integrations
             </Button>
           </div>
