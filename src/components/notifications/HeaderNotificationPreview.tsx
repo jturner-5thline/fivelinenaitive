@@ -150,6 +150,8 @@ export function HeaderNotificationPreview() {
           <span className="truncate flex-1">{preview.message}</span>
           <button
             onClick={dismiss}
+            aria-label="Dismiss notification"
+            title="Dismiss"
             className="text-white/70 hover:text-white ml-2 shrink-0 transition-colors"
           >
             ✕
