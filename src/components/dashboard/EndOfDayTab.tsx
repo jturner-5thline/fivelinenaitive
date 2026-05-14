@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { format, startOfDay, endOfDay, parseISO, isBefore, isAfter } from 'date-fns';
-import { Mail, Users, Calendar as CalendarIcon, Loader2, X, Send } from 'lucide-react';
+import { Mail, Users, Calendar as CalendarIcon, Loader2, X, Send, ListPlus } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
@@ -11,6 +11,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { GLASS_CARD, EmptySection, Section } from './briefingPrimitives';
 import { cn } from '@/lib/utils';
+import {
+  ContextMenu,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuTrigger,
+} from '@/components/ui/context-menu';
+import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useMyTasks } from '@/hooks/useTasks';
+import { useDealsContext } from '@/contexts/DealsContext';
+import { PipelineTab } from './DailyBriefingModal';
 
 interface ContactInfo {
   fullName: string | null;
@@ -149,7 +160,13 @@ function fmtTime(iso: string, allDay: boolean) {
   }
 }
 
-export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
+export function EndOfDayAgendaSection({
+  enabled,
+  onCreateFollowUp,
+}: {
+  enabled: boolean;
+  onCreateFollowUp?: (ev: CalendarEvent, attendeeEmails: string[]) => void;
+}) {
   const { events: hookEvents, listEvents, status } = useGoogleCalendar();
   const [events, setEvents] = useState<CalendarEvent[]>(hookEvents || []);
   const [loading, setLoading] = useState(false);
@@ -294,15 +311,16 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
           const attendees = ev.attendees || [];
 
           return (
-            <div
-              key={ev.id}
-              className={cn(
-                GLASS_CARD,
-                'p-4 transition-opacity',
-                isPast && 'opacity-50',
-                isCurrent && 'ring-1 ring-primary/40 bg-primary/[0.04]',
-              )}
-            >
+            <ContextMenu key={ev.id}>
+              <ContextMenuTrigger asChild>
+                <div
+                  className={cn(
+                    GLASS_CARD,
+                    'p-4 transition-opacity',
+                    isPast && 'opacity-50',
+                    isCurrent && 'ring-1 ring-primary/40 bg-primary/[0.04]',
+                  )}
+                >
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 min-w-0">
@@ -324,9 +342,28 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
                         }`}
                   </div>
                 </div>
-                <div className="text-[11px] text-muted-foreground/70 flex items-center gap-1 shrink-0">
-                  <Users className="h-3 w-3" />
-                  {attendees.length}
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCreateFollowUp?.(
+                        ev,
+                        attendees.map(a => (a.email || '').trim().toLowerCase()).filter(Boolean),
+                      );
+                    }}
+                    title="Create a follow-up task for this meeting"
+                  >
+                    <ListPlus className="h-3.5 w-3.5" />
+                    Create Follow Up
+                  </Button>
+                  <div className="text-[11px] text-muted-foreground/70 flex items-center gap-1">
+                    <Users className="h-3 w-3" />
+                    {attendees.length}
+                  </div>
                 </div>
               </div>
 
@@ -401,7 +438,22 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
                   No attendees on this event.
                 </div>
               )}
-            </div>
+                </div>
+              </ContextMenuTrigger>
+              <ContextMenuContent>
+                <ContextMenuItem
+                  onSelect={() =>
+                    onCreateFollowUp?.(
+                      ev,
+                      attendees.map(a => (a.email || '').trim().toLowerCase()).filter(Boolean),
+                    )
+                  }
+                >
+                  <ListPlus className="h-3.5 w-3.5 mr-2" />
+                  Create Follow Up
+                </ContextMenuItem>
+              </ContextMenuContent>
+            </ContextMenu>
           );
         })}
       </div>
@@ -409,10 +461,97 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
   );
 }
 
-export function EndOfDayTab({ enabled }: { enabled: boolean }) {
+export function EndOfDayTab({
+  enabled,
+  onNavigate,
+  targetAssigneeName,
+  briefingType,
+}: {
+  enabled: boolean;
+  onNavigate?: (path: string) => void;
+  targetAssigneeName?: string;
+  briefingType?: string;
+}) {
+  const { user } = useAuth();
+  const teamMembers = useTeamMembers();
+  const { createTask } = useMyTasks();
+  const { deals } = useDealsContext();
+
+  const [followUpOpen, setFollowUpOpen] = useState(false);
+  const [prefillTitle, setPrefillTitle] = useState('');
+  const [prefillDealId, setPrefillDealId] = useState<string | null>(null);
+
+  const handleCreateFollowUp = useCallback(
+    (ev: CalendarEvent, attendeeEmails: string[]) => {
+      // Best-effort deal match: match attendee email domains to a deal's
+      // company URL host. Common email providers (gmail, etc.) are skipped.
+      const COMMON = new Set([
+        'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
+        'me.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com', 'msn.com',
+      ]);
+      let matchedId: string | null = null;
+      for (const email of attendeeEmails) {
+        const domain = email.split('@')[1]?.toLowerCase();
+        if (!domain || COMMON.has(domain)) continue;
+        const found = (deals || []).find(d => {
+          try {
+            const url = (d as any).companyUrl as string | undefined;
+            if (!url) return false;
+            const host = new URL(url.startsWith('http') ? url : `https://${url}`)
+              .hostname.toLowerCase().replace(/^www\./, '');
+            return host === domain || domain.endsWith(`.${host}`) || host.endsWith(`.${domain}`);
+          } catch {
+            return false;
+          }
+        });
+        if (found) {
+          matchedId = found.id;
+          break;
+        }
+      }
+      setPrefillTitle(`Follow Up: ${ev.summary || '(No title)'}`);
+      setPrefillDealId(matchedId);
+      setFollowUpOpen(true);
+    },
+    [deals],
+  );
+
   return (
     <div className="space-y-4">
-      <EndOfDayAgendaSection enabled={enabled} />
+      <EndOfDayAgendaSection enabled={enabled} onCreateFollowUp={handleCreateFollowUp} />
+
+      <div className="pt-2 border-t border-white/10">
+        <PipelineTab
+          enabled={enabled}
+          onNavigate={onNavigate || (() => {})}
+          targetDealOwnerName={targetAssigneeName}
+          briefingType={briefingType}
+        />
+      </div>
+
+      <QuickCreateTaskDialog
+        open={followUpOpen}
+        onClose={() => setFollowUpOpen(false)}
+        teamMembers={teamMembers}
+        currentUserId={user?.id || ''}
+        initialTitle={prefillTitle}
+        initialDealId={prefillDealId}
+        initialDueDate={new Date()}
+        onCreate={async (input) => {
+          await createTask.mutateAsync({
+            title: input.title,
+            priority: input.priority,
+            due_date: input.due_date || undefined,
+            status: input.status,
+            assigned_to: input.assigned_to,
+            recurrence_rule: input.recurrence_rule,
+            recurrence_end_date: input.recurrence_end_date,
+            deal_id: input.deal_id || undefined,
+          });
+          toast.success(`Task created: "${input.title}"`);
+          setFollowUpOpen(false);
+        }}
+      />
     </div>
   );
 }
