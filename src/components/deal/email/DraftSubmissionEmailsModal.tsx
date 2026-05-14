@@ -69,6 +69,10 @@ interface Props {
   setActiveIndex: React.Dispatch<React.SetStateAction<number>>;
   /** Callback invoked when the user clicks "Send" for a single draft. */
   onSend: (index: number) => void | Promise<void>;
+  /** Live progress for the per-lender draft generation pipeline. */
+  progress?: { completed: number; total: number; failed: number } | null;
+  /** Re-run AI generation for a single draft (used to retry failed lenders). */
+  onRegenerate?: (index: number) => void | Promise<void>;
 }
 
 const EMAILS_RX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -80,6 +84,7 @@ function validateEmails(value: string): boolean {
 
 export function DraftSubmissionEmailsModal({
   open, onOpenChange, isGenerating, drafts, setDrafts, activeIndex, setActiveIndex, onSend,
+  progress, onRegenerate,
 }: Props) {
   const [appliedField, setAppliedField] = useState<AppliedField>(null);
   const [showCc, setShowCc] = useState(false);
@@ -141,11 +146,24 @@ export function DraftSubmissionEmailsModal({
           </DialogDescription>
         </DialogHeader>
 
-        {isGenerating ? (
+        {isGenerating && drafts.length === 0 ? (
           <div className="flex-1 flex items-center justify-center min-h-[300px]">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating drafts for each active lender…
+            <div className="flex flex-col items-center gap-2 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                {progress
+                  ? `Generating drafts for ${progress.total} lender${progress.total === 1 ? '' : 's'}…`
+                  : 'Generating drafts for each active lender…'}
+              </div>
+              {progress && (
+                <div className="text-[11px]">
+                  {progress.completed} of {progress.total} processed
+                  {progress.failed > 0 ? ` · ${progress.failed} failed` : ''}
+                </div>
+              )}
+              <div className="text-[10px] text-muted-foreground/70">
+                This may take up to 90 seconds per lender.
+              </div>
             </div>
           </div>
         ) : drafts.length === 0 ? (
@@ -154,6 +172,15 @@ export function DraftSubmissionEmailsModal({
           </div>
         ) : (
           <div className="flex-1 flex flex-col min-h-0 gap-3">
+            {isGenerating && progress && (
+              <div className="flex items-center gap-2 text-[11px] text-muted-foreground border border-border rounded-md px-2 py-1.5 bg-muted/30">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>
+                  Generating drafts… {progress.completed} of {progress.total}
+                  {progress.failed > 0 ? ` · ${progress.failed} failed` : ''}
+                </span>
+              </div>
+            )}
             {/* Lender pager */}
             <div className="flex items-center gap-2 overflow-x-auto pb-1">
               {drafts.map((d, i) => (
@@ -387,10 +414,21 @@ export function DraftSubmissionEmailsModal({
                       <span className="flex-1">{draft.errorMessage}</span>
                       <button
                         type="button"
-                        onClick={() => onSend(activeIndex)}
+                        onClick={() => {
+                          // Empty body == generation never produced a draft for
+                          // this lender, so retry should re-run the AI call,
+                          // not the send pipeline.
+                          const isGenerationFailure = !draft.bodyHtml;
+                          if (isGenerationFailure && onRegenerate) {
+                            void onRegenerate(activeIndex);
+                          } else {
+                            void onSend(activeIndex);
+                          }
+                        }}
                         className="inline-flex items-center gap-1 font-medium hover:underline"
                       >
-                        <RotateCw className="h-3 w-3" /> Retry
+                        <RotateCw className="h-3 w-3" />
+                        {!draft.bodyHtml ? 'Regenerate draft' : 'Retry send'}
                       </button>
                     </div>
                   )}

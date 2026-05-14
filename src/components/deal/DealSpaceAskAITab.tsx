@@ -307,6 +307,168 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Draft generation helpers
+//
+// The submission-draft pipeline used to issue ONE giant AI call that returned
+// `{drafts: [...]}` for every selected lender. When the model sometimes
+// returned malformed/truncated JSON, the entire batch failed with a generic
+// "AI response could not be parsed" toast.
+//
+// These helpers split the work per-lender, add a hard timeout per call,
+// retry once with a stricter "JSON ONLY" reformat instruction on parse
+// failure, and surface partial success cleanly back to the UI.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DRAFT_CALL_TIMEOUT_MS = 90_000;
+
+/** Wrap a promise with a timeout that rejects with a recognizable error. */
+function withTimeout<T>(p: Promise<T>, ms: number, label = 'AI request'): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
+/** Strip code fences and slice to outermost {...} so JSON.parse has a fighting chance. */
+function extractDraftJson(raw: string): {
+  drafts?: Array<{ lenderName?: string; subject?: string; body?: string; personalizationRationale?: string }>;
+} {
+  const cleaned = (raw || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  const jsonText = start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+  return JSON.parse(jsonText);
+}
+
+/** Convert AI plain-text body (\n\n paragraphs) into safe HTML for the editor. */
+function plainTextBodyToHtml(plain: string): string {
+  const t = (plain || '').trim();
+  if (!t) return '';
+  return t
+    .split(/\n{2,}/)
+    .map((para) =>
+      `<p>${para
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br/>')}</p>`,
+    )
+    .join('');
+}
+
+/**
+ * Invoke `deal-space-ai` with the given prompt. On parse failure, retry once
+ * with a strict "JSON ONLY, no prose, no fences" reminder appended. Throws on
+ * transport errors, rate limits, credits, or unparseable responses after the
+ * retry.
+ */
+async function callDraftAI(
+  dealId: string,
+  prompt: string,
+): Promise<ReturnType<typeof extractDraftJson>> {
+  const callOnce = async (effectivePrompt: string) => {
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke('deal-space-ai', {
+        body: { messages: [{ role: 'user', content: effectivePrompt }], dealId, scope: 'all' },
+      }),
+      DRAFT_CALL_TIMEOUT_MS,
+      'Draft generation',
+    );
+    if (error) throw new Error(error.message || 'Failed to draft email');
+    if ((data as { error?: string })?.error) throw new Error((data as { error?: string }).error);
+    const raw: string = (data as { content?: string })?.content || '';
+    return raw;
+  };
+
+  let raw = await callOnce(prompt);
+  try {
+    return extractDraftJson(raw);
+  } catch {
+    // Reformat retry: keep the same context but bolt on a hard JSON-only
+    // reminder. This catches cases where the model wrapped the JSON in prose
+    // or accidentally returned a truncated trailing comma.
+    const reformatPrompt =
+      prompt +
+      '\n\nREMINDER: Your previous response could not be parsed as JSON. ' +
+      'Respond again with VALID JSON ONLY matching the requested schema. ' +
+      'No prose, no markdown code fences, no commentary, no trailing commas.';
+    raw = await callOnce(reformatPrompt);
+    try {
+      return extractDraftJson(raw);
+    } catch {
+      throw new Error('AI response could not be parsed.');
+    }
+  }
+}
+
+/** Generate a single personalized draft for one lender. */
+async function generateOneDraftPersonalized(
+  dealId: string,
+  lenderName: string,
+  profiles: Map<string, LenderProfileSnapshot>,
+  buildPrompt: (personalize: boolean, profiles: Map<string, LenderProfileSnapshot>) => string,
+): Promise<EmailDraft> {
+  // Restrict the embedded profile map + the constraint block to this single
+  // lender so the model has the smallest possible JSON to produce.
+  const singleProfileMap = new Map<string, LenderProfileSnapshot>();
+  const profile = profiles.get(lenderName) || profiles.get(lenderName.toLowerCase());
+  if (profile) singleProfileMap.set(lenderName, profile);
+
+  const promptBase = buildPrompt(true, singleProfileMap);
+  const constraint =
+    `\n\nIMPORTANT — RESTRICTED LENDER LIST:\n` +
+    `Generate EXACTLY ONE draft entry, for the following lender (exact match, no others):\n` +
+    `- ${lenderName}\n` +
+    `Return {"drafts": [ … one entry … ]}.`;
+
+  const parsed = await callDraftAI(dealId, promptBase + constraint);
+  const entry = (parsed.drafts || []).find((d) => d && (d.body || d.subject));
+  if (!entry) throw new Error('AI returned no draft for this lender.');
+
+  return {
+    lenderName: entry.lenderName?.trim() || lenderName,
+    to: '',
+    cc: '',
+    bcc: '',
+    subject: entry.subject?.replace(/^subject:\s*/i, '').trim() || '',
+    bodyHtml: plainTextBodyToHtml(entry.body || ''),
+    status: 'draft',
+    personalizationRationale: (entry.personalizationRationale || '').trim() || undefined,
+  } satisfies EmailDraft;
+}
+
+/** Generate one neutral broadcast template that will be fanned out to lenders. */
+async function generateBroadcastTemplate(
+  dealId: string,
+  lenders: string[],
+  buildPrompt: (personalize: boolean, profiles: Map<string, LenderProfileSnapshot>) => string,
+): Promise<EmailDraft> {
+  const promptBase = buildPrompt(false, new Map());
+  const constraint =
+    `\n\nNOTE: This single draft will be sent to the following ${lenders.length} ` +
+    `lender${lenders.length === 1 ? '' : 's'} — keep the body neutral enough to broadcast.`;
+  const parsed = await callDraftAI(dealId, promptBase + constraint);
+  const entry = (parsed.drafts || []).find((d) => d && (d.body || d.subject));
+  if (!entry) throw new Error('AI returned no broadcast draft.');
+  return {
+    lenderName: entry.lenderName?.trim() || 'Lender',
+    to: '',
+    cc: '',
+    bcc: '',
+    subject: entry.subject?.replace(/^subject:\s*/i, '').trim() || '',
+    bodyHtml: plainTextBodyToHtml(entry.body || ''),
+    status: 'draft',
+  } satisfies EmailDraft;
+}
+
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
@@ -360,6 +522,15 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  // Progress for the per-lender draft generation pipeline. `null` when no
+  // batch is in flight. Surfaces a "Generating drafts for X of Y lenders…"
+  // message + failure counter in the modal so the user is never staring at
+  // an indefinite spinner.
+  const [draftProgress, setDraftProgress] = useState<{
+    completed: number;
+    total: number;
+    failed: number;
+  } | null>(null);
   const [isPostCallModalOpen, setIsPostCallModalOpen] = useState(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
   // ── Pre-flight review step: lets the user exclude specific lenders
@@ -565,6 +736,7 @@ CRITICAL RULES:
     setEmailDrafts([]);
     setActiveDraftIndex(0);
     setIsDraftDialogOpen(true);
+    setDraftProgress({ completed: 0, total: onlyLenders.length, failed: 0 });
     try {
       // Pre-fetch lender profiles so we can embed them directly in the prompt
       // (instead of the model guessing). Profiles are scoped to the workspace
@@ -573,110 +745,103 @@ CRITICAL RULES:
         ? await fetchLenderProfilesForDeal(dealId, onlyLenders)
         : new Map<string, LenderProfileSnapshot>();
 
-      const promptBase = buildDraftSubmissionPrompt(personalize, profiles);
-
-      const lenderConstraintBlock = onlyLenders.length
-        ? personalize
-          ? `\n\nIMPORTANT — RESTRICTED LENDER LIST:\n` +
-            `Generate drafts ONLY for the following lenders (one entry per name, exact match, no others):\n` +
-            onlyLenders.map((n) => `- ${n}`).join('\n')
-          : `\n\nNOTE: This single draft will be sent to the following ${onlyLenders.length} lender${onlyLenders.length === 1 ? '' : 's'} — keep the body neutral enough to broadcast.`
-        : '';
-      const { data, error } = await supabase.functions.invoke('deal-space-ai', {
-        body: {
-          messages: [{ role: 'user', content: promptBase + lenderConstraintBlock }],
-          dealId,
-          scope: 'all',
-        },
-      });
-      if (error) throw new Error(error.message || 'Failed to draft email');
-      if (data?.error) throw new Error(data.error);
-
-      const raw: string = data?.content || '';
-      // Strip code fences if model added them despite instructions.
-      const cleaned = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
-      // Find first '{' and last '}' to be resilient to leading prose.
-      const start = cleaned.indexOf('{');
-      const end = cleaned.lastIndexOf('}');
-      const jsonText = start !== -1 && end !== -1 ? cleaned.slice(start, end + 1) : cleaned;
-
-      let parsed: { drafts?: Array<{ lenderName?: string; subject?: string; body?: string; personalizationRationale?: string }> } = {};
-      try {
-        parsed = JSON.parse(jsonText);
-      } catch {
-        throw new Error('AI response could not be parsed. Please try again.');
-      }
-
-      let drafts: EmailDraft[] = (parsed.drafts || [])
-        .filter((d) => d && (d.body || d.subject))
-        .map((d) => {
-          // Convert AI plain-text body (\n\n paragraphs) into HTML for the rich-text editor.
-          const plain = (d.body || '').trim();
-          const bodyHtml = plain
-            ? plain
-                .split(/\n{2,}/)
-                .map((para) =>
-                  `<p>${para
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/\n/g, '<br/>')}</p>`
-                )
-                .join('')
-            : '';
-          return {
-            lenderName: d.lenderName?.trim() || 'Lender',
-            to: '',
-            cc: '',
-            bcc: '',
-            subject: d.subject?.replace(/^subject:\s*/i, '').trim() || '',
-            bodyHtml,
-            status: 'draft' as const,
-            personalizationRationale: (d.personalizationRationale || '').trim() || undefined,
-          } satisfies EmailDraft;
-        });
-
-      if (drafts.length === 0) {
-        throw new Error('No active lenders found to draft emails for.');
-      }
-
+      // ── Per-lender pipeline ───────────────────────────────────────────
+      // We run one AI call per lender (small concurrent batches) instead of
+      // one giant batched JSON response. This way:
+      //   • One malformed reply only kills that lender, not the whole run.
+      //   • The user sees partial successes immediately as drafts stream in.
+      //   • Each call has its own timeout + retry/reformat fallback.
+      // For broadcast mode we still issue one AI call and fan out the
+      // resulting template across the selected lenders.
       let filteredDrafts: EmailDraft[];
+
       if (!personalize) {
-        // Broadcast mode: take the first draft and fan it out to every
-        // selected lender so contact resolution + the per-lender pager in
-        // the modal still work as expected. No personalization rationale.
-        const template = drafts[0];
+        const template = await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
         filteredDrafts = onlyLenders.map((name) => ({
           ...template,
           lenderName: name,
-          // Subject template references the lender name, so refresh it for
-          // each fan-out target. We swap the LENDER INSTITUTION segment
-          // (after "|") with this lender's name when present, otherwise
-          // leave the subject untouched.
           subject: template.subject.includes('|')
             ? template.subject.replace(/\|[^|]+(?= -|$)/, `| ${name}`)
             : template.subject,
           personalizationRationale: undefined,
         }));
+        setDraftProgress({ completed: onlyLenders.length, total: onlyLenders.length, failed: 0 });
       } else {
-        // Hard filter as a safety net — even if the model ignores the
-        // restriction list, we never surface drafts for excluded lenders.
-        const allowedLowercase = new Set(onlyLenders.map((n) => n.toLowerCase().trim()));
-        filteredDrafts = drafts.filter((d) =>
-          allowedLowercase.has((d.lenderName || '').toLowerCase().trim())
-        );
-        if (filteredDrafts.length === 0) {
-          throw new Error('No drafts were generated for the selected lenders.');
+        // Personalized: per-lender concurrent generation with progress updates.
+        const collected: EmailDraft[] = new Array(onlyLenders.length);
+        let completed = 0;
+        let failed = 0;
+        const CONCURRENCY = 3;
+        let cursor = 0;
+
+        const worker = async () => {
+          while (cursor < onlyLenders.length) {
+            const idx = cursor++;
+            const name = onlyLenders[idx];
+            try {
+              const draft = await generateOneDraftPersonalized(
+                dealId,
+                name,
+                profiles,
+                buildDraftSubmissionPrompt,
+              );
+              collected[idx] = draft;
+            } catch (e) {
+              failed += 1;
+              const message = e instanceof Error ? e.message : 'Draft generation failed';
+              // Surface the failure as a placeholder draft so the user can
+              // see exactly which lender broke and retry it from the modal.
+              collected[idx] = {
+                lenderName: name,
+                to: '',
+                cc: '',
+                bcc: '',
+                subject: '',
+                bodyHtml: '',
+                status: 'failed',
+                errorMessage: message,
+              } satisfies EmailDraft;
+            } finally {
+              completed += 1;
+              setDraftProgress({ completed, total: onlyLenders.length, failed });
+              // Stream visible drafts in as soon as they arrive — keep them
+              // in the original lender order to match the pager.
+              setEmailDrafts(collected.filter(Boolean) as EmailDraft[]);
+            }
+          }
+        };
+
+        const workers = Array.from({ length: Math.min(CONCURRENCY, onlyLenders.length) }, worker);
+        await Promise.all(workers);
+
+        const successful = collected.filter((d) => d && d.status !== 'failed') as EmailDraft[];
+        if (successful.length === 0) {
+          throw new Error(
+            `Drafts could not be generated for any of the ${onlyLenders.length} selected lenders. Please retry.`,
+          );
         }
+        if (failed > 0) {
+          toast({
+            title: 'Some drafts failed',
+            description: `${successful.length} draft${successful.length === 1 ? '' : 's'} ready · ${failed} failed. Retry them individually from the dialog.`,
+          });
+        }
+        filteredDrafts = collected.filter(Boolean) as EmailDraft[];
       }
 
-      // ── Resolve each lender's primary contact email from the lender directory.
-      // Match `master_lenders` by case-insensitive name (RLS scopes to the user's
-      // workspace). For each match, pull `lender_contacts` and pre-populate the
-      // To field with the primary contact (or first contact, or legacy
-      // master_lenders.email as a final fallback).
-      const enriched = await enrichDraftsWithLenderContacts(filteredDrafts);
-      setEmailDrafts(enriched);
+      // Enrich only the actionable drafts with lender contacts. Failed
+      // placeholders are passed through untouched so the user still sees
+      // the lender + error in the pager.
+      const successfulOnly = filteredDrafts.filter((d) => d.status !== 'failed');
+      const failedPlaceholders = filteredDrafts.filter((d) => d.status === 'failed');
+      const enriched = await enrichDraftsWithLenderContacts(successfulOnly);
+      // Preserve original lender ordering when merging back.
+      const enrichedByName = new Map(enriched.map((d) => [d.lenderName.toLowerCase(), d]));
+      const merged = filteredDrafts.map((d) =>
+        d.status === 'failed' ? d : enrichedByName.get(d.lenderName.toLowerCase()) || d,
+      );
+      setEmailDrafts(merged);
+      void failedPlaceholders;
     } catch (err) {
       const rawMessage = err instanceof Error ? err.message : 'Failed to draft submission email';
       const lower = rawMessage.toLowerCase();
@@ -705,11 +870,26 @@ CRITICAL RULES:
       } else if (isAiCredits) {
         toast({ title: 'AI credits exhausted', description: 'Add credits to continue drafting.', variant: 'destructive' });
       } else {
-        toast({ title: 'Draft failed', description: rawMessage, variant: 'destructive' });
+        toast({
+          title: 'Draft failed',
+          description: rawMessage,
+          variant: 'destructive',
+          action: (
+            <ToastAction altText="Retry" onClick={() => { void handleDraftSubmission(); }}>
+              Retry
+            </ToastAction>
+          ),
+        });
       }
-      setIsDraftDialogOpen(false);
+      // Keep the dialog open if we already streamed at least one draft —
+      // the user shouldn't lose partial work or have to reselect lenders.
+      setEmailDrafts((prev) => {
+        if (prev.length === 0) setIsDraftDialogOpen(false);
+        return prev;
+      });
     } finally {
       setIsDraftingEmail(false);
+      setDraftProgress(null);
     }
   }, [dealId, buildDraftSubmissionPrompt]);
 
@@ -1158,11 +1338,32 @@ CRITICAL RULES:
         open={isDraftDialogOpen}
         onOpenChange={setIsDraftDialogOpen}
         isGenerating={isDraftingEmail}
+        progress={draftProgress}
         drafts={emailDrafts}
         setDrafts={setEmailDrafts}
         activeIndex={activeDraftIndex}
         setActiveIndex={setActiveDraftIndex}
         onSend={sendDraftAtIndex}
+        onRegenerate={async (index) => {
+          const target = emailDrafts[index];
+          if (!target) return;
+          const lenderName = target.lenderName;
+          setEmailDrafts((prev) => prev.map((d, i) =>
+            i === index ? { ...d, status: 'sending', errorMessage: undefined } : d,
+          ));
+          try {
+            const profiles = await fetchLenderProfilesForDeal(dealId, [lenderName]);
+            const fresh = await generateOneDraftPersonalized(dealId, lenderName, profiles, buildDraftSubmissionPrompt);
+            const [enriched] = await enrichDraftsWithLenderContacts([fresh]);
+            setEmailDrafts((prev) => prev.map((d, i) => (i === index ? enriched : d)));
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Draft regeneration failed';
+            setEmailDrafts((prev) => prev.map((d, i) =>
+              i === index ? { ...d, status: 'failed', errorMessage: msg } : d,
+            ));
+            toast({ title: 'Draft retry failed', description: msg, variant: 'destructive' });
+          }
+        }}
       />
 
       {/* Review & Exclude — gates the draft modal so the user can drop
