@@ -47,7 +47,7 @@ export function DealSavedViewsMenu({
           size="icon"
           aria-label={`Saved views${views.length > 0 ? ` (${views.length})` : ''}`}
           title="Saved views"
-          className="relative h-8 w-8 shrink-0"
+          className="relative h-9 w-9 shrink-0 rounded-md"
         >
           <Bookmark className="h-3.5 w-3.5" />
           {views.length > 0 && (
