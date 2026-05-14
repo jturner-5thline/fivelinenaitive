@@ -34,6 +34,10 @@ interface Props {
   onCreate: (input: QuickTaskInput) => Promise<void> | void;
   teamMembers: TeamMember[];
   currentUserId: string;
+  /** Optional pre-fill values applied each time the dialog opens. */
+  initialTitle?: string;
+  initialDealId?: string | null;
+  initialDueDate?: Date | null;
 }
 
 const JUNK_NAMES = ['test', 'asdf', 'aaa', 'abc', 'xxx', 'zzz', 'asd', 'qwe', 'foo', 'bar'];
@@ -76,7 +80,16 @@ function previewNextOccurrence(anchor: Date, rule: string): Date | null {
   }
 }
 
-export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, currentUserId }: Props) {
+export function QuickCreateTaskDialog({
+  open,
+  onClose,
+  onCreate,
+  teamMembers,
+  currentUserId,
+  initialTitle,
+  initialDealId,
+  initialDueDate,
+}: Props) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<QuickTaskInput['priority']>('medium');
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
@@ -109,9 +122,9 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
 
   useEffect(() => {
     if (open) {
-      setTitle('');
+      setTitle(initialTitle || '');
       setPriority('medium');
-      setDueDate(undefined);
+      setDueDate(initialDueDate || undefined);
       setStatus('not_started');
       const remembered = readLastAssignee(currentUserId);
       const isValid = remembered === currentUserId || teamMembers.some(m => m.id === remembered);
@@ -126,12 +139,12 @@ export function QuickCreateTaskDialog({ open, onClose, onCreate, teamMembers, cu
       setWarning('');
       setConfirmedJunk(false);
       setSubmitting(false);
-      setDealId(null);
+      setDealId(initialDealId ?? null);
       setDealPickerOpen(false);
       setDealQuery('');
       setDebouncedTitle('');
     }
-  }, [open, currentUserId, teamMembers]);
+  }, [open, currentUserId, teamMembers, initialTitle, initialDealId, initialDueDate]);
 
   // ─── One-click presets ────────────────────────────────────────────────
   // Combo presets snap several fields at once (priority + due + status).
