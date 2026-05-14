@@ -806,11 +806,12 @@ CRITICAL RULES:
     }
   }, [emailDrafts]);
 
-  const suggestedQuestions: { label: string; action: 'ask' | 'status-report' }[] = [
-    { label: "Generate a full lender-ready memo for this deal", action: 'ask' },
-    { label: "What are the key risks & hurdles for this deal?", action: 'ask' },
-    { label: "Generate Status Update", action: 'status-report' },
-    { label: "What outstanding items need attention?", action: 'ask' },
+  const suggestedQuestions: { label: string; action: 'ask' | 'status-report' | 'draft-submission'; disabled?: boolean }[] = [
+    { label: "Draft Submission Email", action: 'draft-submission', disabled: isDraftingEmail },
+    ...(hasLenders ? [{ label: "Generate Status Report", action: 'status-report' as const }] : []),
+    { label: "Generate a full lender-ready memo for this deal", action: 'ask' as const },
+    { label: "What are the key risks & hurdles for this deal?", action: 'ask' as const },
+    { label: "What outstanding items need attention?", action: 'ask' as const },
   ];
 
   return (
