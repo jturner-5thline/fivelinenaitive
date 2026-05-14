@@ -217,7 +217,9 @@ export function DealsHeader() {
                     <Icon className="h-5 w-5 sm:h-[27px] sm:w-[27px]" />
                   </button>
                 </TooltipTrigger>
-                <TooltipContent>{label}</TooltipContent>
+                <TooltipContent side="bottom" sideOffset={6} className="z-[1100]">
+                  {label}
+                </TooltipContent>
               </Tooltip>
             ))}
           </nav>
