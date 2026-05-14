@@ -370,6 +370,15 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           }}
         >
           <Suspense fallback={<DealOverlayHydrating />}>
+            {/* Defer mounting DealDetail until the shell expansion has
+                finished. Mounting it during the transform animation
+                causes visible jitter as heavy subtrees hydrate and lay
+                out. While we wait we render a lightweight placeholder
+                so the shell stays visually stable. */}
+            {!contentVisible ? (
+              <DealOverlayHydrating />
+            ) : (
+            <>
             {/* Render DealDetail using a synthetic location so `useParams`
                 resolves to this deal id, while reusing the parent Router
                 (React Router forbids nested <Router> instances). */}
@@ -392,6 +401,8 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             >
               <Route path="__overlay/:id" element={<DealDetail />} />
             </Routes>
+            </>
+            )}
           </Suspense>
         </div>
       </div>
