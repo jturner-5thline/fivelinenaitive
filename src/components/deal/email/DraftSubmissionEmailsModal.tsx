@@ -414,10 +414,21 @@ export function DraftSubmissionEmailsModal({
                       <span className="flex-1">{draft.errorMessage}</span>
                       <button
                         type="button"
-                        onClick={() => onSend(activeIndex)}
+                        onClick={() => {
+                          // Empty body == generation never produced a draft for
+                          // this lender, so retry should re-run the AI call,
+                          // not the send pipeline.
+                          const isGenerationFailure = !draft.bodyHtml;
+                          if (isGenerationFailure && onRegenerate) {
+                            void onRegenerate(activeIndex);
+                          } else {
+                            void onSend(activeIndex);
+                          }
+                        }}
                         className="inline-flex items-center gap-1 font-medium hover:underline"
                       >
-                        <RotateCw className="h-3 w-3" /> Retry
+                        <RotateCw className="h-3 w-3" />
+                        {!draft.bodyHtml ? 'Regenerate draft' : 'Retry send'}
                       </button>
                     </div>
                   )}
