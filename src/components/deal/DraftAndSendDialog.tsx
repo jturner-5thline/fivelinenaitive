@@ -240,8 +240,8 @@ export function DraftAndSendDialog({
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? onOpenChange(true) : handleDiscard())}>
-      <DialogContent className="max-w-3xl w-[92vw] h-[88vh] flex flex-col p-0 overflow-hidden">
-        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border">
+      <DialogContent className="popup-shell-surface max-w-3xl w-[92vw] h-[88vh] flex flex-col p-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20 rounded-2xl">
+        <DialogHeader className="px-5 pt-5 pb-3 border-b border-border/40">
           <DialogTitle className="flex items-center gap-2 text-base">
             <Send className="h-4 w-4 text-primary" />
             {contextLabel ? `Draft & Send · ${contextLabel}` : 'Draft & Send'}
@@ -387,8 +387,9 @@ export function DraftAndSendDialog({
               </Button>
               <Button
                 type="button"
+                variant="liquid-glass"
                 size="sm"
-                className="h-8"
+                className="h-8 gap-1.5"
                 onClick={handleSend}
                 disabled={!canSend}
               >
