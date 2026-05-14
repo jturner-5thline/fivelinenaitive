@@ -107,11 +107,11 @@ export function AppSidebar() {
 
   return (
     <Sidebar side="left" collapsible="icon" className="h-[calc(100vh-1rem)]" data-tour="sidebar">
-      <SidebarHeader className="border-b border-sidebar-border px-2 py-3 rounded-b-xl bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-2">
+      <SidebarHeader className="relative overflow-hidden px-2 py-3 rounded-b-xl border-b border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]">
+        <div className="relative z-[1] flex items-center gap-2">
           <button 
             onClick={toggleSidebar} 
-            className="h-9 w-9 rounded-md flex-shrink-0 flex items-center justify-center hover:bg-sidebar-accent transition-colors"
+            className="h-9 w-9 rounded-md flex-shrink-0 flex items-center justify-center hover:bg-[rgba(126,184,247,0.2)] transition-colors"
           >
             <Menu className="h-5 w-5 text-sidebar-foreground" />
           </button>
