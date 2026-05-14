@@ -43,7 +43,8 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
   'Action Queue': loadTasks,
-  Deals: loadDeals,
+  Deals: loadDashboard,
+  Tasks: loadTasks,
 };
 import {
   canSeeNikiBriefing,
