@@ -1,5 +1,7 @@
-import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { LayoutDashboard, BarChart3 } from 'lucide-react';
 import { Chart, registerables } from 'chart.js';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -21,6 +23,8 @@ Chart.register(...registerables);
 interface DashboardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
+  initialTab?: 'dashboard' | 'analytics';
 }
 
 const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
@@ -38,7 +42,16 @@ const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
   { key: 'closing', label: 'Closing Mo.' },
 ];
 
-export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
+// Analytics is the legacy /analytics page repurposed as the second tab here.
+// Lazy so the heavy chart bundle only loads when the user picks the tab.
+const AnalyticsTabContent = lazy(() => import('@/pages/Analytics'));
+
+export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }: DashboardModalProps) {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics'>(initialTab);
+  useEffect(() => {
+    if (open) setActiveTab(initialTab);
+  }, [open, initialTab]);
+
   const donutRef = useRef<HTMLCanvasElement>(null);
   const barRef = useRef<HTMLCanvasElement>(null);
   const donutChart = useRef<Chart | null>(null);
@@ -191,9 +204,32 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
         overlayClassName="bg-black/80"
         aria-label="Deal Pipeline"
       >
-        <div className="db-root" style={{ overflow: 'auto', height: '100%', borderRadius: 'inherit' }}>
+        <div className="db-root flex flex-col" style={{ height: '100%', borderRadius: 'inherit' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
-          <div className="db-r">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics')}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            <div className="px-5 pt-5 pb-2 shrink-0">
+              <TabsList>
+                <TabsTrigger value="dashboard" className="gap-1.5">
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Analytics
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent
+              value="dashboard"
+              forceMount
+              className="flex-1 min-h-0 mt-0 overflow-auto data-[state=inactive]:hidden"
+            >
+              <div className="db-r">
             {/* KPI STRIP */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
               {[
@@ -364,7 +400,24 @@ export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
               </div>
               <div className="db-cw" style={{ height: 200 }}><canvas ref={barRef} /></div>
             </div>
-          </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent
+              value="analytics"
+              className="flex-1 min-h-0 mt-0 overflow-auto data-[state=inactive]:hidden"
+            >
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                    Loading Analytics…
+                  </div>
+                }
+              >
+                <AnalyticsTabContent />
+              </Suspense>
+            </TabsContent>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>

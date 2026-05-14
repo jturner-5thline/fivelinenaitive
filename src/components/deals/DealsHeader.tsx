@@ -85,6 +85,22 @@ export function DealsHeader() {
   const isDealsRoute = location.pathname === '/deals';
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
+  const [dashboardInitialTab, setDashboardInitialTab] = useState<'dashboard' | 'analytics'>('dashboard');
+
+  // /analytics now redirects to /deals?dashboard=analytics — when we land
+  // here with that param, auto-open the Dashboard modal on the Analytics
+  // tab and clean the URL so refreshes don't re-trigger.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(location.search);
+    if (params.get('dashboard') === 'analytics') {
+      setDashboardInitialTab('analytics');
+      setIsDashboardOpen(true);
+      params.delete('dashboard');
+      const next = `${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`;
+      window.history.replaceState({}, '', next);
+    }
+  }, [location.pathname, location.search]);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isTasksListOpen, setIsTasksListOpen] = useState(false);
   const [isActionQueueOpen, setIsActionQueueOpen] = useState(false);
@@ -236,7 +252,14 @@ export function DealsHeader() {
       <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
       {isFifthLine && isDashboardOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
-          <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />
+          <DashboardModal
+            open={isDashboardOpen}
+            onOpenChange={(o) => {
+              setIsDashboardOpen(o);
+              if (!o) setDashboardInitialTab('dashboard');
+            }}
+            initialTab={dashboardInitialTab}
+          />
         </Suspense>
       )}
       {isTasksOpen && (

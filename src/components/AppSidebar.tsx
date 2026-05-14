@@ -41,7 +41,6 @@ const menuItems = [
   { title: "Lenders", url: "/lenders", icon: Landmark, featureKey: null },
   { title: "Contacts", url: "/contacts", icon: Contact, featureKey: null },
   { title: "Companies", url: "/crm-companies", icon: Building2, featureKey: null },
-  { title: "Analytics", url: "/analytics", icon: PieChart, featureKey: "analytics" },
   { title: "Reports", url: "/reports", icon: FileText, featureKey: "reports", hideForDemoEmail: true as const },
   
   { title: "AI Agents", url: "/agents", icon: Bot, featureKey: "agents" },

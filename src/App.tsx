@@ -259,7 +259,11 @@ const App = () => (
                             <Route path="/tasks/:taskId" element={<TaskDetail />} />
                             <Route path="/tasks/preview/suggested" element={<SuggestedTaskPreview />} />
                             <Route path="/deals" element={<ErrorBoundary><Deals /></ErrorBoundary>} />
-                            <Route path="/analytics" element={<ErrorBoundary><Analytics /></ErrorBoundary>} />
+                            {/* Analytics now lives as the second tab inside the Dashboard pop-up.
+                                Keep /analytics as a compatibility redirect that lands users on
+                                /deals with `?dashboard=analytics`, which auto-opens the modal on
+                                the Analytics tab (see DealsHeader). */}
+                            <Route path="/analytics" element={<Navigate to="/deals?dashboard=analytics" replace />} />
                             <Route path="/reports" element={<Reports />} />
                             <Route path="/widget-editor" element={<WidgetEditorPage />} />
                             <Route path="/sales-bd" element={<SalesBD />} />
