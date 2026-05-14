@@ -722,6 +722,7 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
+                {is5thLine && (
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
