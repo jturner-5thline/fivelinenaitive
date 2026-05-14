@@ -390,25 +390,31 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendQuestion = useCallback(async () => {
-    if (!question.trim()) return;
-    
+  const handleSendQuestion = useCallback(async (overridePrompt?: string) => {
+    const prompt = (typeof overridePrompt === 'string' ? overridePrompt : question).trim();
+    if (!prompt) return;
+
     let conversationId = selectedConversationId;
     if (!conversationId) {
-      const newConvo = await createConversation(question.substring(0, 50) + (question.length > 50 ? '...' : ''));
+      const newConvo = await createConversation(prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''));
       if (newConvo) {
         conversationId = newConvo.id;
         setSelectedConversationId(conversationId);
       }
     }
-    
+
     if (conversationId) {
-      await saveMessage(conversationId, 'user', question);
+      await saveMessage(conversationId, 'user', prompt);
     }
-    
-    sendMessage(question);
+
+    sendMessage(prompt);
     setQuestion('');
   }, [question, sendMessage, selectedConversationId, createConversation, saveMessage]);
+
+  const runQuickPrompt = useCallback((prompt: string) => {
+    setQuestion(prompt);
+    void handleSendQuestion(prompt);
+  }, [handleSendQuestion]);
 
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
@@ -984,7 +990,7 @@ CRITICAL RULES:
             <DealProactiveNudgesCard
               dealId={dealId}
               hidden={messages.length > 0}
-              onAction={(prompt) => setQuestion(prompt)}
+              onAction={(prompt) => runQuickPrompt(prompt)}
             />
             {messages.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-center py-8">
@@ -1025,7 +1031,13 @@ CRITICAL RULES:
                   {suggestedQuestions.map((q, i) => (
                     <button
                       key={i}
-                      onClick={() => q.action === 'status-report' ? openStatusReport() : setQuestion(q.label)}
+                      onClick={() => {
+                        if (q.action === 'status-report') {
+                          openStatusReport();
+                        } else {
+                          runQuickPrompt(q.label);
+                        }
+                      }}
                       className="w-full text-left text-sm p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
                       {q.label}
@@ -1143,7 +1155,7 @@ CRITICAL RULES:
               className="flex-1 min-h-9 max-h-40 resize-none"
             />
             <Button
-              onClick={handleSendQuestion}
+              onClick={() => handleSendQuestion()}
               disabled={!question.trim() || isAILoading}
             >
               {isAILoading ? (
