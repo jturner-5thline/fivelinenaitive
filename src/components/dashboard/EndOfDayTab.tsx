@@ -394,7 +394,10 @@ export function EndOfDayAgendaSection({
                     const rowKey = `${ev.id}::${emailKey || idx}`;
                     const isComposing = composerKey === rowKey;
                     const attendeeFirst = firstNameOf(name, a.email || undefined);
-                    const defaultSubject = `${attendeeFirst} & ${userFirstName} Follow Up`;
+                    const eventTitle = (ev.summary || '').trim();
+                    const defaultSubject = eventTitle
+                      ? `${eventTitle} Follow Up`
+                      : `${attendeeFirst} & ${userFirstName} Follow Up`;
                     return (
                       <div key={rowKey}>
                         <div className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] glass-border-softer px-2.5 py-1.5">
