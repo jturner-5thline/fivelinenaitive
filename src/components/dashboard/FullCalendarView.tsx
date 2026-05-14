@@ -1542,8 +1542,9 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
           <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => navigate('today')}>Today</Button>
           {calendarStatus?.connected && (
-            <Button variant="default" size="sm" className="text-xs h-8 gap-1.5" onClick={handleNewEvent}>
-              <Plus className="h-3.5 w-3.5" />New Event
+            <Button variant="liquid-glass" size="sm" className="gap-2" onClick={handleNewEvent}>
+              <Plus className="h-4 w-4" />
+              New Event
             </Button>
           )}
 
