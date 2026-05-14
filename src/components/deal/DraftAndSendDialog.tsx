@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Paperclip, Send, X } from 'lucide-react';
+import { Loader2, Paperclip, Send, X, MessageSquare } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,12 +10,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import { EmailRichTextEditor } from './email/EmailRichTextEditor';
 import { RecipientField } from './email/RecipientField';
 import { useEmailContacts } from '@/hooks/useEmailContacts';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface DraftAndSendInitial {
   to?: string[];
@@ -23,7 +31,11 @@ export interface DraftAndSendInitial {
   bcc?: string[];
   subject: string;
   /** Plain-text body from the AI draft. Will be converted to HTML. */
-  body: string;
+  body?: string;
+  /** Pre-rendered HTML body. Takes precedence over `body` when provided. */
+  bodyHtml?: string;
+  /** When set, the composer surfaces a thread picker scoped to this deal. */
+  dealId?: string;
 }
 
 interface DraftAndSendDialogProps {
@@ -56,6 +68,14 @@ function plainTextToHtml(text: string): string {
 
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB per file (Gmail cap)
 
+interface ThreadOption {
+  thread_id: string;
+  latest_message_id: string;
+  subject: string;
+  from: string;
+  received_at: string | null;
+}
+
 export function DraftAndSendDialog({
   open,
   onOpenChange,
@@ -75,6 +95,8 @@ export function DraftAndSendDialog({
   const [body, setBody] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [threads, setThreads] = useState<ThreadOption[]>([]);
+  const [selectedThreadId, setSelectedThreadId] = useState<string>('new');
   const seededRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -91,11 +113,76 @@ export function DraftAndSendDialog({
     setBcc(initial.bcc ?? []);
     setShowCcBcc(((initial.cc?.length ?? 0) + (initial.bcc?.length ?? 0)) > 0);
     setSubject(initial.subject ?? '');
-    const bodyHtml = plainTextToHtml(initial.body ?? '');
+    const bodyHtml = initial.bodyHtml && initial.bodyHtml.trim().length > 0
+      ? initial.bodyHtml
+      : plainTextToHtml(initial.body ?? '');
     const sigHtml = signature ? plainTextToHtml(signature) : '';
     setBody(sigHtml ? `${bodyHtml}<p></p>${sigHtml}` : bodyHtml);
     setFiles([]);
+    setSelectedThreadId('new');
   }, [open, initial, signature]);
+
+  // Load relevant threads for this deal so the user can reply into an existing one.
+  useEffect(() => {
+    let cancelled = false;
+    if (!open || !initial?.dealId) {
+      setThreads([]);
+      return;
+    }
+    (async () => {
+      try {
+        const { data: links } = await supabase
+          .from('deal_emails')
+          .select('gmail_message_id')
+          .eq('deal_id', initial.dealId);
+        const ids = (links || []).map((l: any) => l.gmail_message_id).filter(Boolean);
+        if (ids.length === 0) {
+          if (!cancelled) setThreads([]);
+          return;
+        }
+        const { data: msgs } = await supabase
+          .from('gmail_messages')
+          .select('gmail_message_id, thread_id, subject, from_email, from_name, received_at')
+          .in('gmail_message_id', ids);
+        // Group by thread_id, keep latest per thread.
+        const byThread = new Map<string, ThreadOption>();
+        for (const m of (msgs || []) as any[]) {
+          if (!m.thread_id) continue;
+          const existing = byThread.get(m.thread_id);
+          const ts = m.received_at ? new Date(m.received_at).getTime() : 0;
+          const existingTs = existing?.received_at ? new Date(existing.received_at).getTime() : 0;
+          if (!existing || ts >= existingTs) {
+            byThread.set(m.thread_id, {
+              thread_id: m.thread_id,
+              latest_message_id: m.gmail_message_id,
+              subject: m.subject || '(no subject)',
+              from: m.from_name || m.from_email || '',
+              received_at: m.received_at,
+            });
+          }
+        }
+        const list = Array.from(byThread.values()).sort((a, b) => {
+          const at = a.received_at ? new Date(a.received_at).getTime() : 0;
+          const bt = b.received_at ? new Date(b.received_at).getTime() : 0;
+          return bt - at;
+        });
+        if (!cancelled) setThreads(list.slice(0, 25));
+      } catch {
+        if (!cancelled) setThreads([]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, initial?.dealId]);
+
+  const handleThreadChange = (val: string) => {
+    setSelectedThreadId(val);
+    if (val === 'new') return;
+    const t = threads.find((x) => x.thread_id === val);
+    if (!t) return;
+    const subj = t.subject.trim();
+    const reSubj = /^re:\s/i.test(subj) ? subj : `Re: ${subj}`;
+    setSubject(reSubj);
+  };
 
   const totalBytes = useMemo(() => files.reduce((s, f) => s + f.size, 0), [files]);
 
@@ -122,6 +209,10 @@ export function DraftAndSendDialog({
     }
     setIsSending(true);
     try {
+      const replyToMessageId =
+        selectedThreadId !== 'new'
+          ? threads.find((t) => t.thread_id === selectedThreadId)?.latest_message_id
+          : undefined;
       const result = await sendEmail({
         to,
         cc: cc.length > 0 ? cc : undefined,
@@ -129,6 +220,7 @@ export function DraftAndSendDialog({
         subject: subject.trim(),
         bodyHtml: body,
         attachments: files.length > 0 ? files : undefined,
+        replyToMessageId,
       });
       if (!result) throw new Error('Send failed');
       toast.success(contextLabel ? `${contextLabel} sent` : 'Email sent');
@@ -162,6 +254,29 @@ export function DraftAndSendDialog({
         <div className="flex-1 min-h-0 flex flex-col">
           {/* Recipients */}
           <div className="px-5 pt-3 space-y-2">
+            {threads.length > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground w-12 flex items-center gap-1">
+                  <MessageSquare className="h-3 w-3" /> Thread
+                </span>
+                <Select value={selectedThreadId} onValueChange={handleThreadChange}>
+                  <SelectTrigger className="h-8 text-sm flex-1">
+                    <SelectValue placeholder="Send as new thread" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-72">
+                    <SelectItem value="new">Send as new thread</SelectItem>
+                    {threads.map((t) => (
+                      <SelectItem key={t.thread_id} value={t.thread_id}>
+                        <span className="truncate max-w-[420px] inline-block align-middle">
+                          {t.subject}
+                          {t.from ? ` · ${t.from}` : ''}
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div className="flex items-start gap-2">
               <div className="flex-1 min-w-0">
                 <RecipientField
