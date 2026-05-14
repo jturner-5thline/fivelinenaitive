@@ -231,7 +231,7 @@ export function DashboardTemplatesDialog({ mode = 'create', onSelectTemplate, on
 
           <div className="flex justify-end gap-2 pt-2 border-t border-border">
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>Cancel</Button>
-            <Button size="sm" disabled={!selectedId} onClick={handleApply}>
+            <Button variant="liquid-glass" size="sm" className="gap-2" disabled={!selectedId} onClick={handleApply}>
               Use Template
             </Button>
           </div>

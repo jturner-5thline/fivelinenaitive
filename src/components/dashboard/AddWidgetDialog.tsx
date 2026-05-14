@@ -286,7 +286,8 @@ export function AddWidgetDialog({ existingWidgetIds, onAddBuiltIn, onAddCustom }
 
               <Button
                 onClick={handleAddCustom}
-                className="w-full"
+                variant="liquid-glass"
+                className="w-full gap-2"
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Create Widget
