@@ -1118,6 +1118,20 @@ CRITICAL RULES:
             )}
           </ScrollArea>
 
+          {hasLenders && (
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={openStatusReport}
+                className="gap-1.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
+              >
+                <FileBarChart className="h-3.5 w-3.5" />
+                Generate Status Report
+              </Button>
+            </div>
+          )}
+
           <div className="flex gap-2 items-end">
             <Textarea
               value={question}
