@@ -511,6 +511,57 @@ export default function Dashboard() {
             />
           </>
         }
+        headerActions={
+          <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-md"
+                  aria-label="Customize widgets"
+                  onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}
+                >
+                  <Settings2 className="h-4 w-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Customize widgets</TooltipContent>
+            </Tooltip>
+            <NotificationsDropdown />
+            <LatestUpdatesDropdown />
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8 rounded-md">
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {
+                  exportPipelineToCSV(deals);
+                  toast({ title: "CSV exported", description: `${deals.length} deals exported to CSV.` });
+                }}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  exportPipelineToPDF(deals);
+                  toast({ title: "PDF exported", description: `${deals.length} deals exported to PDF.` });
+                }}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export as PDF
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={async () => {
+                  await exportPipelineToWord(deals);
+                  toast({ title: "Word document exported", description: `${deals.length} deals exported to Word.` });
+                }}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Export as Word
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <CreateDealDialog />
+          </div>
+        }
       >
             {/* 1. Page header (title + subtitle removed; actions row only) */}
             <div
@@ -519,57 +570,6 @@ export default function Dashboard() {
             >
               <div className="min-w-0 flex items-center gap-3">
                 <PipelineSelector />
-              </div>
-
-              <div className="flex items-center gap-1.5 flex-wrap shrink-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8 rounded-md"
-                        aria-label="Customize widgets"
-                        onClick={() => window.dispatchEvent(new Event('toggle-widgets-edit-mode'))}
-                      >
-                        <Settings2 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Customize widgets</TooltipContent>
-                  </Tooltip>
-                  <NotificationsDropdown />
-                  <LatestUpdatesDropdown />
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-md">
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => {
-                        exportPipelineToCSV(deals);
-                        toast({ title: "CSV exported", description: `${deals.length} deals exported to CSV.` });
-                      }}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Export as CSV
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => {
-                        exportPipelineToPDF(deals);
-                        toast({ title: "PDF exported", description: `${deals.length} deals exported to PDF.` });
-                      }}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Export as PDF
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={async () => {
-                        await exportPipelineToWord(deals);
-                        toast({ title: "Word document exported", description: `${deals.length} deals exported to Word.` });
-                      }}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Export as Word
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <CreateDealDialog />
               </div>
             </div>
 
