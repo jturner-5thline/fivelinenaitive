@@ -75,6 +75,7 @@ const LendersKanban = lazy(() => import('@/components/deal/LendersKanban').then(
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
 import { AddLenderSlideOver } from '@/components/deal/AddLenderSlideOver';
+import { DealDataUpdateBanner } from '@/components/deal/DealDataUpdateBanner';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
@@ -3929,12 +3930,19 @@ export default function DealDetail() {
                 <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
               <div className="flex gap-6">
               <div className="w-[70%] space-y-6">
+              <DealDataUpdateBanner dealId={id} />
               <AiRecommendedLendersSection
                 dealId={id}
                 configuredStages={configuredStages}
                 defaultStageId={preferences.defaultLenderStage}
                 existingLenderNames={existingLenderNames}
                 onAddLender={addLenderWithStage}
+                criteriaOverride={{
+                  dealValue: deal.value || undefined,
+                  dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
+                  industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
+                  geo: dealWriteUpData.location || undefined,
+                }}
               />
               {/* Lenders Card */}
                  <Card className="max-h-[750px] flex flex-col">
