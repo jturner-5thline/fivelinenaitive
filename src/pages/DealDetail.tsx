@@ -3927,6 +3927,13 @@ export default function DealDetail() {
                 <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
               <div className="flex gap-6">
               <div className="w-[70%] space-y-6">
+              <AiRecommendedLendersSection
+                dealId={id}
+                configuredStages={configuredStages}
+                defaultStageId={preferences.defaultLenderStage}
+                existingLenderNames={existingLenderNames}
+                onAddLender={addLenderWithStage}
+              />
               {/* Lenders Card */}
                  <Card className="max-h-[750px] flex flex-col">
                    <CardHeader className="pb-3 pt-3">
