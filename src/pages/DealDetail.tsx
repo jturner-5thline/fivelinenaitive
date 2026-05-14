@@ -4770,6 +4770,92 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
+                {/* Floating sticky tab rail — Excel-inspired sheet tabs, modernized.
+                    Pinned to the bottom of the deal popup scroll viewport. */}
+                <div className="sticky bottom-0 left-0 right-0 z-40 mt-4 -mx-2 sm:-mx-4 px-2 sm:px-4 pt-3 pb-2 bg-gradient-to-t from-background via-background/95 to-background/40 backdrop-blur-md border-t border-white/5">
+                  <HintTooltip
+                    hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
+                    visible={isHintVisible('deal-tabs')}
+                    onDismiss={() => dismissHint('deal-tabs')}
+                    side="top"
+                  >
+                    <TabsList
+                      className="inline-flex h-9 items-end justify-start rounded-md bg-background/40 backdrop-blur-sm p-1 gap-1 border border-white/10 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.35)] max-w-full overflow-x-auto overflow-y-hidden scrollbar-none"
+                      style={{ scrollbarWidth: 'none' }}
+                    >
+                      {hasDealSpaceAccess && !isSimplifiedDeal && (
+                        <TabsTrigger
+                          value="deal-space"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Deal Space
+                          {!isDemoAccount && <BetaBadge featureKey="page_deal_space" />}
+                        </TabsTrigger>
+                      )}
+                      <TabsTrigger
+                        value="deal-info"
+                        className="whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                      >
+                        Deal Info
+                      </TabsTrigger>
+                      {!isSimplifiedDeal && (
+                        <TabsTrigger
+                          value="lenders"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                        >
+                          Lenders
+                          {deal.lenders && deal.lenders.length > 0 && (
+                            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                              {deal.lenders.length}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                      )}
+                      {!isSimplifiedDeal && hasDealManagementAccess && (
+                        <TabsTrigger
+                          value="deal-management"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                        >
+                          Management
+                          {infoRequestActionCount > 0 && (
+                            <Badge variant="destructive" className="h-4 min-w-4 px-1 text-[10px]">
+                              {infoRequestActionCount}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                      )}
+                      {!isSimplifiedDeal && (
+                        <TabsTrigger
+                          value="deal-writeup"
+                          className="whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                        >
+                          Write Up
+                        </TabsTrigger>
+                      )}
+                      {!isSimplifiedDeal && (
+                        <TabsTrigger
+                          value="data-room"
+                          className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                        >
+                          Data Room
+                          {attachments.length > 0 && (
+                            <Badge variant="secondary" className="h-4 min-w-4 px-1 text-[10px]">
+                              {attachments.length}
+                            </Badge>
+                          )}
+                        </TabsTrigger>
+                      )}
+                      <TabsTrigger
+                        value="activity-log"
+                        className="gap-1.5 whitespace-nowrap flex-shrink-0 px-3 h-7 text-xs rounded-[5px] text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-[0_1px_0_0_hsl(var(--primary))_inset,0_1px_4px_rgba(0,0,0,0.25)] data-[state=active]:font-medium"
+                      >
+                        <History className="h-3.5 w-3.5" />
+                        Activity
+                      </TabsTrigger>
+                    </TabsList>
+                  </HintTooltip>
+                </div>
 
               </Tabs>
             </div>
