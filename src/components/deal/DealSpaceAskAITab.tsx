@@ -1015,15 +1015,89 @@ CRITICAL RULES:
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            {totalDocuments > 0 && (
+              <Badge variant="secondary" className="text-xs">
+                {totalDocuments} file{totalDocuments !== 1 ? 's' : ''}
+              </Badge>
+            )}
+            {/* Mobile-only toggle: on desktop the conversations panel is
+                always visible, so the explicit open/close button is hidden. */}
+            <Button
+              variant="outline"
+              size="sm"
+              className="md:hidden"
+              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+            >
+              <History className="h-4 w-4 mr-2" />
+              Previous conversations
+            </Button>
+          </div>
+        </div>
+        {/* Active scope indicator */}
+        {scope !== 'all' && (
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant="outline" className="text-[10px] gap-1 bg-primary/5 border-primary/20 text-primary">
+              <Filter className="h-3 w-3" />
+              Scope: {SCOPE_LABELS[scope]}
+            </Badge>
+            <button
+              onClick={() => setScope('all')}
+              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Reset to All
+            </button>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent className="flex-1 flex gap-4 overflow-hidden">
+        {/* Conversation History Sidebar — persistent on desktop/tablet,
+            collapsible on mobile via the header toggle. Previous
+            conversations are core navigation, not optional chrome. */}
+        <div
+          className={cn(
+            'w-64 flex-shrink-0 border-r pr-4 flex flex-col min-h-0',
+            'md:block',
+            isHistoryOpen ? 'block' : 'hidden',
+          )}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-sm font-medium">Conversations</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 md:hidden"
+              onClick={() => setIsHistoryOpen(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <DealSpaceConversationHistory
+              conversations={deduplicatedConversations}
+              isLoading={isConversationsLoading}
+              selectedConversationId={selectedConversationId}
+              onSelectConversation={handleSelectConversation}
+              onNewConversation={handleNewConversation}
+              onDeleteConversation={deleteConversation}
+              onUpdateTitle={updateConversationTitle}
+            />
+          </div>
+
+          {/* Bottom utility area: source scope, custom instructions, and the
+              Data Room context toggle. Moved out of the chat header so the
+              main Ask AI panel stays focused on the active conversation. */}
+          <div className="mt-3 pt-3 border-t space-y-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="gap-1.5 text-xs">
-                  <Filter className="h-3.5 w-3.5" />
-                  {SCOPE_LABELS[scope]}
+                <Button variant="outline" size="sm" className="w-full justify-between gap-1.5 text-xs">
+                  <span className="flex items-center gap-1.5">
+                    <Filter className="h-3.5 w-3.5" />
+                    {SCOPE_LABELS[scope]}
+                  </span>
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-52">
+              <DropdownMenuContent align="start" className="w-52">
                 <DropdownMenuLabel className="text-xs">Source Scope</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup value={scope} onValueChange={(v) => setScope(v as DocumentScope)}>
@@ -1040,26 +1114,23 @@ CRITICAL RULES:
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {totalDocuments > 0 && (
-              <Badge variant="secondary" className="text-xs">
-                {totalDocuments} file{totalDocuments !== 1 ? 's' : ''}
-              </Badge>
-            )}
-            {/* Per-deal Custom AI Instructions */}
             <Popover open={instructionsOpen} onOpenChange={setInstructionsOpen}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
-                  className={cn('gap-1.5 text-xs', savedInstructions && 'border-primary/40 text-primary')}
+                  className={cn(
+                    'w-full justify-start gap-1.5 text-xs',
+                    savedInstructions && 'border-primary/40 text-primary',
+                  )}
                   title="Custom AI instructions for this deal"
                 >
                   <Settings2 className="h-3.5 w-3.5" />
                   Instructions
-                  {savedInstructions ? <span className="ml-0.5 inline-block w-1.5 h-1.5 rounded-full bg-primary" /> : null}
+                  {savedInstructions ? <span className="ml-auto inline-block w-1.5 h-1.5 rounded-full bg-primary" /> : null}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[380px]" align="end">
+              <PopoverContent className="w-[380px]" align="start" side="right">
                 <div className="space-y-3">
                   <div>
                     <Label className="text-sm font-medium">Custom AI instructions</Label>
@@ -1100,13 +1171,12 @@ CRITICAL RULES:
               </PopoverContent>
             </Popover>
 
-            {/* Data Room context toggle */}
             <div
               className="flex items-center gap-1.5 px-2 h-8 rounded-md border bg-background"
               title="When on, files in the Data Room are included as context for AI answers."
             >
               <Database className={cn('h-3.5 w-3.5', includeDataRoom ? 'text-primary' : 'text-muted-foreground')} />
-              <Label htmlFor="data-room-toggle" className="text-[11px] font-medium cursor-pointer">
+              <Label htmlFor="data-room-toggle" className="text-[11px] font-medium cursor-pointer flex-1">
                 Data Room
               </Label>
               <Switch
@@ -1116,67 +1186,7 @@ CRITICAL RULES:
                 className="scale-75 -mr-1"
               />
             </div>
-
-            {/* Mobile-only toggle: on desktop the conversations panel is
-                always visible, so the explicit open/close button is hidden. */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="md:hidden"
-              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-            >
-              <History className="h-4 w-4 mr-2" />
-              Previous conversations
-            </Button>
           </div>
-        </div>
-        {/* Active scope indicator */}
-        {scope !== 'all' && (
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="outline" className="text-[10px] gap-1 bg-primary/5 border-primary/20 text-primary">
-              <Filter className="h-3 w-3" />
-              Scope: {SCOPE_LABELS[scope]}
-            </Badge>
-            <button
-              onClick={() => setScope('all')}
-              className="text-[10px] text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Reset to All
-            </button>
-          </div>
-        )}
-      </CardHeader>
-      <CardContent className="flex-1 flex gap-4 overflow-hidden">
-        {/* Conversation History Sidebar — persistent on desktop/tablet,
-            collapsible on mobile via the header toggle. Previous
-            conversations are core navigation, not optional chrome. */}
-        <div
-          className={cn(
-            'w-64 flex-shrink-0 border-r pr-4',
-            'md:block',
-            isHistoryOpen ? 'block' : 'hidden',
-          )}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <span className="text-sm font-medium">Conversations</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 md:hidden"
-              onClick={() => setIsHistoryOpen(false)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </div>
-          <DealSpaceConversationHistory
-            conversations={deduplicatedConversations}
-            isLoading={isConversationsLoading}
-            selectedConversationId={selectedConversationId}
-            onSelectConversation={handleSelectConversation}
-            onNewConversation={handleNewConversation}
-            onDeleteConversation={deleteConversation}
-            onUpdateTitle={updateConversationTitle}
-          />
         </div>
 
         {/* Chat Area */}
