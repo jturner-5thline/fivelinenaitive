@@ -3851,7 +3851,7 @@ export default function DealDetail() {
                           className="flex flex-nowrap items-center gap-0.5"
                         >
                           {(() => {
-                            const groupOrder = ['excluded', 'active', 'on-hold', 'on-deck', 'passed'];
+                            const groupOrder = ['active', 'on-deck', 'on-hold', 'passed', 'excluded'];
                             const groupLabels: Record<string, string> = {
                               'excluded': 'Excluded',
                               'active': 'Active',
