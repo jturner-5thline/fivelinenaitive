@@ -3766,6 +3766,7 @@ export default function DealDetail() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-0">
+                        <Suspense fallback={null}>
                         <UnifiedTimeline 
                           events={(activityLogs || []).map(log => ({
                             id: log.id,
@@ -3782,6 +3783,7 @@ export default function DealDetail() {
                           }))}
                           maxHeight="400px"
                         />
+                        </Suspense>
                       </CardContent>
                     </Card>
                     <Card>
@@ -3792,6 +3794,7 @@ export default function DealDetail() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-0">
+                        <Suspense fallback={null}>
                         <DealBenchmarkPanel
                           currentDeal={{
                             id: deal.id,
@@ -3814,6 +3817,7 @@ export default function DealDetail() {
                             milestoneProgress: 0,
                           }))}
                         />
+                        </Suspense>
                       </CardContent>
                     </Card>
                   </div>
