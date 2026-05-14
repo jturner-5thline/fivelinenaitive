@@ -23,7 +23,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
-import { DealWriteUpData, FinancialYear, FinancialComment } from '../DealWriteUp';
+import { DealWriteUpData, FinancialYear, FinancialComment, ExistingDebtItem } from '../DealWriteUp';
 import { FlexChangedFieldWrapper } from './FlexChangedFieldWrapper';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -673,32 +673,15 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
 
       {/* Existing Debt Details */}
       <FlexChangedFieldWrapper fieldKey="existingDebtDetails" changedFields={changedFields} className="space-y-2">
-        <div className="flex items-center gap-3">
-          <Label htmlFor="existingDebtDetails">Existing Debt Details</Label>
-          <label className="flex items-center gap-1.5 cursor-pointer">
-            <Switch
-              checked={debtBullets}
-              onCheckedChange={(checked) => {
-                setDebtBullets(checked);
-                updateField('existingDebtDetails', applyBullets(data.existingDebtDetails || '', checked));
-              }}
-              className="h-4 w-8 [&>span]:h-3 [&>span]:w-3 data-[state=checked]:[&>span]:translate-x-4"
-            />
-            <span className="text-xs text-muted-foreground select-none">Bullet list</span>
-          </label>
-        </div>
-        <Textarea
-          id="existingDebtDetails"
-          value={data.existingDebtDetails}
-          onChange={(e) => {
-            const val = debtBullets ? applyBullets(e.target.value, true) : e.target.value;
-            updateField('existingDebtDetails', val);
+        <ExistingDebtItemsEditor
+          items={data.existingDebtItems || []}
+          onChange={(next) => updateField('existingDebtItems', next)}
+          legacyText={data.existingDebtDetails || ''}
+          legacyDismissed={!!data.existingDebtLegacyDismissed}
+          onDismissLegacy={() => {
+            updateField('existingDebtLegacyDismissed', true);
+            updateField('existingDebtDetails', '');
           }}
-          onBlur={() => {
-            if (debtBullets) updateField('existingDebtDetails', applyBullets(data.existingDebtDetails || '', true));
-          }}
-          placeholder="Lender: Silicon Valley Bank&#10;Amount: $500,000&#10;Terms: 3-year term loan at 8.5% APR&#10;Maturity: March 2024"
-          className="min-h-[100px]"
         />
       </FlexChangedFieldWrapper>
 
@@ -1053,6 +1036,203 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
           })()}
         </div>
       </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Existing Debt Items Editor
+// ============================================================================
+
+const DEBT_TYPE_OPTIONS = [
+  'Senior Facility',
+  'Subordinated Note',
+  'Convertible Note',
+  'Line of Credit',
+  'Equipment Loan',
+  'Other',
+];
+
+const newDebtId = () =>
+  (typeof crypto !== 'undefined' && 'randomUUID' in crypto)
+    ? crypto.randomUUID()
+    : `debt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+const formatMaturityLabel = (iso: string | null): string => {
+  if (!iso) return 'Pick maturity';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Pick maturity';
+  return format(d, 'MM/yyyy');
+};
+
+interface ExistingDebtItemsEditorProps {
+  items: ExistingDebtItem[];
+  onChange: (next: ExistingDebtItem[]) => void;
+  legacyText: string;
+  legacyDismissed: boolean;
+  onDismissLegacy: () => void;
+}
+
+function ExistingDebtItemsEditor({
+  items,
+  onChange,
+  legacyText,
+  legacyDismissed,
+  onDismissLegacy,
+}: ExistingDebtItemsEditorProps) {
+  const update = (id: string, patch: Partial<ExistingDebtItem>) => {
+    onChange(items.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+  };
+  const remove = (id: string) => onChange(items.filter((it) => it.id !== id));
+  const add = () =>
+    onChange([
+      ...items,
+      { id: newDebtId(), lender: '', amount: '', type: '', maturityDate: null, notes: '' },
+    ]);
+
+  const showLegacy = !legacyDismissed && !!legacyText.trim();
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label>Existing Debt Details</Label>
+        <Button type="button" variant="outline" size="sm" onClick={add} className="h-8">
+          <Plus className="h-3.5 w-3.5 mr-1" />
+          Add Loan
+        </Button>
+      </div>
+
+      {showLegacy && (
+        <div className="rounded-md border border-amber-500/30 bg-amber-500/5 p-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              <div className="font-medium text-foreground mb-1">Previous notes</div>
+              <div className="whitespace-pre-wrap leading-relaxed">{legacyText}</div>
+              <div className="mt-2 italic">
+                Re-enter these as structured loans below, then dismiss this banner.
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs gap-1 text-muted-foreground"
+              onClick={onDismissLegacy}
+            >
+              <X className="h-3 w-3" />
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {items.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border bg-muted/30 px-3 py-4 text-center text-xs text-muted-foreground">
+          No loans added. Click <span className="font-medium text-foreground">Add Loan</span> to log existing debt.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="rounded-md border border-border bg-muted/30 p-3 space-y-2"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+                <div className="md:col-span-4">
+                  <Label className="text-[11px] text-muted-foreground">Lender / Instrument</Label>
+                  <Input
+                    value={item.lender}
+                    onChange={(e) => update(item.id, { lender: e.target.value })}
+                    placeholder="e.g. Collective Capital Ventures"
+                    className="h-9"
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-[11px] text-muted-foreground">Amount</Label>
+                  <Input
+                    value={item.amount}
+                    onChange={(e) => update(item.id, { amount: e.target.value })}
+                    placeholder="$3,000,000"
+                    className="h-9"
+                  />
+                </div>
+                <div className="md:col-span-3">
+                  <Label className="text-[11px] text-muted-foreground">Type</Label>
+                  <Select
+                    value={item.type || undefined}
+                    onValueChange={(v) => update(item.id, { type: v })}
+                  >
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DEBT_TYPE_OPTIONS.map((opt) => (
+                        <SelectItem key={opt} value={opt}>
+                          {opt}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2">
+                  <Label className="text-[11px] text-muted-foreground">Maturity</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className={cn(
+                          'h-9 w-full justify-start text-left font-normal',
+                          !item.maturityDate && 'text-muted-foreground',
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                        {formatMaturityLabel(item.maturityDate)}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={item.maturityDate ? new Date(item.maturityDate) : undefined}
+                        onSelect={(d) =>
+                          update(item.id, {
+                            maturityDate: d
+                              ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+                              : null,
+                          })
+                        }
+                        initialFocus
+                        className={cn('p-3 pointer-events-auto')}
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+                <div className="md:col-span-1 flex md:items-end justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                    onClick={() => remove(item.id)}
+                    aria-label="Remove loan"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              <div>
+                <Label className="text-[11px] text-muted-foreground">Notes</Label>
+                <Input
+                  value={item.notes}
+                  onChange={(e) => update(item.id, { notes: e.target.value })}
+                  placeholder="e.g. flexibility for partial or full refinance or subordination"
+                  className="h-9"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

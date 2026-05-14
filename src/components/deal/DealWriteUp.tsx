@@ -89,6 +89,15 @@ export interface TeamMember {
   linkedin: string;
 }
 
+export interface ExistingDebtItem {
+  id: string;
+  lender: string;
+  amount: string; // formatted currency string e.g. "$3.00MM"
+  type: string;
+  maturityDate: string | null; // ISO yyyy-mm-dd or null
+  notes: string;
+}
+
 export interface DealWriteUpData {
   companyName: string;
   companyUrl: string;
@@ -108,6 +117,8 @@ export interface DealWriteUpData {
   status: string;
   useOfFunds: string;
   existingDebtDetails: string;
+  existingDebtItems: ExistingDebtItem[];
+  existingDebtLegacyDismissed: boolean;
   description: string;
   keyItems: KeyItem[];
   companyHighlights: CompanyHighlight[];
@@ -159,6 +170,8 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   status: deal?.status === 'active' ? 'Published' : deal?.status === 'closed' ? 'Closed' : 'Draft',
   useOfFunds: '',
   existingDebtDetails: '',
+  existingDebtItems: [],
+  existingDebtLegacyDismissed: false,
   description: deal?.narrative || '',
   keyItems: [],
   companyHighlights: [],

@@ -8298,6 +8298,8 @@ export type Database = {
           description: string | null
           disclaimer: string | null
           existing_debt_details: string | null
+          existing_debt_items: Json
+          existing_debt_legacy_dismissed: boolean
           financial_column_visibility: Json | null
           financial_comments: Json | null
           financial_data_as_of: string | null
@@ -8343,6 +8345,8 @@ export type Database = {
           description?: string | null
           disclaimer?: string | null
           existing_debt_details?: string | null
+          existing_debt_items?: Json
+          existing_debt_legacy_dismissed?: boolean
           financial_column_visibility?: Json | null
           financial_comments?: Json | null
           financial_data_as_of?: string | null
@@ -8388,6 +8392,8 @@ export type Database = {
           description?: string | null
           disclaimer?: string | null
           existing_debt_details?: string | null
+          existing_debt_items?: Json
+          existing_debt_legacy_dismissed?: boolean
           financial_column_visibility?: Json | null
           financial_comments?: Json | null
           financial_data_as_of?: string | null
