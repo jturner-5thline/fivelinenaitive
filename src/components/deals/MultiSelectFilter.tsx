@@ -58,7 +58,7 @@ export function MultiSelectFilter({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[220px] p-0 bg-popover z-50 flex flex-col max-h-[min(360px,60vh)]" 
+        className="w-[220px] p-0 bg-popover flex flex-col max-h-[min(360px,60vh)]" 
         align="start"
         side="bottom"
         sideOffset={4}

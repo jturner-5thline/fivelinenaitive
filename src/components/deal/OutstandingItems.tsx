@@ -635,7 +635,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                   <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
+              <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
                 <SearchableRequesterList
                   options={requestedByOptions}
                   selected={editingRequestedBy}
@@ -866,7 +866,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                   <ChevronDown className="h-3 w-3" />
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="start">
+              <PopoverContent className="w-[220px] p-0 bg-popover" align="start">
                 <SearchableRequesterList
                   options={requestedByOptions}
                   selected={filterByLender}
@@ -1002,7 +1002,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
+                <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
                   <SearchableRequesterList
                     options={requestedByOptions}
                     selected={newRequestedBy}
@@ -1218,7 +1218,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                           <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="end">
+                      <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
                         <SearchableRequesterList
                           options={requestedByOptions}
                           selected={row.requestedBy}
@@ -1254,7 +1254,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[220px] p-0 bg-popover z-50" align="start">
+                <PopoverContent className="w-[220px] p-0 bg-popover" align="start">
                   <SearchableRequesterList
                     options={requestedByOptions}
                     selected={bulkImportRequestedBy}

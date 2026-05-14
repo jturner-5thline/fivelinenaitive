@@ -597,7 +597,7 @@ export function WorkflowIntelligenceCard({
                           </button>
                         </PopoverTrigger>
                         <PopoverContent
-                          className="w-[260px] p-1 z-[60]"
+                          className="w-[260px] p-1"
                           align="start"
                           side="bottom"
                           sideOffset={4}

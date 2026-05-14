@@ -256,7 +256,7 @@ function EditableLenderDealTile({
             <SelectTrigger className="h-8 text-xs">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent className="z-[10000]">
+            <SelectContent className="">
               {configuredStages.map((s) => (
                 <SelectItem key={s.id} value={s.id} className="text-xs">{s.label}</SelectItem>
               ))}

@@ -412,7 +412,7 @@ export function LenderFollowUpPopover({
       <PopoverContent
         align="end"
         sideOffset={6}
-        className="w-[420px] p-3 z-[10000]"
+        className="w-[420px] p-3"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
       >
@@ -471,7 +471,7 @@ export function LenderFollowUpPopover({
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="Pick a thread" />
               </SelectTrigger>
-              <SelectContent className="z-[10001] max-h-60">
+              <SelectContent className=" max-h-60">
                 {threads.map((t) => (
                   <SelectItem key={t.thread_id} value={t.thread_id} className="text-xs">
                     {t.subject}
@@ -497,7 +497,7 @@ export function LenderFollowUpPopover({
               <SelectTrigger className="h-8 text-xs">
                 <SelectValue placeholder="Pick a contact" />
               </SelectTrigger>
-              <SelectContent className="z-[10001] max-h-60">
+              <SelectContent className=" max-h-60">
                 {contacts.map((c) => (
                   <SelectItem key={c.id} value={c.id} className="text-xs" disabled={!c.email}>
                     {c.name}{c.email ? ` — ${c.email}` : ' (no email)'}

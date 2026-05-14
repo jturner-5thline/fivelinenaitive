@@ -246,7 +246,7 @@ export function LenderCriteriaSurvey({ dealId, initialCriteria, onComplete, onSk
                         <SelectTrigger className="w-full h-12 text-left">
                           <SelectValue placeholder="Select an industry..." />
                         </SelectTrigger>
-                        <SelectContent className="bg-popover border z-50">
+                        <SelectContent className="bg-popover border">
                           <ScrollArea className="h-[300px]">
                             {industryOptions.map((industry) => (
                               <SelectItem key={industry} value={industry}>

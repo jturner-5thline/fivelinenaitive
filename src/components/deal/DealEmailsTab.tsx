@@ -1578,7 +1578,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             <PopoverContent
               side="bottom"
               align="start"
-              className="w-64 p-3 space-y-3 z-[80] pointer-events-auto"
+              className="w-64 p-3 space-y-3 pointer-events-auto"
               onOpenAutoFocus={(e) => e.preventDefault()}
             >
               <p className="text-xs font-semibold">Filters</p>
