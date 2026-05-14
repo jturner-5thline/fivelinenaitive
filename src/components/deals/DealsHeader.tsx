@@ -229,7 +229,7 @@ export function DealsHeader() {
           <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
         </Suspense>
       )}
-      {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
+      {canSeeBriefingHeaderItems && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
       {canSeeNiki && (
         <DailyBriefingModal
           open={isNikiBriefingOpen}
