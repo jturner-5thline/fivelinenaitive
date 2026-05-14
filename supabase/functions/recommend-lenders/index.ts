@@ -206,7 +206,7 @@ serve(async (req) => {
       value: overriddenValue,
       dealTypes: sufficiency.dealTypes,
       industry: overrideIndustry || writeup?.industry || deal.business_model || null,
-      location: overrideGeo || writeup?.location || deal.geography || null,
+      location: overrideGeo || writeup?.location || null,
       engagementType: deal.engagement_type || null,
       dealClass: deal.deal_class || null,
       sponsorship: writeup?.sponsorship || null,
