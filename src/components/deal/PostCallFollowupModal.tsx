@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Upload, Copy, Check, FileText, X, Mail } from 'lucide-react';
+import { Loader2, Upload, Copy, Check, FileText, X, Mail, Send } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { DraftAndSendDialog, type DraftAndSendInitial } from './DraftAndSendDialog';
 
 interface PostCallFollowupModalProps {
   open: boolean;
@@ -81,11 +82,13 @@ function EmailPane({
   recipient,
   draft,
   onChange,
+  onDraftAndSend,
 }: {
   title: string;
   recipient: string;
   draft: DraftEmail;
   onChange: (next: DraftEmail) => void;
+  onDraftAndSend: () => void;
 }) {
   const fullText = useMemo(
     () => `Subject: ${draft.subject}\n\n${draft.body}`,
@@ -98,7 +101,18 @@ function EmailPane({
           <div className="text-xs uppercase tracking-wide text-muted-foreground">{title}</div>
           <div className="text-sm font-medium truncate">{recipient}</div>
         </div>
-        <CopyButton getText={() => fullText} />
+        <div className="flex items-center gap-1.5">
+          <CopyButton getText={() => fullText} />
+          <Button
+            type="button"
+            size="sm"
+            onClick={onDraftAndSend}
+            className="h-7 px-2 text-xs"
+          >
+            <Send className="h-3.5 w-3.5 mr-1" />
+            Draft &amp; Send
+          </Button>
+        </div>
       </div>
       <div className="p-3 space-y-2 flex-1 min-h-0 flex flex-col">
         <div>
