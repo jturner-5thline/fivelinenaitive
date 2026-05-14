@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
-import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Settings2, Database, Save, FileBarChart } from 'lucide-react';
+import { Send, Loader2, Bot, User, History, X, Filter, ChevronDown, Info, FileText, Mail, Settings2, Database, Save, FileBarChart, Clock } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -34,6 +34,8 @@ import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, 
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import { PostCallFollowupModal } from './PostCallFollowupModal';
 import { CheckInOutstandingItemsModal } from './CheckInOutstandingItemsModal';
+import { ClientCheckInDraftModal } from './ClientCheckInDraftModal';
+import { useDealClientCadence } from '@/hooks/useDealClientCadence';
 import {
   fetchLenderProfilesForDeal,
   renderLenderProfileBlock,
@@ -533,6 +535,35 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   } | null>(null);
   const [isPostCallModalOpen, setIsPostCallModalOpen] = useState(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
+  const [isClientCheckInOpen, setIsClientCheckInOpen] = useState(false);
+  const [cadenceDismissedAt, setCadenceDismissedAt] = useState<string | null>(null);
+  // Resolve the deal's primary borrower contact so we can monitor cadence.
+  const [dealMeta, setDealMeta] = useState<{ company: string; contact: string; contactEmail: string | null }>({
+    company: '', contact: '', contactEmail: null,
+  });
+  useEffect(() => {
+    if (!dealId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('deals')
+        .select('company, contact, contact_email')
+        .eq('id', dealId)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      setDealMeta({
+        company: data.company || '',
+        contact: data.contact || '',
+        contactEmail: data.contact_email || null,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [dealId]);
+  const cadence = useDealClientCadence(dealId, dealMeta.contactEmail);
+  const cadenceVisible =
+    cadence.isStale &&
+    !!dealMeta.contactEmail &&
+    cadence.lastContactAt !== cadenceDismissedAt;
   // ── Pre-flight review step: lets the user exclude specific lenders
   // (auto-skipping anyone already passed) before drafts are generated.
   const [isReviewOpen, setIsReviewOpen] = useState(false);
