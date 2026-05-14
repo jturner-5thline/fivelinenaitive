@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -141,10 +141,10 @@ export function StatusReportPreviewModal({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
-        className="max-w-4xl h-[90vh] flex flex-col p-0 overflow-hidden z-[2147483600]"
+        className="popup-shell-surface max-w-4xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20 rounded-2xl z-[2147483600]"
         overlayClassName="z-[2147483500]"
       >
-        <DialogHeader className="px-6 pt-6 pb-3 shrink-0">
+        <DialogHeader className="px-6 pt-5 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
             Status Report Preview
@@ -155,9 +155,9 @@ export function StatusReportPreviewModal({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6">
-          <div className="space-y-6 py-4">
+          <div className="space-y-3 py-3">
             {/* Title Preview */}
-            <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="rounded-lg border border-border bg-muted/30 p-3">
               <div className="flex items-center gap-2 mb-2">
                 <div className="h-1 w-full bg-primary rounded" />
               </div>
@@ -180,12 +180,11 @@ export function StatusReportPreviewModal({
                 {content.keyUpdates.map((bullet, i) => (
                   <div key={i} className="flex items-start gap-2">
                     <span className="mt-2.5 h-1.5 w-1.5 rounded-full bg-foreground shrink-0" />
-                    <Textarea
+                    <AutoGrowTextarea
                       value={bullet}
-                      onChange={(e) => updateBullet(i, e.target.value)}
-                      placeholder="Enter update..."
-                      className="min-h-[40px] text-sm resize-none"
-                      rows={1}
+                      onChange={(v) => updateBullet(i, v)}
+                      placeholder="Enter update... (Shift+Enter for a new line)"
+                      className="min-h-[88px] text-sm leading-relaxed py-2 align-top whitespace-pre-wrap break-words"
                     />
                     <Button
                       variant="ghost"
@@ -201,46 +200,6 @@ export function StatusReportPreviewModal({
                   <Plus className="h-3 w-3" /> Add bullet
                 </Button>
               </div>
-            </SectionBlock>
-
-            {/* Key Lenders Table */}
-            <SectionBlock
-              title="Key Lenders – Process Status & Next Actions"
-              visible={content.sectionsVisible.lenderTable}
-              onToggle={() => toggleSection('lenderTable')}
-            >
-              {content.lenderRows.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No active lenders.</p>
-              ) : (
-                <div className="border border-border rounded-md overflow-hidden">
-                  <div className="grid grid-cols-5 gap-px bg-muted text-xs font-medium">
-                    <div className="bg-background p-2">Lender</div>
-                    <div className="bg-background p-2">Process Stage</div>
-                    <div className="bg-background p-2">Key Focus Areas</div>
-                    <div className="bg-background p-2">Current Challenges</div>
-                    <div className="bg-background p-2">Next Action</div>
-                  </div>
-                  {content.lenderRows.map((row, i) => (
-                    <div key={i} className="grid grid-cols-5 gap-px bg-muted">
-                      <div className="bg-background p-1">
-                        <Input value={row.name} onChange={e => updateLenderRow(i, 'name', e.target.value)} className="h-7 text-xs border-0 shadow-none" />
-                      </div>
-                      <div className="bg-background p-1">
-                        <Input value={row.processStage} onChange={e => updateLenderRow(i, 'processStage', e.target.value)} className="h-7 text-xs border-0 shadow-none" />
-                      </div>
-                      <div className="bg-background p-1">
-                        <Input value={row.focusAreas} onChange={e => updateLenderRow(i, 'focusAreas', e.target.value)} className="h-7 text-xs border-0 shadow-none" placeholder="e.g. Collateral, AR" />
-                      </div>
-                      <div className="bg-background p-1">
-                        <Input value={row.challenges} onChange={e => updateLenderRow(i, 'challenges', e.target.value)} className="h-7 text-xs border-0 shadow-none" placeholder="e.g. Timing constraints" />
-                      </div>
-                      <div className="bg-background p-1">
-                        <Input value={row.nextAction} onChange={e => updateLenderRow(i, 'nextAction', e.target.value)} className="h-7 text-xs border-0 shadow-none" placeholder="e.g. Follow up" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
             </SectionBlock>
 
             {/* Pipeline Snapshot */}
@@ -337,11 +296,11 @@ export function StatusReportPreviewModal({
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-4 border-t border-border shrink-0">
+        <DialogFooter className="px-6 py-3 border-t border-border shrink-0">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onExport(content)} className="gap-2">
+          <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
             <Download className="h-4 w-4" />
             Export PDF
           </Button>
@@ -363,8 +322,8 @@ function SectionBlock({
   children: React.ReactNode;
 }) {
   return (
-    <div className={`rounded-lg border border-border p-4 ${!visible ? 'opacity-50' : ''}`}>
-      <div className="flex items-center justify-between mb-3">
+    <div className={`rounded-lg border border-border p-3 ${!visible ? 'opacity-50' : ''}`}>
+      <div className="flex items-center justify-between mb-2">
         <h3 className="text-sm font-semibold">{title}</h3>
         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onToggle}>
           {visible ? <Eye className="h-4 w-4" /> : <EyeOff className="h-4 w-4" />}
@@ -372,5 +331,34 @@ function SectionBlock({
       </div>
       {visible && children}
     </div>
+  );
+}
+
+function AutoGrowTextarea({
+  value,
+  onChange,
+  placeholder,
+  className,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  const ref = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${Math.max(el.scrollHeight, 88)}px`;
+  }, [value]);
+  return (
+    <Textarea
+      ref={ref}
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      className={className}
+    />
   );
 }
