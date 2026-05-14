@@ -8,6 +8,7 @@ import { ClaapRoutingTasksBadge } from "@/components/integrations/claap/ClaapRou
 import { CopilotToggleButton } from "@/components/CopilotToggleButton";
 import { CommandBar } from "@/components/CommandBar";
 import { DealsHeader } from "@/components/deals/DealsHeader";
+import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLogger";
 
@@ -27,10 +28,12 @@ function MainContent({
   children,
   className,
   showCopilotBar,
+  showWorkspaceLogo,
 }: {
   children: React.ReactNode;
   className?: string;
   showCopilotBar: boolean;
+  showWorkspaceLogo: boolean;
 }) {
   const { state, setOpen, isMobile } = useSidebar();
 
@@ -74,6 +77,14 @@ function MainContent({
         }}
       />
       <DealsHeader />
+      {showWorkspaceLogo && (
+        <div
+          className="absolute left-3 sm:left-4 -top-[20px] z-20 pointer-events-none"
+          aria-hidden="true"
+        >
+          <Logo className="h-28" />
+        </div>
+      )}
       <div className="relative z-10 flex-1 flex flex-col min-h-full pt-[68px]">
         {children}
         {showCopilotBar && <CopilotToggleButton />}
