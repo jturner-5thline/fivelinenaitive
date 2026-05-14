@@ -80,7 +80,7 @@ export function MorningDigestSettings() {
         .update({
           timezone,
           // Daily follow-up email is permanently disabled platform-wide;
-          // follow-ups are surfaced inside Daily Briefing → Pipeline & Clients.
+          // follow-ups are surfaced inside Daily Rundown → Pipeline & Clients.
           morning_digest_enabled: false,
         } as any)
         .eq('user_id', user.id);
@@ -104,9 +104,9 @@ export function MorningDigestSettings() {
         <div className="flex items-center gap-2">
           <Sun className="h-5 w-5" />
           <div>
-            <CardTitle className="text-lg">Timezone & Daily Briefing</CardTitle>
+            <CardTitle className="text-lg">Timezone & Daily Rundown</CardTitle>
             <CardDescription>
-              Today&rsquo;s follow-ups now live inside the Daily Briefing — no more morning email. Set your timezone for all timezone-aware reminders.
+              Today&rsquo;s follow-ups now live inside the Daily Rundown — no more morning email. Set your timezone for all timezone-aware reminders.
             </CardDescription>
           </div>
         </div>
