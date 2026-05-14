@@ -910,43 +910,17 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
-   Deal tile directional gradient
+   Deal tile surface — match the dashboard widget (.deal-glass) treatment
    --------------------------------------------------------------------
-   Scoped to DealCard (.deal-tile) — adds a subtle upper-left light source
-   layered over a 135° dark falloff toward the bottom-right corner so the
-   tiles read as more sculpted without losing the dark board aesthetic.
+   Reuses the widget blue glass family so deal tiles and widgets read as
+   the same surface. Kept ~10–15% more restrained than the widget so the
+   tiles still feel like dense workflow objects rather than glossy cards.
    ───────────────────────────────────────────────────────────────────── */
 .deal-tile.deal-glass {
-  background:
-    radial-gradient(
-      circle at 14% 12%,
-      rgba(36, 50, 80, 0.14) 0%,
-      rgba(28, 40, 64, 0.08) 26%,
-      rgba(18, 26, 42, 0.03) 46%,
-      rgba(0, 0, 0, 0) 60%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(21, 30, 47, 0.97) 0%,
-      rgba(14, 20, 33, 0.99) 58%,
-      rgba(8, 12, 20, 1) 100%
-    ) !important;
+  background: rgba(24, 38, 64, 0.88) !important;
 }
 .deal-tile.deal-glass:hover {
-  background:
-    radial-gradient(
-      circle at 14% 12%,
-      rgba(44, 62, 96, 0.18) 0%,
-      rgba(32, 46, 74, 0.10) 26%,
-      rgba(20, 30, 48, 0.04) 46%,
-      rgba(0, 0, 0, 0) 60%
-    ),
-    linear-gradient(
-      135deg,
-      rgba(26, 38, 58, 0.98) 0%,
-      rgba(18, 26, 42, 1) 58%,
-      rgba(10, 14, 24, 1) 100%
-    ) !important;
+  background: rgba(30, 46, 76, 0.93) !important;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
