@@ -73,6 +73,7 @@ import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItem
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 const LendersKanban = lazy(() => import('@/components/deal/LendersKanban').then(m => ({ default: m.LendersKanban })));
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
+import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
@@ -1946,6 +1947,24 @@ export default function DealDetail() {
         title: "Lender added",
         description: `${lenderName} has been added to the deal.`,
       });
+    }
+  }, [deal, addLenderToDeal, logActivity, preferences.defaultLenderStage]);
+
+  const addLenderWithStage = useCallback(async (lenderName: string, stageId: string) => {
+    if (!deal || !lenderName.trim()) return;
+    const newLender = await addLenderToDeal(deal.id, {
+      name: lenderName.trim(),
+      stage: stageId || preferences.defaultLenderStage,
+      trackingStatus: 'active',
+    });
+    if (newLender) {
+      setDeal(prev => {
+        if (!prev) return prev;
+        setEditHistory(history => [...history, { deal: prev, field: 'lenders', timestamp: new Date() }]);
+        return { ...prev, lenders: [...(prev.lenders || []), newLender], updatedAt: new Date().toISOString() };
+      });
+      logActivity('lender_added', `Added lender ${lenderName} (AI recommended)`, { lender_name: lenderName, source: 'ai_recommendation' });
+      toast({ title: '✓ Added', description: `${lenderName} added to the deal.` });
     }
   }, [deal, addLenderToDeal, logActivity, preferences.defaultLenderStage]);
 
