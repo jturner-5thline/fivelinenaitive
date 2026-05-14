@@ -670,11 +670,10 @@
      deal popup so every header-launched overlay reads as part of one
      modal family. */
   .popup-shell-surface {
-    background-color: #08080b !important;
-    background-image:
+    background:
       radial-gradient(120% 90% at 0% 0%, hsla(280, 28%, 14%, 0.55) 0%, hsla(280, 22%, 10%, 0.30) 28%, transparent 60%),
       radial-gradient(100% 80% at 100% 100%, hsla(240, 20%, 6%, 0.55) 0%, transparent 55%),
-      linear-gradient(160deg, #0a0a0d 0%, #0b0a10 45%, #08080b 100%) !important;
+      linear-gradient(160deg, #0a0a0d 0%, #0b0a10 45%, #08080b 100%);
   }
   .dark .glass-border-soft {
     border-color: hsl(0 0% 100% / 0.06);

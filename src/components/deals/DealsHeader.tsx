@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase, Newspaper, Sparkles, CheckSquare } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase, Newspaper, Sparkles } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -43,8 +43,7 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
   'Action Queue': loadTasks,
-  Deals: loadDashboard,
-  Tasks: loadTasks,
+  Deals: loadDeals,
 };
 import {
   canSeeNikiBriefing,
@@ -144,16 +143,10 @@ export function DealsHeader() {
               { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
               { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
               { label: 'Action Queue', Icon: Inbox, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
-              // Header "Deals" icon opens the deal rundown overlay (the popup
-              // that previously launched from the Dashboard page) rather than
-              // routing to the full /deals pipeline. This keeps every header
-              // icon consistent as a global popup, and keeps the standalone
-              // /deals route reachable through normal navigation.
-              { label: 'Deal Rundown', Icon: Briefcase, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) },
+              { label: 'Deals', Icon: Briefcase, isOpen: isDealsOverlayOpen, onClick: () => setIsDealsOverlayOpen(true) },
               ...(isFifthLine
                 ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
                 : []),
-              { label: 'Tasks', Icon: CheckSquare, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
               ...(canSeeBriefingHeaderItems
                 ? [
                     { label: 'Daily Briefing', Icon: Newspaper, isOpen: isBriefingOpen, onClick: () => setIsBriefingOpen(true) },
@@ -211,7 +204,7 @@ export function DealsHeader() {
         </div>
       </div>
       <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
-      {isDashboardOpen && (
+      {isFifthLine && isDashboardOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
           <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />
         </Suspense>
@@ -219,6 +212,11 @@ export function DealsHeader() {
       {isTasksOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="tasks" onClose={() => setIsTasksOpen(false)} />}>
           <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
+        </Suspense>
+      )}
+      {isDealsOverlayOpen && (
+        <Suspense fallback={<OverlayLoadingShell kind="deals" onClose={() => setIsDealsOverlayOpen(false)} />}>
+          <DealsPageOverlay open={isDealsOverlayOpen} onOpenChange={setIsDealsOverlayOpen} />
         </Suspense>
       )}
       {isCalendarOpen && (
