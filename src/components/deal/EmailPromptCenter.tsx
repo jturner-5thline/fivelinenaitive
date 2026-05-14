@@ -99,7 +99,10 @@ export function EmailPromptCenterButton({ dealId, dealName }: EmailPromptCenterP
             {pendingCount}
           </span>
         )}
-      </Button>
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent side="bottom">Email Prompt Center</TooltipContent>
+      </Tooltip>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
         <DialogContent className="sm:max-w-2xl max-h-[85vh] p-0 gap-0 overflow-hidden border-[hsl(220,50%,30%,0.5)] bg-[hsl(222,30%,8%,0.95)] backdrop-blur-2xl shadow-[0_25px_60px_-12px_hsl(220,80%,10%,0.7)]">
