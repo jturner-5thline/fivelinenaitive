@@ -910,6 +910,46 @@
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
+   Deal tile directional gradient
+   --------------------------------------------------------------------
+   Scoped to DealCard (.deal-tile) — adds a subtle upper-left light source
+   layered over a 135° dark falloff toward the bottom-right corner so the
+   tiles read as more sculpted without losing the dark board aesthetic.
+   ───────────────────────────────────────────────────────────────────── */
+.deal-tile.deal-glass {
+  background:
+    radial-gradient(
+      circle at 14% 12%,
+      rgba(60, 90, 150, 0.22) 0%,
+      rgba(40, 60, 100, 0.12) 28%,
+      rgba(24, 36, 60, 0.04) 48%,
+      rgba(0, 0, 0, 0) 60%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(34, 52, 86, 0.94) 0%,
+      rgba(22, 34, 58, 0.96) 58%,
+      rgba(10, 16, 28, 1) 100%
+    ) !important;
+}
+.deal-tile.deal-glass:hover {
+  background:
+    radial-gradient(
+      circle at 14% 12%,
+      rgba(70, 105, 170, 0.26) 0%,
+      rgba(46, 70, 116, 0.14) 28%,
+      rgba(28, 42, 70, 0.05) 48%,
+      rgba(0, 0, 0, 0) 60%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(40, 62, 102, 0.96) 0%,
+      rgba(26, 40, 68, 0.98) 58%,
+      rgba(12, 18, 32, 1) 100%
+    ) !important;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
    Insights "Liquid Glass" skin
    --------------------------------------------------------------------
    A scoped visual retrofit applied to the /insights page so every embedded
