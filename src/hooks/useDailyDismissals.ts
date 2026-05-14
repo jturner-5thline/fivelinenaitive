@@ -1,6 +1,27 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 
+/** Custom event broadcast whenever a dismissal set changes in this tab,
+ *  so passive subscribers (e.g. header badges) can react without polling. */
+const DISMISS_EVENT = 'daily-dismiss:changed';
+
+function broadcastDismissChange(storageKey: string) {
+  try {
+    window.dispatchEvent(new CustomEvent(DISMISS_EVENT, { detail: { storageKey } }));
+  } catch {
+    /* ignore */
+  }
+}
+
+function readDismissedSet(storageKey: string): Set<string> {
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
 /**
  * Per-user, per-day dismissal tracker.
  *
@@ -27,15 +48,20 @@ export function useDailyDismissals(scope: string) {
   const dateKey = getRundownDateKey();
   const storageKey = `dailyDismiss:${scope}:${userId}:${dateKey}`;
 
-  const [dismissed, setDismissed] = useState<Set<string>>(() => {
-    try {
-      const raw = localStorage.getItem(storageKey);
-      if (!raw) return new Set();
-      return new Set(JSON.parse(raw) as string[]);
-    } catch {
-      return new Set();
-    }
-  });
+  const [dismissed, setDismissed] = useState<Set<string>>(() => readDismissedSet(storageKey));
+
+  // Stay in sync with dismissals made by other components in the same tab
+  // (e.g. badge subscriber observing the same scope).
+  useEffect(() => {
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { storageKey?: string } | undefined;
+      if (!detail?.storageKey || detail.storageKey === storageKey) {
+        setDismissed(readDismissedSet(storageKey));
+      }
+    };
+    window.addEventListener(DISMISS_EVENT, onChange);
+    return () => window.removeEventListener(DISMISS_EVENT, onChange);
+  }, [storageKey]);
 
   // Sweep stale keys for this scope/user (previous days).
   useEffect(() => {
@@ -63,6 +89,7 @@ export function useDailyDismissals(scope: string) {
         } catch {
           /* ignore */
         }
+        broadcastDismissChange(storageKey);
         return next;
       });
     },
@@ -82,6 +109,7 @@ export function useDailyDismissals(scope: string) {
         } catch {
           /* ignore */
         }
+        broadcastDismissChange(storageKey);
         return next;
       });
     },
@@ -89,4 +117,33 @@ export function useDailyDismissals(scope: string) {
   );
 
   return { dismissed, dismiss, isDismissed, restore };
+}
+
+/**
+ * Read-only subscriber for a dismissal scope. Returns the live Set of
+ * dismissed IDs for the current user + today and updates whenever any
+ * other component in this tab calls `dismiss` / `restore` on the same
+ * scope. Use for passive badges/counters that should not own the state.
+ */
+export function useDailyDismissedIds(scope: string): Set<string> {
+  const { user } = useAuth();
+  const userId = user?.id || 'anon';
+  const dateKey = getRundownDateKey();
+  const storageKey = `dailyDismiss:${scope}:${userId}:${dateKey}`;
+
+  const [dismissed, setDismissed] = useState<Set<string>>(() => readDismissedSet(storageKey));
+
+  useEffect(() => {
+    setDismissed(readDismissedSet(storageKey));
+    const onChange = (e: Event) => {
+      const detail = (e as CustomEvent).detail as { storageKey?: string } | undefined;
+      if (!detail?.storageKey || detail.storageKey === storageKey) {
+        setDismissed(readDismissedSet(storageKey));
+      }
+    };
+    window.addEventListener(DISMISS_EVENT, onChange);
+    return () => window.removeEventListener(DISMISS_EVENT, onChange);
+  }, [storageKey]);
+
+  return dismissed;
 }

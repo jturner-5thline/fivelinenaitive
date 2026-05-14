@@ -17,6 +17,8 @@ import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
+import { usePipelineData } from '@/hooks/useDailyBriefingData';
+import { useDailyDismissedIds } from '@/hooks/useDailyDismissals';
 import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
@@ -118,6 +120,23 @@ export function DealsHeader() {
   const canSeeBriefingHeaderItems = briefingUserEmails.includes(
     user?.email?.toLowerCase() ?? ''
   );
+
+  // ─── Daily Rundown completion badges ───────────────────────────────
+  // Show a red "1" badge on the Daily Rundown / Niki's Daily Rundown
+  // header icons whenever today's rundown has at least one undismissed
+  // deal in its deal section. Clears immediately when the user dismisses
+  // the last remaining deal (event-driven via useDailyDismissedIds).
+  // Both variants share the same dismissal scope (`rundown-deal:daily_briefing`)
+  // because both render through DailyBriefingModal with the default type;
+  // per-variant incompleteness is determined by each variant's own
+  // scopedDeals list (self vs. Niki).
+  const dismissedRundownDealIds = useDailyDismissedIds('rundown-deal:daily_briefing');
+  const { data: selfRundownData } = usePipelineData(canSeeBriefingHeaderItems);
+  const { data: nikiRundownData } = usePipelineData(canSeeNiki, NIKI_ASSIGNEE_NAME);
+  const hasIncompleteRundown = (deals: { id: string }[] | undefined) =>
+    !!(deals && deals.length > 0 && deals.some(d => !dismissedRundownDealIds.has(d.id)));
+  const dailyRundownHasBadge = canSeeBriefingHeaderItems && hasIncompleteRundown(selfRundownData?.scopedDeals as any);
+  const nikiRundownHasBadge = canSeeNiki && hasIncompleteRundown(nikiRundownData?.scopedDeals as any);
 
   // Prefetch overlay chunks in the background on idle so the very first
   // click renders the real component instead of waiting on a network
@@ -340,16 +359,21 @@ export function DealsHeader() {
                 'Daily Rundown': Newspaper,
                 "Niki's Daily Rundown": Sparkles,
               };
+              const BADGES: Record<string, boolean> = {
+                'Daily Rundown': dailyRundownHasBadge,
+                "Niki's Daily Rundown": nikiRundownHasBadge,
+              };
               return overlayRegistry.map(({ label, isOpen }) => ({
                 label,
                 Icon: ICONS[label],
                 isOpen,
+                hasBadge: !!BADGES[label],
                 // When some overlay is already open, route the click
                 // through goToOverlay so the swap animates directionally
                 // (and never double-mounts two overlays).
                 onClick: () => goToOverlay(label),
               }));
-            })().map(({ label, Icon, isOpen, onClick }) => (
+            })().map(({ label, Icon, isOpen, onClick, hasBadge }) => (
               <Tooltip key={label}>
                 <TooltipTrigger asChild>
                   <button
@@ -358,13 +382,21 @@ export function DealsHeader() {
                     onClick={onClick}
                     onMouseEnter={() => prefetchOverlay(label)}
                     onFocus={() => prefetchOverlay(label)}
-                    className={`inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors ${
+                    className={`relative inline-flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full transition-colors ${
                       isOpen
                         ? 'bg-blue-400/15 text-blue-400'
                         : 'text-blue-400/80 hover:text-blue-400 hover:bg-blue-400/10'
                     }`}
                   >
                     <Icon className="h-5 w-5 sm:h-[27px] sm:w-[27px]" />
+                    {hasBadge && (
+                      <span
+                        aria-label={`${label} has 1 incomplete item`}
+                        className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full bg-red-500 text-white text-[10px] font-semibold leading-none ring-2 ring-[rgba(14,24,42,0.85)] tabular-nums pointer-events-none"
+                      >
+                        1
+                      </span>
+                    )}
                   </button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom" sideOffset={6} className="z-[1100]">
