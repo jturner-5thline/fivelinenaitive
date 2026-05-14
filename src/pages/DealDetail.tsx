@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef, lazy, Suspense } from 'react';
 import { useParams, Link, useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { ArrowLeft, User, FileText, Clock, Undo2, Building2, Plus, X, ChevronDown, ChevronUp, ChevronRight, Paperclip, File, Trash2, Upload, Download, Save, MessageSquare, Maximize2, Minimize2, History, LayoutGrid, AlertCircle, Search, Loader2, Flag, Archive, RotateCcw, Check, UserPlus, ArrowRight, CheckCircle, Send, FileSignature, Megaphone, Mail, Settings2, Folder, Pencil, ArrowDownUp, Filter, TrendingUp, CalendarIcon, GitBranch, ListChecks, Video, Activity } from 'lucide-react';
@@ -71,19 +71,19 @@ import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificati
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
-import { LendersKanban } from '@/components/deal/LendersKanban';
+const LendersKanban = lazy(() => import('@/components/deal/LendersKanban').then(m => ({ default: m.LendersKanban })));
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { useFeatureAccess, usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useDemoCapabilities } from '@/hooks/useDemoCapabilities';
 import { LenderSearchInput } from '@/components/deal/LenderSearchInput';
-import { LenderDirectoryDialog } from '@/components/deal/LenderDirectoryDialog';
+const LenderDirectoryDialog = lazy(() => import('@/components/deal/LenderDirectoryDialog').then(m => ({ default: m.LenderDirectoryDialog })));
 import { RequestedItemsSummary } from '@/components/deal/RequestedItemsSummary';
 import { RequestedItemsPanel } from '@/components/deal/RequestedItemsPanel';
 import { DealWriteUp, DealWriteUpData, DealDataForWriteUp, getEmptyDealWriteUpData } from '@/components/deal/DealWriteUp';
 import { DealActivityTab } from '@/components/deal/DealActivityTab';
 import { DealTasksPanel } from '@/components/deal/DealTasksPanel';
 import { InfoRequestsPanel } from '@/components/deal/InfoRequestsPanel';
-import { DealManagementTab } from '@/components/deal/DealManagementTab';
+const DealManagementTab = lazy(() => import('@/components/deal/DealManagementTab').then(m => ({ default: m.DealManagementTab })));
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
@@ -94,35 +94,35 @@ import { AttachmentDragOverlay } from '@/components/deal/AttachmentDragOverlay';
 import { DataRoomBulkActions } from '@/components/deal/DataRoomBulkActions';
 import { useDealWriteup } from '@/hooks/useDealWriteup';
 import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
-import { DealResearchPanel } from '@/components/deal/DealResearchPanel';
+const DealResearchPanel = lazy(() => import('@/components/deal/DealResearchPanel').then(m => ({ default: m.DealResearchPanel })));
 import { DealPulseDashboard } from '@/components/deal/DealPulseDashboard';
 import { ProactiveAlertBar } from '@/components/deal/ProactiveAlertBar';
-import { DealCommandPalette } from '@/components/deal/DealCommandPalette';
-import { UnifiedTimeline } from '@/components/deal/UnifiedTimeline';
+const DealCommandPalette = lazy(() => import('@/components/deal/DealCommandPalette').then(m => ({ default: m.DealCommandPalette })));
+const UnifiedTimeline = lazy(() => import('@/components/deal/UnifiedTimeline').then(m => ({ default: m.UnifiedTimeline })));
 import { DealFlagLog } from '@/components/deal/DealFlagLog';
-import { DealBenchmarkPanel } from '@/components/deal/DealBenchmarkPanel';
-import { DealAssistantPanel } from '@/components/deal/DealAssistantPanel';
+const DealBenchmarkPanel = lazy(() => import('@/components/deal/DealBenchmarkPanel').then(m => ({ default: m.DealBenchmarkPanel })));
+const DealAssistantPanel = lazy(() => import('@/components/deal/DealAssistantPanel').then(m => ({ default: m.DealAssistantPanel })));
 import { ActivitySummaryPanel } from '@/components/deal/ActivitySummaryPanel';
 import { ContextualSuggestionsPanel } from '@/components/deal/ContextualSuggestionsPanel';
-import { DealEmailsTab } from '@/components/deal/DealEmailsTab';
-import { FloatingDealAssistant } from '@/components/deals/FloatingDealAssistant';
+const DealEmailsTab = lazy(() => import('@/components/deal/DealEmailsTab').then(m => ({ default: m.DealEmailsTab })));
+const FloatingDealAssistant = lazy(() => import('@/components/deals/FloatingDealAssistant').then(m => ({ default: m.FloatingDealAssistant })));
 import { DealDetailSideNavigation } from '@/components/deal/DealDetailSideNavigation';
 
-import { DealSpaceTab } from '@/components/deal/DealSpaceTab';
-import { DealPanelReorderDialog } from '@/components/deal/DealPanelReorderDialog';
-import { DealMemoDialog } from '@/components/deal/DealMemoDialog';
-import { AgreementDrafterDialog } from '@/components/agreement/AgreementDrafterDialog';
+const DealSpaceTab = lazy(() => import('@/components/deal/DealSpaceTab').then(m => ({ default: m.DealSpaceTab })));
+const DealPanelReorderDialog = lazy(() => import('@/components/deal/DealPanelReorderDialog').then(m => ({ default: m.DealPanelReorderDialog })));
+const DealMemoDialog = lazy(() => import('@/components/deal/DealMemoDialog').then(m => ({ default: m.DealMemoDialog })));
+const AgreementDrafterDialog = lazy(() => import('@/components/agreement/AgreementDrafterDialog').then(m => ({ default: m.AgreementDrafterDialog })));
 import { EmailPromptCenterButton } from '@/components/deal/EmailPromptCenter';
 import { HintTooltip } from '@/components/ui/hint-tooltip';
 import { useFirstTimeHints } from '@/hooks/useFirstTimeHints';
 import { DataRoomChecklistPanel } from '@/components/deal/DataRoomChecklistPanel';
-import { DataRoomV2 } from '@/components/deal/DataRoomV2';
-import { VdrShell } from '@/components/vdr/VdrShell';
-import { DealActivityLogTab } from '@/components/deal/DealActivityLogTab';
+const DataRoomV2 = lazy(() => import('@/components/deal/DataRoomV2').then(m => ({ default: m.DataRoomV2 })));
+const VdrShell = lazy(() => import('@/components/vdr/VdrShell').then(m => ({ default: m.VdrShell })));
+const DealActivityLogTab = lazy(() => import('@/components/deal/DealActivityLogTab').then(m => ({ default: m.DealActivityLogTab })));
 import DealCrmSearch from '@/components/deals/DealCrmSearch';
 import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 import { ClaapRecordingsPanel } from '@/components/deal/ClaapRecordingsPanel';
-import { ClaapMeetingsTab } from '@/components/deal/ClaapMeetingsTab';
+const ClaapMeetingsTab = lazy(() => import('@/components/deal/ClaapMeetingsTab').then(m => ({ default: m.ClaapMeetingsTab })));
 import { ChecklistLinkDialog } from '@/components/deal/ChecklistLinkDialog';
 import { DealUpdatesUnified } from '@/components/deal/DealUpdatesUnified';
 import { useDataRoomChecklist, useDealChecklistStatus } from '@/hooks/useDataRoomChecklist';
@@ -2860,7 +2860,9 @@ export default function DealDetail() {
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
                   {!isSimplifiedDeal && companyFeatures.deal_memo_enabled && hasPageAccess('deal_memo') && (
-                    <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+                    <Suspense fallback={null}>
+                      <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
+                    </Suspense>
                   )}
                 </div>
               </div>
@@ -2934,7 +2936,9 @@ export default function DealDetail() {
                     <CreateTaskButton dealId={id!} dealName={deal?.company} />
                     {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} />}
                     {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
-                      <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
+                      <Suspense fallback={null}>
+                        <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
+                      </Suspense>
                     )}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -3060,6 +3064,7 @@ export default function DealDetail() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="flex-1 flex flex-col">
                                   <CardContent className="pt-0 flex-1">
+                                    <Suspense fallback={null}>
                                     <DealResearchPanel
                                       dealId={deal.id}
                                       companyName={deal.company}
@@ -3068,6 +3073,7 @@ export default function DealDetail() {
                                       dealValue={deal.value}
                                       lenders={deal.lenders?.map(l => ({ name: l.name })) || []}
                                     />
+                                    </Suspense>
                                   </CardContent>
                                 </CollapsibleContent>
                               </Card>
@@ -3094,6 +3100,7 @@ export default function DealDetail() {
                                 </CollapsibleTrigger>
                                 <CollapsibleContent className="flex-1 flex flex-col">
                                   <CardContent className="pt-0 flex-1">
+                                    <Suspense fallback={null}>
                                     <DealAssistantPanel
                                       dealContext={{
                                         company: deal.company,
@@ -3106,6 +3113,7 @@ export default function DealDetail() {
                                         notes: deal.notes,
                                       }}
                                     />
+                                    </Suspense>
                                   </CardContent>
                                 </CollapsibleContent>
                               </Card>
@@ -3758,6 +3766,7 @@ export default function DealDetail() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-0">
+                        <Suspense fallback={null}>
                         <UnifiedTimeline 
                           events={(activityLogs || []).map(log => ({
                             id: log.id,
@@ -3774,6 +3783,7 @@ export default function DealDetail() {
                           }))}
                           maxHeight="400px"
                         />
+                        </Suspense>
                       </CardContent>
                     </Card>
                     <Card>
@@ -3784,6 +3794,7 @@ export default function DealDetail() {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="pt-0">
+                        <Suspense fallback={null}>
                         <DealBenchmarkPanel
                           currentDeal={{
                             id: deal.id,
@@ -3806,6 +3817,7 @@ export default function DealDetail() {
                             milestoneProgress: 0,
                           }))}
                         />
+                        </Suspense>
                       </CardContent>
                     </Card>
                   </div>
@@ -3832,7 +3844,8 @@ export default function DealDetail() {
                              isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
                            />
                          </div>
-                         <LenderDirectoryDialog
+                          <Suspense fallback={null}>
+                          <LenderDirectoryDialog
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
                         onRemoveLender={removeLenderFromDeal}
@@ -3856,6 +3869,7 @@ export default function DealDetail() {
                           ) : null
                         }
                       />
+                          </Suspense>
                        </div>
                       <div className="flex items-center gap-1.5 ml-auto min-w-0">
                       {deal.lenders && deal.lenders.length > 0 && (
@@ -4717,7 +4731,9 @@ export default function DealDetail() {
 
                 {hasDealManagementAccess && (
                 <TabsContent value="deal-management" className={cn("mt-6 overflow-hidden", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-management-${tabDirection}`}>
-                  <DealManagementTab dealId={id!} dealName={deal.company} dealValue={deal.value} dealStage={deal.stage} dealType={deal.dealTypes?.[0]} dealStatus={deal.status} lenderCount={deal.lenders?.length} />
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
+                    <DealManagementTab dealId={id!} dealName={deal.company} dealValue={deal.value} dealStage={deal.stage} dealType={deal.dealTypes?.[0]} dealStatus={deal.status} lenderCount={deal.lenders?.length} />
+                  </Suspense>
                 </TabsContent>
                 )}
 
@@ -4744,27 +4760,34 @@ export default function DealDetail() {
                     className="rounded-lg overflow-hidden mt-3 bg-background border border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]"
                     style={{ height: 'calc(100vh - 190px)' }}
                   >
-                    <VdrShell dealId={id!} embedded />
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading data room…</div>}>
+                      <VdrShell dealId={id!} embedded />
+                    </Suspense>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="activity-log" className={cn("mt-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`activity-log-${tabDirection}`}>
                   <div className="rounded-lg overflow-hidden mt-3 bg-card border border-border/30" style={{ height: 'calc(100vh - 190px)' }}>
-                    <DealActivityLogTab dealId={id!} />
+                    <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading activity…</div>}>
+                      <DealActivityLogTab dealId={id!} />
+                    </Suspense>
                   </div>
                 </TabsContent>
 
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
-                  <DealCrmSearch
-                    dealId={id!}
-                    dealCompany={deal?.company}
-                    dealCrmCompanyId={(deal as any)?.crm_company_id ?? null}
-                    dealContactEmail={(deal as any)?.contactEmail ?? null}
-                  />
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
+                    <DealCrmSearch
+                      dealId={id!}
+                      dealCompany={deal?.company}
+                      dealCrmCompanyId={(deal as any)?.crm_company_id ?? null}
+                      dealContactEmail={(deal as any)?.contactEmail ?? null}
+                    />
+                  </Suspense>
                 </TabsContent>
 
                 {hasDealSpaceAccess && (
                 <TabsContent value="deal-space" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-space-${tabDirection}`}>
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                   <DealSpaceTab dealId={id!} dealData={{
                     company: deal.company,
                     value: deal.value,
@@ -4776,6 +4799,7 @@ export default function DealDetail() {
                     lenders: deal.lenders?.map(l => ({ name: l.name, stage: l.stage })),
                     milestones: dbMilestones?.map(m => ({ title: m.title, completed: m.completed })),
                   }} />
+                  </Suspense>
                 </TabsContent>
                 )}
 
@@ -5247,6 +5271,7 @@ export default function DealDetail() {
             <DialogTitle>Lenders Kanban View</DialogTitle>
           </DialogHeader>
           {deal && deal.lenders && (
+            <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading lenders…</div>}>
             <LendersKanban
               lenders={deal.lenders}
               dealId={deal.id}
@@ -5308,6 +5333,7 @@ export default function DealDetail() {
               showScore={scoreConfig.enabled}
               scoreConfig={scoreConfig}
             />
+            </Suspense>
           )}
         </DialogContent>
       </Dialog>
@@ -5361,6 +5387,7 @@ export default function DealDetail() {
       )}
 
       {/* Panel Reorder Dialog */}
+      <Suspense fallback={null}>
       <DealPanelReorderDialog
         open={isPanelReorderDialogOpen}
         onOpenChange={setIsPanelReorderDialogOpen}
@@ -5370,6 +5397,7 @@ export default function DealDetail() {
         onToggleVisibility={togglePanelVisibility}
         onReset={resetToDefault}
       />
+      </Suspense>
 
       {/* Checklist Link Dialog for file uploads */}
       <ChecklistLinkDialog
@@ -5412,6 +5440,7 @@ export default function DealDetail() {
 
       {/* Deal Command Palette (⌘K) */}
       {deal && (
+        <Suspense fallback={null}>
         <DealCommandPalette
           isOpen={isCommandPaletteOpen}
           onOpenChange={setIsCommandPaletteOpen}
@@ -5444,9 +5473,11 @@ export default function DealDetail() {
           lenderCount={deal.lenders?.length || 0}
           milestoneCount={dbMilestones?.length || 0}
         />
+        </Suspense>
       )}
 
       {/* Floating Deal AI Assistant with operations */}
+      <Suspense fallback={null}>
       <FloatingDealAssistant
         dealId={deal.id}
         dealName={deal.company}
@@ -5456,6 +5487,7 @@ export default function DealDetail() {
         dealManager={deal.manager}
         dealNotes={deal.notes}
       />
+      </Suspense>
 
       {/* Floating left/right pipeline navigation arrows */}
       <DealDetailSideNavigation
