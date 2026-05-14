@@ -307,7 +307,7 @@ export function CopilotToggleButton() {
       aria-hidden={false}
       className="pointer-events-none fixed inset-x-0 z-[1200] flex justify-center"
       style={{
-        bottom: 'max(24px, env(safe-area-inset-bottom))',
+        bottom: 'calc(56px + max(16px, env(safe-area-inset-bottom)))',
       }}
     >
       <div
