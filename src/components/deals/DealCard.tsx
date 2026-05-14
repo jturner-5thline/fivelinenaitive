@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, memo } from 'react';
 import { Search, User, Clock, AlertTriangle, CheckCircle2, Flag, UserPlus, Flame, Thermometer, Snowflake, Pencil, Bell, Check } from 'lucide-react';
 import DOMPurify from 'dompurify';
 import { Link, useLocation, useSearchParams } from 'react-router-dom';
@@ -48,7 +48,7 @@ interface DealCardProps {
   children?: React.ReactNode;
 }
 
-export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, hideStatus = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
+function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, hideStatus = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   // Show the corner indicator if either source of truth says flagged:
@@ -613,3 +613,22 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
     </>
   );
 }
+
+/**
+ * Memoized export. Skips re-render when sibling cards or unrelated parent
+ * state changes; only re-renders when this deal's reference, its FLEx data,
+ * or one of the small visual flags actually change. Callback prop identity
+ * is intentionally excluded so parents don't have to wrap handlers in
+ * useCallback to benefit.
+ */
+export const DealCard = memo(DealCardImpl, (prev, next) => {
+  return (
+    prev.deal === next.deal &&
+    prev.flexEngagement === next.flexEngagement &&
+    prev.flexNotificationCount === next.flexNotificationCount &&
+    prev.compact === next.compact &&
+    prev.hideStatus === next.hideStatus &&
+    prev.mentionUsers === next.mentionUsers &&
+    prev.children === next.children
+  );
+});
