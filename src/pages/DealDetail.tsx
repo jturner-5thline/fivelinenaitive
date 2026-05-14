@@ -3087,14 +3087,20 @@ export default function DealDetail() {
                   )}
 
                   <div className="flex justify-end">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-muted-foreground"
-                      onClick={() => setIsPanelReorderDialogOpen(true)}
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          aria-label="Reorder panels"
+                          className="h-8 w-8 text-muted-foreground"
+                          onClick={() => setIsPanelReorderDialogOpen(true)}
+                        >
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="left">Reorder panels</TooltipContent>
+                    </Tooltip>
                   </div>
 
                   {/* Panels rendered in custom order - only visible panels */}
