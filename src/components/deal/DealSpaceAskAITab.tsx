@@ -411,6 +411,19 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     void handleSendQuestion(prompt);
   }, [handleSendQuestion]);
 
+  const onQuickPromptClick = useCallback((prompt: string) => {
+    setQuestion(prompt);
+    void handleSendQuestion(prompt);
+  }, [handleSendQuestion]);
+
+  const openDraftSubmissionModal = useCallback(() => {
+    setIsDraftDialogOpen(true);
+  }, []);
+
+  const openStatusReportModal = useCallback(() => {
+    openStatusReport();
+  }, [openStatusReport]);
+
   useEffect(() => {
     const lastMessage = messages[messages.length - 1];
     if (lastMessage?.role === 'assistant' && selectedConversationId && !isAILoading) {
@@ -1002,7 +1015,7 @@ CRITICAL RULES:
                   <button
                     type="button"
                     disabled={isDraftingEmail}
-                    onClick={() => void handleDraftSubmission()}
+                    onClick={openDraftSubmissionModal}
                     className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 disabled:opacity-50 bg-primary/10 hover:bg-primary/20 border border-primary/20 font-medium text-primary"
                   >
                     {isDraftingEmail
@@ -1013,7 +1026,7 @@ CRITICAL RULES:
 
                   <button
                     type="button"
-                    onClick={() => openStatusReport()}
+                    onClick={openStatusReportModal}
                     className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 font-medium text-primary"
                   >
                     <FileBarChart className="h-4 w-4 flex-shrink-0" />
@@ -1022,7 +1035,7 @@ CRITICAL RULES:
 
                   <button
                     type="button"
-                    onClick={() => runQuickPrompt(lenderMemoQuickPrompt)}
+                    onClick={() => onQuickPromptClick(lenderMemoQuickPrompt)}
                     className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
                   >
                     {lenderMemoQuickPrompt}
@@ -1030,7 +1043,7 @@ CRITICAL RULES:
 
                   <button
                     type="button"
-                    onClick={() => runQuickPrompt(keyRisksQuickPrompt)}
+                    onClick={() => onQuickPromptClick(keyRisksQuickPrompt)}
                     className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
                   >
                     {keyRisksQuickPrompt}
@@ -1038,7 +1051,7 @@ CRITICAL RULES:
 
                   <button
                     type="button"
-                    onClick={() => runQuickPrompt(outstandingItemsQuickPrompt)}
+                    onClick={() => onQuickPromptClick(outstandingItemsQuickPrompt)}
                     className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
                   >
                     {outstandingItemsQuickPrompt}
