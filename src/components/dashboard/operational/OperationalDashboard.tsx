@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronRight, MoreHorizontal, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronRight, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Cell, PieChart, Pie, Legend,
@@ -34,6 +34,8 @@ const TOOLTIP_STYLE = {
   borderRadius: 8,
   fontSize: 11,
 };
+
+const GRID_STROKE = 'hsl(var(--border) / 0.4)';
 
 // Approx average glyph width (px) at a given font size for our UI font.
 // 0.55em is a reasonable average for proportional sans-serif labels.
@@ -74,7 +76,19 @@ interface OperationalDashboardProps {
 }
 
 // ── KPI Card ───────────────────────────────────────────────────
-function KPICard({ label, value, description, onClick }: { label: string; value: string; description: string; onClick?: () => void }) {
+function KPICard({
+  label,
+  value,
+  description,
+  accent = 'hsl(var(--primary))',
+  onClick,
+}: {
+  label: string;
+  value: string;
+  description: string;
+  accent?: string;
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
@@ -82,17 +96,32 @@ function KPICard({ label, value, description, onClick }: { label: string; value:
       disabled={!onClick}
       className={cn(
         GLASS_CARD,
-        'p-4 flex flex-col justify-between min-h-[88px] transition-all text-left',
+        'relative overflow-hidden p-4 pl-[14px] flex flex-col justify-between min-h-[112px] transition-all text-left group',
         onClick ? 'hover:border-white/[0.18] hover:bg-white/[0.05] cursor-pointer' : 'cursor-default',
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 leading-tight">
-        {label}
-      </p>
-      <p className="text-2xl font-bold text-foreground tabular-nums mt-1 leading-none">
+      <span
+        aria-hidden
+        className="absolute left-0 top-3 bottom-3 w-[2px] rounded-full opacity-70 group-hover:opacity-100 transition-opacity"
+        style={{ backgroundColor: accent }}
+      />
+      <div className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }}
+        />
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 leading-tight truncate">
+          {label}
+        </p>
+      </div>
+      <p className="text-[28px] font-bold text-foreground tabular-nums leading-none mt-2">
         {value}
       </p>
-      <p className="text-[10px] text-muted-foreground/50 mt-1">{description}</p>
+      <p className="text-[10px] text-muted-foreground/60 mt-2 leading-snug line-clamp-2">{description}</p>
+      {onClick && (
+        <ChevronRight className="absolute top-3 right-3 h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 transition-colors" />
+      )}
     </button>
   );
 }
@@ -100,12 +129,14 @@ function KPICard({ label, value, description, onClick }: { label: string; value:
 // ── Chart Card wrapper ─────────────────────────────────────────
 function ChartCard({
   title,
+  subtitle,
   filterCount,
   onSeeAll,
   children,
   className,
 }: {
   title: string;
+  subtitle?: string;
   filterCount?: number;
   onSeeAll?: () => void;
   children: React.ReactNode;
@@ -113,24 +144,24 @@ function ChartCard({
 }) {
   return (
     <div className={cn(GLASS_CARD, 'flex flex-col overflow-hidden', className)}>
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+      <div className="px-4 pt-3 pb-2 border-b glass-border-softer">
         <div className="flex items-center gap-2 min-w-0">
-          <h3 className="text-xs font-semibold text-foreground truncate">{title}</h3>
+          <h3 className="text-[13px] font-semibold text-foreground tracking-tight truncate">{title}</h3>
           {filterCount !== undefined && (
-            <span className="text-[9px] text-muted-foreground/50 bg-white/[0.05] rounded px-1.5 py-0.5 shrink-0">
-              {filterCount} filter{filterCount !== 1 ? 's' : ''}
+            <span className="text-[9px] font-medium text-muted-foreground/70 bg-white/[0.06] rounded px-1.5 py-0.5 shrink-0">
+              {filterCount}
             </span>
           )}
         </div>
-        <button className="text-muted-foreground/40 hover:text-muted-foreground transition-colors">
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </button>
+        {subtitle && (
+          <p className="text-[10px] text-muted-foreground/55 mt-0.5 truncate">{subtitle}</p>
+        )}
       </div>
-      <div className="flex-1 px-2 pb-1">{children}</div>
+      <div className="flex-1 px-3 pt-2 pb-2">{children}</div>
       {onSeeAll && (
         <button
           onClick={onSeeAll}
-          className="flex items-center justify-center gap-1 text-[10px] font-medium text-primary/80 hover:text-primary py-2 border-t glass-border-softer transition-colors"
+          className="flex items-center justify-center gap-1 text-[10px] font-medium text-primary/80 hover:text-primary py-2 border-t glass-border-softer transition-colors hover:bg-white/[0.03]"
         >
           See all <ChevronRight className="h-3 w-3" />
         </button>
