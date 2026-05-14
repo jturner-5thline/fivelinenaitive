@@ -16,7 +16,6 @@ import { BetaBadge } from "@/components/ui/beta-badge";
 import { useCompany } from "@/hooks/useCompany";
 import { useNaitivePipelineAccess } from "@/hooks/useNaitivePipelineAccess";
 import { useCanAccessInsights } from "@/hooks/useCanAccessInsights";
-import { DashboardFlyoutMenu } from "@/components/sidebar/DashboardFlyoutMenu";
 import { DealsFlyoutMenu } from "@/components/sidebar/DealsFlyoutMenu";
 import { FeedbackButton } from "@/components/FeedbackButton";
 
@@ -37,7 +36,6 @@ import {
 
 // Map page URLs to feature flag names
 const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard, featureKey: "dashboard" },
   { title: "Tasks", url: "/tasks", icon: CheckSquare, featureKey: null }, // Always visible
   { title: "Deals", url: "/deals", icon: Briefcase, featureKey: null }, // Always visible
   // Moved out of the global top header into the sidebar, ordered directly under Deals.
@@ -129,9 +127,6 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {visibleMenuItems.map((item) => {
-                if (item.url === "/dashboard") {
-                  return <DashboardFlyoutMenu key={item.title} />;
-                }
                 if (item.url === "/deals") {
                   return <DealsFlyoutMenu key={item.title} />;
                 }
