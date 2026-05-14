@@ -86,7 +86,7 @@ serve(async (req) => {
     const { data: writeup } = await supabase
       .from("deal_writeups")
       .select(
-        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, ebitda, key_risks, management_notes",
+        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok",
       )
       .eq("deal_id", dealId)
       .maybeSingle();
@@ -129,16 +129,14 @@ serve(async (req) => {
     }
 
     // Existing lenders + exclusions
-    const [{ data: existingLenders }, { data: exclusions }, { data: dealFinancials }] = await Promise.all([
+    const [{ data: existingLenders }, { data: exclusions }, { data: financialFiles }] = await Promise.all([
       supabase.from("deal_lenders").select("name").eq("deal_id", dealId),
       supabase.from("deal_lender_recommendation_exclusions").select("lender_name").eq("deal_id", dealId),
       supabase
-        .from("deal_financials")
-        .select("revenue, ebitda, gross_margin, period_label, period_type")
+        .from("deal_space_financials")
+        .select("name, fiscal_period, fiscal_year, updated_at")
         .eq("deal_id", dealId)
-        .order("period_label", { ascending: false })
-        .limit(8)
-        .then((r) => r, () => ({ data: [] as any[] })),
+        .limit(20),
     ]);
     const excludeSet = new Set<string>([
       ...(existingLenders ?? []).map((l: any) => String(l.name).trim().toLowerCase()),
@@ -223,9 +221,12 @@ serve(async (req) => {
       cashBurnOk: writeup?.cash_burn_ok ?? null,
       useOfFunds: writeup?.use_of_funds || null,
       existingDebt: writeup?.existing_debt_items || null,
-      keyRisks: writeup?.key_risks || null,
-      managementNotes: writeup?.management_notes || null,
-      financialsHistory: (dealFinancials?.data ?? dealFinancials ?? []).slice(0, 8),
+      keyItems: writeup?.key_items || null,
+      financialStatementsOnFile: (financialFiles ?? []).map((f: any) => ({
+        name: f.name,
+        period: f.fiscal_period,
+        year: f.fiscal_year,
+      })).slice(0, 12),
       narrative: [deal.narrative, writeup?.description, writeup?.company_highlights, writeup?.team, writeup?.customer_base]
         .filter(Boolean).join("\n\n").slice(0, 4000),
       dataroomDocs: [
