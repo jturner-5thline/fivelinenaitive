@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
@@ -95,7 +94,6 @@ export default function CrmCompanies() {
       </Helmet>
 
       <div className="bg-transparent">
-        <DealsHeader />
         <main className="w-full px-4 pt-4 pb-3 sm:px-6 space-y-6">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-foreground">Companies</h1>

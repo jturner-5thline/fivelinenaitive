@@ -2,7 +2,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, ChevronRight, Search, X } from 'lucide-react';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -187,7 +186,6 @@ export default function Settings() {
       </Helmet>
 
       <div className="bg-background min-h-full pb-24">
-        <DealsHeader />
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>

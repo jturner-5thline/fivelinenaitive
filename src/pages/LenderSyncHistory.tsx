@@ -3,7 +3,6 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, History, UserPlus, RefreshCw, AlertTriangle, Check, X, GitMerge, Search, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -248,7 +247,6 @@ export default function LenderSyncHistory() {
       </Helmet>
 
       <div className="bg-background min-h-screen">
-        <DealsHeader />
 
         <main className="container mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>

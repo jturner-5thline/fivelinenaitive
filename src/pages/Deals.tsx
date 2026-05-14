@@ -6,7 +6,6 @@ import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
 import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { DealFilters } from '@/components/deals/DealFilters';
 import { MilestoneManagerFilter } from '@/components/deals/MilestoneManagerFilter';

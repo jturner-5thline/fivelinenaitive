@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { usePreferences } from '@/contexts/PreferencesContext';
@@ -195,7 +194,6 @@ export default function Notifications() {
       </Helmet>
       
       <div className="bg-background">
-        <DealsHeader />
         
         <main className="container max-w-4xl py-8">
           <div className="flex items-center justify-between mb-6">

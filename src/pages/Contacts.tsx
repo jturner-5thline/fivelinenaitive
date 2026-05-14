@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useContacts } from '@/hooks/useContacts';
 import { ContactsTable } from '@/components/contacts/ContactsTable';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';
@@ -116,7 +115,6 @@ export default function Contacts() {
       </Helmet>
 
       <div className="bg-transparent">
-        <DealsHeader />
         <main className="w-full px-4 pt-4 pb-3 sm:px-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">

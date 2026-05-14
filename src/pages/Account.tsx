@@ -1,7 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
 import { CompanySettings } from '@/components/settings/CompanySettings';
@@ -20,7 +19,6 @@ export default function Account() {
       </Helmet>
 
       <div className="bg-background">
-        <DealsHeader />
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>

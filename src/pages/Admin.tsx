@@ -33,7 +33,6 @@ import { PageAccessPanel } from "@/components/admin/PageAccessPanel";
 import { UserPermissionsPanel } from "@/components/admin/UserPermissionsPanel";
 import { NotificationRulesPanel } from "@/components/admin/NotificationRulesPanel";
 import { NotificationAuditPanel } from "@/components/admin/NotificationAuditPanel";
-import { DealsHeader } from "@/components/deals/DealsHeader";
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 import { UXAnalyticsPanel } from "@/components/admin/UXAnalyticsPanel";
 import { AITrainingPanel } from "@/components/admin/AITrainingPanel";
@@ -204,7 +203,6 @@ const Admin = () => {
   if (roleLoading) {
     return (
       <div className="bg-background">
-        <DealsHeader />
         <div className="container mx-auto py-8 px-4 space-y-8">
           <div className="flex items-center gap-3">
             <Skeleton className="h-8 w-8" />
@@ -557,7 +555,6 @@ const Admin = () => {
 
   return (
     <div className="bg-background">
-      <DealsHeader />
       <div className="container mx-auto py-6 px-4 space-y-6">
         {/* Header */}
         <div className="flex items-center gap-3">

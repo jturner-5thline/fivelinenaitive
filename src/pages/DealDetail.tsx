@@ -31,7 +31,6 @@ import { DealMilestones } from '@/components/deals/DealMilestones';
 import { NaitiveStageMilestonesSection } from '@/components/naitive-pipeline/NaitiveStageMilestonesSection';
 import { NaitiveDealInformation } from '@/components/naitive-pipeline/NaitiveDealInformation';
 import { differenceInMinutes, differenceInHours, differenceInDays, differenceInWeeks, format } from 'date-fns';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { useStatusNotes } from '@/hooks/useStatusNotes';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { FlagNoteDialog } from '@/components/deals/FlagNoteDialog';
@@ -2336,7 +2335,6 @@ export default function DealDetail() {
   if (!deal) {
     return (
       <div className="bg-transparent">
-        {!isEmbedded && <DealsHeader />}
         <main className="container mx-auto max-w-5xl px-4 py-8">
           <div className="text-center">
             <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white mb-4">Deal Not Found</h1>
@@ -2569,7 +2567,6 @@ export default function DealDetail() {
 
       <div className="bg-transparent relative">
         <GlobalSaveBar isAnySaving={isAnySaving} />
-        {!isEmbedded && <DealsHeader />}
 
         <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden">
           {/* Back button, alerts, and undo - side by side. Hidden in

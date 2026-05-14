@@ -7,7 +7,6 @@ import { formatDistanceToNow, format, subDays, startOfDay, parseISO } from 'date
 import { toast } from 'sonner';
 import { AreaChart, Area, XAxis, YAxis, ResponsiveContainer } from 'recharts';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
@@ -406,7 +405,6 @@ export default function Workflows() {
       </Helmet>
 
       <div className="bg-background">
-        <DealsHeader />
 
         <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
           <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
