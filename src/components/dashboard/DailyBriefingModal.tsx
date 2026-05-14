@@ -1197,11 +1197,13 @@ export function PipelineTab({
   enabled,
   onNavigate,
   targetDealOwnerName,
+  targetUserId,
   briefingType = 'daily_briefing',
 }: {
   enabled: boolean;
   onNavigate: (path: string) => void;
   targetDealOwnerName?: string;
+  targetUserId?: string;
   briefingType?: string;
 }) {
   const { data, isLoading } = usePipelineData(enabled, targetDealOwnerName);
@@ -1210,6 +1212,7 @@ export function PipelineTab({
   // email (permanently disabled platform-wide on 2026-04-29). Same source
   // data, now grouped by deal and surfaced in-app for every user.
   const { user } = useAuth();
+  const { profile } = useProfile();
   // Only show the current user's own follow-ups (not the delegated view).
   const showOwnFollowups = enabled && !targetDealOwnerName;
   const { data: followupGroups = [] } = useMorningFollowups(showOwnFollowups);
@@ -1229,15 +1232,54 @@ export function PipelineTab({
     newDeals: [], riskDeals: [], stageChanges: [], recentActivity: [], scopedDeals: [],
   };
 
+  // ── Rundown-only "owner or has-active-task" filter ──
+  // The Deals tab inside Daily/Niki Rundown surfaces should ONLY show deals
+  // where the target user is the deal owner OR has at least one open task
+  // assigned to them on that deal. This narrowing is intentionally local to
+  // the Rundown surface — the main /deals pipeline and other pages are
+  // unaffected.
+  const effectiveUserId = targetUserId ?? user?.id ?? null;
+  const effectiveOwnerName = (
+    targetDealOwnerName ??
+    profile?.display_name ??
+    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
+  )?.toString().trim().toLowerCase() || '';
+
+  const { data: assignedTaskDealIds } = useQuery({
+    queryKey: ['rundown-pipeline-task-deal-ids', effectiveUserId],
+    enabled: enabled && !!effectiveUserId,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from('tasks')
+        .select('deal_id')
+        .eq('assigned_to', effectiveUserId!)
+        .neq('status', 'complete')
+        .is('archived_at', null)
+        .not('deal_id', 'is', null);
+      return new Set((rows || []).map(r => r.deal_id as string));
+    },
+  });
+
+  const filteredDeals = useMemo(() => {
+    const all = (scopedDeals as any[]) || [];
+    const taskSet = assignedTaskDealIds || new Set<string>();
+    if (!effectiveOwnerName && taskSet.size === 0) return all;
+    return all.filter(d => {
+      const owner = (d.dealOwner || d.deal_owner || '').toString().trim().toLowerCase();
+      return (effectiveOwnerName && owner === effectiveOwnerName) || taskSet.has(d.id);
+    });
+  }, [scopedDeals, effectiveOwnerName, assignedTaskDealIds]);
+
   // Empty state for delegated view with no owned/managed deals.
   const isDelegated = !!targetDealOwnerName;
   const hasAnyContent =
     newDeals.length + riskDeals.length + stageChanges.length + recentActivity.length > 0
-    || (scopedDeals as any[]).length > 0;
+    || filteredDeals.length > 0;
   if (isDelegated && !hasAnyContent) {
     return (
       <div className="p-1">
-        <EmptySection message={`No deals assigned to ${targetDealOwnerName} as Owner or Manager`} />
+        <EmptySection message="No active deals assigned to you" />
       </div>
     );
   }
@@ -1254,13 +1296,9 @@ export function PipelineTab({
           }
         >
           <PipelineMemoView
-            deals={scopedDeals as any}
+            deals={filteredDeals as any}
             dismissalScope={`rundown-deal:${briefingType}`}
-            emptyMessage={
-              isDelegated
-                ? `No active deals for ${targetDealOwnerName}.`
-                : 'No active deals to summarize.'
-            }
+            emptyMessage="No active deals assigned to you"
             onOpenDeal={id => onNavigate(`/deal/${id}`)}
           />
         </Suspense>
