@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { Plus, FileText, Trash2, Download, Upload, Pin, PinOff, FolderOpen, Tag, Star, Filter, ChevronDown, GripVertical, LayoutTemplate, Settings, BookmarkPlus } from 'lucide-react';
+import { Plus, FileText, Trash2, Download, Upload, Pin, PinOff, FolderOpen, Tag, Star, Filter, ChevronDown, GripVertical, LayoutTemplate, Settings, BookmarkPlus, X, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
@@ -73,6 +73,28 @@ export function NotesSidebar({
     await onUpdateNote(noteId, { tags });
   };
 
+  const handleRenameTagGlobally = async (oldTag: string) => {
+    const next = window.prompt(`Rename tag "${oldTag}" (applies to all notes):`, oldTag);
+    if (next == null) return;
+    const trimmed = next.trim();
+    if (!trimmed || trimmed === oldTag) return;
+    const affected = notes.filter(n => (n.tags || []).includes(oldTag));
+    await Promise.all(affected.map(n => {
+      const tags = Array.from(new Set((n.tags || []).map(t => t === oldTag ? trimmed : t)));
+      return onUpdateNote(n.id, { tags });
+    }));
+    if (filterTag === oldTag) setFilterTag(trimmed);
+  };
+
+  const handleDeleteTagGlobally = async (tag: string) => {
+    const affected = notes.filter(n => (n.tags || []).includes(tag));
+    await Promise.all(affected.map(n => {
+      const tags = (n.tags || []).filter(t => t !== tag);
+      return onUpdateNote(n.id, { tags });
+    }));
+    if (filterTag === tag) setFilterTag(null);
+  };
+
   const handleSetFolder = async (noteId: string, folder: string | null) => {
     await onUpdateNote(noteId, { folder });
   };
@@ -107,7 +129,32 @@ export function NotesSidebar({
         {(note.tags || []).length > 0 && (
           <div className="flex flex-wrap gap-0.5 mt-0.5">
             {note.tags.map(tag => (
-              <Badge key={tag} variant="secondary" className="text-[9px] px-1 py-0 h-4">{tag}</Badge>
+              <Badge
+                key={tag}
+                variant={filterTag === tag ? 'default' : 'secondary'}
+                className="group/tag text-[9px] px-1 py-0 h-4 gap-0.5 cursor-pointer inline-flex items-center"
+                onClick={(e) => { e.stopPropagation(); setFilterTag(filterTag === tag ? null : tag); }}
+                onContextMenu={(e) => { e.preventDefault(); e.stopPropagation(); handleRenameTagGlobally(tag); }}
+                title="Click to filter • Right-click to rename globally"
+              >
+                <span>{tag}</span>
+                <button
+                  type="button"
+                  className="opacity-0 group-hover/tag:opacity-100 hover:text-foreground transition-opacity"
+                  onClick={(e) => { e.stopPropagation(); handleRenameTagGlobally(tag); }}
+                  title="Rename tag globally"
+                >
+                  <Pencil className="h-2.5 w-2.5" />
+                </button>
+                <button
+                  type="button"
+                  className="opacity-0 group-hover/tag:opacity-100 hover:text-destructive transition-opacity"
+                  onClick={(e) => { e.stopPropagation(); handleRemoveTag(note.id, tag); }}
+                  title="Remove tag from this note"
+                >
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </Badge>
             ))}
           </div>
         )}
@@ -148,7 +195,10 @@ export function NotesSidebar({
                 </DropdownMenuItem>
               </DropdownMenuSubContent>
             </DropdownMenuSub>
-            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); setShowTagInput(note.id); }}>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); setShowTagInput(note.id); }}
+              title="Tags help you categorize and filter notes. Click to add a tag."
+            >
               <Tag className="h-3.5 w-3.5 mr-2" /> Add tag
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -249,7 +299,25 @@ export function NotesSidebar({
                       <DropdownMenuSeparator />
                       <p className="px-2 py-1 text-[10px] text-muted-foreground font-medium">TAGS</p>
                       {allTags.map(t => (
-                        <DropdownMenuItem key={t} onClick={() => setFilterTag(t)}>🏷 {t}</DropdownMenuItem>
+                        <DropdownMenuItem key={t} className="flex items-center gap-1 group/mt" onSelect={(e) => e.preventDefault()}>
+                          <span className="flex-1 cursor-pointer" onClick={() => setFilterTag(t)}>🏷 {t}</span>
+                          <button
+                            type="button"
+                            className="opacity-0 group-hover/mt:opacity-100 p-0.5 hover:text-foreground"
+                            onClick={(e) => { e.stopPropagation(); handleRenameTagGlobally(t); }}
+                            title="Rename tag globally"
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </button>
+                          <button
+                            type="button"
+                            className="opacity-0 group-hover/mt:opacity-100 p-0.5 hover:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteTagGlobally(t); }}
+                            title="Delete tag globally"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </DropdownMenuItem>
                       ))}
                     </>
                   )}
