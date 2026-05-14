@@ -2661,7 +2661,16 @@ export default function DealDetail() {
       <div className="bg-transparent relative">
         <GlobalSaveBar isAnySaving={isAnySaving} />
 
-        <main className="container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden">
+        <main
+          className={
+            isEmbedded
+              // Inside the deal pop-up: wider stable canvas with
+              // breakpoint-stepped padding so modules keep their
+              // proportions instead of stretching freely with the viewport.
+              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 overflow-x-hidden"
+              : "container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden"
+          }
+        >
           {/* Back button, alerts, and undo - side by side. Hidden in
               embedded (overlay) mode — the modal provides its own close
               affordance and we don't want a duplicate route header. */}
