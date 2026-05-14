@@ -343,8 +343,21 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
           </div>
         ) : (
           <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="flex items-center justify-between py-2 mb-1 border-b border-border/40">
+              <span className="text-[11px] text-muted-foreground">
+                {showAll
+                  ? `Showing all ${rows.length} lender${rows.length === 1 ? '' : 's'}`
+                  : `Showing ${visibleRows.length} eligible${
+                      hiddenCount > 0 ? ` · ${hiddenCount} hidden (Passed / Not a Fit)` : ''
+                    }`}
+              </span>
+              <label className="flex items-center gap-2 text-[11px] text-foreground/80 cursor-pointer">
+                <Switch checked={showAll} onCheckedChange={setShowAll} />
+                <span>All lenders</span>
+              </label>
+            </div>
             <ul className="divide-y divide-border/60">
-              {rows.map((r) => {
+              {visibleRows.map((r) => {
                 const meta = STATUS_META[r.status];
                 return (
                   <li
