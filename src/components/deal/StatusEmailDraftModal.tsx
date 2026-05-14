@@ -75,52 +75,61 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
     </ul>
   `;
 
-  // One row per non-empty stage. Inline names, comma-separated. Reads like a
-  // sentence instead of a grid: "On Deck (3) — Acme Capital, Boreal, Crestwood".
-  const pipelineRow = (label: string, items: typeof lenders) => {
+  // Per-stage block: subtle uppercase subhead with a count, followed by a
+  // clean bulleted list of every lender in that stage. Designed to scan
+  // top-to-bottom so clients can see exactly who sits where.
+  const pipelineStageBlock = (
+    label: string,
+    items: typeof lenders,
+    opts: { tone?: 'primary' | 'muted' } = {},
+  ) => {
     if (items.length === 0) return '';
-    const names = items
-      .slice(0, 6)
-      .map((l) => escapeHtml(l.name))
-      .join(', ');
-    const overflow = items.length > 6 ? `, +${items.length - 6} more` : '';
+    const tone = opts.tone ?? 'primary';
+    const headColor = tone === 'muted' ? MUTED : INK;
+    const nameColor = tone === 'muted' ? MUTED : BODY;
+    const dotColor = tone === 'muted' ? RULE : ACCENT;
+    const rows = items
+      .map(
+        (l) => `
+          <tr>
+            <td style="padding:5px 0;vertical-align:top;width:14px;">
+              <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${dotColor};margin-top:8px;"></span>
+            </td>
+            <td style="font-family:${FONT};font-size:14px;color:${nameColor};padding:4px 0;line-height:1.55;${tone === 'muted' ? 'font-style:italic;' : ''}">
+              ${escapeHtml(l.name)}
+            </td>
+          </tr>`,
+      )
+      .join('');
     return `
-      <tr>
-        <td style="font-family:${FONT};font-size:13px;font-weight:600;color:${INK};padding:6px 14px 6px 0;white-space:nowrap;vertical-align:top;width:1%;">
+      <div style="margin:0 0 18px 0;">
+        <div style="font-family:${FONT};font-size:11px;font-weight:600;color:${headColor};letter-spacing:.14em;text-transform:uppercase;margin:0 0 6px 0;">
           ${label}
-          <span style="color:${MUTED};font-weight:500;margin-left:4px;">(${items.length})</span>
-        </td>
-        <td style="font-family:${FONT};font-size:13px;color:${BODY};padding:6px 0;line-height:1.55;">
-          ${names}${overflow}
-        </td>
-      </tr>
+          <span style="color:${MUTED};font-weight:500;margin-left:6px;letter-spacing:0;text-transform:none;font-size:12px;">(${items.length})</span>
+        </div>
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+          ${rows}
+        </table>
+      </div>
     `;
   };
+
+  const passedItems = lenders.filter((l) => l.trackingStatus === 'passed');
 
   const pipelineTable =
     onDeck.length + inReview.length + termsIssued.length === 0 && passedCount === 0
       ? `<div style="font-family:${FONT};font-size:13px;color:${MUTED};">No active lender activity yet.</div>`
       : `
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse;border-top:1px solid ${RULE};border-bottom:1px solid ${RULE};">
-          ${pipelineRow('Terms Issued', termsIssued)}
-          ${pipelineRow('In Review', inReview)}
-          ${pipelineRow('On Deck', onDeck)}
+        <div style="border-top:1px solid ${RULE};border-bottom:1px solid ${RULE};padding:18px 0 4px 0;">
+          ${pipelineStageBlock('Terms Issued', termsIssued)}
+          ${pipelineStageBlock('In Review', inReview)}
+          ${pipelineStageBlock('On Deck', onDeck)}
           ${
-            passedCount > 0
-              ? `
-                <tr>
-                  <td style="font-family:${FONT};font-size:12px;color:${MUTED};padding:6px 14px 6px 0;white-space:nowrap;vertical-align:top;width:1%;">
-                    Passed
-                    <span style="margin-left:4px;">(${passedCount})</span>
-                  </td>
-                  <td style="font-family:${FONT};font-size:12px;color:${MUTED};padding:6px 0;font-style:italic;">
-                    Detail available on request.
-                  </td>
-                </tr>
-              `
+            passedItems.length > 0
+              ? pipelineStageBlock('Passed', passedItems, { tone: 'muted' })
               : ''
           }
-        </table>
+        </div>
       `;
 
   // ── Intro line ──
