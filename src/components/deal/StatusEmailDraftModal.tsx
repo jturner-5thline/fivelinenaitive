@@ -25,7 +25,7 @@ const textToHtml = (text: string) => {
     .join('');
 };
 
-function buildEmailHtml(deal: Deal, content: StatusReportEditableContent): string {
+export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableContent): string {
   const dateStr = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric',
   });
@@ -135,12 +135,15 @@ export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Pro
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
 
-  const html = useMemo(() => (content ? buildEmailHtml(deal, content) : ''), [deal, content]);
+  const html = useMemo(() => (content ? buildStatusEmailHtml(deal, content) : ''), [deal, content]);
 
-  const subject = useMemo(() => {
+  const subject = useMemo(() => buildStatusEmailSubject(deal), [deal]);
+
+  const _legacySubject = useMemo(() => {
     const dateStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
     return `${deal.company || deal.name} — Status Update: ${dateStr}`;
   }, [deal]);
+
 
   const handleCopy = async () => {
     try {
