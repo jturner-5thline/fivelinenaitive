@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useLocation } from "react-router-dom";
+import { Outlet, useLocation } from "react-router-dom";
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { TaskAssignmentBanner } from "@/components/TaskAssignmentBanner";
@@ -12,7 +12,13 @@ import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLogger";
 
 interface AppLayoutProps {
-  children: React.ReactNode;
+  /**
+   * Optional explicit children. When omitted, the layout renders the
+   * matched nested route via `<Outlet />`. The Outlet pattern keeps the
+   * sidebar, header, providers, and background mounted across navigations
+   * — the single biggest perceived-perf win for in-app routing.
+   */
+  children?: React.ReactNode;
   /** Optional override for the main content container (defaults to bg-card). */
   mainClassName?: string;
 }
@@ -101,6 +107,7 @@ function BodyScrollLock() {
 
 export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   const location = useLocation();
+  const content = children ?? <Outlet />;
   const isTasksPage = location.pathname === '/tasks' || location.pathname.startsWith('/tasks/');
   // When the route is loaded inside the Naitive deal overlay iframe
   // (`?embedded=1`), strip the app shell — sidebar, banners, command bar —
@@ -154,7 +161,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
             className={cn('relative h-full w-full overflow-y-auto overflow-x-hidden bg-background', mainClassName)}
             data-tour="workspace"
           >
-            {children}
+            {content}
           </main>
         </div>
       </SidebarProvider>
@@ -177,7 +184,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
 
       <div className="flex w-full h-full min-h-0 bg-transparent pt-2 pb-2 pl-2 pr-0 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
-        <MainContent className={mainClassName} showCopilotBar={true}>{children}</MainContent>
+        <MainContent className={mainClassName} showCopilotBar={true}>{content}</MainContent>
       </div>
       <TaskAssignmentBanner />
       <PlatformTour />

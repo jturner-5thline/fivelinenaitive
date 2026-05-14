@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams } from "react-router-dom";
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -168,6 +168,39 @@ function PageLoader() {
   );
 }
 
+/**
+ * In-shell skeleton shown while the next page's lazy chunk is downloading.
+ * Keeps the sidebar + header mounted (they live in <AppLayout/>) and only
+ * paints a light placeholder inside the main content area — navigation
+ * therefore feels instant even on slow networks.
+ */
+function RouteSkeleton() {
+  return (
+    <div className="flex-1 flex items-center justify-center p-8">
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/70" />
+    </div>
+  );
+}
+
+/**
+ * Layout route element. Mounts <AppLayout/> once, then renders the matched
+ * nested route via React Router's <Outlet/>. Combined with an inner
+ * <Suspense/> boundary, this prevents the sidebar, top nav, providers, and
+ * background from unmounting/remounting on every navigation — the dominant
+ * cause of slow page transitions.
+ */
+function ProtectedShell() {
+  return (
+    <ProtectedRoute>
+      <AppLayout>
+        <Suspense fallback={<RouteSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </AppLayout>
+    </ProtectedRoute>
+  );
+}
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
@@ -216,71 +249,55 @@ const App = () => (
                             <ProtectedRoute skipOnboarding><Onboarding /></ProtectedRoute>
                           } />
                           <Route path="/dashboard" element={<Navigate to="/pipeline" replace />} />
-                          <Route path="/pipeline" element={
-                            <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/news-feed" element={
-                            <ProtectedRoute><AppLayout><NewsFeed /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/tasks" element={
-                            <ProtectedRoute><AppLayout><Tasks /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/tasks/:taskId" element={
-                            <ProtectedRoute><AppLayout><TaskDetail /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/tasks/preview/suggested" element={
-                            <ProtectedRoute><AppLayout><SuggestedTaskPreview /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/deals" element={
-                            <ProtectedRoute><AppLayout><ErrorBoundary><Deals /></ErrorBoundary></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/analytics" element={
-                            <ProtectedRoute><AppLayout><ErrorBoundary><Analytics /></ErrorBoundary></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/reports" element={
-                            <ProtectedRoute><AppLayout><Reports /></AppLayout></ProtectedRoute>
-                          } />
+                          {/* Persistent app shell — sidebar, top nav, and
+                              providers stay mounted across nested route
+                              changes for fast in-app navigation. */}
+                          <Route element={<ProtectedShell />}>
+                            <Route path="/pipeline" element={<NaitivePipeline />} />
+                            <Route path="/news-feed" element={<NewsFeed />} />
+                            <Route path="/tasks" element={<Tasks />} />
+                            <Route path="/tasks/:taskId" element={<TaskDetail />} />
+                            <Route path="/tasks/preview/suggested" element={<SuggestedTaskPreview />} />
+                            <Route path="/deals" element={<ErrorBoundary><Deals /></ErrorBoundary>} />
+                            <Route path="/analytics" element={<ErrorBoundary><Analytics /></ErrorBoundary>} />
+                            <Route path="/reports" element={<Reports />} />
+                            <Route path="/widget-editor" element={<WidgetEditorPage />} />
+                            <Route path="/sales-bd" element={<SalesBD />} />
+                            <Route path="/contacts" element={<Contacts />} />
+                            <Route path="/contacts/:id" element={<ContactDetail />} />
+                            <Route path="/crm-companies" element={<CrmCompanies />} />
+                            <Route path="/crm-companies/:id" element={<CrmCompanyDetail />} />
+                            <Route path="/field-layout-editor" element={<FieldLayoutEditorPage />} />
+                            <Route path="/hr" element={<HR />} />
+                            <Route path="/naitive-pipeline" element={<NaitivePipeline />} />
+                            <Route path="/finserv" element={<FinServ />} />
+                            <Route path="/email-intelligence" element={<EmailIntelligencePage />} />
+                            <Route path="/operations" element={<Operations />} />
+                            <Route path="/settings" element={<Settings />} />
+                            <Route path="/account" element={<Account />} />
+                            <Route path="/lenders" element={<Lenders />} />
+                            <Route path="/lenders/config" element={<LenderDatabaseConfig />} />
+                            <Route path="/lenders/sync-history" element={<LenderSyncHistory />} />
+                            <Route path="/lenders/:lenderName/history" element={<LenderDealHistory />} />
+                            <Route path="/preferences" element={<Preferences />} />
+                            <Route path="/database" element={<Database />} />
+                            <Route path="/workflows" element={<Workflows />} />
+                            <Route path="/company" element={<Company />} />
+                            <Route path="/notifications" element={<Notifications />} />
+                            <Route path="/help" element={<Help />} />
+                            <Route path="/admin" element={<Admin />} />
+                            <Route path="/integrations/hubspot/health" element={<HubspotSyncHealth />} />
+                            <Route path="/wf" element={<WfHub />} />
+                            <Route path="/wf-deals/:id" element={<WfDealDetail />} />
+                            {/* Insights still needs its access guard; keep it
+                                inline on the element so the shell remains
+                                shared with sibling routes. */}
+                            <Route path="/insights" element={
+                              <InsightsAccessGuard><ErrorBoundary><Insights /></ErrorBoundary></InsightsAccessGuard>
+                            } />
+                          </Route>
                           <Route path="/metrics" element={
                             <Navigate to="/insights" replace />
-                          } />
-                          <Route path="/widget-editor" element={
-                            <ProtectedRoute><AppLayout><WidgetEditorPage /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/insights" element={
-                            <ProtectedRoute><InsightsAccessGuard><AppLayout><ErrorBoundary><Insights /></ErrorBoundary></AppLayout></InsightsAccessGuard></ProtectedRoute>
-                          } />
-                          <Route path="/sales-bd" element={
-                            <ProtectedRoute><AppLayout><SalesBD /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/contacts" element={
-                            <ProtectedRoute><AppLayout><Contacts /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/contacts/:id" element={
-                            <ProtectedRoute><AppLayout><ContactDetail /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/crm-companies" element={
-                            <ProtectedRoute><AppLayout><CrmCompanies /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/crm-companies/:id" element={
-                            <ProtectedRoute><AppLayout><CrmCompanyDetail /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/field-layout-editor" element={
-                            <ProtectedRoute><AppLayout><FieldLayoutEditorPage /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/hr" element={
-                            <ProtectedRoute><AppLayout><HR /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/naitive-pipeline" element={
-                             <ProtectedRoute><AppLayout><NaitivePipeline /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/finserv" element={
-                             <ProtectedRoute><AppLayout><FinServ /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/email-intelligence" element={
-                            <ProtectedRoute><AppLayout><EmailIntelligencePage /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/operations" element={
-                            <ProtectedRoute><AppLayout><Operations /></AppLayout></ProtectedRoute>
                           } />
                           {/* Standalone deal routes are deprecated — every
                               entry point now opens the shared overlay on
@@ -297,54 +314,12 @@ const App = () => (
                           <Route path="/deals/:id" element={
                             <ProtectedRoute><NavigateToDealOverlay /></ProtectedRoute>
                           } />
-                          <Route path="/settings" element={
-                            <ProtectedRoute><AppLayout><Settings /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/account" element={
-                            <ProtectedRoute><AppLayout><Account /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/lenders" element={
-                            <ProtectedRoute><AppLayout><Lenders /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/lenders/config" element={
-                            <ProtectedRoute><AppLayout><LenderDatabaseConfig /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/lenders/sync-history" element={
-                            <ProtectedRoute><AppLayout><LenderSyncHistory /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/lenders/:lenderName/history" element={
-                            <ProtectedRoute><AppLayout><LenderDealHistory /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/preferences" element={
-                            <ProtectedRoute><AppLayout><Preferences /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/database" element={
-                            <ProtectedRoute><AppLayout><Database /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/workflows" element={
-                            <ProtectedRoute><AppLayout><Workflows /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/company" element={
-                            <ProtectedRoute><AppLayout><Company /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/notifications" element={
-                            <ProtectedRoute><AppLayout><Notifications /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/help" element={
-                            <ProtectedRoute><AppLayout><Help /></AppLayout></ProtectedRoute>
-                          } />
                           <Route path="/accept-invite" element={<AcceptInvite />} />
                           <Route path="/migrate" element={
                             <ProtectedRoute><MigrationTool /></ProtectedRoute>
                           } />
-                          <Route path="/admin" element={
-                            <ProtectedRoute><AppLayout><Admin /></AppLayout></ProtectedRoute>
-                          } />
                           <Route path="/integrations" element={
                             <ProtectedRoute><Integrations /></ProtectedRoute>
-                          } />
-                          <Route path="/integrations/hubspot/health" element={
-                            <ProtectedRoute><AppLayout><HubspotSyncHealth /></AppLayout></ProtectedRoute>
                           } />
                           <Route path="/agents" element={
                             <ProtectedRoute><Agents /></ProtectedRoute>
@@ -357,12 +332,6 @@ const App = () => (
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
                           <Route path="/promo" element={<Promo />} />
-                          <Route path="/wf" element={
-                            <ProtectedRoute><AppLayout><WfHub /></AppLayout></ProtectedRoute>
-                          } />
-                          <Route path="/wf-deals/:id" element={
-                            <ProtectedRoute><AppLayout><WfDealDetail /></AppLayout></ProtectedRoute>
-                          } />
                           <Route path="/vdr/:dealId" element={
                             <ProtectedRoute><VirtualDataRoom /></ProtectedRoute>
                           } />
