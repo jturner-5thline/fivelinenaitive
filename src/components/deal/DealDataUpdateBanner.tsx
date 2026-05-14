@@ -45,15 +45,15 @@ export function DealDataUpdateBanner({ dealId }: Props) {
         supabase.from('deal_writeups').select('updated_at').eq('deal_id', dealId).maybeSingle(),
         supabase
           .from('deal_space_documents')
-          .select('updated_at')
+          .select('created_at')
           .eq('deal_id', dealId)
-          .is('deleted_at', null)
-          .order('updated_at', { ascending: false })
+          .order('created_at', { ascending: false })
           .limit(1),
         supabase
           .from('vdr_documents')
           .select('updated_at')
           .eq('deal_id', dealId)
+          .is('deleted_at', null)
           .order('updated_at', { ascending: false })
           .limit(1),
         supabase
@@ -72,7 +72,7 @@ export function DealDataUpdateBanner({ dealId }: Props) {
       };
       push(dealRow?.updated_at);
       push(writeup?.updated_at);
-      push(dsDocs?.[0]?.updated_at);
+      push((dsDocs?.[0] as any)?.created_at);
       push(vdrDocs?.[0]?.updated_at);
       push(financials?.[0]?.updated_at);
       setLatestUpdate(stamps.length ? Math.max(...stamps) : 0);
