@@ -1338,11 +1338,32 @@ CRITICAL RULES:
         open={isDraftDialogOpen}
         onOpenChange={setIsDraftDialogOpen}
         isGenerating={isDraftingEmail}
+        progress={draftProgress}
         drafts={emailDrafts}
         setDrafts={setEmailDrafts}
         activeIndex={activeDraftIndex}
         setActiveIndex={setActiveDraftIndex}
         onSend={sendDraftAtIndex}
+        onRegenerate={async (index) => {
+          const target = emailDrafts[index];
+          if (!target) return;
+          const lenderName = target.lenderName;
+          setEmailDrafts((prev) => prev.map((d, i) =>
+            i === index ? { ...d, status: 'sending', errorMessage: undefined } : d,
+          ));
+          try {
+            const profiles = await fetchLenderProfilesForDeal(dealId, [lenderName]);
+            const fresh = await generateOneDraftPersonalized(dealId, lenderName, profiles, buildDraftSubmissionPrompt);
+            const [enriched] = await enrichDraftsWithLenderContacts([fresh]);
+            setEmailDrafts((prev) => prev.map((d, i) => (i === index ? enriched : d)));
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : 'Draft regeneration failed';
+            setEmailDrafts((prev) => prev.map((d, i) =>
+              i === index ? { ...d, status: 'failed', errorMessage: msg } : d,
+            ));
+            toast({ title: 'Draft retry failed', description: msg, variant: 'destructive' });
+          }
+        }}
       />
 
       {/* Review & Exclude — gates the draft modal so the user can drop
