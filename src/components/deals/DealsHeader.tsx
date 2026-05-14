@@ -144,6 +144,20 @@ export function DealsHeader() {
     if (load) load().catch(() => {});
   }, []);
 
+  // When ANY header-launched overlay is open, hide the floating header
+  // chrome (pill bar + notification preview) so the overlay is the only
+  // active top-level interface. Overlays themselves remain mounted below.
+  const isHeaderOverlayOpen =
+    isDashboardOpen ||
+    isTasksOpen ||
+    isTasksListOpen ||
+    isActionQueueOpen ||
+    isCalendarOpen ||
+    isMailOpen ||
+    isDealRundownOpen ||
+    isBriefingOpen ||
+    isNikiBriefingOpen;
+
   // Render the fixed header into <body> via a portal. The parent <main>
   // sets a `backdrop-filter`, which makes it the containing block for any
   // descendant `position: fixed` element — so without portaling, the
