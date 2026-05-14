@@ -50,9 +50,12 @@ interface DealListRowProps {
 
 function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
-  const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
-  const showFlagIndicator = activeFlagCount > 0 || !!deal.isFlagged;
-  const displayFlagCount = Math.max(activeFlagCount, deal.isFlagged ? 1 : 0);
+  // See DealCard: active flag notes are the source of truth once loaded.
+  // Legacy `deal.isFlagged` is only a pre-load seed.
+  const [activeFlagCount, setActiveFlagCount] = useState<number | null>(null);
+  const effectiveFlagCount = activeFlagCount ?? (deal.isFlagged ? 1 : 0);
+  const showFlagIndicator = effectiveFlagCount > 0;
+  const displayFlagCount = effectiveFlagCount;
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
   const navigate = useNavigate();
   const { formatCurrencyValue, preferences } = usePreferences();
