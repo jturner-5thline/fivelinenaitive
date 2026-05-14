@@ -120,7 +120,7 @@ export function AppSidebar() {
         </div>
       </SidebarHeader>
 
-      <SidebarContent>
+      <SidebarContent className="overflow-y-auto min-h-0">
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
