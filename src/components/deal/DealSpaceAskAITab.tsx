@@ -1008,40 +1008,34 @@ CRITICAL RULES:
                   </p>
                 )}
                 <div className="space-y-2 w-full max-w-sm">
-                  <button
-                    onClick={handleDraftSubmission}
-                    disabled={isDraftingEmail}
-                    className="w-full text-left text-sm p-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-colors flex items-center gap-2.5 font-medium text-primary disabled:opacity-50"
-                  >
-                    {isDraftingEmail ? (
-                      <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
-                    ) : (
-                      <Mail className="h-4 w-4 flex-shrink-0" />
-                    )}
-                    {isDraftingEmail ? 'Drafting submission email…' : 'Draft Submission Email'}
-                  </button>
-                  {hasLenders && (
-                    <button
-                      onClick={openStatusReport}
-                      className="w-full text-left text-sm p-3 rounded-lg bg-primary/10 hover:bg-primary/20 border border-primary/20 transition-colors flex items-center gap-2.5 font-medium text-primary"
-                    >
-                      <FileBarChart className="h-4 w-4 flex-shrink-0" />
-                      Generate Status Report
-                    </button>
-                  )}
                   {suggestedQuestions.map((q, i) => (
                     <button
                       key={i}
+                      type="button"
+                      disabled={q.disabled}
                       onClick={() => {
                         if (q.action === 'status-report') {
                           openStatusReport();
+                        } else if (q.action === 'draft-submission') {
+                          void handleDraftSubmission();
                         } else {
                           runQuickPrompt(q.label);
                         }
                       }}
-                      className="w-full text-left text-sm p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
+                      className={cn(
+                        "w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 disabled:opacity-50",
+                        q.action === 'draft-submission' || q.action === 'status-report'
+                          ? "bg-primary/10 hover:bg-primary/20 border border-primary/20 font-medium text-primary"
+                          : "bg-muted/50 hover:bg-muted"
+                      )}
                     >
-                      {q.label}
+                      {q.action === 'draft-submission' && (
+                        isDraftingEmail
+                          ? <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
+                          : <Mail className="h-4 w-4 flex-shrink-0" />
+                      )}
+                      {q.action === 'status-report' && <FileBarChart className="h-4 w-4 flex-shrink-0" />}
+                      {q.action === 'draft-submission' && isDraftingEmail ? 'Drafting submission email…' : q.label}
                     </button>
                   ))}
                 </div>
@@ -1130,20 +1124,6 @@ CRITICAL RULES:
               </div>
             )}
           </ScrollArea>
-
-          {hasLenders && (
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={openStatusReport}
-                className="gap-1.5 border-primary/30 bg-primary/5 text-primary hover:bg-primary/10 hover:text-primary"
-              >
-                <FileBarChart className="h-3.5 w-3.5" />
-                Generate Status Report
-              </Button>
-            </div>
-          )}
 
           <div className="flex gap-2 items-end">
             <Textarea
