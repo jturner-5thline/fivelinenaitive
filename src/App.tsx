@@ -271,10 +271,10 @@ const App = () => (
                         <NewTaskViaNaitiveModal />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
-                        <Route path="/" element={<Homepage />} />
+                        <Route path="/" element={<RootRedirect />} />
                           <Route path="/home" element={<Index />} />
-                          <Route path="/login" element={<Auth />} />
-                          <Route path="/auth" element={<Auth />} />
+                          <Route path="/login" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
+                          <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/pending-approval" element={
                             <ProtectedRoute skipOnboarding skipApprovalCheck><PendingApproval /></ProtectedRoute>
                           } />
