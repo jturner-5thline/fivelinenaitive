@@ -226,21 +226,35 @@ export function NaitiveDealCard({ deal, children, disableLink, onDeleted }: { de
         </AlertDialogContent>
       </AlertDialog>
 
-      <AlertDialog open={confirmDeleteOpen} onOpenChange={(o) => { if (!working) setConfirmDeleteOpen(o); }}>
+      <AlertDialog open={confirmDeleteOpen} onOpenChange={(o) => { if (!working) { setConfirmDeleteOpen(o); if (!o) setDeleteConfirmText(''); } }}>
         <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 text-destructive" />
-              Are you sure?
+              Permanently delete deal?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete <span className="font-semibold text-foreground">{deal.company || 'this deal'}</span> and all associated lenders, notes, documents, and activity. This cannot be undone.
+              This permanently removes <span className="font-semibold text-foreground">{deal.company || 'this deal'}</span> and every related record — lenders, tasks, notes, emails, meetings, attachments, milestones, audit history, and all join-table references. It will be as if this deal never existed. <span className="text-destructive font-medium">This cannot be undone.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2 py-1">
+            <Label htmlFor={`confirm-delete-${deal.id}`} className="text-xs text-muted-foreground">
+              Type <span className="font-mono font-semibold text-foreground">DELETE</span> to confirm
+            </Label>
+            <Input
+              id={`confirm-delete-${deal.id}`}
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder="DELETE"
+              autoComplete="off"
+              disabled={working}
+              className="font-mono"
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={working}>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              disabled={working}
+              disabled={working || !canHardDelete}
               onClick={(e) => { e.preventDefault(); void handleDeleteForever(); }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
