@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { Settings2, LayoutDashboard, Calendar, Mail, Inbox, Briefcase, CheckSquare } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
@@ -18,6 +18,13 @@ import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DashboardModal } from '@/components/dashboard/DashboardModal';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
 import { TasksOverlay } from '@/components/tasks/TasksOverlay';
+import { DealsPageOverlay } from '@/components/deals/DealsPageOverlay';
+const FullCalendarView = lazy(() =>
+  import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }))
+);
+const InboxDialog = lazy(() =>
+  import('@/components/dashboard/InboxDialog').then((m) => ({ default: m.InboxDialog }))
+);
 import { Newspaper } from 'lucide-react';
 import {
   canSeeNikiBriefing,
@@ -41,6 +48,9 @@ export function DealsHeader() {
   const { pipelineId: naitivePipelineId, stages: naitiveStages, refetch: refetchNaitive } = useNaitivePipelineData();
   const [isDashboardOpen, setIsDashboardOpen] = useState(false);
   const [isTasksOpen, setIsTasksOpen] = useState(false);
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isMailOpen, setIsMailOpen] = useState(false);
+  const [isDealsOverlayOpen, setIsDealsOverlayOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
