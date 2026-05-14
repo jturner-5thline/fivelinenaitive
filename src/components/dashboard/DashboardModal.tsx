@@ -227,7 +227,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
             <TabsContent
               value="dashboard"
               forceMount
-              className="flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden"
+              className="db-tab-panel flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden bg-transparent"
             >
               <div className="db-r min-w-max">
             {/* KPI STRIP */}
@@ -405,7 +405,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
 
             <TabsContent
               value="analytics"
-              className="flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden"
+              className="db-tab-panel flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden bg-transparent"
             >
               <Suspense
                 fallback={
@@ -414,7 +414,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                   </div>
                 }
               >
-                <div className="min-w-max">
+                <div className="db-analytics-host min-w-max">
                   <AnalyticsTabContent />
                 </div>
               </Suspense>
