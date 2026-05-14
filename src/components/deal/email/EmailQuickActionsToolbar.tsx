@@ -7,6 +7,7 @@ import {
   CalendarClock,
   AlignLeft,
   Loader2,
+  ListChecks,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -14,10 +15,11 @@ import { CreateTaskInlineCard } from './CreateTaskInlineCard';
 import { SaveToDealCard } from './SaveToDealCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
+import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 
-type QuickActionKey = 'save_dr' | 'lender' | 'draft' | 'task' | 'meeting' | 'summarize';
+type QuickActionKey = 'save_dr' | 'lender' | 'draft' | 'task' | 'meeting' | 'summarize' | 'outstanding';
 
 interface ActionDef {
   key: QuickActionKey;
@@ -33,6 +35,7 @@ const ALL_ACTIONS: ActionDef[] = [
   { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-3 w-3" />, iconClass: 'text-primary' },
   { key: 'task', label: 'Create Task', icon: <ListPlus className="h-3 w-3" />, iconClass: 'text-sky-300' },
   { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-3 w-3" />, iconClass: 'text-violet-300' },
+  { key: 'outstanding', label: 'Add to Outstanding Items', icon: <ListChecks className="h-3 w-3" />, iconClass: 'text-fuchsia-300' },
   { key: 'summarize', label: 'Summarize this thread', icon: <AlignLeft className="h-3 w-3" />, iconClass: 'text-cyan-300' },
 ];
 
@@ -232,6 +235,15 @@ export function EmailQuickActionsToolbar({
           threadSubject={thread.subject}
           dealName={dealName || fallbackDealName || undefined}
           onInsert={(text) => onInsertDraft(text)}
+          onClose={() => setActive(null)}
+        />
+      )}
+      {active === 'outstanding' && (
+        <AddOutstandingItemsInlineCard
+          dealId={dealId || fallbackDealId}
+          dealName={dealName || fallbackDealName}
+          thread={thread}
+          preselectLenderName={likelyLenderName}
           onClose={() => setActive(null)}
         />
       )}
