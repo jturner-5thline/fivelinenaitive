@@ -436,7 +436,11 @@ const DASHBOARD_CSS = `
 .db-root .db-analytics-host .bg-background { background-color: transparent !important; }
 /* Top padding bumped to 24px so the KPI strip sits inside the Insights spacing
    scale (p-6) and clears the floating close (×) button. */
-.db-r { background: transparent; padding: 24px 20px 20px; color: hsl(var(--foreground)); font-family: system-ui, sans-serif; min-width: 860px; }
+.db-r { background: transparent; padding: 24px 20px 20px; color: hsl(var(--foreground)); font-family: system-ui, sans-serif; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.db-root, .db-root * { box-sizing: border-box; }
+.db-root img, .db-root svg, .db-root canvas, .db-root video { max-width: 100%; height: auto; }
+.db-root pre, .db-root code { white-space: pre-wrap; word-break: break-word; }
+.db-root .db-analytics-host { width: 100%; max-width: 100%; min-width: 0; }
 .db-ct { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 12px; }
 .db-up { color: hsl(var(--chart-2)); }
 .db-dn { color: hsl(var(--destructive)); }
