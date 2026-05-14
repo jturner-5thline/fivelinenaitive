@@ -366,19 +366,20 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
             <div className="p-5 space-y-4">
               <div>
                 <Label className="text-xs text-muted-foreground">Transcript</Label>
-                <div
-                  onDrop={onDrop}
-                  onDragOver={(e) => e.preventDefault()}
-                  className={cn(
-                    'mt-1 rounded-lg border-2 border-dashed border-border bg-muted/30 transition-colors',
-                    'hover:bg-muted/50',
-                  )}
-                >
-                  {transcriptFilename ? (
+                {/* Show the active transcript pill regardless of mode once
+                    something has been accepted. Keeps the existing visual
+                    affordance for "transcript loaded" intact. */}
+                {transcriptFilename ? (
+                  <div className="mt-1 rounded-lg border border-border bg-muted/30">
                     <div className="flex items-start gap-2 p-3">
                       <FileText className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
                       <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium truncate">{transcriptFilename}</div>
+                        <div className="text-sm font-medium truncate flex items-center gap-2">
+                          {transcriptFilename}
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0">
+                            {sourceType === 'pasted_text' ? 'Pasted' : 'Uploaded'}
+                          </Badge>
+                        </div>
                         <div className="text-[11px] text-muted-foreground">
                           {transcriptText.length.toLocaleString()} chars
                         </div>
@@ -393,7 +394,29 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
                         <X className="h-3.5 w-3.5" />
                       </Button>
                     </div>
-                  ) : (
+                  </div>
+                ) : (
+                  <Tabs value={intakeMode} onValueChange={(v) => setIntakeMode(v as 'upload' | 'paste')} className="mt-1">
+                    <TabsList className="grid grid-cols-2 h-8 w-full">
+                      <TabsTrigger value="upload" className="text-xs gap-1.5">
+                        <Upload className="h-3.5 w-3.5" />
+                        Upload file
+                      </TabsTrigger>
+                      <TabsTrigger value="paste" className="text-xs gap-1.5">
+                        <ClipboardPaste className="h-3.5 w-3.5" />
+                        Paste text
+                      </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="upload" className="mt-2">
+                      <div
+                  onDrop={onDrop}
+                  onDragOver={(e) => e.preventDefault()}
+                  className={cn(
+                    'rounded-lg border-2 border-dashed border-border bg-muted/30 transition-colors',
+                    'hover:bg-muted/50',
+                  )}
+                >
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
@@ -409,7 +432,6 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
                         {ACCEPTED_EXTS.join(', ')}
                       </div>
                     </button>
-                  )}
                   <input
                     ref={fileInputRef}
                     type="file"
@@ -422,6 +444,53 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
                     }}
                   />
                 </div>
+                    </TabsContent>
+
+                    <TabsContent value="paste" className="mt-2 space-y-2">
+                      <Label className="text-xs text-muted-foreground">Paste transcript text</Label>
+                      <Textarea
+                        value={pasteDraft}
+                        onChange={(e) => {
+                          setPasteDraft(e.target.value);
+                          if (pasteError) setPasteError(null);
+                        }}
+                        placeholder="Paste Zoom, Teams, meeting, call, or interview transcript text here."
+                        className="min-h-[180px] text-xs font-mono resize-y"
+                        aria-invalid={!!pasteError}
+                      />
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                        <span>Upload a file or paste transcript text. Both options use the same processing flow.</span>
+                        <span className={cn(pasteDraft.length > PASTE_MAX_CHARS && 'text-destructive')}>
+                          {pasteDraft.length.toLocaleString()} chars
+                        </span>
+                      </div>
+                      {pasteError && (
+                        <p className="text-[11px] text-destructive" role="alert">{pasteError}</p>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleUsePastedText}
+                          disabled={!pasteDraft.trim() || pasteDraft.length > PASTE_MAX_CHARS}
+                          className="gap-1"
+                        >
+                          <Check className="h-3.5 w-3.5" />
+                          Use transcript
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => { setPasteDraft(''); setPasteError(null); }}
+                          disabled={!pasteDraft}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                )}
                 <p className="text-[11px] text-muted-foreground mt-1">
                   Tip: the typical filename pattern is <span className="font-mono">[COMPANY] &amp; [LENDER] | Intro &amp; Review</span> — names auto-fill when matched.
                 </p>
