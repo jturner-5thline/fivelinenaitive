@@ -553,13 +553,22 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
       >
         <SortableContext items={widgets.map(w => w.id)} strategy={rectSortingStrategy}>
           {/*
-            Responsive grid for the Active Pipeline summary widgets:
-              ≥ 1280px (xl)  → 6 up (single row)
-              ≥ 900px (md+)  → 3 up
-              < 900px        → 2 up
+            Responsive grid for the Active Pipeline summary widgets.
+
+            The column count is intentionally double the deal-tile grid
+            below (which uses `grid gap-4 sm:grid-cols-2 lg:grid-cols-3`)
+            and the gap matches exactly. This makes two widgets + one gap
+            equal one deal-tile width at every breakpoint, so the KPI row
+            and the deal board stay perfectly aligned as the sidebar /
+            viewport width changes.
+
+              < 640px (base) → 2 up   (deal tiles: 1 up)
+              ≥ 640px (sm)   → 4 up   (deal tiles: 2 up)
+              ≥ 1024px (lg)  → 6 up   (deal tiles: 3 up)
+
             items-stretch keeps every card the same height across the row.
           */}
-          <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-3 items-stretch">
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4 items-stretch">
             {widgets.map((widget) => (
               <WidgetCard
                 key={widget.id}
