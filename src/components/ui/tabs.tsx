@@ -50,7 +50,7 @@ const TabsList = React.forwardRef<
     >
       {indicator && (
         <span
-          className="absolute top-0.5 bottom-0.5 rounded-md z-0 pointer-events-none dark:bg-[rgba(126,184,247,0.1)] dark:border dark:border-[rgba(126,184,247,0.25)] dark:shadow-[inset_0_1px_1px_rgba(126,184,247,0.1)] bg-background shadow-sm"
+          className="absolute top-0.5 bottom-0.5 rounded-md z-0 pointer-events-none bg-background dark:bg-white/[0.06] border border-border/60 dark:border-white/10 shadow-none"
           style={{
             left: indicator.left,
             width: indicator.width,
@@ -71,8 +71,8 @@ const TabsTrigger = React.forwardRef<
   <TabsPrimitive.Trigger
     ref={ref}
     className={cn(
-      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-4 py-2 text-sm font-medium ring-offset-background transition-all duration-200 hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-full",
-      "data-[state=active]:text-primary data-[state=active]:font-semibold data-[state=active]:shadow-none",
+      "relative z-10 inline-flex items-center justify-center whitespace-nowrap rounded-md px-3 py-1 leading-none text-sm font-medium ring-offset-background transition-colors duration-200 hover:text-foreground/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-full",
+      "data-[state=active]:text-foreground data-[state=active]:font-semibold data-[state=active]:shadow-none",
       className,
     )}
     {...props}
