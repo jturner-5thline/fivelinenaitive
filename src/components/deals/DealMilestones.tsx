@@ -463,6 +463,7 @@ function SortableMilestoneItem({
   onUpdate,
   onDelete,
 }: SortableMilestoneItemProps) {
+  const [isEditDateOpen, setIsEditDateOpen] = useState(false);
   const {
     attributes,
     listeners,
@@ -505,17 +506,34 @@ function SortableMilestoneItem({
             placeholder="Milestone title"
             autoFocus
           />
-          <Popover>
+          <Popover open={isEditDateOpen} onOpenChange={setIsEditDateOpen} modal>
             <PopoverTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 text-xs">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditDateOpen((v) => !v);
+                }}
+              >
                 {editDate ? format(editDate, 'MMM d') : 'Date'}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="end">
+            <PopoverContent
+              className="w-auto p-0 z-[60] pointer-events-auto"
+              align="end"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+            >
               <Calendar
                 mode="single"
                 selected={editDate}
-                onSelect={onEditDateChange}
+                onSelect={(d) => {
+                  onEditDateChange(d);
+                  if (d) setIsEditDateOpen(false);
+                }}
                 className={cn("p-3 pointer-events-auto")}
               />
               {editDate && (
