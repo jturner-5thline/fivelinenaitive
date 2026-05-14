@@ -187,7 +187,10 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
 
   const __location = useLocation();
   const [, __setSearchParams] = useSearchParams();
-  const __isOverlayRoute = __location.pathname === '/deals' || __location.pathname.startsWith('/naitive-pipeline');
+  const __isOverlayRoute =
+    __location.pathname === '/deals' ||
+    __location.pathname.startsWith('/naitive-pipeline') ||
+    __location.pathname.startsWith('/finserv');
   const __handleCardClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     if (isEditingStatus) { e.preventDefault(); return; }
     // Allow new-tab / open-in-new-window via modifier keys.
