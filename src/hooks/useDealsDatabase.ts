@@ -902,6 +902,66 @@ export function useDealsDatabase() {
         }
       }
 
+      // Auto-create stage-triggered Default Milestones when a deal enters a new stage.
+      // Generic mechanism — any company can configure default_milestones with
+      // timing_type='from_stage_entry' and a trigger_stage. Dedupe by case-insensitive title
+      // within the deal so re-entering a stage does not create duplicates.
+      if (updates.stage && previousDeal && updates.stage !== previousDeal.stage) {
+        try {
+          const { data: membership } = await supabase
+            .from('company_members')
+            .select('company_id')
+            .eq('user_id', userId!)
+            .maybeSingle();
+          const companyId = membership?.company_id;
+          if (companyId) {
+            const { data: stageDefaults } = await supabase
+              .from('default_milestones' as any)
+              .select('title, days_from_stage')
+              .eq('company_id', companyId)
+              .eq('timing_type', 'from_stage_entry')
+              .eq('trigger_stage', updates.stage);
+
+            const stageRows = (stageDefaults as any[]) || [];
+            if (stageRows.length > 0) {
+              const { data: existingMilestones } = await supabase
+                .from('deal_milestones')
+                .select('title, position')
+                .eq('deal_id', dealId);
+              const existingTitles = new Set(
+                (existingMilestones || []).map((m: any) => String(m.title || '').toLowerCase().trim())
+              );
+              let nextPosition = (existingMilestones || []).length > 0
+                ? Math.max(...(existingMilestones || []).map((m: any) => m.position ?? 0)) + 1
+                : 0;
+              const now = new Date();
+              const toInsert = stageRows
+                .filter((row) => !existingTitles.has(String(row.title || '').toLowerCase().trim()))
+                .map((row) => {
+                  const days = row.days_from_stage;
+                  const dueDate = typeof days === 'number' && days >= 0
+                    ? new Date(now.getTime() + days * 24 * 60 * 60 * 1000).toISOString()
+                    : null;
+                  return {
+                    deal_id: dealId,
+                    user_id: userId,
+                    title: row.title,
+                    due_date: dueDate,
+                    completed: false,
+                    completed_at: null,
+                    position: nextPosition++,
+                  };
+                });
+              if (toInsert.length > 0) {
+                await supabase.from('deal_milestones').insert(toInsert);
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error auto-creating stage-triggered milestones:', err);
+        }
+      }
+
       // Auto-dismiss notifications when deal moves to archived or in_development
       if (updates.status && ['archived', 'in_development'].includes(updates.status)) {
         // Mark all activity_logs-based notifications as seen by updating localStorage
