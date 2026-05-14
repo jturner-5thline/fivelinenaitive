@@ -35,7 +35,10 @@ interface Props {
  * sidebar too. Keyboard ←/→ still navigates between deals; Esc closes.
  */
 function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigate, onStageChange }: Props) {
-  const [slideDir, setSlideDir] = useState<'left' | 'right' | null>(null);
+  // Carousel-style nav direction. 'next' = new deal slides in from the
+  // right, 'prev' = from the left. Cleared after the slide settles.
+  const [navDir, setNavDir] = useState<'prev' | 'next' | null>(null);
+  const navDirRef = useRef<'prev' | 'next' | null>(null);
   const [reduceMotion, setReduceMotion] = useState(false);
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeBtnRef = useRef<HTMLButtonElement | null>(null);
@@ -162,6 +165,17 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       closingDealIdRef.current = null;
     }
     if (lastAnimatedDealId.current === deal.id) return;
+    // Carousel navigation between sibling deals: skip the expand-from-tile
+    // shell animation entirely. The shell stays visually pinned and only
+    // the inner content wrapper slides horizontally (handled by the
+    // key + animation style on the body wrapper below).
+    if (navDirRef.current && lastAnimatedDealId.current) {
+      lastAnimatedDealId.current = deal.id;
+      setOriginTransform(null);
+      setOriginBorderRadius(null);
+      setContentVisible(true);
+      return;
+    }
     lastAnimatedDealId.current = deal.id;
 
     if (reduceMotion) {
@@ -233,15 +247,23 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
 
   const goPrev = () => {
     if (!prevDeal) return;
-    setSlideDir('right');
+    navDirRef.current = 'prev';
+    setNavDir('prev');
     onNavigate(prevDeal);
-    window.setTimeout(() => setSlideDir(null), 200);
+    window.setTimeout(() => {
+      navDirRef.current = null;
+      setNavDir(null);
+    }, 360);
   };
   const goNext = () => {
     if (!nextDeal) return;
-    setSlideDir('left');
+    navDirRef.current = 'next';
+    setNavDir('next');
     onNavigate(nextDeal);
-    window.setTimeout(() => setSlideDir(null), 200);
+    window.setTimeout(() => {
+      navDirRef.current = null;
+      setNavDir(null);
+    }, 360);
   };
 
   // Esc + arrow key navigation. Skip when focus is in an editable element
@@ -265,7 +287,15 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
 
   if (!deal) return null;
 
-  const slideClass = reduceMotion || !slideDir ? '' : 'animate-fade-in';
+  // When navigating between sibling deals, slide the inner content
+  // horizontally based on direction. Keyed by deal.id so the wrapper
+  // remounts and the CSS animation re-fires every navigation.
+  const carouselAnimation =
+    reduceMotion || !navDir
+      ? undefined
+      : navDir === 'next'
+        ? 'slideInFromRight 320ms cubic-bezier(0.16, 1, 0.3, 1) both'
+        : 'slideInFromLeft 320ms cubic-bezier(0.16, 1, 0.3, 1) both';
 
   const overlay = (
     <div
@@ -359,7 +389,6 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         <div
           className={cn(
             'deal-popup-scroll relative flex-1 min-h-0 w-full bg-transparent overflow-y-auto overflow-x-hidden',
-            slideClass,
           )}
           style={{
             opacity: reduceMotion ? 1 : contentVisible ? 1 : 0,
@@ -369,6 +398,11 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
               : 'opacity 220ms ease-out 60ms, transform 260ms cubic-bezier(0.22, 1, 0.36, 1) 60ms',
           }}
         >
+          <div
+            key={`carousel-${deal.id}`}
+            className="w-full h-full"
+            style={{ animation: carouselAnimation, willChange: carouselAnimation ? 'transform, opacity' : undefined }}
+          >
           <Suspense fallback={<DealOverlayHydrating />}>
             {/* Defer mounting DealDetail until the shell expansion has
                 finished. Mounting it during the transform animation
@@ -404,6 +438,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             </>
             )}
           </Suspense>
+          </div>
         </div>
       </div>
     </div>
