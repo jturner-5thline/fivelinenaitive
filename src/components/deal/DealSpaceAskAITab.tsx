@@ -360,6 +360,15 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  // Progress for the per-lender draft generation pipeline. `null` when no
+  // batch is in flight. Surfaces a "Generating drafts for X of Y lenders…"
+  // message + failure counter in the modal so the user is never staring at
+  // an indefinite spinner.
+  const [draftProgress, setDraftProgress] = useState<{
+    completed: number;
+    total: number;
+    failed: number;
+  } | null>(null);
   const [isPostCallModalOpen, setIsPostCallModalOpen] = useState(false);
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
   // ── Pre-flight review step: lets the user exclude specific lenders
