@@ -204,9 +204,32 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
         overlayClassName="bg-black/80"
         aria-label="Deal Pipeline"
       >
-        <div className="db-root" style={{ overflow: 'auto', height: '100%', borderRadius: 'inherit' }}>
+        <div className="db-root flex flex-col" style={{ height: '100%', borderRadius: 'inherit' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
-          <div className="db-r">
+          <Tabs
+            value={activeTab}
+            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics')}
+            className="flex flex-col flex-1 min-h-0"
+          >
+            <div className="px-5 pt-5 pb-2 shrink-0">
+              <TabsList>
+                <TabsTrigger value="dashboard" className="gap-1.5">
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Dashboard
+                </TabsTrigger>
+                <TabsTrigger value="analytics" className="gap-1.5">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Analytics
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent
+              value="dashboard"
+              forceMount
+              className="flex-1 min-h-0 mt-0 overflow-auto data-[state=inactive]:hidden"
+            >
+              <div className="db-r">
             {/* KPI STRIP */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
               {[
@@ -377,7 +400,24 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
               </div>
               <div className="db-cw" style={{ height: 200 }}><canvas ref={barRef} /></div>
             </div>
-          </div>
+              </div>
+            </TabsContent>
+
+            <TabsContent
+              value="analytics"
+              className="flex-1 min-h-0 mt-0 overflow-auto data-[state=inactive]:hidden"
+            >
+              <Suspense
+                fallback={
+                  <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                    Loading Analytics…
+                  </div>
+                }
+              >
+                <AnalyticsTabContent />
+              </Suspense>
+            </TabsContent>
+          </Tabs>
         </div>
       </DialogContent>
     </Dialog>
