@@ -1,7 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { CompanyProfileSettings } from '@/components/company/CompanyProfileSettings';

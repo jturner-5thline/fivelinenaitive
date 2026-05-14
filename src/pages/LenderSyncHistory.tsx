@@ -3,7 +3,6 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, History, UserPlus, RefreshCw, AlertTriangle, Check, X, GitMerge, Search, Filter, ChevronDown, ChevronRight } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';

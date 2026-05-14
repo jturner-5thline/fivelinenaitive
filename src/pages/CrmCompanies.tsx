@@ -6,7 +6,6 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { CrmCompaniesTable } from '@/components/crm-companies/CrmCompaniesTable';
 import { CreateCrmCompanyModal } from '@/components/crm-companies/CreateCrmCompanyModal';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { TablePagination } from '@/components/shared/TablePagination';
 import { Skeleton } from '@/components/ui/skeleton';
 import { supabase } from '@/integrations/supabase/client';

@@ -3,7 +3,6 @@ import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Palette, Bell, Globe, DollarSign, Clock, Users, ChevronDown, Search, X } from 'lucide-react';
 
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';

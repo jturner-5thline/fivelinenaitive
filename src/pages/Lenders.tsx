@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
 import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX } from 'lucide-react';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
