@@ -7986,6 +7986,7 @@ export type Database = {
           created_at: string
           id: string
           note_id: string
+          parent_comment_id: string | null
           quote_text: string | null
           resolved: boolean
           resolved_by: string | null
@@ -7997,6 +7998,7 @@ export type Database = {
           created_at?: string
           id?: string
           note_id: string
+          parent_comment_id?: string | null
           quote_text?: string | null
           resolved?: boolean
           resolved_by?: string | null
@@ -8008,6 +8010,7 @@ export type Database = {
           created_at?: string
           id?: string
           note_id?: string
+          parent_comment_id?: string | null
           quote_text?: string | null
           resolved?: boolean
           resolved_by?: string | null
@@ -8020,6 +8023,13 @@ export type Database = {
             columns: ["note_id"]
             isOneToOne: false
             referencedRelation: "deal_space_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_space_note_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "deal_space_note_comments"
             referencedColumns: ["id"]
           },
         ]
