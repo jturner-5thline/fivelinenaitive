@@ -1191,7 +1191,7 @@ function FinancialTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (
 }
 
 // ── Tab: Pipeline & Clients ────────────────────────────────────
-function PipelineTab({
+export function PipelineTab({
   enabled,
   onNavigate,
   targetDealOwnerName,
@@ -1771,7 +1771,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} briefingType={briefingType} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
-                  {activeTab === 'end_of_day' && <EndOfDayTab enabled={open} />}
+                  {activeTab === 'end_of_day' && (
+                    <EndOfDayTab
+                      enabled={open}
+                      onNavigate={handleNavigate}
+                      targetAssigneeName={targetAssigneeName}
+                      briefingType={briefingType}
+                    />
+                  )}
                 </div>
               </ScrollArea>
             </div>
