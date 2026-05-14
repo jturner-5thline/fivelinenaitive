@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3 } from 'lucide-react';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
@@ -80,6 +80,7 @@ import { useLenderSyncRequests } from '@/hooks/useLenderSyncRequests';
 import { useLenderSyncRealtimeNotifications } from '@/hooks/useLenderSyncRealtimeNotifications';
 import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequestsPanel';
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
+import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -232,6 +233,7 @@ export default function Lenders() {
     return (saved === 'grid' || saved === 'list' || saved === 'spreadsheet') ? saved : 'list';
   });
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isDuplicatesDialogOpen, setIsDuplicatesDialogOpen] = useState(false);
   const [isSideBySideMergeOpen, setIsSideBySideMergeOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -1218,6 +1220,15 @@ export default function Lenders() {
                   Configuration
                 </Button>
                 <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1"
+                  onClick={() => setIsAnalyticsOpen(true)}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Analytics
+                </Button>
+                <Button
                   onClick={openAddDialog}
                   size="sm"
                   className="gap-1 bg-white/[0.08] hover:bg-white/[0.12] border border-white/15 hover:border-white/25 text-foreground shadow-none transition-colors"
@@ -1871,6 +1882,12 @@ export default function Lenders() {
         open={isImportDialogOpen}
         onOpenChange={setIsImportDialogOpen}
         onImport={importLenders}
+      />
+
+      <LenderAnalyticsDialog
+        open={isAnalyticsOpen}
+        onOpenChange={setIsAnalyticsOpen}
+        lenders={masterLenders}
       />
 
       <DuplicateLendersDialog
