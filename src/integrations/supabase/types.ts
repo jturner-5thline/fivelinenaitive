@@ -8024,6 +8024,39 @@ export type Database = {
           },
         ]
       }
+      deal_space_note_templates: {
+        Row: {
+          company_id: string | null
+          content: string
+          created_at: string
+          created_by: string
+          icon: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          content?: string
+          created_at?: string
+          created_by: string
+          icon?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          content?: string
+          created_at?: string
+          created_by?: string
+          icon?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_space_note_versions: {
         Row: {
           content: string
