@@ -191,7 +191,12 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   return (
     <>
       <Card className="flex flex-col h-[600px]">
-        <CardHeader className="pb-3">
+        <CardHeader
+          className={cn(
+            'pb-2 rounded-t-xl transition-colors',
+            isDragging && 'bg-primary/5'
+          )}
+        >
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="text-lg flex items-center gap-2">
@@ -208,10 +213,48 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
                   {documents.length} file{documents.length !== 1 ? 's' : ''}
                 </Badge>
               )}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFileUpload(e.target.files)}
+                accept=".pdf,.doc,.docx,.txt,.md,.rtf,.csv,.xlsx,.xls,.pptx"
+              />
+              <Button
+                variant="liquid-glass"
+                size="sm"
+                className="gap-2"
+                disabled={isUploading}
+                onClick={() => fileInputRef.current?.click()}
+              >
+                {isUploading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Upload className="h-4 w-4" />
+                )}
+                Upload
+              </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 flex flex-col overflow-hidden">
+        <CardContent
+          className={cn(
+            'flex-1 flex flex-col overflow-hidden relative rounded-b-xl transition-colors',
+            isDragging && 'bg-primary/5 ring-2 ring-primary/40 ring-inset'
+          )}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+        >
+          {isDragging && (
+            <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center rounded-b-xl bg-primary/10 border-2 border-dashed border-primary/50">
+              <div className="flex flex-col items-center gap-2 text-primary">
+                <Upload className="h-8 w-8" />
+                <p className="text-sm font-medium">Drop files to upload</p>
+              </div>
+            </div>
+          )}
           {/* Summary Section */}
           {showSummary && summary && (
             <Collapsible open={showSummary} onOpenChange={setShowSummary} className="mb-4">
@@ -245,49 +288,6 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
               </div>
             </Collapsible>
           )}
-
-          {/* Upload Area */}
-          <div
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            className={cn(
-              "border-2 border-dashed rounded-lg p-6 text-center transition-colors mb-4",
-              isDragging ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50",
-              isUploading && "opacity-50 pointer-events-none"
-            )}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => handleFileUpload(e.target.files)}
-              accept=".pdf,.doc,.docx,.txt,.md,.rtf,.csv,.xlsx,.xls,.pptx"
-            />
-            {isUploading ? (
-              <div className="flex flex-col items-center gap-2">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground">Uploading...</p>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center gap-2">
-                <Upload className="h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Drag & drop files here, or{' '}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="text-primary hover:underline"
-                  >
-                    browse
-                  </button>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  PDF, Word, Text, Excel, PowerPoint
-                </p>
-              </div>
-            )}
-          </div>
 
           {/* Documents List */}
           <div className="flex-1 min-h-0">
