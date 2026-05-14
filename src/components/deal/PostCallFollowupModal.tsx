@@ -149,6 +149,11 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
 
   const [isGenerating, setIsGenerating] = useState(false);
   const [drafts, setDrafts] = useState<DraftResponse | null>(null);
+  const [contactEmail, setContactEmail] = useState('');
+  const [composer, setComposer] = useState<{
+    initial: DraftAndSendInitial;
+    label: string;
+  } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -160,7 +165,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
       try {
         const { data: deal } = await supabase
           .from('deals')
-          .select('company, manager, deal_owner, contact')
+          .select('company, manager, deal_owner, contact, contactEmail')
           .eq('id', dealId)
           .maybeSingle();
         if (cancelled || !deal) return;
@@ -171,6 +176,8 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
           const first = String(deal.contact).trim().split(/\s+/)[0];
           if (first) setClientFirst(first);
         }
+        const ce = (deal as any).contactEmail as string | undefined;
+        if (ce) setContactEmail(ce);
       } catch {
         // best-effort prefill only
       }
@@ -448,12 +455,28 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
                   recipient={`To: ${clientFirst || 'Client'}${companyName ? ` · ${companyName}` : ''}`}
                   draft={drafts.client_email}
                   onChange={(next) => setDrafts({ ...drafts, client_email: next })}
+                  onDraftAndSend={() => setComposer({
+                    label: 'Client follow-up',
+                    initial: {
+                      to: contactEmail ? [contactEmail] : [],
+                      subject: drafts.client_email.subject,
+                      body: drafts.client_email.body,
+                    },
+                  })}
                 />
                 <EmailPane
                   title="Lender Email"
                   recipient={`To: ${lenderFirst || 'Lender'}${lenderName ? ` · ${lenderName}` : ''}`}
                   draft={drafts.lender_email}
                   onChange={(next) => setDrafts({ ...drafts, lender_email: next })}
+                  onDraftAndSend={() => setComposer({
+                    label: 'Lender follow-up',
+                    initial: {
+                      to: [],
+                      subject: drafts.lender_email.subject,
+                      body: drafts.lender_email.body,
+                    },
+                  })}
                 />
               </div>
             ) : (
@@ -468,6 +491,12 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
           </div>
         </div>
       </DialogContent>
+      <DraftAndSendDialog
+        open={!!composer}
+        onOpenChange={(v) => { if (!v) setComposer(null); }}
+        initial={composer?.initial ?? null}
+        contextLabel={composer?.label}
+      />
     </Dialog>
   );
 }
