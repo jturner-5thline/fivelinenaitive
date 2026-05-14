@@ -168,6 +168,39 @@ function PageLoader() {
   );
 }
 
+/**
+ * In-shell skeleton shown while the next page's lazy chunk is downloading.
+ * Keeps the sidebar + header mounted (they live in <AppLayout/>) and only
+ * paints a light placeholder inside the main content area — navigation
+ * therefore feels instant even on slow networks.
+ */
+function RouteSkeleton() {
+  return (
+    <div className="flex-1 flex items-center justify-center p-8">
+      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground/70" />
+    </div>
+  );
+}
+
+/**
+ * Layout route element. Mounts <AppLayout/> once, then renders the matched
+ * nested route via React Router's <Outlet/>. Combined with an inner
+ * <Suspense/> boundary, this prevents the sidebar, top nav, providers, and
+ * background from unmounting/remounting on every navigation — the dominant
+ * cause of slow page transitions.
+ */
+function ProtectedShell() {
+  return (
+    <ProtectedRoute>
+      <AppLayout>
+        <Suspense fallback={<RouteSkeleton />}>
+          <Outlet />
+        </Suspense>
+      </AppLayout>
+    </ProtectedRoute>
+  );
+}
+
 const App = () => (
   <HelmetProvider>
     <QueryClientProvider client={queryClient}>
