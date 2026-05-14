@@ -195,8 +195,8 @@ export function DealsHeader() {
                 : []),
               ...(canSeeBriefingHeaderItems
                 ? [
-                    { label: 'Daily Briefing', Icon: Newspaper, isOpen: isBriefingOpen, onClick: () => setIsBriefingOpen(true) },
-                    { label: "Niki's Daily Briefing", Icon: Sparkles, isOpen: isNikiBriefingOpen, onClick: () => setIsNikiBriefingOpen(true) },
+                    { label: 'Daily Rundown', Icon: Newspaper, isOpen: isBriefingOpen, onClick: () => setIsBriefingOpen(true) },
+                    { label: "Niki's Daily Rundown", Icon: Sparkles, isOpen: isNikiBriefingOpen, onClick: () => setIsNikiBriefingOpen(true) },
                   ]
                 : []),
             ].map(({ label, Icon, isOpen, onClick }) => (
@@ -296,7 +296,7 @@ export function DealsHeader() {
         <DailyBriefingModal
           open={isNikiBriefingOpen}
           onOpenChange={setIsNikiBriefingOpen}
-          title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+          title={isNikiViewingHerself ? 'My Daily Rundown' : "Niki's Daily Rundown"}
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}

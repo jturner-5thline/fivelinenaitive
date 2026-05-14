@@ -52,7 +52,7 @@ if (typeof performance !== 'undefined') {
 
 /**
  * Shared interaction styles for the dashboard widget tiles
- * (Calendar, Email, New Deal, Daily Briefing, Niki's Daily Briefing).
+ * (Calendar, Email, New Deal, Daily Rundown, Niki's Daily Rundown).
  *
  * Hover and focus only adjust the translucent glass background and border.
  * No glow, no drop shadow, no scale — we explicitly override the default
@@ -540,7 +540,7 @@ export default function Dashboard() {
     if (tab === 'news-feed') setDashboardTab('news-feed');
   }, [searchParams]);
 
-  // Auto-open Daily Briefing from email link (?briefing=true)
+  // Auto-open Daily Rundown from email link (?briefing=true)
   useEffect(() => {
     if (isJTurner && searchParams.get('briefing') === 'true') {
       // Open via the shared carousel so arrow nav works from the link.
@@ -801,7 +801,7 @@ export default function Dashboard() {
           >
           {(() => {
             // Quick Prompts is now a tile too (4 base tiles).
-            // Niki's Daily Briefing renders in the top row for every user
+            // Niki's Daily Rundown renders in the top row for every user
             // who is allowed to see it (jturner included). For jturner the
             // tiles are also reordered via Tailwind `order-*` classes.
             const nikiInTopRow = canSeeNiki;
@@ -876,7 +876,7 @@ export default function Dashboard() {
             />
             {isJTurner && (
               <QuickActionTile
-                label="Daily Briefing"
+                label="Daily Rundown"
                 icon={Newspaper}
                 category="reports"
                 className="order-5"
@@ -890,7 +890,7 @@ export default function Dashboard() {
             )}
             {nikiInTopRow && (
               <QuickActionTile
-                label={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+                label={isNikiViewingHerself ? 'My Daily Rundown' : "Niki's Daily Rundown"}
                 icon={Newspaper}
                 category="reports"
                 className={cn(isJTurner && 'order-6')}
@@ -903,7 +903,7 @@ export default function Dashboard() {
               />
             )}
             {/* Deals tile — opens the AI-powered Deals insights carousel.
-                Placed immediately to the right of Niki's Daily Briefing. */}
+                Placed immediately to the right of Niki's Daily Rundown. */}
             <QuickActionTile
               label="Deals"
               icon={Handshake}
@@ -1110,7 +1110,7 @@ export default function Dashboard() {
           <DailyBriefingModal
             open
             onOpenChange={handleCarouselDialogOpenChange}
-            title={isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing"}
+            title={isNikiViewingHerself ? 'My Daily Rundown' : "Niki's Daily Rundown"}
             targetUserId={NIKI_USER_ID}
             targetAssigneeName={NIKI_ASSIGNEE_NAME}
             excludeTabs={['financial']}

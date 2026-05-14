@@ -36,13 +36,13 @@ import type { EmailThread, MockEmail } from '@/components/deal/email/mockEmailDa
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from '@/components/deal/email/EmailAttachmentsStrip';
 // Reuse the exact same right-click menu the main Email pop-up uses so
 // behavior, actions, ordering, and label wiring stay identical between
-// Daily Briefing email rows and the Email widget pop-up.
+// Daily Rundown email rows and the Email widget pop-up.
 import { EmailContextMenu } from '@/components/deal/email/EmailContextMenu';
 import { CreateTaskFromEmailDialog, type CreateTaskFromEmailSource } from '@/components/tasks/CreateTaskFromEmailDialog';
 import { useGmail } from '@/hooks/useGmail';
 import { toast } from 'sonner';
 // Code-split: keeps the Memo view (and @tanstack/react-virtual) out of the
-// initial Daily Briefing bundle. Only loaded when the user actually opens the
+// initial Daily Rundown bundle. Only loaded when the user actually opens the
 // Pipeline & Clients tab in Memo mode.
 const PipelineMemoView = lazy(() =>
   import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
@@ -58,7 +58,7 @@ interface DailyBriefingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /**
-   * Title shown in the modal header. Defaults to "Daily Briefing".
+   * Title shown in the modal header. Defaults to "Daily Rundown".
    */
   title?: string;
   /**
@@ -88,8 +88,8 @@ interface DailyBriefingModalProps {
   /**
    * Identifies which briefing surface this modal represents. Used to scope
    * per-day dismissal state so dismissing an item in one briefing surface
-   * (e.g. the regular Daily Briefing) does NOT also hide it in another
-   * surface (e.g. Niki's Daily Briefing). Both still read the same live
+   * (e.g. the regular Daily Rundown) does NOT also hide it in another
+   * surface (e.g. Niki's Daily Rundown). Both still read the same live
    * underlying deal activity. Defaults to 'daily_briefing'.
    */
   briefingType?: string;
@@ -1494,7 +1494,7 @@ const ALL_TABS = [
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
-export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Briefing', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
+export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
   const TABS = useMemo(

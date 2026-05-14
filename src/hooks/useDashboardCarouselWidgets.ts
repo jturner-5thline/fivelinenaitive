@@ -26,11 +26,11 @@ export function useDashboardCarouselWidgets(): CarouselWidgetEntry[] {
       { id: 'email', label: 'Email' },
       { id: 'new-deal', label: 'New Deal' },
     ];
-    if (isJTurner) entries.push({ id: 'daily-briefing', label: 'Daily Briefing' });
+    if (isJTurner) entries.push({ id: 'daily-briefing', label: 'Daily Rundown' });
     if (canSeeNiki) {
       entries.push({
         id: 'niki-briefing',
-        label: isNikiViewingHerself ? 'My Daily Briefing' : "Niki's Daily Briefing",
+        label: isNikiViewingHerself ? 'My Daily Rundown' : "Niki's Daily Rundown",
       });
     }
     if (is5thLine) {
