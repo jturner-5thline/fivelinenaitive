@@ -25,8 +25,6 @@ const loadDashboard = () =>
   import('@/components/dashboard/DashboardModal').then((m) => ({ default: m.DashboardModal }));
 const loadTasks = () =>
   import('@/components/tasks/TasksOverlay').then((m) => ({ default: m.TasksOverlay }));
-const loadDeals = () =>
-  import('@/components/deals/DealsPageOverlay').then((m) => ({ default: m.DealsPageOverlay }));
 const loadCalendar = () =>
   import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }));
 const loadMail = () =>
@@ -34,7 +32,6 @@ const loadMail = () =>
 
 const DashboardModal = lazy(loadDashboard);
 const TasksOverlay = lazy(loadTasks);
-const DealsPageOverlay = lazy(loadDeals);
 const FullCalendarView = lazy(loadCalendar);
 const InboxDialog = lazy(loadMail);
 
@@ -43,7 +40,6 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
   'Action Queue': loadTasks,
-  Deals: loadDeals,
 };
 import {
   canSeeNikiBriefing,
