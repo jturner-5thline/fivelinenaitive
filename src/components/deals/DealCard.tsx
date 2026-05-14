@@ -50,11 +50,15 @@ interface DealCardProps {
 
 function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flexEngagement, flexNotificationCount = 0, compact = false, hideStatus = false, onStageChange, mentionUsers = [], children }: DealCardProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
-  const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
-  // Show the corner indicator if either source of truth says flagged:
-  // the legacy `deals.is_flagged` boolean OR an active row in `deal_flag_notes`.
-  const showFlagIndicator = activeFlagCount > 0 || !!deal.isFlagged;
-  const displayFlagCount = Math.max(activeFlagCount, deal.isFlagged ? 1 : 0);
+  // `null` = real count not yet loaded from `deal_flag_notes`. While null we
+  // fall back to the legacy `deal.isFlagged` boolean as a seed so flagged
+  // deals don't flicker. Once the dialog hook resolves, the active-notes
+  // count becomes the SOLE source of truth — resolved/dismissed flags must
+  // not leave the tile showing flagged.
+  const [activeFlagCount, setActiveFlagCount] = useState<number | null>(null);
+  const effectiveFlagCount = activeFlagCount ?? (deal.isFlagged ? 1 : 0);
+  const showFlagIndicator = effectiveFlagCount > 0;
+  const displayFlagCount = effectiveFlagCount;
   const [isEditDrawerOpen, setIsEditDrawerOpen] = useState(false);
   const [isEditDrawerMounted, setIsEditDrawerMounted] = useState(false);
   const [isEditingStatus, setIsEditingStatus] = useState(false);
