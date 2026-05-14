@@ -195,6 +195,7 @@ import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycl
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
+import { StatusEmailDraftModal } from '@/components/deal/StatusEmailDraftModal';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
