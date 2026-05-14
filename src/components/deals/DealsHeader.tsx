@@ -149,7 +149,7 @@ export function DealsHeader() {
               // routing to the full /deals pipeline. This keeps every header
               // icon consistent as a global popup, and keeps the standalone
               // /deals route reachable through normal navigation.
-              { label: 'Deals', Icon: Briefcase, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) },
+              { label: 'Deal Rundown', Icon: Briefcase, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) },
               ...(isFifthLine
                 ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
                 : []),
