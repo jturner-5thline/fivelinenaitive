@@ -307,6 +307,168 @@ async function enrichDraftsWithLenderContacts(drafts: EmailDraft[]): Promise<Ema
   });
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Draft generation helpers
+//
+// The submission-draft pipeline used to issue ONE giant AI call that returned
+// `{drafts: [...]}` for every selected lender. When the model sometimes
+// returned malformed/truncated JSON, the entire batch failed with a generic
+// "AI response could not be parsed" toast.
+//
+// These helpers split the work per-lender, add a hard timeout per call,
+// retry once with a stricter "JSON ONLY" reformat instruction on parse
+// failure, and surface partial success cleanly back to the UI.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DRAFT_CALL_TIMEOUT_MS = 90_000;
+
+/** Wrap a promise with a timeout that rejects with a recognizable error. */
+function withTimeout<T>(p: Promise<T>, ms: number, label = 'AI request'): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${Math.round(ms / 1000)}s`)), ms);
+    p.then(
+      (v) => { clearTimeout(timer); resolve(v); },
+      (e) => { clearTimeout(timer); reject(e); },
+    );
+  });
+}
+
+/** Strip code fences and slice to outermost {...} so JSON.parse has a fighting chance. */
+function extractDraftJson(raw: string): {
+  drafts?: Array<{ lenderName?: string; subject?: string; body?: string; personalizationRationale?: string }>;
+} {
+  const cleaned = (raw || '')
+    .replace(/^\uFEFF/, '')
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/i, '')
+    .trim();
+  const start = cleaned.indexOf('{');
+  const end = cleaned.lastIndexOf('}');
+  const jsonText = start !== -1 && end > start ? cleaned.slice(start, end + 1) : cleaned;
+  return JSON.parse(jsonText);
+}
+
+/** Convert AI plain-text body (\n\n paragraphs) into safe HTML for the editor. */
+function plainTextBodyToHtml(plain: string): string {
+  const t = (plain || '').trim();
+  if (!t) return '';
+  return t
+    .split(/\n{2,}/)
+    .map((para) =>
+      `<p>${para
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br/>')}</p>`,
+    )
+    .join('');
+}
+
+/**
+ * Invoke `deal-space-ai` with the given prompt. On parse failure, retry once
+ * with a strict "JSON ONLY, no prose, no fences" reminder appended. Throws on
+ * transport errors, rate limits, credits, or unparseable responses after the
+ * retry.
+ */
+async function callDraftAI(
+  dealId: string,
+  prompt: string,
+): Promise<ReturnType<typeof extractDraftJson>> {
+  const callOnce = async (effectivePrompt: string) => {
+    const { data, error } = await withTimeout(
+      supabase.functions.invoke('deal-space-ai', {
+        body: { messages: [{ role: 'user', content: effectivePrompt }], dealId, scope: 'all' },
+      }),
+      DRAFT_CALL_TIMEOUT_MS,
+      'Draft generation',
+    );
+    if (error) throw new Error(error.message || 'Failed to draft email');
+    if ((data as { error?: string })?.error) throw new Error((data as { error?: string }).error);
+    const raw: string = (data as { content?: string })?.content || '';
+    return raw;
+  };
+
+  let raw = await callOnce(prompt);
+  try {
+    return extractDraftJson(raw);
+  } catch {
+    // Reformat retry: keep the same context but bolt on a hard JSON-only
+    // reminder. This catches cases where the model wrapped the JSON in prose
+    // or accidentally returned a truncated trailing comma.
+    const reformatPrompt =
+      prompt +
+      '\n\nREMINDER: Your previous response could not be parsed as JSON. ' +
+      'Respond again with VALID JSON ONLY matching the requested schema. ' +
+      'No prose, no markdown code fences, no commentary, no trailing commas.';
+    raw = await callOnce(reformatPrompt);
+    try {
+      return extractDraftJson(raw);
+    } catch {
+      throw new Error('AI response could not be parsed.');
+    }
+  }
+}
+
+/** Generate a single personalized draft for one lender. */
+async function generateOneDraftPersonalized(
+  dealId: string,
+  lenderName: string,
+  profiles: Map<string, LenderProfileSnapshot>,
+  buildPrompt: (personalize: boolean, profiles: Map<string, LenderProfileSnapshot>) => string,
+): Promise<EmailDraft> {
+  // Restrict the embedded profile map + the constraint block to this single
+  // lender so the model has the smallest possible JSON to produce.
+  const singleProfileMap = new Map<string, LenderProfileSnapshot>();
+  const profile = profiles.get(lenderName) || profiles.get(lenderName.toLowerCase());
+  if (profile) singleProfileMap.set(lenderName, profile);
+
+  const promptBase = buildPrompt(true, singleProfileMap);
+  const constraint =
+    `\n\nIMPORTANT — RESTRICTED LENDER LIST:\n` +
+    `Generate EXACTLY ONE draft entry, for the following lender (exact match, no others):\n` +
+    `- ${lenderName}\n` +
+    `Return {"drafts": [ … one entry … ]}.`;
+
+  const parsed = await callDraftAI(dealId, promptBase + constraint);
+  const entry = (parsed.drafts || []).find((d) => d && (d.body || d.subject));
+  if (!entry) throw new Error('AI returned no draft for this lender.');
+
+  return {
+    lenderName: entry.lenderName?.trim() || lenderName,
+    to: '',
+    cc: '',
+    bcc: '',
+    subject: entry.subject?.replace(/^subject:\s*/i, '').trim() || '',
+    bodyHtml: plainTextBodyToHtml(entry.body || ''),
+    status: 'draft',
+    personalizationRationale: (entry.personalizationRationale || '').trim() || undefined,
+  } satisfies EmailDraft;
+}
+
+/** Generate one neutral broadcast template that will be fanned out to lenders. */
+async function generateBroadcastTemplate(
+  dealId: string,
+  lenders: string[],
+  buildPrompt: (personalize: boolean, profiles: Map<string, LenderProfileSnapshot>) => string,
+): Promise<EmailDraft> {
+  const promptBase = buildPrompt(false, new Map());
+  const constraint =
+    `\n\nNOTE: This single draft will be sent to the following ${lenders.length} ` +
+    `lender${lenders.length === 1 ? '' : 's'} — keep the body neutral enough to broadcast.`;
+  const parsed = await callDraftAI(dealId, promptBase + constraint);
+  const entry = (parsed.drafts || []).find((d) => d && (d.body || d.subject));
+  if (!entry) throw new Error('AI returned no broadcast draft.');
+  return {
+    lenderName: entry.lenderName?.trim() || 'Lender',
+    to: '',
+    cc: '',
+    bcc: '',
+    subject: entry.subject?.replace(/^subject:\s*/i, '').trim() || '',
+    bodyHtml: plainTextBodyToHtml(entry.body || ''),
+    status: 'draft',
+  } satisfies EmailDraft;
+}
+
 export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { financials } = useDealSpaceFinancials(dealId);
