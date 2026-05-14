@@ -1,6 +1,5 @@
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { DealsHeader } from '@/components/deals/DealsHeader';
 
 /**
  * Shared page wrapper for primary workspace surfaces (Deals, Lender
@@ -44,8 +43,6 @@ export function WorkspacePage({
 }: WorkspacePageProps) {
   return (
     <div className="bg-transparent">
-      <DealsHeader />
-
       <main className="w-full px-4 pt-5 pb-3 sm:px-6">
         {beforeContent}
         <div className={cn('space-y-5', contentClassName)}>{children}</div>
