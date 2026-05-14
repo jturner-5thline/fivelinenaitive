@@ -109,7 +109,13 @@ export function DealsHeader() {
     if (load) load().catch(() => {});
   }, []);
 
-  return (
+  // Render the fixed header into <body> via a portal. The parent <main>
+  // sets a `backdrop-filter`, which makes it the containing block for any
+  // descendant `position: fixed` element — so without portaling, the
+  // header would be pinned to <main> instead of the viewport and would
+  // appear to drift when content scrolls. Portaling guarantees true
+  // viewport-fixed positioning on every route.
+  return createPortal(
     <header
       className="fixed top-0 left-0 right-0 z-[1000] pointer-events-none"
       aria-label="Global navigation"
@@ -261,6 +267,7 @@ export function DealsHeader() {
           <ActionQueuePanel items={actionQueueItems} onClose={() => setIsActionQueueOpen(false)} />
         </DialogContent>
       </Dialog>
-    </header>
+    </header>,
+    document.body,
   );
 }
