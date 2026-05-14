@@ -405,7 +405,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
 
             <TabsContent
               value="analytics"
-              className="db-tab-panel flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden bg-transparent"
+              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
             >
               <Suspense
                 fallback={
@@ -414,7 +414,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                   </div>
                 }
               >
-                <div className="db-analytics-host min-w-max">
+                <div className="db-analytics-host min-w-0 max-w-full">
                   <AnalyticsTabContent />
                 </div>
               </Suspense>
