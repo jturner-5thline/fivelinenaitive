@@ -816,7 +816,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                         <div style={{ overflowX: 'auto' }}>
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                             <thead>
-                              <tr style={{ borderBottom: `1px solid ${T.border}`, color: T.mutedFg, textAlign: 'left' }}>
+                              <tr style={{ borderBottom: `1px solid ${T.cardBorder}`, color: T.mutedFg, textAlign: 'left' }}>
                                 <th style={{ padding: '6px 8px', fontWeight: 600 }}>Lender</th>
                                 <th style={{ padding: '6px 8px', fontWeight: 600 }}>Amount</th>
                                 <th style={{ padding: '6px 8px', fontWeight: 600 }}>Type</th>
@@ -831,7 +831,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                                   ? `${String(mat.getMonth() + 1).padStart(2, '0')}/${mat.getFullYear()}`
                                   : '—';
                                 return (
-                                  <tr key={it.id} style={{ borderBottom: `1px solid ${T.border}`, color: T.fg }}>
+                                  <tr key={it.id} style={{ borderBottom: `1px solid ${T.cardBorder}`, color: T.fg }}>
                                     <td style={{ padding: '6px 8px' }}>{it.lender || '—'}</td>
                                     <td style={{ padding: '6px 8px' }}>{it.amount || '—'}</td>
                                     <td style={{ padding: '6px 8px' }}>{it.type || '—'}</td>
