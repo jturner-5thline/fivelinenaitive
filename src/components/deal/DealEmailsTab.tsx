@@ -1319,6 +1319,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     const handler = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      // Ignore system/browser shortcuts (Cmd+C copy, Cmd+V paste, Ctrl+A, etc.)
+      // so plain single-key shortcuts don't hijack copy/paste/select-all.
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
 
       switch (e.key) {
         case 'j': {
