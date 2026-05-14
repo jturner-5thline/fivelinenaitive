@@ -1,4 +1,4 @@
-import { useState, ReactNode, useCallback } from 'react';
+import { useState, ReactNode, useCallback, memo } from 'react';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MoreHorizontal, User, Clock, AlertTriangle, CheckCircle2, Flag, Trash2, Archive, UserPlus, Bell, ArrowRightLeft } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -48,7 +48,7 @@ interface DealListRowProps {
   onToggleSelect?: (dealId: string) => void;
 }
 
-export function DealListRow({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect }: DealListRowProps) {
+function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, onToggleFlag, flexEngagement, columnOrder = DEFAULT_VISIBLE_COLUMNS, notificationCount = 0, isSelected, onToggleSelect }: DealListRowProps) {
   const [isFlagDialogOpen, setIsFlagDialogOpen] = useState(false);
   const [activeFlagCount, setActiveFlagCount] = useState(deal.isFlagged ? 1 : 0);
   const showFlagIndicator = activeFlagCount > 0 || !!deal.isFlagged;
