@@ -160,6 +160,25 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
     };
   }, [location.pathname]);
 
+  // Routes that render the persistent naitive logo brand anchor in the
+  // top-left of the main content module. Keep this as a single source of
+  // truth so target pages stay visually consistent without per-page edits.
+  const WORKSPACE_LOGO_ROUTES = [
+    '/deals',
+    '/lenders',
+    '/contacts',
+    '/crm-companies',
+    '/agents',
+    '/insights',
+    '/sales-bd',
+    '/wf',
+    '/naitive-pipeline',
+    '/finserv',
+  ];
+  const showWorkspaceLogo = WORKSPACE_LOGO_ROUTES.some(
+    (r) => location.pathname === r || location.pathname.startsWith(`${r}/`),
+  );
+
   if (isEmbedded) {
     return (
       // Still wrap in SidebarProvider so descendants that call `useSidebar()`
@@ -195,7 +214,13 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
 
       <div className="flex w-full h-full min-h-0 bg-transparent pt-2 pb-2 pl-2 pr-0 gap-1" style={{ isolation: 'auto' }}>
         <AppSidebar />
-        <MainContent className={mainClassName} showCopilotBar={true}>{content}</MainContent>
+        <MainContent
+          className={mainClassName}
+          showCopilotBar={true}
+          showWorkspaceLogo={showWorkspaceLogo}
+        >
+          {content}
+        </MainContent>
       </div>
       <TaskAssignmentBanner />
       <PlatformTour />
