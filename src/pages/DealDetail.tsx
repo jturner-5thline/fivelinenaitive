@@ -2878,7 +2878,7 @@ export default function DealDetail() {
                     </p>
                   )}
                 </div>
-                <div className="flex flex-col items-end gap-1 shrink-0">
+                <div className="flex flex-col items-end gap-2 shrink-0">
                   {deal.manager && (
                     <span className="text-sm text-white">{deal.manager}</span>
                   )}
@@ -2887,69 +2887,67 @@ export default function DealDetail() {
                       <DealMemoDialog dealId={deal.id} companyName={deal.company} dealNarrative={deal.narrative} onGoToDataRoom={() => handleTabChange('data-room')} />
                     </Suspense>
                   )}
+                  {/* Right-aligned action cluster — sits beneath Deal Memo within the header card. */}
+                  <div className="flex flex-wrap items-center gap-2 justify-end">
+                    <CreateTaskButton dealId={id!} dealName={deal?.company} />
+                    {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} />}
+                    {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
+                      <Suspense fallback={null}>
+                        <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
+                      </Suspense>
+                    )}
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Status Report">
+                          <FileText className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover">
+                        <DropdownMenuItem onClick={() => setShowStatusReportPreview(true)}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          await exportStatusReportToWord(deal, configuredStages, configuredSubstages, outstandingItems);
+                          toast({ title: "Word document exported", description: "Status report exported to Word document." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as Word
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Export">
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="bg-popover">
+                        <DropdownMenuItem onClick={() => {
+                          exportDealToCSV(deal);
+                          toast({ title: "CSV exported", description: "Deal data exported to CSV file." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as CSV
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          exportDealToPDF(deal);
+                          toast({ title: "PDF exported", description: "Deal report exported to PDF." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as PDF
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={async () => {
+                          await exportDealToWord(deal);
+                          toast({ title: "Word document exported", description: "Deal report exported to Word document." });
+                        }}>
+                          <FileText className="h-4 w-4 mr-2" />
+                          Export as Word
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                 </div>
-              </div>
-              {/* Secondary action row — relocated from the tab rail.
-                  Contextual deal actions sit under the Deal Memo button,
-                  left-aligned with the header content. */}
-              <div className="mt-3 flex flex-wrap items-center gap-2 justify-start">
-                <CreateTaskButton dealId={id!} dealName={deal?.company} />
-                {hasNaitivePipelineAccess && <EmailPromptCenterButton dealId={id!} dealName={deal?.company} />}
-                {!isSimplifiedDeal && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
-                  <Suspense fallback={null}>
-                    <AgreementDrafterDialog dealId={deal.id} companyName={deal.company} companyShort={deal.company?.split(' ')[0]} />
-                  </Suspense>
-                )}
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Status Report">
-                      <FileText className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-popover">
-                    <DropdownMenuItem onClick={() => setShowStatusReportPreview(true)}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => {
-                      await exportStatusReportToWord(deal, configuredStages, configuredSubstages, outstandingItems);
-                      toast({ title: "Word document exported", description: "Status report exported to Word document." });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as Word
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="relative overflow-hidden h-8 w-8 border-[hsl(220,70%,55%,0.5)] bg-[hsl(220,40%,12%,0.35)] text-[hsl(220,70%,72%)] backdrop-blur-xl shadow-[inset_0_1px_1px_hsl(220,80%,75%,0.15),0_2px_12px_hsl(220,60%,35%,0.2)] hover:border-[hsl(220,70%,60%,0.7)] hover:bg-[hsl(220,40%,15%,0.45)] hover:shadow-[inset_0_1px_1px_hsl(220,80%,80%,0.25),0_4px_20px_hsl(220,60%,40%,0.3)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,hsl(220,80%,80%,0.12)_0%,transparent_50%,hsl(220,70%,55%,0.06)_100%)]" title="Export">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="bg-popover">
-                    <DropdownMenuItem onClick={() => {
-                      exportDealToCSV(deal);
-                      toast({ title: "CSV exported", description: "Deal data exported to CSV file." });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as CSV
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => {
-                      exportDealToPDF(deal);
-                      toast({ title: "PDF exported", description: "Deal report exported to PDF." });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as PDF
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={async () => {
-                      await exportDealToWord(deal);
-                      toast({ title: "Word document exported", description: "Deal report exported to Word document." });
-                    }}>
-                      <FileText className="h-4 w-4 mr-2" />
-                      Export as Word
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
             </CardHeader>
           </Card>
