@@ -225,6 +225,12 @@ export function EndOfDayAgendaSection({
           return false;
         }
       })
+      .filter(ev => {
+        // Only show events with at least one attendee other than the signed-in user.
+        const atts = ev.attendees || [];
+        const others = atts.filter(a => !a.self);
+        return others.length > 0;
+      })
       .slice()
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
   }, [events]);
