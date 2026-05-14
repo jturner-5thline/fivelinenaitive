@@ -170,6 +170,8 @@ export const getEmptyDealWriteUpData = (deal?: DealDataForWriteUp): DealWriteUpD
   status: deal?.status === 'active' ? 'Published' : deal?.status === 'closed' ? 'Closed' : 'Draft',
   useOfFunds: '',
   existingDebtDetails: '',
+  existingDebtItems: [],
+  existingDebtLegacyDismissed: false,
   description: deal?.narrative || '',
   keyItems: [],
   companyHighlights: [],

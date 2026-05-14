@@ -127,6 +127,8 @@ export function useDealWriteup(dealId: string | undefined) {
         status: data.status || 'Draft',
         use_of_funds: data.useOfFunds || null,
         existing_debt_details: data.existingDebtDetails || null,
+        existing_debt_items: (data.existingDebtItems || []) as unknown as Json,
+        existing_debt_legacy_dismissed: !!data.existingDebtLegacyDismissed,
         description: data.description || null,
         key_items: data.keyItems as unknown as Json,
         company_highlights: data.companyHighlights as unknown as Json,
@@ -243,6 +245,10 @@ export function useDealWriteup(dealId: string | undefined) {
       status: row.status || 'Draft',
       useOfFunds: row.use_of_funds || '',
       existingDebtDetails: row.existing_debt_details || '',
+      existingDebtItems: Array.isArray((row as any).existing_debt_items)
+        ? ((row as any).existing_debt_items as unknown as import('@/components/deal/DealWriteUp').ExistingDebtItem[])
+        : [],
+      existingDebtLegacyDismissed: !!(row as any).existing_debt_legacy_dismissed,
       description: row.description || '',
       keyItems,
       companyHighlights,
