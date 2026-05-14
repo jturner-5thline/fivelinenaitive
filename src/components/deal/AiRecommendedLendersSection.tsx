@@ -19,7 +19,8 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useAiRecommendedLenders, type AiRecommendation } from '@/hooks/useAiRecommendedLenders';
+import { useAiRecommendedLenders, type AiRecommendation, type AiRecommenderCriteriaOverride } from '@/hooks/useAiRecommendedLenders';
+import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
 
 interface Props {
   dealId: string | undefined;
@@ -27,6 +28,7 @@ interface Props {
   defaultStageId: string;
   existingLenderNames: string[];
   onAddLender: (lenderName: string, stageId: string) => Promise<void> | void;
+  criteriaOverride?: AiRecommenderCriteriaOverride;
 }
 
 function scoreColor(score: number) {
@@ -52,6 +54,7 @@ export function AiRecommendedLendersSection({
   defaultStageId,
   existingLenderNames,
   onAddLender,
+  criteriaOverride,
 }: Props) {
   const [collapsed, setCollapsed] = useState<boolean>(() => {
     if (!dealId) return false;
@@ -71,8 +74,35 @@ export function AiRecommendedLendersSection({
     }
   }, [collapsed, dealId]);
 
+  // Watch saved matching criteria so the AI list refreshes when the Refine Criteria
+  // survey saves new values (industry / cash-burn / sponsorship live in deal_writeups,
+  // which the recommend-lenders edge function already reads).
+  const { criteria: savedCriteria } = useDealMatchingCriteria(dealId);
+
+  const criteriaSignature = useMemo(
+    () => JSON.stringify({
+      saved: savedCriteria,
+      override: criteriaOverride ?? null,
+    }),
+    [savedCriteria, criteriaOverride],
+  );
+
   const { data, loading, error, refresh, skip, markAdded, resetExclusions, skippedNames, addedNames } =
-    useAiRecommendedLenders(dealId, /* autoRun */ true);
+    useAiRecommendedLenders(dealId, /* autoRun */ true, {
+      criteriaSignature,
+      criteriaOverride,
+    });
+
+  // Allow external triggers (e.g. the Deal Data Updated banner) to refresh.
+  useEffect(() => {
+    if (!dealId) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail || detail.dealId === dealId) refresh();
+    };
+    window.addEventListener('ai-lenders-refresh', handler as EventListener);
+    return () => window.removeEventListener('ai-lenders-refresh', handler as EventListener);
+  }, [dealId, refresh]);
 
   const existingLowercase = useMemo(
     () => new Set(existingLenderNames.map((n) => n.trim().toLowerCase())),
