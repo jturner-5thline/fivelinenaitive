@@ -23,10 +23,11 @@ interface NotesSidebarProps {
   onDownload: (note: DealSpaceNote) => void;
   onUpload: () => void;
   fileInputRef: React.RefObject<HTMLInputElement>;
+  commentCounts?: Record<string, number>;
 }
 
 export function NotesSidebar({
-  notes, selectedNoteId, onSelectNote, onCreateNote, onDeleteNote, onUpdateNote, onDownload, onUpload, fileInputRef,
+  notes, selectedNoteId, onSelectNote, onCreateNote, onDeleteNote, onUpdateNote, onDownload, onUpload, fileInputRef, commentCounts = {},
 }: NotesSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterFolder, setFilterFolder] = useState<string | null>(null);
@@ -90,6 +91,11 @@ export function NotesSidebar({
         <div className="flex items-center gap-1">
           <p className="text-sm font-medium truncate flex-1">{note.title || 'Untitled'}</p>
           {note.is_pinned && <Pin className="h-3 w-3 text-primary shrink-0" />}
+          {commentCounts[note.id] > 0 && (
+            <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 gap-0.5 shrink-0" title={`${commentCounts[note.id]} unresolved comment(s)`}>
+              💬 {commentCounts[note.id]}
+            </Badge>
+          )}
         </div>
         <p className="text-xs text-muted-foreground">{format(new Date(note.updated_at), 'MMM d, yyyy')}</p>
         {note.folder && (
