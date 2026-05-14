@@ -28,7 +28,7 @@ interface DraftResponse {
   lender_email: DraftEmail;
 }
 
-const ACCEPTED_EXTS = ['.txt', '.vtt', '.srt', '.md', '.csv', '.json'];
+const ACCEPTED_EXTS = ['.txt', '.vtt', '.srt', '.md', '.csv', '.json', '.docx', '.doc'];
 
 function stripVttCues(text: string): string {
   // Strip WEBVTT headers and cue timing lines so the model sees clean dialogue.
@@ -198,16 +198,49 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
       setIsReading(false);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = () => {
-      const raw = String(reader.result || '');
-      const cleaned = ext === '.vtt' || ext === '.srt' ? stripVttCues(raw) : raw;
-      setTranscriptText(cleaned);
+    const finish = (text: string) => {
+      setTranscriptText(text);
       setTranscriptFilename(file.name);
       const guess = parseTranscriptFilename(file.name);
       if (guess.company && !companyName) setCompanyName(guess.company);
       if (guess.lender && !lenderName) setLenderName(guess.lender);
       setIsReading(false);
+    };
+    if (ext === '.docx') {
+      (async () => {
+        try {
+          const arrayBuffer = await file.arrayBuffer();
+          const mammoth = await import('mammoth/mammoth.browser');
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          const text = (result?.value || '').trim();
+          if (!text) throw new Error('Empty document');
+          finish(text);
+        } catch (err) {
+          console.error('docx parse failed', err);
+          toast({
+            title: 'Could not read Word document',
+            description: 'The .docx file appears to be malformed or empty. Try re-saving it or paste the transcript text directly.',
+            variant: 'destructive',
+          });
+          setIsReading(false);
+        }
+      })();
+      return;
+    }
+    if (ext === '.doc') {
+      toast({
+        title: 'Legacy .doc not supported',
+        description: 'Please save the file as .docx (Word) or paste the transcript text directly.',
+        variant: 'destructive',
+      });
+      setIsReading(false);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const raw = String(reader.result || '');
+      const cleaned = ext === '.vtt' || ext === '.srt' ? stripVttCues(raw) : raw;
+      finish(cleaned);
     };
     reader.onerror = () => {
       toast({ title: 'Could not read file', variant: 'destructive' });
