@@ -12,7 +12,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
-  Check, Clock, ArrowUpRight,
+  Check, Clock, ArrowUpRight, Moon,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -1491,6 +1491,7 @@ const ALL_TABS = [
   { value: 'financial', label: 'Financial', icon: DollarSign },
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Operational', icon: ListChecks },
+  { value: 'end_of_day', label: 'End of Day', icon: Moon },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
@@ -1769,6 +1770,11 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                   {activeTab === 'financial' && <FinancialTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'pipeline' && <PipelineTab enabled={open} onNavigate={handleNavigate} targetDealOwnerName={targetAssigneeName} briefingType={briefingType} />}
                   {activeTab === 'operational' && <OperationalTab enabled={open} onNavigate={handleNavigate} targetAssigneeName={targetAssigneeName} />}
+                  {activeTab === 'end_of_day' && (
+                    <div className="rounded-xl border border-border/40 bg-muted/30 p-8 text-center text-sm text-muted-foreground">
+                      End of Day content loading...
+                    </div>
+                  )}
                 </div>
               </ScrollArea>
             </div>
