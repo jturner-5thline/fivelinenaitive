@@ -1,14 +1,13 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { format, startOfDay, endOfDay, parseISO, isBefore, isAfter } from 'date-fns';
 import {
-  Mail, Users, Calendar as CalendarIcon, Loader2, X, Send, ListPlus,
+  Mail, Users, Calendar as CalendarIcon, Loader2, ListPlus,
   PanelRightClose, Sparkles, StickyNote, Video, Plus, Briefcase, ExternalLink, ChevronRight,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -25,6 +24,9 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { PipelineTab } from './DailyBriefingModal';
+import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
+import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
+import { useGmail } from '@/hooks/useGmail';
 
 interface ContactInfo {
   fullName: string | null;
@@ -50,106 +52,75 @@ function InlineComposer({
   recipientLabel: string;
   onClose: () => void;
 }) {
-  const [toField, setToField] = useState(to);
+  const signature = useUserEmailSignature();
+  const { sendEmail } = useGmail();
+  const [recipients, setRecipients] = useState<ComposerRecipients>({
+    to: [to],
+    cc: [],
+    bcc: [],
+  });
   const [subject, setSubject] = useState(defaultSubject);
   const [body, setBody] = useState('');
-  const [sending, setSending] = useState(false);
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
 
-  const handleSend = async () => {
-    if (!toField.trim() || !subject.trim()) {
-      toast.error('To and subject are required');
-      return;
-    }
-    setSending(true);
-    try {
-      const { error } = await supabase.functions.invoke('gmail-messages', {
-        body: {
-          action: 'send',
-          to: [toField.trim()],
+  const handleSend = useCallback(
+    async (_opts: ComposerSendOptions) => {
+      if (recipients.to.length === 0) {
+        toast.error('Add at least one recipient');
+        return;
+      }
+      if (!subject.trim()) {
+        toast.error('Subject is required');
+        return;
+      }
+      try {
+        const result = await sendEmail({
+          to: recipients.to,
+          cc: recipients.cc,
+          bcc: recipients.bcc,
           subject: subject.trim(),
-          body: body.replace(/\n/g, '<br/>'),
-        },
-      });
-      if (error) throw error;
-      toast.success(`Email sent to ${recipientLabel}`);
-      onClose();
-    } catch (err: any) {
-      console.error('EOD inline send failed:', err);
-      toast.error(err?.message || 'Failed to send email');
-    } finally {
-      setSending(false);
-    }
-  };
+          bodyHtml: body,
+          body: body.replace(/<[^>]+>/g, ''),
+          attachments: files.length > 0 ? files : undefined,
+        });
+        if (!result) throw new Error('Send failed');
+        toast.success(`Email sent to ${recipientLabel}`);
+        onClose();
+      } catch (err: any) {
+        console.error('EOD compose send failed:', err);
+        toast.error(err?.message || 'Failed to send email');
+      }
+    },
+    [recipients, subject, body, files, sendEmail, onClose, recipientLabel],
+  );
+
+  const handleDiscard = useCallback(() => {
+    onClose();
+    toast.info('Draft discarded');
+  }, [onClose]);
 
   return (
-    <div className="mt-2 rounded-lg border border-primary/30 bg-background/80 backdrop-blur-md p-3 space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
-          Quick Reply
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6"
-          onClick={onClose}
-          aria-label="Close composer"
-          disabled={sending}
-        >
-          <X className="h-3.5 w-3.5" />
-        </Button>
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-muted-foreground w-12 shrink-0">To</span>
-        <Input
-          value={toField}
-          onChange={(e) => setToField(e.target.value)}
-          className="h-7 text-xs"
-          disabled={sending}
-        />
-      </div>
-      <div className="flex items-center gap-2">
-        <span className="text-[11px] text-muted-foreground w-12 shrink-0">Subject</span>
-        <Input
-          value={subject}
-          onChange={(e) => setSubject(e.target.value)}
-          className="h-7 text-xs"
-          disabled={sending}
-        />
-      </div>
-      <Textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder="Write your message…"
-        className="min-h-[120px] text-xs resize-y"
-        disabled={sending}
+    <div className="mt-2 rounded-lg border border-primary/30 bg-background/80 backdrop-blur-md overflow-hidden">
+      <EmailComposerCard
+        replyToName={recipientLabel}
+        hideReplyAnchor
+        recipients={recipients}
+        onRecipientsChange={setRecipients}
+        subject={subject}
+        onSubjectChange={setSubject}
+        body={body}
+        onBodyChange={setBody}
+        attachments={attachments}
+        onAttachmentsChange={setAttachments}
+        onFilesChange={setFiles}
+        onSend={handleSend}
+        onDiscard={handleDiscard}
+        signature={signature}
+        variant="inline"
+        showSubject
+        className="rounded-none border-0 shadow-none mx-0 my-0"
       />
-      <div className="flex items-center justify-end gap-2">
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={onClose}
-          disabled={sending}
-          className="h-7 text-xs"
-        >
-          Cancel
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          onClick={handleSend}
-          disabled={sending}
-          className="h-7 text-xs gap-1.5"
-        >
-          {sending ? (
-            <Loader2 className="h-3 w-3 animate-spin" />
-          ) : (
-            <Send className="h-3 w-3" />
-          )}
-          Send
-        </Button>
-      </div>
     </div>
   );
 }
