@@ -4769,9 +4769,10 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
-                {/* Floating sticky tab rail — Excel-inspired sheet tabs, modernized.
-                    Pinned to the bottom of the deal popup scroll viewport. */}
-                <div className="sticky bottom-0 left-0 right-0 z-40 mt-4 -mx-2 sm:-mx-4 px-2 sm:px-4 pt-3 pb-2 bg-gradient-to-t from-background via-background/95 to-background/40 backdrop-blur-md border-t border-white/5">
+                {/* Floating tab rail — fixed to the viewport bottom so it stays
+                    visible while the user scrolls the deal popup. No background
+                    fill — the tabs themselves carry the styling. */}
+                <div className="fixed bottom-4 left-4 right-4 sm:left-6 z-40 pointer-events-none flex justify-start">
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
                     visible={isHintVisible('deal-tabs')}
@@ -4779,7 +4780,7 @@ export default function DealDetail() {
                     side="top"
                   >
                     <TabsList
-                      className="inline-flex h-9 items-end justify-start rounded-md bg-background/40 backdrop-blur-sm p-1 gap-1 border border-white/10 shadow-[0_-4px_16px_-4px_rgba(0,0,0,0.35)] max-w-full overflow-x-auto overflow-y-hidden scrollbar-none"
+                      className="pointer-events-auto inline-flex h-9 items-end justify-start rounded-lg bg-background/70 backdrop-blur-xl p-1 gap-1 border border-white/10 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.55)] max-w-full overflow-x-auto overflow-y-hidden scrollbar-none"
                       style={{ scrollbarWidth: 'none' }}
                     >
                       {hasDealSpaceAccess && !isSimplifiedDeal && (
