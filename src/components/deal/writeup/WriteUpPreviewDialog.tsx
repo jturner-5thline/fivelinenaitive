@@ -809,10 +809,43 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                   </div>
 
                   {/* Existing Debt */}
-                  {data.existingDebtDetails && (
+                  {(data.existingDebtItems?.length > 0 || data.existingDebtDetails) && (
                     <div style={{ background: T.secondaryBg, borderRadius: T.radius, padding: 16, marginTop: 12 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: T.fg, marginBottom: 4 }}>Existing Debt</div>
-                      <div style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>{renderBulletText(data.existingDebtDetails)}</div>
+                      <div style={{ fontSize: 13, fontWeight: 600, color: T.fg, marginBottom: 8 }}>Existing Debt</div>
+                      {data.existingDebtItems?.length > 0 ? (
+                        <div style={{ overflowX: 'auto' }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                              <tr style={{ borderBottom: `1px solid ${T.border}`, color: T.mutedFg, textAlign: 'left' }}>
+                                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Lender</th>
+                                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Amount</th>
+                                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Type</th>
+                                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Maturity</th>
+                                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Notes</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {data.existingDebtItems.map((it) => {
+                                const mat = it.maturityDate ? new Date(it.maturityDate) : null;
+                                const matLabel = mat && !isNaN(mat.getTime())
+                                  ? `${String(mat.getMonth() + 1).padStart(2, '0')}/${mat.getFullYear()}`
+                                  : '—';
+                                return (
+                                  <tr key={it.id} style={{ borderBottom: `1px solid ${T.border}`, color: T.fg }}>
+                                    <td style={{ padding: '6px 8px' }}>{it.lender || '—'}</td>
+                                    <td style={{ padding: '6px 8px' }}>{it.amount || '—'}</td>
+                                    <td style={{ padding: '6px 8px' }}>{it.type || '—'}</td>
+                                    <td style={{ padding: '6px 8px' }}>{matLabel}</td>
+                                    <td style={{ padding: '6px 8px', color: T.mutedFg }}>{it.notes || '—'}</td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 14, color: T.mutedFg, lineHeight: 1.6 }}>{renderBulletText(data.existingDebtDetails)}</div>
+                      )}
                     </div>
                   )}
 
