@@ -388,8 +388,6 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
   // Donut chart state
   const [activeOwnerIdx, setActiveOwnerIdx] = useState<number | null>(null);
 
-  const companyName = data.publishAsAnonymous ? 'Anonymous Company' : (data.companyName || 'Untitled Company');
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-5xl max-h-[92vh] p-0 gap-0 overflow-hidden flex flex-col" style={{ fontFamily: T.font }}>
