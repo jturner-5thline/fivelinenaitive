@@ -464,6 +464,7 @@ function SortableMilestoneItem({
   onDelete,
 }: SortableMilestoneItemProps) {
   const [isEditDateOpen, setIsEditDateOpen] = useState(false);
+  const [isReadDateOpen, setIsReadDateOpen] = useState(false);
   const {
     attributes,
     listeners,
@@ -477,6 +478,13 @@ function SortableMilestoneItem({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+  };
+
+  // Stop pointer events from bubbling up to dnd-kit's sortable wrapper —
+  // otherwise the PointerSensor can capture pointerdown on Radix triggers
+  // (Checkbox, Popover, DropdownMenu) and swallow the click.
+  const stopPointer = (e: React.PointerEvent | React.MouseEvent) => {
+    e.stopPropagation();
   };
 
   return (
@@ -500,11 +508,16 @@ function SortableMilestoneItem({
       {isEditing ? (
         <>
           <Input
+            onPointerDown={stopPointer}
             value={editTitle}
             onChange={(e) => onEditTitleChange(e.target.value)}
             className="h-7 text-sm flex-1"
             placeholder="Milestone title"
             autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') onSaveEdit();
+              if (e.key === 'Escape') onCancelEdit();
+            }}
           />
           <Popover open={isEditDateOpen} onOpenChange={setIsEditDateOpen} modal>
             <PopoverTrigger asChild>
@@ -513,6 +526,7 @@ function SortableMilestoneItem({
                 variant="outline"
                 size="sm"
                 className="h-7 text-xs"
+                onPointerDown={stopPointer}
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
@@ -554,6 +568,7 @@ function SortableMilestoneItem({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
+            onPointerDown={stopPointer}
             onClick={onSaveEdit}
           >
             <Check className="h-3.5 w-3.5 text-success" />
@@ -562,6 +577,7 @@ function SortableMilestoneItem({
             variant="ghost"
             size="icon"
             className="h-7 w-7"
+            onPointerDown={stopPointer}
             onClick={onCancelEdit}
           >
             <X className="h-3.5 w-3.5" />
@@ -570,13 +586,15 @@ function SortableMilestoneItem({
       ) : (
         <>
           <Checkbox
+            onPointerDown={stopPointer}
             checked={milestone.completed}
-            onCheckedChange={(checked) =>
-              onUpdate(milestone.id, { 
-                completed: checked === true,
-                completedAt: checked === true ? new Date().toISOString() : undefined
-              })
-            }
+            onCheckedChange={(checked) => {
+              if (typeof checked !== 'boolean') return;
+              onUpdate(milestone.id, {
+                completed: checked,
+                completedAt: checked ? new Date().toISOString() : undefined,
+              });
+            }}
           />
           <span
             className={cn(
@@ -588,31 +606,79 @@ function SortableMilestoneItem({
             {milestone.title}
           </span>
           <div className="flex flex-col items-end gap-0.5">
-            {milestone.dueDate && (
-              <span className={cn(
-                "text-xs",
-                isOverdue ? "text-red-500 font-medium" : "text-muted-foreground"
-              )}>
-                Due: {format(new Date(milestone.dueDate), 'MMM d')}
-                {isOverdue && " (Overdue)"}
-              </span>
-            )}
+            <Popover open={isReadDateOpen} onOpenChange={setIsReadDateOpen} modal>
+              <PopoverTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    "h-7 text-xs",
+                    isOverdue && "border-red-500/40 text-red-500"
+                  )}
+                  onPointerDown={stopPointer}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsReadDateOpen((v) => !v);
+                  }}
+                >
+                  {milestone.dueDate
+                    ? `${format(new Date(milestone.dueDate), 'MMM d')}${isOverdue ? ' (Overdue)' : ''}`
+                    : 'Date'}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto p-0 z-[60] pointer-events-auto"
+                align="end"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+              >
+                <Calendar
+                  mode="single"
+                  selected={milestone.dueDate ? new Date(milestone.dueDate) : undefined}
+                  onSelect={(d) => {
+                    onUpdate(milestone.id, { dueDate: d ? d.toISOString() : undefined });
+                    if (d) setIsReadDateOpen(false);
+                  }}
+                  className={cn("p-3 pointer-events-auto")}
+                />
+                {milestone.dueDate && (
+                  <div className="px-3 pb-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-7 text-xs text-muted-foreground"
+                      onClick={() => {
+                        onUpdate(milestone.id, { dueDate: undefined });
+                        setIsReadDateOpen(false);
+                      }}
+                    >
+                      Clear date
+                    </Button>
+                  </div>
+                )}
+              </PopoverContent>
+            </Popover>
             {milestone.completed && milestone.completedAt && (
               <span className="text-xs text-emerald-600">
                 Completed: {format(new Date(milestone.completedAt), 'MMM d, yyyy')}
               </span>
             )}
-           </div>
+          </div>
           {/* Status tag */}
           {!milestone.completed && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className={cn(
-                  "text-xs font-medium px-2 py-0.5 rounded-md border cursor-pointer transition-colors",
-                  milestone.status && MILESTONE_STATUS_CONFIG[milestone.status]
-                    ? `${MILESTONE_STATUS_CONFIG[milestone.status].bgClass} ${MILESTONE_STATUS_CONFIG[milestone.status].textClass} ${MILESTONE_STATUS_CONFIG[milestone.status].borderClass}`
-                    : "bg-muted text-muted-foreground border-border hover:bg-accent"
-                )}>
+                <button
+                  type="button"
+                  onPointerDown={stopPointer}
+                  className={cn(
+                    "text-xs font-medium px-2 py-0.5 rounded-md border cursor-pointer transition-colors",
+                    milestone.status && MILESTONE_STATUS_CONFIG[milestone.status]
+                      ? `${MILESTONE_STATUS_CONFIG[milestone.status].bgClass} ${MILESTONE_STATUS_CONFIG[milestone.status].textClass} ${MILESTONE_STATUS_CONFIG[milestone.status].borderClass}`
+                      : "bg-muted text-muted-foreground border-border hover:bg-accent"
+                  )}
+                >
                   {milestone.status ? MILESTONE_STATUS_CONFIG[milestone.status].label : 'Set Status'}
                 </button>
               </DropdownMenuTrigger>
@@ -641,6 +707,7 @@ function SortableMilestoneItem({
               variant="ghost"
               size="icon"
               className="h-6 w-6"
+              onPointerDown={stopPointer}
               onClick={onStartEdit}
             >
               <Pencil className="h-3 w-3" />
@@ -649,6 +716,7 @@ function SortableMilestoneItem({
               variant="ghost"
               size="icon"
               className="h-6 w-6 text-muted-foreground hover:text-destructive"
+              onPointerDown={stopPointer}
               onClick={() => onDelete(milestone.id)}
             >
               <Trash2 className="h-3 w-3" />
