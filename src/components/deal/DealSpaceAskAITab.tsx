@@ -801,44 +801,9 @@ CRITICAL RULES:
     }
   }, [emailDrafts]);
 
-  type QuickPromptAction =
-    | 'draft-submission'
-    | 'status-report'
-    | 'lender-memo'
-    | 'key-risks'
-    | 'outstanding-items';
-
-  const QUICK_PROMPT_LABELS: Record<Exclude<QuickPromptAction, 'draft-submission' | 'status-report'>, string> = {
-    'lender-memo': 'Generate a full lender-ready memo for this deal',
-    'key-risks': 'What are the key risks & hurdles for this deal?',
-    'outstanding-items': 'What outstanding items need attention?',
-  };
-
-  const handleQuickPrompt = useCallback((action: QuickPromptAction) => {
-    switch (action) {
-      case 'draft-submission':
-        void handleDraftSubmission();
-        return;
-      case 'status-report':
-        openStatusReport();
-        return;
-      case 'lender-memo':
-      case 'key-risks':
-      case 'outstanding-items':
-        runQuickPrompt(QUICK_PROMPT_LABELS[action]);
-        return;
-      default:
-        return;
-    }
-  }, [handleDraftSubmission, openStatusReport, runQuickPrompt]);
-
-  const suggestedQuestions: { label: string; action: QuickPromptAction; disabled?: boolean }[] = [
-    { label: 'Draft Submission Email', action: 'draft-submission', disabled: isDraftingEmail },
-    { label: 'Generate Status Report', action: 'status-report' },
-    { label: QUICK_PROMPT_LABELS['lender-memo'], action: 'lender-memo' },
-    { label: QUICK_PROMPT_LABELS['key-risks'], action: 'key-risks' },
-    { label: QUICK_PROMPT_LABELS['outstanding-items'], action: 'outstanding-items' },
-  ];
+  const lenderMemoQuickPrompt = 'Generate a full lender-ready memo for this deal';
+  const keyRisksQuickPrompt = 'What are the key risks & hurdles for this deal?';
+  const outstandingItemsQuickPrompt = 'What outstanding items need attention?';
 
   return (
     <Card className="flex flex-col h-[600px]">
@@ -1034,30 +999,50 @@ CRITICAL RULES:
                   </p>
                 )}
                 <div className="space-y-2 w-full max-w-sm">
-                  {suggestedQuestions.map((q, i) => (
-                    <button
-                      key={i}
-                      type="button"
-                      disabled={q.disabled}
-                      onClick={() => {
-                        handleQuickPrompt(q.action);
-                      }}
-                      className={cn(
-                        "w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 disabled:opacity-50",
-                        q.action === 'draft-submission' || q.action === 'status-report'
-                          ? "bg-primary/10 hover:bg-primary/20 border border-primary/20 font-medium text-primary"
-                          : "bg-muted/50 hover:bg-muted"
-                      )}
-                    >
-                      {q.action === 'draft-submission' && (
-                        isDraftingEmail
-                          ? <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
-                          : <Mail className="h-4 w-4 flex-shrink-0" />
-                      )}
-                      {q.action === 'status-report' && <FileBarChart className="h-4 w-4 flex-shrink-0" />}
-                      {q.action === 'draft-submission' && isDraftingEmail ? 'Drafting submission email…' : q.label}
-                    </button>
-                  ))}
+                  <button
+                    type="button"
+                    disabled={isDraftingEmail}
+                    onClick={() => void handleDraftSubmission()}
+                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 disabled:opacity-50 bg-primary/10 hover:bg-primary/20 border border-primary/20 font-medium text-primary"
+                  >
+                    {isDraftingEmail
+                      ? <Loader2 className="h-4 w-4 flex-shrink-0 animate-spin" />
+                      : <Mail className="h-4 w-4 flex-shrink-0" />}
+                    {isDraftingEmail ? 'Drafting submission email…' : 'Draft Submission Email'}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => openStatusReport()}
+                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-primary/10 hover:bg-primary/20 border border-primary/20 font-medium text-primary"
+                  >
+                    <FileBarChart className="h-4 w-4 flex-shrink-0" />
+                    Generate Status Report
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => runQuickPrompt(lenderMemoQuickPrompt)}
+                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
+                  >
+                    {lenderMemoQuickPrompt}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => runQuickPrompt(keyRisksQuickPrompt)}
+                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
+                  >
+                    {keyRisksQuickPrompt}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => runQuickPrompt(outstandingItemsQuickPrompt)}
+                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
+                  >
+                    {outstandingItemsQuickPrompt}
+                  </button>
                 </div>
               </div>
             ) : (
