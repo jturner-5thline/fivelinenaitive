@@ -131,15 +131,14 @@ export function DealsHeader() {
               <TooltipContent>Customize widgets</TooltipContent>
             </Tooltip>
           )}
-          {!isDealsRoute && (
-          <HintTooltip
-            hint="Start here! Click to create your first deal and begin tracking your pipeline."
-            visible={isHintVisible('new-deal-button')}
-            onDismiss={() => dismissHint('new-deal-button')}
-            side="bottom"
-            align="end"
-          >
-            {isNaitivePipelineRoute && naitivePipelineId ? (
+          {isNaitivePipelineRoute && naitivePipelineId && (
+            <HintTooltip
+              hint="Start here! Click to create your first deal and begin tracking your pipeline."
+              visible={isHintVisible('new-deal-button')}
+              onDismiss={() => dismissHint('new-deal-button')}
+              side="bottom"
+              align="end"
+            >
               <CreateNaitiveDealDialog
                 pipelineId={naitivePipelineId}
                 stages={naitiveStages}
@@ -152,10 +151,7 @@ export function DealsHeader() {
                   </Button>
                 }
               />
-            ) : (
-              <CreateDealDialog />
-            )}
-          </HintTooltip>
+            </HintTooltip>
           )}
 
           </div>
