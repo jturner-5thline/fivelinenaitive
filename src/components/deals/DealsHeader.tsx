@@ -144,6 +144,20 @@ export function DealsHeader() {
     if (load) load().catch(() => {});
   }, []);
 
+  // When ANY header-launched overlay is open, hide the floating header
+  // chrome (pill bar + notification preview) so the overlay is the only
+  // active top-level interface. Overlays themselves remain mounted below.
+  const isHeaderOverlayOpen =
+    isDashboardOpen ||
+    isTasksOpen ||
+    isTasksListOpen ||
+    isActionQueueOpen ||
+    isCalendarOpen ||
+    isMailOpen ||
+    isDealRundownOpen ||
+    isBriefingOpen ||
+    isNikiBriefingOpen;
+
   // Render the fixed header into <body> via a portal. The parent <main>
   // sets a `backdrop-filter`, which makes it the containing block for any
   // descendant `position: fixed` element — so without portaling, the
@@ -162,7 +176,10 @@ export function DealsHeader() {
         from the page beneath it. Slightly wider and more opaque than
         the Ask naitive AI bar so it reads as the primary global surface.
       */}
-      <div className="pt-4 px-2 sm:px-4 pointer-events-none">
+      <div
+        className="pt-4 px-2 sm:px-4 pointer-events-none"
+        style={{ display: isHeaderOverlayOpen ? 'none' : undefined }}
+      >
         <div
           className="floating-header pointer-events-auto mx-auto relative flex h-10 sm:h-11 items-center gap-1 sm:gap-2 px-2 sm:px-4 min-w-0 rounded-2xl overflow-hidden border border-[rgba(126,184,247,0.35)] bg-[rgba(126,184,247,0.12)] text-foreground backdrop-blur-xl shadow-glass hover:bg-[rgba(126,184,247,0.2)] hover:border-[rgba(126,184,247,0.5)] hover:shadow-glass-hover before:pointer-events-none before:absolute before:inset-0 before:rounded-[inherit] before:bg-[linear-gradient(135deg,rgba(126,184,247,0.15)_0%,transparent_50%)]"
           style={{
@@ -251,7 +268,9 @@ export function DealsHeader() {
           </div>
         </div>
       </div>
-      <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
+      {!isHeaderOverlayOpen && (
+        <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
+      )}
       {isFifthLine && isDashboardOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="dashboard" onClose={() => setIsDashboardOpen(false)} />}>
           <DashboardModal
