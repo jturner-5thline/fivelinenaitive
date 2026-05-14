@@ -472,11 +472,17 @@ export function DealsHeader() {
           <FullCalendarView open={isCalendarOpen} onOpenChange={setIsCalendarOpen} />
         </Suspense>
       )}
-      {isMailOpen && (
-        <Suspense fallback={<OverlayLoadingShell kind="mail" onClose={() => setIsMailOpen(false)} />}>
-          <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
-        </Suspense>
-      )}
+      {/*
+        Mail popup is kept mounted (controlled by `open`) so the second-and-onwards
+        opens are instant — no Suspense/chunk wait, no fresh effect re-runs. The
+        OverlayLoadingShell only ever shows on the very first click before the
+        chunk has been prefetched (idle / hover). The InboxDialog itself reads
+        from the pre-warmed inboxCacheStore so the modal shell + cached messages
+        paint immediately, and a silent background refresh happens after open.
+      */}
+      <Suspense fallback={isMailOpen ? <OverlayLoadingShell kind="mail" onClose={() => setIsMailOpen(false)} /> : null}>
+        <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
+      </Suspense>
       {canSeeBriefingHeaderItems && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
       {canSeeNiki && (
         <DailyBriefingModal
