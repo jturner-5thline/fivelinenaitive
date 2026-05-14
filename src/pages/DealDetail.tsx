@@ -4057,6 +4057,16 @@ export default function DealDetail() {
                           >
                             <LayoutGrid className="h-4 w-4" />
                           </Button>
+                          <Button
+                            type="button"
+                            variant="liquid-glass"
+                            size="sm"
+                            className="gap-2 h-8"
+                            onClick={() => setIsAddLenderSlideOverOpen(true)}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Add Lender
+                          </Button>
                       </div>
                     </div>
                   </CardHeader>
