@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
-import { LayoutDashboard, Calendar, Mail, Inbox, Briefcase, Newspaper, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, Newspaper, Sparkles } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -25,8 +25,6 @@ const loadDashboard = () =>
   import('@/components/dashboard/DashboardModal').then((m) => ({ default: m.DashboardModal }));
 const loadTasks = () =>
   import('@/components/tasks/TasksOverlay').then((m) => ({ default: m.TasksOverlay }));
-const loadDeals = () =>
-  import('@/components/deals/DealsPageOverlay').then((m) => ({ default: m.DealsPageOverlay }));
 const loadCalendar = () =>
   import('@/components/dashboard/FullCalendarView').then((m) => ({ default: m.FullCalendarView }));
 const loadMail = () =>
@@ -34,7 +32,6 @@ const loadMail = () =>
 
 const DashboardModal = lazy(loadDashboard);
 const TasksOverlay = lazy(loadTasks);
-const DealsPageOverlay = lazy(loadDeals);
 const FullCalendarView = lazy(loadCalendar);
 const InboxDialog = lazy(loadMail);
 
@@ -43,7 +40,6 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Calendar: loadCalendar,
   Mail: loadMail,
   'Action Queue': loadTasks,
-  Deals: loadDeals,
 };
 import {
   canSeeNikiBriefing,
@@ -69,7 +65,7 @@ export function DealsHeader() {
   const [isTasksOpen, setIsTasksOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isMailOpen, setIsMailOpen] = useState(false);
-  const [isDealsOverlayOpen, setIsDealsOverlayOpen] = useState(false);
+  const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
@@ -143,7 +139,7 @@ export function DealsHeader() {
               { label: 'Calendar', Icon: Calendar, isOpen: isCalendarOpen, onClick: () => setIsCalendarOpen(true) },
               { label: 'Mail', Icon: Mail, isOpen: isMailOpen, onClick: () => setIsMailOpen(true) },
               { label: 'Action Queue', Icon: Inbox, isOpen: isTasksOpen, onClick: () => setIsTasksOpen(true) },
-              { label: 'Deals', Icon: Briefcase, isOpen: isDealsOverlayOpen, onClick: () => setIsDealsOverlayOpen(true) },
+              { label: 'Deal Rundown', Icon: ClipboardList, isOpen: isDealRundownOpen, onClick: () => setIsDealRundownOpen(true) },
               ...(isFifthLine
                 ? [{ label: 'Dashboard', Icon: LayoutDashboard, isOpen: isDashboardOpen, onClick: () => setIsDashboardOpen(true) }]
                 : []),
@@ -214,10 +210,14 @@ export function DealsHeader() {
           <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
         </Suspense>
       )}
-      {isDealsOverlayOpen && (
-        <Suspense fallback={<OverlayLoadingShell kind="deals" onClose={() => setIsDealsOverlayOpen(false)} />}>
-          <DealsPageOverlay open={isDealsOverlayOpen} onOpenChange={setIsDealsOverlayOpen} />
-        </Suspense>
+      {isDealRundownOpen && (
+        <DailyBriefingModal
+          open={isDealRundownOpen}
+          onOpenChange={setIsDealRundownOpen}
+          title="Deal Rundown"
+          initialTab="pipeline"
+          briefingType="deal_rundown"
+        />
       )}
       {isCalendarOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="calendar" onClose={() => setIsCalendarOpen(false)} />}>
