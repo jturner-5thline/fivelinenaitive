@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, ShieldAlert, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock, Download, FileText, Filter, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, BarChart3, LineChart, PieChart, AreaChart, GripVertical, CalendarIcon, RotateCcw, LayoutGrid, Grid2X2, Grid3X3, Save, FolderOpen, TrendingUp, TrendingDown, ArrowUpDown, AlertTriangle, Clock, Download, FileText, Filter, X } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PortfolioRiskAnalysis } from '@/components/analytics/PortfolioRiskAnalysis';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, rectSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -1272,10 +1271,6 @@ export default function Analytics() {
                 <BarChart3 className="h-3.5 w-3.5" />
                 Custom Analytics
               </TabsTrigger>
-              <TabsTrigger value="portfolio-risk" className="gap-1.5">
-                <ShieldAlert className="h-3.5 w-3.5" />
-                Portfolio / Risk
-              </TabsTrigger>
             </TabsList>
 
             <TabsContent value="custom">
@@ -1617,10 +1612,6 @@ export default function Analytics() {
               </SortableContext>
             </DndContext>
           )}
-            </TabsContent>
-
-            <TabsContent value="portfolio-risk">
-              <PortfolioRiskAnalysis />
             </TabsContent>
           </Tabs>
         </main>
