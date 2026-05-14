@@ -203,7 +203,7 @@ export function DealCard({ deal, onStatusChange, onMarkReviewed, onToggleFlag, f
     <>
     <Link to={`/deal/${deal.id}`} className="block w-full min-w-0 h-full" onClick={__handleCardClick}>
       <Card
-        className={`deal-glass group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
+        className={`deal-glass deal-tile group relative cursor-pointer h-full flex flex-col transition-all duration-200 hover:-translate-y-0.5 min-w-0 max-w-full ${timeAgoData.isStale ? 'ring-2 ring-warning/50' : ''}`}>
 
         {/*
           Flagged-for-discussion indicator — small red flag pinned to the
