@@ -665,15 +665,21 @@
   }
 
   /* ─── Shared near-fullscreen popup shell ──────────────────────────────
-     Unified background fill for the major overlays (Deals, Email,
-     Calendar, Tasks). Mirrors the premium dark glass surface used by the
-     deal popup so every header-launched overlay reads as part of one
-     modal family. */
+     SINGLE SOURCE OF TRUTH for the modal/pop-up surface across the app
+     (Deal pop-up, Email, Calendar, Tasks, Dashboard, etc.). Every major
+     overlay must compose this class so the entire pop-up family shares
+     one identical fill, border, blur and elevation treatment. Mirrors
+     the Deal pop-up exactly. Do not override locally. */
   .popup-shell-surface {
     background:
-      radial-gradient(120% 90% at 0% 0%, hsla(280, 28%, 14%, 0.55) 0%, hsla(280, 22%, 10%, 0.30) 28%, transparent 60%),
-      radial-gradient(100% 80% at 100% 100%, hsla(240, 20%, 6%, 0.55) 0%, transparent 55%),
-      linear-gradient(160deg, #0a0a0d 0%, #0b0a10 45%, #08080b 100%);
+      linear-gradient(135deg, #020208 0%, #050d1f 20%, #040b14 40%, #02080f 60%, #0a0418 80%, #040008 100%) !important;
+    backdrop-filter: blur(18px) saturate(135%);
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    box-shadow:
+      0 40px 120px rgba(0, 0, 0, 0.65),
+      0 12px 32px rgba(0, 0, 0, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07);
   }
   .dark .glass-border-soft {
     border-color: hsl(0 0% 100% / 0.06);
