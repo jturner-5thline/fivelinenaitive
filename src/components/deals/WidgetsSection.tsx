@@ -544,7 +544,7 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
   };
 
   return (
-    <div className="relative py-1.5 px-4 bg-transparent">
+    <div className="relative py-1.5 bg-transparent">
 
       <DndContext
         sensors={sensors}
