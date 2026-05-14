@@ -895,15 +895,14 @@ export default function Dashboard() {
                 <Button
                   size="sm"
                   variant="liquid-glass"
-                  className="gap-2 h-9 shrink-0"
+                  className="h-9 w-9 p-0 shrink-0"
                   onClick={() => setShowMilestones(!showMilestones)}
+                  aria-label="Milestones"
+                  title="Milestones"
                 >
-                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <circle cx="12" cy="12" r="6" />
-                    <circle cx="12" cy="12" r="2" />
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="white" stroke="white" strokeWidth="1" strokeLinejoin="round">
+                    <path d="M12 2L22 12L12 22L2 12L12 2Z" />
                   </svg>
-                  <span className="hidden sm:inline">Milestones</span>
                 </Button>
                 <div className="relative self-center">
                   <DealSavedViewsMenu
