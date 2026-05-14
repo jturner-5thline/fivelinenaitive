@@ -56,6 +56,15 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
   // count becomes the SOLE source of truth — resolved/dismissed flags must
   // not leave the tile showing flagged.
   const [activeFlagCount, setActiveFlagCount] = useState<number | null>(null);
+  // Self-heal stale legacy `deals.is_flagged=true` rows that have zero
+  // active flag notes (e.g. flags were resolved before the boolean sync
+  // existed). One-shot per card mount.
+  useEffect(() => {
+    if (activeFlagCount === 0 && deal.isFlagged) {
+      updateDeal(deal.id, { isFlagged: false }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeFlagCount]);
   const effectiveFlagCount = activeFlagCount ?? (deal.isFlagged ? 1 : 0);
   const showFlagIndicator = effectiveFlagCount > 0;
   const displayFlagCount = effectiveFlagCount;
