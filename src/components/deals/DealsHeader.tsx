@@ -21,6 +21,7 @@ import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 import { useAiActionQueue } from '@/hooks/useAiActionQueue';
+import { useSidebar } from '@/components/ui/sidebar';
 
 // Lazy-loaded overlay modules. Each is code-split so the header itself
 // stays cheap and the overlay shell can render an instant skeleton while
@@ -55,6 +56,20 @@ import {
 export function DealsHeader() {
   const location = useLocation();
   const { user } = useAuth();
+  // Bind the floating header's horizontal position to the sidebar width
+  // so it slides in sync with the sidebar (matching the Ask naitive AI
+  // bar's behaviour). When the sidebar collapses to icon-only, the
+  // header narrows; when it expands, the header shifts right.
+  const { state: sidebarState, isMobile: sidebarIsMobile } = useSidebar();
+  // Mirror the math in `src/components/ui/sidebar.tsx`:
+  //   expanded → var(--sidebar-width) (14rem)
+  //   collapsed (icon) → calc(var(--sidebar-width-icon) + theme(spacing.4)) (3rem + 1rem)
+  //   mobile → off-canvas, header spans full viewport
+  const headerLeftOffset = sidebarIsMobile
+    ? '0px'
+    : sidebarState === 'expanded'
+      ? 'var(--sidebar-width, 14rem)'
+      : 'calc(var(--sidebar-width-icon, 3rem) + 1rem)';
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { hasPageAccess } = usePageAccessFlags();
   const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
@@ -117,7 +132,8 @@ export function DealsHeader() {
   // viewport-fixed positioning on every route.
   return createPortal(
     <header
-      className="fixed top-0 left-0 right-0 z-[1000] pointer-events-none"
+      className="fixed top-0 right-0 z-[1000] pointer-events-none transition-[left] duration-300 ease-in-out"
+      style={{ left: headerLeftOffset }}
       aria-label="Global navigation"
     >
       {/*
