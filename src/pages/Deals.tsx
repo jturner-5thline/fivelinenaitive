@@ -788,7 +788,7 @@ export default function Dashboard() {
                       size="icon"
                       aria-label="Sort deals"
                       title="Sort deals"
-                      className="relative h-8 w-8 shrink-0"
+                      className="relative h-9 w-9 shrink-0 rounded-md"
                     >
                       <ArrowUpDown className="h-3.5 w-3.5" />
                       {sortField === 'flexEngagement' && (
@@ -825,7 +825,7 @@ export default function Dashboard() {
                 {viewMode === 'grid' && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon" className="h-8 w-8 shrink-0">
+                      <Button variant="outline" size="icon" className="h-9 w-9 shrink-0 rounded-md">
                         <Layers className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -857,7 +857,7 @@ export default function Dashboard() {
 
                 {/* View Mode Dropdown */}
                 <Select value={viewMode} onValueChange={(val: 'grid' | 'list' | 'pipeline' | 'timeline') => setViewMode(val)}>
-                  <SelectTrigger className="h-8 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0">
+                  <SelectTrigger className="h-9 w-10 px-0 justify-center [&>svg:last-child]:hidden shrink-0 rounded-md">
                     {viewMode === 'grid' && <LayoutGrid className="h-4 w-4" />}
                     {viewMode === 'list' && <List className="h-4 w-4" />}
                     {viewMode === 'pipeline' && <Kanban className="h-4 w-4" />}
@@ -895,7 +895,7 @@ export default function Dashboard() {
                 <Button
                   size="sm"
                   variant="liquid-glass"
-                  className="h-9 w-9 p-0 shrink-0"
+                  className="h-9 w-9 p-0 shrink-0 rounded-md"
                   onClick={() => setShowMilestones(!showMilestones)}
                   aria-label="Milestones"
                   title="Milestones"
