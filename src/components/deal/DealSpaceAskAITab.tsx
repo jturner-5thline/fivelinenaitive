@@ -33,6 +33,7 @@ import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
+import { PostCallFollowupModal } from './PostCallFollowupModal';
 import {
   fetchLenderProfilesForDeal,
   renderLenderProfileBlock,
@@ -359,6 +360,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
   const [emailDrafts, setEmailDrafts] = useState<EmailDraft[]>([]);
   const [activeDraftIndex, setActiveDraftIndex] = useState(0);
   const [isDraftDialogOpen, setIsDraftDialogOpen] = useState(false);
+  const [isPostCallModalOpen, setIsPostCallModalOpen] = useState(false);
   // ── Pre-flight review step: lets the user exclude specific lenders
   // (auto-skipping anyone already passed) before drafts are generated.
   const [isReviewOpen, setIsReviewOpen] = useState(false);
