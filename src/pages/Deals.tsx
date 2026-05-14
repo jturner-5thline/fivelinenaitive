@@ -722,36 +722,6 @@ export default function Dashboard() {
                   </Tooltip>
                 </TooltipProvider>
 
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      {(() => {
-                        const tasksActive = (filters.tasksFilter ?? 'all') === 'has';
-                        return (
-                          <button
-                            type="button"
-                            aria-pressed={tasksActive}
-                            onClick={() => {
-                              updateFilters({ tasksFilter: tasksActive ? 'all' : 'has' });
-                              setSavedViewWarningDismissed(false);
-                            }}
-                            className={`h-8 w-8 inline-flex items-center justify-center rounded-md border backdrop-blur-md transition-colors ${
-                              tasksActive
-                                ? 'border-sky-500/40 bg-sky-500/25 text-sky-300'
-                                : 'border-sky-500/20 bg-gradient-to-br from-sky-500/10 to-blue-600/5 text-sky-400/70 hover:text-sky-300'
-                            }`}
-                          >
-                            <CheckSquare className="h-3.5 w-3.5" />
-                          </button>
-                        );
-                      })()}
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Show only deals with open tasks</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-
                 {is5thLine && (
                 <TooltipProvider>
                   <Tooltip>
