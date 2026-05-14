@@ -1816,6 +1816,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       enabled={open}
                       onNavigate={handleNavigate}
                       targetAssigneeName={targetAssigneeName}
+                      targetUserId={targetUserId}
                       briefingType={briefingType}
                     />
                   )}
