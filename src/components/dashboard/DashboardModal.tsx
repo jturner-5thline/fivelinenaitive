@@ -1,5 +1,7 @@
-import { useEffect, useRef, useMemo, useState, useCallback } from 'react';
+import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { LayoutDashboard, BarChart3 } from 'lucide-react';
 import { Chart, registerables } from 'chart.js';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -21,6 +23,8 @@ Chart.register(...registerables);
 interface DashboardModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Which tab to land on when the modal opens. Defaults to 'dashboard'. */
+  initialTab?: 'dashboard' | 'analytics';
 }
 
 const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
@@ -38,7 +42,16 @@ const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
   { key: 'closing', label: 'Closing Mo.' },
 ];
 
-export function DashboardModal({ open, onOpenChange }: DashboardModalProps) {
+// Analytics is the legacy /analytics page repurposed as the second tab here.
+// Lazy so the heavy chart bundle only loads when the user picks the tab.
+const AnalyticsTabContent = lazy(() => import('@/pages/Analytics'));
+
+export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }: DashboardModalProps) {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics'>(initialTab);
+  useEffect(() => {
+    if (open) setActiveTab(initialTab);
+  }, [open, initialTab]);
+
   const donutRef = useRef<HTMLCanvasElement>(null);
   const barRef = useRef<HTMLCanvasElement>(null);
   const donutChart = useRef<Chart | null>(null);
