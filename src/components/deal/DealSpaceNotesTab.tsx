@@ -126,7 +126,7 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
 
   const containerClass = isFullscreen
     ? "fixed inset-0 z-50 flex bg-background"
-    : "flex h-[calc(100vh-280px)] min-h-[400px] border rounded-lg overflow-hidden bg-background";
+    : "flex h-[calc(100vh-280px)] min-h-[400px] rounded-lg overflow-hidden bg-transparent";
 
   return (
     <div className="space-y-4">
