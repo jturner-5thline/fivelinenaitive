@@ -465,11 +465,13 @@ export function EndOfDayTab({
   enabled,
   onNavigate,
   targetAssigneeName,
+  targetUserId,
   briefingType,
 }: {
   enabled: boolean;
   onNavigate?: (path: string) => void;
   targetAssigneeName?: string;
+  targetUserId?: string;
   briefingType?: string;
 }) {
   const { user } = useAuth();
@@ -525,6 +527,7 @@ export function EndOfDayTab({
           enabled={enabled}
           onNavigate={onNavigate || (() => {})}
           targetDealOwnerName={targetAssigneeName}
+          targetUserId={targetUserId}
           briefingType={briefingType}
         />
       </div>
