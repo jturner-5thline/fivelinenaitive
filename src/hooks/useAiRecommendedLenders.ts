@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -17,12 +17,28 @@ export interface AiRecommendationResponse {
   generatedAt: string;
 }
 
-export function useAiRecommendedLenders(dealId: string | undefined, autoRun: boolean) {
+export interface AiRecommenderCriteriaOverride {
+  dealValue?: number;
+  dealTypes?: string[];
+  industry?: string;
+  geo?: string;
+}
+
+export function useAiRecommendedLenders(
+  dealId: string | undefined,
+  autoRun: boolean,
+  options?: {
+    criteriaSignature?: string;
+    criteriaOverride?: AiRecommenderCriteriaOverride;
+  },
+) {
   const [data, setData] = useState<AiRecommendationResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [skippedNames, setSkippedNames] = useState<Set<string>>(new Set());
   const [addedNames, setAddedNames] = useState<Set<string>>(new Set());
+  const overrideRef = useRef<AiRecommenderCriteriaOverride | undefined>(options?.criteriaOverride);
+  overrideRef.current = options?.criteriaOverride;
 
   const fetchRecs = useCallback(async () => {
     if (!dealId) return;
@@ -30,7 +46,7 @@ export function useAiRecommendedLenders(dealId: string | undefined, autoRun: boo
     setError(null);
     try {
       const { data: resp, error: invokeErr } = await supabase.functions.invoke('recommend-lenders', {
-        body: { dealId },
+        body: { dealId, criteriaOverride: overrideRef.current },
       });
       if (invokeErr) throw invokeErr;
       setData(resp as AiRecommendationResponse);
@@ -43,12 +59,28 @@ export function useAiRecommendedLenders(dealId: string | undefined, autoRun: boo
     }
   }, [dealId]);
 
+  // Initial autoRun
   useEffect(() => {
     if (autoRun && dealId && !data && !loading && !error) {
       fetchRecs();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoRun, dealId]);
+
+  // Re-fetch when criteria signature changes (after initial load)
+  const lastSig = useRef<string | undefined>(options?.criteriaSignature);
+  useEffect(() => {
+    const sig = options?.criteriaSignature;
+    if (!autoRun || !dealId) return;
+    if (sig === undefined) return;
+    if (lastSig.current === sig) return;
+    if (lastSig.current !== undefined) {
+      // Criteria changed after first render — refetch
+      fetchRecs();
+    }
+    lastSig.current = sig;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [options?.criteriaSignature, dealId, autoRun]);
 
   const skip = useCallback(async (rec: AiRecommendation) => {
     if (!dealId) return;
