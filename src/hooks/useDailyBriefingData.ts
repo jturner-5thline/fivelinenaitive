@@ -373,7 +373,50 @@ export function useEmailData(enabled: boolean, targetUserId?: string) {
         const emailAnalysis = (data?.emailAnalysis || []) as any[];
         const analysisMap = new Map(emailAnalysis.map((a: any) => [a.email_cache_id, a]));
         const emails = emailCache.map((e: any) => ({ ...e, analysis: analysisMap.get(e.id) || null }));
-        return { emails };
+        return { emails, syncFailed: false };
+      }
+
+      // ── Self path: trigger a fresh Gmail fetch BEFORE reading cache so the
+      // Daily Rundown / Niki's Daily Rundown Email tab always reflects mail
+      // received since the 5 PM ET cutoff (not stale cache from last night).
+      // We mirror the inbox widget's sync pattern: gmail-messages list →
+      // upsert into email_cache → read enriched. If the live fetch fails
+      // (timeout / Gmail 5xx / rate-limit), we surface `syncFailed: true`
+      // and fall back to whatever's already in cache.
+      let syncFailed = false;
+      try {
+        const { data: listRes, error: listErr } = await supabase.functions.invoke(
+          'gmail-messages',
+          { body: { action: 'list', max_results: 100 } },
+        );
+        if (listErr) throw new Error(listErr.message);
+        const gmailMessages = (listRes?.messages || []) as any[];
+        if (gmailMessages.length > 0) {
+          const cacheRows = gmailMessages.map((msg: any) => ({
+            user_id: effectiveUserId!,
+            gmail_message_id: msg.id,
+            thread_id: msg.thread_id || null,
+            subject: msg.subject || null,
+            snippet: msg.snippet || null,
+            body_text: msg.body_text || null,
+            from_email: msg.from_email || null,
+            from_name: msg.from_name || null,
+            to_emails: msg.to_emails || null,
+            cc_emails: msg.cc_emails || null,
+            labels: msg.labels || null,
+            is_read: msg.is_read ?? true,
+            is_starred: msg.is_starred ?? false,
+            received_at: msg.received_at || null,
+            fetched_at: new Date().toISOString(),
+          }));
+          const { error: upsertErr } = await supabase
+            .from('email_cache')
+            .upsert(cacheRows, { onConflict: 'user_id,gmail_message_id' });
+          if (upsertErr) console.warn('[briefing-email] cache upsert error:', upsertErr);
+        }
+      } catch (err) {
+        console.warn('[briefing-email] live Gmail sync failed, falling back to cache:', err);
+        syncFailed = true;
       }
 
       const [emailCacheRes, emailAnalysisRes] = await Promise.all([
@@ -396,7 +439,7 @@ export function useEmailData(enabled: boolean, targetUserId?: string) {
       const emailAnalysis = emailAnalysisRes.data || [];
       const analysisMap = new Map(emailAnalysis.map(a => [a.email_cache_id, a]));
       const emails = emailCache.map(e => ({ ...e, analysis: analysisMap.get(e.id) || null }));
-      return { emails };
+      return { emails, syncFailed };
     },
   });
 }
