@@ -68,7 +68,7 @@ interface DealLenderRow {
 
 interface DealRow {
   id: string;
-  name: string | null;
+  company: string | null;
   created_at: string;
 }
 
@@ -165,7 +165,7 @@ export function LenderAnalyticsDialog({ open, onOpenChange, lenders }: Props) {
             if (startIso) q = q.gte('created_at', startIso);
             return q;
           })(),
-          supabase.from('deals').select('id, name, created_at').limit(5000),
+          supabase.from('deals').select('id, company, created_at').limit(5000),
           (() => {
             let q = supabase.from('calendar_events').select('id, title, start_time, attendees').limit(2000).order('start_time', { ascending: false });
             if (startIso) q = q.gte('start_time', startIso);
@@ -193,7 +193,7 @@ export function LenderAnalyticsDialog({ open, onOpenChange, lenders }: Props) {
   const dealMap = useMemo(() => {
     const m = new Map<string, DealRow>();
     for (const d of deals) {
-      if (isExcludedDealName(d.name)) continue;
+      if (isExcludedDealName(d.company)) continue;
       m.set(d.id, d);
     }
     return m;
@@ -328,7 +328,7 @@ export function LenderAnalyticsDialog({ open, onOpenChange, lenders }: Props) {
     const rows = filteredDealLenders.filter(dl => dl.name.trim().toLowerCase() === key);
     return rows.map(r => ({
       ...r,
-      dealName: dealMap.get(r.deal_id)?.name ?? '—',
+      dealName: dealMap.get(r.deal_id)?.company ?? '—',
     }));
   }, [drilldown, filteredDealLenders, dealMap]);
 
