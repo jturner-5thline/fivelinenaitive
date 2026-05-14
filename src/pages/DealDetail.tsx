@@ -2763,20 +2763,27 @@ export default function DealDetail() {
                     displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
                   {!isDemoAccount && <BetaBadge featureKey="page_deal_detail" />}
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className={`h-10 w-10 relative ${activeFlagCount > 0 ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
-                    title={activeFlagCount > 0 ? `${activeFlagCount} flag${activeFlagCount > 1 ? 's' : ''} for discussion` : 'Flag for discussion'}
-                    onClick={() => setIsFlagDialogOpen(true)}
-                  >
-                    <Flag className={`h-5 w-5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
-                    {activeFlagCount > 1 && (
-                      <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
-                        {activeFlagCount}
-                      </span>
-                    )}
-                  </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        aria-label={activeFlagCount > 0 ? `${activeFlagCount} flag${activeFlagCount > 1 ? 's' : ''} for discussion` : 'Flag for discussion'}
+                        className={`h-10 w-10 relative ${activeFlagCount > 0 ? 'text-destructive' : 'text-muted-foreground hover:text-destructive'}`}
+                        onClick={() => setIsFlagDialogOpen(true)}
+                      >
+                        <Flag className={`h-5 w-5 ${activeFlagCount > 0 ? 'fill-current' : ''}`} />
+                        {activeFlagCount > 1 && (
+                          <span className="absolute -top-0.5 -right-0.5 h-4 min-w-[16px] rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center px-0.5">
+                            {activeFlagCount}
+                          </span>
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      {activeFlagCount > 0 ? `${activeFlagCount} flag${activeFlagCount > 1 ? 's' : ''} for discussion` : 'Flag for discussion'}
+                    </TooltipContent>
+                  </Tooltip>
                   <FlagNoteDialog
                     dealId={deal.id}
                     dealName={deal.company}
