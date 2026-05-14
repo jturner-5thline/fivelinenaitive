@@ -349,7 +349,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20">
         <DialogHeader className="px-6 pt-6 pb-3 border-b border-border">
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-primary" />
@@ -523,6 +523,8 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
 
               <Button
                 type="button"
+                variant="liquid-glass"
+                size="sm"
                 onClick={handleGenerate}
                 disabled={isGenerating || !transcriptText.trim()}
                 className="w-full"
