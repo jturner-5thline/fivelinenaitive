@@ -337,11 +337,13 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
                     const matched = contactsByEmail[emailKey];
                     const name =
                       matched?.fullName || a.display_name || a.email || 'Unknown';
+                    const rowKey = `${ev.id}::${emailKey || idx}`;
+                    const isComposing = composerKey === rowKey;
+                    const attendeeFirst = firstNameOf(name, a.email || undefined);
+                    const defaultSubject = `${attendeeFirst} & ${userFirstName} Follow Up`;
                     return (
-                      <div
-                        key={`${ev.id}-${emailKey || idx}`}
-                        className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] glass-border-softer px-2.5 py-1.5"
-                      >
+                      <div key={rowKey}>
+                        <div className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] glass-border-softer px-2.5 py-1.5">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-medium text-foreground truncate">
@@ -368,13 +370,28 @@ export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
                           type="button"
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground"
+                          className={cn(
+                            'h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground',
+                            isComposing && 'text-primary',
+                          )}
                           aria-label={`Email ${name}`}
-                          disabled
-                          title="Email (coming soon)"
+                          disabled={!a.email}
+                          title={a.email ? `Email ${name}` : 'No email available'}
+                          onClick={() =>
+                            setComposerKey(isComposing ? null : rowKey)
+                          }
                         >
                           <Mail className="h-3.5 w-3.5" />
                         </Button>
+                        </div>
+                        {isComposing && a.email && (
+                          <InlineComposer
+                            to={a.email}
+                            defaultSubject={defaultSubject}
+                            recipientLabel={name}
+                            onClose={() => setComposerKey(null)}
+                          />
+                        )}
                       </div>
                     );
                   })}
