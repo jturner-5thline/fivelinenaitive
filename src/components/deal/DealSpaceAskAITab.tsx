@@ -800,11 +800,11 @@ CRITICAL RULES:
     }
   }, [emailDrafts]);
 
-  const suggestedQuestions = [
-    "Generate a full lender-ready memo for this deal",
-    "What are the key risks & hurdles for this deal?",
-    "Summarize the current lender process & status",
-    "What outstanding items need attention?",
+  const suggestedQuestions: { label: string; action: 'ask' | 'status-report' }[] = [
+    { label: "Generate a full lender-ready memo for this deal", action: 'ask' },
+    { label: "What are the key risks & hurdles for this deal?", action: 'ask' },
+    { label: "Generate Status Update", action: 'status-report' },
+    { label: "What outstanding items need attention?", action: 'ask' },
   ];
 
   return (
@@ -1025,10 +1025,10 @@ CRITICAL RULES:
                   {suggestedQuestions.map((q, i) => (
                     <button
                       key={i}
-                      onClick={() => setQuestion(q)}
+                      onClick={() => q.action === 'status-report' ? openStatusReport() : setQuestion(q.label)}
                       className="w-full text-left text-sm p-3 rounded-lg bg-muted/50 hover:bg-muted transition-colors"
                     >
-                      {q}
+                      {q.label}
                     </button>
                   ))}
                 </div>
