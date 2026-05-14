@@ -71,7 +71,7 @@ serve(async (req) => {
     // Pull the deal (RLS scoped)
     const { data: deal, error: dealErr } = await supabase
       .from("deals")
-      .select("id, name, value, stage, status, company_id, user_id, industry, deal_types")
+      .select("id, company, value, stage, status, company_id, user_id, business_model, deal_type, narrative")
       .eq("id", dealId)
       .maybeSingle();
     if (dealErr || !deal) {
@@ -105,8 +105,11 @@ serve(async (req) => {
         .limit(50),
     ]);
 
+    const dealTypesFromDeal = deal.deal_type
+      ? String(deal.deal_type).split(/[,;|]/).map((s) => s.trim()).filter(Boolean)
+      : [];
     const sufficiency = checkSufficiency(
-      { value: deal.value, dealTypes: deal.deal_types },
+      { value: deal.value, dealTypes: dealTypesFromDeal },
       writeup,
       dsDocs ?? [],
       vdrDocs ?? [],
@@ -170,10 +173,10 @@ serve(async (req) => {
     }));
 
     const dealContext = {
-      name: deal.name ?? null,
+      name: deal.company ?? null,
       value: deal.value,
       dealTypes: sufficiency.dealTypes,
-      industry: deal.industry || writeup?.industry || null,
+      industry: writeup?.industry || deal.business_model || null,
       location: writeup?.location || null,
       sponsorship: writeup?.sponsorship || null,
       billingModel: writeup?.billing_model || null,
@@ -181,7 +184,7 @@ serve(async (req) => {
       profitability: writeup?.profitability || null,
       grossMargins: writeup?.gross_margins || null,
       collateral: writeup?.collateral_available || null,
-      narrative: [writeup?.description, writeup?.company_highlights, writeup?.team, writeup?.customer_base]
+      narrative: [deal.narrative, writeup?.description, writeup?.company_highlights, writeup?.team, writeup?.customer_base]
         .filter(Boolean).join("\n\n").slice(0, 4000),
       dataroomDocs: [
         ...(dsDocs ?? []).map((d: any) => d.filename),
