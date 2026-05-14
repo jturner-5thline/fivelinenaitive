@@ -77,7 +77,6 @@ export function CommandBar() {
     { id: 'pipeline-summary', label: 'Pipeline Summary', icon: <BarChart3 className="h-4 w-4" />, group: 'Quick Actions', action: () => sendToCopilot('Give me a pipeline summary') },
 
     // Navigation
-    { id: 'nav-dashboard', label: 'Go to Dashboard', icon: <LayoutDashboard className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/dashboard'); } },
     { id: 'nav-deals', label: 'Go to Deals', icon: <Briefcase className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/deals'); } },
     { id: 'nav-tasks', label: 'Go to Tasks', icon: <ListTodo className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/tasks'); } },
     { id: 'nav-lenders', label: 'Go to Lenders', icon: <Users className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/lenders'); } },
