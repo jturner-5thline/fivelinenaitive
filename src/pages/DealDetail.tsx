@@ -5271,6 +5271,7 @@ export default function DealDetail() {
             <DialogTitle>Lenders Kanban View</DialogTitle>
           </DialogHeader>
           {deal && deal.lenders && (
+            <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading lenders…</div>}>
             <LendersKanban
               lenders={deal.lenders}
               dealId={deal.id}
@@ -5332,6 +5333,7 @@ export default function DealDetail() {
               showScore={scoreConfig.enabled}
               scoreConfig={scoreConfig}
             />
+            </Suspense>
           )}
         </DialogContent>
       </Dialog>
@@ -5385,6 +5387,7 @@ export default function DealDetail() {
       )}
 
       {/* Panel Reorder Dialog */}
+      <Suspense fallback={null}>
       <DealPanelReorderDialog
         open={isPanelReorderDialogOpen}
         onOpenChange={setIsPanelReorderDialogOpen}
@@ -5394,6 +5397,7 @@ export default function DealDetail() {
         onToggleVisibility={togglePanelVisibility}
         onReset={resetToDefault}
       />
+      </Suspense>
 
       {/* Checklist Link Dialog for file uploads */}
       <ChecklistLinkDialog
@@ -5436,6 +5440,7 @@ export default function DealDetail() {
 
       {/* Deal Command Palette (⌘K) */}
       {deal && (
+        <Suspense fallback={null}>
         <DealCommandPalette
           isOpen={isCommandPaletteOpen}
           onOpenChange={setIsCommandPaletteOpen}
@@ -5468,9 +5473,11 @@ export default function DealDetail() {
           lenderCount={deal.lenders?.length || 0}
           milestoneCount={dbMilestones?.length || 0}
         />
+        </Suspense>
       )}
 
       {/* Floating Deal AI Assistant with operations */}
+      <Suspense fallback={null}>
       <FloatingDealAssistant
         dealId={deal.id}
         dealName={deal.company}
@@ -5480,6 +5487,7 @@ export default function DealDetail() {
         dealManager={deal.manager}
         dealNotes={deal.notes}
       />
+      </Suspense>
 
       {/* Floating left/right pipeline navigation arrows */}
       <DealDetailSideNavigation
