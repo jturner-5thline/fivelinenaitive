@@ -224,9 +224,15 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
       {/* Backdrop */}
       <div
         className={cn(
-          'absolute inset-0 bg-black/75 backdrop-blur-md',
+          'absolute inset-0',
           reduceMotion ? '' : 'animate-fade-in',
         )}
+        style={{
+          background:
+            'radial-gradient(circle at 50% 40%, rgba(10, 14, 24, 0.18) 0%, rgba(7, 10, 18, 0.34) 58%, rgba(4, 6, 12, 0.46) 100%)',
+          backdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
+          WebkitBackdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
+        }}
         onClick={onClose}
       />
 
