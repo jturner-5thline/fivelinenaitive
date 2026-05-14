@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { cn } from '@/lib/utils';
-import { ChevronRight, MoreHorizontal, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronRight, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import {
   Bar, BarChart, XAxis, YAxis, Tooltip, ResponsiveContainer,
   CartesianGrid, Cell, PieChart, Pie, Legend,
@@ -34,6 +34,8 @@ const TOOLTIP_STYLE = {
   borderRadius: 8,
   fontSize: 11,
 };
+
+const GRID_STROKE = 'hsl(var(--border) / 0.4)';
 
 // Approx average glyph width (px) at a given font size for our UI font.
 // 0.55em is a reasonable average for proportional sans-serif labels.
@@ -74,7 +76,19 @@ interface OperationalDashboardProps {
 }
 
 // ── KPI Card ───────────────────────────────────────────────────
-function KPICard({ label, value, description, onClick }: { label: string; value: string; description: string; onClick?: () => void }) {
+function KPICard({
+  label,
+  value,
+  description,
+  accent = 'hsl(var(--primary))',
+  onClick,
+}: {
+  label: string;
+  value: string;
+  description: string;
+  accent?: string;
+  onClick?: () => void;
+}) {
   return (
     <button
       type="button"
@@ -82,17 +96,32 @@ function KPICard({ label, value, description, onClick }: { label: string; value:
       disabled={!onClick}
       className={cn(
         GLASS_CARD,
-        'p-4 flex flex-col justify-between min-h-[88px] transition-all text-left',
+        'relative overflow-hidden p-4 pl-[14px] flex flex-col justify-between min-h-[112px] transition-all text-left group',
         onClick ? 'hover:border-white/[0.18] hover:bg-white/[0.05] cursor-pointer' : 'cursor-default',
       )}
     >
-      <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/70 leading-tight">
-        {label}
-      </p>
-      <p className="text-2xl font-bold text-foreground tabular-nums mt-1 leading-none">
+      <span
+        aria-hidden
+        className="absolute left-0 top-3 bottom-3 w-[2px] rounded-full opacity-70 group-hover:opacity-100 transition-opacity"
+        style={{ backgroundColor: accent }}
+      />
+      <div className="flex items-center gap-1.5">
+        <span
+          aria-hidden
+          className="h-1.5 w-1.5 rounded-full"
+          style={{ backgroundColor: accent, boxShadow: `0 0 8px ${accent}` }}
+        />
+        <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground/80 leading-tight truncate">
+          {label}
+        </p>
+      </div>
+      <p className="text-[28px] font-bold text-foreground tabular-nums leading-none mt-2">
         {value}
       </p>
-      <p className="text-[10px] text-muted-foreground/50 mt-1">{description}</p>
+      <p className="text-[10px] text-muted-foreground/60 mt-2 leading-snug line-clamp-2">{description}</p>
+      {onClick && (
+        <ChevronRight className="absolute top-3 right-3 h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-muted-foreground/70 transition-colors" />
+      )}
     </button>
   );
 }
@@ -100,12 +129,14 @@ function KPICard({ label, value, description, onClick }: { label: string; value:
 // ── Chart Card wrapper ─────────────────────────────────────────
 function ChartCard({
   title,
+  subtitle,
   filterCount,
   onSeeAll,
   children,
   className,
 }: {
   title: string;
+  subtitle?: string;
   filterCount?: number;
   onSeeAll?: () => void;
   children: React.ReactNode;
@@ -113,24 +144,24 @@ function ChartCard({
 }) {
   return (
     <div className={cn(GLASS_CARD, 'flex flex-col overflow-hidden', className)}>
-      <div className="flex items-center justify-between px-4 pt-3 pb-1">
+      <div className="px-4 pt-3 pb-2 border-b glass-border-softer">
         <div className="flex items-center gap-2 min-w-0">
-          <h3 className="text-xs font-semibold text-foreground truncate">{title}</h3>
+          <h3 className="text-[13px] font-semibold text-foreground tracking-tight truncate">{title}</h3>
           {filterCount !== undefined && (
-            <span className="text-[9px] text-muted-foreground/50 bg-white/[0.05] rounded px-1.5 py-0.5 shrink-0">
-              {filterCount} filter{filterCount !== 1 ? 's' : ''}
+            <span className="text-[9px] font-medium text-muted-foreground/70 bg-white/[0.06] rounded px-1.5 py-0.5 shrink-0">
+              {filterCount}
             </span>
           )}
         </div>
-        <button className="text-muted-foreground/40 hover:text-muted-foreground transition-colors">
-          <MoreHorizontal className="h-3.5 w-3.5" />
-        </button>
+        {subtitle && (
+          <p className="text-[10px] text-muted-foreground/55 mt-0.5 truncate">{subtitle}</p>
+        )}
       </div>
-      <div className="flex-1 px-2 pb-1">{children}</div>
+      <div className="flex-1 px-3 pt-2 pb-2">{children}</div>
       {onSeeAll && (
         <button
           onClick={onSeeAll}
-          className="flex items-center justify-center gap-1 text-[10px] font-medium text-primary/80 hover:text-primary py-2 border-t glass-border-softer transition-colors"
+          className="flex items-center justify-center gap-1 text-[10px] font-medium text-primary/80 hover:text-primary py-2 border-t glass-border-softer transition-colors hover:bg-white/[0.03]"
         >
           See all <ChevronRight className="h-3 w-3" />
         </button>
@@ -303,10 +334,10 @@ function useDerivedMetrics(data: OperationalData | null, projectFilters: string[
 
     return {
       kpis: [
-        { label: 'Milestones Next 2 Weeks', value: String(milestonesNext2Weeks), description: 'Open milestones due within 14 days', items: milestonesNext2WeeksItems, kind: 'task' as const },
-        { label: 'Overdue Milestones', value: String(overdueMilestones), description: 'Incomplete milestones past due', items: overdueMilestonesItems, kind: 'task' as const },
-        { label: 'Avg. Time to Comp. Milestone', value: completedMilestones.length > 0 ? `${avgTimeToComplete.toFixed(2)} d` : '— d', description: 'Avg duration open → completed', items: completedMilestones, kind: 'task' as const },
-        { label: 'Completed Projects', value: String(completedProjects), description: 'Projects with completed status', items: completedProjectsItems, kind: 'project' as const },
+        { label: 'Milestones Next 2 Weeks', value: String(milestonesNext2Weeks), description: 'Open milestones due within 14 days', accent: 'hsl(var(--primary))', items: milestonesNext2WeeksItems, kind: 'task' as const },
+        { label: 'Overdue Milestones', value: String(overdueMilestones), description: 'Incomplete milestones past due', accent: 'hsl(var(--destructive))', items: overdueMilestonesItems, kind: 'task' as const },
+        { label: 'Avg. Time to Comp. Milestone', value: completedMilestones.length > 0 ? `${avgTimeToComplete.toFixed(1)}d` : '—', description: 'Avg duration open → completed', accent: 'hsl(45, 93%, 55%)', items: completedMilestones, kind: 'task' as const },
+        { label: 'Completed Projects', value: String(completedProjects), description: 'Projects with completed status', accent: 'hsl(var(--success))', items: completedProjectsItems, kind: 'project' as const },
       ],
       milestoneOwnership,
       overdueBuckets,
@@ -468,6 +499,7 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
             label={kpi.label}
             value={kpi.value}
             description={kpi.description}
+            accent={(kpi as any).accent}
             onClick={
               (kpi as any).items && (kpi as any).items.length > 0
                 ? () => openDrilldown(kpi.label, (kpi as any).items, (kpi as any).kind, kpi.description)
@@ -478,11 +510,13 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
       </div>
 
       {/* ── Row 2: Charts grid ────────────────────────────────── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-2.5">
         {/* Chart 1: This Week's Milestones (pie) */}
         <ChartCard
           title="This Week's Milestones"
+          subtitle="Distribution by assignee"
           filterCount={milestoneOwnership.length}
+          className="lg:col-span-2"
           onSeeAll={() =>
             openDrilldown(
               "This Week's Milestones",
@@ -493,10 +527,14 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           }
         >
           {milestoneOwnership.length === 0 ? (
-            <div className="flex items-center justify-center h-[160px] text-xs text-muted-foreground/60">No milestones this week</div>
+            <div className="flex flex-col items-center justify-center h-[180px] gap-1.5 text-muted-foreground/60">
+              <div className="h-10 w-10 rounded-full border border-dashed border-muted-foreground/20" />
+              <p className="text-[11px]">No milestones this week</p>
+            </div>
           ) : (
-            <div className="flex items-center gap-2 py-2">
-              <ResponsiveContainer width="55%" height={160}>
+            <div className="flex items-center gap-3 py-1">
+              <div className="relative w-[55%]">
+                <ResponsiveContainer width="100%" height={180}>
                 <PieChart>
                   <PieGlassDefs colors={milestoneOwnership.map((_, i) => CHART_COLORS[i % CHART_COLORS.length])} />
                   <Pie
@@ -505,9 +543,9 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                     nameKey="assignee"
                     cx="50%"
                     cy="50%"
-                    innerRadius={32}
-                    outerRadius={60}
-                    paddingAngle={3}
+                    innerRadius={48}
+                    outerRadius={78}
+                    paddingAngle={2}
                     activeShape={GlassActiveShape}
                     onClick={(entry: any) =>
                       openDrilldown(
@@ -525,6 +563,13 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-xl font-bold text-foreground tabular-nums leading-none">
+                    {milestoneOwnership.reduce((s, m) => s + m.count, 0)}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mt-1">Milestones</span>
+                </div>
+              </div>
               <PieLegend
                 items={milestoneOwnership.map((m, i) => ({ label: m.assignee, color: CHART_COLORS[i % CHART_COLORS.length], count: m.count }))}
                 onItemClick={(label) => {
@@ -543,6 +588,8 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         {/* Chart 2: Overdue Milestones (bar) */}
         <ChartCard
           title="Overdue Tasks by Project"
+          subtitle="Top projects driving overdue work"
+          className="lg:col-span-4"
           onSeeAll={() =>
             openDrilldown(
               'Overdue Tasks',
@@ -553,10 +600,13 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
           }
         >
           {overdueBuckets.length === 0 ? (
-            <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No overdue items</div>
+            <div className="flex flex-col items-center justify-center h-[200px] gap-1.5 text-muted-foreground/60">
+              <div className="h-10 w-10 rounded border border-dashed border-muted-foreground/20" />
+              <p className="text-[11px]">No overdue items</p>
+            </div>
           ) : (
             <>
-              <div className="flex items-center justify-between px-2 pt-1 pb-1">
+              <div className="flex items-center justify-between px-1 pt-0.5 pb-2">
                 <span className="text-[10px] text-muted-foreground/70">
                   {hasProjectFilter
                     ? `Filtering dashboard by ${projectFilters.length} project${projectFilters.length === 1 ? '' : 's'}`
@@ -572,13 +622,14 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   </button>
                 )}
               </div>
-              <ResponsiveContainer width="100%" height={Math.max(170, overdueBuckets.length * 28 + 16)}>
+              <ResponsiveContainer width="100%" height={Math.max(200, overdueBuckets.length * 34 + 16)}>
                 <BarChart
                   data={overdueBuckets}
                   layout="vertical"
-                  margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
+                  margin={{ left: 4, right: 24, top: 4, bottom: 4 }}
+                  barCategoryGap={8}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
+                  <CartesianGrid strokeDasharray="2 4" vertical stroke={GRID_STROKE} horizontal={false} />
                   <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                   <YAxis
                     type="category"
@@ -595,8 +646,9 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
                   <Bar
                     dataKey="count"
-                    shape={createGlassBarShape({ radius: 3 })}
+                    shape={createGlassBarShape({ radius: 4 })}
                     name="Overdue"
+                    barSize={18}
                     onClick={(entry: any) => {
                       const v = entry?.project;
                       toggleProjectFilter(v);
@@ -646,21 +698,24 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         {/* Chart 3: Projects Overview (grouped bar) */}
         <ChartCard
           title="Projects Overview"
+          subtitle="Status composition by project"
           filterCount={projectOverview.length}
+          className="lg:col-span-3"
           onSeeAll={() =>
             openDrilldown('All Projects', metrics.projectsAll ?? [], 'project', 'Every project in the portfolio')
           }
         >
           {projectOverview.length === 0 ? (
-            <div className="flex items-center justify-center h-[170px] text-xs text-muted-foreground/60">No projects</div>
+            <div className="flex items-center justify-center h-[200px] text-xs text-muted-foreground/60">No projects</div>
           ) : (
-            <ResponsiveContainer width="100%" height={Math.max(180, projectOverview.length * 32 + 32)}>
+            <ResponsiveContainer width="100%" height={Math.max(220, projectOverview.length * 36 + 36)}>
               <BarChart
                 data={projectOverview}
                 layout="vertical"
-                margin={{ left: 4, right: 16, top: 4, bottom: 4 }}
+                margin={{ left: 4, right: 24, top: 4, bottom: 4 }}
+                barCategoryGap={10}
               >
-                <CartesianGrid strokeDasharray="3 3" vertical stroke="hsl(var(--border))" horizontal={false} />
+                <CartesianGrid strokeDasharray="2 4" vertical stroke={GRID_STROKE} horizontal={false} />
                 <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} allowDecimals={false} />
                 <YAxis
                   type="category"
@@ -672,7 +727,9 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                 />
                 <Tooltip contentStyle={TOOLTIP_STYLE} labelFormatter={(label) => String(label)} />
                 <Legend
-                  wrapperStyle={{ fontSize: 9, cursor: 'pointer' }}
+                  wrapperStyle={{ fontSize: 10, cursor: 'pointer', paddingTop: 4 }}
+                  iconType="circle"
+                  iconSize={8}
                   onClick={(entry: any) => {
                     const map: Record<string, string> = { 'On track': 'On track', 'At risk': 'At risk', 'Off track': 'Off track' };
                     const label = map[entry?.value] || entry?.value;
@@ -683,8 +740,8 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   dataKey="onTrack"
                   name="On track"
                   fill={STATUS_COLORS['On track']}
-                  radius={[0, 3, 3, 0]}
-                  barSize={10}
+                  radius={[0, 4, 4, 0]}
+                  barSize={14}
                   stackId="status"
                   style={{ cursor: 'pointer' }}
                   onClick={(entry: any) =>
@@ -703,8 +760,8 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   dataKey="atRisk"
                   name="At risk"
                   fill={STATUS_COLORS['At risk']}
-                  radius={[0, 3, 3, 0]}
-                  barSize={10}
+                  radius={[0, 4, 4, 0]}
+                  barSize={14}
                   stackId="status"
                   style={{ cursor: 'pointer' }}
                   onClick={(entry: any) =>
@@ -723,8 +780,8 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   dataKey="offTrack"
                   name="Off track"
                   fill={STATUS_COLORS['Off track']}
-                  radius={[0, 3, 3, 0]}
-                  barSize={10}
+                  radius={[0, 4, 4, 0]}
+                  barSize={14}
                   stackId="status"
                   style={{ cursor: 'pointer' }}
                   onClick={(entry: any) =>
@@ -747,15 +804,18 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         {/* Chart 4: Projects by Status (pie) */}
         <ChartCard
           title="Projects by Status"
+          subtitle="Portfolio health distribution"
+          className="lg:col-span-3"
           onSeeAll={() =>
             openDrilldown('All Projects', metrics.projectsAll ?? [], 'project')
           }
         >
           {projectStatus.length === 0 ? (
-            <div className="flex items-center justify-center h-[160px] text-xs text-muted-foreground/60">No project data</div>
+            <div className="flex items-center justify-center h-[180px] text-xs text-muted-foreground/60">No project data</div>
           ) : (
-            <div className="flex items-center gap-2 py-2">
-              <ResponsiveContainer width="55%" height={160}>
+            <div className="flex items-center gap-3 py-1">
+              <div className="relative w-[55%]">
+                <ResponsiveContainer width="100%" height={200}>
                 <PieChart>
                   <PieGlassDefs colors={projectStatus.map(s => s.color)} />
                   <Pie
@@ -764,9 +824,9 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                     nameKey="status"
                     cx="50%"
                     cy="50%"
-                    innerRadius={32}
-                    outerRadius={60}
-                    paddingAngle={3}
+                    innerRadius={54}
+                    outerRadius={88}
+                    paddingAngle={2}
                     activeShape={GlassActiveShape}
                     onClick={(entry: any) =>
                       openDrilldown(
@@ -784,6 +844,13 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
                   <Tooltip contentStyle={TOOLTIP_STYLE} />
                 </PieChart>
               </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                  <span className="text-2xl font-bold text-foreground tabular-nums leading-none">
+                    {projectStatus.reduce((s, p) => s + p.count, 0)}
+                  </span>
+                  <span className="text-[9px] uppercase tracking-wider text-muted-foreground/60 mt-1">Projects</span>
+                </div>
+              </div>
               <PieLegend
                 items={projectStatus.map(s => ({ label: s.status, color: s.color, count: s.count }))}
                 onItemClick={(label) =>
@@ -797,7 +864,8 @@ export function OperationalDashboard({ data, isLoading, error, onRefetch }: Oper
         {/* Chart 5: Projects Due within Next 2 Weeks (bar) */}
         <ChartCard
           title="Projects Due within Next 2 Weeks"
-          className="md:col-span-2 lg:col-span-2"
+          subtitle="Upcoming project deadlines (14d)"
+          className="md:col-span-2 lg:col-span-6"
           onSeeAll={() =>
             openDrilldown(
               'Projects Due within Next 2 Weeks',
