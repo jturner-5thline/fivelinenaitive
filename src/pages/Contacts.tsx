@@ -116,7 +116,6 @@ export default function Contacts() {
       </Helmet>
 
       <div className="bg-transparent">
-        <DealsHeader />
         <main className="w-full px-4 pt-4 pb-3 sm:px-6 space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">

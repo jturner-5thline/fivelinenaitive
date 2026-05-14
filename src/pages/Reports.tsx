@@ -231,7 +231,6 @@ export default function Reports() {
       </Helmet>
 
       <div className="bg-background">
-        <DealsHeader />
 
         <main className="container mx-auto px-4 py-6 sm:px-6 lg:px-8">
           {/* Page Header */}

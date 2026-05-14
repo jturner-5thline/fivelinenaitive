@@ -441,7 +441,6 @@ export default function LenderDatabaseConfig() {
       </Helmet>
 
       <div className="bg-background">
-        <DealsHeader />
 
         <main className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="max-w-5xl mx-auto space-y-6">
