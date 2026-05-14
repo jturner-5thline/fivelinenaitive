@@ -105,7 +105,7 @@ export function DealsHeader() {
 
   return (
     <header
-      className="sticky top-0 z-50 pointer-events-none"
+      className="fixed top-0 left-0 right-0 z-[1000] pointer-events-none"
       aria-label="Global navigation"
     >
       {/*

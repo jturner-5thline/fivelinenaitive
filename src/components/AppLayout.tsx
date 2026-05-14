@@ -67,8 +67,8 @@ function MainContent({
           backgroundSize: '200px 200px',
         }}
       />
-      <div className="relative z-10 flex-1 flex flex-col min-h-full">
-        <DealsHeader />
+      <DealsHeader />
+      <div className="relative z-10 flex-1 flex flex-col min-h-full pt-[60px]">
         {children}
         {showCopilotBar && <CopilotToggleButton />}
       </div>
