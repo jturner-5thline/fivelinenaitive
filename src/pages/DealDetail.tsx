@@ -2723,7 +2723,12 @@ export default function DealDetail() {
                 <div className="flex items-center gap-2 flex-wrap">
                 <Select
                   value={deal.status}
-                  onValueChange={(value: DealStatus) => updateDeal('status', value)}
+                  onValueChange={(value: DealStatus) => {
+                    updateDeal('status', value);
+                    if (is5thLineUser && value === 'on-hold' && deal.stage !== 'on-hold') {
+                      setPendingMirror({ direction: 'status->stage' });
+                    }
+                  }}
                 >
                   <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>
                     <SelectValue>
@@ -2767,7 +2772,12 @@ export default function DealDetail() {
                       return stagesForDeal.map((stage) => (
                         <DropdownMenuItem
                           key={stage.id}
-                          onClick={() => updateDeal('stage', stage.id)}
+                          onClick={() => {
+                            updateDeal('stage', stage.id);
+                            if (is5thLineUser && stage.id === 'on-hold' && deal.status !== 'on-hold') {
+                              setPendingMirror({ direction: 'stage->status' });
+                            }
+                          }}
                           className={cn("text-xs", deal.stage === stage.id && "bg-accent font-medium")}
                         >
                           {stage.label}
