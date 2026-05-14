@@ -200,11 +200,11 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="popup-shell-surface max-w-[95vw] w-[95vw] h-[92vh] max-h-[92vh] p-0 overflow-hidden border-transparent"
+        className="popup-shell-surface w-[min(1100px,calc(100vw-32px))] max-w-[min(1100px,calc(100vw-32px))] h-[92vh] max-h-[92vh] p-0 overflow-hidden border-transparent box-border"
         overlayClassName="bg-black/80"
         aria-label="Deal Pipeline"
       >
-        <div className="db-root flex flex-col" style={{ height: '100%', borderRadius: 'inherit' }}>
+        <div className="db-root flex flex-col min-w-0 max-w-full" style={{ height: '100%', borderRadius: 'inherit', boxSizing: 'border-box' }}>
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
@@ -227,9 +227,9 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
             <TabsContent
               value="dashboard"
               forceMount
-              className="db-tab-panel flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden bg-transparent"
+              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
             >
-              <div className="db-r min-w-max">
+              <div className="db-r min-w-0 max-w-full">
             {/* KPI STRIP */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
               {[
@@ -405,7 +405,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
 
             <TabsContent
               value="analytics"
-              className="db-tab-panel flex-1 min-h-0 mt-0 overflow-x-auto overflow-y-auto data-[state=inactive]:hidden bg-transparent"
+              className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
             >
               <Suspense
                 fallback={
@@ -414,7 +414,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                   </div>
                 }
               >
-                <div className="db-analytics-host min-w-max">
+                <div className="db-analytics-host min-w-0 max-w-full">
                   <AnalyticsTabContent />
                 </div>
               </Suspense>
@@ -436,7 +436,11 @@ const DASHBOARD_CSS = `
 .db-root .db-analytics-host .bg-background { background-color: transparent !important; }
 /* Top padding bumped to 24px so the KPI strip sits inside the Insights spacing
    scale (p-6) and clears the floating close (×) button. */
-.db-r { background: transparent; padding: 24px 20px 20px; color: hsl(var(--foreground)); font-family: system-ui, sans-serif; min-width: 860px; }
+.db-r { background: transparent; padding: 24px 20px 20px; color: hsl(var(--foreground)); font-family: system-ui, sans-serif; min-width: 0; max-width: 100%; box-sizing: border-box; }
+.db-root, .db-root * { box-sizing: border-box; }
+.db-root img, .db-root svg, .db-root canvas, .db-root video { max-width: 100%; height: auto; }
+.db-root pre, .db-root code { white-space: pre-wrap; word-break: break-word; }
+.db-root .db-analytics-host { width: 100%; max-width: 100%; min-width: 0; }
 .db-ct { font-size: 11px; font-weight: 600; letter-spacing: 0.8px; text-transform: uppercase; color: hsl(var(--muted-foreground)); margin-bottom: 12px; }
 .db-up { color: hsl(var(--chart-2)); }
 .db-dn { color: hsl(var(--destructive)); }
