@@ -371,6 +371,32 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           <X className="h-4 w-4" />
         </Button>
 
+        {/* Side carousel arrows — subtle hint that ←/→ navigates between deals */}
+        {prevDeal && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goPrev}
+            aria-label={`Previous deal${prevDeal.company ? `: ${prevDeal.company}` : ''}`}
+            title="Previous deal (←)"
+            className="absolute left-2 sm:left-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-background/40 backdrop-blur-md border border-white/10 text-foreground/70 opacity-60 hover:opacity-100 hover:bg-background/70 hover:text-foreground transition-opacity"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+        )}
+        {nextDeal && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={goNext}
+            aria-label={`Next deal${nextDeal.company ? `: ${nextDeal.company}` : ''}`}
+            title="Next deal (→)"
+            className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 z-10 h-10 w-10 rounded-full bg-background/40 backdrop-blur-md border border-white/10 text-foreground/70 opacity-60 hover:opacity-100 hover:bg-background/70 hover:text-foreground transition-opacity"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        )}
+
         {/* Body — render the deal detail page directly in the same React
             tree (was previously an iframe). This shares the parent app's
             QueryClient, DealsContext, StagesContext, etc., so:
