@@ -634,7 +634,6 @@ export function WidgetsSection({ deals }: WidgetsSectionProps) {
             <div className="flex items-center justify-between gap-2">
               <DialogTitle className="text-base">{chartDialogTitle}</DialogTitle>
               <div className="flex items-center gap-2">
-                {(() => null)()}
                 {allowedGroupBys.length > 1 && (
                   <div className="flex items-center gap-0.5 border border-border rounded-lg p-0.5">
                     {allowedGroupBys.map((g) => (
