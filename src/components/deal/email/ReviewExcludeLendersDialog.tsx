@@ -246,6 +246,32 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, excluded: value } : r)));
   };
 
+  /**
+   * Tri-state master toggle. Operates only on currently-visible rows
+   * (so it respects the "All lenders" filter) and skips rows the user
+   * cannot toggle (Passed lenders, whose checkbox is disabled).
+   */
+  const toggleableVisible = useMemo(
+    () => visibleRows.filter((r) => r.status !== 'passed'),
+    [visibleRows]
+  );
+  const visibleSelectedCount = toggleableVisible.filter((r) => !r.excluded).length;
+  const masterState: boolean | 'indeterminate' =
+    toggleableVisible.length === 0
+      ? false
+      : visibleSelectedCount === 0
+        ? false
+        : visibleSelectedCount === toggleableVisible.length
+          ? true
+          : 'indeterminate';
+
+  const toggleAllVisible = (next: boolean) => {
+    const ids = new Set(toggleableVisible.map((r) => r.id));
+    setRows((prev) =>
+      prev.map((r) => (ids.has(r.id) ? { ...r, excluded: !next } : r))
+    );
+  };
+
   const handleConfirm = async () => {
     if (summary.includedCount === 0) {
       toast({
