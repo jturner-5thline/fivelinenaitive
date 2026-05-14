@@ -407,29 +407,6 @@ export function DealsHeader() {
           </nav>
 
           <div className="flex items-center gap-1 sm:gap-2 shrink-0 ml-auto">
-          {isNaitivePipelineRoute && naitivePipelineId && (
-            <HintTooltip
-              hint="Start here! Click to create your first deal and begin tracking your pipeline."
-              visible={isHintVisible('new-deal-button')}
-              onDismiss={() => dismissHint('new-deal-button')}
-              side="bottom"
-              align="end"
-            >
-              <CreateNaitiveDealDialog
-                pipelineId={naitivePipelineId}
-                stages={naitiveStages}
-                defaultStage={naitiveStages[0]?.id}
-                onCreated={refetchNaitive}
-                trigger={
-                  <Button size="sm" className="gap-1.5">
-                    <Plus className="h-4 w-4" />
-                    Add Deal
-                  </Button>
-                }
-              />
-            </HintTooltip>
-          )}
-
           </div>
         </div>
       </div>
