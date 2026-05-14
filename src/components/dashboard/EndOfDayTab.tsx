@@ -23,10 +23,6 @@ function fmtTime(iso: string, allDay: boolean) {
   }
 }
 
-function attendeeDisplayName(a: CalendarEvent['attendees'] extends (infer U)[] | null ? U : never): string {
-  return a.display_name || a.email || 'Unknown';
-}
-
 export function EndOfDayAgendaSection({ enabled }: { enabled: boolean }) {
   const { events: hookEvents, listEvents, status } = useGoogleCalendar();
   const [events, setEvents] = useState<CalendarEvent[]>(hookEvents || []);
