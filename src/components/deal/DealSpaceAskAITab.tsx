@@ -1055,29 +1055,6 @@ CRITICAL RULES:
                     Check in with client on outstanding items
                   </button>
 
-                  <button
-                    type="button"
-                    onClick={() => onQuickPromptClick(lenderMemoQuickPrompt)}
-                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
-                  >
-                    {lenderMemoQuickPrompt}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onQuickPromptClick(keyRisksQuickPrompt)}
-                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
-                  >
-                    {keyRisksQuickPrompt}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onQuickPromptClick(outstandingItemsQuickPrompt)}
-                    className="w-full text-left text-sm p-3 rounded-lg transition-colors flex items-center gap-2.5 bg-muted/50 hover:bg-muted"
-                  >
-                    {outstandingItemsQuickPrompt}
-                  </button>
                 </div>
               </div>
             ) : (
