@@ -66,7 +66,7 @@ const Auth = () => {
   }, [locationState]);
   
   // Get redirect URL from query params (for invite links, etc.)
-  const redirectUrl = searchParams.get('redirect') || '/pipeline';
+  const redirectUrl = searchParams.get('redirect') || '/deals';
 
   // Check if user was redirected due to blocked domain (e.g. Google SSO with personal email)
   useEffect(() => {
@@ -179,7 +179,7 @@ const Auth = () => {
         const { error } = await supabase.auth.updateUser({ password: newPassword });
         if (error) throw error;
         toast.success("Password updated successfully!");
-        navigate("/pipeline");
+        navigate("/deals", { replace: true });
       } else {
         const validation = authSchema.safeParse({ email, password });
         if (!validation.success) {
@@ -263,7 +263,7 @@ const Auth = () => {
     try {
       // Preserve the post-login redirect target through the OAuth round-trip
       // so users coming from email CTAs (e.g. /insights) land on the right page.
-      const redirectQuery = redirectUrl && redirectUrl !== '/pipeline'
+      const redirectQuery = redirectUrl && redirectUrl !== '/deals'
         ? `?redirect=${encodeURIComponent(redirectUrl)}`
         : '';
       const redirectUri = `${window.location.origin}/auth${redirectQuery}`;
@@ -673,7 +673,7 @@ const Auth = () => {
                         }
                       }
                       
-                      navigate("/pipeline");
+                      navigate("/deals");
                     } catch (error: any) {
                       toast.error(error.message || "Demo login failed. Please try again.");
                     } finally {

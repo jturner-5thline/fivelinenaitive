@@ -35,6 +35,42 @@ import { AppLayout } from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 import { lazyRetry } from "@/lib/lazyRetry";
+import { useAuth } from "@/contexts/AuthContext";
+
+/**
+ * Root + auth-page redirector. Authenticated users always land on /deals.
+ * Unauthenticated visitors at `/` are sent to /login. Waits for auth init
+ * to avoid a login-screen flash on refresh.
+ */
+function RootRedirect() {
+  const { user, isLoading } = useAuth();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  return <Navigate to={user ? "/deals" : "/login"} replace />;
+}
+
+function RedirectIfAuthenticated({ children }: { children: React.ReactNode }) {
+  const { user, isLoading } = useAuth();
+  const location = useLocation();
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+  if (user) {
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get("redirect");
+    return <Navigate to={redirect || "/deals"} replace />;
+  }
+  return <>{children}</>;
+}
 
 // Lazy-load all pages with retry to handle stale chunk URLs after deploys
 const Index = lazy(lazyRetry(() => import("./pages/Index")));
@@ -235,10 +271,10 @@ const App = () => (
                         <NewTaskViaNaitiveModal />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
-                        <Route path="/" element={<Homepage />} />
+                        <Route path="/" element={<RootRedirect />} />
                           <Route path="/home" element={<Index />} />
-                          <Route path="/login" element={<Auth />} />
-                          <Route path="/auth" element={<Auth />} />
+                          <Route path="/login" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
+                          <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/pending-approval" element={
                             <ProtectedRoute skipOnboarding skipApprovalCheck><PendingApproval /></ProtectedRoute>
                           } />
