@@ -500,6 +500,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
       onAdd(newItemText.trim(), updatedRequestedBy);
       setNewItemText('');
       setNewRequestedBy([]);
+      // Bump key to force-close the uncontrolled Popover after auto-add.
+      setRequesterPopoverKey(k => k + 1);
       setRequesterPopoverOpen(false);
     }
   };
