@@ -177,6 +177,17 @@ export function DealsHeader() {
       <div className="pointer-events-auto"><HeaderNotificationPreview /></div>
       {isFifthLine && <DashboardModal open={isDashboardOpen} onOpenChange={setIsDashboardOpen} />}
       <TasksOverlay open={isTasksOpen} onOpenChange={setIsTasksOpen} />
+      <DealsPageOverlay open={isDealsOverlayOpen} onOpenChange={setIsDealsOverlayOpen} />
+      {isCalendarOpen && (
+        <Suspense fallback={null}>
+          <FullCalendarView open={isCalendarOpen} onOpenChange={setIsCalendarOpen} />
+        </Suspense>
+      )}
+      {isMailOpen && (
+        <Suspense fallback={null}>
+          <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
+        </Suspense>
+      )}
       {isJTurner && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
       {canSeeNiki && (
         <DailyBriefingModal
