@@ -665,7 +665,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         {/* Status Summary */}
         {content.sectionsVisible.statusSummary &&
           (content.statusSummaryHtml?.trim() || content.statusSummary.filter(Boolean).length > 0) && (
-            <DarkSection label="Status Summary">
+            <DarkSection label="Status Summary" sectionClassName="status-summary-section section-block">
               <div
                 className="prose prose-sm prose-invert max-w-none text-slate-200 [&_p]:my-1.5 [&_li]:my-0.5 leading-relaxed"
                 dangerouslySetInnerHTML={{
@@ -679,7 +679,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Pipeline Snapshot — shared component (same on the deal page) */}
         {content.sectionsVisible.pipelineSnapshot && onUpdateLender && (
-          <div>
+          <div className="pipeline-section section-block">
             <DarkLabel>Lender Pipeline Snapshot</DarkLabel>
             <LenderPipelineSnapshot
               lenders={(deal.lenders || []) as any}
@@ -693,10 +693,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Recent Milestones */}
         {content.sectionsVisible.milestones && content.completedMilestones.filter(Boolean).length > 0 && (
-          <DarkSection label="Recent Milestones">
+          <DarkSection label="Recent Milestones" sectionClassName="milestones-section section-block">
             <ul className="m-0 p-0 list-none space-y-1.5">
               {content.completedMilestones.filter(Boolean).map((m, i) => (
-                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
+                <li key={i} className="milestone-item text-sm text-slate-200 leading-snug flex gap-2">
                   <span className="text-emerald-400 font-bold">✓</span>
                   <span>{m}</span>
                 </li>
@@ -707,10 +707,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Next Steps */}
         {content.sectionsVisible.nextSteps && content.nextSteps.filter(Boolean).length > 0 && (
-          <DarkSection label="Next Steps">
+          <DarkSection label="Next Steps" sectionClassName="next-steps-section section-block">
             <ul className="m-0 p-0 list-none space-y-1.5">
               {content.nextSteps.filter(Boolean).map((s, i) => (
-                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
+                <li key={i} className="next-step-item text-sm text-slate-200 leading-snug flex gap-2">
                   <span className="text-blue-400 font-bold">→</span>
                   <span>{s}</span>
                 </li>
@@ -721,7 +721,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Passed lender reasons */}
         {passedDetails.length > 0 && (
-          <div>
+          <div className="passed-reasons-section section-block">
             <DarkLabel>Passed Lender Reasons</DarkLabel>
             <div className="mt-2 rounded-xl border border-slate-700/60 overflow-hidden">
               <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
@@ -762,7 +762,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* What We Need From You */}
         {content.sectionsVisible.actionItems && (
-          <div>
+          <div className="client-needs-section section-block">
             <DarkLabel>What We Need From You</DarkLabel>
             <div
               className="mt-2 rounded-xl px-4 py-3 text-sm text-slate-100 leading-relaxed whitespace-pre-wrap border-l-2 border-l-blue-400/80"
