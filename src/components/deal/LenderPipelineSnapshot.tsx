@@ -108,7 +108,17 @@ export function LenderPipelineSnapshot({
                   </p>
                 )}
               </div>
-              <div className="px-3 pb-2 text-[9px] uppercase tracking-wider text-slate-400 group-hover:text-slate-200 transition-colors">
+              {/*
+                Interactive-only affordance. Excluded from any print/PDF
+                export pipeline so client-facing reports never show editing
+                hints. `print:hidden` removes it from window.print(), and
+                `data-html2canvas-ignore` removes it from html2canvas /
+                html2pdf.js captures.
+              */}
+              <div
+                data-html2canvas-ignore="true"
+                className="px-3 pb-2 text-[9px] uppercase tracking-wider text-slate-400 group-hover:text-slate-200 transition-colors print:hidden no-print"
+              >
                 Click to manage →
               </div>
             </button>
