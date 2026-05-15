@@ -1049,3 +1049,70 @@ function BucketCount({ label, n }: { label: string; n: number }) {
     </div>
   );
 }
+
+// ── Dark in-app preview helpers ────────────────────────────────────────────
+function DarkLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[10px] font-bold tracking-[0.16em] uppercase text-slate-400">
+      {children}
+    </div>
+  );
+}
+
+function DarkSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <DarkLabel>{label}</DarkLabel>
+      <div
+        className="mt-2 rounded-xl px-4 py-3 border-l-2 border-l-blue-400/70"
+        style={{
+          background:
+            'linear-gradient(180deg, hsl(220 30% 13% / 0.7) 0%, hsl(220 30% 10% / 0.7) 100%)',
+          borderTop: '1px solid hsl(220 25% 22% / 0.5)',
+          borderRight: '1px solid hsl(220 25% 22% / 0.5)',
+          borderBottom: '1px solid hsl(220 25% 22% / 0.5)',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function darkColStyle(color: 'blue' | 'teal' | 'green' | 'red'): React.CSSProperties {
+  const tints: Record<string, { bg: string; border: string }> = {
+    blue: {
+      bg: 'linear-gradient(180deg, hsl(220 50% 18% / 0.85) 0%, hsl(220 45% 11% / 0.9) 100%)',
+      border: 'hsl(220 75% 55% / 0.4)',
+    },
+    teal: {
+      bg: 'linear-gradient(180deg, hsl(190 55% 17% / 0.85) 0%, hsl(190 50% 10% / 0.9) 100%)',
+      border: 'hsl(185 75% 50% / 0.4)',
+    },
+    green: {
+      bg: 'linear-gradient(180deg, hsl(150 45% 16% / 0.85) 0%, hsl(150 45% 9% / 0.9) 100%)',
+      border: 'hsl(150 65% 45% / 0.4)',
+    },
+    red: {
+      bg: 'linear-gradient(180deg, hsl(0 50% 18% / 0.85) 0%, hsl(0 45% 10% / 0.9) 100%)',
+      border: 'hsl(0 70% 55% / 0.4)',
+    },
+  };
+  const t = tints[color];
+  return {
+    background: t.bg,
+    borderColor: t.border,
+    boxShadow:
+      'inset 0 1px 0 hsl(220 40% 80% / 0.05), 0 4px 14px hsl(220 60% 4% / 0.4)',
+  };
+}
+
+function darkColHeadStyle(color: 'blue' | 'teal' | 'green' | 'red'): React.CSSProperties {
+  const map: Record<string, string> = {
+    blue: 'linear-gradient(135deg, hsl(220 85% 55%), hsl(215 90% 45%))',
+    teal: 'linear-gradient(135deg, hsl(190 80% 50%), hsl(175 75% 38%))',
+    green: 'linear-gradient(135deg, hsl(150 75% 45%), hsl(155 70% 35%))',
+    red: 'linear-gradient(135deg, hsl(0 75% 55%), hsl(355 75% 45%))',
+  };
+  return { background: map[color] };
+}
