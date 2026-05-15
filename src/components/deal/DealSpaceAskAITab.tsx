@@ -471,9 +471,23 @@ async function generateBroadcastTemplate(
   } satisfies EmailDraft;
 }
 
-export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
-  const { documents, getDownloadUrl } = useDealSpaceDocuments(dealId);
-  const { financials } = useDealSpaceFinancials(dealId);
+function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
+  // ── Deferred-mount optimization ────────────────────────────────────────
+  // The Deal Space tab used to fire 6 concurrent Supabase fetches the
+  // moment it mounted, which blocked the main thread and froze the modal.
+  // We now paint the lightweight chat shell first, then flip `ready` on
+  // the next tick so the secondary data hooks (documents, financials,
+  // saved AI instructions, client cadence, conversation history) only
+  // begin fetching after the first paint.
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    const id = window.setTimeout(() => setReady(true), 0);
+    return () => window.clearTimeout(id);
+  }, []);
+  const deferredDealId = ready ? dealId : undefined;
+
+  const { documents, getDownloadUrl } = useDealSpaceDocuments(deferredDealId);
+  const { financials } = useDealSpaceFinancials(deferredDealId);
 
   const openStatusReport = useCallback(() => {
     window.dispatchEvent(
@@ -493,12 +507,18 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     updateConversationTitle,
     loadConversationMessages,
     saveMessage,
+    ensureLoaded: ensureConversationsLoaded,
   } = useDealSpaceConversations(dealId);
+  // Lazy-load the conversation history once the shell has painted, and
+  // again whenever the mobile history drawer is opened.
+  useEffect(() => {
+    if (ready) ensureConversationsLoaded();
+  }, [ready, ensureConversationsLoaded]);
   const {
     instructions: savedInstructions,
     isSaving: isSavingInstructions,
     save: saveInstructions,
-  } = useDealAiInstructions(dealId);
+  } = useDealAiInstructions(deferredDealId);
   const [draftInstructions, setDraftInstructions] = useState('');
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   useEffect(() => { setDraftInstructions(savedInstructions); }, [savedInstructions]);
@@ -542,7 +562,7 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
     company: '', contact: '', contactEmail: null,
   });
   useEffect(() => {
-    if (!dealId) return;
+    if (!ready || !dealId) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
@@ -558,8 +578,8 @@ export function DealSpaceAskAITab({ dealId }: DealSpaceAskAITabProps) {
       });
     })();
     return () => { cancelled = true; };
-  }, [dealId]);
-  const cadence = useDealClientCadence(dealId, dealMeta.contactEmail);
+  }, [ready, dealId]);
+  const cadence = useDealClientCadence(deferredDealId, dealMeta.contactEmail);
   const cadenceVisible =
     cadence.isStale &&
     !!dealMeta.contactEmail &&
