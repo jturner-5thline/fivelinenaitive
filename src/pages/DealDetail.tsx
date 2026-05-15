@@ -4038,36 +4038,6 @@ export default function DealDetail() {
                             <PopoverTrigger asChild>
                               <Button
                                 type="button"
-                                variant="ghost"
-                                size="sm"
-                                className="gap-2 h-8"
-                                aria-label="AI Recommended"
-                                title="AI Recommended"
-                              >
-                                <Sparkles className="h-4 w-4 text-primary" />
-                                AI Recommended
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent align="end" className="w-[520px] max-w-[90vw] max-h-[70vh] overflow-y-auto p-0">
-                              <AiRecommendedLendersSection
-                                dealId={id}
-                                configuredStages={configuredStages}
-                                defaultStageId={preferences.defaultLenderStage}
-                                existingLenderNames={existingLenderNames}
-                                onAddLender={addLenderWithStage}
-                                criteriaOverride={{
-                                  dealValue: deal.value || undefined,
-                                  dealTypes: deal.dealTypes || dealWriteUpData.dealTypes || undefined,
-                                  industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
-                                  geo: dealWriteUpData.location || undefined,
-                                }}
-                              />
-                            </PopoverContent>
-                          </Popover>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                type="button"
                                 variant="outline"
                                 size="sm"
                                 className="gap-2 h-8"
@@ -5515,6 +5485,13 @@ export default function DealDetail() {
         configuredStages={configuredStages}
         defaultStageId={preferences.defaultLenderStage}
         onAddLender={addLenderWithStage}
+        dealId={id}
+        aiCriteriaOverride={{
+          dealValue: deal?.value || undefined,
+          dealTypes: deal?.dealTypes || dealWriteUpData.dealTypes || undefined,
+          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
+          geo: dealWriteUpData.location || undefined,
+        }}
       />
 
       {/* Lenders Kanban Dialog */}
