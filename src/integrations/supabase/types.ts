@@ -760,6 +760,81 @@ export type Database = {
           },
         ]
       }
+      ai_action_audit: {
+        Row: {
+          action_type: string
+          clarification_reason: string | null
+          clarification_required: boolean | null
+          company_id: string | null
+          confidence: Json | null
+          conversation_id: string | null
+          created_at: string
+          created_task_id: string | null
+          error_message: string | null
+          extracted_fields: Json | null
+          id: string
+          intent: string | null
+          outcome: string
+          outcome_detail: string | null
+          page_context: Json | null
+          prompt: string | null
+          resolved_assignee_name: string | null
+          resolved_assignee_user_id: string | null
+          resolved_deal_id: string | null
+          resolved_deal_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          clarification_reason?: string | null
+          clarification_required?: boolean | null
+          company_id?: string | null
+          confidence?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          created_task_id?: string | null
+          error_message?: string | null
+          extracted_fields?: Json | null
+          id?: string
+          intent?: string | null
+          outcome?: string
+          outcome_detail?: string | null
+          page_context?: Json | null
+          prompt?: string | null
+          resolved_assignee_name?: string | null
+          resolved_assignee_user_id?: string | null
+          resolved_deal_id?: string | null
+          resolved_deal_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          clarification_reason?: string | null
+          clarification_required?: boolean | null
+          company_id?: string | null
+          confidence?: Json | null
+          conversation_id?: string | null
+          created_at?: string
+          created_task_id?: string | null
+          error_message?: string | null
+          extracted_fields?: Json | null
+          id?: string
+          intent?: string | null
+          outcome?: string
+          outcome_detail?: string | null
+          page_context?: Json | null
+          prompt?: string | null
+          resolved_assignee_name?: string | null
+          resolved_assignee_user_id?: string | null
+          resolved_deal_id?: string | null
+          resolved_deal_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_action_queue: {
         Row: {
           action_type: string
