@@ -4690,7 +4690,7 @@ async function prefetchPageContext(
         supabase.from("deal_attachments").select("name, category").eq("deal_id", entityId).limit(15),
         supabase.from("tasks").select("id, title, status, priority, due_date, assigned_to, task_type").eq("deal_id", entityId).is("archived_at", null).neq("status", "complete").order("due_date", { ascending: true, nullsFirst: false }).limit(20),
         supabase.from("deal_space_notes").select("title, content, created_at").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(8),
-        supabase.from("contact_deals").select("role, contacts:contact_id(first_name, last_name, email, title)").eq("deal_id", entityId).limit(15),
+        supabase.from("contact_deals").select("role, contacts:contact_id(first_name, last_name, email, job_title)").eq("deal_id", entityId).limit(15),
       ]);
       const deal = dealRes.data;
       if (!deal) return { block: "", label: null };
@@ -4734,7 +4734,7 @@ Deal contacts / parties (${dealContacts.length}):
 ${dealContacts.slice(0, 12).map((c: any) => {
   const k = c.contacts || {};
   const name = [k.first_name, k.last_name].filter(Boolean).join(" ") || k.email || "?";
-  return `  • ${name}${k.title ? ` — ${k.title}` : ""}${c.role ? ` (${c.role})` : ""}${k.email ? ` <${k.email}>` : ""}`;
+  return `  • ${name}${k.job_title ? ` — ${k.job_title}` : ""}${c.role ? ` (${c.role})` : ""}${k.email ? ` <${k.email}>` : ""}`;
 }).join("\n") || "  (none)"}
 
 Recent notes (last ${notes.length}):
