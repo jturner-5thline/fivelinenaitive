@@ -345,6 +345,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   /**
    * Direct download — no print dialog, no blank intermediary screen.
@@ -352,6 +353,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
    * node using html2pdf.js, then triggers a download. The visible modal
    * stays mounted the whole time; only the button shows a loading state.
    */
+  const slugify = (s: string) =>
+    (s || 'status-report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'status-report';
+
+  const pdfFilename = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    return `status-report-${slugify(deal.company)}-${date}.pdf`;
+  };
+
   const handlePrintPdf = async () => {
     const node = printableRef.current;
     if (!node) {
@@ -377,7 +386,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       await html2pdf()
         .set({
           margin: [10, 10, 10, 10],
-          filename: `status-report-${slugify(deal.company)}.pdf`,
+          filename: pdfFilename(),
           image: { type: 'jpeg', quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1016' },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
@@ -385,6 +394,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         } as any)
         .from(cloned)
         .save();
+      setPdfPreviewOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not export PDF';
       toast({ title: 'Export failed', description: msg, variant: 'destructive' });
@@ -396,9 +406,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   // ── Generate the status report as a PDF File (for email attachment) ──
   const [draftingEmail, setDraftingEmail] = useState(false);
-  const slugify = (s: string) =>
-    (s || 'status-report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'status-report';
-
   const handleDraftEmail = async () => {
     if (!onDraftEmail) return;
     const node = printableRef.current;
