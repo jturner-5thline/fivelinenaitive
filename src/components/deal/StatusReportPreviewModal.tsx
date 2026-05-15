@@ -648,9 +648,9 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Passed lender reasons */}
         {passedDetails.length > 0 && (
-          <div>
+          <div className="passed-lender-reasons">
             <DarkLabel>Passed Lender Reasons</DarkLabel>
-            <div className="mt-2 rounded-xl border border-slate-700/60 overflow-hidden">
+            <div className="mt-2 rounded-xl border border-slate-700/60 overflow-hidden print:overflow-visible">
               <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
                 <colgroup>
                   <col style={{ width: '38%' }} />
