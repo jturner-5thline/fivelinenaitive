@@ -736,6 +736,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   );
 
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-5xl h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xl rounded-2xl"
