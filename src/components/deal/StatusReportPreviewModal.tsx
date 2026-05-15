@@ -355,13 +355,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         html, body {
           background: hsl(218 26% 7%) !important;
           margin: 0 !important;
+          padding: 0 !important;
           height: auto !important;
           overflow: visible !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
-        body * { visibility: hidden !important; }
-        #${PRINT_ID}, #${PRINT_ID} * { visibility: visible !important; }
+        /* CRITICAL: visibility:hidden preserves layout boxes, so the entire
+           app above the dialog portal would still occupy 2-3 blank pages
+           before the report content. Use display:none on every direct
+           body child that is NOT in the ancestor chain of the print root,
+           so the report flows from page 1 with zero offset. */
+        body > *:not(.naitive-print-root-branch) { display: none !important; }
         /* Unwind every ancestor of the print root so the Dialog's
            max-h/overflow-hidden/scroll-container chain cannot clip the
            printed report. position:static (NOT absolute) is critical —
@@ -411,6 +416,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           page-break-inside: avoid;
         }
         #${PRINT_ID} table { break-inside: auto; page-break-inside: auto; }
+        /* Keep each top-level report section together on a single page
+           when it fits; the browser will move it to the next page rather
+           than splitting mid-section. Only sections taller than a page
+           will wrap (which is unavoidable). */
+        #${PRINT_ID} > div > div > * {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        #${PRINT_ID} h1, #${PRINT_ID} h2, #${PRINT_ID} h3,
+        #${PRINT_ID} .sr-section-label, #${PRINT_ID} [class*="DarkLabel"] {
+          break-after: avoid-page;
+          page-break-after: avoid;
+        }
         /* Ensure no wrapper clips content in print (e.g. rounded
            overflow-hidden table wrappers). */
         #${PRINT_ID}, #${PRINT_ID} * {
@@ -437,15 +455,23 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     // un-clip the Dialog/modal/scroll-container chain that wraps it.
     const ancestors: HTMLElement[] = [];
     let p: HTMLElement | null = node.parentElement;
+    let bodyChild: HTMLElement | null = null;
     while (p && p !== document.body) {
       p.classList.add('naitive-print-ancestor');
       ancestors.push(p);
+      if (p.parentElement === document.body) bodyChild = p;
       p = p.parentElement;
     }
+    // Mark the single direct body-child branch that contains the print
+    // root, so the print CSS can `display: none` every other body child
+    // (the main app, other portals, toasters, etc.). This is what
+    // eliminates the 2-3 blank pages at the start of the PDF.
+    if (bodyChild) bodyChild.classList.add('naitive-print-root-branch');
     const cleanup = () => {
       document.title = prevTitle;
       style.remove();
       ancestors.forEach((el) => el.classList.remove('naitive-print-ancestor'));
+      if (bodyChild) bodyChild.classList.remove('naitive-print-root-branch');
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup);
