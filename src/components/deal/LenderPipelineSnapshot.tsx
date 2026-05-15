@@ -28,6 +28,11 @@ interface Props {
   /** Compact variant for tight spaces on the deal page. */
   density?: 'comfortable' | 'compact';
   className?: string;
+  /** Render in export/print mode: no truncation ("+ X more…"), no
+   *  "Click to manage" affordance, allow names to wrap rather than
+   *  truncate. Visual design (colors, layout, typography) is unchanged
+   *  so the PDF matches the on-screen preview exactly. */
+  isExport?: boolean;
 }
 
 const META: Record<BucketKey, { label: string; color: Accent }> = {
@@ -43,6 +48,7 @@ export function LenderPipelineSnapshot({
   onUpdateLender,
   density = 'comfortable',
   className,
+  isExport = false,
 }: Props) {
   const buckets = useMemo(
     () => bucketLenders(lenders, configuredStages),
@@ -57,7 +63,7 @@ export function LenderPipelineSnapshot({
 
   const [open, setOpen] = useState<null | BucketKey>(null);
   const compact = density === 'compact';
-  const maxList = compact ? 4 : 6;
+  const maxList = isExport ? Number.POSITIVE_INFINITY : (compact ? 4 : 6);
 
   return (
     <>
@@ -69,18 +75,22 @@ export function LenderPipelineSnapshot({
         {(Object.keys(META) as BucketKey[]).map((k) => {
           const meta = META[k];
           const list = items[k];
+          const Wrapper: any = isExport ? 'div' : 'button';
+          const wrapperProps = isExport
+            ? {}
+            : { type: 'button', onClick: () => setOpen(k), title: `Manage ${meta.label}` };
           return (
-            <button
+            <Wrapper
               key={k}
-              type="button"
-              onClick={() => setOpen(k)}
+              {...wrapperProps}
               className={
-                'text-left rounded-xl overflow-hidden border transition-all flex flex-col group ' +
-                'cursor-pointer hover:scale-[1.015] hover:shadow-lg active:scale-[0.99] ' +
+                'text-left rounded-xl overflow-hidden border flex flex-col group ' +
+                (isExport
+                  ? ''
+                  : 'transition-all cursor-pointer hover:scale-[1.015] hover:shadow-lg active:scale-[0.99] ') +
                 (compact ? 'min-h-[110px]' : 'min-h-[150px]')
               }
               style={cardStyle(meta.color)}
-              title={`Manage ${meta.label}`}
             >
               <div
                 className="px-3 py-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] font-bold text-white"
@@ -96,37 +106,35 @@ export function LenderPipelineSnapshot({
                   list.slice(0, maxList).map((l) => (
                     <p
                       key={l.id}
-                      className="m-0 text-[13px] font-semibold text-white leading-snug truncate"
+                      className={
+                        'm-0 text-[13px] font-semibold text-white leading-snug ' +
+                        (isExport ? 'break-words' : 'truncate')
+                      }
                     >
                       {l.name}
                     </p>
                   ))
                 )}
-                {list.length > maxList && (
+                {!isExport && list.length > maxList && (
                   <p className="m-0 text-[10px] text-slate-300/80 italic">
                     +{list.length - maxList} more…
                   </p>
                 )}
               </div>
-              {/*
-                Interactive-only affordance. Excluded from any print/PDF
-                export pipeline so client-facing reports never show editing
-                hints. `print:hidden` removes it from window.print(), and
-                `data-html2canvas-ignore` removes it from html2canvas /
-                html2pdf.js captures.
-              */}
-              <div
-                data-html2canvas-ignore="true"
-                className="px-3 pb-2 text-[9px] uppercase tracking-wider text-slate-400 group-hover:text-slate-200 transition-colors print:hidden no-print"
-              >
-                Click to manage →
-              </div>
-            </button>
+              {!isExport && (
+                <div
+                  data-html2canvas-ignore="true"
+                  className="px-3 pb-2 text-[9px] uppercase tracking-wider text-slate-400 group-hover:text-slate-200 transition-colors print:hidden no-print"
+                >
+                  Click to manage →
+                </div>
+              )}
+            </Wrapper>
           );
         })}
       </div>
 
-      {open && (
+      {!isExport && open && (
         <LenderStageManageDialog
           open={!!open}
           onOpenChange={(o) => { if (!o) setOpen(null); }}
