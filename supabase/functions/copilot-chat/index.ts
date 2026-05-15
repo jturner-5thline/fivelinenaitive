@@ -263,6 +263,22 @@ const tools = [
             items: { type: "string", enum: ["title", "description", "deal_id", "assignee_user_id", "due_date", "priority", "task_type"] },
             description: "Field names you INFERRED rather than the user explicitly stating them (e.g. defaulted deal_id from page context, defaulted priority to medium). The approval card highlights inferred fields so the user can correct them.",
           },
+          intent: {
+            type: "string",
+            enum: ["personal_task", "deal_task", "delegated_task"],
+            description: "Which intent classification this draft falls under. Used for audit logging.",
+          },
+          confidence: {
+            type: "object",
+            description: "Self-reported 0.0-1.0 confidence per resolution dimension. Used for audit logging and to gate clarifications. Below 0.7 you MUST ask a clarifying question instead of calling create_task.",
+            properties: {
+              deal: { type: "number", description: "Confidence the resolved deal_id is correct (omit if no deal). 1.0 if the user is on the deal page or named it explicitly." },
+              assignee: { type: "number", description: "Confidence the resolved assignee_user_id is correct (omit if defaulting to current user). 1.0 if user explicitly named one teammate and search_team_members returned exactly one match." },
+              due_date: { type: "number", description: "Confidence the parsed due_date is what the user meant. 1.0 for explicit YYYY-MM-DD; lower for ambiguous relative phrases." },
+              task_type: { type: "number", description: "Confidence in the task_type classification. Default 1.0 for the default 'task' value." },
+              overall: { type: "number", description: "Overall confidence in this draft." },
+            },
+          },
         },
         required: ["title"],
       },
