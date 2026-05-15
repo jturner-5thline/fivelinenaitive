@@ -4688,9 +4688,9 @@ async function prefetchPageContext(
         supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(10),
         supabase.from("deal_space_documents").select("name").eq("deal_id", entityId).limit(15),
         supabase.from("deal_attachments").select("name, category").eq("deal_id", entityId).limit(15),
-         supabase.from("tasks").select("id, title, status, priority, due_date, assigned_to, task_type").eq("deal_id", entityId).is("archived_at", null).neq("status", "complete").order("due_date", { ascending: true, nullsFirst: false }).limit(20),
-         supabase.from("deal_notes").select("content, created_at, author_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(8),
-         supabase.from("deal_contacts").select("contact_name, contact_email, role").eq("deal_id", entityId).limit(15),
+        supabase.from("tasks").select("id, title, status, priority, due_date, assigned_to, task_type").eq("deal_id", entityId).is("archived_at", null).neq("status", "complete").order("due_date", { ascending: true, nullsFirst: false }).limit(20),
+        supabase.from("deal_space_notes").select("title, content, created_at").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(8),
+        supabase.from("contact_deals").select("role, contacts:contact_id(first_name, last_name, email, title)").eq("deal_id", entityId).limit(15),
       ]);
       const deal = dealRes.data;
       if (!deal) return { block: "", label: null };
@@ -4731,10 +4731,14 @@ Open tasks linked to this deal (${openTasks.length}):
 ${openTasks.slice(0, 15).map((t: any) => `  • [${t.priority || "med"}] ${t.title}${t.due_date ? ` — due ${t.due_date}` : ""}${t.status ? ` (${t.status})` : ""}`).join("\n") || "  (none)"}
 
 Deal contacts / parties (${dealContacts.length}):
-${dealContacts.slice(0, 12).map((c: any) => `  • ${c.contact_name || "?"}${c.role ? ` — ${c.role}` : ""}${c.contact_email ? ` <${c.contact_email}>` : ""}`).join("\n") || "  (none)"}
+${dealContacts.slice(0, 12).map((c: any) => {
+  const k = c.contacts || {};
+  const name = [k.first_name, k.last_name].filter(Boolean).join(" ") || k.email || "?";
+  return `  • ${name}${k.title ? ` — ${k.title}` : ""}${c.role ? ` (${c.role})` : ""}${k.email ? ` <${k.email}>` : ""}`;
+}).join("\n") || "  (none)"}
 
 Recent notes (last ${notes.length}):
-${notes.slice(0, 8).map((n: any) => `  • ${n.created_at?.slice(0, 10)}${n.author_name ? ` (${n.author_name})` : ""}: ${String(n.content || "").slice(0, 200)}`).join("\n") || "  (none)"}
+${notes.slice(0, 8).map((n: any) => `  • ${n.created_at?.slice(0, 10)}${n.title ? ` — ${n.title}` : ""}: ${String(n.content || "").slice(0, 200)}`).join("\n") || "  (none)"}
 
 Recent activity (last ${activity.length}):
 ${activity.map((a: any) => `  • ${a.created_at?.slice(0, 10)} — ${a.activity_type}: ${String(a.description || "").slice(0, 140)}${a.user_display_name ? ` (${a.user_display_name})` : ""}`).join("\n") || "  (none)"}
