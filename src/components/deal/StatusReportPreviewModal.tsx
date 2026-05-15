@@ -540,13 +540,20 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   const renderInAppPreview = () => (
     <div
       ref={printableRef}
-      className="rounded-2xl overflow-hidden border"
+      className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
-        background:
-          'linear-gradient(160deg, hsl(220 30% 10%) 0%, hsl(218 26% 7%) 55%, hsl(216 24% 5%) 100%)',
-        borderColor: 'hsl(220 30% 22% / 0.6)',
+        // Layered gradient shell — matches the deal pop-up surface treatment:
+        // soft top highlight, subtle blue-tinted radial bloom, deep base.
+        backgroundColor: 'hsl(222 30% 8% / 0.96)',
+        backgroundImage: [
+          'radial-gradient(120% 70% at 0% 0%, hsl(220 70% 30% / 0.22) 0%, transparent 55%)',
+          'radial-gradient(90% 60% at 100% 0%, hsl(190 70% 35% / 0.14) 0%, transparent 60%)',
+          'radial-gradient(120% 80% at 50% 100%, hsl(220 60% 18% / 0.18) 0%, transparent 65%)',
+          'linear-gradient(165deg, hsl(222 32% 12%) 0%, hsl(220 28% 9%) 55%, hsl(218 26% 6%) 100%)',
+        ].join(', '),
+        borderColor: 'hsl(220 50% 30% / 0.5)',
         boxShadow:
-          'inset 0 1px 0 hsl(220 40% 80% / 0.06), 0 20px 60px hsl(220 60% 3% / 0.55)',
+          'inset 0 1px 0 hsl(220 60% 85% / 0.07), inset 0 0 0 1px hsl(220 40% 50% / 0.05), 0 25px 60px -12px hsl(220 80% 4% / 0.7)',
       }}
     >
       {/* Top accent bar */}
@@ -1052,11 +1059,15 @@ function DarkSection({ label, children }: { label: string; children: React.React
       <div
         className="mt-2 rounded-xl px-4 py-3 border-l-2 border-l-blue-400/70"
         style={{
-          background:
-            'linear-gradient(180deg, hsl(220 30% 13% / 0.7) 0%, hsl(220 30% 10% / 0.7) 100%)',
-          borderTop: '1px solid hsl(220 25% 22% / 0.5)',
-          borderRight: '1px solid hsl(220 25% 22% / 0.5)',
-          borderBottom: '1px solid hsl(220 25% 22% / 0.5)',
+          backgroundColor: 'hsl(220 28% 12% / 0.55)',
+          backgroundImage: [
+            'radial-gradient(80% 100% at 0% 0%, hsl(220 70% 35% / 0.14) 0%, transparent 60%)',
+            'linear-gradient(180deg, hsl(220 30% 16% / 0.55) 0%, hsl(220 30% 10% / 0.55) 100%)',
+          ].join(', '),
+          borderTop: '1px solid hsl(220 40% 30% / 0.45)',
+          borderRight: '1px solid hsl(220 40% 30% / 0.45)',
+          borderBottom: '1px solid hsl(220 40% 30% / 0.45)',
+          boxShadow: 'inset 0 1px 0 hsl(220 60% 80% / 0.05)',
         }}
       >
         {children}
@@ -1068,19 +1079,19 @@ function DarkSection({ label, children }: { label: string; children: React.React
 function darkColStyle(color: 'blue' | 'teal' | 'green' | 'red'): React.CSSProperties {
   const tints: Record<string, { bg: string; border: string }> = {
     blue: {
-      bg: 'linear-gradient(180deg, hsl(220 50% 18% / 0.85) 0%, hsl(220 45% 11% / 0.9) 100%)',
+      bg: 'radial-gradient(120% 80% at 0% 0%, hsl(220 75% 35% / 0.32) 0%, transparent 60%), linear-gradient(180deg, hsl(220 45% 16% / 0.9) 0%, hsl(220 40% 9% / 0.95) 100%)',
       border: 'hsl(220 75% 55% / 0.4)',
     },
     teal: {
-      bg: 'linear-gradient(180deg, hsl(190 55% 17% / 0.85) 0%, hsl(190 50% 10% / 0.9) 100%)',
+      bg: 'radial-gradient(120% 80% at 0% 0%, hsl(190 75% 35% / 0.3) 0%, transparent 60%), linear-gradient(180deg, hsl(190 50% 15% / 0.9) 0%, hsl(190 45% 9% / 0.95) 100%)',
       border: 'hsl(185 75% 50% / 0.4)',
     },
     green: {
-      bg: 'linear-gradient(180deg, hsl(150 45% 16% / 0.85) 0%, hsl(150 45% 9% / 0.9) 100%)',
+      bg: 'radial-gradient(120% 80% at 0% 0%, hsl(150 70% 35% / 0.3) 0%, transparent 60%), linear-gradient(180deg, hsl(150 42% 14% / 0.9) 0%, hsl(150 42% 8% / 0.95) 100%)',
       border: 'hsl(150 65% 45% / 0.4)',
     },
     red: {
-      bg: 'linear-gradient(180deg, hsl(0 50% 18% / 0.85) 0%, hsl(0 45% 10% / 0.9) 100%)',
+      bg: 'radial-gradient(120% 80% at 0% 0%, hsl(0 75% 38% / 0.3) 0%, transparent 60%), linear-gradient(180deg, hsl(0 48% 16% / 0.9) 0%, hsl(0 42% 9% / 0.95) 100%)',
       border: 'hsl(0 70% 55% / 0.4)',
     },
   };
@@ -1089,7 +1100,7 @@ function darkColStyle(color: 'blue' | 'teal' | 'green' | 'red'): React.CSSProper
     background: t.bg,
     borderColor: t.border,
     boxShadow:
-      'inset 0 1px 0 hsl(220 40% 80% / 0.05), 0 4px 14px hsl(220 60% 4% / 0.4)',
+      'inset 0 1px 0 hsl(220 60% 85% / 0.08), inset 0 0 0 1px hsl(220 40% 50% / 0.04), 0 6px 20px hsl(220 60% 4% / 0.45)',
   };
 }
 
