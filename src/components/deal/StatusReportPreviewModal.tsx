@@ -433,7 +433,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           image: { type: 'jpeg', quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+          pagebreak: { mode: ['css', 'legacy'] },
         } as any)
         .from(cloned)
         .outputPdf('blob');
