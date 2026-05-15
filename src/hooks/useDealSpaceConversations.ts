@@ -20,15 +20,25 @@ export interface DealSpaceMessage {
   created_at: string;
 }
 
-export function useDealSpaceConversations(dealId: string | undefined) {
+export function useDealSpaceConversations(
+  dealId: string | undefined,
+  options?: { autoFetch?: boolean },
+) {
+  // Lazy-load: by default we do NOT fetch on mount. The Deal Space tab
+  // explicitly calls `refetch()` (or `ensureLoaded()`) once the shell has
+  // painted, or when the conversation history panel is opened. This keeps
+  // the initial Deal Space mount cheap.
+  const autoFetch = options?.autoFetch ?? false;
   const [conversations, setConversations] = useState<DealSpaceConversation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState<boolean>(autoFetch);
+  const [hasFetched, setHasFetched] = useState(false);
 
   // Fetch conversations
   const fetchConversations = useCallback(async () => {
     if (!dealId) return;
     
     try {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from('deal_space_conversations' as any)
         .select('*')
@@ -37,6 +47,7 @@ export function useDealSpaceConversations(dealId: string | undefined) {
 
       if (error) throw error;
       setConversations((data as unknown as DealSpaceConversation[]) || []);
+      setHasFetched(true);
     } catch (error) {
       console.error('Error fetching conversations:', error);
     } finally {
@@ -45,8 +56,12 @@ export function useDealSpaceConversations(dealId: string | undefined) {
   }, [dealId]);
 
   useEffect(() => {
-    fetchConversations();
-  }, [fetchConversations]);
+    if (autoFetch) fetchConversations();
+  }, [autoFetch, fetchConversations]);
+
+  const ensureLoaded = useCallback(() => {
+    if (!hasFetched) fetchConversations();
+  }, [hasFetched, fetchConversations]);
 
   // Create a new conversation
   const createConversation = useCallback(async (title?: string): Promise<DealSpaceConversation | null> => {
@@ -182,5 +197,6 @@ export function useDealSpaceConversations(dealId: string | undefined) {
     loadConversationMessages,
     saveMessage,
     refetch: fetchConversations,
+    ensureLoaded,
   };
 }
