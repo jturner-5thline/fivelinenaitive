@@ -52,7 +52,14 @@ function PipelineMemoCardImpl({
       tabIndex={0}
       role="button"
       aria-label={`Open deal memo for ${deal.company || deal.name}`}
-      className="cursor-pointer transition-colors duration-150 hover:border-primary/40 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background"
+      className="
+        cursor-pointer transition-all duration-200
+        rounded-xl overflow-hidden
+        border border-white/10 hover:border-primary/40
+        bg-gradient-to-b from-white/[0.07] via-white/[0.04] to-white/[0.02]
+        shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)] hover:shadow-[0_14px_36px_-16px_rgba(0,0,0,0.7)]
+        focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background
+      "
       // NOTE: do NOT set `content-visibility: auto` here. The card sits inside
       // a @tanstack/react-virtual absolute-positioned row whose offsets come
       // from each card's measured height. `content-visibility: auto` makes
@@ -75,7 +82,8 @@ function PipelineMemoCardImpl({
           [grid-template-columns:1fr]
           md:[grid-template-columns:1fr_1fr]
           lg:[grid-template-columns:1fr_1fr_minmax(240px,280px)]
-          divide-y md:divide-y-0 md:divide-x divide-border
+          divide-y md:divide-y-0 md:divide-x divide-white/[0.08]
+          bg-gradient-to-b from-transparent to-white/[0.015]
         "
       >
         <ActivityPanel
