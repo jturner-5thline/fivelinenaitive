@@ -597,6 +597,7 @@ export default function DealDetail() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
   const [statusEmailContent, setStatusEmailContent] = useState<StatusReportEditableContent | null>(null);
+  const [statusEmailPdfFile, setStatusEmailPdfFile] = useState<File | null>(null);
   const { profile } = useProfile();
 
   // Allow other deal-scoped components (e.g. the Deal Space Ask AI tab) to
