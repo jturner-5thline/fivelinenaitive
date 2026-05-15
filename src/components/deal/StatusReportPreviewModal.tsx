@@ -500,19 +500,21 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       {passedDetails.length > 0 && (
         <>
           <div className="sr-section-label" style={sectionLabelStyle}>Passed Lender Reasons</div>
-          <table className="sr-passed" style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: 13 }}>
+          <table className="sr-passed" style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: 13, tableLayout: 'fixed' }}>
+            <colgroup>
+              <col style={{ width: '38%' }} />
+              <col style={{ width: '62%' }} />
+            </colgroup>
             <thead>
               <tr>
                 <th style={thStyle}>Lender</th>
-                <th style={thStyle}>Primary Reason</th>
                 <th style={thStyle}>Key Feedback</th>
               </tr>
             </thead>
             <tbody>
               {passedDetails.map((p, i) => (
                 <tr key={i}>
-                  <td style={tdStyle}>{p.name}</td>
-                  <td style={tdStyle}>{p.reason}</td>
+                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</td>
                   <td style={{ ...tdStyle, color: '#475569', fontStyle: aiPassFeedbackLoading && !(p.name in aiPassFeedback) ? 'italic' : 'normal' }}>
                     {p.name in aiPassFeedback
                       ? (aiPassFeedback[p.name] || '—')
@@ -679,19 +681,21 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <div>
             <DarkLabel>Passed Lender Reasons</DarkLabel>
             <div className="mt-2 rounded-xl border border-slate-700/60 overflow-hidden">
-              <table className="w-full text-xs">
+              <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: '38%' }} />
+                  <col style={{ width: '62%' }} />
+                </colgroup>
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-400 uppercase tracking-wider text-[10px]">
                     <th className="text-left px-3 py-2 font-semibold">Lender</th>
-                    <th className="text-left px-3 py-2 font-semibold">Primary Reason</th>
                     <th className="text-left px-3 py-2 font-semibold">Key Feedback</th>
                   </tr>
                 </thead>
                 <tbody>
                   {passedDetails.map((p, i) => (
                     <tr key={i} className="border-t border-slate-700/50">
-                      <td className="px-3 py-2 text-slate-100">{p.name}</td>
-                      <td className="px-3 py-2 text-slate-300">{p.reason}</td>
+                      <td className="px-3 py-2 text-slate-100 whitespace-nowrap overflow-hidden text-ellipsis">{p.name}</td>
                       <td
                         className="px-3 py-2 text-slate-300"
                         style={{

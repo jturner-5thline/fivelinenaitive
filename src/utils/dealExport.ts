@@ -1321,7 +1321,7 @@ export async function exportStatusReportToWord(
     );
   }
 
-  // Passed Lender Reasons — client-friendly Lender | Primary Reason | Key Feedback.
+  // Passed Lender Reasons — client-friendly Lender | Key Feedback.
   if (buckets.passed.length > 0) {
     children.push(
       new Paragraph({
@@ -1331,11 +1331,11 @@ export async function exportStatusReportToWord(
       }),
       new Table({
         width: { size: 100, type: WidthType.PERCENTAGE },
+        columnWidths: [3800, 6200],
         rows: [
           new TableRow({
             children: [
               createHeaderCell('Lender'),
-              createHeaderCell('Primary Reason'),
               createHeaderCell('Key Feedback'),
             ],
           }),
@@ -1350,7 +1350,6 @@ export async function exportStatusReportToWord(
             return new TableRow({
               children: [
                 createDataCell(l.name),
-                createDataCell(reason || '-'),
                 createDataCell(keyFeedback),
               ],
             });
