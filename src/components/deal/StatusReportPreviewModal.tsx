@@ -416,6 +416,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           page-break-inside: avoid;
         }
         #${PRINT_ID} table { break-inside: auto; page-break-inside: auto; }
+        /* Keep each top-level report section together on a single page
+           when it fits; the browser will move it to the next page rather
+           than splitting mid-section. Only sections taller than a page
+           will wrap (which is unavoidable). */
+        #${PRINT_ID} > div > div > * {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        #${PRINT_ID} h1, #${PRINT_ID} h2, #${PRINT_ID} h3,
+        #${PRINT_ID} .sr-section-label, #${PRINT_ID} [class*="DarkLabel"] {
+          break-after: avoid-page;
+          page-break-after: avoid;
+        }
         /* Ensure no wrapper clips content in print (e.g. rounded
            overflow-hidden table wrappers). */
         #${PRINT_ID}, #${PRINT_ID} * {
