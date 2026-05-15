@@ -27,6 +27,12 @@ interface StatusReportPreviewModalProps {
   outstandingItems?: OutstandingItem[];
   onExport: (content: StatusReportEditableContent) => void;
   /**
+   * Optional: open a full email compose window with the rendered status
+   * report PDF pre-attached. When provided, a "Draft Email" button is
+   * surfaced next to "Generate Status Email".
+   */
+  onDraftEmail?: (content: StatusReportEditableContent, pdfFile: File) => void;
+  /**
    * Persist a lender update to the underlying deal. Required for the
    * pipeline-snapshot stage cards to act as a live management surface
    * (clicking a card opens an editable lender dialog that writes through
@@ -154,6 +160,7 @@ export function StatusReportPreviewModal({
   configuredStages,
   outstandingItems,
   onExport,
+  onDraftEmail,
   onUpdateLender,
 }: StatusReportPreviewModalProps) {
   const initialContent = useMemo(
@@ -392,6 +399,53 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     };
     window.addEventListener('afterprint', cleanup);
     setTimeout(() => window.print(), 80);
+  };
+
+  // ── Generate the status report as a PDF File (for email attachment) ──
+  const [draftingEmail, setDraftingEmail] = useState(false);
+  const slugify = (s: string) =>
+    (s || 'status-report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'status-report';
+
+  const handleDraftEmail = async () => {
+    if (!onDraftEmail) return;
+    const node = printableRef.current;
+    if (!node) {
+      toast({ title: 'Preview not ready', description: 'Could not prepare the status report PDF.', variant: 'destructive' });
+      return;
+    }
+    setDraftingEmail(true);
+    let container: HTMLDivElement | null = null;
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const cloned = node.cloneNode(true) as HTMLElement;
+      container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-10000px';
+      container.style.top = '0';
+      container.style.width = '880px';
+      container.style.background = '#ffffff';
+      container.appendChild(cloned);
+      document.body.appendChild(container);
+      const blob: Blob = await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: `status-report-${slugify(deal.company)}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+          pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
+        } as any)
+        .from(cloned)
+        .outputPdf('blob');
+      const file = new File([blob], `status-report-${slugify(deal.company)}.pdf`, { type: 'application/pdf' });
+      onDraftEmail(content, file);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not generate PDF';
+      toast({ title: 'Could not prepare PDF', description: msg, variant: 'destructive' });
+    } finally {
+      if (container && container.parentNode) container.parentNode.removeChild(container);
+      setDraftingEmail(false);
+    }
   };
 
   // ── Render the printable report (light-themed) ──────────────────────────
@@ -786,6 +840,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             <Download className="h-4 w-4" />
             Export as PDF
           </Button>
+          {onDraftEmail && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDraftEmail}
+              disabled={draftingEmail}
+              className="gap-2"
+            >
+              {draftingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              {draftingEmail ? 'Preparing PDF…' : 'Draft Email'}
+            </Button>
+          )}
           <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
             <Mail className="h-4 w-4" />
             Generate Status Email
