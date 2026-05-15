@@ -493,33 +493,73 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       {content.sectionsVisible.pipelineSnapshot && (
         <>
           <div className="sr-section-label" style={sectionLabelStyle}>Lender Pipeline Snapshot</div>
-          <div className="sr-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 8, alignItems: 'stretch' }}>
+          {/*
+            Stacked, full-width per-stage layout — purpose-built for PDF.
+            Each stage gets its own row with a colored header bar and the
+            full lender list rendered as wrapped chips. No truncation, no
+            "+X more", no interactive affordances. Reads cleanly across
+            multi-page exports.
+          */}
+          <div className="sr-pipeline-stack" style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
             {([
               { key: 'onDeck', label: 'On Deck', color: 'blue', items: buckets.onDeck },
               { key: 'inReview', label: 'In Review', color: 'teal', items: buckets.inReview },
               { key: 'termsIssued', label: 'Terms Issued', color: 'green', items: buckets.termsIssued },
               { key: 'passed', label: 'Passed', color: 'red', items: buckets.passed },
             ] as const).map((g) => (
-              <div key={g.key} className={`sr-col ${g.color}`} style={colStyle(g.color)}>
-                <div className="sr-col-head" style={colHeadStyle(g.color)}>{g.label} ({g.items.length})</div>
-                <div className="sr-col-body" style={{ padding: '10px 12px', flex: 1 }}>
+              <div
+                key={g.key}
+                className={`sr-stage-row ${g.color}`}
+                style={{
+                  border: `1px solid ${stageBorder(g.color)}`,
+                  borderRadius: 8,
+                  overflow: 'hidden',
+                  background: '#ffffff',
+                  pageBreakInside: 'avoid',
+                  breakInside: 'avoid',
+                }}
+              >
+                <div
+                  style={{
+                    padding: '8px 14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    background: stageHeadBg(g.color),
+                    color: '#ffffff',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  <span>{g.label}</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.95 }}>{g.items.length}</span>
+                </div>
+                <div style={{ padding: '12px 14px' }}>
                   {g.items.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>None</p>
                   ) : (
-                    g.items.map((l) => (
-                      <p
-                        key={l.id}
-                        style={{
-                          margin: '0 0 4px',
-                          fontSize: 12,
-                          color: '#334155',
-                          lineHeight: 1.45,
-                          wordBreak: 'break-word',
-                        }}
-                      >
-                        {l.name}
-                      </p>
-                    ))
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {g.items.map((l) => (
+                        <span
+                          key={l.id}
+                          style={{
+                            display: 'inline-block',
+                            padding: '4px 10px',
+                            border: `1px solid ${stageBorder(g.color)}`,
+                            borderRadius: 999,
+                            background: stageChipBg(g.color),
+                            color: '#0f172a',
+                            fontSize: 12,
+                            lineHeight: 1.3,
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {l.name}
+                        </span>
+                      ))}
+                    </div>
                   )}
                 </div>
               </div>
@@ -942,6 +982,28 @@ function colHeadStyle(color: string): React.CSSProperties {
     padding: '10px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
     textTransform: 'uppercase', color: '#fff', background: map[color] || map.blue,
   };
+}
+
+function stageBorder(color: string): string {
+  const map: Record<string, string> = {
+    blue: '#bfdbfe', teal: '#a5f3fc', green: '#bbf7d0', red: '#fecaca',
+  };
+  return map[color] || map.blue;
+}
+function stageHeadBg(color: string): string {
+  const map: Record<string, string> = {
+    blue:  'linear-gradient(135deg,#3b82f6,#2563eb)',
+    teal:  'linear-gradient(135deg,#0ea5e9,#0d9488)',
+    green: 'linear-gradient(135deg,#22c55e,#16a34a)',
+    red:   'linear-gradient(135deg,#ef4444,#dc2626)',
+  };
+  return map[color] || map.blue;
+}
+function stageChipBg(color: string): string {
+  const map: Record<string, string> = {
+    blue: '#eff6ff', teal: '#ecfeff', green: '#f0fdf4', red: '#fef2f2',
+  };
+  return map[color] || map.blue;
 }
 
 function SectionBlock({
