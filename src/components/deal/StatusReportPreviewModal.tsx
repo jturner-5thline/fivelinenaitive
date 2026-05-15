@@ -802,18 +802,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </DialogFooter>
       </DialogContent>
     </Dialog>
-    {manageBucket && onUpdateLender && (
-      <LenderStageManageDialog
-        open={!!manageBucket}
-        onOpenChange={(o) => { if (!o) setManageBucket(null); }}
-        bucketKey={manageBucket}
-        bucketLabel={bucketMeta[manageBucket].label}
-        bucketAccent={bucketMeta[manageBucket].color}
-        lenders={bucketMeta[manageBucket].items as DealLender[]}
-        configuredStages={configuredStages}
-        onUpdateLender={onUpdateLender}
-      />
-    )}
     </>
   );
 }
