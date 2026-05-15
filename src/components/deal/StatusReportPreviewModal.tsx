@@ -345,6 +345,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   /**
    * Direct download — no print dialog, no blank intermediary screen.
@@ -352,6 +353,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
    * node using html2pdf.js, then triggers a download. The visible modal
    * stays mounted the whole time; only the button shows a loading state.
    */
+  const slugify = (s: string) =>
+    (s || 'status-report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'status-report';
+
+  const pdfFilename = () => {
+    const date = new Date().toISOString().slice(0, 10);
+    return `status-report-${slugify(deal.company)}-${date}.pdf`;
+  };
+
   const handlePrintPdf = async () => {
     const node = printableRef.current;
     if (!node) {
@@ -377,7 +386,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       await html2pdf()
         .set({
           margin: [10, 10, 10, 10],
-          filename: `status-report-${slugify(deal.company)}.pdf`,
+          filename: pdfFilename(),
           image: { type: 'jpeg', quality: 0.95 },
           html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1016' },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
@@ -385,6 +394,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         } as any)
         .from(cloned)
         .save();
+      setPdfPreviewOpen(false);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Could not export PDF';
       toast({ title: 'Export failed', description: msg, variant: 'destructive' });
@@ -396,9 +406,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   // ── Generate the status report as a PDF File (for email attachment) ──
   const [draftingEmail, setDraftingEmail] = useState(false);
-  const slugify = (s: string) =>
-    (s || 'status-report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'status-report';
-
   const handleDraftEmail = async () => {
     if (!onDraftEmail) return;
     const node = printableRef.current;
@@ -894,12 +901,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <Button
             variant="outline"
             size="sm"
-            onClick={handlePrintPdf}
+            onClick={() => setPdfPreviewOpen(true)}
             disabled={exportingPdf}
             className="gap-2"
           >
-            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {exportingPdf ? 'Generating PDF…' : 'Export as PDF'}
+            <Download className="h-4 w-4" />
+            Export as PDF
           </Button>
           {onDraftEmail && (
             <Button
@@ -941,6 +948,50 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         >
           {renderInAppPreview(true)}
         </div>
+      </DialogContent>
+    </Dialog>
+
+    {/* PDF Preview / Confirm-export dialog. Renders the same dark in-app
+        preview at full scale so the user can verify exactly what the PDF
+        will look like, then confirm download. The actual PDF is generated
+        from the off-screen printable node (kept mounted in the parent
+        dialog) so html2canvas captures a render-safe copy. */}
+    <Dialog open={pdfPreviewOpen} onOpenChange={(v) => !exportingPdf && setPdfPreviewOpen(v)}>
+      <DialogContent
+        className="max-w-4xl h-[92vh] flex flex-col p-0 gap-0 overflow-hidden border border-slate-700 shadow-2xl rounded-2xl"
+        style={{ backgroundColor: '#0d1016' }}
+      >
+        <DialogHeader className="px-6 pt-5 pb-3 shrink-0 border-b border-slate-700/60" style={{ backgroundColor: '#11151c' }}>
+          <DialogTitle className="flex items-center gap-2 text-slate-100">
+            <FileText className="h-5 w-5" />
+            PDF Preview — {deal.company}
+          </DialogTitle>
+          <p className="text-xs text-slate-400">
+            This is exactly how the downloaded PDF will look. Click Download PDF to confirm.
+          </p>
+        </DialogHeader>
+
+        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ backgroundColor: '#0d1016' }}>
+          {exportingPdf && (
+            <div className="flex items-center justify-center gap-2 py-3 text-sm text-slate-300">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Generating PDF…
+            </div>
+          )}
+          <div className="mx-auto" style={{ maxWidth: 880 }}>
+            {renderInAppPreview(true)}
+          </div>
+        </div>
+
+        <DialogFooter className="px-6 py-3 border-t border-slate-700/60 shrink-0 gap-2" style={{ backgroundColor: '#11151c' }}>
+          <Button variant="outline" onClick={() => setPdfPreviewOpen(false)} disabled={exportingPdf}>
+            Cancel
+          </Button>
+          <Button variant="liquid-glass" size="sm" onClick={handlePrintPdf} disabled={exportingPdf} className="gap-2">
+            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {exportingPdf ? 'Generating PDF…' : 'Download PDF'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
     </>
