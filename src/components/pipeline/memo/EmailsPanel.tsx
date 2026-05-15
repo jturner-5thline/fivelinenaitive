@@ -36,11 +36,11 @@ export function EmailsPanel({ emails, isLoading }: EmailsPanelProps) {
 
   return (
     <div className="p-5 min-w-0 self-start">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 mb-3">
         Emails
       </div>
       {emails.length === 0 ? (
-        <p className="text-xs italic text-muted-foreground">No recent emails.</p>
+        <p className="text-xs italic text-white/55">No recent emails.</p>
       ) : (
         <div className="space-y-2">
           {emails.slice(0, 4).map((e) => {
@@ -50,13 +50,13 @@ export function EmailsPanel({ emails, isLoading }: EmailsPanelProps) {
             return (
               <div
                 key={e.id}
-                className="rounded-md bg-muted/40 border-l-2 border-primary/60 pl-2.5 pr-2 py-1.5"
+                className="rounded-md bg-white/[0.04] border-l-2 border-primary/60 pl-2.5 pr-2 py-1.5"
               >
-                <div className="text-[11px] font-semibold text-foreground truncate">
+                <div className="text-[11px] font-semibold text-white truncate">
                   {sender}
-                  {org && <span className="text-muted-foreground font-normal"> · {org}</span>}
+                  {org && <span className="text-white/60 font-normal"> · {org}</span>}
                 </div>
-                <div className="text-[11px] text-muted-foreground line-clamp-2 leading-snug">
+                <div className="text-[11px] text-white/70 line-clamp-2 leading-snug">
                   {preview}
                 </div>
               </div>

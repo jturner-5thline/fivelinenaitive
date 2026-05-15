@@ -60,11 +60,11 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
   const statusDisplay = statusText || stageLabel;
 
   return (
-    <div className="px-5 pt-4 pb-3 border-b border-border">
+    <div className="px-5 pt-4 pb-3 border-b border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <h2
-            className="text-base font-semibold leading-tight text-foreground truncate"
+            className="text-[15px] font-semibold leading-tight tracking-tight text-white truncate"
             title={deal.company || deal.name}
           >
             {deal.company || deal.name}

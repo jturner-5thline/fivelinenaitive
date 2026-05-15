@@ -153,7 +153,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
       className="-mx-1 px-3 py-2 overflow-y-auto max-h-[78vh]"
       style={{ overscrollBehavior: 'contain' }}
     >
-      <div className="max-w-[1100px] mx-auto flex flex-col gap-3">
+      <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
         {visible.map((deal, index) => (
           <div key={deal.id} className="relative group/dismiss">
             <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover/dismiss:opacity-100 focus-within:opacity-100 transition-opacity">
