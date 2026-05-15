@@ -76,7 +76,6 @@ export async function archiveSentStatusReport(params: {
         is_folder: false,
         source: 'internal',
         uploaded_by: user?.id ?? null,
-        ingestion_status: 'skipped',
         metadata: {
           archive_type: 'status_report',
           sent_at: sentAt.toISOString(),
