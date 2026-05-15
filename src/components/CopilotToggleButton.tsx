@@ -361,7 +361,7 @@ export function CopilotToggleButton() {
     {createPortal(
     <div
       aria-hidden={false}
-      className="pointer-events-none fixed inset-x-0 z-[1200] flex justify-center"
+      className="pointer-events-none fixed inset-x-0 z-[1400] flex justify-center"
       style={{
         bottom: 'calc(44px + max(16px, env(safe-area-inset-bottom)))',
       }}
