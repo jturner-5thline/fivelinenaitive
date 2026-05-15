@@ -1720,6 +1720,8 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           due_date: args.due_date,
           task_type: args.task_type || "task",
           inferred: Array.isArray(args.inferred) ? args.inferred : [],
+          intent: args.intent || (args.assignee_user_id ? "delegated_task" : (args.deal_id ? "deal_task" : "personal_task")),
+          confidence: typeof args.confidence === "object" && args.confidence ? args.confidence : {},
         },
       };
     }
