@@ -883,9 +883,15 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         <DialogFooter className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800 gap-2">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-          <Button variant="outline" size="sm" onClick={handlePrintPdf} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export as PDF
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrintPdf}
+            disabled={exportingPdf}
+            className="gap-2"
+          >
+            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {exportingPdf ? 'Generating PDF…' : 'Export as PDF'}
           </Button>
           {onDraftEmail && (
             <Button
