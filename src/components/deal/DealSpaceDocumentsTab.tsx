@@ -518,6 +518,90 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
         onDownload={handleDownload}
       />
 
+      {/* Single-document delete confirmation */}
+      <AlertDialog
+        open={!!docToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingSingle) setDocToDelete(null);
+        }}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{docToDelete?.name}&quot; from Deal Space.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeletingSingle}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingSingle}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void handleConfirmSingleDelete();
+              }}
+            >
+              {isDeletingSingle ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirmation */}
+      <AlertDialog
+        open={showBulkDeleteDialog}
+        onOpenChange={(open) => {
+          if (!open && !bulkDeleteState.isDeleting) setShowBulkDeleteDialog(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedCount} file{selectedCount !== 1 ? 's' : ''} from Deal Space?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkDeleteState.isDeleting
+                ? `Deleting ${bulkDeleteState.completed} of ${bulkDeleteState.total}…`
+                : 'This action cannot be undone. Files that fail to delete will remain in the list.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteState.isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkDeleteState.isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleConfirmBulkDelete();
+              }}
+            >
+              {bulkDeleteState.isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting {bulkDeleteState.completed}/{bulkDeleteState.total}
+                </>
+              ) : (
+                `Delete ${selectedCount}`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* Duplicate File Confirmation Dialog */}
       <AlertDialog open={!!duplicateFile} onOpenChange={(open) => !open && handleDuplicateCancel()}>
         <AlertDialogContent>
