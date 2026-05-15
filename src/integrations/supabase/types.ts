@@ -1469,6 +1469,33 @@ export type Database = {
           },
         ]
       }
+      business_holidays: {
+        Row: {
+          created_at: string
+          holiday_date: string
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          holiday_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          holiday_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       calendar_events: {
         Row: {
           attendees: string[]
@@ -15309,6 +15336,7 @@ export type Database = {
           id: string
           in_app_notifications: boolean
           is_active: boolean
+          last_daily_rundown_notice_at: string | null
           last_name: string | null
           lender_updates_app: boolean
           lender_updates_email: boolean
@@ -15362,6 +15390,7 @@ export type Database = {
           id?: string
           in_app_notifications?: boolean
           is_active?: boolean
+          last_daily_rundown_notice_at?: string | null
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean
@@ -15415,6 +15444,7 @@ export type Database = {
           id?: string
           in_app_notifications?: boolean
           is_active?: boolean
+          last_daily_rundown_notice_at?: string | null
           last_name?: string | null
           lender_updates_app?: boolean
           lender_updates_email?: boolean

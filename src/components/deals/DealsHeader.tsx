@@ -121,6 +121,16 @@ export function DealsHeader() {
     user?.email?.toLowerCase() ?? ''
   );
 
+  // Listen for the Daily Rundown chat notification (see
+  // useDailyRundownNotification). Clicking the chat message dispatches
+  // `open-daily-rundown`, which opens the same modal as the header icon.
+  useEffect(() => {
+    if (!canSeeBriefingHeaderItems) return;
+    const handler = () => setIsBriefingOpen(true);
+    window.addEventListener('open-daily-rundown', handler);
+    return () => window.removeEventListener('open-daily-rundown', handler);
+  }, [canSeeBriefingHeaderItems]);
+
   // ─── Daily Rundown completion badges ───────────────────────────────
   // Show a red "1" badge on the Daily Rundown / Niki's Daily Rundown
   // header icons whenever today's rundown has at least one undismissed

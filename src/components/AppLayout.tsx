@@ -11,6 +11,7 @@ import { DealsHeader } from "@/components/deals/DealsHeader";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
 import { logActivity } from "@/lib/activityLogger";
+import { useDailyRundownNotification } from "@/hooks/useDailyRundownNotification";
 
 interface AppLayoutProps {
   /**
@@ -118,6 +119,9 @@ function BodyScrollLock() {
 
 export function AppLayout({ children, mainClassName }: AppLayoutProps) {
   const location = useLocation();
+  // Push the "Your Daily Rundown is Ready" chat notification at most once
+  // per business day (eligibility is enforced inside the hook).
+  useDailyRundownNotification();
   const content = children ?? <Outlet />;
   const isTasksPage = location.pathname === '/tasks' || location.pathname.startsWith('/tasks/');
   // When the route is loaded inside the Naitive deal overlay iframe

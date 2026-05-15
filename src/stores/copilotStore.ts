@@ -68,7 +68,9 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   expandPanel: () => set({ isOpen: true, isMinimized: false, unreadCount: 0 }),
   addMessage: (message) => set((s) => ({
     messages: [...s.messages, message],
-    unreadCount: s.isMinimized && message.role === 'assistant' ? s.unreadCount + 1 : s.unreadCount,
+    // Treat any state where the user can't see the transcript (closed OR
+    // minimized) as needing an unread indicator on the Ask bar.
+    unreadCount: (!s.isOpen || s.isMinimized) && message.role === 'assistant' ? s.unreadCount + 1 : s.unreadCount,
   })),
   setMessages: (messages) => set({ messages }),
   setProcessing: (processing) => set({ isProcessing: processing }),
