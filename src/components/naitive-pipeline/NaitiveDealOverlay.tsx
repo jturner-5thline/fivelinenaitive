@@ -341,6 +341,22 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         onMouseDown={(e) => e.stopPropagation()}
       />
 
+      {/* Pointer-event shield — stays interactive for the entire close
+          animation window. The panel scales down toward the originating
+          tile during this 240ms, but the shield keeps the whole viewport
+          unreachable so a stray click can't land on background controls
+          such as the page's "+ New Deal" button. */}
+      {isClosing && (
+        <div
+          aria-hidden
+          className="absolute inset-0 z-[55]"
+          style={{ background: 'transparent' }}
+          onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onPointerDownCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onMouseDownCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        />
+      )}
+
       {/* Panel — near full-screen canvas. Sits above all app chrome
           (sidebar / global header) via z-[100] on the wrapper. */}
       <div
