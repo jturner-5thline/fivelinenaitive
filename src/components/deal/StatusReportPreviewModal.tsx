@@ -8,6 +8,7 @@ import { Deal } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
 import { bucketLenders, extractPassDetails } from '@/lib/lenderStatusBuckets';
 import { sendClaudeMessage } from '@/services/claude';
+import { rewritePassedFeedback } from '@/lib/rewritePassFeedback';
 import { toast } from '@/hooks/use-toast';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
@@ -153,6 +154,15 @@ export function StatusReportPreviewModal({
   const [content, setContent] = useState<StatusReportEditableContent>(initialContent);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiTriedForDeal, setAiTriedForDeal] = useState<string | null>(null);
+  /**
+   * AI-rewritten "Key Feedback" strings for the Passed Lender Reasons table,
+   * keyed by lender name. Absence of a key = still loading; explicit empty
+   * string = intentionally blank (notes too thin to support a rewrite).
+   * Raw lender notes are NEVER shown in this column.
+   */
+  const [aiPassFeedback, setAiPassFeedback] = useState<Record<string, string>>({});
+  const [aiPassFeedbackLoading, setAiPassFeedbackLoading] = useState(false);
+  const passFeedbackTriedRef = useRef<string | null>(null);
 
   const buckets = useMemo(
     () => bucketLenders(deal.lenders, configuredStages),
@@ -163,6 +173,31 @@ export function StatusReportPreviewModal({
     () => buckets.passed.map((l) => ({ name: l.name, ...extractPassDetails(l) })),
     [buckets.passed],
   );
+
+  // AI-rewrite raw pass notes into client-safe Key Feedback whenever the
+  // modal opens for a new deal. One call per (deal, modal-open) cycle.
+  useEffect(() => {
+    if (!open) return;
+    if (passFeedbackTriedRef.current === deal.id) return;
+    if (buckets.passed.length === 0) {
+      passFeedbackTriedRef.current = deal.id;
+      setAiPassFeedback({});
+      return;
+    }
+    passFeedbackTriedRef.current = deal.id;
+    setAiPassFeedback({});
+    setAiPassFeedbackLoading(true);
+    rewritePassedFeedback(
+      buckets.passed.map((l) => ({
+        name: l.name,
+        reason: extractPassDetails(l).reason,
+        notes: (l as any).notes || (l as any).passReason || '',
+      })),
+      deal.id,
+    )
+      .then((map) => setAiPassFeedback(map))
+      .finally(() => setAiPassFeedbackLoading(false));
+  }, [open, deal.id, buckets.passed]);
 
   // Run Claude generation when modal opens for a given deal (once per deal/open).
   useEffect(() => {
