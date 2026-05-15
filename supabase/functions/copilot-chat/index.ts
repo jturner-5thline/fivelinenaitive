@@ -179,6 +179,12 @@ const tools = [
           assignee_name: { type: "string", description: "Display name of the assignee (for the confirm card label only)." },
           priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
           due_date: { type: "string", description: "ISO date string YYYY-MM-DD" },
+          task_type: { type: "string", enum: ["task", "follow_up", "call", "email", "meeting"], description: "Task category. Default 'task'. Set to follow_up/call/email/meeting only when the user explicitly says so." },
+          inferred: {
+            type: "array",
+            items: { type: "string", enum: ["title", "description", "deal_id", "assignee_user_id", "due_date", "priority", "task_type"] },
+            description: "Field names you INFERRED rather than the user explicitly stating them (e.g. defaulted deal_id from page context, defaulted priority to medium). The approval card highlights inferred fields so the user can correct them.",
+          },
         },
         required: ["title"],
       },
@@ -1594,6 +1600,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { lenders, query: q };
     }
     case "create_task": {
+      // Hydrate deal_name for the approval card so the user sees the linked deal by name, not UUID.
+      let dealName: string | null = null;
+      if (args.deal_id) {
+        try {
+          const { data: d } = await supabase.from("deals").select("company").eq("id", args.deal_id).maybeSingle();
+          dealName = d?.company || null;
+        } catch { /* non-fatal */ }
+      }
       return {
         action: "confirm",
         action_type: "create_task",
@@ -1602,11 +1616,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           title: args.title,
           description: args.description,
           deal_id: args.deal_id,
+          deal_name: dealName,
           contact_id: args.contact_id,
           assignee_user_id: args.assignee_user_id,
           assignee_name: args.assignee_name,
           priority: args.priority || "medium",
           due_date: args.due_date,
+          task_type: args.task_type || "task",
+          inferred: Array.isArray(args.inferred) ? args.inferred : [],
         },
       };
     }
