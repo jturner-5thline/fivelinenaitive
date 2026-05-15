@@ -14,6 +14,7 @@ import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
 import { LenderStageManageDialog } from './LenderStageManageDialog';
+import { LenderPipelineSnapshot } from './LenderPipelineSnapshot';
 import type { DealLender } from '@/types/deal';
 
 export type { StatusReportEditableContent };
@@ -592,63 +593,16 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             </DarkSection>
           )}
 
-        {/* Pipeline Snapshot — clickable cards */}
-        {content.sectionsVisible.pipelineSnapshot && (
+        {/* Pipeline Snapshot — shared component (same on the deal page) */}
+        {content.sectionsVisible.pipelineSnapshot && onUpdateLender && (
           <div>
             <DarkLabel>Lender Pipeline Snapshot</DarkLabel>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2">
-              {(['onDeck', 'inReview', 'termsIssued', 'passed'] as const).map((k) => {
-                const meta = bucketMeta[k];
-                const clickable = !!onUpdateLender;
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => clickable && setManageBucket(k)}
-                    disabled={!clickable}
-                    className={`text-left rounded-xl overflow-hidden border transition-all flex flex-col min-h-[150px] group ${
-                      clickable
-                        ? 'cursor-pointer hover:scale-[1.015] hover:shadow-lg active:scale-[0.99]'
-                        : 'cursor-default opacity-90'
-                    }`}
-                    style={darkColStyle(meta.color)}
-                    title={clickable ? `Manage ${meta.label}` : meta.label}
-                  >
-                    <div
-                      className="px-3 py-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] font-bold text-white"
-                      style={darkColHeadStyle(meta.color)}
-                    >
-                      <span>{meta.label}</span>
-                      <span className="text-white/90 text-xs font-bold">{meta.items.length}</span>
-                    </div>
-                    <div className="px-3 py-2 flex-1 space-y-1">
-                      {meta.items.length === 0 ? (
-                        <p className="m-0 text-[11px] text-slate-500 italic">None</p>
-                      ) : (
-                        meta.items.slice(0, 6).map((l) => (
-                          <p
-                            key={l.id}
-                            className="m-0 text-[11px] text-slate-200/90 leading-snug truncate"
-                          >
-                            {l.name}
-                          </p>
-                        ))
-                      )}
-                      {meta.items.length > 6 && (
-                        <p className="m-0 text-[10px] text-slate-400 italic">
-                          +{meta.items.length - 6} more…
-                        </p>
-                      )}
-                    </div>
-                    {clickable && (
-                      <div className="px-3 pb-2 text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">
-                        Click to manage →
-                      </div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
+            <LenderPipelineSnapshot
+              lenders={(deal.lenders || []) as any}
+              configuredStages={configuredStages}
+              onUpdateLender={onUpdateLender}
+              className="mt-2"
+            />
           </div>
         )}
 
