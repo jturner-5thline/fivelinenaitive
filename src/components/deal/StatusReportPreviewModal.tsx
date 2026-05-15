@@ -840,6 +840,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             <Download className="h-4 w-4" />
             Export as PDF
           </Button>
+          {onDraftEmail && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDraftEmail}
+              disabled={draftingEmail}
+              className="gap-2"
+            >
+              {draftingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
+              {draftingEmail ? 'Preparing PDF…' : 'Draft Email'}
+            </Button>
+          )}
           <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
             <Mail className="h-4 w-4" />
             Generate Status Email
