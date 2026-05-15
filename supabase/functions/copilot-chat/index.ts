@@ -5161,9 +5161,24 @@ Behavior when blocked:
 - After the narrative answer, you MUST emit a lender_filter JSON block (see "LENDER DIRECTORY FILTER" below) listing the matching lender names so the directory list updates to show only those lenders. This is required whenever the user asks for a set of lenders matching a criterion.\n`
       : "";
 
+    const userTz: string = (context as any)?.tz || "America/New_York";
+    const nowParts = (() => {
+      try {
+        const fmt = new Intl.DateTimeFormat("en-US", { timeZone: userTz, weekday: "long", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+        const parts = Object.fromEntries(fmt.formatToParts(new Date()).map(p => [p.type, p.value]));
+        const ymd = `${parts.year}-${parts.month}-${parts.day}`;
+        return { weekday: parts.weekday, ymd, hm: `${parts.hour}:${parts.minute}` };
+      } catch {
+        const d = new Date();
+        return { weekday: d.toUTCString().slice(0, 3), ymd: d.toISOString().slice(0, 10), hm: d.toISOString().slice(11, 16) };
+      }
+    })();
+    const todayLine = `TODAY: ${nowParts.weekday}, ${nowParts.ymd} (local time ${nowParts.hm}, timezone ${userTz})`;
+
     const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}${lenderPageOverride}
 
 CURRENT CONTEXT:
+- ${todayLine}
 - Page: ${page}
 - Active Tab: ${activeTab || "None"}
 - Entity: ${entityType === "deal" && entityId ? `Deal (ID: ${entityId})${override ? " — user overrode the page context with @mention" : ""}` : entityType === "lender" && entityId ? `Lender (${entityId})` : "None"}
