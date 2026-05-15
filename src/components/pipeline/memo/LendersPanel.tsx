@@ -193,7 +193,7 @@ function LenderRow({
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-white/70 mb-1">
             {lender.name}
           </div>
           {hasNote ? (
