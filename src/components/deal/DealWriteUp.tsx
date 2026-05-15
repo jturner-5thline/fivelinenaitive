@@ -51,6 +51,7 @@ import { WriteUpCompanyHighlightsTab } from './writeup/WriteUpCompanyHighlightsT
 import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
 import { WriteUpAutoFillDialog } from './WriteUpAutoFillDialog';
+import { coerceWriteUpFieldValue } from '@/lib/writeUpFieldCoercion';
 import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
@@ -352,6 +353,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
   const { isExtracting, extractedFields, extractWriteUpData, clearExtractedFields } = useDealSpaceAutoFill(dealId);
   const [showAutoFillDialog, setShowAutoFillDialog] = useState(false);
   const [autoFilledFields, setAutoFilledFields] = useState<Set<string>>(new Set());
+  const [autoFillFailedFields, setAutoFillFailedFields] = useState<string[]>([]);
   const [autoFillDocumentCount, setAutoFillDocumentCount] = useState(0);
   const [autoFillSourceCount, setAutoFillSourceCount] = useState(0);
   // Store citations per field for persistent display
@@ -1040,8 +1042,9 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
       setShowOverwriteDialog(true);
       // Store fields for "keep edits" path
       (window as any).__pendingAutoFillFields = selectedFields;
+      return [] as string[];
     } else {
-      applyAutoFillFields(selectedFields, false);
+      return applyAutoFillFields(selectedFields, false);
     }
   };
 
@@ -1577,6 +1580,7 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
         onApply={handleApplyAutoFill}
         documentCount={autoFillDocumentCount}
         sourceCount={autoFillSourceCount}
+        failedFields={autoFillFailedFields}
       />
 
       {/* Branded Document Studio */}
