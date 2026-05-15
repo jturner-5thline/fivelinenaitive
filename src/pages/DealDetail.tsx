@@ -5670,6 +5670,15 @@ export default function DealDetail() {
           configuredStages={configuredStages}
           configuredSubstages={configuredSubstages}
           outstandingItems={outstandingItems}
+          onUpdateLender={async (lenderId, updates) => {
+            await updateLenderInDb(lenderId, updates);
+            setDeal(prev => prev ? {
+              ...prev,
+              lenders: prev.lenders?.map(l => l.id === lenderId
+                ? { ...l, ...updates, updatedAt: new Date().toISOString() }
+                : l),
+            } : prev);
+          }}
           onExport={(editableContent) => {
             setStatusEmailContent(editableContent);
             setShowStatusReportPreview(false);

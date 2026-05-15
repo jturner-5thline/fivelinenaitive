@@ -13,6 +13,8 @@ import { toast } from '@/hooks/use-toast';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
+import { LenderStageManageDialog } from './LenderStageManageDialog';
+import type { DealLender } from '@/types/deal';
 
 export type { StatusReportEditableContent };
 
@@ -24,6 +26,13 @@ interface StatusReportPreviewModalProps {
   configuredSubstages?: LenderStageConfig[];
   outstandingItems?: OutstandingItem[];
   onExport: (content: StatusReportEditableContent) => void;
+  /**
+   * Persist a lender update to the underlying deal. Required for the
+   * pipeline-snapshot stage cards to act as a live management surface
+   * (clicking a card opens an editable lender dialog that writes through
+   * to the real lender record). When omitted, the cards remain visual.
+   */
+  onUpdateLender?: (lenderId: string, updates: Partial<DealLender>) => Promise<void>;
 }
 
 const todayLong = () =>
@@ -145,6 +154,7 @@ export function StatusReportPreviewModal({
   configuredStages,
   outstandingItems,
   onExport,
+  onUpdateLender,
 }: StatusReportPreviewModalProps) {
   const initialContent = useMemo(
     () => buildInitialContent(deal, configuredStages, outstandingItems),
@@ -173,6 +183,15 @@ export function StatusReportPreviewModal({
     () => buckets.passed.map((l) => ({ name: l.name, ...extractPassDetails(l) })),
     [buckets.passed],
   );
+
+  // Pipeline-snapshot management dialog state. `null` = closed.
+  const [manageBucket, setManageBucket] = useState<null | 'onDeck' | 'inReview' | 'termsIssued' | 'passed'>(null);
+  const bucketMeta = {
+    onDeck:      { label: 'On Deck',       color: 'blue'  as const, items: buckets.onDeck },
+    inReview:    { label: 'In Review',     color: 'teal'  as const, items: buckets.inReview },
+    termsIssued: { label: 'Terms Issued',  color: 'green' as const, items: buckets.termsIssued },
+    passed:      { label: 'Passed',        color: 'red'   as const, items: buckets.passed },
+  };
 
   // AI-rewrite raw pass notes into client-safe Key Feedback whenever the
   // modal opens for a new deal. One call per (deal, modal-open) cycle.
@@ -517,7 +536,207 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     </div>
   );
 
+  // ── Render the in-app dark preview (Naitive-styled, on-screen only) ─────
+  // Print/PDF still uses `renderPrintable()` (light) — we render that node
+  // off-screen so the existing handlePrintPdf flow keeps working.
+  const renderInAppPreview = () => (
+    <div
+      className="rounded-2xl overflow-hidden border"
+      style={{
+        background:
+          'linear-gradient(160deg, hsl(220 30% 10%) 0%, hsl(218 26% 7%) 55%, hsl(216 24% 5%) 100%)',
+        borderColor: 'hsl(220 30% 22% / 0.6)',
+        boxShadow:
+          'inset 0 1px 0 hsl(220 40% 80% / 0.06), 0 20px 60px hsl(220 60% 3% / 0.55)',
+      }}
+    >
+      {/* Top accent bar */}
+      <div
+        style={{
+          height: 4,
+          background:
+            'linear-gradient(90deg, hsl(220 90% 60%), hsl(190 80% 55%) 50%, hsl(150 70% 50%))',
+        }}
+      />
+
+      <div className="px-6 py-5 space-y-5">
+        {/* Header */}
+        <div>
+          <div className="text-[10px] font-bold tracking-[0.22em] text-blue-300/80">
+            5<sup>TH</sup> | LINE
+          </div>
+          <h3 className="text-xl font-semibold text-slate-50 mt-1">
+            {deal.company} — Status Update
+          </h3>
+          <div className="text-xs text-slate-400 mt-0.5">{todayLong()}</div>
+        </div>
+
+        {/* Status Summary */}
+        {content.sectionsVisible.statusSummary &&
+          (content.statusSummaryHtml?.trim() || content.statusSummary.filter(Boolean).length > 0) && (
+            <DarkSection label="Status Summary">
+              <div
+                className="prose prose-sm prose-invert max-w-none text-slate-200 [&_p]:my-1.5 [&_li]:my-0.5 leading-relaxed"
+                dangerouslySetInnerHTML={{
+                  __html:
+                    (content.statusSummaryHtml && content.statusSummaryHtml.trim()) ||
+                    bulletsToNarrativeHtml(content.statusSummary.filter(Boolean)),
+                }}
+              />
+            </DarkSection>
+          )}
+
+        {/* Pipeline Snapshot — clickable cards */}
+        {content.sectionsVisible.pipelineSnapshot && (
+          <div>
+            <DarkLabel>Lender Pipeline Snapshot</DarkLabel>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-2">
+              {(['onDeck', 'inReview', 'termsIssued', 'passed'] as const).map((k) => {
+                const meta = bucketMeta[k];
+                const clickable = !!onUpdateLender;
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => clickable && setManageBucket(k)}
+                    disabled={!clickable}
+                    className={`text-left rounded-xl overflow-hidden border transition-all flex flex-col min-h-[150px] group ${
+                      clickable
+                        ? 'cursor-pointer hover:scale-[1.015] hover:shadow-lg active:scale-[0.99]'
+                        : 'cursor-default opacity-90'
+                    }`}
+                    style={darkColStyle(meta.color)}
+                    title={clickable ? `Manage ${meta.label}` : meta.label}
+                  >
+                    <div
+                      className="px-3 py-2 flex items-center justify-between text-[10px] uppercase tracking-[0.12em] font-bold text-white"
+                      style={darkColHeadStyle(meta.color)}
+                    >
+                      <span>{meta.label}</span>
+                      <span className="text-white/90 text-xs font-bold">{meta.items.length}</span>
+                    </div>
+                    <div className="px-3 py-2 flex-1 space-y-1">
+                      {meta.items.length === 0 ? (
+                        <p className="m-0 text-[11px] text-slate-500 italic">None</p>
+                      ) : (
+                        meta.items.slice(0, 6).map((l) => (
+                          <p
+                            key={l.id}
+                            className="m-0 text-[11px] text-slate-200/90 leading-snug truncate"
+                          >
+                            {l.name}
+                          </p>
+                        ))
+                      )}
+                      {meta.items.length > 6 && (
+                        <p className="m-0 text-[10px] text-slate-400 italic">
+                          +{meta.items.length - 6} more…
+                        </p>
+                      )}
+                    </div>
+                    {clickable && (
+                      <div className="px-3 pb-2 text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">
+                        Click to manage →
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Recent Milestones */}
+        {content.sectionsVisible.milestones && content.completedMilestones.filter(Boolean).length > 0 && (
+          <DarkSection label="Recent Milestones">
+            <ul className="m-0 p-0 list-none space-y-1.5">
+              {content.completedMilestones.filter(Boolean).map((m, i) => (
+                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>{m}</span>
+                </li>
+              ))}
+            </ul>
+          </DarkSection>
+        )}
+
+        {/* Next Steps */}
+        {content.sectionsVisible.nextSteps && content.nextSteps.filter(Boolean).length > 0 && (
+          <DarkSection label="Next Steps">
+            <ul className="m-0 p-0 list-none space-y-1.5">
+              {content.nextSteps.filter(Boolean).map((s, i) => (
+                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
+                  <span className="text-blue-400 font-bold">→</span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          </DarkSection>
+        )}
+
+        {/* Passed lender reasons */}
+        {passedDetails.length > 0 && (
+          <div>
+            <DarkLabel>Passed Lender Reasons</DarkLabel>
+            <div className="mt-2 rounded-xl border border-slate-700/60 overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-slate-800/60 text-slate-400 uppercase tracking-wider text-[10px]">
+                    <th className="text-left px-3 py-2 font-semibold">Lender</th>
+                    <th className="text-left px-3 py-2 font-semibold">Primary Reason</th>
+                    <th className="text-left px-3 py-2 font-semibold">Key Feedback</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {passedDetails.map((p, i) => (
+                    <tr key={i} className="border-t border-slate-700/50">
+                      <td className="px-3 py-2 text-slate-100">{p.name}</td>
+                      <td className="px-3 py-2 text-slate-300">{p.reason}</td>
+                      <td
+                        className="px-3 py-2 text-slate-300"
+                        style={{
+                          fontStyle:
+                            aiPassFeedbackLoading && !(p.name in aiPassFeedback) ? 'italic' : 'normal',
+                        }}
+                      >
+                        {p.name in aiPassFeedback
+                          ? aiPassFeedback[p.name] || '—'
+                          : aiPassFeedbackLoading
+                            ? 'Polishing…'
+                            : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* What We Need From You */}
+        {content.sectionsVisible.actionItems && (
+          <div>
+            <DarkLabel>What We Need From You</DarkLabel>
+            <div
+              className="mt-2 rounded-xl px-4 py-3 text-sm text-slate-100 leading-relaxed whitespace-pre-wrap border-l-2 border-l-blue-400/80"
+              style={{
+                background:
+                  'linear-gradient(180deg, hsl(220 35% 16% / 0.7) 0%, hsl(220 35% 12% / 0.7) 100%)',
+                borderTop: '1px solid hsl(220 25% 25% / 0.5)',
+                borderRight: '1px solid hsl(220 25% 25% / 0.5)',
+                borderBottom: '1px solid hsl(220 25% 25% / 0.5)',
+              }}
+            >
+              {content.actionItems.trim() || 'Nothing needed at this time!'}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
+    <>
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
         className="max-w-5xl h-[92vh] flex flex-col p-0 gap-0 overflow-hidden bg-slate-100 dark:bg-slate-900 border border-slate-300 dark:border-slate-700 shadow-2xl rounded-2xl"
@@ -602,7 +821,22 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
           {/* Live printable preview */}
           <div className="lg:sticky lg:top-0 lg:self-start">
-            <div className="rounded-lg bg-white border border-slate-300 shadow-lg p-6 max-h-[80vh] overflow-y-auto">
+            <div className="max-h-[80vh] overflow-y-auto">
+              {renderInAppPreview()}
+            </div>
+            {/* Off-screen light-themed printable kept in DOM so handlePrintPdf
+                can still read its innerHTML. Never visible to the user. */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: -99999,
+                top: 0,
+                width: 780,
+                pointerEvents: 'none',
+                opacity: 0,
+              }}
+            >
               {renderPrintable()}
             </div>
           </div>
@@ -621,6 +855,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {manageBucket && onUpdateLender && (
+      <LenderStageManageDialog
+        open={!!manageBucket}
+        onOpenChange={(o) => { if (!o) setManageBucket(null); }}
+        bucketKey={manageBucket}
+        bucketLabel={bucketMeta[manageBucket].label}
+        bucketAccent={bucketMeta[manageBucket].color}
+        lenders={bucketMeta[manageBucket].items as DealLender[]}
+        configuredStages={configuredStages}
+        onUpdateLender={onUpdateLender}
+      />
+    )}
+    </>
   );
 }
 
@@ -801,4 +1048,71 @@ function BucketCount({ label, n }: { label: string; n: number }) {
       <span className="font-semibold">{n}</span>
     </div>
   );
+}
+
+// ── Dark in-app preview helpers ────────────────────────────────────────────
+function DarkLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="text-[10px] font-bold tracking-[0.16em] uppercase text-slate-400">
+      {children}
+    </div>
+  );
+}
+
+function DarkSection({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <DarkLabel>{label}</DarkLabel>
+      <div
+        className="mt-2 rounded-xl px-4 py-3 border-l-2 border-l-blue-400/70"
+        style={{
+          background:
+            'linear-gradient(180deg, hsl(220 30% 13% / 0.7) 0%, hsl(220 30% 10% / 0.7) 100%)',
+          borderTop: '1px solid hsl(220 25% 22% / 0.5)',
+          borderRight: '1px solid hsl(220 25% 22% / 0.5)',
+          borderBottom: '1px solid hsl(220 25% 22% / 0.5)',
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function darkColStyle(color: 'blue' | 'teal' | 'green' | 'red'): React.CSSProperties {
+  const tints: Record<string, { bg: string; border: string }> = {
+    blue: {
+      bg: 'linear-gradient(180deg, hsl(220 50% 18% / 0.85) 0%, hsl(220 45% 11% / 0.9) 100%)',
+      border: 'hsl(220 75% 55% / 0.4)',
+    },
+    teal: {
+      bg: 'linear-gradient(180deg, hsl(190 55% 17% / 0.85) 0%, hsl(190 50% 10% / 0.9) 100%)',
+      border: 'hsl(185 75% 50% / 0.4)',
+    },
+    green: {
+      bg: 'linear-gradient(180deg, hsl(150 45% 16% / 0.85) 0%, hsl(150 45% 9% / 0.9) 100%)',
+      border: 'hsl(150 65% 45% / 0.4)',
+    },
+    red: {
+      bg: 'linear-gradient(180deg, hsl(0 50% 18% / 0.85) 0%, hsl(0 45% 10% / 0.9) 100%)',
+      border: 'hsl(0 70% 55% / 0.4)',
+    },
+  };
+  const t = tints[color];
+  return {
+    background: t.bg,
+    borderColor: t.border,
+    boxShadow:
+      'inset 0 1px 0 hsl(220 40% 80% / 0.05), 0 4px 14px hsl(220 60% 4% / 0.4)',
+  };
+}
+
+function darkColHeadStyle(color: 'blue' | 'teal' | 'green' | 'red'): React.CSSProperties {
+  const map: Record<string, string> = {
+    blue: 'linear-gradient(135deg, hsl(220 85% 55%), hsl(215 90% 45%))',
+    teal: 'linear-gradient(135deg, hsl(190 80% 50%), hsl(175 75% 38%))',
+    green: 'linear-gradient(135deg, hsl(150 75% 45%), hsl(155 70% 35%))',
+    red: 'linear-gradient(135deg, hsl(0 75% 55%), hsl(355 75% 45%))',
+  };
+  return { background: map[color] };
 }
