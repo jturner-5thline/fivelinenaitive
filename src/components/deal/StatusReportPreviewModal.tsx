@@ -503,13 +503,17 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           {/* Editor pane */}
           <div className="space-y-3">
             <SectionBlock title="Status Summary (AI)" visible={content.sectionsVisible.statusSummary} onToggle={() => toggleSection('statusSummary')}>
-              <BulletEditor
-                items={content.statusSummary}
-                placeholder="AI-generated executive summary bullet…"
-                onUpdate={(i, v) => updateArrayItem('statusSummary', i, v)}
-                onRemove={(i) => removeArrayItem('statusSummary', i)}
-                onAdd={() => addArrayItem('statusSummary')}
-                loading={aiLoading && content.statusSummary.length === 0}
+              <NarrativeEditor
+                html={content.statusSummaryHtml || ''}
+                placeholder="AI-generated executive summary narrative…"
+                loading={aiLoading && !(content.statusSummaryHtml && content.statusSummaryHtml.trim())}
+                onChange={(html) =>
+                  setContent((p) => ({
+                    ...p,
+                    statusSummaryHtml: html,
+                    statusSummary: htmlToBullets(html),
+                  }))
+                }
               />
             </SectionBlock>
 
