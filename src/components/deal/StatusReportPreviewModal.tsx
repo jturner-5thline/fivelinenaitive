@@ -347,17 +347,23 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     node.setAttribute('id', PRINT_ID);
     const prevTitle = document.title;
     document.title = `${deal.company} — Status Report`;
+    const PAGE_W = 8.5 * 96;
+    const PAGE_H = 11 * 96;
+    const naturalW = node.scrollWidth || node.offsetWidth || PAGE_W;
+    const naturalH = node.scrollHeight || node.offsetHeight || PAGE_H;
+    const scale = Math.min(PAGE_W / naturalW, PAGE_H / naturalH, 1);
     const style = document.createElement('style');
     style.id = 'naitive-status-report-print-style';
     style.textContent = `
-      @page { size: Letter; margin: 0.35in; }
+      @page { size: Letter; margin: 0; }
       @media print {
         html, body {
-          background: hsl(218 26% 7%) !important;
+          background: transparent !important;
           margin: 0 !important;
           padding: 0 !important;
-          height: auto !important;
-          overflow: visible !important;
+          width: 8.5in !important;
+          height: 11in !important;
+          overflow: hidden !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
@@ -388,7 +394,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           height: auto !important;
           max-height: none !important;
           min-height: 0 !important;
-          overflow: visible !important;
+          overflow: hidden !important;
           margin: 0 !important;
           padding: 0 !important;
           background: transparent !important;
@@ -400,60 +406,39 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         #${PRINT_ID} {
           position: static !important;
           display: block !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          height: auto !important;
-          max-height: none !important;
+          width: ${naturalW}px !important;
+          height: ${naturalH}px !important;
           margin: 0 !important;
+          padding: 0 !important;
+          border: 0 !important;
           box-shadow: none !important;
           border-radius: 0 !important;
-          overflow: visible !important;
+          overflow: hidden !important;
+          transform: scale(${scale}) !important;
+          transform-origin: top left !important;
+          background: hsl(218 26% 7%) !important;
         }
         #${PRINT_ID} * {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
         }
-        /* Allow the report to flow across as many pages as needed; only
-           keep small atoms (rows, list items) from splitting awkwardly.
-           Top-level section wrappers are intentionally allowed to break
-           so a section taller than a page still prints in full. */
-        #${PRINT_ID} tr, #${PRINT_ID} li, #${PRINT_ID} thead {
-          break-inside: avoid;
-          page-break-inside: avoid;
+        /* Single-page output: never split, never paginate. */
+        #${PRINT_ID} *, #${PRINT_ID} tr, #${PRINT_ID} table {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+          break-before: avoid !important;
+          page-break-before: avoid !important;
+          break-after: avoid !important;
+          page-break-after: avoid !important;
         }
-        #${PRINT_ID} table { break-inside: auto; page-break-inside: auto; }
-        /* Keep each top-level report section together on a single page
-           when it fits; the browser will move it to the next page rather
-           than splitting mid-section. Only sections taller than a page
-           will wrap (which is unavoidable). */
-        #${PRINT_ID} > div > div > * {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
-        #${PRINT_ID} h1, #${PRINT_ID} h2, #${PRINT_ID} h3,
-        #${PRINT_ID} .sr-section-label, #${PRINT_ID} [class*="DarkLabel"] {
-          break-after: avoid-page;
-          page-break-after: avoid;
-        }
-        /* Ensure no wrapper clips content in print (e.g. rounded
-           overflow-hidden table wrappers). */
-        #${PRINT_ID}, #${PRINT_ID} * {
-          overflow: visible !important;
-          max-height: none !important;
-        }
-        /* Belt-and-suspenders: explicitly allow the Passed Lender Reasons
-           section to render in print. */
+        /* Passed Lender Reasons must remain visible. */
         #${PRINT_ID} .passed-lender-reasons,
         #${PRINT_ID} .passed-lender-reasons * {
           display: revert !important;
           visibility: visible !important;
           height: auto !important;
           opacity: 1 !important;
-        }
-        #${PRINT_ID} .passed-lender-reasons {
-          break-inside: auto;
-          page-break-inside: auto;
         }
       }
     `;
