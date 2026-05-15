@@ -3935,6 +3935,15 @@ export default function DealDetail() {
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2">
                          <div className="flex items-center gap-0.5 flex-1 min-w-0 max-w-[280px]">
+                          <Button
+                            type="button"
+                            variant="liquid-glass"
+                            size="sm"
+                            className="h-8 px-2.5 mr-1.5 shrink-0"
+                            onClick={() => setIsAddLenderSlideOverOpen(true)}
+                          >
+                            + Add
+                          </Button>
                           <div className="flex-1 min-w-0">
                            <LenderSearchInput
                              lenderNames={lenderNames}
@@ -4050,16 +4059,6 @@ export default function DealDetail() {
                             onClick={() => setIsLendersKanbanOpen(true)}
                           >
                             <LayoutGrid className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="liquid-glass"
-                            size="sm"
-                            className="gap-2 h-8"
-                            onClick={() => setIsAddLenderSlideOverOpen(true)}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Add Lender
                           </Button>
                           <Popover>
                             <PopoverTrigger asChild>
