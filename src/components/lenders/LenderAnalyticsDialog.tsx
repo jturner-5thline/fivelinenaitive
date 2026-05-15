@@ -98,6 +98,33 @@ const BUCKET_COLOR: Record<Bucket, string> = {
   'Other': 'hsl(215 16% 55%)',
 };
 
+// Shared dark-gradient surfaces — matches the deal pop-up's tonal language
+// (radial highlight + soft vertical fade + faint inner sheen).
+const MODAL_SHELL_STYLE: CSSProperties = {
+  background:
+    'radial-gradient(120% 80% at 0% 0%, hsl(220 55% 22% / 0.55) 0%, transparent 55%),' +
+    'radial-gradient(120% 80% at 100% 100%, hsl(220 60% 14% / 0.55) 0%, transparent 60%),' +
+    'linear-gradient(180deg, hsl(220 40% 11% / 0.96) 0%, hsl(220 45% 7% / 0.98) 100%)',
+  borderColor: 'hsl(220 50% 40% / 0.28)',
+  boxShadow:
+    'inset 0 1px 0 hsl(220 60% 85% / 0.06), 0 24px 60px hsl(220 60% 3% / 0.6)',
+};
+
+const PANEL_STYLE: CSSProperties = {
+  background:
+    'radial-gradient(110% 70% at 0% 0%, hsl(220 60% 30% / 0.18) 0%, transparent 60%),' +
+    'linear-gradient(180deg, hsl(220 38% 16% / 0.85) 0%, hsl(220 42% 11% / 0.9) 100%)',
+  borderColor: 'hsl(220 45% 45% / 0.22)',
+  boxShadow:
+    'inset 0 1px 0 hsl(220 60% 85% / 0.05), 0 4px 14px hsl(220 60% 3% / 0.35)',
+};
+
+const HEADER_STYLE: CSSProperties = {
+  background:
+    'linear-gradient(180deg, hsl(220 45% 14% / 0.85) 0%, hsl(220 45% 10% / 0.6) 100%)',
+  borderBottom: '1px solid hsl(220 45% 40% / 0.22)',
+};
+
 function normalizeLabel(s: string | null | undefined): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
@@ -349,26 +376,26 @@ export function LenderAnalyticsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        style={originStyle}
+        style={{ ...MODAL_SHELL_STYLE, ...originStyle }}
         className={cn(
-          'max-w-[1100px] w-[95vw] h-[90vh] flex flex-col p-0 gap-0 border-border bg-background overflow-hidden',
+          'max-w-[1100px] w-[95vw] h-[90vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl border text-slate-100',
           originClassName,
         )}
       >
-        <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-2 border-b border-border">
+        <DialogHeader className="px-6 pt-5 pb-4 shrink-0 space-y-2" style={HEADER_STYLE}>
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0">
-              <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground flex items-center gap-2">
-                <TrendingUp className="h-4 w-4 text-primary" />
+              <DialogTitle className="text-[15px] font-semibold tracking-tight text-slate-100 flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-sky-400" />
                 Lender Analytics
               </DialogTitle>
-              <DialogDescription className="text-[12px] text-muted-foreground mt-1">
+              <DialogDescription className="text-[12px] text-slate-400 mt-1">
                 {subtitleParts.join(' · ')}
               </DialogDescription>
             </div>
             <div className="flex items-center gap-2">
               <Select value={dateRange} onValueChange={(v) => setDateRange(v as DateRange)}>
-                <SelectTrigger className="h-8 w-[160px] text-[12px]">
+                <SelectTrigger className="h-8 w-[160px] text-[12px] bg-slate-900/60 border-slate-700/60 text-slate-100">
                   <CalendarRange className="h-3.5 w-3.5 mr-1.5" />
                   <SelectValue />
                 </SelectTrigger>
@@ -378,7 +405,7 @@ export function LenderAnalyticsDialog({
                   ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5" disabled title="Export coming soon">
+              <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70" disabled title="Export coming soon">
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
             </div>
@@ -400,13 +427,13 @@ export function LenderAnalyticsDialog({
           </div>
 
           {error && (
-            <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-[12px] text-destructive">
+            <div className="rounded-lg border border-red-500/30 bg-red-950/40 p-3 text-[12px] text-red-300">
               Failed to load analytics: {error}
             </div>
           )}
 
           {isEmpty && (
-            <div className="rounded-md border border-border bg-muted/20 p-10 text-center text-[13px] text-muted-foreground">
+            <div className="rounded-lg border p-10 text-center text-[13px] text-slate-400" style={PANEL_STYLE}>
               No lender analytics available for current filters
             </div>
           )}
@@ -414,8 +441,8 @@ export function LenderAnalyticsDialog({
           {/* Donut + segmented bars */}
           {!isEmpty && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-              <div className="lg:col-span-1 rounded-md border border-border bg-card p-3">
-                <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">Current stage distribution</div>
+              <div className="lg:col-span-1 rounded-lg border p-3" style={PANEL_STYLE}>
+                <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">Current stage distribution</div>
                 <div className="h-[240px] relative">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -425,7 +452,7 @@ export function LenderAnalyticsDialog({
                         nameKey="name"
                         innerRadius={58}
                         outerRadius={86}
-                        stroke="hsl(var(--background))"
+                        stroke="hsl(220 45% 9%)"
                         strokeWidth={2}
                       >
                         {bucketData.map((d) => (
@@ -433,22 +460,22 @@ export function LenderAnalyticsDialog({
                         ))}
                       </Pie>
                       <ReTooltip
-                        contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', fontSize: 12, color: 'hsl(var(--popover-foreground))' }}
+                        contentStyle={{ background: 'hsl(220 45% 10%)', border: '1px solid hsl(220 45% 35% / 0.4)', borderRadius: 8, fontSize: 12, color: 'hsl(220 30% 92%)' }}
                         formatter={(v: number, n: string, p: any) => [`${v} (${p.payload.pct.toFixed(1)}%)`, n]}
                       />
                     </PieChart>
                   </ResponsiveContainer>
                   <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center">
-                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Records</div>
-                    <div className="text-[22px] font-semibold tabular-nums">{rows.length}</div>
+                    <div className="text-[10px] uppercase tracking-wider text-slate-400">Records</div>
+                    <div className="text-[22px] font-semibold tabular-nums text-slate-100">{rows.length}</div>
                   </div>
                 </div>
                 <div className="mt-2 grid grid-cols-2 gap-1.5">
                   {bucketData.map(d => (
-                    <div key={d.name} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <div key={d.name} className="flex items-center gap-1.5 text-[11px] text-slate-400">
                       <span className="h-2 w-2 rounded-sm" style={{ background: BUCKET_COLOR[d.name as Bucket] }} />
                       <span className="truncate">{d.name}</span>
-                      <span className="ml-auto tabular-nums text-foreground">{d.value}</span>
+                      <span className="ml-auto tabular-nums text-slate-100">{d.value}</span>
                     </div>
                   ))}
                 </div>
@@ -463,14 +490,14 @@ export function LenderAnalyticsDialog({
 
           {/* Detail table */}
           {!isEmpty && (
-            <div className="rounded-md border border-border bg-card">
-              <div className="px-3 py-2 border-b border-border text-[11px] uppercase tracking-wider text-muted-foreground">
+            <div className="rounded-lg border overflow-hidden" style={PANEL_STYLE}>
+              <div className="px-3 py-2 border-b border-slate-700/40 text-[11px] uppercase tracking-wider text-slate-400">
                 Detail breakdown
               </div>
               <div className="overflow-auto max-h-[360px]">
                 <table className="w-full text-[12px]">
-                  <thead className="sticky top-0 bg-muted/40 backdrop-blur z-10">
-                    <tr className="text-left text-muted-foreground">
+                  <thead className="sticky top-0 z-10 backdrop-blur" style={{ background: 'hsl(220 45% 12% / 0.92)' }}>
+                    <tr className="text-left text-slate-400">
                       <th className="px-3 py-2 font-medium">Segment</th>
                       <th className="px-3 py-2 font-medium text-right">Submitted</th>
                       <th className="px-3 py-2 font-medium text-right">Terms Issued</th>
@@ -483,11 +510,11 @@ export function LenderAnalyticsDialog({
                   <tbody>
                     <SegRow row={overallSeg} bold />
                     {byManager.length > 0 && (
-                      <tr><td colSpan={7} className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">By relationship owner / manager</td></tr>
+                      <tr><td colSpan={7} className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-slate-500">By relationship owner / manager</td></tr>
                     )}
                     {byManager.map(s => <SegRow key={`m-${s.name}`} row={s} />)}
                     {byDealType.length > 0 && (
-                      <tr><td colSpan={7} className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">By deal type</td></tr>
+                      <tr><td colSpan={7} className="px-3 pt-3 pb-1 text-[10px] uppercase tracking-wider text-slate-500">By deal type</td></tr>
                     )}
                     {byDealType.map(s => <SegRow key={`t-${s.name}`} row={s} />)}
                   </tbody>
@@ -503,12 +530,12 @@ export function LenderAnalyticsDialog({
 
 function KpiCard({ label, value, hint, loading }: { label: string; value: number | string; hint?: string; loading?: boolean }) {
   return (
-    <div className="rounded-md border border-border bg-card p-3">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground">{label}</div>
-      <div className="text-[22px] font-semibold tabular-nums text-foreground mt-0.5">
-        {loading ? <span className="inline-block h-5 w-16 bg-muted/40 rounded animate-pulse" /> : value}
+    <div className="rounded-lg border p-3" style={PANEL_STYLE}>
+      <div className="text-[11px] uppercase tracking-wider text-slate-400">{label}</div>
+      <div className="text-[22px] font-semibold tabular-nums text-slate-100 mt-0.5">
+        {loading ? <span className="inline-block h-5 w-16 bg-slate-700/40 rounded animate-pulse" /> : value}
       </div>
-      {hint && <div className="text-[11px] text-muted-foreground mt-0.5">{hint}</div>}
+      {hint && <div className="text-[11px] text-slate-500 mt-0.5">{hint}</div>}
     </div>
   );
 }
@@ -516,23 +543,23 @@ function KpiCard({ label, value, hint, loading }: { label: string; value: number
 function SegmentChart({ title, data }: { title: string; data: Array<{ name: string; submitted: number; terms: number; conv: number }> }) {
   const chartData = data.map(d => ({ ...d, convPct: +(d.conv * 100).toFixed(1) }));
   return (
-    <div className="rounded-md border border-border bg-card p-3 flex flex-col">
-      <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">{title}</div>
+    <div className="rounded-lg border p-3 flex flex-col" style={PANEL_STYLE}>
+      <div className="text-[11px] uppercase tracking-wider text-slate-400 mb-2">{title}</div>
       <div className="h-[240px]">
         {chartData.length === 0 ? (
-          <div className="h-full flex items-center justify-center text-[12px] text-muted-foreground">No data</div>
+          <div className="h-full flex items-center justify-center text-[12px] text-slate-500">No data</div>
         ) : (
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} layout="vertical" margin={{ top: 4, right: 32, left: 4, bottom: 4 }}>
-              <CartesianGrid stroke="hsl(var(--border))" strokeOpacity={0.3} horizontal={false} />
-              <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" domain={[0, 100]} unit="%" />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" width={120} />
+              <CartesianGrid stroke="hsl(220 30% 60%)" strokeOpacity={0.12} horizontal={false} />
+              <XAxis type="number" tick={{ fontSize: 10, fill: 'hsl(220 20% 70%)' }} stroke="hsl(220 25% 45%)" domain={[0, 100]} unit="%" />
+              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: 'hsl(220 20% 80%)' }} stroke="hsl(220 25% 45%)" width={120} />
               <ReTooltip
-                cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
-                contentStyle={{ background: 'hsl(var(--popover))', border: '1px solid hsl(var(--border))', fontSize: 12, color: 'hsl(var(--popover-foreground))' }}
+                cursor={{ fill: 'hsl(220 40% 30% / 0.25)' }}
+                contentStyle={{ background: 'hsl(220 45% 10%)', border: '1px solid hsl(220 45% 35% / 0.4)', borderRadius: 8, fontSize: 12, color: 'hsl(220 30% 92%)' }}
                 formatter={(v: number, _n: string, p: any) => [`${v}% (${p.payload.terms}/${p.payload.submitted})`, 'Conversion']}
               />
-              <Bar dataKey="convPct" fill="hsl(var(--primary))" radius={[0, 3, 3, 0]} />
+              <Bar dataKey="convPct" fill="hsl(210 90% 60%)" radius={[0, 3, 3, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
@@ -543,14 +570,14 @@ function SegmentChart({ title, data }: { title: string; data: Array<{ name: stri
 
 function SegRow({ row, bold }: { row: { name: string; submitted: number; terms: number; conv: number; mgmt: number; unresponsive: number; passed: number }; bold?: boolean }) {
   return (
-    <tr className="border-t border-border/60 hover:bg-muted/20">
-      <td className={cn('px-3 py-2 text-foreground', bold && 'font-semibold')}>{row.name}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{row.submitted}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{row.terms}</td>
-      <td className="px-3 py-2 text-right tabular-nums">{row.submitted > 0 ? `${(row.conv * 100).toFixed(1)}%` : '—'}</td>
-      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.mgmt}</td>
-      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.unresponsive}</td>
-      <td className="px-3 py-2 text-right tabular-nums text-muted-foreground">{row.passed}</td>
+    <tr className="border-t border-slate-700/40 hover:bg-slate-100/[0.03]">
+      <td className={cn('px-3 py-2 text-slate-100', bold && 'font-semibold')}>{row.name}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-slate-200">{row.submitted}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-slate-200">{row.terms}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-slate-200">{row.submitted > 0 ? `${(row.conv * 100).toFixed(1)}%` : '—'}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-slate-400">{row.mgmt}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-slate-400">{row.unresponsive}</td>
+      <td className="px-3 py-2 text-right tabular-nums text-slate-400">{row.passed}</td>
     </tr>
   );
 }
