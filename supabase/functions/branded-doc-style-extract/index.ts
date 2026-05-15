@@ -160,6 +160,17 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    // 5th Line proprietary action — hard gate by company-account email domain.
+    {
+      const callerEmail = String(userData.user.email || "").toLowerCase();
+      const isFifthLine = callerEmail.endsWith("@5thline.co") || callerEmail.endsWith("@naitive.co");
+      if (!isFifthLine) {
+        return new Response(JSON.stringify({ error: "Forbidden: 5th Line proprietary action" }), {
+          status: 403,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
 
     const body = (await req.json()) as ExtractRequest;
     if (!body?.source_type) {
