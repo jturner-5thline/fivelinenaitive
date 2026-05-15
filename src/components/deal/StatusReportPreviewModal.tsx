@@ -351,52 +351,57 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     }, 200);
   };
 
-  const statusBadgeClass =
-    deal.status === 'on-track' ? 'green' : deal.status === 'at-risk' ? 'yellow' : deal.status === 'off-track' ? 'red' : 'gray';
-  const statusLabel =
-    deal.status === 'on-track' ? 'On Track' : deal.status === 'at-risk' ? 'At Risk' : deal.status === 'off-track' ? 'Off Track' : (deal.status || '').replace(/-/g, ' ');
-
   // ── Render the printable report (light-themed) ──────────────────────────
   const renderPrintable = () => (
     <div ref={printableRef} className="bg-white text-slate-900 rounded-lg overflow-hidden">
       <div className="sr-bar" style={{ height: 6, background: '#1e3a8a', borderRadius: 2, marginBottom: 16 }} />
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: '#1e3a8a' }}>
-            5<sup>TH</sup> | LINE
-          </div>
-          <h2 className="sr-title" style={{ fontSize: 22, fontWeight: 600, margin: '4px 0 0', color: '#0f172a' }}>
-            {deal.company} — Status Update
-          </h2>
-          <div className="sr-date" style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{todayLong()}</div>
+      <div>
+        <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: '#1e3a8a' }}>
+          5<sup>TH</sup> | LINE
         </div>
-        <span className={`sr-badge ${statusBadgeClass}`} style={badgeStyle(statusBadgeClass)}>{statusLabel}</span>
+        <h2 className="sr-title" style={{ fontSize: 22, fontWeight: 600, margin: '4px 0 0', color: '#0f172a' }}>
+          {deal.company} — Status Update
+        </h2>
+        <div className="sr-date" style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{todayLong()}</div>
       </div>
 
-      {content.sectionsVisible.statusSummary && content.statusSummary.length > 0 && (
+      {content.sectionsVisible.statusSummary && (content.statusSummaryHtml?.trim() || content.statusSummary.filter(Boolean).length > 0) && (
         <>
           <div className="sr-section-label" style={sectionLabelStyle}>Status Summary</div>
-          <ul className="sr-summary" style={{ borderLeft: '3px solid #1e3a8a', padding: '6px 0 6px 14px', margin: 0, listStyle: 'none' }}>
-            {content.statusSummary.filter(Boolean).map((s, i) => (
-              <li key={i} style={{ fontSize: 14, color: '#334155', lineHeight: 1.6, marginBottom: 6 }}>{s}</li>
-            ))}
-          </ul>
+          <div
+            className="sr-summary"
+            style={{
+              borderLeft: '3px solid #1e3a8a',
+              padding: '10px 0 10px 16px',
+              margin: 0,
+              background: 'linear-gradient(180deg,#f8fafc 0%,#ffffff 100%)',
+              borderRadius: 6,
+              color: '#334155',
+              fontSize: 14,
+              lineHeight: 1.7,
+            }}
+            dangerouslySetInnerHTML={{
+              __html:
+                (content.statusSummaryHtml && content.statusSummaryHtml.trim()) ||
+                bulletsToNarrativeHtml(content.statusSummary.filter(Boolean)),
+            }}
+          />
         </>
       )}
 
       {content.sectionsVisible.pipelineSnapshot && (
         <>
           <div className="sr-section-label" style={sectionLabelStyle}>Lender Pipeline Snapshot</div>
-          <div className="sr-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 8 }}>
+          <div className="sr-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 8, alignItems: 'stretch' }}>
             {([
               { key: 'onDeck', label: 'On Deck', color: 'blue', items: buckets.onDeck },
-              { key: 'inReview', label: 'In Review', color: 'green', items: buckets.inReview },
-              { key: 'termsIssued', label: 'Terms Issued', color: 'yellow', items: buckets.termsIssued },
+              { key: 'inReview', label: 'In Review', color: 'teal', items: buckets.inReview },
+              { key: 'termsIssued', label: 'Terms Issued', color: 'green', items: buckets.termsIssued },
               { key: 'passed', label: 'Passed', color: 'red', items: buckets.passed },
             ] as const).map((g) => (
-              <div key={g.key} className={`sr-col ${g.color}`} style={colStyle()}>
+              <div key={g.key} className={`sr-col ${g.color}`} style={colStyle(g.color)}>
                 <div className="sr-col-head" style={colHeadStyle(g.color)}>{g.label} ({g.items.length})</div>
-                <div className="sr-col-body" style={{ padding: '8px 10px' }}>
+                <div className="sr-col-body" style={{ padding: '10px 12px', flex: 1 }}>
                   {g.items.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>None</p>
                   ) : (
