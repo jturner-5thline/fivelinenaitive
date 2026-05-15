@@ -3030,7 +3030,23 @@ export default function DealDetail() {
                           Export as PDF
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={async () => {
-                          await exportStatusReportToWord(deal, configuredStages, configuredSubstages, outstandingItems);
+                          // AI-rewrite passed lender notes into client-safe
+                          // "Key Feedback" before exporting — never raw notes.
+                          const { bucketLenders, extractPassDetails } = await import('@/lib/lenderStatusBuckets');
+                          const { rewritePassedFeedback } = await import('@/lib/rewritePassFeedback');
+                          const passed = bucketLenders(deal.lenders, configuredStages).passed;
+                          let overrides: Record<string, string> = {};
+                          if (passed.length > 0) {
+                            overrides = await rewritePassedFeedback(
+                              passed.map((l: any) => ({
+                                name: l.name,
+                                reason: extractPassDetails(l).reason,
+                                notes: l.notes || l.passReason || '',
+                              })),
+                              deal.id,
+                            );
+                          }
+                          await exportStatusReportToWord(deal, configuredStages, configuredSubstages, outstandingItems, overrides);
                           toast({ title: "Word document exported", description: "Status report exported to Word document." });
                         }}>
                           <FileText className="h-4 w-4 mr-2" />
