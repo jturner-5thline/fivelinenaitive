@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, AlertTriangle } from 'lucide-react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, AlertTriangle, Wand2, FileText, Database } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +56,8 @@ import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
 import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
+import { AiDraftWriteUpSection, type DraftSection } from './writeup/AiDraftWriteUpSection';
+import { archiveApprovedWriteUp } from '@/lib/archiveWriteUp';
 import { useAuth } from '@/contexts/AuthContext';
 import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 
