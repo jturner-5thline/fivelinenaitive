@@ -4094,7 +4094,7 @@ export default function DealDetail() {
                             <PopoverTrigger asChild>
                               <Button
                                 type="button"
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 className="gap-2 h-8"
                                 aria-label="Activity"
@@ -4104,7 +4104,7 @@ export default function DealDetail() {
                                 Activity
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent align="end" className="w-[420px] max-h-[70vh] overflow-y-auto p-3">
+                            <PopoverContent align="end" className="w-[460px] max-w-[95vw] h-[min(85vh,720px)] overflow-y-auto p-3">
                               <div className="text-sm font-semibold mb-2">Activity</div>
                               <ActivityTimeline activities={activities} />
                             </PopoverContent>
