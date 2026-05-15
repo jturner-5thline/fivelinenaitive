@@ -977,12 +977,14 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
     doc.text('Lender Pipeline Snapshot', margin, yPos);
     yPos += 10;
 
-    const allLenders = deal.lenders || [];
+    // Use shared bucketing so PDF mirrors the modal preview exactly
+    // (On Deck = Sent DRL + On Deck; In Review = In Review/substages; Passed = Passed; Excluded/On Hold hidden).
+    const b = bucketLenders(deal.lenders, configuredStages);
     const pipelineGroups: { label: string; lenders: string[]; borderColor: [number, number, number]; iconColor: [number, number, number] }[] = [
-      { label: 'On Deck', lenders: allLenders.filter(l => l.trackingStatus === 'on-deck').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
-      { label: 'In Review', lenders: allLenders.filter(l => l.trackingStatus === 'active').map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
-      { label: 'Terms Issued', lenders: allLenders.filter(l => l.stage === 'term-sheets' || l.stage === 'draft-terms').map(l => l.name), borderColor: [34, 197, 94], iconColor: [34, 197, 94] },
-      { label: 'Passed', lenders: allLenders.filter(l => l.trackingStatus === 'passed').map(l => l.name), borderColor: [239, 68, 68], iconColor: [239, 68, 68] },
+      { label: 'On Deck', lenders: b.onDeck.map(l => l.name), borderColor: [59, 130, 246], iconColor: [59, 130, 246] },
+      { label: 'In Review', lenders: b.inReview.map(l => l.name), borderColor: [34, 197, 94], iconColor: [34, 197, 94] },
+      { label: 'Terms Issued', lenders: b.termsIssued.map(l => l.name), borderColor: [202, 138, 4], iconColor: [202, 138, 4] },
+      { label: 'Passed', lenders: b.passed.map(l => l.name), borderColor: [239, 68, 68], iconColor: [239, 68, 68] },
     ];
 
     const cardW = (contentWidth - 9) / 4;
