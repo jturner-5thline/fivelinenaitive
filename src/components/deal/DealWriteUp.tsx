@@ -380,6 +380,14 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
   const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
   const [showMemoDialog, setShowMemoDialog] = useState(false);
   const [showBrandedStudio, setShowBrandedStudio] = useState(false);
+
+  // Generate Complete Write-Up (single primary action)
+  const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
+  const [draftSections, setDraftSections] = useState<DraftSection[] | null>(null);
+  const [draftGeneratedAt, setDraftGeneratedAt] = useState<Date | null>(null);
+  const [isDraftApproved, setIsDraftApproved] = useState(false);
+  const [isApprovingDraft, setIsApprovingDraft] = useState(false);
+  const [approvedVersion, setApprovedVersion] = useState<number | null>(null);
   
   // Overwrite protection
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
