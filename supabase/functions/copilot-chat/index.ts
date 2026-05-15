@@ -1,6 +1,84 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+// ── AI action audit helpers ──────────────────────────────────────
+function adminClient() {
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+}
+
+/**
+ * Insert a "drafted" row into ai_action_audit when the AI proposes a task.
+ * Returns the new row id (or null on failure — auditing must never block the draft).
+ */
+async function writeAuditDraft(input: {
+  userId: string;
+  companyId?: string | null;
+  conversationId?: string | null;
+  actionType: string;
+  intent?: string | null;
+  prompt?: string | null;
+  resolvedDealId?: string | null;
+  resolvedDealName?: string | null;
+  resolvedAssigneeUserId?: string | null;
+  resolvedAssigneeName?: string | null;
+  extractedFields?: Record<string, unknown>;
+  confidence?: Record<string, unknown>;
+  clarificationRequired?: boolean;
+  clarificationReason?: string | null;
+  pageContext?: Record<string, unknown>;
+}): Promise<string | null> {
+  try {
+    const admin = adminClient();
+    const { data, error } = await admin.from("ai_action_audit").insert({
+      user_id: input.userId,
+      company_id: input.companyId || null,
+      conversation_id: input.conversationId || null,
+      action_type: input.actionType,
+      intent: input.intent || null,
+      prompt: input.prompt || null,
+      resolved_deal_id: input.resolvedDealId || null,
+      resolved_deal_name: input.resolvedDealName || null,
+      resolved_assignee_user_id: input.resolvedAssigneeUserId || null,
+      resolved_assignee_name: input.resolvedAssigneeName || null,
+      extracted_fields: input.extractedFields || {},
+      confidence: input.confidence || {},
+      clarification_required: !!input.clarificationRequired,
+      clarification_reason: input.clarificationReason || null,
+      outcome: "drafted",
+      page_context: input.pageContext || null,
+    }).select("id").single();
+    if (error) {
+      console.warn("[ai_audit] writeAuditDraft failed:", error.message);
+      return null;
+    }
+    return (data as any)?.id || null;
+  } catch (e) {
+    console.warn("[ai_audit] writeAuditDraft exception:", e);
+    return null;
+  }
+}
+
+async function updateAuditOutcome(auditId: string | null | undefined, patch: {
+  outcome: "confirmed" | "cancelled" | "error" | "abandoned" | "clarification_requested";
+  outcomeDetail?: string | null;
+  createdTaskId?: string | null;
+  errorMessage?: string | null;
+}): Promise<void> {
+  if (!auditId) return;
+  try {
+    const admin = adminClient();
+    await admin.from("ai_action_audit").update({
+      outcome: patch.outcome,
+      outcome_detail: patch.outcomeDetail ?? null,
+      created_task_id: patch.createdTaskId ?? null,
+      error_message: patch.errorMessage ?? null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", auditId);
+  } catch (e) {
+    console.warn("[ai_audit] updateAuditOutcome failed:", e);
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
