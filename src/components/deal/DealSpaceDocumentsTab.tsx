@@ -219,19 +219,19 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
 
   const handleConfirmSingleDelete = useCallback(async () => {
     if (!docToDelete) return;
+    const currentDoc = docToDelete;
     setIsDeletingSingle(true);
     try {
-      const ok = await deleteDocument(docToDelete);
+      const ok = await deleteDocument(currentDoc);
       if (ok) {
         setSelectedIds(prev => {
-          if (!prev.has(docToDelete.id)) return prev;
+          if (!prev.has(currentDoc.id)) return prev;
           const next = new Set(prev);
-          next.delete(docToDelete.id);
+          next.delete(currentDoc.id);
           return next;
         });
-        setDocToDelete(null);
       }
-      // On failure deleteDocument already toasted; keep dialog open so user can retry/cancel.
+      setDocToDelete(null);
     } finally {
       setIsDeletingSingle(false);
     }
@@ -544,6 +544,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
               disabled={isDeletingSingle}
               onClick={(e) => {
                 e.stopPropagation();
+                setDocToDelete(null);
               }}
               onPointerDownCapture={(e) => e.stopPropagation()}
             >
