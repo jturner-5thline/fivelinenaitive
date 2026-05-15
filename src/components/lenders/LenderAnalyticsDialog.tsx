@@ -98,6 +98,33 @@ const BUCKET_COLOR: Record<Bucket, string> = {
   'Other': 'hsl(215 16% 55%)',
 };
 
+// Shared dark-gradient surfaces — matches the deal pop-up's tonal language
+// (radial highlight + soft vertical fade + faint inner sheen).
+const MODAL_SHELL_STYLE: CSSProperties = {
+  background:
+    'radial-gradient(120% 80% at 0% 0%, hsl(220 55% 22% / 0.55) 0%, transparent 55%),' +
+    'radial-gradient(120% 80% at 100% 100%, hsl(220 60% 14% / 0.55) 0%, transparent 60%),' +
+    'linear-gradient(180deg, hsl(220 40% 11% / 0.96) 0%, hsl(220 45% 7% / 0.98) 100%)',
+  borderColor: 'hsl(220 50% 40% / 0.28)',
+  boxShadow:
+    'inset 0 1px 0 hsl(220 60% 85% / 0.06), 0 24px 60px hsl(220 60% 3% / 0.6)',
+};
+
+const PANEL_STYLE: CSSProperties = {
+  background:
+    'radial-gradient(110% 70% at 0% 0%, hsl(220 60% 30% / 0.18) 0%, transparent 60%),' +
+    'linear-gradient(180deg, hsl(220 38% 16% / 0.85) 0%, hsl(220 42% 11% / 0.9) 100%)',
+  borderColor: 'hsl(220 45% 45% / 0.22)',
+  boxShadow:
+    'inset 0 1px 0 hsl(220 60% 85% / 0.05), 0 4px 14px hsl(220 60% 3% / 0.35)',
+};
+
+const HEADER_STYLE: CSSProperties = {
+  background:
+    'linear-gradient(180deg, hsl(220 45% 14% / 0.85) 0%, hsl(220 45% 10% / 0.6) 100%)',
+  borderBottom: '1px solid hsl(220 45% 40% / 0.22)',
+};
+
 function normalizeLabel(s: string | null | undefined): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
 }
