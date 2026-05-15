@@ -36,8 +36,6 @@ export interface DraftAndSendInitial {
   bodyHtml?: string;
   /** When set, the composer surfaces a thread picker scoped to this deal. */
   dealId?: string;
-  /** Optional files to pre-attach (e.g. a generated PDF). */
-  initialFiles?: File[];
 }
 
 interface DraftAndSendDialogProps {
@@ -120,7 +118,7 @@ export function DraftAndSendDialog({
       : plainTextToHtml(initial.body ?? '');
     const sigHtml = signature ? plainTextToHtml(signature) : '';
     setBody(sigHtml ? `${bodyHtml}<p></p>${sigHtml}` : bodyHtml);
-    setFiles(initial.initialFiles ?? []);
+    setFiles([]);
     setSelectedThreadId('new');
   }, [open, initial, signature]);
 

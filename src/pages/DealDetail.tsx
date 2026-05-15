@@ -597,20 +597,6 @@ export default function DealDetail() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
   const [statusEmailContent, setStatusEmailContent] = useState<StatusReportEditableContent | null>(null);
-  const [statusEmailPdfFile, setStatusEmailPdfFile] = useState<File | null>(null);
-
-  /** Default email body when sending the status report as a PDF attachment. */
-  const buildStatusEmailPdfBodyHtml = (d: typeof deal) => {
-    const company = (d as any)?.company || 'there';
-    const contactName = ((d as any)?.contact_name || '').trim();
-    const greetingName = contactName ? contactName.split(/\s+/)[0] : 'there';
-    return [
-      `<p>Hi ${greetingName},</p>`,
-      `<p>Attached is the latest status report for <strong>${company}</strong>. ` +
-        `Please take a look and let us know if you have any questions or feedback.</p>`,
-      `<p>Best,</p>`,
-    ].join('');
-  };
   const { profile } = useProfile();
 
   // Allow other deal-scoped components (e.g. the Deal Space Ask AI tab) to
@@ -5693,29 +5679,21 @@ export default function DealDetail() {
             setShowStatusReportPreview(false);
             toast({ title: 'Status email ready', description: 'Formatted email draft generated.' });
           }}
-          onDraftEmail={(editableContent, pdfFile) => {
-            setStatusEmailContent(editableContent);
-            setStatusEmailPdfFile(pdfFile);
-            setShowStatusReportPreview(false);
-          }}
         />
       )}
 
       {deal && statusEmailContent && (
         <DraftAndSendDialog
           open={!!statusEmailContent}
-          onOpenChange={(o) => { if (!o) { setStatusEmailContent(null); setStatusEmailPdfFile(null); } }}
+          onOpenChange={(o) => { if (!o) setStatusEmailContent(null); }}
           contextLabel="Status Update"
           initial={{
             subject: buildStatusEmailSubject(deal),
-            bodyHtml: statusEmailPdfFile
-              ? buildStatusEmailPdfBodyHtml(deal)
-              : buildStatusEmailHtml(deal, statusEmailContent),
+            bodyHtml: buildStatusEmailHtml(deal, statusEmailContent),
             to: (deal as any).contact_email ? [(deal as any).contact_email] : [],
             dealId: deal.id,
-            initialFiles: statusEmailPdfFile ? [statusEmailPdfFile] : undefined,
           } as DraftAndSendInitial}
-          onSent={() => { setStatusEmailContent(null); setStatusEmailPdfFile(null); }}
+          onSent={() => setStatusEmailContent(null)}
         />
       )}
 

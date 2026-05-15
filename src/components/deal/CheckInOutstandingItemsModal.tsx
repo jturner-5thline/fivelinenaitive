@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { format } from 'date-fns';
-import { Loader2, Copy, Check, Mail, ExternalLink, Inbox, Sparkles } from 'lucide-react';
+import { Loader2, Copy, Check, Mail, ExternalLink, Inbox } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,14 +28,6 @@ export function CheckInOutstandingItemsModal({ open, onOpenChange, dealId }: Pro
   const [selectedEmailId, setSelectedEmailId] = useState<string | null>(null);
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
-  // Truth values used to drive the AI typing animation. The displayed
-  // `subject` / `body` are progressively revealed from these. Once the
-  // animation completes — or the user takes over — the displayed values
-  // become the canonical editable state.
-  const [fullSubject, setFullSubject] = useState('');
-  const [fullBody, setFullBody] = useState('');
-  const [aiPhase, setAiPhase] = useState<'idle' | 'thinking' | 'subject' | 'body' | 'ready'>('idle');
-  const userTookOverRef = useRef(false);
   const [copied, setCopied] = useState(false);
 
   // Pull client first name from the deal's contact field.
@@ -73,15 +65,14 @@ export function CheckInOutstandingItemsModal({ open, onOpenChange, dealId }: Pro
     [emails, selectedEmailId],
   );
 
-  // Regenerate the draft whenever the inputs change. Once the user has
-  // taken over (typed/edited), we stop overwriting their content.
+  // Regenerate the draft whenever the inputs change.
   useEffect(() => {
     if (!open) return;
-    if (userTookOverRef.current) return;
     const baseSubject = selectedEmail?.message?.subject?.trim() || '';
     const reSubject = baseSubject
       ? (baseSubject.toLowerCase().startsWith('re:') ? baseSubject : `Re: ${baseSubject}`)
       : 'Checking in on outstanding items';
+    setSubject(reSubject);
 
     const greetingName = clientFirst || 'there';
     const bullets = pendingItems.length
@@ -89,101 +80,14 @@ export function CheckInOutstandingItemsModal({ open, onOpenChange, dealId }: Pro
       : '• (No outstanding items pending)';
 
     const draft = `Hi ${greetingName},\n\nWanted to just check in on the current outstanding items below\n\n${bullets}\n\nThanks!`;
-
-    setFullSubject(reSubject);
-    setFullBody(draft);
-    setSubject('');
-    setBody('');
-    setAiPhase('thinking');
+    setBody(draft);
   }, [open, selectedEmail, clientFirst, pendingItems]);
-
-  // Drive the typewriter animation. Subject first, then body.
-  useEffect(() => {
-    if (aiPhase === 'idle' || aiPhase === 'ready') return;
-    if (userTookOverRef.current) {
-      setSubject(fullSubject);
-      setBody(fullBody);
-      setAiPhase('ready');
-      return;
-    }
-
-    let cancelled = false;
-    let timer: ReturnType<typeof setTimeout> | null = null;
-
-    const sleep = (ms: number) =>
-      new Promise<void>((res) => {
-        timer = setTimeout(() => res(), ms);
-      });
-
-    const typeInto = async (
-      text: string,
-      setter: (v: string) => void,
-      chunk = 2,
-      base = 14,
-    ) => {
-      let i = 0;
-      while (i < text.length) {
-        if (cancelled || userTookOverRef.current) {
-          setter(text);
-          return;
-        }
-        i = Math.min(text.length, i + chunk);
-        setter(text.slice(0, i));
-        // Slight natural variance + brief pauses on punctuation/newline.
-        const ch = text[i - 1];
-        const pause = ch === '\n' ? 60 : (ch === '.' || ch === ',' || ch === '!') ? 45 : base + Math.random() * 10;
-        await sleep(pause);
-      }
-    };
-
-    (async () => {
-      if (aiPhase === 'thinking') {
-        await sleep(280);
-        if (cancelled) return;
-        setAiPhase('subject');
-        return;
-      }
-      if (aiPhase === 'subject') {
-        await typeInto(fullSubject, setSubject, 1, 22);
-        if (cancelled) return;
-        await sleep(160);
-        if (cancelled) return;
-        setAiPhase('body');
-        return;
-      }
-      if (aiPhase === 'body') {
-        await typeInto(fullBody, setBody, 3, 12);
-        if (cancelled) return;
-        setAiPhase('ready');
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-      if (timer) clearTimeout(timer);
-    };
-  }, [aiPhase, fullSubject, fullBody]);
-
-  const isTyping = aiPhase === 'thinking' || aiPhase === 'subject' || aiPhase === 'body';
-
-  const completeAnimation = useCallback(() => {
-    userTookOverRef.current = true;
-    setSubject(fullSubject);
-    setBody(fullBody);
-    setAiPhase('ready');
-  }, [fullSubject, fullBody]);
 
   // Reset state on close.
   useEffect(() => {
     if (!open) {
       setSelectedEmailId(null);
       setCopied(false);
-      setAiPhase('idle');
-      userTookOverRef.current = false;
-      setSubject('');
-      setBody('');
-      setFullSubject('');
-      setFullBody('');
     }
   }, [open]);
 
@@ -315,15 +219,7 @@ export function CheckInOutstandingItemsModal({ open, onOpenChange, dealId }: Pro
             <div className="flex-1 min-h-0 flex flex-col rounded-lg border border-border bg-card/40">
               <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border">
                 <div className="min-w-0">
-                  <div className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1.5">
-                    Draft reply
-                    {isTyping && (
-                      <span className="inline-flex items-center gap-1 text-[10px] normal-case tracking-normal text-primary">
-                        <Sparkles className="h-3 w-3 animate-pulse" />
-                        Drafting with AI…
-                      </span>
-                    )}
-                  </div>
+                  <div className="text-xs uppercase tracking-wide text-muted-foreground">Draft reply</div>
                   <div className="text-sm font-medium truncate">
                     {selectedEmail
                       ? `In thread: ${selectedEmail.message?.subject || '(No subject)'}`
@@ -345,35 +241,19 @@ export function CheckInOutstandingItemsModal({ open, onOpenChange, dealId }: Pro
               <div className="p-3 space-y-2 flex-1 min-h-0 flex flex-col">
                 <div>
                   <Label className="text-[11px] text-muted-foreground">Subject</Label>
-                  <div className="relative mt-1">
-                    <Input
-                      value={subject}
-                      onChange={(e) => { completeAnimation(); setSubject(e.target.value); }}
-                      onFocus={() => { if (isTyping) completeAnimation(); }}
-                      className="h-8 text-sm"
-                    />
-                    {aiPhase === 'subject' && (
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 inline-block w-[2px] h-4 bg-primary animate-pulse"
-                      />
-                    )}
-                  </div>
+                  <Input
+                    value={subject}
+                    onChange={(e) => setSubject(e.target.value)}
+                    className="h-8 text-sm mt-1"
+                  />
                 </div>
                 <div className="flex-1 min-h-0 flex flex-col">
                   <Label className="text-[11px] text-muted-foreground">Body</Label>
-                  <div className="relative mt-1 flex-1 min-h-0 flex flex-col">
-                    <Textarea
-                      value={body + (aiPhase === 'body' ? '▍' : '')}
-                      onChange={(e) => {
-                        completeAnimation();
-                        const v = e.target.value.replace(/▍$/, '');
-                        setBody(v);
-                      }}
-                      onFocus={() => { if (isTyping) completeAnimation(); }}
-                      className="flex-1 min-h-[220px] text-sm font-mono leading-relaxed resize-none"
-                    />
-                  </div>
+                  <Textarea
+                    value={body}
+                    onChange={(e) => setBody(e.target.value)}
+                    className="mt-1 flex-1 min-h-[220px] text-sm font-mono leading-relaxed resize-none"
+                  />
                 </div>
               </div>
             </div>

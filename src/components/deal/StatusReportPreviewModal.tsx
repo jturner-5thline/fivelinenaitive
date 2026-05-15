@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { FileText, Mail, Plus, X, Eye, EyeOff, Loader2, Sparkles, Download } from 'lucide-react';
 import { Deal } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
-import { bucketLenders, extractPassDetails, getOutreachLenders } from '@/lib/lenderStatusBuckets';
+import { bucketLenders, extractPassDetails } from '@/lib/lenderStatusBuckets';
 import { sendClaudeMessage } from '@/services/claude';
 import { rewritePassedFeedback } from '@/lib/rewritePassFeedback';
 import { toast } from '@/hooks/use-toast';
@@ -26,12 +26,6 @@ interface StatusReportPreviewModalProps {
   configuredSubstages?: LenderStageConfig[];
   outstandingItems?: OutstandingItem[];
   onExport: (content: StatusReportEditableContent) => void;
-  /**
-   * Optional: open a full email compose window with the rendered status
-   * report PDF pre-attached. When provided, a "Draft Email" button is
-   * surfaced next to "Generate Status Email".
-   */
-  onDraftEmail?: (content: StatusReportEditableContent, pdfFile: File) => void;
   /**
    * Persist a lender update to the underlying deal. Required for the
    * pipeline-snapshot stage cards to act as a live management surface
@@ -160,7 +154,6 @@ export function StatusReportPreviewModal({
   configuredStages,
   outstandingItems,
   onExport,
-  onDraftEmail,
   onUpdateLender,
 }: StatusReportPreviewModalProps) {
   const initialContent = useMemo(
@@ -223,7 +216,7 @@ export function StatusReportPreviewModal({
     if (aiTriedForDeal === deal.id) return;
     setAiTriedForDeal(deal.id);
 
-    const lenders = getOutreachLenders(deal.lenders, configuredStages);
+    const lenders = deal.lenders || [];
     const lenderSummary = lenders
       .map((l) => {
         const note = (l.notes || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
@@ -344,95 +337,66 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
-  const [exportingPdf, setExportingPdf] = useState(false);
-
-  /**
-   * Direct download — no print dialog, no blank intermediary screen.
-   * Generates the PDF in the background from the off-screen printable
-   * node using html2pdf.js, then triggers a download. The visible modal
-   * stays mounted the whole time; only the button shows a loading state.
-   */
-  const slugify = (s: string) =>
-    (s || 'status-report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '').slice(0, 60) || 'status-report';
-
-  const pdfFilename = () => {
-    const date = new Date().toISOString().slice(0, 10);
-    return `status-report-${slugify(deal.company)}-${date}.pdf`;
-  };
-
-  /**
-   * Native print path. The off-screen `.status-report-printable` node
-   * (rendered at the bottom of the dialog) is the same dark in-app
-   * preview component the user sees, with `isExport=true` so it expands
-   * lender lists and drops "Click to manage". Print CSS hides every
-   * other element on the page during printing and forces the printable
-   * node back into normal flow with backgrounds/colors preserved, so
-   * the browser's print preview renders an exact copy of the in-app
-   * report. The user can then choose Save as PDF in the print dialog.
-   */
   const handlePrintPdf = () => {
-    const prevTitle = document.title;
-    document.title = `status-report-${slugify(deal.company)}-${new Date().toISOString().slice(0, 10)}`;
-    const restore = () => {
-      document.title = prevTitle;
-      window.removeEventListener('afterprint', restore);
-    };
-    window.addEventListener('afterprint', restore);
-    // Defer to next frame so the title swap lands before the dialog opens.
-    requestAnimationFrame(() => window.print());
-  };
-
-  // ── Generate the status report as a PDF File (for email attachment) ──
-  const [draftingEmail, setDraftingEmail] = useState(false);
-  const handleDraftEmail = async () => {
-    if (!onDraftEmail) return;
     const node = printableRef.current;
     if (!node) {
-      toast({ title: 'Preview not ready', description: 'Could not prepare the status report PDF.', variant: 'destructive' });
+      toast({ title: 'Preview not ready', variant: 'destructive' });
       return;
     }
-    setDraftingEmail(true);
-    let container: HTMLDivElement | null = null;
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const cloned = node.cloneNode(true) as HTMLElement;
-      container = document.createElement('div');
-      container.style.position = 'fixed';
-      container.style.left = '-10000px';
-      container.style.top = '0';
-      container.style.width = '880px';
-      container.style.background = '#0d1016';
-      container.appendChild(cloned);
-      document.body.appendChild(container);
-      const blob: Blob = await html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: `status-report-${slugify(deal.company)}.pdf`,
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1016' },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] },
-        } as any)
-        .from(cloned)
-        .outputPdf('blob');
-      const file = new File([blob], `status-report-${slugify(deal.company)}.pdf`, { type: 'application/pdf' });
-      onDraftEmail(content, file);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not generate PDF';
-      toast({ title: 'Could not prepare PDF', description: msg, variant: 'destructive' });
-    } finally {
-      if (container && container.parentNode) container.parentNode.removeChild(container);
-      setDraftingEmail(false);
-    }
+    const PRINT_ID = 'naitive-status-report-printroot';
+    node.setAttribute('id', PRINT_ID);
+    const prevTitle = document.title;
+    document.title = `${deal.company} — Status Report`;
+    const style = document.createElement('style');
+    style.id = 'naitive-status-report-print-style';
+    style.textContent = `
+      @page { size: Letter; margin: 0.35in; }
+      @media print {
+        html, body {
+          background: hsl(218 26% 7%) !important;
+          margin: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body * { visibility: hidden !important; }
+        #${PRINT_ID}, #${PRINT_ID} * { visibility: visible !important; }
+        #${PRINT_ID} {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          overflow: visible !important;
+        }
+        #${PRINT_ID} * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        /* Avoid awkward breaks inside cards/sections */
+        #${PRINT_ID} table, #${PRINT_ID} tr, #${PRINT_ID} li,
+        #${PRINT_ID} .rounded-xl, #${PRINT_ID} .rounded-2xl {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    const cleanup = () => {
+      document.title = prevTitle;
+      style.remove();
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(() => window.print(), 80);
   };
 
   // ── Render the printable report (light-themed) ──────────────────────────
   const renderPrintable = () => (
-    <div
-      ref={printableRef}
-      className="bg-white text-slate-900 rounded-lg"
-      style={{ width: 880, padding: 24, boxSizing: 'border-box' }}
-    >
+    <div ref={printableRef} className="bg-white text-slate-900 rounded-lg overflow-hidden">
       <div className="sr-bar" style={{ height: 6, background: '#1e3a8a', borderRadius: 2, marginBottom: 16 }} />
       <div>
         <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: '#1e3a8a' }}>
@@ -471,73 +435,22 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       {content.sectionsVisible.pipelineSnapshot && (
         <>
           <div className="sr-section-label" style={sectionLabelStyle}>Lender Pipeline Snapshot</div>
-          {/*
-            Stacked, full-width per-stage layout — purpose-built for PDF.
-            Each stage gets its own row with a colored header bar and the
-            full lender list rendered as wrapped chips. No truncation, no
-            "+X more", no interactive affordances. Reads cleanly across
-            multi-page exports.
-          */}
-          <div className="sr-pipeline-stack" style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <div className="sr-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 8, alignItems: 'stretch' }}>
             {([
               { key: 'onDeck', label: 'On Deck', color: 'blue', items: buckets.onDeck },
               { key: 'inReview', label: 'In Review', color: 'teal', items: buckets.inReview },
               { key: 'termsIssued', label: 'Terms Issued', color: 'green', items: buckets.termsIssued },
               { key: 'passed', label: 'Passed', color: 'red', items: buckets.passed },
             ] as const).map((g) => (
-              <div
-                key={g.key}
-                className={`sr-stage-row ${g.color}`}
-                style={{
-                  border: `1px solid ${stageBorder(g.color)}`,
-                  borderRadius: 8,
-                  overflow: 'hidden',
-                  background: '#ffffff',
-                  pageBreakInside: 'avoid',
-                  breakInside: 'avoid',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '8px 14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    background: stageHeadBg(g.color),
-                    color: '#ffffff',
-                    fontSize: 11,
-                    fontWeight: 700,
-                    letterSpacing: '0.1em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  <span>{g.label}</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, opacity: 0.95 }}>{g.items.length}</span>
-                </div>
-                <div style={{ padding: '12px 14px' }}>
+              <div key={g.key} className={`sr-col ${g.color}`} style={colStyle(g.color)}>
+                <div className="sr-col-head" style={colHeadStyle(g.color)}>{g.label} ({g.items.length})</div>
+                <div className="sr-col-body" style={{ padding: '10px 12px', flex: 1 }}>
                   {g.items.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>None</p>
                   ) : (
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                      {g.items.map((l) => (
-                        <span
-                          key={l.id}
-                          style={{
-                            display: 'inline-block',
-                            padding: '4px 10px',
-                            border: `1px solid ${stageBorder(g.color)}`,
-                            borderRadius: 999,
-                            background: stageChipBg(g.color),
-                            color: '#0f172a',
-                            fontSize: 12,
-                            lineHeight: 1.3,
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {l.name}
-                        </span>
-                      ))}
-                    </div>
+                    g.items.map((l) => (
+                      <p key={l.id} style={{ margin: '0 0 4px', fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{l.name}</p>
+                    ))
                   )}
                 </div>
               </div>
@@ -589,7 +502,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             <tbody>
               {passedDetails.map((p, i) => (
                 <tr key={i}>
-                  <td style={{ ...tdStyle, wordBreak: 'break-word' }}>{p.name}</td>
+                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</td>
                   <td style={{ ...tdStyle, color: '#475569', fontStyle: aiPassFeedbackLoading && !(p.name in aiPassFeedback) ? 'italic' : 'normal' }}>
                     {p.name in aiPassFeedback
                       ? (aiPassFeedback[p.name] || '—')
@@ -613,18 +526,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     </div>
   );
 
-  // ── Render the in-app dark preview (Naitive-styled).  ──────────────────
-  // The PDF export captures THIS exact component so the exported file is a
-  // faithful reproduction of what the user sees in the preview pane.
-  // `isExport=true` triggers minor print-safe tweaks only:
-  //   - LenderPipelineSnapshot expands fully (no "+X more…" / no truncated
-  //     names) and drops the "Click to manage" affordance.
-  //   - The wrapper has a solid backdrop so html2canvas captures the
-  //     gradient layers cleanly without any underlying transparency.
-  // Visual design (colors, fonts, layout, spacing) is unchanged.
-  const renderInAppPreview = (isExport = false) => (
+  // ── Render the in-app dark preview (Naitive-styled, on-screen only) ─────
+  // Print/PDF still uses `renderPrintable()` (light) — we render that node
+  // off-screen so the existing handlePrintPdf flow keeps working.
+  const renderInAppPreview = () => (
     <div
-      ref={isExport ? printableRef : undefined}
+      ref={printableRef}
       className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
         // Layered gradient shell — matches the deal pop-up surface treatment:
@@ -665,7 +572,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         {/* Status Summary */}
         {content.sectionsVisible.statusSummary &&
           (content.statusSummaryHtml?.trim() || content.statusSummary.filter(Boolean).length > 0) && (
-            <DarkSection label="Status Summary" sectionClassName="status-summary-section section-block">
+            <DarkSection label="Status Summary">
               <div
                 className="prose prose-sm prose-invert max-w-none text-slate-200 [&_p]:my-1.5 [&_li]:my-0.5 leading-relaxed"
                 dangerouslySetInnerHTML={{
@@ -679,24 +586,23 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Pipeline Snapshot — shared component (same on the deal page) */}
         {content.sectionsVisible.pipelineSnapshot && onUpdateLender && (
-          <div className="pipeline-section section-block">
+          <div>
             <DarkLabel>Lender Pipeline Snapshot</DarkLabel>
             <LenderPipelineSnapshot
               lenders={(deal.lenders || []) as any}
               configuredStages={configuredStages}
               onUpdateLender={onUpdateLender}
               className="mt-2"
-              isExport={isExport}
             />
           </div>
         )}
 
         {/* Recent Milestones */}
         {content.sectionsVisible.milestones && content.completedMilestones.filter(Boolean).length > 0 && (
-          <DarkSection label="Recent Milestones" sectionClassName="milestones-section section-block">
+          <DarkSection label="Recent Milestones">
             <ul className="m-0 p-0 list-none space-y-1.5">
               {content.completedMilestones.filter(Boolean).map((m, i) => (
-                <li key={i} className="milestone-item text-sm text-slate-200 leading-snug flex gap-2">
+                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
                   <span className="text-emerald-400 font-bold">✓</span>
                   <span>{m}</span>
                 </li>
@@ -707,10 +613,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Next Steps */}
         {content.sectionsVisible.nextSteps && content.nextSteps.filter(Boolean).length > 0 && (
-          <DarkSection label="Next Steps" sectionClassName="next-steps-section section-block">
+          <DarkSection label="Next Steps">
             <ul className="m-0 p-0 list-none space-y-1.5">
               {content.nextSteps.filter(Boolean).map((s, i) => (
-                <li key={i} className="next-step-item text-sm text-slate-200 leading-snug flex gap-2">
+                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
                   <span className="text-blue-400 font-bold">→</span>
                   <span>{s}</span>
                 </li>
@@ -721,7 +627,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Passed lender reasons */}
         {passedDetails.length > 0 && (
-          <div className="passed-reasons-section section-block">
+          <div>
             <DarkLabel>Passed Lender Reasons</DarkLabel>
             <div className="mt-2 rounded-xl border border-slate-700/60 overflow-hidden">
               <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
@@ -762,7 +668,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* What We Need From You */}
         {content.sectionsVisible.actionItems && (
-          <div className="client-needs-section section-block">
+          <div>
             <DarkLabel>What We Need From You</DarkLabel>
             <div
               className="mt-2 rounded-xl px-4 py-3 text-sm text-slate-100 leading-relaxed whitespace-pre-wrap border-l-2 border-l-blue-400/80"
@@ -876,120 +782,17 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         <DialogFooter className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800 gap-2">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handlePrintPdf}
-            disabled={exportingPdf}
-            className="gap-2"
-          >
+          <Button variant="outline" size="sm" onClick={handlePrintPdf} className="gap-2">
             <Download className="h-4 w-4" />
-            Print / Save as PDF
+            Export as PDF
           </Button>
-          {onDraftEmail && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleDraftEmail}
-              disabled={draftingEmail}
-              className="gap-2"
-            >
-              {draftingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-              {draftingEmail ? 'Preparing PDF…' : 'Draft Email'}
-            </Button>
-          )}
           <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
             <Mail className="h-4 w-4" />
             Generate Status Email
           </Button>
         </DialogFooter>
-        {/* Off-screen, fully expanded printable used as the source-of-truth
-            DOM for PDF/Print export. Kept renderable (not display:none) so
-            html2canvas/html2pdf can capture every section, every lender,
-            and the resolved textarea value as plain text. */}
-        <div
-          aria-hidden
-          className="status-report-printable"
-          style={{
-            position: 'fixed',
-            left: -100000,
-            top: 0,
-            width: 880,
-            pointerEvents: 'none',
-            opacity: 1,
-            zIndex: -1,
-            // Solid dark backdrop matches the preview's deepest gradient
-            // stop so html2canvas captures the layered glass surface
-            // exactly as it appears on screen.
-            background: '#0d1016',
-            padding: 16,
-          }}
-        >
-          {renderInAppPreview(true)}
-        </div>
       </DialogContent>
     </Dialog>
-
-    {/* Print-only CSS. When the browser enters print mode we hide the
-        whole app and "promote" the off-screen .status-report-printable
-        node back into normal flow so it becomes the entire printed
-        document. Sections carry keep-together break rules so each major
-        block stays on a single page whenever it physically fits. */}
-    <style>{`
-      @media print {
-        @page { size: letter; margin: 12mm; }
-        html, body {
-          background: #0d1016 !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        body * { visibility: hidden !important; }
-        .status-report-printable, .status-report-printable * { visibility: visible !important; }
-        .status-report-printable {
-          position: static !important;
-          left: auto !important; top: auto !important;
-          width: 100% !important;
-          padding: 0 !important;
-          margin: 0 !important;
-          opacity: 1 !important;
-          z-index: auto !important;
-          pointer-events: auto !important;
-          background: #0d1016 !important;
-          overflow: visible !important;
-        }
-        .status-report-printable * { overflow: visible !important; max-height: none !important; }
-        /* Keep major blocks together. */
-        .status-report-printable .section-block,
-        .status-report-printable .status-summary-section,
-        .status-report-printable .pipeline-section,
-        .status-report-printable .pipeline-card,
-        .status-report-printable .milestones-section,
-        .status-report-printable .next-steps-section,
-        .status-report-printable .passed-reasons-section,
-        .status-report-printable .client-needs-section {
-          break-inside: avoid;
-          break-inside: avoid-page;
-          page-break-inside: avoid;
-        }
-        .status-report-printable h1,
-        .status-report-printable h2,
-        .status-report-printable h3,
-        .status-report-printable .section-heading {
-          break-after: avoid;
-          page-break-after: avoid;
-        }
-        .status-report-printable tr,
-        .status-report-printable li,
-        .status-report-printable .milestone-item,
-        .status-report-printable .next-step-item {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
-        /* Hide leftover dialog scrim/overlays from radix portals. */
-        [data-radix-portal], [role="dialog"] { background: transparent !important; }
-        .no-print, [data-html2canvas-ignore="true"] { display: none !important; }
-      }
-    `}</style>
     </>
   );
 }
@@ -1041,28 +844,6 @@ function colHeadStyle(color: string): React.CSSProperties {
     padding: '10px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
     textTransform: 'uppercase', color: '#fff', background: map[color] || map.blue,
   };
-}
-
-function stageBorder(color: string): string {
-  const map: Record<string, string> = {
-    blue: '#bfdbfe', teal: '#a5f3fc', green: '#bbf7d0', red: '#fecaca',
-  };
-  return map[color] || map.blue;
-}
-function stageHeadBg(color: string): string {
-  const map: Record<string, string> = {
-    blue:  'linear-gradient(135deg,#3b82f6,#2563eb)',
-    teal:  'linear-gradient(135deg,#0ea5e9,#0d9488)',
-    green: 'linear-gradient(135deg,#22c55e,#16a34a)',
-    red:   'linear-gradient(135deg,#ef4444,#dc2626)',
-  };
-  return map[color] || map.blue;
-}
-function stageChipBg(color: string): string {
-  const map: Record<string, string> = {
-    blue: '#eff6ff', teal: '#ecfeff', green: '#f0fdf4', red: '#fef2f2',
-  };
-  return map[color] || map.blue;
 }
 
 function SectionBlock({
@@ -1204,9 +985,9 @@ function DarkLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DarkSection({ label, children, sectionClassName }: { label: string; children: React.ReactNode; sectionClassName?: string }) {
+function DarkSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className={sectionClassName}>
+    <div>
       <DarkLabel>{label}</DarkLabel>
       <div
         className="mt-2 rounded-xl px-4 py-3 border-l-2 border-l-blue-400/70"
