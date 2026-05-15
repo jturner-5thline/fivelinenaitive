@@ -5105,8 +5105,33 @@ serve(async (req) => {
 
     // ── Handle confirm action ──
     if (body.confirmAction) {
+      const auditId: string | null = body.confirmAction.params?.audit_id || null;
       const result = await executeConfirmAction(supabaseUser, body.confirmAction.action_type, body.confirmAction.params, userId);
+      if (body.confirmAction.action_type === "create_task") {
+        if (result?.success) {
+          await updateAuditOutcome(auditId, {
+            outcome: "confirmed",
+            outcomeDetail: result?.message || null,
+            createdTaskId: result?.params?.task_id || null,
+          });
+        } else {
+          await updateAuditOutcome(auditId, {
+            outcome: "error",
+            errorMessage: result?.error || "unknown error",
+          });
+        }
+      }
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Handle cancel of a previously drafted action (logs the abandonment) ──
+    if (body.cancelAction) {
+      const auditId: string | null = body.cancelAction.audit_id || null;
+      await updateAuditOutcome(auditId, {
+        outcome: "cancelled",
+        outcomeDetail: body.cancelAction.reason || null,
+      });
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { message, context, history, conversationMutations } = body;
