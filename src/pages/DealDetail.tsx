@@ -3952,7 +3952,9 @@ export default function DealDetail() {
                              isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
                            />
                          </div>
-                          <Suspense fallback={null}>
+                          </div>
+                          <div className="shrink-0">
+                           <Suspense fallback={null}>
                           <LenderDirectoryDialog
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
@@ -3978,7 +3980,7 @@ export default function DealDetail() {
                         }
                       />
                           </Suspense>
-                       </div>
+                        </div>
                       <div className="flex items-center gap-1.5 ml-auto min-w-0">
                       {deal.lenders && deal.lenders.length > 0 && (
                         <div className="min-w-0">
