@@ -9,6 +9,7 @@ const ON_DECK_LABELS = ['sent drl', 'on deck', 'drl sent', 'data room sent'];
 const IN_REVIEW_LABELS = ['in review', 'lenders in review', 'active', 'reviewing drl', 'reviewing', 'management call set', 'management call completed'];
 const TERMS_LABELS = ['terms issued', 'term sheets', 'term sheet', 'draft terms', 'draft term sheet'];
 const PASSED_LABELS = ['passed', 'pass', 'declined', 'no go'];
+const EXCLUDED_LABELS = ['excluded', 'on hold', 'hold'];
 
 function stageLabel(lender: DealLender, configured?: { id: string; label: string }[]): string {
   const fromConfigured = configured?.find((s) => s.id === lender.stage)?.label;
@@ -20,10 +21,25 @@ function stageLabel(lender: DealLender, configured?: { id: string; label: string
 
 /** Bucket a lender into On Deck / In Review / Terms Issued / Passed using
  *  trackingStatus first, then falling back to stage labels (case/format-insensitive). */
+/** Returns true if a lender should be hidden from any client-facing report.
+ *  Excluded covers the 'Excluded' and 'On Hold' lender stages/tracking. */
+export function isExcludedFromClientReport(
+  lender: DealLender,
+  configuredStages?: { id: string; label: string }[],
+): boolean {
+  const ts = norm(lender.trackingStatus);
+  if (ts === 'on hold' || ts === 'excluded') return true;
+  const label = norm(stageLabel(lender, configuredStages));
+  const stageId = norm(lender.stage);
+  if (EXCLUDED_LABELS.includes(label) || EXCLUDED_LABELS.includes(stageId)) return true;
+  return false;
+}
+
 export function bucketLender(
   lender: DealLender,
   configuredStages?: { id: string; label: string }[],
-): LenderBucketKey {
+): LenderBucketKey | null {
+  if (isExcludedFromClientReport(lender, configuredStages)) return null;
   const ts = norm(lender.trackingStatus);
   if (ts === 'passed' || ts === 'pass') return 'passed';
 
@@ -64,7 +80,8 @@ export function bucketLenders(
 ): LenderBuckets {
   const out: LenderBuckets = { onDeck: [], inReview: [], termsIssued: [], passed: [] };
   for (const l of lenders || []) {
-    out[bucketLender(l, configuredStages)].push(l);
+    const b = bucketLender(l, configuredStages);
+    if (b) out[b].push(l);
   }
   return out;
 }
