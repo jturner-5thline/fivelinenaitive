@@ -1073,6 +1073,160 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
     }
   };
 
+  // Build a "Lender Market Update" markdown block from the live deal_lenders
+  // table — same source the Lender Pipeline Snapshot uses. Buckets lenders
+  // into Active / In Review / Passed groups so the AI draft mirrors the
+  // Status Report's lender summary.
+  const buildLenderMarketUpdate = async (): Promise<string> => {
+    try {
+      const { data: rows } = await supabase
+        .from('deal_lenders')
+        .select('name, stage, tracking_status, pass_reason, notes')
+        .eq('deal_id', dealId);
+      const lenders = (rows || []) as any[];
+      if (lenders.length === 0) return 'No lenders have been added to this deal yet.';
+      const passed = lenders.filter(l => /pass/i.test(l.stage || '') || /pass/i.test(l.tracking_status || ''));
+      const inReview = lenders.filter(l => !passed.includes(l) && /(review|terms|diligence)/i.test(l.stage || ''));
+      const active = lenders.filter(l => !passed.includes(l) && !inReview.includes(l));
+      const fmt = (label: string, list: any[]) =>
+        `**${label} (${list.length})**\n` +
+        (list.length
+          ? list
+              .map(
+                (l) =>
+                  `- ${l.name}${l.stage ? ` — ${l.stage}` : ''}${
+                    l.pass_reason ? ` (Pass reason: ${l.pass_reason})` : ''
+                  }`,
+              )
+              .join('\n')
+          : '- None');
+      return [fmt('Active / On Deck', active), fmt('In Review', inReview), fmt('Passed', passed)].join('\n\n');
+    } catch (e) {
+      console.error('buildLenderMarketUpdate failed', e);
+      return 'Lender pipeline data unavailable.';
+    }
+  };
+
+  const buildDraftSections = (
+    sectionsByKey: Record<string, string>,
+    fallbackContent: string,
+    lenderMarketUpdate: string,
+  ): DraftSection[] => {
+    const get = (k: string) => (sectionsByKey[k] || '').trim();
+    return [
+      {
+        key: 'executive_summary',
+        title: 'Executive Summary',
+        content: get('executive_overview') || fallbackContent.slice(0, 800),
+      },
+      {
+        key: 'company_overview',
+        title: 'Company Overview',
+        content:
+          get('facility_overview') ||
+          [data.companyName, data.location, data.industries?.join(', ')]
+            .filter(Boolean)
+            .join(' • '),
+      },
+      {
+        key: 'financial_profile',
+        title: 'Financial Profile',
+        hint: 'Pulled from Data Room financials',
+        content: get('financial_profile') || '',
+      },
+      {
+        key: 'use_of_proceeds',
+        title: 'Use of Proceeds',
+        content:
+          get('facility_overview').match(/use of proceeds[\s\S]*/i)?.[0] ||
+          (data.capitalAsk ? `Capital ask: ${data.capitalAsk}` : ''),
+      },
+      {
+        key: 'lender_market_update',
+        title: 'Lender Market Update',
+        hint: 'Pulled from lender pipeline (active, in review, passed)',
+        content: lenderMarketUpdate,
+      },
+      {
+        key: 'key_risks',
+        title: 'Key Risks / Mitigants',
+        content: get('key_risks') || '',
+      },
+      {
+        key: 'fifth_line_commentary',
+        title: '5th Line Commentary',
+        hint: 'Editable by advisor',
+        content: get('recommendation') || '',
+      },
+    ];
+  };
+
+  const handleGenerateCompleteWriteUp = async () => {
+    setIsGeneratingComplete(true);
+    setIsDraftApproved(false);
+    setApprovedVersion(null);
+    try {
+      // 1. Auto-fill all extractable fields from every source
+      const extract = await extractWriteUpData();
+      if (extract && extract.extractedFields.length > 0) {
+        applyAutoFillFields(extract.extractedFields, true);
+      }
+      // 2. Generate AI memo narrative (also pulls from Deal Space + DR)
+      const memo = await generateFullMemo();
+      // 3. Pull live lender pipeline for the market update
+      const lenderMarketUpdate = await buildLenderMarketUpdate();
+      // 4. Compose the 7 inline draft sections
+      const sections = buildDraftSections(
+        memo?.sections || {},
+        memo?.content || '',
+        lenderMarketUpdate,
+      );
+      setDraftSections(sections);
+      setDraftGeneratedAt(new Date());
+      toast.success('AI Draft Write-Up ready', {
+        description: 'Review the draft below — nothing is exported until you approve.',
+      });
+    } catch (err) {
+      console.error('Generate Complete Write-Up failed', err);
+      toast.error('Could not generate complete write-up');
+    } finally {
+      setIsGeneratingComplete(false);
+    }
+  };
+
+  const handleDraftSectionChange = (key: string, content: string) => {
+    setDraftSections((prev) =>
+      prev ? prev.map((s) => (s.key === key ? { ...s, content } : s)) : prev,
+    );
+    // Any edit after approval invalidates the approved state until re-approved.
+    if (isDraftApproved) setIsDraftApproved(false);
+  };
+
+  const handleApproveDraft = async (html: string) => {
+    if (!draftSections) return;
+    setIsApprovingDraft(true);
+    try {
+      const res = await archiveApprovedWriteUp({
+        dealId,
+        dealName: data.companyName || null,
+        companyName: data.companyName || null,
+        html,
+        title: `Write-Up — ${data.companyName || 'Deal'}`,
+      });
+      if (res.ok) {
+        setIsDraftApproved(true);
+        setApprovedVersion(res.version ?? null);
+        toast.success(`Approved & archived to Data Room (v${res.version ?? '?'} )`);
+        // Open the branded document studio so the approved draft can be exported
+        setShowBrandedStudio(true);
+      } else {
+        toast.error('Approval failed — could not archive to Data Room');
+      }
+    } finally {
+      setIsApprovingDraft(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-full">
       <CardHeader>
