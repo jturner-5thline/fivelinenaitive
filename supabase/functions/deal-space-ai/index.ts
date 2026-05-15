@@ -882,6 +882,21 @@ serve(async (req) => {
 
     const { messages, dealId, action, sectionKey, documentId, scope, stream, conversationId, includeDataRoom } = await req.json();
 
+    // 5th Line proprietary actions: hard-enforce company gating server-side
+    // so non-5th-Line users cannot invoke these features via direct API
+    // calls. Mirrors the UI gate `canUse5thLineProprietaryActions`.
+    const PROPRIETARY_ACTIONS = new Set(["extract-writeup", "generate-memo", "regenerate-section"]);
+    if (action && PROPRIETARY_ACTIONS.has(action)) {
+      const callerEmail = String((claimsData.claims as any)?.email || "").toLowerCase();
+      const isFifthLine = callerEmail.endsWith("@5thline.co") || callerEmail.endsWith("@naitive.co");
+      if (!isFifthLine) {
+        return new Response(
+          JSON.stringify({ error: "Forbidden: 5th Line proprietary action" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
     if (action === "summarize") return await handleSummarize(dealId, supabaseUser, supabaseService);
     if (action === "extract-writeup") return await handleExtractWriteUp(dealId, supabaseUser, supabaseService);
     if (action === "generate-memo") return await handleGenerateMemo(dealId, supabaseUser);
