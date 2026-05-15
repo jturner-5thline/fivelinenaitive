@@ -89,26 +89,26 @@ export function LenderPipelineSnapshot({
                 <span>{meta.label}</span>
                 <span className="text-white/90 text-xs font-bold">{list.length}</span>
               </div>
-              <div className={(compact ? 'px-3 py-1.5' : 'px-3 py-2') + ' flex-1 space-y-1'}>
+              <div className={(compact ? 'px-3 py-2' : 'px-3 py-2.5') + ' flex-1 space-y-1.5'}>
                 {list.length === 0 ? (
                   <p className="m-0 text-[11px] text-slate-500 italic">None</p>
                 ) : (
                   list.slice(0, maxList).map((l) => (
                     <p
                       key={l.id}
-                      className="m-0 text-[11px] text-slate-200/90 leading-snug truncate"
+                      className="m-0 text-[13px] font-semibold text-white leading-snug truncate"
                     >
                       {l.name}
                     </p>
                   ))
                 )}
                 {list.length > maxList && (
-                  <p className="m-0 text-[10px] text-slate-400 italic">
+                  <p className="m-0 text-[10px] text-slate-300/80 italic">
                     +{list.length - maxList} more…
                   </p>
                 )}
               </div>
-              <div className="px-3 pb-2 text-[10px] text-slate-400 group-hover:text-slate-200 transition-colors">
+              <div className="px-3 pb-2 text-[9px] uppercase tracking-wider text-slate-400 group-hover:text-slate-200 transition-colors">
                 Click to manage →
               </div>
             </button>
