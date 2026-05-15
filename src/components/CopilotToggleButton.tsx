@@ -505,7 +505,7 @@ export function CopilotToggleButton() {
               {isMinimized && isProcessing && (
                 <span aria-hidden="true" className="pointer-events-none absolute inset-0 rounded-full animate-pulse" />
               )}
-              {isMinimized && unreadCount > 0 && (
+              {(!isOpen || isMinimized) && unreadCount > 0 && (
                 <span
                   aria-hidden="true"
                   className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow"
