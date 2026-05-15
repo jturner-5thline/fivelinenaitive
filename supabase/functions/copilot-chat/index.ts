@@ -6023,6 +6023,42 @@ ${orgPreferencesSection}`;
               } else {
                 result = await executeTool(supabaseUser, tc.function.name, args, userId);
               }
+              // Audit log: every AI-drafted task action (intent, confidence, resolved
+              // entities, extracted fields) — must happen even if the user later cancels.
+              if (
+                tc.function.name === "create_task" &&
+                result &&
+                result.action === "confirm" &&
+                result.params
+              ) {
+                const p = result.params as any;
+                const auditId = await writeAuditDraft({
+                  userId,
+                  companyId: companyId || null,
+                  conversationId: (body as any)?.conversationId || null,
+                  actionType: "create_task",
+                  intent: p.intent || null,
+                  prompt: typeof message === "string" ? message : null,
+                  resolvedDealId: p.deal_id || null,
+                  resolvedDealName: p.deal_name || null,
+                  resolvedAssigneeUserId: p.assignee_user_id || null,
+                  resolvedAssigneeName: p.assignee_name || null,
+                  extractedFields: {
+                    title: p.title,
+                    description: p.description || null,
+                    due_date: p.due_date || null,
+                    priority: p.priority || null,
+                    task_type: p.task_type || null,
+                    inferred: p.inferred || [],
+                  },
+                  confidence: p.confidence || {},
+                  pageContext: { page, entityType, entityId, activeTab },
+                });
+                if (auditId) {
+                  p.audit_id = auditId;
+                  result.params = p;
+                }
+              }
               apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
             }
             continue; // Next turn
