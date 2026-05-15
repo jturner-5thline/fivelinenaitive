@@ -364,9 +364,9 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         #${PRINT_ID}, #${PRINT_ID} * { visibility: visible !important; }
         /* Unwind every ancestor of the print root so the Dialog's
            max-h/overflow-hidden/scroll-container chain cannot clip the
-           printed report. Using `position: static` (NOT absolute) is
-           critical — absolutely-positioned roots do not paginate across
-           pages in print, which is what was forcing one-page output. */
+           printed report. position:static (NOT absolute) is critical —
+           absolutely-positioned roots do not paginate across pages in
+           print, which is what was forcing one-page output. */
         .naitive-print-ancestor {
           all: unset !important;
           display: block !important;
