@@ -1458,17 +1458,56 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
             </TooltipProvider>
           </div>
 
-          {draftSections && (
-            <AiDraftWriteUpSection
-              sections={draftSections}
-              onChange={handleDraftSectionChange}
-              onApprove={handleApproveDraft}
-              onExportBranded={() => setShowBrandedStudio(true)}
-              isApproved={isDraftApproved}
-              isApproving={isApprovingDraft}
-              approvedVersion={approvedVersion}
-              generatedAt={draftGeneratedAt}
-            />
+          {aiPopulated && (
+            <div
+              className={cn(
+                'rounded-lg border p-3 flex items-start gap-3',
+                isDraftApproved
+                  ? 'border-emerald-500/30 bg-emerald-500/5'
+                  : 'border-amber-500/30 bg-amber-500/5',
+              )}
+            >
+              {isDraftApproved ? (
+                <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+              ) : (
+                <Sparkles className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              )}
+              <div className="flex-1 min-w-0">
+                <p className={cn('text-sm font-semibold', isDraftApproved ? 'text-emerald-500' : 'text-amber-500')}>
+                  {isDraftApproved
+                    ? `Approved write-up archived${approvedVersion ? ` (v${approvedVersion})` : ''}`
+                    : 'AI populated the template — review and approve'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isDraftApproved
+                    ? 'You can export a branded document or keep editing to create a new version.'
+                    : 'Edit any field below in place. Nothing is exported until you approve.'}
+                  {draftGeneratedAt ? ` · Generated ${draftGeneratedAt.toLocaleString()}` : ''}
+                </p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                {isDraftApproved ? (
+                  <Button size="sm" onClick={() => setShowBrandedStudio(true)} className="gap-1.5">
+                    <FileDown className="h-3.5 w-3.5" />
+                    Export Branded
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    onClick={handleApproveDraft}
+                    disabled={isApprovingDraft}
+                    className="gap-1.5"
+                  >
+                    {isApprovingDraft ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                    )}
+                    Approve &amp; Archive
+                  </Button>
+                )}
+              </div>
+            </div>
           )}
 
           {viewMode === 'tabs' && (
