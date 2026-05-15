@@ -1067,7 +1067,7 @@ function BucketCount({ label, n }: { label: string; n: number }) {
 // ── Dark in-app preview helpers ────────────────────────────────────────────
 function DarkLabel({ children }: { children: React.ReactNode }) {
   return (
-    <div className="text-[10px] font-bold tracking-[0.16em] uppercase text-slate-400">
+    <div className="text-base font-bold tracking-[0.14em] uppercase text-white">
       {children}
     </div>
   );

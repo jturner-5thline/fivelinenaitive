@@ -57,7 +57,6 @@ export function LenderPipelineSnapshot({
 
   const [open, setOpen] = useState<null | BucketKey>(null);
   const compact = density === 'compact';
-  const maxList = compact ? 4 : 6;
 
   return (
     <>
@@ -93,23 +92,15 @@ export function LenderPipelineSnapshot({
                 {list.length === 0 ? (
                   <p className="m-0 text-[11px] text-slate-500 italic">None</p>
                 ) : (
-                  list.slice(0, maxList).map((l) => (
+                  list.map((l) => (
                     <p
                       key={l.id}
-                      className="m-0 text-[13px] font-semibold text-white leading-snug truncate"
+                      className="m-0 text-[13px] font-semibold text-white leading-snug break-words"
                     >
                       {l.name}
                     </p>
                   ))
                 )}
-                {list.length > maxList && (
-                  <p className="m-0 text-[10px] text-slate-300/80 italic">
-                    +{list.length - maxList} more…
-                  </p>
-                )}
-              </div>
-              <div className="px-3 pb-2 text-[9px] uppercase tracking-wider text-slate-400 group-hover:text-slate-200 transition-colors">
-                Click to manage →
               </div>
             </button>
           );
