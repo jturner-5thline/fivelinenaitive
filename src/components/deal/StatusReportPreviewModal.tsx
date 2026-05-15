@@ -27,6 +27,12 @@ interface StatusReportPreviewModalProps {
   outstandingItems?: OutstandingItem[];
   onExport: (content: StatusReportEditableContent) => void;
   /**
+   * Optional: open a full email compose window with the rendered status
+   * report PDF pre-attached. When provided, a "Draft Email" button is
+   * surfaced next to "Generate Status Email".
+   */
+  onDraftEmail?: (content: StatusReportEditableContent, pdfFile: File) => void;
+  /**
    * Persist a lender update to the underlying deal. Required for the
    * pipeline-snapshot stage cards to act as a live management surface
    * (clicking a card opens an editable lender dialog that writes through
