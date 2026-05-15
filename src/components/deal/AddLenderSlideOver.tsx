@@ -137,7 +137,24 @@ export function AddLenderSlideOver({
   const [confirmingLender, setConfirmingLender] = useState<MasterLender | null>(null);
   const [singleStage, setSingleStage] = useState<string>(preferredDefault);
   const [adding, setAdding] = useState(false);
-  const [activeTab, setActiveTab] = useState<'directory' | 'ai'>('directory');
+  const [aiOnly, setAiOnly] = useState(false);
+
+  // AI recommendations — only fetched once the user toggles the AI Recommended filter.
+  const { data: aiData, loading: aiLoading } = useAiRecommendedLenders(dealId, /* autoRun */ aiOnly, {
+    criteriaOverride: aiCriteriaOverride,
+  });
+
+  const aiByName = useMemo(() => {
+    const m = new Map<string, AiRecommendation>();
+    (aiData?.recommendations || []).forEach((r) => m.set(r.lenderName.toLowerCase(), r));
+    return m;
+  }, [aiData]);
+
+  const matchByNameFull = useMemo(() => {
+    const m = new Map<string, LenderMatch>();
+    matches.forEach((mt) => m.set(mt.lender.name.toLowerCase(), mt));
+    return m;
+  }, [matches]);
 
   // Reset state when reopened
   useEffect(() => {
