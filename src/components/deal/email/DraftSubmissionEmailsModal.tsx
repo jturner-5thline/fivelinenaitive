@@ -128,8 +128,7 @@ export function DraftSubmissionEmailsModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-3xl max-h-[92vh] flex flex-col z-[1310]"
-        overlayClassName="z-[1300]"
+        className="max-w-3xl max-h-[92vh] flex flex-col"
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
