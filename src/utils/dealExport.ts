@@ -1168,7 +1168,18 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
 }
 
 // Status Report Word Export
-export async function exportStatusReportToWord(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[]): Promise<void> {
+export async function exportStatusReportToWord(
+  deal: Deal,
+  configuredStages?: LenderStageConfig[],
+  configuredSubstages?: LenderStageConfig[],
+  outstandingItems?: OutstandingItem[],
+  /**
+   * Optional AI-rewritten "Key Feedback" strings keyed by lender name.
+   * When provided, the Passed Lender Reasons table uses these instead of
+   * raw lender notes. Empty string => intentionally blank for that lender.
+   */
+  passFeedbackOverrides?: Record<string, string>,
+): Promise<void> {
   const dateMMDD = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }).replace('/', '-');
   const reportTitle = `${deal.company} Debt Status Report - ${dateMMDD}`;
 
@@ -1330,11 +1341,17 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
           }),
           ...buckets.passed.map(l => {
             const { reason, feedback } = extractPassDetails(l);
+            const override = passFeedbackOverrides?.[l.name];
+            // Never fall back to raw notes — overrides win, otherwise blank.
+            const keyFeedback =
+              passFeedbackOverrides && l.name in passFeedbackOverrides
+                ? (override || '')
+                : (passFeedbackOverrides ? '' : (feedback || ''));
             return new TableRow({
               children: [
                 createDataCell(l.name),
                 createDataCell(reason || '-'),
-                createDataCell(feedback || ''),
+                createDataCell(keyFeedback),
               ],
             });
           }),
