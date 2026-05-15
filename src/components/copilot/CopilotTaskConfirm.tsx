@@ -84,6 +84,7 @@ export function CopilotTaskConfirm({ action }: Props) {
         priority,
         due_date: dueDate || null,
         task_type: taskType,
+        tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; } })(),
       };
 
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
