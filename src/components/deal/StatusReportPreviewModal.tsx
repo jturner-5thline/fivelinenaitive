@@ -825,21 +825,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             <div className="max-h-[80vh] overflow-y-auto">
               {renderInAppPreview()}
             </div>
-            {/* Off-screen light-themed printable kept in DOM so handlePrintPdf
-                can still read its innerHTML. Never visible to the user. */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                left: -99999,
-                top: 0,
-                width: 780,
-                pointerEvents: 'none',
-                opacity: 0,
-              }}
-            >
-              {renderPrintable()}
-            </div>
           </div>
         </div>
 
