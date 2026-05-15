@@ -179,6 +179,12 @@ const tools = [
           assignee_name: { type: "string", description: "Display name of the assignee (for the confirm card label only)." },
           priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
           due_date: { type: "string", description: "ISO date string YYYY-MM-DD" },
+          task_type: { type: "string", enum: ["task", "follow_up", "call", "email", "meeting"], description: "Task category. Default 'task'. Set to follow_up/call/email/meeting only when the user explicitly says so." },
+          inferred: {
+            type: "array",
+            items: { type: "string", enum: ["title", "description", "deal_id", "assignee_user_id", "due_date", "priority", "task_type"] },
+            description: "Field names you INFERRED rather than the user explicitly stating them (e.g. defaulted deal_id from page context, defaulted priority to medium). The approval card highlights inferred fields so the user can correct them.",
+          },
         },
         required: ["title"],
       },
@@ -1594,6 +1600,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { lenders, query: q };
     }
     case "create_task": {
+      // Hydrate deal_name for the approval card so the user sees the linked deal by name, not UUID.
+      let dealName: string | null = null;
+      if (args.deal_id) {
+        try {
+          const { data: d } = await supabase.from("deals").select("company").eq("id", args.deal_id).maybeSingle();
+          dealName = d?.company || null;
+        } catch { /* non-fatal */ }
+      }
       return {
         action: "confirm",
         action_type: "create_task",
@@ -1602,11 +1616,14 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           title: args.title,
           description: args.description,
           deal_id: args.deal_id,
+          deal_name: dealName,
           contact_id: args.contact_id,
           assignee_user_id: args.assignee_user_id,
           assignee_name: args.assignee_name,
           priority: args.priority || "medium",
           due_date: args.due_date,
+          task_type: args.task_type || "task",
+          inferred: Array.isArray(args.inferred) ? args.inferred : [],
         },
       };
     }
@@ -4444,7 +4461,7 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         priority: params.priority || "medium",
         due_date: dueDate,
         status: "not_started",
-        task_type: "task",
+        task_type: params.task_type || "task",
         assigned_to: assignee,
         assigned_by: userId,
         created_by: userId,
@@ -5226,6 +5243,18 @@ DELEGATED TASK ASSIGNMENT (apply when the user asks to create a task for ANOTHER
 - Approval-card UX: do NOT write a plain-text "I've assigned this to <Person>" message after the tool call — the card itself is the proposed-assignment surface and labels who it will go to. If the user later says "yes" / "confirm" / "assign it" without clicking the card, point them to the Save button on the card; never bypass it with another write tool.
 - Permissions: the create_task executor enforces who-can-assign-to-whom server-side. If it returns a permission error, surface that to the user verbatim — do NOT retry by reassigning to the current user.
 - Safety summary: (a) never assign without the user clicking Save on the card, (b) never guess between multiple name matches — always ask, (c) never silently fall back to assigning yourself, (d) never link to a deal you're not confident about.
+
+APPROVAL CARD INFERENCE FLAGS (apply to EVERY create_task call — personal, deal, or delegated):
+- create_task accepts an "inferred" string-array parameter. Populate it with the names of fields you DEFAULTED or INFERRED rather than fields the user explicitly stated. The approval card uses this to mark inferred values with a subtle "AI" tag so the user can correct them.
+- Mark a field as inferred when:
+  - deal_id was set from page context but the user did not name the deal in this turn → include "deal_id".
+  - priority was defaulted to "medium" because the user gave no urgency → include "priority".
+  - task_type was defaulted to "task" because the user gave no category → include "task_type".
+  - title was paraphrased/cleaned beyond a verbatim quote → include "title".
+  - due_date was inferred from a relative phrase (e.g. "tomorrow", "in 5 days") rather than an explicit date → include "due_date".
+  - assignee_user_id was set to anything other than the user's explicit "assign to <Person>" / "<Person> needs to" → include "assignee_user_id". Personal first-person reminders (omit assignee_user_id) do NOT count as inferred.
+  - description was synthesised by you rather than quoted from the user → include "description".
+- Do NOT mark fields the user stated literally. The list may be empty. Prefer accuracy over completeness.
 
 DATA ACCESS — IMPORTANT:
 The PRE-LOADED ... CONTEXT block above (if present) was fetched fresh from the database for the current page/entity. Treat it as authoritative and use it first. Only call tools when the user asks for fields not present in the pre-loaded block, asks about a different entity, or asks for fresh data. NEVER tell the user "I don't have that data" — check the pre-loaded block, then call a tool.

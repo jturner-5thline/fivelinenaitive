@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { getStageDisplayName } from '@/lib/copilot-utils';
 import { useCopilotStore } from '@/stores/copilotStore';
+import { CopilotTaskConfirm } from './CopilotTaskConfirm';
 
 interface ConfirmAction {
   action: 'confirm';
@@ -31,6 +32,12 @@ const iconMap: Record<string, typeof ArrowRight> = {
 };
 
 export function CopilotActionConfirm({ action }: Props) {
+  // Unified human-approval card for all AI-proposed task drafts
+  // (personal, deal-linked, and delegated all flow through here).
+  if (action.action_type === 'create_task') {
+    return <CopilotTaskConfirm action={action as any} />;
+  }
+
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled'>('pending');
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
