@@ -85,7 +85,6 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   // Single-document delete (controlled dialog so we can manage loading/state)
   const [docToDelete, setDocToDelete] = useState<DealSpaceDocument | null>(null);
   const [isDeletingSingle, setIsDeletingSingle] = useState(false);
-  const isConfirmingSingleDeleteRef = useRef(false);
 
   // Bulk selection + delete
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -219,6 +218,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   }, [documents]);
 
   const handleConfirmSingleDelete = useCallback(async (currentDoc: DealSpaceDocument) => {
+    setIsDeletingSingle(true);
     try {
       const ok = await deleteDocument(currentDoc);
       if (ok) {
@@ -229,9 +229,8 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
           return next;
         });
       }
-      setDocToDelete(null);
     } finally {
-      isConfirmingSingleDeleteRef.current = false;
+      setDocToDelete(null);
       setIsDeletingSingle(false);
     }
   }, [deleteDocument]);
@@ -525,13 +524,10 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
       <AlertDialog
         open={!!docToDelete}
         onOpenChange={(open) => {
-          if (!open && !isDeletingSingle && !isConfirmingSingleDeleteRef.current) setDocToDelete(null);
+          if (!open && !isDeletingSingle) setDocToDelete(null);
         }}
       >
-        <AlertDialogContent
-          onClick={(e) => e.stopPropagation()}
-          onPointerDownCapture={(e) => e.stopPropagation()}
-        >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete document?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -545,22 +541,15 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
                 e.stopPropagation();
                 setDocToDelete(null);
               }}
-              onPointerDownCapture={(e) => e.stopPropagation()}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={isDeletingSingle}
-              onPointerDownCapture={(e) => {
-                isConfirmingSingleDeleteRef.current = true;
-                e.stopPropagation();
-              }}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 if (!docToDelete || isDeletingSingle) return;
-                isConfirmingSingleDeleteRef.current = true;
-                setIsDeletingSingle(true);
                 void handleConfirmSingleDelete(docToDelete);
               }}
             >
