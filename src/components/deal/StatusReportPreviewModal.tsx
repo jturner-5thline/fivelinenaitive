@@ -984,6 +984,28 @@ function colHeadStyle(color: string): React.CSSProperties {
   };
 }
 
+function stageBorder(color: string): string {
+  const map: Record<string, string> = {
+    blue: '#bfdbfe', teal: '#a5f3fc', green: '#bbf7d0', red: '#fecaca',
+  };
+  return map[color] || map.blue;
+}
+function stageHeadBg(color: string): string {
+  const map: Record<string, string> = {
+    blue:  'linear-gradient(135deg,#3b82f6,#2563eb)',
+    teal:  'linear-gradient(135deg,#0ea5e9,#0d9488)',
+    green: 'linear-gradient(135deg,#22c55e,#16a34a)',
+    red:   'linear-gradient(135deg,#ef4444,#dc2626)',
+  };
+  return map[color] || map.blue;
+}
+function stageChipBg(color: string): string {
+  const map: Record<string, string> = {
+    blue: '#eff6ff', teal: '#ecfeff', green: '#f0fdf4', red: '#fef2f2',
+  };
+  return map[color] || map.blue;
+}
+
 function SectionBlock({
   title, visible, onToggle, children,
 }: { title: string; visible: boolean; onToggle: () => void; children: React.ReactNode }) {
