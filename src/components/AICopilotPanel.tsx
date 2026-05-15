@@ -899,6 +899,8 @@ export function AICopilotPanel() {
               banners: ctx.banners,
               userRole: 'member',
               companyId: '',
+              // Browser timezone so the server can normalize relative dates ("tomorrow", "in 5 days", "end of week") correctly.
+              tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; } })(),
               // @-mention override takes precedence on the server.
               contextOverride: contextOverride
                 ? { entityType: contextOverride.entityType, entityId: contextOverride.entityId, entityName: contextOverride.entityName }
