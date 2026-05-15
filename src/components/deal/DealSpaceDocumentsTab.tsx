@@ -551,7 +551,10 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={isDeletingSingle}
-              onPointerDownCapture={(e) => e.stopPropagation()}
+              onPointerDownCapture={(e) => {
+                isConfirmingSingleDeleteRef.current = true;
+                e.stopPropagation();
+              }}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
