@@ -433,7 +433,7 @@ export function LenderAnalyticsDialog({ open, onOpenChange, lenders, originStyle
                   <CalendarRange className="h-3.5 w-3.5 mr-1.5" />
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1200]">
                   {(Object.keys(DATE_LABEL) as DateRange[]).map(k => (
                     <SelectItem key={k} value={k}>{DATE_LABEL[k]}</SelectItem>
                   ))}
@@ -443,7 +443,7 @@ export function LenderAnalyticsDialog({ open, onOpenChange, lenders, originStyle
                 <SelectTrigger className="h-8 w-[130px] text-[12px] bg-background border-white/10">
                   <SelectValue placeholder="All tiers" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-[1200]">
                   <SelectItem value="all">All tiers</SelectItem>
                   {tiers.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                 </SelectContent>
