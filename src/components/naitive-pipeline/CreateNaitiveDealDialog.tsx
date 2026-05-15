@@ -259,7 +259,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   return (
     <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o && !isEdit) reset(); }}>
       {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[680px] max-h-[90vh] overflow-y-auto border-transparent glass-border-soft shadow-2xl shadow-black/20">
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Deal' : 'Create New Deal'}</DialogTitle>
         </DialogHeader>
@@ -444,9 +444,9 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
 
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)} disabled={submitting}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
+          <Button variant="gradient" onClick={handleSubmit} disabled={submitting}>
             {submitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            {isEdit ? 'Save Changes' : 'Create'}
+            {isEdit ? 'Save Changes' : 'Create Deal'}
           </Button>
         </DialogFooter>
       </DialogContent>
