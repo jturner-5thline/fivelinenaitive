@@ -27,6 +27,7 @@ import { PipelineTab } from './DailyBriefingModal';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
+import { MeetingClaapLinker, type AffiliatedDeal, type ManualClaapLink } from './MeetingClaapLinker';
 
 interface ContactInfo {
   fullName: string | null;
@@ -481,6 +482,39 @@ export function EndOfDayTab({
   const [prefillDealId, setPrefillDealId] = useState<string | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [notesByEvent, setNotesByEvent] = useState<Record<string, string>>({});
+  const [claapLinksByEvent, setClaapLinksByEvent] = useState<Record<string, ManualClaapLink[]>>({});
+
+  const matchAffiliatedDeals = useCallback(
+    (ev: CalendarEvent): AffiliatedDeal[] => {
+      const COMMON = new Set([
+        'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
+        'me.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com', 'msn.com',
+      ]);
+      const emails = (ev.attendees || [])
+        .map((a) => (a.email || '').trim().toLowerCase())
+        .filter(Boolean);
+      const matched = new Map<string, AffiliatedDeal>();
+      for (const email of emails) {
+        const domain = email.split('@')[1]?.toLowerCase();
+        if (!domain || COMMON.has(domain)) continue;
+        for (const d of deals || []) {
+          try {
+            const url = (d as any).companyUrl as string | undefined;
+            if (!url) continue;
+            const host = new URL(url.startsWith('http') ? url : `https://${url}`)
+              .hostname.toLowerCase().replace(/^www\./, '');
+            if (host === domain || domain.endsWith(`.${host}`) || host.endsWith(`.${domain}`)) {
+              matched.set(d.id, { id: d.id, name: d.name || (d as any).company || 'Untitled deal' });
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+      }
+      return Array.from(matched.values());
+    },
+    [deals],
+  );
 
   const handleCreateFollowUp = useCallback(
     (ev: CalendarEvent, attendeeEmails: string[]) => {
@@ -549,6 +583,23 @@ export function EndOfDayTab({
           note={notesByEvent[selectedEvent.id] || ''}
           onNoteChange={(v) =>
             setNotesByEvent((prev) => ({ ...prev, [selectedEvent.id]: v }))
+          }
+          affiliatedDeals={matchAffiliatedDeals(selectedEvent)}
+          manualClaapLinks={claapLinksByEvent[selectedEvent.id] || []}
+          onAddManualClaapLink={(link) =>
+            setClaapLinksByEvent((prev) => ({
+              ...prev,
+              [selectedEvent.id]: [
+                ...(prev[selectedEvent.id] || []).filter((l) => l.id !== link.id),
+                link,
+              ],
+            }))
+          }
+          onRemoveManualClaapLink={(recordingId) =>
+            setClaapLinksByEvent((prev) => ({
+              ...prev,
+              [selectedEvent.id]: (prev[selectedEvent.id] || []).filter((l) => l.id !== recordingId),
+            }))
           }
           onClose={() => setSelectedEvent(null)}
           onCreateFollowUp={() =>
