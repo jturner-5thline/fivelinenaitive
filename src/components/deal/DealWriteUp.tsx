@@ -982,17 +982,23 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     const newData = { ...data };
     const appliedFieldNames = new Set<string>();
     const citations: Record<string, any[]> = {};
+    const failedFields: string[] = [];
 
     for (const field of selectedFields) {
       const fieldName = field.field as keyof DealWriteUpData;
       // Skip user-edited fields if requested
       if (skipEdited && isFieldEdited?.(fieldName)) continue;
-      if (fieldName in newData) {
-        (newData as Record<string, unknown>)[fieldName] = field.value;
+      if (!(fieldName in newData)) continue;
+      try {
+        const coerced = coerceWriteUpFieldValue(fieldName, field.value);
+        (newData as Record<string, unknown>)[fieldName] = coerced;
         appliedFieldNames.add(fieldName);
         if ((field as any).sources && (field as any).sources.length > 0) {
           citations[fieldName] = (field as any).sources;
         }
+      } catch (err) {
+        console.error(`[Auto-fill] Failed to apply field "${fieldName}":`, err);
+        failedFields.push(fieldName);
       }
     }
 
@@ -1004,13 +1010,24 @@ export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving
     onChange(newData);
     setAutoFilledFields(appliedFieldNames);
     setFieldCitations(prev => ({ ...prev, ...citations }));
-    clearExtractedFields();
-    
-    toast.success(`Auto-filled ${appliedFieldNames.size} field${appliedFieldNames.size !== 1 ? 's' : ''}`, {
-      description: skipEdited && editedCount > 0
-        ? `Skipped ${editedCount} manually edited field${editedCount !== 1 ? 's' : ''}`
-        : 'Review the highlighted fields — hover citation chips to see sources',
-    });
+
+    if (failedFields.length === 0) {
+      clearExtractedFields();
+      setAutoFillFailedFields([]);
+      toast.success(`Auto-filled ${appliedFieldNames.size} field${appliedFieldNames.size !== 1 ? 's' : ''}`, {
+        description: skipEdited && editedCount > 0
+          ? `Skipped ${editedCount} manually edited field${editedCount !== 1 ? 's' : ''}`
+          : 'Review the highlighted fields — hover citation chips to see sources',
+      });
+    } else {
+      // Keep the dialog open so the user can see inline warnings on failed cards.
+      setAutoFillFailedFields(failedFields);
+      toast.warning(
+        `Applied ${appliedFieldNames.size} field${appliedFieldNames.size !== 1 ? 's' : ''} — ${failedFields.length} need manual selection`,
+        { description: failedFields.join(', ') },
+      );
+    }
+    return failedFields;
   };
 
   const handleApplyAutoFill = (selectedFields: ExtractedWriteUpField[]) => {
