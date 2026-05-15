@@ -340,70 +340,66 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       sectionsVisible: { ...p.sectionsVisible, [key]: !p.sectionsVisible[key] },
     }));
 
-  // ── PDF export via window.print() scoped to the report ──────────────────
+  // ── PDF export via window.print() — prints the SAME dark Naitive preview
+  // node the user is editing, so the PDF is a high-fidelity capture (no
+  // alternate light layout). We inject @media print rules that hide every
+  // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
   const handlePrintPdf = () => {
     const node = printableRef.current;
-    if (!node) return;
-    const win = window.open('', '_blank', 'width=900,height=1200');
-    if (!win) {
-      toast({
-        title: 'Popup blocked',
-        description: 'Allow popups to download the PDF.',
-        variant: 'destructive',
-      });
+    if (!node) {
+      toast({ title: 'Preview not ready', variant: 'destructive' });
       return;
     }
-    const styles = `
-      *{box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
-      body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;color:#0f172a;background:#fff;}
-      .sr-page{max-width:780px;margin:0 auto;padding:32px 36px;}
-      .sr-bar{height:6px;background:#1e3a8a;border-radius:2px;margin-bottom:16px;}
-      .sr-brand{font-size:11px;font-weight:700;letter-spacing:.18em;color:#1e3a8a;}
-      .sr-title{font-size:22px;font-weight:600;margin:4px 0 0 0;color:#0f172a;}
-      .sr-date{font-size:13px;color:#64748b;margin-top:2px;}
-      .sr-badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;}
-      .sr-badge.green{background:#dcfce7;color:#166534;}
-      .sr-badge.yellow{background:#fef9c3;color:#854d0e;}
-      .sr-badge.red{background:#fee2e2;color:#991b1b;}
-      .sr-badge.gray{background:#e2e8f0;color:#334155;}
-      .sr-section-label{font-size:11px;font-weight:700;color:#64748b;letter-spacing:.14em;text-transform:uppercase;margin:24px 0 8px;}
-      .sr-summary{border-left:3px solid #1e3a8a;padding:10px 0 10px 16px;margin:0;background:linear-gradient(180deg,#f8fafc 0%,#ffffff 100%);border-radius:6px;}
-      .sr-summary p{font-size:14px;color:#334155;line-height:1.7;margin:0 0 8px 0;}
-      .sr-summary p:last-child{margin-bottom:0;}
-      .sr-summary ul,.sr-summary ol{margin:6px 0 6px 22px;padding:0;}
-      .sr-summary li{font-size:14px;color:#334155;line-height:1.6;margin-bottom:4px;}
-      .sr-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:8px;align-items:stretch;}
-      .sr-col{border:1px solid #e2e8f0;border-radius:10px;overflow:hidden;background:#fff;display:flex;flex-direction:column;min-height:170px;box-shadow:0 1px 2px rgba(15,23,42,0.04);}
-      .sr-col-head{padding:10px 12px;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#fff;}
-      .sr-col-body{padding:10px 12px;flex:1;}
-      .sr-col-body p{margin:0 0 4px 0;font-size:12px;color:#334155;line-height:1.45;}
-      .sr-col.blue{background:linear-gradient(180deg,#eff6ff 0%,#ffffff 60%);border-color:#bfdbfe;}
-      .sr-col.blue .sr-col-head{background:linear-gradient(135deg,#3b82f6,#2563eb);}
-      .sr-col.teal{background:linear-gradient(180deg,#ecfeff 0%,#ffffff 60%);border-color:#a5f3fc;}
-      .sr-col.teal .sr-col-head{background:linear-gradient(135deg,#0ea5e9,#0d9488);}
-      .sr-col.green{background:linear-gradient(180deg,#f0fdf4 0%,#ffffff 60%);border-color:#bbf7d0;}
-      .sr-col.green .sr-col-head{background:linear-gradient(135deg,#22c55e,#16a34a);}
-      .sr-col.red{background:linear-gradient(180deg,#fef2f2 0%,#ffffff 60%);border-color:#fecaca;}
-      .sr-col.red .sr-col-head{background:linear-gradient(135deg,#ef4444,#dc2626);}
-      .sr-list{margin:0;padding:0;list-style:none;}
-      .sr-list li{font-size:14px;color:#334155;line-height:1.55;margin-bottom:5px;}
-      .sr-list .glyph{display:inline-block;width:18px;color:#1e3a8a;font-weight:700;}
-      table.sr-passed{width:100%;border-collapse:collapse;margin-top:8px;font-size:13px;}
-      table.sr-passed th,table.sr-passed td{border:1px solid #e2e8f0;padding:8px 10px;text-align:left;vertical-align:top;}
-      table.sr-passed th{background:#f8fafc;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#475569;}
-      .sr-action{background:#f8fafc;border:1px solid #e2e8f0;border-left:3px solid #1e3a8a;border-radius:6px;padding:12px 14px;font-size:14px;color:#0f172a;line-height:1.6;white-space:pre-wrap;}
-      @page { size: Letter; margin: 0.5in; }
+    const PRINT_ID = 'naitive-status-report-printroot';
+    node.setAttribute('id', PRINT_ID);
+    const prevTitle = document.title;
+    document.title = `${deal.company} — Status Report`;
+    const style = document.createElement('style');
+    style.id = 'naitive-status-report-print-style';
+    style.textContent = `
+      @page { size: Letter; margin: 0.35in; }
+      @media print {
+        html, body {
+          background: hsl(218 26% 7%) !important;
+          margin: 0 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body * { visibility: hidden !important; }
+        #${PRINT_ID}, #${PRINT_ID} * { visibility: visible !important; }
+        #${PRINT_ID} {
+          position: absolute !important;
+          left: 0 !important;
+          top: 0 !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          margin: 0 !important;
+          box-shadow: none !important;
+          border-radius: 0 !important;
+          overflow: visible !important;
+        }
+        #${PRINT_ID} * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        /* Avoid awkward breaks inside cards/sections */
+        #${PRINT_ID} table, #${PRINT_ID} tr, #${PRINT_ID} li,
+        #${PRINT_ID} .rounded-xl, #${PRINT_ID} .rounded-2xl {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+      }
     `;
-    win.document.write(
-      `<!doctype html><html><head><title>${deal.company} — Status Report</title><style>${styles}</style></head><body><div class="sr-page">${node.innerHTML}</div></body></html>`,
-    );
-    win.document.close();
-    // Give the new window a tick to layout before printing.
-    setTimeout(() => {
-      win.focus();
-      win.print();
-    }, 200);
+    document.head.appendChild(style);
+    const cleanup = () => {
+      document.title = prevTitle;
+      style.remove();
+      window.removeEventListener('afterprint', cleanup);
+    };
+    window.addEventListener('afterprint', cleanup);
+    setTimeout(() => window.print(), 80);
   };
 
   // ── Render the printable report (light-themed) ──────────────────────────
@@ -543,6 +539,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // off-screen so the existing handlePrintPdf flow keeps working.
   const renderInAppPreview = () => (
     <div
+      ref={printableRef}
       className="rounded-2xl overflow-hidden border"
       style={{
         background:
@@ -827,21 +824,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <div className="lg:sticky lg:top-0 lg:self-start">
             <div className="max-h-[80vh] overflow-y-auto">
               {renderInAppPreview()}
-            </div>
-            {/* Off-screen light-themed printable kept in DOM so handlePrintPdf
-                can still read its innerHTML. Never visible to the user. */}
-            <div
-              aria-hidden="true"
-              style={{
-                position: 'absolute',
-                left: -99999,
-                top: 0,
-                width: 780,
-                pointerEvents: 'none',
-                opacity: 0,
-              }}
-            >
-              {renderPrintable()}
             </div>
           </div>
         </div>
