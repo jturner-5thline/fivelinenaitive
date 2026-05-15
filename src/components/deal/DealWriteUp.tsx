@@ -302,8 +302,15 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
   const { hasPageAccess } = usePageAccessFlags();
   const { canPushFlex: demoCanPushFlex, canAiSync: demoCanAiSync, isDemoUser } = useDemoCapabilities();
   const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
-  const canAutoFill = hasPageAccess('autofill_deal_space') && demoCanAiSync;
-  const canGenerateMemo = hasPageAccess('generate_ai_memo') && demoCanAiSync;
+  // 5th Line proprietary actions: Auto-Fill, Generate AI Memo, and
+  // Branded Document. Gated to the 5th Line company account at the UI
+  // layer; the server-side handlers re-check the same gate.
+  const isProprietaryUser = canUse5thLineProprietaryActions(currentUser);
+  const canAutoFill =
+    isProprietaryUser && hasPageAccess('autofill_deal_space') && demoCanAiSync;
+  const canGenerateMemo =
+    isProprietaryUser && hasPageAccess('generate_ai_memo') && demoCanAiSync;
+  const canUseBrandedDocument = isProprietaryUser;
   const [isPushingToFlex, setIsPushingToFlex] = useState(false);
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [isRepublishing, setIsRepublishing] = useState(false);
