@@ -237,7 +237,7 @@ function LenderRow({
           onClick={(e) => e.stopPropagation()}
           onPointerDown={(e) => e.stopPropagation()}
         >
-          <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+          <div className="text-[10px] font-semibold uppercase tracking-wider text-white/70 mb-1.5">
             {lender.name} · note
           </div>
           <Textarea
@@ -418,7 +418,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           disabled={lenders.length === 0}
-          className="group flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors disabled:cursor-default disabled:hover:text-muted-foreground"
+          className="group flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 hover:text-white transition-colors disabled:cursor-default disabled:hover:text-muted-foreground"
           aria-expanded={expanded}
           title={hasHidden ? (expanded ? 'Collapse lenders' : 'Show all lenders') : undefined}
         >
@@ -542,7 +542,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1.5">
+                <div className="text-[10px] font-semibold uppercase tracking-wider text-white/70 mb-1.5">
                   Note · {selectedLenders.length} lender{selectedLenders.length === 1 ? '' : 's'}
                 </div>
                 <Textarea
@@ -610,7 +610,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
             const hidden = showAll ? [] : items.slice(VISIBLE_PER_BUCKET);
             return (
               <div key={b}>
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-1">
+                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-white/70 mb-1">
                   <span>{meta.label} · {items.length}</span>
                   {selectionMode && (
                     <button
