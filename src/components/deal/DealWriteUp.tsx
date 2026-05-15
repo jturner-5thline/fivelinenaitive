@@ -51,7 +51,7 @@ import { WriteUpCompanyHighlightsTab } from './writeup/WriteUpCompanyHighlightsT
 import { WriteUpKeyItemsTab } from './writeup/WriteUpKeyItemsTab';
 import { WriteUpOwnershipTab } from './writeup/WriteUpOwnershipTab';
 import { WriteUpAutoFillDialog } from './WriteUpAutoFillDialog';
-import { coerceWriteUpFieldValue } from '@/lib/writeUpFieldCoercion';
+import { coerceWriteUpFieldValue, normalizeDealWriteUpData } from '@/lib/writeUpFieldCoercion';
 import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
@@ -292,7 +292,12 @@ const WRITEUP_VIEW_MODE_KEY = 'deal-writeup-view-mode';
 
 type ViewMode = 'tabs' | 'long';
 
-export const DealWriteUp = ({ dealId, data, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle', markFieldEdited, isFieldEdited, editedCount = 0, editedFieldKeys = [], resetAllEditFlags }: DealWriteUpProps) => {
+export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCancel, isSaving, autoSaveStatus = 'idle', markFieldEdited, isFieldEdited, editedCount = 0, editedFieldKeys = [], resetAllEditFlags }: DealWriteUpProps) => {
+  // Defensive normalization: guarantees array-typed fields are always arrays
+  // before any child renders. Prevents the entire write-up tree from
+  // crashing when bad data (e.g. AI-extracted free-text in billingModels)
+  // sneaks through.
+  const data = useMemo(() => normalizeDealWriteUpData(incomingData), [incomingData]);
   const queryClient = useQueryClient();
   const { hasPageAccess } = usePageAccessFlags();
   const { canPushFlex: demoCanPushFlex, canAiSync: demoCanAiSync, isDemoUser } = useDemoCapabilities();

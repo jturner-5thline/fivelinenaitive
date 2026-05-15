@@ -124,3 +124,64 @@ export function coerceWriteUpFieldValue<K extends keyof DealWriteUpData>(
       return coerceString(value) as DealWriteUpData[K];
   }
 }
+
+/**
+ * Defensive normalizer for an entire DealWriteUpData object. Guarantees that
+ * every field whose React tree expects an array is actually an array, even if
+ * upstream data (DB row, AI extraction, legacy save) has somehow stored a
+ * scalar. Renders that call `.join()` / `.map()` / `.filter()` on these
+ * fields will never crash on bad data.
+ *
+ * This is purely a render-time safety net — values are not persisted from
+ * here, so it does not "hide" data corruption, just prevents it from
+ * crashing the component.
+ */
+export function normalizeDealWriteUpData(input: DealWriteUpData): DealWriteUpData {
+  if (!input || typeof input !== 'object') return input;
+  const out = { ...input } as unknown as Record<string, unknown>;
+
+  // String[] fields (multi-select-style)
+  const stringArrayFields: (keyof DealWriteUpData)[] = [
+    'industries',
+    'customerBase',
+    'dealTypes',
+    'billingModels',
+  ];
+  for (const k of stringArrayFields) {
+    const key = k as string;
+    const v = out[key];
+    if (Array.isArray(v)) {
+      out[key] = v
+        .filter((x) => x !== null && x !== undefined)
+        .map((x) => (typeof x === 'string' ? x : String(x)));
+    } else if (typeof v === 'string') {
+      out[key] = v
+        .split(/[;,]/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+    } else if (v === null || v === undefined || v === '') {
+      out[key] = [];
+    } else {
+      out[key] = [String(v)];
+    }
+  }
+
+  // Object[] fields — must be arrays of records, anything else becomes [].
+  const objectArrayFields: (keyof DealWriteUpData)[] = [
+    'keyItems',
+    'companyHighlights',
+    'financialYears',
+    'financialComments',
+    'team',
+    'existingDebtItems',
+  ];
+  for (const k of objectArrayFields) {
+    const key = k as string;
+    const v = out[key];
+    if (!Array.isArray(v)) {
+      out[key] = [];
+    }
+  }
+
+  return out as unknown as DealWriteUpData;
+}
