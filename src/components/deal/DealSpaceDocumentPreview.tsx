@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { memo, useState, useEffect } from 'react';
 import { Loader2, FileText, Download, ExternalLink, Table2, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -15,7 +15,7 @@ interface DealSpaceDocumentPreviewProps {
   onDownload: (doc: DealSpaceDocument) => void;
 }
 
-export function DealSpaceDocumentPreview({ 
+function DealSpaceDocumentPreviewImpl({ 
   document, 
   isOpen, 
   onClose, 
@@ -192,3 +192,5 @@ export function DealSpaceDocumentPreview({
     </Dialog>
   );
 }
+
+export const DealSpaceDocumentPreview = memo(DealSpaceDocumentPreviewImpl);
