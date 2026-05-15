@@ -879,12 +879,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPdfPreviewOpen(true)}
+            onClick={handlePrintPdf}
             disabled={exportingPdf}
             className="gap-2"
           >
             <Download className="h-4 w-4" />
-            Export as PDF
+            Print / Save as PDF
           </Button>
           {onDraftEmail && (
             <Button
@@ -909,6 +909,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             and the resolved textarea value as plain text. */}
         <div
           aria-hidden
+          className="status-report-printable"
           style={{
             position: 'fixed',
             left: -100000,
@@ -929,49 +930,66 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       </DialogContent>
     </Dialog>
 
-    {/* PDF Preview / Confirm-export dialog. Renders the same dark in-app
-        preview at full scale so the user can verify exactly what the PDF
-        will look like, then confirm download. The actual PDF is generated
-        from the off-screen printable node (kept mounted in the parent
-        dialog) so html2canvas captures a render-safe copy. */}
-    <Dialog open={pdfPreviewOpen} onOpenChange={(v) => !exportingPdf && setPdfPreviewOpen(v)}>
-      <DialogContent
-        className="max-w-4xl h-[92vh] flex flex-col p-0 gap-0 overflow-hidden border border-slate-700 shadow-2xl rounded-2xl"
-        style={{ backgroundColor: '#0d1016' }}
-      >
-        <DialogHeader className="px-6 pt-5 pb-3 shrink-0 border-b border-slate-700/60" style={{ backgroundColor: '#11151c' }}>
-          <DialogTitle className="flex items-center gap-2 text-slate-100">
-            <FileText className="h-5 w-5" />
-            PDF Preview — {deal.company}
-          </DialogTitle>
-          <p className="text-xs text-slate-400">
-            This is exactly how the downloaded PDF will look. Click Download PDF to confirm.
-          </p>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ backgroundColor: '#0d1016' }}>
-          {exportingPdf && (
-            <div className="flex items-center justify-center gap-2 py-3 text-sm text-slate-300">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating PDF…
-            </div>
-          )}
-          <div className="mx-auto" style={{ maxWidth: 880 }}>
-            {renderInAppPreview(true)}
-          </div>
-        </div>
-
-        <DialogFooter className="px-6 py-3 border-t border-slate-700/60 shrink-0 gap-2" style={{ backgroundColor: '#11151c' }}>
-          <Button variant="outline" onClick={() => setPdfPreviewOpen(false)} disabled={exportingPdf}>
-            Cancel
-          </Button>
-          <Button variant="liquid-glass" size="sm" onClick={handlePrintPdf} disabled={exportingPdf} className="gap-2">
-            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {exportingPdf ? 'Generating PDF…' : 'Download PDF'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    {/* Print-only CSS. When the browser enters print mode we hide the
+        whole app and "promote" the off-screen .status-report-printable
+        node back into normal flow so it becomes the entire printed
+        document. Sections carry keep-together break rules so each major
+        block stays on a single page whenever it physically fits. */}
+    <style>{`
+      @media print {
+        @page { size: letter; margin: 12mm; }
+        html, body {
+          background: #0d1016 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body * { visibility: hidden !important; }
+        .status-report-printable, .status-report-printable * { visibility: visible !important; }
+        .status-report-printable {
+          position: static !important;
+          left: auto !important; top: auto !important;
+          width: 100% !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          opacity: 1 !important;
+          z-index: auto !important;
+          pointer-events: auto !important;
+          background: #0d1016 !important;
+          overflow: visible !important;
+        }
+        .status-report-printable * { overflow: visible !important; max-height: none !important; }
+        /* Keep major blocks together. */
+        .status-report-printable .section-block,
+        .status-report-printable .status-summary-section,
+        .status-report-printable .pipeline-section,
+        .status-report-printable .pipeline-card,
+        .status-report-printable .milestones-section,
+        .status-report-printable .next-steps-section,
+        .status-report-printable .passed-reasons-section,
+        .status-report-printable .client-needs-section {
+          break-inside: avoid;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
+        }
+        .status-report-printable h1,
+        .status-report-printable h2,
+        .status-report-printable h3,
+        .status-report-printable .section-heading {
+          break-after: avoid;
+          page-break-after: avoid;
+        }
+        .status-report-printable tr,
+        .status-report-printable li,
+        .status-report-printable .milestone-item,
+        .status-report-printable .next-step-item {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        /* Hide leftover dialog scrim/overlays from radix portals. */
+        [data-radix-portal], [role="dialog"] { background: transparent !important; }
+        .no-print, [data-html2canvas-ignore="true"] { display: none !important; }
+      }
+    `}</style>
     </>
   );
 }
