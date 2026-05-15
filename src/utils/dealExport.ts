@@ -788,6 +788,8 @@ export interface StatusReportEditableContent {
   keyUpdates: string[];
   /** AI-generated 3–5 bullet executive summary populated when modal opens. */
   statusSummary: string[];
+  /** AI-generated narrative HTML version of the status summary (rich-text editable). */
+  statusSummaryHtml?: string;
   lenderRows: { name: string; processStage: string; focusAreas: string; challenges: string; nextAction: string }[];
   completedMilestones: string[];
   nextSteps: string[];
