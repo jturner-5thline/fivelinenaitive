@@ -871,6 +871,24 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             Generate Status Email
           </Button>
         </DialogFooter>
+        {/* Off-screen, fully expanded printable used as the source-of-truth
+            DOM for PDF/Print export. Kept renderable (not display:none) so
+            html2canvas/html2pdf can capture every section, every lender,
+            and the resolved textarea value as plain text. */}
+        <div
+          aria-hidden
+          style={{
+            position: 'fixed',
+            left: -100000,
+            top: 0,
+            width: 880,
+            pointerEvents: 'none',
+            opacity: 1,
+            zIndex: -1,
+          }}
+        >
+          {renderPrintable()}
+        </div>
       </DialogContent>
     </Dialog>
     </>
