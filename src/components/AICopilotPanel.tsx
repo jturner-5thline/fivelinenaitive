@@ -1355,6 +1355,33 @@ export function AICopilotPanel() {
                       initialContext={!msg.metadata.runId ? msg.metadata.context : undefined}
                     />
                   </div>
+                ) : msg.metadata?.kind === 'daily_rundown_ready' ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      window.dispatchEvent(new CustomEvent('open-daily-rundown'));
+                    }}
+                    style={{
+                      maxWidth: '90%',
+                      padding: '10px 14px',
+                      borderRadius: '12px 12px 12px 2px',
+                      fontSize: 14,
+                      lineHeight: 1.5,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      background: 'linear-gradient(135deg, rgba(126,184,247,0.18), rgba(126,184,247,0.08))',
+                      border: '1px solid rgba(126,184,247,0.35)',
+                      color: 'var(--foreground)',
+                      fontWeight: 500,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 8,
+                    }}
+                    aria-label="Open Daily Rundown"
+                  >
+                    <span>📰</span>
+                    <span>Your Daily Rundown is Ready</span>
+                  </button>
                 ) : msg.content === '__ERROR__' ? (
                   <div style={{
                     maxWidth: '90%', padding: '10px 14px', borderRadius: '12px 12px 12px 2px',
