@@ -597,27 +597,35 @@ const actionStyle: React.CSSProperties = {
   background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a8a',
   borderRadius: 6, padding: '12px 14px', fontSize: 14, color: '#0f172a', lineHeight: 1.6, whiteSpace: 'pre-wrap',
 };
-function badgeStyle(color: string): React.CSSProperties {
-  const map: Record<string, [string, string]> = {
-    green: ['#dcfce7', '#166534'],
-    yellow: ['#fef9c3', '#854d0e'],
-    red: ['#fee2e2', '#991b1b'],
-    gray: ['#e2e8f0', '#334155'],
+function colStyle(color: string): React.CSSProperties {
+  const tints: Record<string, { bg: string; border: string }> = {
+    blue:  { bg: 'linear-gradient(180deg,#eff6ff 0%,#ffffff 60%)', border: '#bfdbfe' },
+    teal:  { bg: 'linear-gradient(180deg,#ecfeff 0%,#ffffff 60%)', border: '#a5f3fc' },
+    green: { bg: 'linear-gradient(180deg,#f0fdf4 0%,#ffffff 60%)', border: '#bbf7d0' },
+    red:   { bg: 'linear-gradient(180deg,#fef2f2 0%,#ffffff 60%)', border: '#fecaca' },
   };
-  const [bg, fg] = map[color] || map.gray;
+  const t = tints[color] || tints.blue;
   return {
-    display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 11,
-    fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', background: bg, color: fg,
+    border: `1px solid ${t.border}`,
+    borderRadius: 10,
+    overflow: 'hidden',
+    background: t.bg,
+    display: 'flex',
+    flexDirection: 'column',
+    minHeight: 170,
+    boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
   };
-}
-function colStyle(): React.CSSProperties {
-  return { border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden', background: '#fff' };
 }
 function colHeadStyle(color: string): React.CSSProperties {
-  const bg = color === 'blue' ? '#2563eb' : color === 'green' ? '#16a34a' : color === 'yellow' ? '#ca8a04' : '#dc2626';
+  const map: Record<string, string> = {
+    blue:  'linear-gradient(135deg,#3b82f6,#2563eb)',
+    teal:  'linear-gradient(135deg,#0ea5e9,#0d9488)',
+    green: 'linear-gradient(135deg,#22c55e,#16a34a)',
+    red:   'linear-gradient(135deg,#ef4444,#dc2626)',
+  };
   return {
-    padding: '8px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
-    textTransform: 'uppercase', color: '#fff', background: bg,
+    padding: '10px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
+    textTransform: 'uppercase', color: '#fff', background: map[color] || map.blue,
   };
 }
 
