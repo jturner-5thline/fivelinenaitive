@@ -293,7 +293,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
     } catch (error) {
       console.error('Error deleting document:', error);
       toast({ 
-        title: 'Failed to delete file. Please try again.',
+        title: 'Failed to delete. Please try again.',
         description: error instanceof Error ? error.message : undefined,
         variant: 'destructive' 
       });
