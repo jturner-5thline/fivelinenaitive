@@ -455,15 +455,23 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     // un-clip the Dialog/modal/scroll-container chain that wraps it.
     const ancestors: HTMLElement[] = [];
     let p: HTMLElement | null = node.parentElement;
+    let bodyChild: HTMLElement | null = null;
     while (p && p !== document.body) {
       p.classList.add('naitive-print-ancestor');
       ancestors.push(p);
+      if (p.parentElement === document.body) bodyChild = p;
       p = p.parentElement;
     }
+    // Mark the single direct body-child branch that contains the print
+    // root, so the print CSS can `display: none` every other body child
+    // (the main app, other portals, toasters, etc.). This is what
+    // eliminates the 2-3 blank pages at the start of the PDF.
+    if (bodyChild) bodyChild.classList.add('naitive-print-root-branch');
     const cleanup = () => {
       document.title = prevTitle;
       style.remove();
       ancestors.forEach((el) => el.classList.remove('naitive-print-ancestor'));
+      if (bodyChild) bodyChild.classList.remove('naitive-print-root-branch');
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup);
