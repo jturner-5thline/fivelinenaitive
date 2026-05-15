@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { MessageSquare, Plus, Trash2, Clock, ChevronRight, Edit2, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,7 +29,7 @@ interface DealSpaceConversationHistoryProps {
   isLoading: boolean;
 }
 
-export function DealSpaceConversationHistory({
+function DealSpaceConversationHistoryImpl({
   conversations,
   selectedConversationId,
   onSelectConversation,
