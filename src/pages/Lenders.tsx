@@ -1889,7 +1889,14 @@ export default function Lenders() {
       <LenderAnalyticsDialog
         open={isAnalyticsOpen}
         onOpenChange={(v) => { setIsAnalyticsOpen(v); if (!v) setTimeout(() => analyticsOrigin.reset(), 280); }}
-        lenders={masterLenders}
+        lenders={filteredLenders}
+        totalLenderCount={masterLenders.length}
+        filtersSummary={[
+          debouncedSearchQuery.trim() ? `Search: "${debouncedSearchQuery.trim()}"` : null,
+          showActiveDealsOnly ? 'Active deals only' : null,
+          aiFilter?.names.size ? 'AI filter active' : null,
+          advancedFilters && Object.keys(advancedFilters as any).length ? 'Advanced filters' : null,
+        ].filter(Boolean).join(' · ') || undefined}
         originStyle={analyticsOrigin.contentStyle}
         originClassName={analyticsOrigin.contentClassName}
       />
