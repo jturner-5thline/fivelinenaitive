@@ -4708,6 +4708,40 @@ async function prefetchPageContext(
        const openTasks = (tasksRes?.data || []) as any[];
        const notes = (notesRes?.data || []) as any[];
        const dealContacts = (contactsRes?.data || []) as any[];
+       // Resolve assignee display names for the open tasks so the AI can
+       // answer ownership questions ("who owns next steps?") without an extra
+       // tool round-trip. Best-effort; falls back silently to the raw user_id.
+       const assigneeIds = Array.from(new Set(openTasks.map((t: any) => t.assigned_to).filter(Boolean)));
+       const assigneeMap = new Map<string, string>();
+       if (assigneeIds.length > 0) {
+         const { data: profs } = await supabase
+           .from("profiles")
+           .select("user_id, display_name, email")
+           .in("user_id", assigneeIds as string[]);
+         for (const p of (profs || []) as any[]) {
+           assigneeMap.set(p.user_id, p.display_name || p.email || "");
+         }
+       }
+       // Bucket tasks by due-date so the AI can answer "overdue", "due soon",
+       // and "next steps" questions directly from the pre-loaded block.
+       const today = new Date(); today.setHours(0, 0, 0, 0);
+       const soonCutoff = new Date(today); soonCutoff.setDate(soonCutoff.getDate() + 7);
+       const fmtTask = (t: any) => {
+         const owner = t.assigned_to ? (assigneeMap.get(t.assigned_to) || "unassigned") : "unassigned";
+         return `  • [${t.priority || "med"}] ${t.title}${t.due_date ? ` — due ${t.due_date}` : " — no due date"} — owner: ${owner}${t.status && t.status !== "open" ? ` (${t.status})` : ""}`;
+       };
+       const overdueTasks: any[] = [];
+       const dueSoonTasks: any[] = [];
+       const futureTasks: any[] = [];
+       const undatedTasks: any[] = [];
+       for (const t of openTasks) {
+         if (!t.due_date) { undatedTasks.push(t); continue; }
+         const d = new Date(t.due_date);
+         if (isNaN(d.getTime())) { undatedTasks.push(t); continue; }
+         if (d < today) overdueTasks.push(t);
+         else if (d <= soonCutoff) dueSoonTasks.push(t);
+         else futureTasks.push(t);
+       }
       const block = `
 
 PRE-LOADED DEAL CONTEXT — ${deal.company} (deal_id: ${deal.id}) (currently focused deal — answer ONLY from this deal unless the user explicitly asks for another or for a cross-deal comparison; do NOT re-fetch unless the user asks for fields you don't see):
@@ -4727,8 +4761,15 @@ ${passed.length > 0 ? `Passed: ${passed.slice(0, 8).map((l: any) => l.name).join
 Outstanding items (${outstanding.length} open):
 ${outstanding.slice(0, 10).map((o: any) => `  • [${o.priority || "med"}] ${o.description}${o.due_date ? ` — due ${o.due_date}` : ""}`).join("\n") || "  (none)"}
 
-Open tasks linked to this deal (${openTasks.length}):
-${openTasks.slice(0, 15).map((t: any) => `  • [${t.priority || "med"}] ${t.title}${t.due_date ? ` — due ${t.due_date}` : ""}${t.status ? ` (${t.status})` : ""}`).join("\n") || "  (none)"}
+Tasks linked to this deal (${openTasks.length} open) — bucketed by due date (today is ${today.toISOString().slice(0, 10)}):
+  Overdue (${overdueTasks.length}):
+${overdueTasks.slice(0, 15).map(fmtTask).join("\n") || "    (none)"}
+  Due in next 7 days (${dueSoonTasks.length}):
+${dueSoonTasks.slice(0, 15).map(fmtTask).join("\n") || "    (none)"}
+  Later / future (${futureTasks.length}):
+${futureTasks.slice(0, 10).map(fmtTask).join("\n") || "    (none)"}
+  No due date (${undatedTasks.length}):
+${undatedTasks.slice(0, 10).map(fmtTask).join("\n") || "    (none)"}
 
 Deal contacts / parties (${dealContacts.length}):
 ${dealContacts.slice(0, 12).map((c: any) => {
