@@ -56,7 +56,6 @@ import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
 import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
-import { AiDraftWriteUpSection, type DraftSection } from './writeup/AiDraftWriteUpSection';
 import { archiveApprovedWriteUp } from '@/lib/archiveWriteUp';
 import { useAuth } from '@/contexts/AuthContext';
 import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
@@ -383,7 +382,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
 
   // Generate Complete Write-Up (single primary action)
   const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
-  const [draftSections, setDraftSections] = useState<DraftSection[] | null>(null);
+  const [aiPopulated, setAiPopulated] = useState(false);
   const [draftGeneratedAt, setDraftGeneratedAt] = useState<Date | null>(null);
   const [isDraftApproved, setIsDraftApproved] = useState(false);
   const [isApprovingDraft, setIsApprovingDraft] = useState(false);
