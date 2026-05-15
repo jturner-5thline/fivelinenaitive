@@ -370,7 +370,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       container.style.left = '-10000px';
       container.style.top = '0';
       container.style.width = '880px';
-      container.style.background = 'hsl(218 26% 7%)';
+      container.style.background = '#0d1016';
       container.appendChild(cloned);
       document.body.appendChild(container);
 
@@ -379,7 +379,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           margin: [10, 10, 10, 10],
           filename: `status-report-${slugify(deal.company)}.pdf`,
           image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: 'hsl(218 26% 7%)' },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1016' },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
           pagebreak: { mode: ['css', 'legacy'] },
         } as any)
@@ -416,7 +416,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       container.style.left = '-10000px';
       container.style.top = '0';
       container.style.width = '880px';
-      container.style.background = 'hsl(218 26% 7%)';
+      container.style.background = '#0d1016';
       container.appendChild(cloned);
       document.body.appendChild(container);
       const blob: Blob = await html2pdf()
@@ -424,7 +424,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           margin: [10, 10, 10, 10],
           filename: `status-report-${slugify(deal.company)}.pdf`,
           image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: 'hsl(218 26% 7%)' },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1016' },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
           pagebreak: { mode: ['css', 'legacy'] },
         } as any)
@@ -935,7 +935,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             // Solid dark backdrop matches the preview's deepest gradient
             // stop so html2canvas captures the layered glass surface
             // exactly as it appears on screen.
-            background: 'hsl(218 26% 7%)',
+            background: '#0d1016',
             padding: 16,
           }}
         >
