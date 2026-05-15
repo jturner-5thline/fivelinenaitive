@@ -138,7 +138,7 @@ export function coerceWriteUpFieldValue<K extends keyof DealWriteUpData>(
  */
 export function normalizeDealWriteUpData(input: DealWriteUpData): DealWriteUpData {
   if (!input || typeof input !== 'object') return input;
-  const out: DealWriteUpData = { ...input };
+  const out = { ...input } as unknown as Record<string, unknown>;
 
   // String[] fields (multi-select-style)
   const stringArrayFields: (keyof DealWriteUpData)[] = [
@@ -148,21 +148,21 @@ export function normalizeDealWriteUpData(input: DealWriteUpData): DealWriteUpDat
     'billingModels',
   ];
   for (const k of stringArrayFields) {
-    const v = (out as Record<string, unknown>)[k as string];
+    const key = k as string;
+    const v = out[key];
     if (Array.isArray(v)) {
-      // Drop any non-string entries defensively.
-      (out as Record<string, unknown>)[k as string] = v
+      out[key] = v
         .filter((x) => x !== null && x !== undefined)
         .map((x) => (typeof x === 'string' ? x : String(x)));
     } else if (typeof v === 'string') {
-      (out as Record<string, unknown>)[k as string] = v
+      out[key] = v
         .split(/[;,]/)
         .map((s) => s.trim())
         .filter(Boolean);
     } else if (v === null || v === undefined || v === '') {
-      (out as Record<string, unknown>)[k as string] = [];
+      out[key] = [];
     } else {
-      (out as Record<string, unknown>)[k as string] = [String(v)];
+      out[key] = [String(v)];
     }
   }
 
@@ -176,11 +176,12 @@ export function normalizeDealWriteUpData(input: DealWriteUpData): DealWriteUpDat
     'existingDebtItems',
   ];
   for (const k of objectArrayFields) {
-    const v = (out as Record<string, unknown>)[k as string];
+    const key = k as string;
+    const v = out[key];
     if (!Array.isArray(v)) {
-      (out as Record<string, unknown>)[k as string] = [];
+      out[key] = [];
     }
   }
 
-  return out;
+  return out as unknown as DealWriteUpData;
 }
