@@ -367,6 +367,13 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
            body child that is NOT in the ancestor chain of the print root,
            so the report flows from page 1 with zero offset. */
         body > *:not(.naitive-print-root-branch) { display: none !important; }
+        /* Inside the print-root branch, hide every sibling that isn't on
+           the path to the print root — this strips the editor pane, the
+           dialog header/footer, the close button, etc. so ONLY the
+           preview section prints. */
+        .naitive-print-ancestor > *:not(.naitive-print-ancestor):not(#${PRINT_ID}) {
+          display: none !important;
+        }
         /* Unwind every ancestor of the print root so the Dialog's
            max-h/overflow-hidden/scroll-container chain cannot clip the
            printed report. position:static (NOT absolute) is critical —
