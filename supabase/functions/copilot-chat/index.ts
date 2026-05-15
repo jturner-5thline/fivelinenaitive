@@ -4427,16 +4427,64 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       const rawDue = params.due_date ? String(params.due_date).trim() : "";
       if (rawDue) {
         const lower = rawDue.toLowerCase();
-        const today = new Date();
-        today.setUTCHours(0, 0, 0, 0);
+        const tz = (params as any).tz || "America/New_York";
+        // Today in user's timezone as YYYY-MM-DD parts
+        const todayParts = (() => {
+          try {
+            const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" });
+            const p = Object.fromEntries(fmt.formatToParts(new Date()).map(x => [x.type, x.value]));
+            return { y: +p.year, m: +p.month, d: +p.day };
+          } catch { const d = new Date(); return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, d: d.getUTCDate() }; }
+        })();
+        const today = new Date(Date.UTC(todayParts.y, todayParts.m - 1, todayParts.d));
         const fmt = (d: Date) => d.toISOString().slice(0, 10);
+        const addDays = (n: number) => { const x = new Date(today); x.setUTCDate(x.getUTCDate() + n); return x; };
+        const weekdayMap: Record<string, number> = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, weds: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6 };
+        const todayDow = today.getUTCDay();
+        const nextOf = (target: number, force7 = false) => {
+          let delta = (target - todayDow + 7) % 7;
+          if (delta === 0 || force7) delta = delta === 0 ? 7 : delta;
+          return addDays(delta);
+        };
         if (/^\d{4}-\d{2}-\d{2}/.test(rawDue)) {
           dueDate = rawDue.slice(0, 10);
-        } else if (lower === "today") dueDate = fmt(today);
-        else if (lower === "tomorrow") { const d = new Date(today); d.setUTCDate(d.getUTCDate() + 1); dueDate = fmt(d); }
-        else {
-          const parsed = new Date(rawDue);
-          if (!isNaN(parsed.getTime())) dueDate = parsed.toISOString().slice(0, 10);
+        } else if (lower === "today" || lower === "this afternoon" || lower === "tonight" || lower === "later today" || lower === "eod") {
+          dueDate = fmt(today);
+        } else if (lower === "tomorrow" || lower === "tmrw") {
+          dueDate = fmt(addDays(1));
+        } else if (lower === "next week") {
+          dueDate = fmt(nextOf(1, true)); // upcoming Monday in next week
+        } else if (lower === "end of week" || lower === "eow") {
+          // Friday this week (or today if Friday, or next Friday if Sat/Sun)
+          const delta = todayDow === 5 ? 0 : todayDow === 6 ? 6 : (5 - todayDow + 7) % 7;
+          dueDate = fmt(addDays(delta));
+        } else {
+          // "in N days" / "in N weeks"
+          const m1 = lower.match(/^in\s+(\d+)\s+(day|days|week|weeks)$/);
+          if (m1) {
+            const n = parseInt(m1[1], 10);
+            const mult = m1[2].startsWith("week") ? 7 : 1;
+            dueDate = fmt(addDays(n * mult));
+          } else {
+            // "next <weekday>"
+            const m2 = lower.match(/^next\s+(\w+)$/);
+            if (m2 && weekdayMap[m2[1]] !== undefined) {
+              dueDate = fmt(nextOf(weekdayMap[m2[1]], true));
+            } else if (weekdayMap[lower] !== undefined) {
+              // bare weekday → next occurrence
+              dueDate = fmt(nextOf(weekdayMap[lower]));
+            } else if (/^this\s+\w+$/.test(lower)) {
+              const wd = lower.replace(/^this\s+/, "");
+              if (weekdayMap[wd] !== undefined) {
+                const target = weekdayMap[wd];
+                const delta = target >= todayDow ? target - todayDow : (target - todayDow + 7);
+                dueDate = fmt(addDays(delta));
+              }
+            } else {
+              const parsed = new Date(rawDue);
+              if (!isNaN(parsed.getTime())) dueDate = parsed.toISOString().slice(0, 10);
+            }
+          }
         }
       }
 
