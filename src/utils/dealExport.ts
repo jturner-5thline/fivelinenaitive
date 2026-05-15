@@ -3,6 +3,7 @@ import autoTable from 'jspdf-autotable';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, HeadingLevel, BorderStyle, AlignmentType, PageOrientation } from 'docx';
 import { saveAs } from 'file-saver';
 import { Deal, DealStatus, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG, LENDER_TRACKING_STATUS_CONFIG } from '@/types/deal';
+import { bucketLenders, isExcludedFromClientReport, extractPassDetails } from '@/lib/lenderStatusBuckets';
 
 // Safe label helpers – fall back to the raw ID (formatted) when custom stages are used
 const formatId = (id: string) => id.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
