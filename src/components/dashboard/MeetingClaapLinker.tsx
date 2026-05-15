@@ -172,7 +172,9 @@ export function MeetingClaapLinker({
           </PopoverTrigger>
           <PopoverContent
             align="end"
-            className="w-[320px] p-0 bg-background/95 backdrop-blur-xl border-white/10"
+            sideOffset={6}
+            collisionPadding={12}
+            className="w-[320px] p-0 bg-background/95 backdrop-blur-xl border-white/10 z-[1400] pointer-events-auto"
           >
             {pending ? (
               <div className="p-3 space-y-3">
