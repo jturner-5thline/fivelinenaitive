@@ -1169,7 +1169,26 @@ export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderSta
 export async function exportStatusReportToWord(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[]): Promise<void> {
   const dateMMDD = new Date().toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' }).replace('/', '-');
   const reportTitle = `${deal.company} Debt Status Report - ${dateMMDD}`;
-  
+
+  // Strip HTML tags + entities so notes render as real bullets, not "<ul><li>" text.
+  const stripHtml = (s: string) =>
+    (s || '')
+      .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+      .replace(/<\/(p|li|div|h[1-6])\s*>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '• ')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'");
+
+  const noteBullets = stripHtml(deal.notes || '')
+    .split(/\n+/)
+    .map(l => l.replace(/^[\s•\-*]+/, '').trim())
+    .filter(Boolean);
+
   const children: any[] = [
     // Title
     new Paragraph({
@@ -1207,23 +1226,48 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
       heading: HeadingLevel.HEADING_1,
       spacing: { before: 300, after: 200 },
     }),
-
-    // Deal Status Content
-    new Paragraph({
-      children: [
-        new TextRun({
-          text: deal.notes || 'No status notes available',
-          size: 22,
-          italics: !deal.notes,
-          color: deal.notes ? '000000' : '888888',
-        }),
-      ],
-      spacing: { after: 400 },
-    }),
   ];
 
-  // Lenders Section
-  if (deal.lenders && deal.lenders.length > 0) {
+  // Deal Status Content — render parsed bullets instead of literal HTML.
+  if (noteBullets.length > 0) {
+    for (const b of noteBullets) {
+      children.push(new Paragraph({
+        bullet: { level: 0 },
+        children: [new TextRun({ text: b, size: 22 })],
+        spacing: { after: 80 },
+      }));
+    }
+  } else {
+    children.push(new Paragraph({
+      children: [new TextRun({ text: 'No status notes available', size: 22, italics: true, color: '888888' })],
+      spacing: { after: 400 },
+    }));
+  }
+
+  // Lender Pipeline Snapshot — counts mirror the modal preview buckets.
+  const buckets = bucketLenders(deal.lenders, configuredStages);
+  if ((deal.lenders || []).length > 0) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'Lender Pipeline Snapshot', bold: true, size: 28 })],
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 400, after: 200 },
+      }),
+      new Paragraph({
+        children: [
+          new TextRun({ text: `On Deck: ${buckets.onDeck.length}    `, size: 22, bold: true }),
+          new TextRun({ text: `In Review: ${buckets.inReview.length}    `, size: 22, bold: true }),
+          new TextRun({ text: `Terms Issued: ${buckets.termsIssued.length}    `, size: 22, bold: true }),
+          new TextRun({ text: `Passed: ${buckets.passed.length}`, size: 22, bold: true }),
+        ],
+        spacing: { after: 200 },
+      }),
+    );
+  }
+
+  // Lenders Section — client-facing: hide Excluded / On Hold; columns Lender | Stage | Notes.
+  const clientLenders = (deal.lenders || []).filter(l => !isExcludedFromClientReport(l, configuredStages));
+  if (clientLenders.length > 0) {
     children.push(
       new Paragraph({
         children: [
@@ -1241,32 +1285,21 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
         rows: [
           new TableRow({
             children: [
-              createHeaderCell('Lender Name'),
+              createHeaderCell('Lender'),
               createHeaderCell('Stage'),
-              createHeaderCell('Substage'),
-              createHeaderCell('Tracking'),
-              createHeaderCell('Pass Reason'),
               createHeaderCell('Notes'),
             ],
           }),
-          ...deal.lenders.map(lender => {
+          ...clientLenders.map(lender => {
             const stageName = configuredStages?.find(s => s.id === lender.stage)?.label || 
                               LENDER_STAGE_CONFIG[lender.stage]?.label || 
                               lender.stage;
-            const substageName = lender.substage 
-              ? (configuredSubstages?.find(s => s.id === lender.substage)?.label || lender.substage)
-              : '-';
-            const passReason = lender.trackingStatus === 'passed' && lender.passReason 
-              ? lender.passReason 
-              : '-';
+            const cleanNotes = stripHtml(lender.notes || '').replace(/\s+/g, ' ').trim() || '-';
             return new TableRow({
               children: [
                 createDataCell(lender.name),
                 createDataCell(stageName),
-                createDataCell(substageName),
-                createDataCell(LENDER_TRACKING_STATUS_CONFIG[lender.trackingStatus]?.label || lender.trackingStatus),
-                createDataCell(passReason),
-                createDataCell(lender.notes || '-'),
+                createDataCell(cleanNotes),
               ],
             });
           }),
@@ -1275,8 +1308,42 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
     );
   }
 
-  // Outstanding Items Section
-  if (outstandingItems && outstandingItems.length > 0) {
+  // Passed Lender Reasons — client-friendly Lender | Primary Reason | Key Feedback.
+  if (buckets.passed.length > 0) {
+    children.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'Passed Lender Reasons', bold: true, size: 28 })],
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 400, after: 200 },
+      }),
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          new TableRow({
+            children: [
+              createHeaderCell('Lender'),
+              createHeaderCell('Primary Reason'),
+              createHeaderCell('Key Feedback'),
+            ],
+          }),
+          ...buckets.passed.map(l => {
+            const { reason, feedback } = extractPassDetails(l);
+            return new TableRow({
+              children: [
+                createDataCell(l.name),
+                createDataCell(reason || '-'),
+                createDataCell(feedback || ''),
+              ],
+            });
+          }),
+        ],
+      }),
+    );
+  }
+
+  // Outstanding Items — client-facing: incomplete items only, numbered list.
+  const pendingItems = (outstandingItems || []).filter(i => !i.completed && !i.received);
+  if (pendingItems.length > 0) {
     children.push(
       new Paragraph({
         children: [
@@ -1289,42 +1356,10 @@ export async function exportStatusReportToWord(deal: Deal, configuredStages?: Le
         heading: HeadingLevel.HEADING_1,
         spacing: { before: 300, after: 200 },
       }),
-      new Table({
-        width: { size: 100, type: WidthType.PERCENTAGE },
-        rows: [
-          new TableRow({
-            children: [
-              createHeaderCell('Item'),
-              createHeaderCell('Status'),
-              createHeaderCell('Requested By'),
-              createHeaderCell('Completed'),
-            ],
-          }),
-          ...outstandingItems.map(item => {
-            const status = item.received && item.approved 
-              ? 'Completed' 
-              : item.approved 
-                ? 'Approved' 
-                : item.received 
-                  ? 'Received' 
-                  : 'Requested';
-            const requestedBy = Array.isArray(item.requestedBy) 
-              ? item.requestedBy.join(', ') 
-              : item.requestedBy || '-';
-            const completedDate = item.completedAt 
-              ? formatDate(item.completedAt) 
-              : '-';
-            return new TableRow({
-              children: [
-                createDataCell(item.text),
-                createDataCell(status),
-                createDataCell(requestedBy),
-                createDataCell(completedDate),
-              ],
-            });
-          }),
-        ],
-      })
+      ...pendingItems.map((item, idx) => new Paragraph({
+        children: [new TextRun({ text: `${idx + 1}. ${stripHtml(item.text)}`, size: 22 })],
+        spacing: { after: 80 },
+      })),
     );
   }
 
