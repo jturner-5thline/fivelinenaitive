@@ -600,7 +600,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // off-screen so the existing handlePrintPdf flow keeps working.
   const renderInAppPreview = () => (
     <div
-      ref={printableRef}
       className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
         // Layered gradient shell — matches the deal pop-up surface treatment:
