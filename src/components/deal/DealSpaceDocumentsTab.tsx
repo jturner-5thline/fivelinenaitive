@@ -69,7 +69,7 @@ const getFileIcon = (contentType: string | null, name: string) => {
 };
 
 export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
-  const { documents, isLoading, isUploading, uploadDocument, deleteDocument, getDownloadUrl } = useDealSpaceDocuments(dealId);
+  const { documents, isLoading, isUploading, uploadDocument, deleteDocument, removeFromDealSpace, deleteEntirely, getDownloadUrl } = useDealSpaceDocuments(dealId);
   const { isExtracting, extractingDocId, result: extractionResult, extractDocument, clearResult } = useDealDocumentExtraction(dealId);
   
   const [isDragging, setIsDragging] = useState(false);
@@ -84,7 +84,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
 
   // Single-document delete (controlled dialog so we can manage loading/state)
   const [docToDelete, setDocToDelete] = useState<DealSpaceDocument | null>(null);
-  const [isDeletingSingle, setIsDeletingSingle] = useState(false);
+  const [singleDeleteAction, setSingleDeleteAction] = useState<null | 'remove' | 'delete'>(null);
 
   // Bulk selection + delete
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -217,10 +217,10 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
     });
   }, [documents]);
 
-  const handleConfirmSingleDelete = useCallback(async (currentDoc: DealSpaceDocument) => {
-    setIsDeletingSingle(true);
+  const handleRemoveFromDealSpace = useCallback(async (currentDoc: DealSpaceDocument) => {
+    setSingleDeleteAction('remove');
     try {
-      const ok = await deleteDocument(currentDoc);
+      const ok = await removeFromDealSpace(currentDoc);
       if (ok) {
         setSelectedIds(prev => {
           if (!prev.has(currentDoc.id)) return prev;
@@ -228,12 +228,30 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
           next.delete(currentDoc.id);
           return next;
         });
+        setDocToDelete(null);
       }
     } finally {
-      setDocToDelete(null);
-      setIsDeletingSingle(false);
+      setSingleDeleteAction(null);
     }
-  }, [deleteDocument]);
+  }, [removeFromDealSpace]);
+
+  const handleDeleteEntirely = useCallback(async (currentDoc: DealSpaceDocument) => {
+    setSingleDeleteAction('delete');
+    try {
+      const ok = await deleteEntirely(currentDoc);
+      if (ok) {
+        setSelectedIds(prev => {
+          if (!prev.has(currentDoc.id)) return prev;
+          const next = new Set(prev);
+          next.delete(currentDoc.id);
+          return next;
+        });
+        setDocToDelete(null);
+      }
+    } finally {
+      setSingleDeleteAction(null);
+    }
+  }, [deleteEntirely]);
 
   const handleConfirmBulkDelete = useCallback(async () => {
     const targets = documents.filter(d => selectedIds.has(d.id));
@@ -520,51 +538,79 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
         onDownload={handleDownload}
       />
 
-      {/* Single-document delete confirmation */}
-      <AlertDialog
+      {/* Single-document delete: two-path destructive modal */}
+      <Dialog
         open={!!docToDelete}
         onOpenChange={(open) => {
-          if (!open && !isDeletingSingle) setDocToDelete(null);
+          if (!open && singleDeleteAction === null) setDocToDelete(null);
         }}
       >
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete document?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete &quot;{docToDelete?.name}&quot; from Deal Space.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel
-              disabled={isDeletingSingle}
+        <DialogContent onClick={(e) => e.stopPropagation()}>
+          <DialogHeader>
+            <DialogTitle>Delete document</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Choose whether to remove this file only from this deal space, or
+            delete it entirely from the Data Room. Removing from Deal Space
+            will also stop it from feeding Ask AI for this deal.
+          </p>
+          {docToDelete && (
+            <p className="text-xs text-muted-foreground truncate">
+              File: <span className="font-medium text-foreground">{docToDelete.name}</span>
+            </p>
+          )}
+          <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              disabled={singleDeleteAction !== null}
               onClick={(e) => {
                 e.stopPropagation();
                 setDocToDelete(null);
               }}
             >
               Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              disabled={isDeletingSingle}
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={singleDeleteAction !== null}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                if (!docToDelete || isDeletingSingle) return;
-                void handleConfirmSingleDelete(docToDelete);
+                if (!docToDelete) return;
+                void handleDeleteEntirely(docToDelete);
               }}
             >
-              {isDeletingSingle ? (
+              {singleDeleteAction === 'delete' ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   Deleting…
                 </>
               ) : (
-                'Delete'
+                'Delete entirely from Data Room'
               )}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+            <Button
+              variant="default"
+              disabled={singleDeleteAction !== null}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (!docToDelete) return;
+                void handleRemoveFromDealSpace(docToDelete);
+              }}
+            >
+              {singleDeleteAction === 'remove' ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Removing…
+                </>
+              ) : (
+                'Remove from Deal Space'
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Bulk delete confirmation */}
       <AlertDialog
