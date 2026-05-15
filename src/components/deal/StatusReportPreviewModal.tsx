@@ -345,7 +345,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   /**
    * Direct download — no print dialog, no blank intermediary screen.
@@ -361,47 +360,26 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     return `status-report-${slugify(deal.company)}-${date}.pdf`;
   };
 
-  const handlePrintPdf = async () => {
-    const node = printableRef.current;
-    if (!node) {
-      toast({ title: 'Preview not ready', variant: 'destructive' });
-      return;
-    }
-    setExportingPdf(true);
-    let container: HTMLDivElement | null = null;
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const cloned = node.cloneNode(true) as HTMLElement;
-      // Render-safe staging container — kept on-screen (off-viewport, but
-      // not display:none) so html2canvas can paint every pixel reliably.
-      container = document.createElement('div');
-      container.style.position = 'fixed';
-      container.style.left = '-10000px';
-      container.style.top = '0';
-      container.style.width = '880px';
-      container.style.background = '#0d1016';
-      container.appendChild(cloned);
-      document.body.appendChild(container);
-
-      await html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: pdfFilename(),
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1016' },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] },
-        } as any)
-        .from(cloned)
-        .save();
-      setPdfPreviewOpen(false);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not export PDF';
-      toast({ title: 'Export failed', description: msg, variant: 'destructive' });
-    } finally {
-      if (container && container.parentNode) container.parentNode.removeChild(container);
-      setExportingPdf(false);
-    }
+  /**
+   * Native print path. The off-screen `.status-report-printable` node
+   * (rendered at the bottom of the dialog) is the same dark in-app
+   * preview component the user sees, with `isExport=true` so it expands
+   * lender lists and drops "Click to manage". Print CSS hides every
+   * other element on the page during printing and forces the printable
+   * node back into normal flow with backgrounds/colors preserved, so
+   * the browser's print preview renders an exact copy of the in-app
+   * report. The user can then choose Save as PDF in the print dialog.
+   */
+  const handlePrintPdf = () => {
+    const prevTitle = document.title;
+    document.title = `status-report-${slugify(deal.company)}-${new Date().toISOString().slice(0, 10)}`;
+    const restore = () => {
+      document.title = prevTitle;
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    // Defer to next frame so the title swap lands before the dialog opens.
+    requestAnimationFrame(() => window.print());
   };
 
   // ── Generate the status report as a PDF File (for email attachment) ──
