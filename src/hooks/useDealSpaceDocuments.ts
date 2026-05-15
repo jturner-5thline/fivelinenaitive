@@ -250,7 +250,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
     if (isDemoSeedDocId(doc.id)) {
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       toast({ title: 'Document removed' });
-      return;
+      return true;
     }
     try {
       // Internal (vdr_documents) and Data Room (deal_attachments) files
@@ -262,14 +262,14 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
           title: 'Open the Data Room to delete',
           description: 'This file lives in the Internal section of the Data Room. Delete it there and it will disappear from Deal Space automatically.',
         });
-        return;
+        return false;
       }
       if (doc.source === 'data_room') {
         toast({
           title: 'Open the Data Room to delete',
           description: 'This file lives in the Data Room. Delete it there to remove it from Deal Space.',
         });
-        return;
+        return false;
       }
 
       // Delete from storage
@@ -289,13 +289,15 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
 
       setDocuments(prev => prev.filter(d => d.id !== doc.id));
       toast({ title: 'Document deleted', description: `${doc.name} removed from Deal Space` });
+      return true;
     } catch (error) {
       console.error('Error deleting document:', error);
       toast({ 
-        title: 'Delete failed', 
-        description: error instanceof Error ? error.message : 'Failed to delete document',
+        title: 'Failed to delete file. Please try again.',
+        description: error instanceof Error ? error.message : undefined,
         variant: 'destructive' 
       });
+      return false;
     }
   }, []);
 
