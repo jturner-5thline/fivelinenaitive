@@ -85,6 +85,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   // Single-document delete (controlled dialog so we can manage loading/state)
   const [docToDelete, setDocToDelete] = useState<DealSpaceDocument | null>(null);
   const [isDeletingSingle, setIsDeletingSingle] = useState(false);
+  const isConfirmingSingleDeleteRef = useRef(false);
 
   // Bulk selection + delete
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -217,10 +218,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
     });
   }, [documents]);
 
-  const handleConfirmSingleDelete = useCallback(async () => {
-    if (!docToDelete) return;
-    const currentDoc = docToDelete;
-    setIsDeletingSingle(true);
+  const handleConfirmSingleDelete = useCallback(async (currentDoc: DealSpaceDocument) => {
     try {
       const ok = await deleteDocument(currentDoc);
       if (ok) {
@@ -233,9 +231,10 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
       }
       setDocToDelete(null);
     } finally {
+      isConfirmingSingleDeleteRef.current = false;
       setIsDeletingSingle(false);
     }
-  }, [docToDelete, deleteDocument]);
+  }, [deleteDocument]);
 
   const handleConfirmBulkDelete = useCallback(async () => {
     const targets = documents.filter(d => selectedIds.has(d.id));
