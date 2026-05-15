@@ -1204,9 +1204,9 @@ function DarkLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DarkSection({ label, children }: { label: string; children: React.ReactNode }) {
+function DarkSection({ label, children, sectionClassName }: { label: string; children: React.ReactNode; sectionClassName?: string }) {
   return (
-    <div>
+    <div className={sectionClassName}>
       <DarkLabel>{label}</DarkLabel>
       <div
         className="mt-2 rounded-xl px-4 py-3 border-l-2 border-l-blue-400/70"
