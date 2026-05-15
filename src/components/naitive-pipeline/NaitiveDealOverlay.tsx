@@ -364,7 +364,17 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           variant="ghost"
           size="icon"
           className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur hover:bg-background"
-          onClick={animateClose}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            animateClose();
+          }}
+          onPointerDown={(e) => {
+            // Prevent the pointerdown from leaking to underlying page controls
+            // (e.g., the "New Deal" button) while the overlay is animating closed.
+            e.stopPropagation();
+          }}
+          onMouseDown={(e) => e.stopPropagation()}
           aria-label="Close"
           title="Close (Esc)"
         >
