@@ -567,6 +567,39 @@ export function AICopilotPanel() {
     };
   }, [isOpen]);
 
+  // ── Click-outside-to-close + Escape-to-minimize ─────────────────────
+  // The panel is non-modal (no scrim), but we still want canonical
+  // dismiss-on-outside-click behavior. The toggle bar shares the same
+  // portal wrapper (data-copilot-root) so clicks on the launcher are
+  // treated as in-bounds and don't cause a double-toggle. Clicks inside
+  // any Radix overlay opened from the panel (popovers, dialogs, etc.)
+  // are also preserved.
+  useEffect(() => {
+    if (!isOpen || isMinimized) return;
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (!target) return;
+      const insidePanel = panelRef.current?.contains(target) ?? false;
+      const insideCopilotRoot = !!target.closest?.('[data-copilot-root]');
+      const insideRadixOverlay =
+        !!target.closest?.('[data-radix-popper-content-wrapper]') ||
+        !!target.closest?.('[role="dialog"]') ||
+        !!target.closest?.('[role="menu"]') ||
+        !!target.closest?.('[role="listbox"]');
+      if (insidePanel || insideCopilotRoot || insideRadixOverlay) return;
+      minimizePanel();
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') minimizePanel();
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, isMinimized, minimizePanel]);
+
   // Per-deal AI memory (loads last ~10 exchanges; persists new ones).
   const dealIdFromPath = (() => {
     const parts = location.pathname.split('/').filter(Boolean);
