@@ -820,7 +820,22 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
           {/* Live printable preview */}
           <div className="lg:sticky lg:top-0 lg:self-start">
-            <div className="rounded-lg bg-white border border-slate-300 shadow-lg p-6 max-h-[80vh] overflow-y-auto">
+            <div className="max-h-[80vh] overflow-y-auto">
+              {renderInAppPreview()}
+            </div>
+            {/* Off-screen light-themed printable kept in DOM so handlePrintPdf
+                can still read its innerHTML. Never visible to the user. */}
+            <div
+              aria-hidden="true"
+              style={{
+                position: 'absolute',
+                left: -99999,
+                top: 0,
+                width: 780,
+                pointerEvents: 'none',
+                opacity: 0,
+              }}
+            >
               {renderPrintable()}
             </div>
           </div>
@@ -839,6 +854,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    {manageBucket && onUpdateLender && (
+      <LenderStageManageDialog
+        open={!!manageBucket}
+        onOpenChange={(o) => { if (!o) setManageBucket(null); }}
+        bucketKey={manageBucket}
+        bucketLabel={bucketMeta[manageBucket].label}
+        bucketAccent={bucketMeta[manageBucket].color}
+        lenders={bucketMeta[manageBucket].items as DealLender[]}
+        configuredStages={configuredStages}
+        onUpdateLender={onUpdateLender}
+      />
+    )}
+    </>
   );
 }
 
