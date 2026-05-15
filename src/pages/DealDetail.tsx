@@ -3928,8 +3928,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
-              <div className="flex gap-6">
-              <div className="w-[70%] space-y-6">
+              <div className="w-full space-y-6">
               <DealDataUpdateBanner dealId={id} />
               <AiRecommendedLendersSection
                 dealId={id}
@@ -4075,6 +4074,25 @@ export default function DealDetail() {
                             <Plus className="h-4 w-4" />
                             Add Lender
                           </Button>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="gap-2 h-8"
+                                aria-label="Activity"
+                                title="Activity"
+                              >
+                                <Activity className="h-4 w-4" />
+                                Activity
+                              </Button>
+                            </PopoverTrigger>
+                            <PopoverContent align="end" className="w-[420px] max-h-[70vh] overflow-y-auto p-3">
+                              <div className="text-sm font-semibold mb-2">Activity</div>
+                              <ActivityTimeline activities={activities} />
+                            </PopoverContent>
+                          </Popover>
                       </div>
                     </div>
                   </CardHeader>
@@ -4836,19 +4854,6 @@ export default function DealDetail() {
                 </Card>
               </div>
 
-              <div className="w-[30%]">
-                   {/* Activity Timeline */}
-                    <Card className="h-full flex flex-col">
-                      <CardHeader className="pb-3 flex-shrink-0">
-                          <CardTitle className="text-lg">
-                            Activity
-                          </CardTitle>
-                      </CardHeader>
-                        <CardContent className="pt-0 overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }} onMouseEnter={(e) => { e.currentTarget.style.scrollbarColor = 'hsl(var(--border)) transparent'; }} onMouseLeave={(e) => { e.currentTarget.style.scrollbarColor = 'transparent transparent'; }}>
-                          <ActivityTimeline activities={activities} />
-                        </CardContent>
-                    </Card>
-              </div>
               </div>
                 </TabsContent>
 
