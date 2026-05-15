@@ -299,10 +299,25 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
 
   const overlay = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
+      className="fixed inset-0 z-[1200] flex items-center justify-center"
       role="dialog"
       aria-modal="true"
       aria-label={`Deal details for ${deal.company || 'deal'}`}
+      onPointerDownCapture={(e) => {
+        // While the overlay is animating closed, swallow every pointer
+        // event so a stray click can't reach background controls (e.g.
+        // the page's "+ New Deal" button) once the panel collapses.
+        if (isClosing) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
+      onClickCapture={(e) => {
+        if (isClosing) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      }}
     >
       {/* Backdrop */}
       <div
@@ -318,8 +333,29 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           opacity: reduceMotion ? 1 : isClosing ? 0 : 1,
           transition: reduceMotion ? undefined : 'opacity 220ms ease-out',
         }}
-        onClick={animateClose}
+        onClick={(e) => {
+          e.stopPropagation();
+          animateClose();
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
       />
+
+      {/* Pointer-event shield — stays interactive for the entire close
+          animation window. The panel scales down toward the originating
+          tile during this 240ms, but the shield keeps the whole viewport
+          unreachable so a stray click can't land on background controls
+          such as the page's "+ New Deal" button. */}
+      {isClosing && (
+        <div
+          aria-hidden
+          className="absolute inset-0 z-[55]"
+          style={{ background: 'transparent' }}
+          onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onPointerDownCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+          onMouseDownCapture={(e) => { e.preventDefault(); e.stopPropagation(); }}
+        />
+      )}
 
       {/* Panel — near full-screen canvas. Sits above all app chrome
           (sidebar / global header) via z-[100] on the wrapper. */}
@@ -363,7 +399,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
           ref={closeBtnRef}
           variant="ghost"
           size="icon"
-          className="absolute top-2 right-2 z-10 h-8 w-8 rounded-full bg-background/70 backdrop-blur hover:bg-background"
+          className="absolute top-2 right-2 z-[60] h-8 w-8 rounded-full bg-background/70 backdrop-blur hover:bg-background"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -375,6 +411,8 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             e.stopPropagation();
           }}
           onMouseDown={(e) => e.stopPropagation()}
+          onPointerUp={(e) => e.stopPropagation()}
+          onMouseUp={(e) => e.stopPropagation()}
           aria-label="Close"
           title="Close (Esc)"
         >
