@@ -5515,6 +5515,13 @@ export default function DealDetail() {
         configuredStages={configuredStages}
         defaultStageId={preferences.defaultLenderStage}
         onAddLender={addLenderWithStage}
+        dealId={id}
+        aiCriteriaOverride={{
+          dealValue: deal?.value || undefined,
+          dealTypes: deal?.dealTypes || dealWriteUpData.dealTypes || undefined,
+          industry: savedMatchingCriteria.industry || dealWriteUpData.industries?.join(', ') || undefined,
+          geo: dealWriteUpData.location || undefined,
+        }}
       />
 
       {/* Lenders Kanban Dialog */}
