@@ -192,3 +192,5 @@ function DealSpaceDocumentPreviewImpl({
     </Dialog>
   );
 }
+
+export const DealSpaceDocumentPreview = memo(DealSpaceDocumentPreviewImpl);
