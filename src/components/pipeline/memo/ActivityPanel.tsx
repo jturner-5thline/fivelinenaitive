@@ -48,7 +48,7 @@ export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps
 
   return (
     <div className="p-5 min-w-0 self-start">
-      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground mb-3">
+      <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 mb-3">
         Activity · Last 24h
       </div>
 
