@@ -6,6 +6,7 @@ import { toast } from '@/hooks/use-toast';
 import DOMPurify from 'dompurify';
 import type { Deal } from '@/types/deal';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
+import { bucketLenders, extractPassDetails } from '@/lib/lenderStatusBuckets';
 
 interface Props {
   open: boolean;
@@ -34,6 +35,7 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
   const company = deal.company || deal.name || 'Deal';
 
   const keyUpdates = (content.keyUpdates || []).filter(Boolean);
+  const statusSummary = (content.statusSummary || []).filter(Boolean);
   const milestones = (content.completedMilestones || []).filter(Boolean);
   const nextSteps = (content.nextSteps || []).filter(Boolean);
   const action = (content.actionItems || '').trim();
@@ -43,13 +45,12 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
   // lenders are intentionally collapsed to a count line so the email never
   // turns into a wall of declined institutions — the client cares about
   // who is moving forward, not the long tail of "no".
-  const lenders = deal.lenders || [];
-  const onDeck = lenders.filter((l) => l.trackingStatus === 'on-deck');
-  const inReview = lenders.filter((l) => l.trackingStatus === 'active');
-  const termsIssued = lenders.filter(
-    (l) => l.stage === 'term-sheets' || l.stage === 'draft-terms',
-  );
-  const passedCount = lenders.filter((l) => l.trackingStatus === 'passed').length;
+  const buckets = bucketLenders(deal.lenders);
+  const onDeck = buckets.onDeck;
+  const inReview = buckets.inReview;
+  const termsIssued = buckets.termsIssued;
+  const passedItems = buckets.passed;
+  const passedCount = passedItems.length;
 
   // Shared design tokens — restrained palette, single accent, generous rhythm.
   const FONT = `-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif`;
@@ -101,8 +102,8 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
   // top-to-bottom so clients can see exactly who sits where.
   const pipelineStageBlock = (
     label: string,
-    items: typeof lenders,
-    opts: { tone?: 'primary' | 'muted' } = {},
+    items: typeof onDeck,
+    opts: { tone?: 'primary' | 'muted'; withPassReason?: boolean } = {},
   ) => {
     if (items.length === 0) return '';
     const tone = opts.tone ?? 'primary';
@@ -111,15 +112,19 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
     const dotColor = tone === 'muted' ? RULE : ACCENT;
     const rows = items
       .map(
-        (l) => `
+        (l) => {
+          const reason = opts.withPassReason ? extractPassDetails(l).reason : '';
+          const reasonText = reason && reason !== 'See advisor notes' ? ` (${escapeHtml(reason)})` : '';
+          return `
           <tr>
             <td style="padding:5px 0;vertical-align:top;width:14px;">
               <span style="display:inline-block;width:5px;height:5px;border-radius:50%;background:${dotColor};margin-top:8px;"></span>
             </td>
             <td style="font-family:${FONT};font-size:14px;color:${nameColor};padding:4px 0;line-height:1.55;${tone === 'muted' ? 'font-style:italic;' : ''}">
-              ${escapeHtml(l.name)}
+              ${escapeHtml(l.name)}${reasonText}
             </td>
-          </tr>`,
+          </tr>`;
+        },
       )
       .join('');
     return `
@@ -135,8 +140,6 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
     `;
   };
 
-  const passedItems = lenders.filter((l) => l.trackingStatus === 'passed');
-
   const pipelineTable =
     onDeck.length + inReview.length + termsIssued.length === 0 && passedCount === 0
       ? `<div style="font-family:${FONT};font-size:13px;color:${MUTED};">No active lender activity yet.</div>`
@@ -147,7 +150,7 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
           ${pipelineStageBlock('On Deck', onDeck)}
           ${
             passedItems.length > 0
-              ? pipelineStageBlock('Passed', passedItems, { tone: 'muted' })
+              ? pipelineStageBlock('Passed', passedItems, { tone: 'muted', withPassReason: true })
               : ''
           }
         </div>
@@ -182,6 +185,15 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
       <p style="font-family:${FONT};font-size:15px;color:${BODY};line-height:1.65;margin:0;">
         ${escapeHtml(lead)}
       </p>
+
+      ${
+        statusSummary.length > 0
+          ? `
+            ${sectionLabel('Status Summary')}
+            ${cleanList(statusSummary)}
+          `
+          : ''
+      }
 
       ${
         v.keyUpdates && remainingKeyUpdates.length > 0
