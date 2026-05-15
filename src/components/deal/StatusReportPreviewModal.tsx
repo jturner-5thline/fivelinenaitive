@@ -420,8 +420,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         }
         /* Multi-page output: keep each top-level section whole; if it
            does not fit on the current page, push it entirely to the next.
-           The preview's outer wrapper is `#PRINT_ID > div` (px-6 py-5
-           container); each direct child of that container is one major
+           The preview's outer wrapper is the px-6 py-5 container inside
+           the print root; each direct child of that container is a major
            section (header, status summary, pipeline, milestones, next
            steps, passed reasons, what we need from you). */
         #${PRINT_ID} > div > * {
