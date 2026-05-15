@@ -466,10 +466,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         </>
       )}
 
-      {content.sectionsVisible.actionItems && content.actionItems.trim() && (
+      {content.sectionsVisible.actionItems && (
         <>
           <div className="sr-section-label" style={sectionLabelStyle}>What We Need From You</div>
-          <div className="sr-action" style={actionStyle}>{content.actionItems}</div>
+          <div className="sr-action" style={actionStyle}>
+            {content.actionItems.trim() || 'Nothing needed at this time!'}
+          </div>
         </>
       )}
     </div>
