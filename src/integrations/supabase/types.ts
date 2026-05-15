@@ -6665,6 +6665,33 @@ export type Database = {
           },
         ]
       }
+      deal_document_exclusions: {
+        Row: {
+          created_at: string
+          deal_id: string
+          document_id: string
+          document_source: string
+          excluded_by: string | null
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          document_id: string
+          document_source: string
+          excluded_by?: string | null
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          document_id?: string
+          document_source?: string
+          excluded_by?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
       deal_email_prompts: {
         Row: {
           cc_json: Json

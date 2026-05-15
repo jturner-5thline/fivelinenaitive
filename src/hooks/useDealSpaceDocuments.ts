@@ -58,7 +58,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
     if (!dealId) return;
     
     try {
-      const [dsRes, daRes, vdrRes] = await Promise.all([
+      const [dsRes, daRes, vdrRes, exRes] = await Promise.all([
         supabase
           .from('deal_space_documents')
           .select('*')
@@ -80,11 +80,21 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
           .eq('is_folder', false)
           .is('deleted_at', null)
           .order('created_at', { ascending: false }),
+        supabase
+          .from('deal_document_exclusions' as any)
+          .select('document_source, document_id')
+          .eq('deal_id', dealId),
       ]);
 
       if (dsRes.error) throw dsRes.error;
       if (daRes.error) throw daRes.error;
       if (vdrRes.error) throw vdrRes.error;
+
+      const excludedKeys = new Set<string>(
+        ((exRes.data as any[]) || []).map((r) => `${r.document_source}:${r.document_id}`)
+      );
+      const isExcluded = (source: DealSpaceDocument['source'], id: string) =>
+        excludedKeys.has(`${source}:${id}`);
 
       // Transform and combine documents
       const dealSpaceDocuments: DealSpaceDocument[] = (dsRes.data || []).map((doc: any) => ({
@@ -92,7 +102,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
         source: 'deal_space' as const,
         storage_bucket: 'deal-space',
         category: null,
-      }));
+      })).filter(d => !isExcluded('deal_space', d.id));
 
       const dataRoomDocuments: DealSpaceDocument[] = (daRes.data || []).map((doc: any) => ({
         id: doc.id,
@@ -106,7 +116,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
         source: 'data_room' as const,
         storage_bucket: 'deal-attachments',
         category: prettyAttachmentCategory(doc.category),
-      }));
+      })).filter(d => !isExcluded('data_room', d.id));
 
       // vdr_documents → Internal-origin files. Mirror, don't copy.
       const vdrInternalDocuments: DealSpaceDocument[] = (vdrRes.data || []).map((doc: any) => ({
@@ -121,7 +131,7 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
         source: 'vdr_internal' as const,
         storage_bucket: 'vdr-files',
         category: deriveVdrCategory(doc.folder_path),
-      }));
+      })).filter(d => !isExcluded('vdr_internal', d.id));
 
       // Combine and sort by created_at descending
       const allDocuments = [
@@ -301,6 +311,125 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
     }
   }, []);
 
+  // ── New two-path destructive actions ────────────────────────────────
+  // "Remove from Deal Space": detach the document from this deal only.
+  // For deal_space-native uploads we delete the row + storage object
+  // (those rows are by definition deal-scoped). For data_room and
+  // vdr_internal mirrors we record an exclusion so the file disappears
+  // from this deal's Documents list and is excluded from Ask AI for
+  // this deal, while leaving the canonical Data Room file intact.
+  const removeFromDealSpace = useCallback(async (doc: DealSpaceDocument) => {
+    if (!dealId) return false;
+    if (isDemoSeedDocId(doc.id)) {
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+      toast({ title: 'Removed from Deal Space.' });
+      return true;
+    }
+    try {
+      if (doc.source === 'deal_space') {
+        const { error: storageError } = await supabase.storage
+          .from('deal-space')
+          .remove([doc.file_path]);
+        if (storageError) console.error('Storage deletion error:', storageError);
+        const { error: dbError } = await supabase
+          .from('deal_space_documents' as any)
+          .delete()
+          .eq('id', doc.id);
+        if (dbError) throw dbError;
+      } else {
+        const { data: { user } } = await supabase.auth.getUser();
+        const { error } = await supabase
+          .from('deal_document_exclusions' as any)
+          .insert({
+            deal_id: dealId,
+            document_source: doc.source,
+            document_id: doc.id,
+            excluded_by: user?.id ?? null,
+          });
+        if (error && !String(error.message || '').includes('duplicate')) throw error;
+      }
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+      toast({
+        title: 'Removed from Deal Space.',
+        description: 'This file no longer appears in Documents or feeds Ask AI for this deal.',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error removing from Deal Space:', error);
+      toast({
+        title: 'Failed to remove from Deal Space. Please try again.',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, [dealId]);
+
+  // "Delete entirely from Data Room": permanently delete the canonical
+  // file. Cascades naturally: deal_space rows are deleted; data_room
+  // (deal_attachments) rows are deleted; vdr_documents rows are
+  // soft-deleted (deleted_at), and any deal_document_exclusions for
+  // the same id are cleaned up.
+  const deleteEntirely = useCallback(async (doc: DealSpaceDocument) => {
+    if (isDemoSeedDocId(doc.id)) {
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+      toast({ title: 'Deleted from Data Room.' });
+      return true;
+    }
+    try {
+      if (doc.source === 'deal_space') {
+        const { error: storageError } = await supabase.storage
+          .from('deal-space')
+          .remove([doc.file_path]);
+        if (storageError) console.error('Storage deletion error:', storageError);
+        const { error: dbError } = await supabase
+          .from('deal_space_documents' as any)
+          .delete()
+          .eq('id', doc.id);
+        if (dbError) throw dbError;
+      } else if (doc.source === 'data_room') {
+        if (doc.file_path) {
+          const { error: storageError } = await supabase.storage
+            .from('deal-attachments')
+            .remove([doc.file_path]);
+          if (storageError) console.error('Storage deletion error:', storageError);
+        }
+        const { error: dbError } = await supabase
+          .from('deal_attachments' as any)
+          .delete()
+          .eq('id', doc.id);
+        if (dbError) throw dbError;
+      } else if (doc.source === 'vdr_internal') {
+        const { error: dbError } = await supabase
+          .from('vdr_documents' as any)
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', doc.id);
+        if (dbError) throw dbError;
+      }
+
+      // Clean up any prior exclusion row for the same id (best-effort)
+      await supabase
+        .from('deal_document_exclusions' as any)
+        .delete()
+        .eq('document_id', doc.id);
+
+      setDocuments(prev => prev.filter(d => d.id !== doc.id));
+      toast({
+        title: 'Deleted from Data Room.',
+        description: 'This file and its AI artifacts have been removed.',
+      });
+      return true;
+    } catch (error) {
+      console.error('Error deleting from Data Room:', error);
+      toast({
+        title: 'Failed to delete from Data Room. Please try again.',
+        description: error instanceof Error ? error.message : undefined,
+        variant: 'destructive',
+      });
+      return false;
+    }
+  }, []);
+
   // Get signed URL for download - uses the correct bucket based on source
   const getDownloadUrl = useCallback(async (doc: DealSpaceDocument) => {
     if (isDemoSeedDocId(doc.id)) {
@@ -331,6 +460,8 @@ export function useDealSpaceDocuments(dealId: string | undefined) {
     isUploading,
     uploadDocument,
     deleteDocument,
+    removeFromDealSpace,
+    deleteEntirely,
     getDownloadUrl,
     refetch: fetchDocuments,
   };

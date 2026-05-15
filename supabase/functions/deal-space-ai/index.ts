@@ -432,8 +432,21 @@ async function buildDealContext(supabase: any, dealId: string, opts?: { includeD
   const milestones = milestonesResult.data || [];
   const activities = activityResult.data || [];
   const memo = memoResult.data;
-  const dealSpaceDocs = dealSpaceDocsResult.data || [];
-  const dataRoomDocs = dataRoomDocsResult.data || [];
+  // Honor per-deal "Remove from Deal Space" exclusions so that
+  // detached files do not bleed into Ask AI for this specific deal.
+  const { data: exclusionsRaw } = await supabase
+    .from("deal_document_exclusions")
+    .select("document_source, document_id")
+    .eq("deal_id", dealId);
+  const excludedKeys = new Set<string>(
+    (exclusionsRaw || []).map((r: any) => `${r.document_source}:${r.document_id}`)
+  );
+  const dealSpaceDocs = (dealSpaceDocsResult.data || []).filter(
+    (d: any) => !excludedKeys.has(`deal_space:${d.id}`)
+  );
+  const dataRoomDocs = (dataRoomDocsResult.data || []).filter(
+    (d: any) => !excludedKeys.has(`data_room:${d.id}`)
+  );
   const flagNotes = flagNotesResult.data || [];
   const notes = notesResult.data || [];
   const outstandingItems = outstandingResult.data || [];
