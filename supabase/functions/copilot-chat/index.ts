@@ -4678,9 +4678,9 @@ async function prefetchPageContext(
     const entityType = ctx.entityType || null;
     const entityId = ctx.entityId || null;
 
-    // ── Deal context (deal-detail OR explicit @deal override) ──
-    if ((page === "deal-detail" || entityType === "deal") && entityId) {
-      const [dealRes, writeupRes, lendersRes, outstandingRes, activityRes, docsRes, attachRes] = await Promise.all([
+     // ── Deal context (deal-detail OR explicit @deal override) ──
+     if ((page === "deal-detail" || entityType === "deal") && entityId) {
+       const [dealRes, writeupRes, lendersRes, outstandingRes, activityRes, docsRes, attachRes, tasksRes, notesRes, contactsRes] = await Promise.all([
         supabase.from("deals").select("id, company, value, stage, status, deal_type, manager, deal_owner, closing_date, is_flagged, flag_notes, created_at, updated_at").eq("id", entityId).maybeSingle(),
         supabase.from("deal_writeups").select("description, industry, capital_ask, use_of_funds, last_year_revenue, this_year_revenue, gross_margins, profitability, existing_debt_details, sponsorship").eq("deal_id", entityId).maybeSingle(),
         supabase.from("deal_lenders").select("name, stage, tracking_status, updated_at").eq("deal_id", entityId).order("updated_at", { ascending: false }).limit(20),
@@ -4688,6 +4688,9 @@ async function prefetchPageContext(
         supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(10),
         supabase.from("deal_space_documents").select("name").eq("deal_id", entityId).limit(15),
         supabase.from("deal_attachments").select("name, category").eq("deal_id", entityId).limit(15),
+        supabase.from("tasks").select("id, title, status, priority, due_date, assigned_to, task_type").eq("deal_id", entityId).is("archived_at", null).neq("status", "complete").order("due_date", { ascending: true, nullsFirst: false }).limit(20),
+        supabase.from("deal_space_notes").select("title, content, created_at").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(8),
+        supabase.from("contact_deals").select("role, contacts:contact_id(first_name, last_name, email, job_title)").eq("deal_id", entityId).limit(15),
       ]);
       const deal = dealRes.data;
       if (!deal) return { block: "", label: null };
@@ -4702,9 +4705,12 @@ async function prefetchPageContext(
         ...((docsRes.data || []).map((d: any) => `- ${d.name} (Deal Space)`)),
         ...((attachRes.data || []).map((d: any) => `- ${d.name}${d.category ? ` (${d.category})` : ""}`)),
       ];
+       const openTasks = (tasksRes?.data || []) as any[];
+       const notes = (notesRes?.data || []) as any[];
+       const dealContacts = (contactsRes?.data || []) as any[];
       const block = `
 
-PRE-LOADED DEAL CONTEXT — ${deal.company} (currently viewed; you already have this, do NOT re-fetch unless the user asks for fields you don't see):
+PRE-LOADED DEAL CONTEXT — ${deal.company} (deal_id: ${deal.id}) (currently focused deal — answer ONLY from this deal unless the user explicitly asks for another or for a cross-deal comparison; do NOT re-fetch unless the user asks for fields you don't see):
 - Stage: ${deal.stage || "N/A"} | Status: ${deal.status || "N/A"} | Type: ${deal.deal_type || "N/A"}
 - Value: ${fmt(deal.value)} | Closing: ${deal.closing_date || "N/A"}
 - Owner: ${deal.deal_owner || "N/A"} | Manager: ${deal.manager || "N/A"}
@@ -4720,6 +4726,19 @@ ${passed.length > 0 ? `Passed: ${passed.slice(0, 8).map((l: any) => l.name).join
 
 Outstanding items (${outstanding.length} open):
 ${outstanding.slice(0, 10).map((o: any) => `  • [${o.priority || "med"}] ${o.description}${o.due_date ? ` — due ${o.due_date}` : ""}`).join("\n") || "  (none)"}
+
+Open tasks linked to this deal (${openTasks.length}):
+${openTasks.slice(0, 15).map((t: any) => `  • [${t.priority || "med"}] ${t.title}${t.due_date ? ` — due ${t.due_date}` : ""}${t.status ? ` (${t.status})` : ""}`).join("\n") || "  (none)"}
+
+Deal contacts / parties (${dealContacts.length}):
+${dealContacts.slice(0, 12).map((c: any) => {
+  const k = c.contacts || {};
+  const name = [k.first_name, k.last_name].filter(Boolean).join(" ") || k.email || "?";
+  return `  • ${name}${k.job_title ? ` — ${k.job_title}` : ""}${c.role ? ` (${c.role})` : ""}${k.email ? ` <${k.email}>` : ""}`;
+}).join("\n") || "  (none)"}
+
+Recent notes (last ${notes.length}):
+${notes.slice(0, 8).map((n: any) => `  • ${n.created_at?.slice(0, 10)}${n.title ? ` — ${n.title}` : ""}: ${String(n.content || "").slice(0, 200)}`).join("\n") || "  (none)"}
 
 Recent activity (last ${activity.length}):
 ${activity.map((a: any) => `  • ${a.created_at?.slice(0, 10)} — ${a.activity_type}: ${String(a.description || "").slice(0, 140)}${a.user_display_name ? ` (${a.user_display_name})` : ""}`).join("\n") || "  (none)"}
@@ -4979,6 +4998,76 @@ serve(async (req) => {
       ? { block: "", label: null }
       : await prefetchPageContext(supabaseUser, { page, entityType, entityId });
 
+    // ── Off-page deal-name resolver ──
+    // When no deal entity is in context (user is not on a deal page and did not
+    // @mention a deal), inspect the user's message for likely deal references
+    // and pull candidate deals from the workspace. This enables answers like
+    // "what's going on with X?" without requiring the user to navigate first,
+    // and surfaces a clarifying-question signal when the match is ambiguous.
+    let dealResolverBlock = "";
+    let dealResolverLog: { resolved_deal_id: string | null; candidates: Array<{ id: string; company: string }>; query: string | null } = {
+      resolved_deal_id: entityType === "deal" ? entityId : null,
+      candidates: [],
+      query: null,
+    };
+    try {
+      const hasDealEntity = entityType === "deal" && !!entityId;
+      const userText: string = (typeof message === "string" ? message : "") || "";
+      if (!hasDealEntity && userText.trim().length > 0) {
+        // Heuristic: pull capitalized phrases (company-name candidates) and
+        // also fall back to a fuzzy ilike on the raw message tokens > 3 chars.
+        const stop = new Set(["the","this","that","these","those","what","when","where","whose","which","who","why","how","please","summarize","summary","summarise","update","status","tasks","task","deal","deals","open","next","steps","step","happening","going","on","about","with","for","and","but","our","my","me","you","is","are","was","were","be","been","being","do","does","did","can","could","should","would","i","we","us","they","them","here","there","now","today","tomorrow","yesterday","week","month","year","client","company","companies","lender","lenders"]);
+        const caps = Array.from(userText.matchAll(/\b([A-Z][A-Za-z0-9&.\-]{1,}(?:\s+[A-Z][A-Za-z0-9&.\-]{1,}){0,3})\b/g)).map(m => m[1]);
+        const tokens = userText.split(/[^A-Za-z0-9&.\-]+/).filter(t => t.length >= 4 && !stop.has(t.toLowerCase()));
+        const probes = Array.from(new Set([...caps, ...tokens])).slice(0, 6);
+        if (probes.length > 0) {
+          const orFilter = probes.map(p => `company.ilike.%${p.replace(/[%,()]/g, "")}%`).join(",");
+          const { data: matches } = await supabaseUser
+            .from("deals")
+            .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
+            .or(orFilter)
+            .neq("status", "closed")
+            .limit(8);
+          // Filter out globally excluded deal names (test / example).
+          const excluded = (n: string | null) => {
+            const x = (n || "").toLowerCase().trim();
+            if (!x) return false;
+            if (x === "example deal" || x === "test - niki's store") return true;
+            if (x === "test" || x.startsWith("test ")) return true;
+            return false;
+          };
+          const filtered = (matches || []).filter((d: any) => !excluded(d.company));
+          dealResolverLog.query = probes.join(" | ");
+          dealResolverLog.candidates = filtered.map((d: any) => ({ id: d.id, company: d.company }));
+
+          if (filtered.length === 1) {
+            const d: any = filtered[0];
+            dealResolverLog.resolved_deal_id = d.id;
+            dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
+          } else if (filtered.length > 1) {
+            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT (the user's message could refer to more than one deal — DO NOT guess; ask a single clarifying question listing these candidates by name, then proceed once they pick):\n${filtered.slice(0, 6).map((d: any) => `- ${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"}) — deal_id: ${d.id}`).join("\n")}`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[copilot-chat] deal name resolver failed", e);
+    }
+
+    // Audit: log which deal context objects we actually used for this turn so
+    // responses can be reviewed later. Best-effort; never blocks the request.
+    try {
+      console.log("[copilot-chat] deal_context_audit", JSON.stringify({
+        user_id: userId,
+        page,
+        entity_type: entityType,
+        entity_id_from_page: context?.entityId || null,
+        entity_id_from_override: override?.entityId || null,
+        prefetched_label: prefetched.label,
+        resolver: dealResolverLog,
+        ts: new Date().toISOString(),
+      }));
+    } catch { /* noop */ }
+
     const askNaitivePermissionBlock = `\n\nASK NAITIVE — PERMISSION BOUNDARIES (STRICT, AUTHORITATIVE):
 You are Ask naitive, the AI assistant inside the naitive platform.
 You must only answer using the permission-filtered context provided for the current authenticated user and workspace.
@@ -5023,7 +5112,15 @@ CURRENT CONTEXT:
 - Entity Details: ${context?.entityDetails ? JSON.stringify(context.entityDetails) : "None"}
 - User: ${userName} (${context?.userRole || "member"})
 ${banners.length > 0 ? `\nACTIVE ALERTS/BANNERS ON PAGE:\n${banners.map((b: string) => `⚠️ ${b}`).join('\n')}` : ''}
-${prefetched.block}
+${prefetched.block}${dealResolverBlock}
+
+DEAL CONTEXT RULES (STRICT — apply to every deal-related question):
+1. Default deal: if the user is on a deal page (entityType=deal above) OR a deal was @mentioned, that is THE focused deal. Phrases like "this deal", "this company", "here", "what's going on with this", "summarize this", "open tasks here", "next steps here", "who owns this" ALWAYS refer to that focused deal — never another.
+2. Off-page mentions: if the user is NOT on a deal page and asks about a deal by name, use the RESOLVED DEAL FROM PROMPT block above when present. If you only see POSSIBLE DEAL MATCHES, you MUST ask a single concise clarifying question listing the candidates by name and stop — do not answer until the user picks.
+3. Single-deal isolation: NEVER mix records, tasks, lenders, notes, activity, contacts, or documents from more than one deal in the same answer. If the user explicitly asks for a cross-deal summary or comparison, you may; otherwise scope every fact to the resolved deal_id.
+4. Tasks: when the user asks "what tasks are open here" / "what's open on this deal" / "who owns next steps", answer ONLY from tasks linked to the focused deal_id. The pre-loaded "Open tasks linked to this deal" block is authoritative for the visible window; for deeper detail call get_tasks({ deal_id: "<focused_deal_id>" }) — never call get_tasks without a deal_id for these questions.
+5. No fabrication: if a field, task, contact, lender, or note is missing for the focused deal, say so plainly ("No open tasks on this deal", "No notes recorded", "Owner not set"). Do not invent details and do not borrow from other deals.
+6. Source citation (internal): keep responses concise and high-signal. Internally track which pre-loaded sections (deal record, write-up, lenders, outstanding items, open tasks, deal contacts, notes, activity, documents) you used to answer; cite the deal name inline when the answer is deal-scoped (e.g. "On <Deal>, …").
 
 DATA ACCESS — IMPORTANT:
 The PRE-LOADED ... CONTEXT block above (if present) was fetched fresh from the database for the current page/entity. Treat it as authoritative and use it first. Only call tools when the user asks for fields not present in the pre-loaded block, asks about a different entity, or asks for fresh data. NEVER tell the user "I don't have that data" — check the pre-loaded block, then call a tool.
