@@ -437,7 +437,7 @@ export function AddLenderSlideOver({
           if (!o) setConfirmingLender(null);
         }}
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="z-[1200]">
           <AlertDialogHeader>
             <AlertDialogTitle>
               Add {confirmingLender?.name} to {dealName}?
