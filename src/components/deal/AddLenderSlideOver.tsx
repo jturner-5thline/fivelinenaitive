@@ -24,9 +24,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { useMasterLenders, type MasterLender } from '@/hooks/useMasterLenders';
 import { useLenderMatching, type DealCriteria } from '@/hooks/useLenderMatching';
+import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
+import type { AiRecommenderCriteriaOverride } from '@/hooks/useAiRecommendedLenders';
 import { toast } from 'sonner';
 
 interface Props {
@@ -38,6 +41,8 @@ interface Props {
   configuredStages: { id: string; label: string; group: string }[];
   defaultStageId: string;
   onAddLender: (lenderName: string, stageId: string) => Promise<void> | void;
+  dealId?: string;
+  aiCriteriaOverride?: AiRecommenderCriteriaOverride;
 }
 
 const DEAL_TYPE_OPTIONS = [
@@ -103,6 +108,8 @@ export function AddLenderSlideOver({
   configuredStages,
   defaultStageId,
   onAddLender,
+  dealId,
+  aiCriteriaOverride,
 }: Props) {
   const { lenders: masterLenders, loading } = useMasterLenders({ eagerAll: true });
   const { matches } = useLenderMatching(masterLenders, criteria, {
@@ -131,6 +138,7 @@ export function AddLenderSlideOver({
   const [confirmingLender, setConfirmingLender] = useState<MasterLender | null>(null);
   const [singleStage, setSingleStage] = useState<string>(preferredDefault);
   const [adding, setAdding] = useState(false);
+  const [activeTab, setActiveTab] = useState<'directory' | 'ai'>('directory');
 
   // Reset state when reopened
   useEffect(() => {
@@ -241,6 +249,18 @@ export function AddLenderSlideOver({
             <SheetTitle className="text-base font-semibold">Add Lender to {dealName}</SheetTitle>
           </SheetHeader>
 
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'directory' | 'ai')} className="flex-1 flex flex-col min-h-0">
+            <div className="px-6 pb-2">
+              <TabsList className="h-9">
+                <TabsTrigger value="directory" className="text-xs">Lender Directory</TabsTrigger>
+                <TabsTrigger value="ai" className="text-xs gap-1.5">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+                  AI Recommended
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="directory" className="flex-1 flex flex-col min-h-0 mt-0 data-[state=inactive]:hidden">
           <div className="px-6 pb-3 space-y-3 border-b border-white/5">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -393,6 +413,21 @@ export function AddLenderSlideOver({
               </Button>
             </div>
           )}
+            </TabsContent>
+
+            <TabsContent value="ai" className="flex-1 min-h-0 overflow-y-auto mt-0 data-[state=inactive]:hidden">
+              <div className="p-3">
+                <AiRecommendedLendersSection
+                  dealId={dealId}
+                  configuredStages={configuredStages}
+                  defaultStageId={defaultStageId}
+                  existingLenderNames={existingLenderNames}
+                  onAddLender={onAddLender}
+                  criteriaOverride={aiCriteriaOverride}
+                />
+              </div>
+            </TabsContent>
+          </Tabs>
         </SheetContent>
       </Sheet>
 
