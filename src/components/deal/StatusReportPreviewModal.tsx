@@ -355,13 +355,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         html, body {
           background: hsl(218 26% 7%) !important;
           margin: 0 !important;
+          padding: 0 !important;
           height: auto !important;
           overflow: visible !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
-        body * { visibility: hidden !important; }
-        #${PRINT_ID}, #${PRINT_ID} * { visibility: visible !important; }
+        /* CRITICAL: visibility:hidden preserves layout boxes, so the entire
+           app above the dialog portal would still occupy 2-3 blank pages
+           before the report content. Use display:none on every direct
+           body child that is NOT in the ancestor chain of the print root,
+           so the report flows from page 1 with zero offset. */
+        body > *:not(.naitive-print-root-branch) { display: none !important; }
         /* Unwind every ancestor of the print root so the Dialog's
            max-h/overflow-hidden/scroll-container chain cannot clip the
            printed report. position:static (NOT absolute) is critical —
