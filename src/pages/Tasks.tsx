@@ -6,8 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
-import { useTaskViewTabs } from '@/hooks/useTaskViewTabs';
-import { TaskTabBar, applyTabFilter } from '@/components/tasks/TaskTabBar';
 import {
   TaskListView,
   type GroupBy,
@@ -91,8 +89,6 @@ type FilterRecurring = 'all' | 'recurring' | 'paused';
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
-  const { tabs: viewTabs2, createTab, updateTab, deleteTab: deleteViewTab, reorderTabs } = useTaskViewTabs();
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView, renameView, duplicateView, togglePinView } = useTaskSavedViews();
@@ -100,12 +96,6 @@ export default function Tasks() {
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
 
-  // Auto-select first tab when tabs load
-  useEffect(() => {
-    if (viewTabs2.length > 0 && !activeTabId) {
-      setActiveTabId(viewTabs2[0].id);
-    }
-  }, [viewTabs2, activeTabId]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -223,10 +213,7 @@ export default function Tasks() {
 
   // Get user for tab filtering
   const { user } = useAuth();
-  const activeTab = viewTabs2.find(t => t.id === activeTabId);
-  const tabFilteredTasks = activeTab && Object.keys(activeTab.filter_config).length > 0
-    ? applyTabFilter(viewMode === 'focus' ? focusTasks : tasks, activeTab.filter_config, user?.id)
-    : (viewMode === 'focus' ? focusTasks : tasks);
+  const tabFilteredTasks = viewMode === 'focus' ? focusTasks : tasks;
 
   // Filter and sort (starred items float to top)
   const filtered = tabFilteredTasks
