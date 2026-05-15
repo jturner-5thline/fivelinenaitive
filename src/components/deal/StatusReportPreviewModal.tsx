@@ -901,12 +901,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <Button
             variant="outline"
             size="sm"
-            onClick={handlePrintPdf}
+            onClick={() => setPdfPreviewOpen(true)}
             disabled={exportingPdf}
             className="gap-2"
           >
-            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {exportingPdf ? 'Generating PDF…' : 'Export as PDF'}
+            <Download className="h-4 w-4" />
+            Export as PDF
           </Button>
           {onDraftEmail && (
             <Button
