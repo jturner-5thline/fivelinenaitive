@@ -56,6 +56,8 @@ import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
 import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
+import { useAuth } from '@/contexts/AuthContext';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 
 export interface KeyItem {
   id: string;
@@ -300,6 +302,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
   const data = useMemo(() => normalizeDealWriteUpData(incomingData), [incomingData]);
   const queryClient = useQueryClient();
   const { hasPageAccess } = usePageAccessFlags();
+  const { user: currentUser } = useAuth();
   const { canPushFlex: demoCanPushFlex, canAiSync: demoCanAiSync, isDemoUser } = useDemoCapabilities();
   const canPushToFlex = hasPageAccess('flex_push') && demoCanPushFlex;
   // 5th Line proprietary actions: Auto-Fill, Generate AI Memo, and
