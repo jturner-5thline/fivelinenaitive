@@ -1400,7 +1400,20 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
               </ToggleGroup>
             </TooltipProvider>
           </div>
-          
+
+          {draftSections && (
+            <AiDraftWriteUpSection
+              sections={draftSections}
+              onChange={handleDraftSectionChange}
+              onApprove={handleApproveDraft}
+              onExportBranded={() => setShowBrandedStudio(true)}
+              isApproved={isDraftApproved}
+              isApproving={isApprovingDraft}
+              approvedVersion={approvedVersion}
+              generatedAt={draftGeneratedAt}
+            />
+          )}
+
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
               <TabsList className="grid w-full grid-cols-5 gap-2 bg-transparent p-1 h-auto [&>span]:hidden">
