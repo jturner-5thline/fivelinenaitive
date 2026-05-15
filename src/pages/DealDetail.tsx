@@ -4854,7 +4854,6 @@ export default function DealDetail() {
                 </Card>
               </div>
 
-              </div>
                 </TabsContent>
 
                 {hasDealManagementAccess && (
