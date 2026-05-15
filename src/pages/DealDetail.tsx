@@ -198,6 +198,7 @@ import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycl
 import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
+import { LenderPipelineSnapshot } from '@/components/deal/LenderPipelineSnapshot';
 import {
   buildStatusEmailHtml,
   buildStatusEmailSubject,
@@ -4084,6 +4085,27 @@ export default function DealDetail() {
                   
                     <CardContent className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }} onMouseEnter={(e) => { e.currentTarget.style.scrollbarColor = 'hsl(var(--border)) transparent'; }} onMouseLeave={(e) => { e.currentTarget.style.scrollbarColor = 'transparent transparent'; }}>
                   <div className="space-y-4">
+                    {deal.lenders && deal.lenders.length > 0 && (
+                      <div className="pb-1">
+                        <div className="text-[10px] font-bold tracking-[0.16em] uppercase text-muted-foreground mb-2">
+                          Pipeline Snapshot
+                        </div>
+                        <LenderPipelineSnapshot
+                          lenders={deal.lenders}
+                          configuredStages={configuredStages}
+                          density="compact"
+                          onUpdateLender={async (lenderId, updates) => {
+                            await updateLenderInDb(lenderId, updates);
+                            setDeal(prev => prev ? {
+                              ...prev,
+                              lenders: prev.lenders?.map(l => l.id === lenderId
+                                ? { ...l, ...updates, updatedAt: new Date().toISOString() }
+                                : l),
+                            } : prev);
+                          }}
+                        />
+                      </div>
+                    )}
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
                         {lenderGroupFilters.size === 0 && lenderStageFilters.size === 0 ? (
