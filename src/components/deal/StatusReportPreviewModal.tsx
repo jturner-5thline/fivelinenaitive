@@ -370,7 +370,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       container.style.left = '-10000px';
       container.style.top = '0';
       container.style.width = '880px';
-      container.style.background = '#ffffff';
+      container.style.background = 'hsl(218 26% 7%)';
       container.appendChild(cloned);
       document.body.appendChild(container);
 
@@ -379,7 +379,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           margin: [10, 10, 10, 10],
           filename: `status-report-${slugify(deal.company)}.pdf`,
           image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: 'hsl(218 26% 7%)' },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
           pagebreak: { mode: ['css', 'legacy'] },
         } as any)
@@ -416,7 +416,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       container.style.left = '-10000px';
       container.style.top = '0';
       container.style.width = '880px';
-      container.style.background = '#ffffff';
+      container.style.background = 'hsl(218 26% 7%)';
       container.appendChild(cloned);
       document.body.appendChild(container);
       const blob: Blob = await html2pdf()
@@ -424,7 +424,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           margin: [10, 10, 10, 10],
           filename: `status-report-${slugify(deal.company)}.pdf`,
           image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: 'hsl(218 26% 7%)' },
           jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
           pagebreak: { mode: ['css', 'legacy'] },
         } as any)
