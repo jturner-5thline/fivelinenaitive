@@ -298,6 +298,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     if (v) {
       setContent(initialContent);
       setAiTriedForDeal(null); // re-trigger AI on next open
+      passFeedbackTriedRef.current = null; // re-rewrite pass feedback on next open
     }
     onOpenChange(v);
   };
@@ -493,7 +494,11 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
                 <tr key={i}>
                   <td style={tdStyle}>{p.name}</td>
                   <td style={tdStyle}>{p.reason}</td>
-                  <td style={{ ...tdStyle, color: '#475569' }}>{p.feedback || '—'}</td>
+                  <td style={{ ...tdStyle, color: '#475569', fontStyle: aiPassFeedbackLoading && !(p.name in aiPassFeedback) ? 'italic' : 'normal' }}>
+                    {p.name in aiPassFeedback
+                      ? (aiPassFeedback[p.name] || '—')
+                      : (aiPassFeedbackLoading ? 'Polishing…' : '—')}
+                  </td>
                 </tr>
               ))}
             </tbody>
