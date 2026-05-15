@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   AlertDialog,
@@ -80,6 +81,19 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
   const [duplicateFile, setDuplicateFile] = useState<{ file: File; existingDoc: DealSpaceDocument } | null>(null);
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
   const [showExtraction, setShowExtraction] = useState(false);
+
+  // Single-document delete (controlled dialog so we can manage loading/state)
+  const [docToDelete, setDocToDelete] = useState<DealSpaceDocument | null>(null);
+  const [isDeletingSingle, setIsDeletingSingle] = useState(false);
+
+  // Bulk selection + delete
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
+  const [bulkDeleteState, setBulkDeleteState] = useState<{
+    isDeleting: boolean;
+    completed: number;
+    total: number;
+  }>({ isDeleting: false, completed: 0, total: 0 });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -188,6 +202,75 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
     }
   }, [dealId, documents.length]);
 
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => {
+      if (prev.size === documents.length) return new Set();
+      return new Set(documents.map(d => d.id));
+    });
+  }, [documents]);
+
+  const handleConfirmSingleDelete = useCallback(async () => {
+    if (!docToDelete) return;
+    setIsDeletingSingle(true);
+    try {
+      const ok = await deleteDocument(docToDelete);
+      if (ok) {
+        setSelectedIds(prev => {
+          if (!prev.has(docToDelete.id)) return prev;
+          const next = new Set(prev);
+          next.delete(docToDelete.id);
+          return next;
+        });
+        setDocToDelete(null);
+      }
+      // On failure deleteDocument already toasted; keep dialog open so user can retry/cancel.
+    } finally {
+      setIsDeletingSingle(false);
+    }
+  }, [docToDelete, deleteDocument]);
+
+  const handleConfirmBulkDelete = useCallback(async () => {
+    const targets = documents.filter(d => selectedIds.has(d.id));
+    if (targets.length === 0) return;
+    setBulkDeleteState({ isDeleting: true, completed: 0, total: targets.length });
+    const failed: string[] = [];
+    let succeeded = 0;
+    for (let i = 0; i < targets.length; i++) {
+      const doc = targets[i];
+      try {
+        const ok = await deleteDocument(doc);
+        if (ok) succeeded++; else failed.push(doc.name);
+      } catch {
+        failed.push(doc.name);
+      }
+      setBulkDeleteState(s => ({ ...s, completed: i + 1 }));
+    }
+    setBulkDeleteState({ isDeleting: false, completed: 0, total: 0 });
+    setShowBulkDeleteDialog(false);
+    setSelectedIds(new Set());
+    if (failed.length === 0) {
+      toast({ title: `Deleted ${succeeded} file${succeeded !== 1 ? 's' : ''}` });
+    } else {
+      toast({
+        title: `Deleted ${succeeded} of ${targets.length} files`,
+        description: `Failed: ${failed.slice(0, 5).join(', ')}${failed.length > 5 ? `, +${failed.length - 5} more` : ''}`,
+        variant: 'destructive',
+      });
+    }
+  }, [documents, selectedIds, deleteDocument]);
+
+  const selectedCount = selectedIds.size;
+  const allSelected = documents.length > 0 && selectedCount === documents.length;
+  const someSelected = selectedCount > 0 && selectedCount < documents.length;
+
   return (
     <>
       <Card className="flex flex-col h-[600px]">
@@ -208,6 +291,17 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              {selectedCount > 0 && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  className="gap-2"
+                  onClick={() => setShowBulkDeleteDialog(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete Selected ({selectedCount})
+                </Button>
+              )}
               {documents.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
                   {documents.length} file{documents.length !== 1 ? 's' : ''}
@@ -304,12 +398,29 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
             ) : (
               <ScrollArea className="h-full">
                 <div className="space-y-2 pr-4">
+                  {documents.length > 0 && (
+                    <div className="flex items-center gap-3 px-3 py-1.5 text-xs text-muted-foreground">
+                      <Checkbox
+                        checked={allSelected ? true : someSelected ? 'indeterminate' : false}
+                        onCheckedChange={() => toggleSelectAll()}
+                        aria-label="Select all documents"
+                      />
+                      <span>{selectedCount > 0 ? `${selectedCount} selected` : 'Select all'}</span>
+                    </div>
+                  )}
                   {documents.map((doc) => (
                     <div
                       key={doc.id}
                       className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group hover:bg-muted/80 transition-colors cursor-pointer"
                       onClick={() => handlePreview(doc)}
                     >
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedIds.has(doc.id)}
+                          onCheckedChange={() => toggleSelect(doc.id)}
+                          aria-label={`Select ${doc.name}`}
+                        />
+                      </div>
                       {getFileIcon(doc.content_type, doc.name)}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 min-w-0">
@@ -375,32 +486,17 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
                         >
                           <Download className="h-4 w-4" />
                         </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete document?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                This will permanently delete "{doc.name}" from Deal Space.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction onClick={() => deleteDocument(doc)}>
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDocToDelete(doc);
+                          }}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
                     </div>
                   ))}
@@ -421,6 +517,90 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
         }}
         onDownload={handleDownload}
       />
+
+      {/* Single-document delete confirmation */}
+      <AlertDialog
+        open={!!docToDelete}
+        onOpenChange={(open) => {
+          if (!open && !isDeletingSingle) setDocToDelete(null);
+        }}
+      >
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete document?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{docToDelete?.name}&quot; from Deal Space.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              disabled={isDeletingSingle}
+              onClick={(e) => e.stopPropagation()}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingSingle}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                void handleConfirmSingleDelete();
+              }}
+            >
+              {isDeletingSingle ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting…
+                </>
+              ) : (
+                'Delete'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirmation */}
+      <AlertDialog
+        open={showBulkDeleteDialog}
+        onOpenChange={(open) => {
+          if (!open && !bulkDeleteState.isDeleting) setShowBulkDeleteDialog(false);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete {selectedCount} file{selectedCount !== 1 ? 's' : ''} from Deal Space?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {bulkDeleteState.isDeleting
+                ? `Deleting ${bulkDeleteState.completed} of ${bulkDeleteState.total}…`
+                : 'This action cannot be undone. Files that fail to delete will remain in the list.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteState.isDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkDeleteState.isDeleting}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleConfirmBulkDelete();
+              }}
+            >
+              {bulkDeleteState.isDeleting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Deleting {bulkDeleteState.completed}/{bulkDeleteState.total}
+                </>
+              ) : (
+                `Delete ${selectedCount}`
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Duplicate File Confirmation Dialog */}
       <AlertDialog open={!!duplicateFile} onOpenChange={(open) => !open && handleDuplicateCancel()}>
