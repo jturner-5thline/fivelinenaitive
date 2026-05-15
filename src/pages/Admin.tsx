@@ -36,6 +36,7 @@ import { NotificationAuditPanel } from "@/components/admin/NotificationAuditPane
 import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecommendationsPanel";
 import { UXAnalyticsPanel } from "@/components/admin/UXAnalyticsPanel";
 import { AITrainingPanel } from "@/components/admin/AITrainingPanel";
+import { AIActionAuditPanel } from "@/components/admin/AIActionAuditPanel";
 import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
 import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
@@ -89,6 +90,7 @@ const productEnhancementSubPages = [
   { id: "ux-analytics", label: "UX Analytics", icon: Lightbulb },
   { id: "feedback", label: "Feedback", icon: MessageSquare },
   { id: "ai-training", label: "AI Training", icon: Brain },
+  { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList },
 ];
 
 const supportSubPages = [
@@ -520,6 +522,21 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><AITrainingPanel /></CardContent>
+          </Card>
+        );
+      case "ai-audit":
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5" />
+                AI Action Audit
+              </CardTitle>
+              <CardDescription>
+                Review every AI-driven action with filters for prompt, intent, confidence, and outcome.
+              </CardDescription>
+            </CardHeader>
+            <CardContent><AIActionAuditPanel /></CardContent>
           </Card>
         );
       case "qb-mapping":
