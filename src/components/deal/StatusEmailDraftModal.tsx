@@ -7,6 +7,7 @@ import DOMPurify from 'dompurify';
 import type { Deal } from '@/types/deal';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { bucketLenders, extractPassDetails } from '@/lib/lenderStatusBuckets';
+import { archiveSentStatusReport } from '@/lib/archiveStatusReport';
 
 interface Props {
   open: boolean;
@@ -263,6 +264,10 @@ export function buildStatusEmailSubject(deal: Deal): string {
 export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Props) {
   const [copied, setCopied] = useState(false);
   const previewRef = useRef<HTMLDivElement | null>(null);
+  // One archive per opened draft — multiple sends of the same draft (e.g.
+  // copy then open in mail client) should not create duplicate Internal
+  // Data Room entries. Reset whenever the modal is reopened.
+  const archivedRef = useRef(false);
 
   const html = useMemo(() => (content ? buildStatusEmailHtml(deal, content) : ''), [deal, content]);
 
@@ -273,6 +278,16 @@ export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Pro
     return `${deal.company || deal.name} — Status Update: ${dateStr}`;
   }, [deal]);
 
+
+  const archiveOnSend = async (sendMethod: 'copy' | 'mailto') => {
+    if (archivedRef.current || !content || !html) return;
+    archivedRef.current = true;
+    const res = await archiveSentStatusReport({ deal, html, subject, sendMethod });
+    if (!res.ok) {
+      // Don't block the send flow — surface a soft warning only.
+      console.warn('Status report archive failed', res.error);
+    }
+  };
 
   const handleCopy = async () => {
     try {
@@ -290,6 +305,7 @@ export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Pro
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
       toast({ title: 'Email copied', description: 'Paste into your email client to send.' });
+      void archiveOnSend('copy');
     } catch (err) {
       toast({ title: 'Copy failed', description: 'Select the preview and copy manually.', variant: 'destructive' });
     }
@@ -299,10 +315,17 @@ export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Pro
     const plain = previewRef.current?.innerText || '';
     const url = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(plain)}`;
     window.open(url, '_blank');
+    void archiveOnSend('mailto');
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        if (o) archivedRef.current = false;
+        onOpenChange(o);
+      }}
+    >
       <DialogContent
         className="popup-shell-surface max-w-3xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20 rounded-2xl z-[1310]"
         overlayClassName="z-[1300]"
