@@ -4678,9 +4678,9 @@ async function prefetchPageContext(
     const entityType = ctx.entityType || null;
     const entityId = ctx.entityId || null;
 
-    // ── Deal context (deal-detail OR explicit @deal override) ──
-    if ((page === "deal-detail" || entityType === "deal") && entityId) {
-      const [dealRes, writeupRes, lendersRes, outstandingRes, activityRes, docsRes, attachRes] = await Promise.all([
+     // ── Deal context (deal-detail OR explicit @deal override) ──
+     if ((page === "deal-detail" || entityType === "deal") && entityId) {
+       const [dealRes, writeupRes, lendersRes, outstandingRes, activityRes, docsRes, attachRes, tasksRes, notesRes, contactsRes] = await Promise.all([
         supabase.from("deals").select("id, company, value, stage, status, deal_type, manager, deal_owner, closing_date, is_flagged, flag_notes, created_at, updated_at").eq("id", entityId).maybeSingle(),
         supabase.from("deal_writeups").select("description, industry, capital_ask, use_of_funds, last_year_revenue, this_year_revenue, gross_margins, profitability, existing_debt_details, sponsorship").eq("deal_id", entityId).maybeSingle(),
         supabase.from("deal_lenders").select("name, stage, tracking_status, updated_at").eq("deal_id", entityId).order("updated_at", { ascending: false }).limit(20),
@@ -4688,6 +4688,9 @@ async function prefetchPageContext(
         supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(10),
         supabase.from("deal_space_documents").select("name").eq("deal_id", entityId).limit(15),
         supabase.from("deal_attachments").select("name, category").eq("deal_id", entityId).limit(15),
+         supabase.from("tasks").select("id, title, status, priority, due_date, assigned_to, task_type").eq("deal_id", entityId).is("archived_at", null).neq("status", "complete").order("due_date", { ascending: true, nullsFirst: false }).limit(20),
+         supabase.from("deal_notes").select("content, created_at, author_name").eq("deal_id", entityId).order("created_at", { ascending: false }).limit(8),
+         supabase.from("deal_contacts").select("contact_name, contact_email, role").eq("deal_id", entityId).limit(15),
       ]);
       const deal = dealRes.data;
       if (!deal) return { block: "", label: null };
@@ -4702,9 +4705,12 @@ async function prefetchPageContext(
         ...((docsRes.data || []).map((d: any) => `- ${d.name} (Deal Space)`)),
         ...((attachRes.data || []).map((d: any) => `- ${d.name}${d.category ? ` (${d.category})` : ""}`)),
       ];
+       const openTasks = (tasksRes?.data || []) as any[];
+       const notes = (notesRes?.data || []) as any[];
+       const dealContacts = (contactsRes?.data || []) as any[];
       const block = `
 
-PRE-LOADED DEAL CONTEXT — ${deal.company} (currently viewed; you already have this, do NOT re-fetch unless the user asks for fields you don't see):
+PRE-LOADED DEAL CONTEXT — ${deal.company} (deal_id: ${deal.id}) (currently focused deal — answer ONLY from this deal unless the user explicitly asks for another or for a cross-deal comparison; do NOT re-fetch unless the user asks for fields you don't see):
 - Stage: ${deal.stage || "N/A"} | Status: ${deal.status || "N/A"} | Type: ${deal.deal_type || "N/A"}
 - Value: ${fmt(deal.value)} | Closing: ${deal.closing_date || "N/A"}
 - Owner: ${deal.deal_owner || "N/A"} | Manager: ${deal.manager || "N/A"}
@@ -4720,6 +4726,15 @@ ${passed.length > 0 ? `Passed: ${passed.slice(0, 8).map((l: any) => l.name).join
 
 Outstanding items (${outstanding.length} open):
 ${outstanding.slice(0, 10).map((o: any) => `  • [${o.priority || "med"}] ${o.description}${o.due_date ? ` — due ${o.due_date}` : ""}`).join("\n") || "  (none)"}
+
+Open tasks linked to this deal (${openTasks.length}):
+${openTasks.slice(0, 15).map((t: any) => `  • [${t.priority || "med"}] ${t.title}${t.due_date ? ` — due ${t.due_date}` : ""}${t.status ? ` (${t.status})` : ""}`).join("\n") || "  (none)"}
+
+Deal contacts / parties (${dealContacts.length}):
+${dealContacts.slice(0, 12).map((c: any) => `  • ${c.contact_name || "?"}${c.role ? ` — ${c.role}` : ""}${c.contact_email ? ` <${c.contact_email}>` : ""}`).join("\n") || "  (none)"}
+
+Recent notes (last ${notes.length}):
+${notes.slice(0, 8).map((n: any) => `  • ${n.created_at?.slice(0, 10)}${n.author_name ? ` (${n.author_name})` : ""}: ${String(n.content || "").slice(0, 200)}`).join("\n") || "  (none)"}
 
 Recent activity (last ${activity.length}):
 ${activity.map((a: any) => `  • ${a.created_at?.slice(0, 10)} — ${a.activity_type}: ${String(a.description || "").slice(0, 140)}${a.user_display_name ? ` (${a.user_display_name})` : ""}`).join("\n") || "  (none)"}
