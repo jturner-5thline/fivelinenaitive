@@ -6,8 +6,6 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Helmet } from 'react-helmet-async';
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
-import { useTaskViewTabs } from '@/hooks/useTaskViewTabs';
-import { TaskTabBar, applyTabFilter } from '@/components/tasks/TaskTabBar';
 import {
   TaskListView,
   type GroupBy,
@@ -91,8 +89,6 @@ type FilterRecurring = 'all' | 'recurring' | 'paused';
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
-  const { tabs: viewTabs2, createTab, updateTab, deleteTab: deleteViewTab, reorderTabs } = useTaskViewTabs();
-  const [activeTabId, setActiveTabId] = useState<string | null>(null);
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { notifications } = useTaskNotifications();
   const { savedViews, saveView, deleteView, renameView, duplicateView, togglePinView } = useTaskSavedViews();
@@ -100,12 +96,6 @@ export default function Tasks() {
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
 
-  // Auto-select first tab when tabs load
-  useEffect(() => {
-    if (viewTabs2.length > 0 && !activeTabId) {
-      setActiveTabId(viewTabs2[0].id);
-    }
-  }, [viewTabs2, activeTabId]);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('list');
 
@@ -223,10 +213,7 @@ export default function Tasks() {
 
   // Get user for tab filtering
   const { user } = useAuth();
-  const activeTab = viewTabs2.find(t => t.id === activeTabId);
-  const tabFilteredTasks = activeTab && Object.keys(activeTab.filter_config).length > 0
-    ? applyTabFilter(viewMode === 'focus' ? focusTasks : tasks, activeTab.filter_config, user?.id)
-    : (viewMode === 'focus' ? focusTasks : tasks);
+  const tabFilteredTasks = viewMode === 'focus' ? focusTasks : tasks;
 
   // Filter and sort (starred items float to top)
   const filtered = tabFilteredTasks
@@ -652,6 +639,7 @@ export default function Tasks() {
     { key: 'board', label: 'Board', icon: LayoutGrid },
     { key: 'calendar', label: 'Calendar', icon: Calendar },
     { key: 'reporting', label: 'Reports', icon: BarChart3 },
+    { key: 'focus', label: 'Focus', icon: Star },
   ] as const;
 
   return (
@@ -666,175 +654,78 @@ export default function Tasks() {
         existing internal layout/scroll behavior unchanged.
       */}
       <div className="flex flex-col h-full bg-transparent">
-        {/* Header — title + muted summary + segmented view control */}
+        {/* Header — title + muted summary + primary navigation */}
         <div className="flex items-center justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
           <div className="min-w-0">
-            <h1 className="text-[20px] font-semibold tracking-tight leading-none" style={{ color: '#f3f4f6' }}>
+            <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
-            <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#7a8194' }}>
+            <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#8a93a6' }}>
               <span>{filtered.filter(t => t.status !== 'complete').length} open</span>
               {overdueCount > 0 && (
                 <>
                   <span className="mx-1.5 opacity-60">·</span>
-                  <span style={{ color: '#e57373' }}>{overdueCount} overdue</span>
+                  <span style={{ color: '#ef8a8a' }}>{overdueCount} overdue</span>
                 </>
               )}
             </p>
           </div>
 
           <div className="flex items-center gap-2 flex-shrink-0 flex-nowrap">
-            {/* Refined segmented control */}
+            {/* Primary navigation: List / Board / Calendar / Reports / Focus */}
             <div
-              className="flex items-center rounded-md p-[3px] border"
-              style={{ backgroundColor: 'rgba(20,24,32,0.7)', borderColor: 'rgba(255,255,255,0.06)' }}
+              className="flex items-center rounded-lg p-[3px] border"
+              style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}
             >
               {viewTabs.map(tab => {
                 const Icon = tab.icon;
-                const isActive = viewMode === tab.key;
+                const isActive = viewMode === tab.key && !showFocusMode;
                 return (
                   <button
                     key={tab.key}
-                    onClick={() => setViewMode(tab.key as ViewMode)}
+                    onClick={() => {
+                      if (tab.key === 'focus') {
+                        setShowFocusMode(true);
+                        return;
+                      }
+                      setViewMode(tab.key as ViewMode);
+                    }}
                     className={cn(
-                      'flex items-center gap-1.5 px-2.5 h-[22px] text-[11px] font-medium rounded-[5px] transition-all'
+                      'flex items-center gap-1.5 px-3 h-[26px] text-[12px] font-medium rounded-md transition-all'
                     )}
                     style={{
-                      backgroundColor: isActive ? 'rgba(126,184,247,0.12)' : 'transparent',
-                      color: isActive ? '#cfe3ff' : '#7a8194',
-                      boxShadow: isActive ? 'inset 0 0 0 1px rgba(126,184,247,0.25)' : 'none',
+                      backgroundColor: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
+                      color: isActive ? '#eef1f6' : '#8a93a6',
                     }}
                   >
-                    <Icon className="h-3 w-3" />
-                    <span className="hidden sm:inline">{tab.label}</span>
+                    <Icon className="h-3.5 w-3.5" />
+                    <span>{tab.label}</span>
                   </button>
                 );
               })}
             </div>
-            <button
-              className="h-7 px-2.5 text-[11px] font-medium rounded-md flex items-center gap-1.5 transition-colors"
-              style={{ color: '#cfe3ff', backgroundColor: 'transparent', border: '1px solid rgba(255,255,255,0.08)' }}
-              onClick={() => setShowFocusMode(true)}
-            >
-              <Star className="h-3 w-3" /> Focus
-            </button>
             <ClaapRoutingTasksBadge />
           </div>
         </div>
 
-        {/* Scope tabs row — My / Deal / Personal / Completed */}
-        <div className="flex items-center gap-1 px-6 pb-2.5 flex-wrap">
-          {([
-            { key: 'my', label: 'My', test: (t: Task) => user && t.assigned_to === user.id && t.status !== 'complete' },
-            { key: 'deal', label: 'Deal', test: (t: Task) => !!t.deal_id && t.status !== 'complete' },
-            { key: 'personal', label: 'Personal', test: (t: Task) => !t.deal_id && !t.crm_company_id && !t.contact_id && t.status !== 'complete' },
-            { key: 'completed', label: 'Completed', test: (t: Task) => t.status === 'complete' },
-          ] as const).map(s => {
-            const count = tasks.filter(s.test as any).length;
-            const isCompletedScope = s.key === 'completed';
-            const isActive = isCompletedScope ? filterStatus === 'complete'
-              : s.key === 'my' ? (ownerFilter === 'mine' && filterStatus !== 'complete')
-              : false;
-            return (
-              <button
-                key={s.key}
-                onClick={() => {
-                  if (s.key === 'completed') { setFilterStatus('complete'); }
-                  else if (s.key === 'my') { setOwnerFilter('mine'); setFilterStatus('incomplete'); }
-                  else if (s.key === 'deal') { setFilterStatus('incomplete'); }
-                  else { setFilterStatus('incomplete'); }
-                }}
-                className="flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium rounded-md transition-all"
-                style={{
-                  color: isActive ? '#e6ecf5' : '#7a8194',
-                  backgroundColor: isActive ? 'rgba(126,184,247,0.08)' : 'transparent',
-                  border: `1px solid ${isActive ? 'rgba(126,184,247,0.2)' : 'rgba(255,255,255,0.05)'}`,
-                }}
-              >
-                {s.label}
-                <span
-                  className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
-                  style={{
-                    backgroundColor: isActive ? 'rgba(126,184,247,0.15)' : 'rgba(255,255,255,0.04)',
-                    color: isActive ? '#cfe3ff' : '#7a8194',
-                  }}
-                >{count}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Custom Tab Bar (user saved views) */}
-        {viewTabs2.length > 0 && (
-          <TaskTabBar
-            tabs={viewTabs2}
-            activeTabId={activeTabId}
-            onSelectTab={setActiveTabId}
-            tasks={tasks}
-            userId={user?.id}
-            onCreateTab={(data) => createTab.mutate(data)}
-            onUpdateTab={(data) => updateTab.mutate(data)}
-            onDeleteTab={(id) => {
-              if (id === activeTabId && viewTabs2.length > 1) {
-                setActiveTabId(viewTabs2[0].id !== id ? viewTabs2[0].id : viewTabs2[1]?.id || null);
-              }
-              deleteViewTab.mutate(id);
-            }}
-            onReorderTabs={(ids) => reorderTabs.mutate(ids)}
-          />
-        )}
-
-        {/* Filter presets bar — quick switch between saved combinations */}
-        <div className="flex items-center gap-1.5 px-6 py-2 flex-wrap min-h-[40px]" style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-          <span className="text-[10px] uppercase tracking-wide font-medium mr-1 self-center" style={{ color: '#5b6173' }}>Presets</span>
-          {savedViews.length === 0 && (
-            <span className="text-[11px] self-center" style={{ color: '#7a8194' }}>None saved yet — configure filters then click Save preset.</span>
-          )}
-          {savedViews.map(v => {
-            const isActive = activePresetId === v.id;
-            return (
-              <PresetChip
-                key={v.id}
-                view={v}
-                isActive={isActive}
-                onLoad={() => handleLoadView(v)}
-                onRename={(name) => renameView.mutate({ id: v.id, name })}
-                onDuplicate={() => duplicateView.mutate(v)}
-                onDelete={() => deleteView.mutate(v.id)}
-                onCopyLink={() => handleCopyPresetLink(v)}
-                onTogglePin={() => togglePinView.mutate(v)}
-              />
-            );
-          })}
-          <button
-            onClick={() => setShowSaveViewDialog(true)}
-            className="flex items-center gap-1.5 h-7 px-2.5 text-[11px] font-medium rounded-md transition-colors hover:bg-[rgba(255,255,255,0.04)]"
-            style={{ color: '#7a8194', border: '1px dashed rgba(255,255,255,0.08)' }}
-            title="Save current filters as a preset"
-          >
-            <BookmarkPlus className="h-3 w-3" />
-            Save preset
-          </button>
-        </div>
-
-        {/* Unified filter toolbar */}
-        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(18,21,27,0.5)' }}>
+        {/* Compact filter / search / action toolbar */}
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
           <div className="relative flex-1 max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#7a8194' }} />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…" className="h-7 text-[11px] pl-8 text-white placeholder:text-[#7a8194]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', border: '1px solid rgba(255,255,255,0.06)' }} />
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8a93a6' }} />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…" className="h-8 text-[12px] pl-8 text-white placeholder:text-[#8a93a6]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }} />
           </div>
           <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
-            <SelectTrigger className="h-7 w-[120px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Users className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="mine" className="text-xs">My Tasks</SelectItem>
-              <SelectItem value="others" className="text-xs">Others' Tasks</SelectItem>
-              <SelectItem value="all" className="text-xs">All Tasks</SelectItem>
+              <SelectItem value="mine" className="text-xs">My tasks</SelectItem>
+              <SelectItem value="others" className="text-xs">Delegated</SelectItem>
+              <SelectItem value="all" className="text-xs">All tasks</SelectItem>
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="h-7 w-[130px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -848,7 +739,7 @@ export default function Tasks() {
           </Select>
 
           <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
-            <SelectTrigger className="h-7 w-[130px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -860,169 +751,175 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
-          <Select value={filterRecurring} onValueChange={v => setFilterRecurring(v as FilterRecurring)}>
-            <SelectTrigger
-              className="h-7 w-[140px] text-[11px]"
-              style={{
-                backgroundColor: filterRecurring !== 'all' ? 'rgba(59,126,255,0.15)' : 'rgba(20,24,32,0.65)',
-                borderColor: filterRecurring !== 'all' ? 'rgba(59,126,255,0.4)' : 'rgba(255,255,255,0.06)',
-                color: filterRecurring !== 'all' ? '#cfe3ff' : '#9aa3b6',
-              }}
-            >
-              <Repeat className="h-3 w-3 mr-1.5" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">All tasks</SelectItem>
-              <SelectItem value="recurring" className="text-xs">Recurring only</SelectItem>
-              <SelectItem value="paused" className="text-xs">Paused only</SelectItem>
-            </SelectContent>
-          </Select>
-
-          {/* Deal filter */}
-          {allDealOptions.length > 0 && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant={filterDealIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-7 text-[11px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
-                  <Briefcase className="h-3 w-3" />
-                  {filterDealIds.size > 0
-                    ? `Deal: ${allDealOptions.filter(([id]) => filterDealIds.has(id)).map(([, name]) => name).join(', ')}`
-                    : 'Deal'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[280px] p-0" align="start">
-                <div className="p-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          {/* Advanced filters collapsed behind a single entry point */}
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-[12px] gap-1.5"
+                style={{
+                  borderColor: (filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all')
+                    ? 'rgba(126,184,247,0.35)'
+                    : 'rgba(255,255,255,0.06)',
+                  backgroundColor: 'rgba(255,255,255,0.025)',
+                  color: (filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all') ? '#cfe3ff' : '#b3bccc',
+                }}
+              >
+                <SlidersHorizontal className="h-3 w-3" />
+                Filters
+                {(filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all') && (
+                  <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
+                    style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
+                    {filterDealIds.size + filterLabelIds.size + (filterRecurring !== 'all' ? 1 : 0)}
+                  </span>
+                )}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[320px] p-3 space-y-3" align="end">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Sort by</label>
+                <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="due_date" className="text-xs">Due date</SelectItem>
+                    <SelectItem value="priority" className="text-xs">Priority</SelectItem>
+                    <SelectItem value="deal" className="text-xs">Deal</SelectItem>
+                    <SelectItem value="created_at" className="text-xs">Created</SelectItem>
+                    <SelectItem value="title" className="text-xs">Name</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Group by</label>
+                <Select value={groupBy} onValueChange={v => setGroupBy(v as GroupBy)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="status" className="text-xs">Status</SelectItem>
+                    <SelectItem value="time" className="text-xs">Due date</SelectItem>
+                    <SelectItem value="priority" className="text-xs">Priority</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Recurring</label>
+                <Select value={filterRecurring} onValueChange={v => setFilterRecurring(v as FilterRecurring)}>
+                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">All tasks</SelectItem>
+                    <SelectItem value="recurring" className="text-xs">Recurring only</SelectItem>
+                    <SelectItem value="paused" className="text-xs">Paused only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {allDealOptions.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Deals</label>
+                    {filterDealIds.size > 0 && (
+                      <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterDealIds(new Set())}>Clear</button>
+                    )}
+                  </div>
                   <Input
-                    autoFocus
                     value={dealFilterQuery}
                     onChange={(e) => setDealFilterQuery(e.target.value)}
                     placeholder="Search deals…"
                     className="h-7 text-xs"
                   />
+                  <div className="max-h-[160px] overflow-auto rounded border border-white/[0.05]">
+                    {(() => {
+                      const q = dealFilterQuery.trim().toLowerCase();
+                      const visible = allDealOptions.filter(([id, name]) =>
+                        filterDealIds.has(id) || (!q || name.toLowerCase().includes(q))
+                      );
+                      if (visible.length === 0) return <div className="px-2 py-3 text-[11px] text-center text-muted-foreground">No deals match.</div>;
+                      const sorted = [...visible].sort((a, b) => {
+                        const aSel = filterDealIds.has(a[0]) ? 0 : 1;
+                        const bSel = filterDealIds.has(b[0]) ? 0 : 1;
+                        if (aSel !== bSel) return aSel - bSel;
+                        return a[1].localeCompare(b[1]);
+                      });
+                      return sorted.map(([id, name]) => (
+                        <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted"
+                          onClick={() => {
+                            setFilterDealIds(prev => {
+                              const next = new Set(prev);
+                              if (next.has(id)) next.delete(id); else next.add(id);
+                              return next;
+                            });
+                          }}>
+                          <Checkbox checked={filterDealIds.has(id)} className="h-3.5 w-3.5" />
+                          <span className="truncate">{name}</span>
+                        </button>
+                      ));
+                    })()}
+                  </div>
                 </div>
-                {filterDealIds.size > 0 && (
-                  <button className="w-full text-left px-3 py-1.5 text-xs text-destructive hover:bg-muted border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }} onClick={() => setFilterDealIds(new Set())}>
-                    Clear filter ({filterDealIds.size} selected)
-                  </button>
-                )}
-                <div className="max-h-[260px] overflow-auto p-1">
-                  {(() => {
-                    const q = dealFilterQuery.trim().toLowerCase();
-                    // Selected deals always pinned to top so they remain
-                    // visible even when filtered out by search.
-                    const visible = allDealOptions.filter(([id, name]) =>
-                      filterDealIds.has(id) || (!q || name.toLowerCase().includes(q))
-                    );
-                    if (visible.length === 0) {
-                      return <div className="px-2 py-3 text-[11px] text-center text-muted-foreground">No deals match.</div>;
-                    }
-                    const sorted = [...visible].sort((a, b) => {
-                      const aSel = filterDealIds.has(a[0]) ? 0 : 1;
-                      const bSel = filterDealIds.has(b[0]) ? 0 : 1;
-                      if (aSel !== bSel) return aSel - bSel;
-                      return a[1].localeCompare(b[1]);
-                    });
-                    return sorted.map(([id, name]) => (
-                      <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+              )}
+              {labels.length > 0 && (
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Labels</label>
+                    {filterLabelIds.size > 0 && (
+                      <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterLabelIds(new Set())}>Clear</button>
+                    )}
+                  </div>
+                  <div className="max-h-[140px] overflow-auto rounded border border-white/[0.05]">
+                    {labels.map(l => (
+                      <button key={l.id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted"
                         onClick={() => {
-                          setFilterDealIds(prev => {
+                          setFilterLabelIds(prev => {
                             const next = new Set(prev);
-                            if (next.has(id)) next.delete(id); else next.add(id);
+                            if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
                             return next;
                           });
                         }}>
-                        <Checkbox checked={filterDealIds.has(id)} className="h-3.5 w-3.5" />
-                        <span className="truncate">{name}</span>
+                        <Checkbox checked={filterLabelIds.has(l.id)} className="h-3.5 w-3.5" />
+                        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
+                        <span className="truncate">{l.name}</span>
                       </button>
-                    ));
-                  })()}
+                    ))}
+                  </div>
                 </div>
-              </PopoverContent>
-            </Popover>
-          )}
-
-          {/* Labels filter */}
-          {labels.length > 0 && (
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant={filterLabelIds.size > 0 ? "secondary" : "outline"} size="sm" className="h-7 text-[11px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
-                  <Tag className="h-3 w-3" />
-                  {filterLabelIds.size > 0
-                    ? `Labels: ${labels.filter(l => filterLabelIds.has(l.id)).map(l => l.name).join(', ')}`
-                    : 'Labels'}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[200px] p-1 max-h-[260px] overflow-auto" align="start">
-                {filterLabelIds.size > 0 && (
-                  <>
-                    <button className="w-full text-left px-2 py-1.5 text-xs text-destructive rounded hover:bg-muted" onClick={() => setFilterLabelIds(new Set())}>
-                      Clear filter
-                    </button>
-                    <div className="border-t my-1" />
-                  </>
-                )}
-                {labels.map(l => (
-                  <button key={l.id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                    onClick={() => {
-                      setFilterLabelIds(prev => {
-                        const next = new Set(prev);
-                        if (next.has(l.id)) next.delete(l.id); else next.add(l.id);
-                        return next;
-                      });
-                    }}>
-                    <Checkbox checked={filterLabelIds.has(l.id)} className="h-3.5 w-3.5" />
-                    <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: l.color }} />
-                    <span className="truncate">{l.name}</span>
-                  </button>
-                ))}
-              </PopoverContent>
-            </Popover>
-          )}
-
-          <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
-            <SelectTrigger className="h-7 w-[120px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
-              <SlidersHorizontal className="h-3 w-3 mr-1.5" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="due_date" className="text-xs">Due date</SelectItem>
-              <SelectItem value="priority" className="text-xs">Priority</SelectItem>
-              <SelectItem value="deal" className="text-xs">Deal</SelectItem>
-              <SelectItem value="created_at" className="text-xs">Created</SelectItem>
-              <SelectItem value="title" className="text-xs">Name</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={groupBy} onValueChange={v => setGroupBy(v as GroupBy)}>
-            <SelectTrigger className="h-7 w-[120px] text-[11px] text-[#9aa3b6]" style={{ backgroundColor: 'rgba(20,24,32,0.65)', borderColor: 'rgba(255,255,255,0.06)' }}>
-              <Group className="h-3 w-3 mr-1.5" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="status" className="text-xs">By Status</SelectItem>
-              <SelectItem value="time" className="text-xs">By Due Date</SelectItem>
-              <SelectItem value="priority" className="text-xs">By Priority</SelectItem>
-            </SelectContent>
-          </Select>
+              )}
+            </PopoverContent>
+          </Popover>
 
           <div className="flex-1" />
 
-          {savedViews.length > 0 && (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
-                  <Bookmark className="h-3 w-3" /> Views
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel className="text-xs">Saved Views</DropdownMenuLabel>
-                {savedViews.map(v => (
-                  <DropdownMenuItem key={v.id} className="text-xs flex items-center justify-between" onClick={() => handleLoadView(v)}>
-                    {v.name}
-                    <button onClick={e => { e.stopPropagation(); deleteView.mutate(v.id); }} className="ml-2 text-muted-foreground hover:text-destructive">
-                      <Trash2 className="h-3 w-3" />
-                    </button>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.025)', color: '#b3bccc' }}>
+                <Bookmark className="h-3 w-3" /> Presets
+                {activePresetId && <span className="h-1.5 w-1.5 rounded-full bg-[#7eb8f7]" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[240px]">
+              <DropdownMenuLabel className="text-xs">Saved presets</DropdownMenuLabel>
+              {savedViews.length === 0 && (
+                <div className="px-2 py-2 text-[11px] text-muted-foreground">None saved yet.</div>
+              )}
+              {savedViews.map(v => (
+                <DropdownMenuItem
+                  key={v.id}
+                  className={cn("text-xs flex items-center justify-between gap-2", activePresetId === v.id && "bg-white/5")}
+                  onClick={() => handleLoadView(v)}
+                >
+                  <span className="truncate flex-1">{v.name}</span>
+                  <button onClick={e => { e.stopPropagation(); handleCopyPresetLink(v); }} className="text-muted-foreground hover:text-foreground" title="Copy link">
+                    <Link2 className="h-3 w-3" />
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); deleteView.mutate(v.id); }} className="text-muted-foreground hover:text-destructive" title="Delete">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
+                <BookmarkPlus className="h-3.5 w-3.5" /> Save current as preset
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
 
           {selectedTaskIds.size > 0 && (
             <TaskBulkActionBar
@@ -1036,7 +933,7 @@ export default function Tasks() {
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="h-7 w-7 p-0" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(20,24,32,0.65)', color: '#9aa3b6' }}>
+              <Button variant="outline" size="sm" className="h-8 w-8 p-0" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.025)', color: '#b3bccc' }}>
                 <MoreVertical className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
@@ -1058,9 +955,6 @@ export default function Tasks() {
                 );
               })}
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
-                <BookmarkPlus className="h-3.5 w-3.5" /> Save current view
-              </DropdownMenuItem>
               <DropdownMenuItem className="text-xs gap-2" onClick={handleExportCSV}>
                 <FileDown className="h-3.5 w-3.5" /> Export CSV
               </DropdownMenuItem>
@@ -1085,11 +979,11 @@ export default function Tasks() {
           >
             <Button
               size="sm"
-              className="h-7 text-[11px] gap-1.5 rounded-md font-semibold border"
+              className="h-8 text-[12px] gap-1.5 rounded-md font-medium border"
               style={{
-                backgroundColor: 'rgba(59,126,255,0.18)',
+                backgroundColor: 'rgba(126,184,247,0.14)',
                 color: '#eaf2ff',
-                borderColor: 'rgba(126,184,247,0.35)',
+                borderColor: 'rgba(126,184,247,0.3)',
               }}
               onClick={(e) => {
                 quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
