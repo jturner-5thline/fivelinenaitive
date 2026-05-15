@@ -4461,7 +4461,7 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         priority: params.priority || "medium",
         due_date: dueDate,
         status: "not_started",
-        task_type: "task",
+        task_type: params.task_type || "task",
         assigned_to: assignee,
         assigned_by: userId,
         created_by: userId,
