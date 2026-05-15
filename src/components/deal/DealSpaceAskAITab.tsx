@@ -1519,3 +1519,5 @@ CRITICAL RULES:
     </Card>
   );
 }
+
+export const DealSpaceAskAITab = React.memo(DealSpaceAskAITabImpl);
