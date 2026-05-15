@@ -345,7 +345,6 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [pdfPreviewOpen, setPdfPreviewOpen] = useState(false);
 
   /**
    * Direct download — no print dialog, no blank intermediary screen.
@@ -361,47 +360,26 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     return `status-report-${slugify(deal.company)}-${date}.pdf`;
   };
 
-  const handlePrintPdf = async () => {
-    const node = printableRef.current;
-    if (!node) {
-      toast({ title: 'Preview not ready', variant: 'destructive' });
-      return;
-    }
-    setExportingPdf(true);
-    let container: HTMLDivElement | null = null;
-    try {
-      const html2pdf = (await import('html2pdf.js')).default;
-      const cloned = node.cloneNode(true) as HTMLElement;
-      // Render-safe staging container — kept on-screen (off-viewport, but
-      // not display:none) so html2canvas can paint every pixel reliably.
-      container = document.createElement('div');
-      container.style.position = 'fixed';
-      container.style.left = '-10000px';
-      container.style.top = '0';
-      container.style.width = '880px';
-      container.style.background = '#0d1016';
-      container.appendChild(cloned);
-      document.body.appendChild(container);
-
-      await html2pdf()
-        .set({
-          margin: [10, 10, 10, 10],
-          filename: pdfFilename(),
-          image: { type: 'jpeg', quality: 0.95 },
-          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#0d1016' },
-          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
-          pagebreak: { mode: ['css', 'legacy'] },
-        } as any)
-        .from(cloned)
-        .save();
-      setPdfPreviewOpen(false);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Could not export PDF';
-      toast({ title: 'Export failed', description: msg, variant: 'destructive' });
-    } finally {
-      if (container && container.parentNode) container.parentNode.removeChild(container);
-      setExportingPdf(false);
-    }
+  /**
+   * Native print path. The off-screen `.status-report-printable` node
+   * (rendered at the bottom of the dialog) is the same dark in-app
+   * preview component the user sees, with `isExport=true` so it expands
+   * lender lists and drops "Click to manage". Print CSS hides every
+   * other element on the page during printing and forces the printable
+   * node back into normal flow with backgrounds/colors preserved, so
+   * the browser's print preview renders an exact copy of the in-app
+   * report. The user can then choose Save as PDF in the print dialog.
+   */
+  const handlePrintPdf = () => {
+    const prevTitle = document.title;
+    document.title = `status-report-${slugify(deal.company)}-${new Date().toISOString().slice(0, 10)}`;
+    const restore = () => {
+      document.title = prevTitle;
+      window.removeEventListener('afterprint', restore);
+    };
+    window.addEventListener('afterprint', restore);
+    // Defer to next frame so the title swap lands before the dialog opens.
+    requestAnimationFrame(() => window.print());
   };
 
   // ── Generate the status report as a PDF File (for email attachment) ──
@@ -687,7 +665,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         {/* Status Summary */}
         {content.sectionsVisible.statusSummary &&
           (content.statusSummaryHtml?.trim() || content.statusSummary.filter(Boolean).length > 0) && (
-            <DarkSection label="Status Summary">
+            <DarkSection label="Status Summary" sectionClassName="status-summary-section section-block">
               <div
                 className="prose prose-sm prose-invert max-w-none text-slate-200 [&_p]:my-1.5 [&_li]:my-0.5 leading-relaxed"
                 dangerouslySetInnerHTML={{
@@ -701,7 +679,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Pipeline Snapshot — shared component (same on the deal page) */}
         {content.sectionsVisible.pipelineSnapshot && onUpdateLender && (
-          <div>
+          <div className="pipeline-section section-block">
             <DarkLabel>Lender Pipeline Snapshot</DarkLabel>
             <LenderPipelineSnapshot
               lenders={(deal.lenders || []) as any}
@@ -715,10 +693,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Recent Milestones */}
         {content.sectionsVisible.milestones && content.completedMilestones.filter(Boolean).length > 0 && (
-          <DarkSection label="Recent Milestones">
+          <DarkSection label="Recent Milestones" sectionClassName="milestones-section section-block">
             <ul className="m-0 p-0 list-none space-y-1.5">
               {content.completedMilestones.filter(Boolean).map((m, i) => (
-                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
+                <li key={i} className="milestone-item text-sm text-slate-200 leading-snug flex gap-2">
                   <span className="text-emerald-400 font-bold">✓</span>
                   <span>{m}</span>
                 </li>
@@ -729,10 +707,10 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Next Steps */}
         {content.sectionsVisible.nextSteps && content.nextSteps.filter(Boolean).length > 0 && (
-          <DarkSection label="Next Steps">
+          <DarkSection label="Next Steps" sectionClassName="next-steps-section section-block">
             <ul className="m-0 p-0 list-none space-y-1.5">
               {content.nextSteps.filter(Boolean).map((s, i) => (
-                <li key={i} className="text-sm text-slate-200 leading-snug flex gap-2">
+                <li key={i} className="next-step-item text-sm text-slate-200 leading-snug flex gap-2">
                   <span className="text-blue-400 font-bold">→</span>
                   <span>{s}</span>
                 </li>
@@ -743,7 +721,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* Passed lender reasons */}
         {passedDetails.length > 0 && (
-          <div>
+          <div className="passed-reasons-section section-block">
             <DarkLabel>Passed Lender Reasons</DarkLabel>
             <div className="mt-2 rounded-xl border border-slate-700/60 overflow-hidden">
               <table className="w-full text-xs" style={{ tableLayout: 'fixed' }}>
@@ -784,7 +762,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         {/* What We Need From You */}
         {content.sectionsVisible.actionItems && (
-          <div>
+          <div className="client-needs-section section-block">
             <DarkLabel>What We Need From You</DarkLabel>
             <div
               className="mt-2 rounded-xl px-4 py-3 text-sm text-slate-100 leading-relaxed whitespace-pre-wrap border-l-2 border-l-blue-400/80"
@@ -901,12 +879,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setPdfPreviewOpen(true)}
+            onClick={handlePrintPdf}
             disabled={exportingPdf}
             className="gap-2"
           >
             <Download className="h-4 w-4" />
-            Export as PDF
+            Print / Save as PDF
           </Button>
           {onDraftEmail && (
             <Button
@@ -931,6 +909,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             and the resolved textarea value as plain text. */}
         <div
           aria-hidden
+          className="status-report-printable"
           style={{
             position: 'fixed',
             left: -100000,
@@ -951,49 +930,66 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       </DialogContent>
     </Dialog>
 
-    {/* PDF Preview / Confirm-export dialog. Renders the same dark in-app
-        preview at full scale so the user can verify exactly what the PDF
-        will look like, then confirm download. The actual PDF is generated
-        from the off-screen printable node (kept mounted in the parent
-        dialog) so html2canvas captures a render-safe copy. */}
-    <Dialog open={pdfPreviewOpen} onOpenChange={(v) => !exportingPdf && setPdfPreviewOpen(v)}>
-      <DialogContent
-        className="max-w-4xl h-[92vh] flex flex-col p-0 gap-0 overflow-hidden border border-slate-700 shadow-2xl rounded-2xl"
-        style={{ backgroundColor: '#0d1016' }}
-      >
-        <DialogHeader className="px-6 pt-5 pb-3 shrink-0 border-b border-slate-700/60" style={{ backgroundColor: '#11151c' }}>
-          <DialogTitle className="flex items-center gap-2 text-slate-100">
-            <FileText className="h-5 w-5" />
-            PDF Preview — {deal.company}
-          </DialogTitle>
-          <p className="text-xs text-slate-400">
-            This is exactly how the downloaded PDF will look. Click Download PDF to confirm.
-          </p>
-        </DialogHeader>
-
-        <div className="flex-1 overflow-y-auto px-6 py-6" style={{ backgroundColor: '#0d1016' }}>
-          {exportingPdf && (
-            <div className="flex items-center justify-center gap-2 py-3 text-sm text-slate-300">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Generating PDF…
-            </div>
-          )}
-          <div className="mx-auto" style={{ maxWidth: 880 }}>
-            {renderInAppPreview(true)}
-          </div>
-        </div>
-
-        <DialogFooter className="px-6 py-3 border-t border-slate-700/60 shrink-0 gap-2" style={{ backgroundColor: '#11151c' }}>
-          <Button variant="outline" onClick={() => setPdfPreviewOpen(false)} disabled={exportingPdf}>
-            Cancel
-          </Button>
-          <Button variant="liquid-glass" size="sm" onClick={handlePrintPdf} disabled={exportingPdf} className="gap-2">
-            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            {exportingPdf ? 'Generating PDF…' : 'Download PDF'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    {/* Print-only CSS. When the browser enters print mode we hide the
+        whole app and "promote" the off-screen .status-report-printable
+        node back into normal flow so it becomes the entire printed
+        document. Sections carry keep-together break rules so each major
+        block stays on a single page whenever it physically fits. */}
+    <style>{`
+      @media print {
+        @page { size: letter; margin: 12mm; }
+        html, body {
+          background: #0d1016 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        body * { visibility: hidden !important; }
+        .status-report-printable, .status-report-printable * { visibility: visible !important; }
+        .status-report-printable {
+          position: static !important;
+          left: auto !important; top: auto !important;
+          width: 100% !important;
+          padding: 0 !important;
+          margin: 0 !important;
+          opacity: 1 !important;
+          z-index: auto !important;
+          pointer-events: auto !important;
+          background: #0d1016 !important;
+          overflow: visible !important;
+        }
+        .status-report-printable * { overflow: visible !important; max-height: none !important; }
+        /* Keep major blocks together. */
+        .status-report-printable .section-block,
+        .status-report-printable .status-summary-section,
+        .status-report-printable .pipeline-section,
+        .status-report-printable .pipeline-card,
+        .status-report-printable .milestones-section,
+        .status-report-printable .next-steps-section,
+        .status-report-printable .passed-reasons-section,
+        .status-report-printable .client-needs-section {
+          break-inside: avoid;
+          break-inside: avoid-page;
+          page-break-inside: avoid;
+        }
+        .status-report-printable h1,
+        .status-report-printable h2,
+        .status-report-printable h3,
+        .status-report-printable .section-heading {
+          break-after: avoid;
+          page-break-after: avoid;
+        }
+        .status-report-printable tr,
+        .status-report-printable li,
+        .status-report-printable .milestone-item,
+        .status-report-printable .next-step-item {
+          break-inside: avoid;
+          page-break-inside: avoid;
+        }
+        /* Hide leftover dialog scrim/overlays from radix portals. */
+        [data-radix-portal], [role="dialog"] { background: transparent !important; }
+        .no-print, [data-html2canvas-ignore="true"] { display: none !important; }
+      }
+    `}</style>
     </>
   );
 }
@@ -1208,9 +1204,9 @@ function DarkLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function DarkSection({ label, children }: { label: string; children: React.ReactNode }) {
+function DarkSection({ label, children, sectionClassName }: { label: string; children: React.ReactNode; sectionClassName?: string }) {
   return (
-    <div>
+    <div className={sectionClassName}>
       <DarkLabel>{label}</DarkLabel>
       <div
         className="mt-2 rounded-xl px-4 py-3 border-l-2 border-l-blue-400/70"
