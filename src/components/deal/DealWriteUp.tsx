@@ -1266,100 +1266,106 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Edit Deal</h3>
-              {canAutoFill && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        // Ripple effect
-                        const btn = e.currentTarget;
-                        const rect = btn.getBoundingClientRect();
-                        const ripple = document.createElement('span');
-                        const size = Math.max(rect.width, rect.height);
-                        ripple.style.cssText = `
-                          position:absolute; border-radius:50%; pointer-events:none;
-                          width:${size}px; height:${size}px;
-                          left:${e.clientX - rect.left - size / 2}px;
-                          top:${e.clientY - rect.top - size / 2}px;
-                          background: hsl(var(--primary) / 0.25);
-                          transform: scale(0); animation: ripple-effect 0.6s ease-out forwards;
-                        `;
-                        btn.appendChild(ripple);
-                        setTimeout(() => ripple.remove(), 600);
-                        handleAutoFillClick();
-                      }}
-                      disabled={isExtracting}
-                      className="gap-2 relative overflow-hidden"
-                    >
-                      {isExtracting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4 text-primary" />
+              {(canAutoFill || canGenerateMemo || canUseBrandedDocument) && (
+                <TooltipProvider>
+                  <div className="flex items-center gap-2">
+                    {/* Primary unified action */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={handleGenerateCompleteWriteUp}
+                          disabled={
+                            isGeneratingComplete || isExtracting || isMemoGenerating
+                          }
+                          className="gap-2"
+                        >
+                          {isGeneratingComplete || isExtracting || isMemoGenerating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                          Generate Complete Write-Up
+                          <Sparkles className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[280px]">
+                        <p className="font-semibold">Run all three tools in sequence</p>
+                        <p className="text-[11px] opacity-80 mt-1">
+                          Auto-fills every form field from Deal Space, Data Room,
+                          lender notes &amp; checklist, then drafts an editable AI
+                          narrative. Nothing is exported until you approve.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* Secondary icon-only tools */}
+                    <div className="flex items-center gap-1 border-l border-border/40 pl-2 ml-1">
+                      {canAutoFill && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={handleAutoFillClick}
+                              disabled={isExtracting}
+                              aria-label="Auto-Fill from Deal Space"
+                            >
+                              {isExtracting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Database className="h-4 w-4 text-primary" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Auto-Fill from Deal Space</TooltipContent>
+                        </Tooltip>
                       )}
-                      Auto-Fill from Deal Space
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Extract data from uploaded Deal Space documents</p>
-                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              )}
-              {canGenerateMemo && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        const result = await generateFullMemo();
-                        if (result && result.content) {
-                          setShowMemoDialog(true);
-                        }
-                      }}
-                      disabled={isMemoGenerating}
-                      className="gap-2"
-                    >
-                      {isMemoGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4 text-primary" />
+                      {canGenerateMemo && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                const result = await generateFullMemo();
+                                if (result && result.content) setShowMemoDialog(true);
+                              }}
+                              disabled={isMemoGenerating}
+                              aria-label="Generate AI Memo"
+                            >
+                              {isMemoGenerating ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-4 w-4 text-primary" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Generate AI Memo</TooltipContent>
+                        </Tooltip>
                       )}
-                      Generate AI Memo
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Generate a structured lender-ready memo from all deal data</p>
-                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              )}
-              {canUseBrandedDocument && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowBrandedStudio(true)}
-                      className="gap-2"
-                    >
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Branded Document
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Generate a styled, branded document (memo, teaser, one-pager…)</p>
-                    <p className="text-[10px] opacity-70 mt-0.5">Style by image, URL, or saved template</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                      {canUseBrandedDocument && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setShowBrandedStudio(true)}
+                              aria-label="Branded Document"
+                            >
+                              <FileText className="h-4 w-4 text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Branded Document</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </div>
+                </TooltipProvider>
               )}
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
