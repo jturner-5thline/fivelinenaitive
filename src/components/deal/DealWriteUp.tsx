@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { dealTypeIdsToLabels } from '@/utils/dealTypeLabels';
-import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, AlertTriangle } from 'lucide-react';
+import { Check, Loader2, Clock, AlertCircle, Send, Eye, CloudOff, RefreshCw, LayoutList, LayoutGrid, AlertTriangle, Wand2, FileText, Database } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -56,6 +56,8 @@ import { BrandedDocStudioDialog } from './BrandedDocStudioDialog';
 import { WriteUpPreviewDialog } from './writeup/WriteUpPreviewDialog';
 import { OverwriteProtectionDialog } from './writeup/OverwriteProtectionDialog';
 import { UserEditedFieldWrapper } from './writeup/UserEditedFieldWrapper';
+import { AiDraftWriteUpSection, type DraftSection } from './writeup/AiDraftWriteUpSection';
+import { archiveApprovedWriteUp } from '@/lib/archiveWriteUp';
 import { useAuth } from '@/contexts/AuthContext';
 import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 
@@ -378,6 +380,14 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
   const { isGenerating: isMemoGenerating, isRegenerating, memoContent, memoSections, generateFullMemo, regenerateSection } = useDealSpaceMemo(dealId);
   const [showMemoDialog, setShowMemoDialog] = useState(false);
   const [showBrandedStudio, setShowBrandedStudio] = useState(false);
+
+  // Generate Complete Write-Up (single primary action)
+  const [isGeneratingComplete, setIsGeneratingComplete] = useState(false);
+  const [draftSections, setDraftSections] = useState<DraftSection[] | null>(null);
+  const [draftGeneratedAt, setDraftGeneratedAt] = useState<Date | null>(null);
+  const [isDraftApproved, setIsDraftApproved] = useState(false);
+  const [isApprovingDraft, setIsApprovingDraft] = useState(false);
+  const [approvedVersion, setApprovedVersion] = useState<number | null>(null);
   
   // Overwrite protection
   const [showOverwriteDialog, setShowOverwriteDialog] = useState(false);
@@ -1063,6 +1073,160 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
     }
   };
 
+  // Build a "Lender Market Update" markdown block from the live deal_lenders
+  // table — same source the Lender Pipeline Snapshot uses. Buckets lenders
+  // into Active / In Review / Passed groups so the AI draft mirrors the
+  // Status Report's lender summary.
+  const buildLenderMarketUpdate = async (): Promise<string> => {
+    try {
+      const { data: rows } = await supabase
+        .from('deal_lenders')
+        .select('name, stage, tracking_status, pass_reason, notes')
+        .eq('deal_id', dealId);
+      const lenders = (rows || []) as any[];
+      if (lenders.length === 0) return 'No lenders have been added to this deal yet.';
+      const passed = lenders.filter(l => /pass/i.test(l.stage || '') || /pass/i.test(l.tracking_status || ''));
+      const inReview = lenders.filter(l => !passed.includes(l) && /(review|terms|diligence)/i.test(l.stage || ''));
+      const active = lenders.filter(l => !passed.includes(l) && !inReview.includes(l));
+      const fmt = (label: string, list: any[]) =>
+        `**${label} (${list.length})**\n` +
+        (list.length
+          ? list
+              .map(
+                (l) =>
+                  `- ${l.name}${l.stage ? ` — ${l.stage}` : ''}${
+                    l.pass_reason ? ` (Pass reason: ${l.pass_reason})` : ''
+                  }`,
+              )
+              .join('\n')
+          : '- None');
+      return [fmt('Active / On Deck', active), fmt('In Review', inReview), fmt('Passed', passed)].join('\n\n');
+    } catch (e) {
+      console.error('buildLenderMarketUpdate failed', e);
+      return 'Lender pipeline data unavailable.';
+    }
+  };
+
+  const buildDraftSections = (
+    sectionsByKey: Record<string, string>,
+    fallbackContent: string,
+    lenderMarketUpdate: string,
+  ): DraftSection[] => {
+    const get = (k: string) => (sectionsByKey[k] || '').trim();
+    return [
+      {
+        key: 'executive_summary',
+        title: 'Executive Summary',
+        content: get('executive_overview') || fallbackContent.slice(0, 800),
+      },
+      {
+        key: 'company_overview',
+        title: 'Company Overview',
+        content:
+          get('facility_overview') ||
+          [data.companyName, data.location, data.industries?.join(', ')]
+            .filter(Boolean)
+            .join(' • '),
+      },
+      {
+        key: 'financial_profile',
+        title: 'Financial Profile',
+        hint: 'Pulled from Data Room financials',
+        content: get('financial_profile') || '',
+      },
+      {
+        key: 'use_of_proceeds',
+        title: 'Use of Proceeds',
+        content:
+          get('facility_overview').match(/use of proceeds[\s\S]*/i)?.[0] ||
+          (data.capitalAsk ? `Capital ask: ${data.capitalAsk}` : ''),
+      },
+      {
+        key: 'lender_market_update',
+        title: 'Lender Market Update',
+        hint: 'Pulled from lender pipeline (active, in review, passed)',
+        content: lenderMarketUpdate,
+      },
+      {
+        key: 'key_risks',
+        title: 'Key Risks / Mitigants',
+        content: get('key_risks') || '',
+      },
+      {
+        key: 'fifth_line_commentary',
+        title: '5th Line Commentary',
+        hint: 'Editable by advisor',
+        content: get('recommendation') || '',
+      },
+    ];
+  };
+
+  const handleGenerateCompleteWriteUp = async () => {
+    setIsGeneratingComplete(true);
+    setIsDraftApproved(false);
+    setApprovedVersion(null);
+    try {
+      // 1. Auto-fill all extractable fields from every source
+      const extract = await extractWriteUpData();
+      if (extract && extract.extractedFields.length > 0) {
+        applyAutoFillFields(extract.extractedFields, true);
+      }
+      // 2. Generate AI memo narrative (also pulls from Deal Space + DR)
+      const memo = await generateFullMemo();
+      // 3. Pull live lender pipeline for the market update
+      const lenderMarketUpdate = await buildLenderMarketUpdate();
+      // 4. Compose the 7 inline draft sections
+      const sections = buildDraftSections(
+        memo?.sections || {},
+        memo?.content || '',
+        lenderMarketUpdate,
+      );
+      setDraftSections(sections);
+      setDraftGeneratedAt(new Date());
+      toast.success('AI Draft Write-Up ready', {
+        description: 'Review the draft below — nothing is exported until you approve.',
+      });
+    } catch (err) {
+      console.error('Generate Complete Write-Up failed', err);
+      toast.error('Could not generate complete write-up');
+    } finally {
+      setIsGeneratingComplete(false);
+    }
+  };
+
+  const handleDraftSectionChange = (key: string, content: string) => {
+    setDraftSections((prev) =>
+      prev ? prev.map((s) => (s.key === key ? { ...s, content } : s)) : prev,
+    );
+    // Any edit after approval invalidates the approved state until re-approved.
+    if (isDraftApproved) setIsDraftApproved(false);
+  };
+
+  const handleApproveDraft = async (html: string) => {
+    if (!draftSections) return;
+    setIsApprovingDraft(true);
+    try {
+      const res = await archiveApprovedWriteUp({
+        dealId,
+        dealName: data.companyName || null,
+        companyName: data.companyName || null,
+        html,
+        title: `Write-Up — ${data.companyName || 'Deal'}`,
+      });
+      if (res.ok) {
+        setIsDraftApproved(true);
+        setApprovedVersion(res.version ?? null);
+        toast.success(`Approved & archived to Data Room (v${res.version ?? '?'} )`);
+        // Open the branded document studio so the approved draft can be exported
+        setShowBrandedStudio(true);
+      } else {
+        toast.error('Approval failed — could not archive to Data Room');
+      }
+    } finally {
+      setIsApprovingDraft(false);
+    }
+  };
+
   return (
     <Card className="w-full max-w-full">
       <CardHeader>
@@ -1102,100 +1266,106 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-3">
               <h3 className="text-lg font-semibold">Edit Deal</h3>
-              {canAutoFill && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        // Ripple effect
-                        const btn = e.currentTarget;
-                        const rect = btn.getBoundingClientRect();
-                        const ripple = document.createElement('span');
-                        const size = Math.max(rect.width, rect.height);
-                        ripple.style.cssText = `
-                          position:absolute; border-radius:50%; pointer-events:none;
-                          width:${size}px; height:${size}px;
-                          left:${e.clientX - rect.left - size / 2}px;
-                          top:${e.clientY - rect.top - size / 2}px;
-                          background: hsl(var(--primary) / 0.25);
-                          transform: scale(0); animation: ripple-effect 0.6s ease-out forwards;
-                        `;
-                        btn.appendChild(ripple);
-                        setTimeout(() => ripple.remove(), 600);
-                        handleAutoFillClick();
-                      }}
-                      disabled={isExtracting}
-                      className="gap-2 relative overflow-hidden"
-                    >
-                      {isExtracting ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4 text-primary" />
+              {(canAutoFill || canGenerateMemo || canUseBrandedDocument) && (
+                <TooltipProvider>
+                  <div className="flex items-center gap-2">
+                    {/* Primary unified action */}
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={handleGenerateCompleteWriteUp}
+                          disabled={
+                            isGeneratingComplete || isExtracting || isMemoGenerating
+                          }
+                          className="gap-2"
+                        >
+                          {isGeneratingComplete || isExtracting || isMemoGenerating ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Wand2 className="h-4 w-4" />
+                          )}
+                          Generate Complete Write-Up
+                          <Sparkles className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-[280px]">
+                        <p className="font-semibold">Run all three tools in sequence</p>
+                        <p className="text-[11px] opacity-80 mt-1">
+                          Auto-fills every form field from Deal Space, Data Room,
+                          lender notes &amp; checklist, then drafts an editable AI
+                          narrative. Nothing is exported until you approve.
+                        </p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    {/* Secondary icon-only tools */}
+                    <div className="flex items-center gap-1 border-l border-border/40 pl-2 ml-1">
+                      {canAutoFill && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={handleAutoFillClick}
+                              disabled={isExtracting}
+                              aria-label="Auto-Fill from Deal Space"
+                            >
+                              {isExtracting ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Database className="h-4 w-4 text-primary" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Auto-Fill from Deal Space</TooltipContent>
+                        </Tooltip>
                       )}
-                      Auto-Fill from Deal Space
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Extract data from uploaded Deal Space documents</p>
-                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              )}
-              {canGenerateMemo && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={async () => {
-                        const result = await generateFullMemo();
-                        if (result && result.content) {
-                          setShowMemoDialog(true);
-                        }
-                      }}
-                      disabled={isMemoGenerating}
-                      className="gap-2"
-                    >
-                      {isMemoGenerating ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4 text-primary" />
+                      {canGenerateMemo && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={async () => {
+                                const result = await generateFullMemo();
+                                if (result && result.content) setShowMemoDialog(true);
+                              }}
+                              disabled={isMemoGenerating}
+                              aria-label="Generate AI Memo"
+                            >
+                              {isMemoGenerating ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Sparkles className="h-4 w-4 text-primary" />
+                              )}
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Generate AI Memo</TooltipContent>
+                        </Tooltip>
                       )}
-                      Generate AI Memo
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Generate a structured lender-ready memo from all deal data</p>
-                    <p className="text-[10px] opacity-70 mt-0.5">Powered by Claude</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              )}
-              {canUseBrandedDocument && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setShowBrandedStudio(true)}
-                      className="gap-2"
-                    >
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Branded Document
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Generate a styled, branded document (memo, teaser, one-pager…)</p>
-                    <p className="text-[10px] opacity-70 mt-0.5">Style by image, URL, or saved template</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+                      {canUseBrandedDocument && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => setShowBrandedStudio(true)}
+                              aria-label="Branded Document"
+                            >
+                              <FileText className="h-4 w-4 text-primary" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Branded Document</TooltipContent>
+                        </Tooltip>
+                      )}
+                    </div>
+                  </div>
+                </TooltipProvider>
               )}
               {autoFilledFields.size > 0 && (
                 <Badge variant="secondary" className="gap-1 text-xs bg-primary/10 text-primary border-primary/20">
@@ -1230,7 +1400,20 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
               </ToggleGroup>
             </TooltipProvider>
           </div>
-          
+
+          {draftSections && (
+            <AiDraftWriteUpSection
+              sections={draftSections}
+              onChange={handleDraftSectionChange}
+              onApprove={handleApproveDraft}
+              onExportBranded={() => setShowBrandedStudio(true)}
+              isApproved={isDraftApproved}
+              isApproving={isApprovingDraft}
+              approvedVersion={approvedVersion}
+              generatedAt={draftGeneratedAt}
+            />
+          )}
+
           {viewMode === 'tabs' && (
             <Tabs defaultValue="company-overview" className="w-full">
               <TabsList className="grid w-full grid-cols-5 gap-2 bg-transparent p-1 h-auto [&>span]:hidden">
