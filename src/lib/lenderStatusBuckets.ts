@@ -35,6 +35,34 @@ export function isExcludedFromClientReport(
   return false;
 }
 
+/** Returns true if a lender is explicitly excluded from the deal's active
+ *  outreach universe. Unlike isExcludedFromClientReport, "on hold" lenders
+ *  remain part of the outreach count — only "excluded" lenders are removed.
+ *  This is the single source of truth for outreach KPIs (e.g. the AI status
+ *  summary's "reached out to X lenders" sentence). */
+export function isLenderExcludedFromOutreach(
+  lender: DealLender,
+  configuredStages?: { id: string; label: string }[],
+): boolean {
+  const ts = norm(lender.trackingStatus);
+  if (ts === 'excluded') return true;
+  const label = norm(stageLabel(lender, configuredStages));
+  const stageId = norm(lender.stage);
+  if (label === 'excluded' || stageId === 'excluded') return true;
+  if ((lender as any).excluded === true) return true;
+  return false;
+}
+
+/** Returns the active outreach lender set for a deal — the canonical list
+ *  used for the "reached out to X lenders" status summary metric and any
+ *  related narrative counts. */
+export function getOutreachLenders(
+  lenders: DealLender[] | undefined,
+  configuredStages?: { id: string; label: string }[],
+): DealLender[] {
+  return (lenders || []).filter((l) => !isLenderExcludedFromOutreach(l, configuredStages));
+}
+
 export function bucketLender(
   lender: DealLender,
   configuredStages?: { id: string; label: string }[],

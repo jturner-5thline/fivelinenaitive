@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { FileText, Mail, Plus, X, Eye, EyeOff, Loader2, Sparkles, Download } from 'lucide-react';
 import { Deal } from '@/types/deal';
 import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } from '@/utils/dealExport';
-import { bucketLenders, extractPassDetails } from '@/lib/lenderStatusBuckets';
+import { bucketLenders, extractPassDetails, getOutreachLenders } from '@/lib/lenderStatusBuckets';
 import { sendClaudeMessage } from '@/services/claude';
 import { rewritePassedFeedback } from '@/lib/rewritePassFeedback';
 import { toast } from '@/hooks/use-toast';
@@ -223,7 +223,7 @@ export function StatusReportPreviewModal({
     if (aiTriedForDeal === deal.id) return;
     setAiTriedForDeal(deal.id);
 
-    const lenders = deal.lenders || [];
+    const lenders = getOutreachLenders(deal.lenders, configuredStages);
     const lenderSummary = lenders
       .map((l) => {
         const note = (l.notes || '').replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
