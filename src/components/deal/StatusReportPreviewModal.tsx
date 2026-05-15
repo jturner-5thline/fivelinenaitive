@@ -9,6 +9,9 @@ import type { StatusReportEditableContent, LenderStageConfig, OutstandingItem } 
 import { bucketLenders, extractPassDetails } from '@/lib/lenderStatusBuckets';
 import { sendClaudeMessage } from '@/services/claude';
 import { toast } from '@/hooks/use-toast';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import { Bold, Italic, List, ListOrdered } from 'lucide-react';
 
 export type { StatusReportEditableContent };
 
@@ -54,6 +57,7 @@ function buildInitialContent(
   return {
     keyUpdates: bullets.length > 0 ? bullets.slice(0, 5) : [''],
     statusSummary: [],
+    statusSummaryHtml: '',
     lenderRows,
     completedMilestones: completed,
     nextSteps: upcoming,
@@ -75,10 +79,11 @@ function buildInitialContent(
  *  Falls back to extracting bullet-like lines per section heading. */
 function parseAiSections(text: string): {
   statusSummary: string[];
+  statusSummaryNarrative: string;
   recentMilestones: string[];
   nextSteps: string[];
 } {
-  const empty = { statusSummary: [], recentMilestones: [], nextSteps: [] };
+  const empty = { statusSummary: [], statusSummaryNarrative: '', recentMilestones: [], nextSteps: [] };
   if (!text) return empty;
   // Try fenced JSON first
   const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -87,8 +92,10 @@ function parseAiSections(text: string): {
       const parsed = JSON.parse(jsonMatch[0]);
       const arr = (v: unknown): string[] =>
         Array.isArray(v) ? v.map((x) => String(x).trim()).filter(Boolean) : [];
+      const str = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
       return {
         statusSummary: arr(parsed.statusSummary),
+        statusSummaryNarrative: str(parsed.statusSummaryNarrative),
         recentMilestones: arr(parsed.recentMilestones),
         nextSteps: arr(parsed.nextSteps),
       };
@@ -97,6 +104,37 @@ function parseAiSections(text: string): {
     }
   }
   return empty;
+}
+
+/** Convert a plain narrative string (with \n\n paragraph breaks) to safe HTML. */
+function narrativeToHtml(text: string): string {
+  if (!text) return '';
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return text
+    .split(/\n{2,}/)
+    .map((p) => `<p>${escape(p.trim()).replace(/\n/g, '<br/>')}</p>`)
+    .join('');
+}
+
+/** Convert a bullet array into HTML paragraphs joined by spaces (fallback narrative). */
+function bulletsToNarrativeHtml(bullets: string[]): string {
+  if (!bullets.length) return '';
+  return `<p>${bullets.map((b) => b.replace(/^[-•*]\s*/, '').trim()).filter(Boolean).join(' ')}</p>`;
+}
+
+/** Strip HTML to a plain-text bullet array (one per <p>/<li>). */
+function htmlToBullets(html: string): string[] {
+  if (!html) return [];
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  // Prefer <li> if present; otherwise split by <p>.
+  const lis = Array.from(tmp.querySelectorAll('li')).map((el) => (el.textContent || '').trim()).filter(Boolean);
+  if (lis.length > 0) return lis;
+  const ps = Array.from(tmp.querySelectorAll('p')).map((el) => (el.textContent || '').trim()).filter(Boolean);
+  if (ps.length > 0) return ps;
+  const text = (tmp.textContent || '').trim();
+  return text ? [text] : [];
 }
 
 export function StatusReportPreviewModal({
@@ -160,7 +198,8 @@ export function StatusReportPreviewModal({
     const prompt = `You are drafting a client-facing status report for a financing engagement.
 Return STRICT JSON only with this shape (no markdown, no commentary):
 {
-  "statusSummary": [3-5 short bullet strings],
+  "statusSummaryNarrative": "2-4 short sentences of narrative prose (executive summary). Plain text, no markdown. Use blank lines (\\n\\n) between paragraphs if needed.",
+  "statusSummary": [3-5 short bullet strings — used as a fallback if narrative is empty],
   "recentMilestones": [3-5 short bullet strings, completed work in the last ~30 days],
   "nextSteps": [3-5 short bullet strings, immediate forward-looking actions]
 }
@@ -202,9 +241,13 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           return;
         }
         const parsed = parseAiSections(res.response);
+        const narrativeHtml = parsed.statusSummaryNarrative
+          ? narrativeToHtml(parsed.statusSummaryNarrative)
+          : bulletsToNarrativeHtml(parsed.statusSummary);
         setContent((prev) => ({
           ...prev,
           statusSummary: parsed.statusSummary.length > 0 ? parsed.statusSummary : prev.statusSummary,
+          statusSummaryHtml: narrativeHtml || prev.statusSummaryHtml || '',
           completedMilestones:
             parsed.recentMilestones.length > 0 ? parsed.recentMilestones : prev.completedMilestones,
           nextSteps: parsed.nextSteps.length > 0 ? parsed.nextSteps : prev.nextSteps,
