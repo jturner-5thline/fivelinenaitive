@@ -628,11 +628,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     </div>
   );
 
-  // ── Render the in-app dark preview (Naitive-styled, on-screen only) ─────
-  // Print/PDF still uses `renderPrintable()` (light) — we render that node
-  // off-screen so the existing handlePrintPdf flow keeps working.
-  const renderInAppPreview = () => (
+  // ── Render the in-app dark preview (Naitive-styled).  ──────────────────
+  // The PDF export captures THIS exact component so the exported file is a
+  // faithful reproduction of what the user sees in the preview pane.
+  // `isExport=true` triggers minor print-safe tweaks only:
+  //   - LenderPipelineSnapshot expands fully (no "+X more…" / no truncated
+  //     names) and drops the "Click to manage" affordance.
+  //   - The wrapper has a solid backdrop so html2canvas captures the
+  //     gradient layers cleanly without any underlying transparency.
+  // Visual design (colors, fonts, layout, spacing) is unchanged.
+  const renderInAppPreview = (isExport = false) => (
     <div
+      ref={isExport ? printableRef : undefined}
       className="rounded-2xl overflow-hidden border backdrop-blur-2xl"
       style={{
         // Layered gradient shell — matches the deal pop-up surface treatment:
@@ -694,6 +701,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
               configuredStages={configuredStages}
               onUpdateLender={onUpdateLender}
               className="mt-2"
+              isExport={isExport}
             />
           </div>
         )}
