@@ -382,6 +382,27 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           break-inside: avoid;
           page-break-inside: avoid;
         }
+        /* Ensure no wrapper clips content in print (e.g. the rounded
+           table wrapper around Passed Lender Reasons uses overflow-hidden,
+           which can clip the table in print and make the whole section
+           disappear from the PDF). */
+        #${PRINT_ID}, #${PRINT_ID} * {
+          overflow: visible !important;
+          max-height: none !important;
+        }
+        /* Belt-and-suspenders: explicitly allow the Passed Lender Reasons
+           section to render in print. */
+        #${PRINT_ID} .passed-lender-reasons,
+        #${PRINT_ID} .passed-lender-reasons * {
+          display: revert !important;
+          visibility: visible !important;
+          height: auto !important;
+          opacity: 1 !important;
+        }
+        #${PRINT_ID} .passed-lender-reasons {
+          break-inside: auto;
+          page-break-inside: auto;
+        }
       }
     `;
     document.head.appendChild(style);
