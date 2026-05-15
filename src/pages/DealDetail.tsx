@@ -5679,21 +5679,29 @@ export default function DealDetail() {
             setShowStatusReportPreview(false);
             toast({ title: 'Status email ready', description: 'Formatted email draft generated.' });
           }}
+          onDraftEmail={(editableContent, pdfFile) => {
+            setStatusEmailContent(editableContent);
+            setStatusEmailPdfFile(pdfFile);
+            setShowStatusReportPreview(false);
+          }}
         />
       )}
 
       {deal && statusEmailContent && (
         <DraftAndSendDialog
           open={!!statusEmailContent}
-          onOpenChange={(o) => { if (!o) setStatusEmailContent(null); }}
+          onOpenChange={(o) => { if (!o) { setStatusEmailContent(null); setStatusEmailPdfFile(null); } }}
           contextLabel="Status Update"
           initial={{
             subject: buildStatusEmailSubject(deal),
-            bodyHtml: buildStatusEmailHtml(deal, statusEmailContent),
+            bodyHtml: statusEmailPdfFile
+              ? buildStatusEmailPdfBodyHtml(deal)
+              : buildStatusEmailHtml(deal, statusEmailContent),
             to: (deal as any).contact_email ? [(deal as any).contact_email] : [],
             dealId: deal.id,
+            initialFiles: statusEmailPdfFile ? [statusEmailPdfFile] : undefined,
           } as DraftAndSendInitial}
-          onSent={() => setStatusEmailContent(null)}
+          onSent={() => { setStatusEmailContent(null); setStatusEmailPdfFile(null); }}
         />
       )}
 
