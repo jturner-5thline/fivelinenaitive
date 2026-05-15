@@ -1077,7 +1077,11 @@ CRITICAL RULES:
               variant="outline"
               size="sm"
               className="md:hidden"
-              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+              onClick={() => {
+                const next = !isHistoryOpen;
+                setIsHistoryOpen(next);
+                if (next) ensureConversationsLoaded();
+              }}
             >
               <History className="h-4 w-4 mr-2" />
               Previous conversations
