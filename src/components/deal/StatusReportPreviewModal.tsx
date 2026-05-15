@@ -13,7 +13,6 @@ import { toast } from '@/hooks/use-toast';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
-import { LenderStageManageDialog } from './LenderStageManageDialog';
 import { LenderPipelineSnapshot } from './LenderPipelineSnapshot';
 import type { DealLender } from '@/types/deal';
 
@@ -185,14 +184,6 @@ export function StatusReportPreviewModal({
     [buckets.passed],
   );
 
-  // Pipeline-snapshot management dialog state. `null` = closed.
-  const [manageBucket, setManageBucket] = useState<null | 'onDeck' | 'inReview' | 'termsIssued' | 'passed'>(null);
-  const bucketMeta = {
-    onDeck:      { label: 'On Deck',       color: 'blue'  as const, items: buckets.onDeck },
-    inReview:    { label: 'In Review',     color: 'teal'  as const, items: buckets.inReview },
-    termsIssued: { label: 'Terms Issued',  color: 'green' as const, items: buckets.termsIssued },
-    passed:      { label: 'Passed',        color: 'red'   as const, items: buckets.passed },
-  };
 
   // AI-rewrite raw pass notes into client-safe Key Feedback whenever the
   // modal opens for a new deal. One call per (deal, modal-open) cycle.
