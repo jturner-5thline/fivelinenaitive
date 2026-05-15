@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 const ADMIN_EMAIL = 'jturner@5thline.co';
 const JAMES_TURNER_USER_ID = 'e3e13611-b7b7-4d2d-b52b-141434219e09';
 const NAITIVE_BASE_URL = 'https://fivelinenaitive.lovable.app';
@@ -296,6 +297,7 @@ export function useDealMemoApproval(
       // 5th Line specific: Create a review task for James Turner when a memo is submitted
       // Only fires for deals in the 5th Line org and avoids duplicates
       const orgCompanyId = membership?.company_id || deal?.company_id || null;
+      let jamesTaskCreated = false;
       if (orgCompanyId === FIFTH_LINE_COMPANY_ID) {
         const reviewTitle = `Review ${companyName} Memo`;
         const dealUrl = `${NAITIVE_BASE_URL}/deal/${dealId}`;
@@ -311,9 +313,11 @@ export function useDealMemoApproval(
           .limit(1);
 
         if (!existingTasks || existingTasks.length === 0) {
-          const dueDateBiz = addBusinessDays(new Date(), 2).toISOString().split('T')[0];
+          // Per spec: due date = same calendar day the task is created.
+          const dueToday = today;
+          const description = `Please review the deal memo for ${companyName} and provide your approval.\n\nView Deal: ${companyName} — ${dealUrl}`;
 
-          const { error: jamesTaskError } = await supabase
+          const { data: jamesTaskRow, error: jamesTaskError } = await supabase
             .from('tasks')
             .insert({
               title: reviewTitle,
@@ -321,16 +325,19 @@ export function useDealMemoApproval(
               assigned_by: user.id,
               deal_id: dealId,
               company_id: orgCompanyId,
-              due_date: dueDateBiz,
+              due_date: dueToday,
               status: 'not_started',
               priority: 'high',
               task_type: 'deal_memo_approval',
-              description: `A Deal Memo has been submitted for ${companyName}. Please review it here: ${dealUrl}`,
-            } as any);
+              description,
+            } as any)
+            .select('id')
+            .single();
 
           if (jamesTaskError) {
             console.error('Failed to create James Turner review task:', jamesTaskError);
           } else {
+            jamesTaskCreated = true;
             // Send in-app notification
             await supabase.from('flex_notifications').insert({
               user_id: JAMES_TURNER_USER_ID,
@@ -340,6 +347,23 @@ export function useDealMemoApproval(
               message: `A Deal Memo for ${companyName} has been submitted and is ready for your review.`,
               action_url: dealUrl,
             } as any);
+
+            // Asana mirror — same sync path used by every other naitive task.
+            // Best-effort: never block the in-app submission on Asana errors.
+            try {
+              const asanaCtx = await getAsanaSyncContext(orgCompanyId);
+              if (asanaCtx && jamesTaskRow?.id) {
+                await syncTaskToAsana(asanaCtx, {
+                  id: jamesTaskRow.id,
+                  title: reviewTitle,
+                  description,
+                  due_date: dueToday,
+                  assignee_email: ADMIN_EMAIL,
+                });
+              }
+            } catch (asanaErr) {
+              console.error('[MemoApproval] Asana mirror failed:', asanaErr);
+            }
           }
         }
       }
@@ -356,7 +380,11 @@ export function useDealMemoApproval(
           task_id: taskData?.id || null,
         } as any);
 
-      toast.success(`Submitted to ${nextApprover.label} for review`);
+      if (orgCompanyId === FIFTH_LINE_COMPANY_ID && jamesTaskCreated) {
+        toast.success('Memo submitted — James Turner has been assigned to review.');
+      } else {
+        toast.success(`Submitted to ${nextApprover.label} for review`);
+      }
       await fetchState();
     } catch (e) {
       console.error('Error submitting for approval:', e);
