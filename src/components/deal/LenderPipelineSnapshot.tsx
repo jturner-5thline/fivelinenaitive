@@ -84,7 +84,7 @@ export function LenderPipelineSnapshot({
               key={k}
               {...wrapperProps}
               className={
-                'text-left rounded-xl overflow-hidden border flex flex-col group ' +
+                'pipeline-card text-left rounded-xl overflow-hidden border flex flex-col group ' +
                 (isExport
                   ? ''
                   : 'transition-all cursor-pointer hover:scale-[1.015] hover:shadow-lg active:scale-[0.99] ') +
