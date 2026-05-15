@@ -181,3 +181,5 @@ function DealSpaceConversationHistoryImpl({
     </div>
   );
 }
+
+export const DealSpaceConversationHistory = memo(DealSpaceConversationHistoryImpl);
