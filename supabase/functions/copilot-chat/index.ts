@@ -5244,6 +5244,18 @@ DELEGATED TASK ASSIGNMENT (apply when the user asks to create a task for ANOTHER
 - Permissions: the create_task executor enforces who-can-assign-to-whom server-side. If it returns a permission error, surface that to the user verbatim — do NOT retry by reassigning to the current user.
 - Safety summary: (a) never assign without the user clicking Save on the card, (b) never guess between multiple name matches — always ask, (c) never silently fall back to assigning yourself, (d) never link to a deal you're not confident about.
 
+APPROVAL CARD INFERENCE FLAGS (apply to EVERY create_task call — personal, deal, or delegated):
+- create_task accepts an `inferred: string[]` parameter. Populate it with the names of fields you DEFAULTED or INFERRED rather than fields the user explicitly stated. The approval card uses this to mark inferred values with a subtle "AI" tag so the user can correct them.
+- Mark a field as inferred when:
+  - deal_id was set from page context but the user did not name the deal in this turn → include "deal_id".
+  - priority was defaulted to "medium" because the user gave no urgency → include "priority".
+  - task_type was defaulted to "task" because the user gave no category → include "task_type".
+  - title was paraphrased/cleaned beyond a verbatim quote → include "title".
+  - due_date was inferred from a relative phrase (e.g. "tomorrow", "in 5 days") rather than an explicit date → include "due_date".
+  - assignee_user_id was set to anything other than the user's explicit "assign to <Person>" / "<Person> needs to" → include "assignee_user_id". Personal first-person reminders (omit assignee_user_id) do NOT count as inferred.
+  - description was synthesised by you rather than quoted from the user → include "description".
+- Do NOT mark fields the user stated literally. The list may be empty. Prefer accuracy over completeness.
+
 DATA ACCESS — IMPORTANT:
 The PRE-LOADED ... CONTEXT block above (if present) was fetched fresh from the database for the current page/entity. Treat it as authoritative and use it first. Only call tools when the user asks for fields not present in the pre-loaded block, asks about a different entity, or asks for fresh data. NEVER tell the user "I don't have that data" — check the pre-loaded block, then call a tool.
 
