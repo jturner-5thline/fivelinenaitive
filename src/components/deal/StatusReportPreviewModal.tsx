@@ -160,6 +160,7 @@ export function StatusReportPreviewModal({
   configuredStages,
   outstandingItems,
   onExport,
+  onDraftEmail,
   onUpdateLender,
 }: StatusReportPreviewModalProps) {
   const initialContent = useMemo(
