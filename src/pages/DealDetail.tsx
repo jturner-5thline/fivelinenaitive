@@ -4034,34 +4034,6 @@ export default function DealDetail() {
                         </ToggleGroup>
                         </div>
                       )}
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8"
-                                aria-label="Sort lenders"
-                                title="Sort lenders"
-                              >
-                                <ArrowDownUp className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="text-xs">
-                              <DropdownMenuItem onSelect={() => setLenderSort('none')}>No Sort</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setLenderSort('updated-desc')}>Last Updated: Newest to Oldest</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setLenderSort('updated-asc')}>Last Updated: Oldest to Newest</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setLenderSort('stage-furthest')}>Stage: Furthest to Slowest</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setLenderSort('stage-slowest')}>Stage: Slowest to Furthest</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8"
-                            onClick={() => setIsLendersKanbanOpen(true)}
-                          >
-                            <LayoutGrid className="h-4 w-4" />
-                          </Button>
                           <Popover>
                             <PopoverTrigger asChild>
                               <Button
@@ -4111,6 +4083,38 @@ export default function DealDetail() {
                               <ActivityTimeline activities={activities} />
                             </PopoverContent>
                           </Popover>
+                          <div className="flex items-center gap-1 ml-2 pl-2 border-l border-white/10 shrink-0">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                aria-label="Sort lenders"
+                                title="Sort lenders"
+                              >
+                                <ArrowDownUp className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="text-xs">
+                              <DropdownMenuItem onSelect={() => setLenderSort('none')}>No Sort</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('updated-desc')}>Last Updated: Newest to Oldest</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('updated-asc')}>Last Updated: Oldest to Newest</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('stage-furthest')}>Stage: Furthest to Slowest</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('stage-slowest')}>Stage: Slowest to Furthest</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8"
+                            onClick={() => setIsLendersKanbanOpen(true)}
+                            aria-label="View"
+                            title="View"
+                          >
+                            <LayoutGrid className="h-4 w-4" />
+                          </Button>
+                          </div>
                       </div>
                     </div>
                   </CardHeader>
