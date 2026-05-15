@@ -347,23 +347,17 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
     node.setAttribute('id', PRINT_ID);
     const prevTitle = document.title;
     document.title = `${deal.company} — Status Report`;
-    const PAGE_W = 8.5 * 96;
-    const PAGE_H = 11 * 96;
-    const naturalW = node.scrollWidth || node.offsetWidth || PAGE_W;
-    const naturalH = node.scrollHeight || node.offsetHeight || PAGE_H;
-    const scale = Math.min(PAGE_W / naturalW, PAGE_H / naturalH, 1);
     const style = document.createElement('style');
     style.id = 'naitive-status-report-print-style';
     style.textContent = `
-      @page { size: Letter; margin: 0; }
+      @page { size: Letter; margin: 0.25in; }
       @media print {
         html, body {
           background: transparent !important;
           margin: 0 !important;
           padding: 0 !important;
-          width: 8.5in !important;
-          height: 11in !important;
-          overflow: hidden !important;
+          height: auto !important;
+          overflow: visible !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
@@ -394,7 +388,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           height: auto !important;
           max-height: none !important;
           min-height: 0 !important;
-          overflow: hidden !important;
+          overflow: visible !important;
           margin: 0 !important;
           padding: 0 !important;
           background: transparent !important;
@@ -406,16 +400,17 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         #${PRINT_ID} {
           position: static !important;
           display: block !important;
-          width: ${naturalW}px !important;
-          height: ${naturalH}px !important;
+          width: 100% !important;
+          max-width: 100% !important;
+          height: auto !important;
+          max-height: none !important;
           margin: 0 !important;
           padding: 0 !important;
           border: 0 !important;
           box-shadow: none !important;
           border-radius: 0 !important;
-          overflow: hidden !important;
-          transform: scale(${scale}) !important;
-          transform-origin: top left !important;
+          overflow: visible !important;
+          transform: none !important;
           background: hsl(218 26% 7%) !important;
         }
         #${PRINT_ID} * {
@@ -423,14 +418,31 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
         }
-        /* Single-page output: never split, never paginate. */
-        #${PRINT_ID} *, #${PRINT_ID} tr, #${PRINT_ID} table {
+        /* Multi-page output: keep each top-level section whole; if it
+           does not fit on the current page, push it entirely to the next.
+           The preview's outer wrapper is the px-6 py-5 container inside
+           the print root; each direct child of that container is a major
+           section (header, status summary, pipeline, milestones, next
+           steps, passed reasons, what we need from you). */
+        #${PRINT_ID} > div > * {
           break-inside: avoid !important;
           page-break-inside: avoid !important;
-          break-before: avoid !important;
-          page-break-before: avoid !important;
+        }
+        /* Inner atoms also avoid breaking awkwardly. */
+        #${PRINT_ID} tr, #${PRINT_ID} li, #${PRINT_ID} thead,
+        #${PRINT_ID} table {
+          break-inside: avoid !important;
+          page-break-inside: avoid !important;
+        }
+        /* Headings should not be orphaned at page bottom. */
+        #${PRINT_ID} h1, #${PRINT_ID} h2, #${PRINT_ID} h3,
+        #${PRINT_ID} .sr-section-label {
           break-after: avoid !important;
           page-break-after: avoid !important;
+        }
+        /* Ensure no inner wrapper clips section content. */
+        #${PRINT_ID} *:not(#${PRINT_ID}) {
+          max-height: none !important;
         }
         /* Passed Lender Reasons must remain visible. */
         #${PRINT_ID} .passed-lender-reasons,
