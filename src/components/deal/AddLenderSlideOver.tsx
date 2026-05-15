@@ -98,6 +98,88 @@ function scoreColor(score: number) {
   return 'bg-muted/40 text-muted-foreground border-border';
 }
 
+function MatchExplanation({
+  lender,
+  score,
+  match,
+  ai,
+}: {
+  lender: MasterLender;
+  score: number;
+  match?: LenderMatch;
+  ai?: AiRecommendation;
+}) {
+  const reasons = match?.matchReasons || [];
+  const warnings = match?.warnings || [];
+  return (
+    <div className="space-y-2.5">
+      <div className="flex items-center justify-between">
+        <div className="font-medium text-sm">Why this match?</div>
+        <Badge variant="outline" className={cn('h-5 px-1.5 text-[10px] border', scoreColor(score))}>
+          {Math.round(score)}%
+        </Badge>
+      </div>
+
+      {ai && (
+        <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1">
+          <div className="flex items-center gap-1.5 text-[11px] font-medium text-primary">
+            <Sparkles className="h-3 w-3" /> AI rationale
+          </div>
+          <div className="text-[11px] text-foreground/90 leading-snug">{ai.rationale}</div>
+          {ai.components && (
+            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[10px] text-muted-foreground pt-1">
+              <div>Type fit: <span className="text-foreground/80">{ai.components.type}%</span></div>
+              <div>Size fit: <span className="text-foreground/80">{ai.components.size}%</span></div>
+              <div>Industry: <span className="text-foreground/80">{ai.components.industry}%</span></div>
+              <div>Recency: <span className="text-foreground/80">{ai.components.recency}%</span></div>
+            </div>
+          )}
+        </div>
+      )}
+
+      <div>
+        <div className="text-[11px] font-medium text-muted-foreground mb-1">Fit factors</div>
+        {reasons.length === 0 ? (
+          <div className="text-[11px] text-muted-foreground italic">No matching factors detected.</div>
+        ) : (
+          <ul className="space-y-0.5">
+            {reasons.map((r, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[11px]">
+                <Check className="h-3 w-3 mt-0.5 text-emerald-400 shrink-0" />
+                <span className="text-foreground/90">{r}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {warnings.length > 0 && (
+        <div>
+          <div className="text-[11px] font-medium text-muted-foreground mb-1">Mismatches</div>
+          <ul className="space-y-0.5">
+            {warnings.map((w, i) => (
+              <li key={i} className="flex items-start gap-1.5 text-[11px]">
+                <AlertTriangle className="h-3 w-3 mt-0.5 text-amber-400 shrink-0" />
+                <span className="text-foreground/90">{w}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="pt-1 border-t border-white/5 text-[10px] text-muted-foreground space-y-0.5">
+        <div>Size range: {formatSize(lender.min_deal, lender.max_deal)}</div>
+        {lender.industries && lender.industries.length > 0 && (
+          <div className="truncate">Industries: {lender.industries.slice(0, 4).join(', ')}</div>
+        )}
+        {lender.loan_types && lender.loan_types.length > 0 && (
+          <div className="truncate">Loan types: {lender.loan_types.slice(0, 4).join(', ')}</div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export function AddLenderSlideOver({
   open,
   onOpenChange,
