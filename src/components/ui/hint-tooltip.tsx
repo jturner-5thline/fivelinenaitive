@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useLayoutEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Lightbulb } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -22,6 +23,8 @@ export function HintTooltip({
   showDelay = 1000,
 }: HintTooltipProps) {
   const [showHint, setShowHint] = useState(false);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
 
   useEffect(() => {
     if (visible) {
@@ -32,130 +35,117 @@ export function HintTooltip({
     }
   }, [visible, showDelay]);
 
-  const positionClasses = {
-    top: 'bottom-full mb-2',
-    bottom: 'top-full mt-2',
-    left: 'right-full mr-2',
-    right: 'left-full ml-2',
-  };
-
-  const alignClasses = {
-    start: side === 'top' || side === 'bottom' ? 'left-0' : 'top-0',
-    center: side === 'top' || side === 'bottom' ? 'left-1/2 -translate-x-1/2' : 'top-1/2 -translate-y-1/2',
-    end: side === 'top' || side === 'bottom' ? 'right-0' : 'bottom-0',
-  };
-
-  const getArrowClasses = () => {
-    const baseArrowPosition = {
-      top: 'top-full border-t-[hsl(220,80%,50%)] border-l-transparent border-r-transparent border-b-transparent',
-      bottom: 'bottom-full border-b-[hsl(220,80%,50%)] border-l-transparent border-r-transparent border-t-transparent',
-      left: 'left-full border-l-[hsl(220,80%,50%)] border-t-transparent border-b-transparent border-r-transparent',
-      right: 'right-full border-r-[hsl(220,80%,50%)] border-t-transparent border-b-transparent border-l-transparent',
+  // Track anchor rect (for portal positioning) + escape key dismiss
+  useLayoutEffect(() => {
+    if (!showHint) return;
+    const update = () => {
+      if (wrapperRef.current) setAnchor(wrapperRef.current.getBoundingClientRect());
     };
-
-    // Adjust horizontal position based on align for top/bottom sides
-    const horizontalAlign = {
-      start: 'left-4',
-      center: 'left-1/2 -translate-x-1/2',
-      end: 'right-4',
+    update();
+    window.addEventListener('scroll', update, true);
+    window.addEventListener('resize', update);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onDismiss();
     };
-
-    // Adjust vertical position based on align for left/right sides
-    const verticalAlign = {
-      start: 'top-4',
-      center: 'top-1/2 -translate-y-1/2',
-      end: 'bottom-4',
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('scroll', update, true);
+      window.removeEventListener('resize', update);
+      window.removeEventListener('keydown', onKey);
     };
+  }, [showHint, onDismiss]);
 
-    if (side === 'top' || side === 'bottom') {
-      return `${baseArrowPosition[side]} ${horizontalAlign[align]}`;
+  // Compute fixed-position coords for the tooltip based on side/align
+  const tooltipStyle: React.CSSProperties = (() => {
+    if (!anchor) return { visibility: 'hidden' };
+    const gap = 8;
+    let top = 0;
+    let left = 0;
+    let transform = '';
+    if (side === 'bottom') {
+      top = anchor.bottom + gap;
+      if (align === 'start') left = anchor.left;
+      else if (align === 'end') { left = anchor.right; transform = 'translateX(-100%)'; }
+      else { left = anchor.left + anchor.width / 2; transform = 'translateX(-50%)'; }
+    } else if (side === 'top') {
+      top = anchor.top - gap;
+      transform = 'translateY(-100%)';
+      if (align === 'start') left = anchor.left;
+      else if (align === 'end') { left = anchor.right; transform += ' translateX(-100%)'; }
+      else { left = anchor.left + anchor.width / 2; transform += ' translateX(-50%)'; }
+    } else if (side === 'left') {
+      left = anchor.left - gap;
+      transform = 'translateX(-100%)';
+      if (align === 'start') top = anchor.top;
+      else if (align === 'end') { top = anchor.bottom; transform += ' translateY(-100%)'; }
+      else { top = anchor.top + anchor.height / 2; transform += ' translateY(-50%)'; }
+    } else {
+      left = anchor.right + gap;
+      if (align === 'start') top = anchor.top;
+      else if (align === 'end') { top = anchor.bottom; transform = 'translateY(-100%)'; }
+      else { top = anchor.top + anchor.height / 2; transform = 'translateY(-50%)'; }
     }
-    return `${baseArrowPosition[side]} ${verticalAlign[align]}`;
-  };
+    return { position: 'fixed', top, left, transform, zIndex: 2147483000 };
+  })();
+
+  const glowStyle: React.CSSProperties | null = anchor
+    ? {
+        position: 'fixed',
+        top: anchor.top - 8,
+        left: anchor.left - 8,
+        width: anchor.width + 16,
+        height: anchor.height + 16,
+        zIndex: 2147482999,
+        pointerEvents: 'none',
+        borderRadius: 12,
+        background: 'hsl(220, 80%, 50%, 0.12)',
+        boxShadow:
+          '0 0 0 2px hsl(220, 80%, 50%, 0.55), 0 0 20px 8px hsl(220, 80%, 50%, 0.3), 0 0 40px 16px hsl(250, 70%, 55%, 0.15)',
+        animation: 'hint-glow 2s ease-in-out infinite',
+      }
+    : null;
 
   return (
-    <div className="relative inline-block min-w-0">
-      {/* Highlight glow effect around the element */}
-      {showHint && (
-        <>
-          {/* Outer glow */}
-          <div 
-            className="absolute -inset-2 rounded-xl pointer-events-none z-[99]"
-            style={{
-              background: 'hsl(220, 80%, 50%, 0.15)',
-              boxShadow: '0 0 20px 8px hsl(220, 80%, 50%, 0.3), 0 0 40px 16px hsl(250, 70%, 55%, 0.15)',
-              animation: 'hint-glow 2s ease-in-out infinite',
-            }}
-          />
-          {/* Inner ring */}
-          <div 
-            className="absolute -inset-1 rounded-lg pointer-events-none z-[99]"
-            style={{
-              boxShadow: '0 0 0 2px hsl(220, 80%, 50%, 0.6), 0 0 0 4px hsl(220, 80%, 50%, 0.2)',
-              animation: 'hint-ring 2s ease-in-out infinite',
-            }}
-          />
-          <style>{`
-            @keyframes hint-glow {
-              0%, 100% {
-                opacity: 0.6;
-                transform: scale(1);
-              }
-              50% {
-                opacity: 1;
-                transform: scale(1.02);
-              }
-            }
-            @keyframes hint-ring {
-              0%, 100% {
-                opacity: 0.7;
-                box-shadow: 0 0 0 2px hsl(220, 80%, 50%, 0.6), 0 0 0 4px hsl(220, 80%, 50%, 0.2);
-              }
-              50% {
-                opacity: 1;
-                box-shadow: 0 0 0 2px hsl(220, 80%, 50%, 0.8), 0 0 8px 4px hsl(250, 70%, 55%, 0.3);
-              }
-            }
-          `}</style>
-        </>
-      )}
+    <div ref={wrapperRef} className="relative inline-block min-w-0">
       {children}
-      {showHint && (
-        <div
-          className={cn(
-            'absolute z-[100] animate-in fade-in-0 zoom-in-95 duration-200',
-            positionClasses[side],
-            alignClasses[align]
-          )}
-        >
-          <div 
-            className="relative flex items-center gap-3 rounded-xl px-5 py-3 text-white shadow-xl shadow-blue-500/20 whitespace-nowrap border border-blue-400/30"
-            style={{
-              background: 'linear-gradient(135deg, hsl(220, 80%, 50%), hsl(250, 70%, 55%), hsl(280, 60%, 50%))',
-            }}
-          >
-            <Lightbulb className="h-5 w-5 flex-shrink-0 drop-shadow-sm" />
-            <p className="text-sm font-medium tracking-wide">{hint}</p>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDismiss();
-              }}
-              className="ml-1 flex-shrink-0 rounded-full p-0.5 hover:bg-primary-foreground/20 transition-colors"
-              aria-label="Dismiss hint"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-            {/* Arrow */}
+      {showHint && typeof document !== 'undefined' &&
+        createPortal(
+          <>
+            <style>{`
+              @keyframes hint-glow {
+                0%, 100% { opacity: 0.7; }
+                50% { opacity: 1; }
+              }
+            `}</style>
+            {glowStyle && <div style={glowStyle} />}
             <div
-              className={cn(
-                'absolute border-[6px]',
-                getArrowClasses()
-              )}
-            />
-          </div>
-        </div>
-      )}
+              style={tooltipStyle}
+              className={cn('animate-in fade-in-0 zoom-in-95 duration-200')}
+            >
+              <div
+                className="relative flex items-center gap-3 rounded-xl px-5 py-3 text-white shadow-xl shadow-blue-500/20 whitespace-nowrap border border-blue-400/30"
+                style={{
+                  background:
+                    'linear-gradient(135deg, hsl(220, 80%, 50%), hsl(250, 70%, 55%), hsl(280, 60%, 50%))',
+                }}
+              >
+                <Lightbulb className="h-5 w-5 flex-shrink-0 drop-shadow-sm" />
+                <p className="text-sm font-medium tracking-wide">{hint}</p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDismiss();
+                  }}
+                  className="ml-1 flex-shrink-0 rounded-full p-1 hover:bg-white/20 transition-colors"
+                  aria-label="Dismiss hint"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            </div>
+          </>,
+          document.body
+        )}
     </div>
   );
 }
