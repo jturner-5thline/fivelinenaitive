@@ -450,7 +450,11 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
   // ── Render the printable report (light-themed) ──────────────────────────
   const renderPrintable = () => (
-    <div ref={printableRef} className="bg-white text-slate-900 rounded-lg overflow-hidden">
+    <div
+      ref={printableRef}
+      className="bg-white text-slate-900 rounded-lg"
+      style={{ width: 880, padding: 24, boxSizing: 'border-box' }}
+    >
       <div className="sr-bar" style={{ height: 6, background: '#1e3a8a', borderRadius: 2, marginBottom: 16 }} />
       <div>
         <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: '#1e3a8a' }}>
@@ -503,7 +507,18 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
                     <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>None</p>
                   ) : (
                     g.items.map((l) => (
-                      <p key={l.id} style={{ margin: '0 0 4px', fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{l.name}</p>
+                      <p
+                        key={l.id}
+                        style={{
+                          margin: '0 0 4px',
+                          fontSize: 12,
+                          color: '#334155',
+                          lineHeight: 1.45,
+                          wordBreak: 'break-word',
+                        }}
+                      >
+                        {l.name}
+                      </p>
                     ))
                   )}
                 </div>
@@ -556,7 +571,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             <tbody>
               {passedDetails.map((p, i) => (
                 <tr key={i}>
-                  <td style={{ ...tdStyle, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.name}</td>
+                  <td style={{ ...tdStyle, wordBreak: 'break-word' }}>{p.name}</td>
                   <td style={{ ...tdStyle, color: '#475569', fontStyle: aiPassFeedbackLoading && !(p.name in aiPassFeedback) ? 'italic' : 'normal' }}>
                     {p.name in aiPassFeedback
                       ? (aiPassFeedback[p.name] || '—')
