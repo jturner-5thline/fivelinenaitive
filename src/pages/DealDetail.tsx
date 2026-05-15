@@ -3933,18 +3933,17 @@ export default function DealDetail() {
               {/* Lenders Card */}
                  <Card className="max-h-[750px] flex flex-col">
                    <CardHeader className="pb-3 pt-3">
-                       <div className="flex items-center gap-2">
-                         <div className="flex items-center gap-0.5 flex-1 min-w-0 max-w-[280px]">
-                          <Button
-                            type="button"
-                            variant="liquid-glass"
-                            size="sm"
-                            className="h-8 px-2.5 mr-1.5 shrink-0"
-                            onClick={() => setIsAddLenderSlideOverOpen(true)}
-                          >
-                            + Add
-                          </Button>
-                          <div className="flex-1 min-w-0">
+                       <div className="flex items-center gap-2 flex-wrap">
+                         <Button
+                           type="button"
+                           variant="liquid-glass"
+                           size="sm"
+                           className="h-8 px-2.5 shrink-0"
+                           onClick={() => setIsAddLenderSlideOverOpen(true)}
+                         >
+                           + Add
+                         </Button>
+                         <div className="flex-1 min-w-[160px] max-w-[260px]">
                            <LenderSearchInput
                              lenderNames={lenderNames}
                              existingLenderNames={existingLenderNames}
@@ -3952,9 +3951,8 @@ export default function DealDetail() {
                              isLoadingLenders={masterLendersLoading || masterLendersLoadingMore}
                            />
                          </div>
-                          </div>
-                          <div className="shrink-0">
-                           <Suspense fallback={null}>
+                         <div className="shrink-0">
+                          <Suspense fallback={null}>
                           <LenderDirectoryDialog
                         existingLenderNames={existingLenderNames}
                         onAddLender={addLender}
