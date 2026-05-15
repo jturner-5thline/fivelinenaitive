@@ -355,17 +355,43 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         html, body {
           background: hsl(218 26% 7%) !important;
           margin: 0 !important;
+          height: auto !important;
+          overflow: visible !important;
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
         body * { visibility: hidden !important; }
         #${PRINT_ID}, #${PRINT_ID} * { visibility: visible !important; }
+        /* Unwind every ancestor of the print root so the Dialog's
+           max-h/overflow-hidden/scroll-container chain cannot clip the
+           printed report. position:static (NOT absolute) is critical —
+           absolutely-positioned roots do not paginate across pages in
+           print, which is what was forcing one-page output. */
+        .naitive-print-ancestor {
+          all: unset !important;
+          display: block !important;
+          position: static !important;
+          width: auto !important;
+          max-width: none !important;
+          height: auto !important;
+          max-height: none !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: transparent !important;
+          box-shadow: none !important;
+          border: 0 !important;
+          transform: none !important;
+          inset: auto !important;
+        }
         #${PRINT_ID} {
-          position: absolute !important;
-          left: 0 !important;
-          top: 0 !important;
+          position: static !important;
+          display: block !important;
           width: 100% !important;
           max-width: 100% !important;
+          height: auto !important;
+          max-height: none !important;
           margin: 0 !important;
           box-shadow: none !important;
           border-radius: 0 !important;
@@ -376,16 +402,17 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
         }
-        /* Avoid awkward breaks inside cards/sections */
-        #${PRINT_ID} table, #${PRINT_ID} tr, #${PRINT_ID} li,
-        #${PRINT_ID} .rounded-xl, #${PRINT_ID} .rounded-2xl {
+        /* Allow the report to flow across as many pages as needed; only
+           keep small atoms (rows, list items) from splitting awkwardly.
+           Top-level section wrappers are intentionally allowed to break
+           so a section taller than a page still prints in full. */
+        #${PRINT_ID} tr, #${PRINT_ID} li, #${PRINT_ID} thead {
           break-inside: avoid;
           page-break-inside: avoid;
         }
-        /* Ensure no wrapper clips content in print (e.g. the rounded
-           table wrapper around Passed Lender Reasons uses overflow-hidden,
-           which can clip the table in print and make the whole section
-           disappear from the PDF). */
+        #${PRINT_ID} table { break-inside: auto; page-break-inside: auto; }
+        /* Ensure no wrapper clips content in print (e.g. rounded
+           overflow-hidden table wrappers). */
         #${PRINT_ID}, #${PRINT_ID} * {
           overflow: visible !important;
           max-height: none !important;
@@ -406,9 +433,19 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       }
     `;
     document.head.appendChild(style);
+    // Tag every ancestor of the printable node so the print CSS can
+    // un-clip the Dialog/modal/scroll-container chain that wraps it.
+    const ancestors: HTMLElement[] = [];
+    let p: HTMLElement | null = node.parentElement;
+    while (p && p !== document.body) {
+      p.classList.add('naitive-print-ancestor');
+      ancestors.push(p);
+      p = p.parentElement;
+    }
     const cleanup = () => {
       document.title = prevTitle;
       style.remove();
+      ancestors.forEach((el) => el.classList.remove('naitive-print-ancestor'));
       window.removeEventListener('afterprint', cleanup);
     };
     window.addEventListener('afterprint', cleanup);
