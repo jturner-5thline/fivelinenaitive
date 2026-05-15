@@ -4998,6 +4998,76 @@ serve(async (req) => {
       ? { block: "", label: null }
       : await prefetchPageContext(supabaseUser, { page, entityType, entityId });
 
+    // ── Off-page deal-name resolver ──
+    // When no deal entity is in context (user is not on a deal page and did not
+    // @mention a deal), inspect the user's message for likely deal references
+    // and pull candidate deals from the workspace. This enables answers like
+    // "what's going on with X?" without requiring the user to navigate first,
+    // and surfaces a clarifying-question signal when the match is ambiguous.
+    let dealResolverBlock = "";
+    let dealResolverLog: { resolved_deal_id: string | null; candidates: Array<{ id: string; company: string }>; query: string | null } = {
+      resolved_deal_id: entityType === "deal" ? entityId : null,
+      candidates: [],
+      query: null,
+    };
+    try {
+      const hasDealEntity = entityType === "deal" && !!entityId;
+      const userText: string = (typeof message === "string" ? message : "") || "";
+      if (!hasDealEntity && userText.trim().length > 0) {
+        // Heuristic: pull capitalized phrases (company-name candidates) and
+        // also fall back to a fuzzy ilike on the raw message tokens > 3 chars.
+        const stop = new Set(["the","this","that","these","those","what","when","where","whose","which","who","why","how","please","summarize","summary","summarise","update","status","tasks","task","deal","deals","open","next","steps","step","happening","going","on","about","with","for","and","but","our","my","me","you","is","are","was","were","be","been","being","do","does","did","can","could","should","would","i","we","us","they","them","here","there","now","today","tomorrow","yesterday","week","month","year","client","company","companies","lender","lenders"]);
+        const caps = Array.from(userText.matchAll(/\b([A-Z][A-Za-z0-9&.\-]{1,}(?:\s+[A-Z][A-Za-z0-9&.\-]{1,}){0,3})\b/g)).map(m => m[1]);
+        const tokens = userText.split(/[^A-Za-z0-9&.\-]+/).filter(t => t.length >= 4 && !stop.has(t.toLowerCase()));
+        const probes = Array.from(new Set([...caps, ...tokens])).slice(0, 6);
+        if (probes.length > 0) {
+          const orFilter = probes.map(p => `company.ilike.%${p.replace(/[%,()]/g, "")}%`).join(",");
+          const { data: matches } = await supabaseUser
+            .from("deals")
+            .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
+            .or(orFilter)
+            .neq("status", "closed")
+            .limit(8);
+          // Filter out globally excluded deal names (test / example).
+          const excluded = (n: string | null) => {
+            const x = (n || "").toLowerCase().trim();
+            if (!x) return false;
+            if (x === "example deal" || x === "test - niki's store") return true;
+            if (x === "test" || x.startsWith("test ")) return true;
+            return false;
+          };
+          const filtered = (matches || []).filter((d: any) => !excluded(d.company));
+          dealResolverLog.query = probes.join(" | ");
+          dealResolverLog.candidates = filtered.map((d: any) => ({ id: d.id, company: d.company }));
+
+          if (filtered.length === 1) {
+            const d: any = filtered[0];
+            dealResolverLog.resolved_deal_id = d.id;
+            dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
+          } else if (filtered.length > 1) {
+            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT (the user's message could refer to more than one deal — DO NOT guess; ask a single clarifying question listing these candidates by name, then proceed once they pick):\n${filtered.slice(0, 6).map((d: any) => `- ${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"}) — deal_id: ${d.id}`).join("\n")}`;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[copilot-chat] deal name resolver failed", e);
+    }
+
+    // Audit: log which deal context objects we actually used for this turn so
+    // responses can be reviewed later. Best-effort; never blocks the request.
+    try {
+      console.log("[copilot-chat] deal_context_audit", JSON.stringify({
+        user_id: userId,
+        page,
+        entity_type: entityType,
+        entity_id_from_page: context?.entityId || null,
+        entity_id_from_override: override?.entityId || null,
+        prefetched_label: prefetched.label,
+        resolver: dealResolverLog,
+        ts: new Date().toISOString(),
+      }));
+    } catch { /* noop */ }
+
     const askNaitivePermissionBlock = `\n\nASK NAITIVE — PERMISSION BOUNDARIES (STRICT, AUTHORITATIVE):
 You are Ask naitive, the AI assistant inside the naitive platform.
 You must only answer using the permission-filtered context provided for the current authenticated user and workspace.
