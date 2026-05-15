@@ -932,9 +932,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             pointerEvents: 'none',
             opacity: 1,
             zIndex: -1,
+            // Solid dark backdrop matches the preview's deepest gradient
+            // stop so html2canvas captures the layered glass surface
+            // exactly as it appears on screen.
+            background: 'hsl(218 26% 7%)',
+            padding: 16,
           }}
         >
-          {renderPrintable()}
+          {renderInAppPreview(true)}
         </div>
       </DialogContent>
     </Dialog>
