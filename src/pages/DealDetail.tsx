@@ -4050,8 +4050,8 @@ export default function DealDetail() {
                               align="end"
                               side="bottom"
                               sideOffset={6}
-                              avoidCollisions={false}
-                              className="w-[460px] max-w-[95vw] h-[min(85vh,720px)] overflow-y-auto p-3 bg-background border border-border shadow-xl"
+                              collisionPadding={8}
+                              className="w-[460px] max-w-[95vw] max-h-[min(85vh,720px)] overflow-y-auto p-3 bg-background border border-border shadow-xl"
                             >
                               <div className="text-sm font-semibold mb-2">Activity</div>
                               <ActivityTimeline activities={activities} />
