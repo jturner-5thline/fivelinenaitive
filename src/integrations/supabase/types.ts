@@ -20130,6 +20130,7 @@ export type Database = {
           id: string
           ingestion_status: string | null
           is_folder: boolean
+          metadata: Json
           shared_to_dataroom: boolean
           sort_order: number | null
           source: string
@@ -20153,6 +20154,7 @@ export type Database = {
           id?: string
           ingestion_status?: string | null
           is_folder?: boolean
+          metadata?: Json
           shared_to_dataroom?: boolean
           sort_order?: number | null
           source?: string
@@ -20176,6 +20178,7 @@ export type Database = {
           id?: string
           ingestion_status?: string | null
           is_folder?: boolean
+          metadata?: Json
           shared_to_dataroom?: boolean
           sort_order?: number | null
           source?: string
