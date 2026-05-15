@@ -710,7 +710,7 @@ function NarrativeEditor({
     if (!editor) return;
     const current = editor.getHTML();
     if (html && html !== current) {
-      editor.commands.setContent(html, false);
+      editor.commands.setContent(html);
     }
   }, [html, editor]);
 
