@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Search, Plus, X, Check, Loader2 } from 'lucide-react';
+import { Search, Plus, X, Check, Loader2, Sparkles, Info, AlertTriangle } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -24,12 +24,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
 import { useMasterLenders, type MasterLender } from '@/hooks/useMasterLenders';
-import { useLenderMatching, type DealCriteria } from '@/hooks/useLenderMatching';
-import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
-import type { AiRecommenderCriteriaOverride } from '@/hooks/useAiRecommendedLenders';
+import { useLenderMatching, type DealCriteria, type LenderMatch } from '@/hooks/useLenderMatching';
+import { useAiRecommendedLenders, type AiRecommendation, type AiRecommenderCriteriaOverride } from '@/hooks/useAiRecommendedLenders';
 import { toast } from 'sonner';
 
 interface Props {
