@@ -1454,6 +1454,8 @@ function selectToolsWithScopes(
 
 // ── Tool executors ──────────────────────────────────────────────
 async function executeTool(supabase: any, name: string, args: any, userId: string): Promise<any> {
+  // (See writeAuditDraft / updateAuditOutcome below for the audit log helpers.
+  // Audit writes happen at the call sites that have access to the user prompt.)
   switch (name) {
     case "get_deal": {
       if (args.deal_id) {
