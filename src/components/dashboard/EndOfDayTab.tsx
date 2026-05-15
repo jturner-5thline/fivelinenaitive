@@ -314,8 +314,8 @@ export function EndOfDayAgendaSection({
                   title="Open meeting insights"
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <CalendarIcon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                    <h4 className="text-sm font-semibold text-foreground truncate">
+                    <CalendarIcon className="h-3.5 w-3.5 text-white shrink-0" />
+                    <h4 className="text-sm font-semibold text-white truncate">
                       {ev.summary || '(No title)'}
                     </h4>
                     {isCurrent && (
@@ -324,11 +324,11 @@ export function EndOfDayAgendaSection({
                       </span>
                     )}
                     <ChevronRight className={cn(
-                      'h-3 w-3 text-muted-foreground/40 shrink-0 transition-transform',
+                      'h-3 w-3 text-white/60 shrink-0 transition-transform',
                       selectedEventId === ev.id && 'rotate-90 text-primary',
                     )} />
                   </div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5 ml-5">
+                  <div className="text-[11px] text-white/80 mt-0.5 ml-5">
                     {ev.all_day
                       ? 'All day'
                       : `${fmtTime(ev.start, false)}${
@@ -341,7 +341,7 @@ export function EndOfDayAgendaSection({
                     type="button"
                     variant="ghost"
                     size="sm"
-                    className="h-7 px-2 text-[11px] gap-1 text-muted-foreground hover:text-foreground"
+                    className="h-7 px-2 text-[11px] gap-1 text-white hover:text-white"
                     onClick={(e) => {
                       e.stopPropagation();
                       onCreateFollowUp?.(
@@ -351,11 +351,11 @@ export function EndOfDayAgendaSection({
                     }}
                     title="Create a follow-up task for this meeting"
                   >
-                    <ListPlus className="h-3.5 w-3.5" />
+                    <ListPlus className="h-3.5 w-3.5 text-white" />
                     Create Follow Up
                   </Button>
-                  <div className="text-[11px] text-muted-foreground/70 flex items-center gap-1">
-                    <Users className="h-3 w-3" />
+                  <div className="text-[11px] text-white/85 flex items-center gap-1">
+                    <Users className="h-3 w-3 text-white" />
                     {attendees.length}
                   </div>
                 </div>
@@ -380,22 +380,22 @@ export function EndOfDayAgendaSection({
                         <div className="flex items-center justify-between gap-2 rounded-md bg-white/[0.02] glass-border-softer px-2.5 py-1.5">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-xs font-medium text-foreground truncate">
+                            <span className="text-xs font-medium text-white truncate">
                               {name}
                             </span>
                             {matched?.jobTitle && (
-                              <span className="text-[10px] text-muted-foreground/70 truncate">
+                              <span className="text-[10px] text-white/75 truncate">
                                 · {matched.jobTitle}
                               </span>
                             )}
                             {matched?.companyName && (
-                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.04] text-muted-foreground/80 truncate">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/[0.08] text-white truncate">
                                 {matched.companyName}
                               </span>
                             )}
                           </div>
                           {a.email && (
-                            <div className="text-[10px] text-muted-foreground/60 truncate">
+                            <div className="text-[10px] text-white/70 truncate">
                               {a.email}
                             </div>
                           )}
@@ -405,7 +405,7 @@ export function EndOfDayAgendaSection({
                           variant="ghost"
                           size="icon"
                           className={cn(
-                            'h-7 w-7 shrink-0 text-muted-foreground hover:text-foreground',
+                            'h-7 w-7 shrink-0 text-white hover:text-white',
                             isComposing && 'text-primary',
                           )}
                           aria-label={`Email ${name}`}
@@ -431,7 +431,7 @@ export function EndOfDayAgendaSection({
                   })}
                 </div>
               ) : (
-                <div className="text-[11px] text-muted-foreground/60 italic">
+                <div className="text-[11px] text-white/70 italic">
                   No attendees on this event.
                 </div>
               )}
