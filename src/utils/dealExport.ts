@@ -785,12 +785,15 @@ export interface OutstandingItem {
 
 export interface StatusReportEditableContent {
   keyUpdates: string[];
+  /** AI-generated 3–5 bullet executive summary populated when modal opens. */
+  statusSummary: string[];
   lenderRows: { name: string; processStage: string; focusAreas: string; challenges: string; nextAction: string }[];
   completedMilestones: string[];
   nextSteps: string[];
   actionItems: string;
   sectionsVisible: {
     keyUpdates: boolean;
+    statusSummary: boolean;
     lenderTable: boolean;
     pipelineSnapshot: boolean;
     milestones: boolean;
