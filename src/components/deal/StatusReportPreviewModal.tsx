@@ -344,61 +344,54 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // alternate light layout). We inject @media print rules that hide every
   // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
-  const handlePrintPdf = () => {
+  const [exportingPdf, setExportingPdf] = useState(false);
+
+  /**
+   * Direct download — no print dialog, no blank intermediary screen.
+   * Generates the PDF in the background from the off-screen printable
+   * node using html2pdf.js, then triggers a download. The visible modal
+   * stays mounted the whole time; only the button shows a loading state.
+   */
+  const handlePrintPdf = async () => {
     const node = printableRef.current;
     if (!node) {
       toast({ title: 'Preview not ready', variant: 'destructive' });
       return;
     }
-    const PRINT_ID = 'naitive-status-report-printroot';
-    node.setAttribute('id', PRINT_ID);
-    const prevTitle = document.title;
-    document.title = `${deal.company} — Status Report`;
-    const style = document.createElement('style');
-    style.id = 'naitive-status-report-print-style';
-    style.textContent = `
-      @page { size: Letter; margin: 0.35in; }
-      @media print {
-        html, body {
-          background: hsl(218 26% 7%) !important;
-          margin: 0 !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        body * { visibility: hidden !important; }
-        #${PRINT_ID}, #${PRINT_ID} * { visibility: visible !important; }
-        #${PRINT_ID} {
-          position: absolute !important;
-          left: 0 !important;
-          top: 0 !important;
-          width: 100% !important;
-          max-width: 100% !important;
-          margin: 0 !important;
-          box-shadow: none !important;
-          border-radius: 0 !important;
-          overflow: visible !important;
-        }
-        #${PRINT_ID} * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          color-adjust: exact !important;
-        }
-        /* Avoid awkward breaks inside cards/sections */
-        #${PRINT_ID} table, #${PRINT_ID} tr, #${PRINT_ID} li,
-        #${PRINT_ID} .rounded-xl, #${PRINT_ID} .rounded-2xl {
-          break-inside: avoid;
-          page-break-inside: avoid;
-        }
-      }
-    `;
-    document.head.appendChild(style);
-    const cleanup = () => {
-      document.title = prevTitle;
-      style.remove();
-      window.removeEventListener('afterprint', cleanup);
-    };
-    window.addEventListener('afterprint', cleanup);
-    setTimeout(() => window.print(), 80);
+    setExportingPdf(true);
+    let container: HTMLDivElement | null = null;
+    try {
+      const html2pdf = (await import('html2pdf.js')).default;
+      const cloned = node.cloneNode(true) as HTMLElement;
+      // Render-safe staging container — kept on-screen (off-viewport, but
+      // not display:none) so html2canvas can paint every pixel reliably.
+      container = document.createElement('div');
+      container.style.position = 'fixed';
+      container.style.left = '-10000px';
+      container.style.top = '0';
+      container.style.width = '880px';
+      container.style.background = '#ffffff';
+      container.appendChild(cloned);
+      document.body.appendChild(container);
+
+      await html2pdf()
+        .set({
+          margin: [10, 10, 10, 10],
+          filename: `status-report-${slugify(deal.company)}.pdf`,
+          image: { type: 'jpeg', quality: 0.95 },
+          html2canvas: { scale: 2, useCORS: true, backgroundColor: '#ffffff' },
+          jsPDF: { unit: 'mm', format: 'letter', orientation: 'portrait' },
+          pagebreak: { mode: ['css', 'legacy'] },
+        } as any)
+        .from(cloned)
+        .save();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Could not export PDF';
+      toast({ title: 'Export failed', description: msg, variant: 'destructive' });
+    } finally {
+      if (container && container.parentNode) container.parentNode.removeChild(container);
+      setExportingPdf(false);
+    }
   };
 
   // ── Generate the status report as a PDF File (for email attachment) ──
@@ -890,9 +883,15 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         <DialogFooter className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800 gap-2">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-          <Button variant="outline" size="sm" onClick={handlePrintPdf} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export as PDF
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handlePrintPdf}
+            disabled={exportingPdf}
+            className="gap-2"
+          >
+            {exportingPdf ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            {exportingPdf ? 'Generating PDF…' : 'Export as PDF'}
           </Button>
           {onDraftEmail && (
             <Button
