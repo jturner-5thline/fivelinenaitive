@@ -412,7 +412,11 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
                     <div
                       key={doc.id}
                       className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg group hover:bg-muted/80 transition-colors cursor-pointer"
-                      onClick={() => handlePreview(doc)}
+                      onClick={() => {
+                        // Guard: don't open preview while a delete confirmation is pending
+                        if (docToDelete || showBulkDeleteDialog) return;
+                        handlePreview(doc);
+                      }}
                     >
                       <div onClick={(e) => e.stopPropagation()}>
                         <Checkbox
@@ -525,7 +529,10 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
           if (!open && !isDeletingSingle) setDocToDelete(null);
         }}
       >
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogContent
+          onClick={(e) => e.stopPropagation()}
+          onPointerDownCapture={(e) => e.stopPropagation()}
+        >
           <AlertDialogHeader>
             <AlertDialogTitle>Delete document?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -535,12 +542,16 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
           <AlertDialogFooter>
             <AlertDialogCancel
               disabled={isDeletingSingle}
-              onClick={(e) => e.stopPropagation()}
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+              onPointerDownCapture={(e) => e.stopPropagation()}
             >
               Cancel
             </AlertDialogCancel>
             <AlertDialogAction
               disabled={isDeletingSingle}
+              onPointerDownCapture={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
