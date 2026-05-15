@@ -292,8 +292,8 @@ export function StatusEmailDraftModal({ open, onOpenChange, deal, content }: Pro
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="popup-shell-surface max-w-3xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20 rounded-2xl z-[61]"
-        overlayClassName="z-[60]"
+        className="popup-shell-surface max-w-3xl h-[90vh] flex flex-col p-0 gap-0 overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20 rounded-2xl z-[1310]"
+        overlayClassName="z-[1300]"
       >
         <DialogHeader className="px-6 pt-5 pb-2 shrink-0">
           <DialogTitle className="flex items-center gap-2">
