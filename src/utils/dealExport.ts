@@ -1341,11 +1341,17 @@ export async function exportStatusReportToWord(
           }),
           ...buckets.passed.map(l => {
             const { reason, feedback } = extractPassDetails(l);
+            const override = passFeedbackOverrides?.[l.name];
+            // Never fall back to raw notes — overrides win, otherwise blank.
+            const keyFeedback =
+              passFeedbackOverrides && l.name in passFeedbackOverrides
+                ? (override || '')
+                : (passFeedbackOverrides ? '' : (feedback || ''));
             return new TableRow({
               children: [
                 createDataCell(l.name),
                 createDataCell(reason || '-'),
-                createDataCell(feedback || ''),
+                createDataCell(keyFeedback),
               ],
             });
           }),
