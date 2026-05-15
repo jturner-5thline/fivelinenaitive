@@ -25,9 +25,11 @@ interface WriteUpAutoFillDialogProps {
   onOpenChange: (open: boolean) => void;
   extractedFields: ExtractedWriteUpField[];
   currentData: DealWriteUpData;
-  onApply: (selectedFields: ExtractedWriteUpField[]) => void;
+  onApply: (selectedFields: ExtractedWriteUpField[]) => string[] | void;
   documentCount: number;
   sourceCount?: number;
+  /** Field keys that failed to apply on the most recent attempt. */
+  failedFields?: string[];
 }
 
 const FIELD_LABELS: Record<string, string> = {
@@ -87,6 +89,7 @@ export function WriteUpAutoFillDialog({
   onApply,
   documentCount,
   sourceCount,
+  failedFields = [],
 }: WriteUpAutoFillDialogProps) {
   // Track per-field state
   const [fieldStates, setFieldStates] = useState<Record<string, FieldState>>({});
@@ -142,8 +145,11 @@ export function WriteUpAutoFillDialog({
         }
         return f;
       });
-    onApply(acceptedFields);
-    onOpenChange(false);
+    const failed = onApply(acceptedFields) || [];
+    if (failed.length === 0) {
+      onOpenChange(false);
+    }
+    // Otherwise keep dialog open so the user sees the inline warnings.
   };
 
   const hasExistingValue = (field: keyof DealWriteUpData): boolean => {
@@ -226,6 +232,7 @@ export function WriteUpAutoFillDialog({
               const newValue = formatValue(field.field, field.value);
               const sources: SourceReference[] = (field as any).sources || [];
               const isEditing = state === 'editing';
+              const didFail = failedFields.includes(field.field);
 
               if (HUMAN_ONLY_FIELDS.has(field.field)) return null;
 
@@ -238,8 +245,15 @@ export function WriteUpAutoFillDialog({
                     state === 'rejected' && "border-border/30 bg-muted/30 opacity-50",
                     state === 'pending' && "border-border hover:border-primary/50",
                     state === 'editing' && "border-primary bg-primary/5",
+                    didFail && "border-destructive/60 bg-destructive/5",
                   )}
                 >
+                  {didFail && (
+                    <div className="mb-2 flex items-start gap-1.5 text-xs text-destructive">
+                      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span>Could not apply — please select manually in the form.</span>
+                    </div>
+                  )}
                   {/* Header row */}
                   <div className="flex items-center justify-between gap-2 mb-1.5">
                     <div className="flex items-center gap-2 min-w-0">
