@@ -684,6 +684,76 @@ function BulletEditor({
   );
 }
 
+function NarrativeEditor({
+  html, onChange, placeholder, loading,
+}: {
+  html: string;
+  onChange: (html: string) => void;
+  placeholder?: string;
+  loading?: boolean;
+}) {
+  const editor = useEditor({
+    extensions: [StarterKit],
+    content: html || '',
+    editorProps: {
+      attributes: {
+        class:
+          'tiptap prose prose-sm max-w-none focus:outline-none min-h-[120px] px-3 py-2 text-sm leading-relaxed',
+        'data-placeholder': placeholder || '',
+      },
+    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  });
+
+  // Sync external html (e.g. AI generation) into the editor without nuking caret on user typing.
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.getHTML();
+    if (html && html !== current) {
+      editor.commands.setContent(html, false);
+    }
+  }, [html, editor]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center gap-2 py-3 text-xs text-muted-foreground">
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+        Generating narrative summary with AI…
+      </div>
+    );
+  }
+
+  if (!editor) return null;
+
+  const btn = (active: boolean) =>
+    `h-7 w-7 inline-flex items-center justify-center rounded-md border text-xs transition ${
+      active
+        ? 'bg-primary/15 border-primary/40 text-primary'
+        : 'bg-background/60 border-border text-muted-foreground hover:bg-muted'
+    }`;
+
+  return (
+    <div className="rounded-md border border-border bg-background/40 overflow-hidden">
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-muted/30">
+        <button type="button" className={btn(editor.isActive('bold'))} onClick={() => editor.chain().focus().toggleBold().run()} aria-label="Bold">
+          <Bold className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" className={btn(editor.isActive('italic'))} onClick={() => editor.chain().focus().toggleItalic().run()} aria-label="Italic">
+          <Italic className="h-3.5 w-3.5" />
+        </button>
+        <span className="mx-1 h-4 w-px bg-border" />
+        <button type="button" className={btn(editor.isActive('bulletList'))} onClick={() => editor.chain().focus().toggleBulletList().run()} aria-label="Bullet list">
+          <List className="h-3.5 w-3.5" />
+        </button>
+        <button type="button" className={btn(editor.isActive('orderedList'))} onClick={() => editor.chain().focus().toggleOrderedList().run()} aria-label="Numbered list">
+          <ListOrdered className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      <EditorContent editor={editor} />
+    </div>
+  );
+}
+
 function BucketCount({ label, n }: { label: string; n: number }) {
   return (
     <div className="rounded border border-border bg-muted/30 px-2 py-1.5 flex items-center justify-between">
