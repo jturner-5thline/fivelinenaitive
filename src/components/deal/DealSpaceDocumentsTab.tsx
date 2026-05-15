@@ -525,7 +525,7 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
       <AlertDialog
         open={!!docToDelete}
         onOpenChange={(open) => {
-          if (!open && !isDeletingSingle) setDocToDelete(null);
+          if (!open && !isDeletingSingle && !isConfirmingSingleDeleteRef.current) setDocToDelete(null);
         }}
       >
         <AlertDialogContent
@@ -555,7 +555,10 @@ export function DealSpaceDocumentsTab({ dealId }: DealSpaceDocumentsTabProps) {
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                void handleConfirmSingleDelete();
+                if (!docToDelete || isDeletingSingle) return;
+                isConfirmingSingleDeleteRef.current = true;
+                setIsDeletingSingle(true);
+                void handleConfirmSingleDelete(docToDelete);
               }}
             >
               {isDeletingSingle ? (
