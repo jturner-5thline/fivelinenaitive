@@ -494,7 +494,7 @@ export function AddLenderSlideOver({
                           <PopoverContent
                             side="left"
                             align="start"
-                            className="z-[1200] w-80 p-3 text-xs space-y-2"
+                            className="w-80 p-3 text-xs space-y-2"
                             onClick={(e) => e.stopPropagation()}
                           >
                             <MatchExplanation
@@ -574,7 +574,7 @@ export function AddLenderSlideOver({
           if (!o) setConfirmingLender(null);
         }}
       >
-        <AlertDialogContent className="z-[1200]">
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
               Add {confirmingLender?.name} to {dealName}?
