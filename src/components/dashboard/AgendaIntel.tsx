@@ -148,8 +148,8 @@ function MeetingCard({
       {/* Section 1 — Meeting details */}
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CalendarIcon className="h-3 w-3" />
+          <div className="flex items-center gap-2 text-xs text-white/75">
+            <CalendarIcon className="h-3 w-3 text-white/80" />
             <span>{format(start, 'EEE, MMM d · h:mm a')}</span>
             <span className="opacity-50">•</span>
             <span>{duration}m</span>
@@ -158,34 +158,34 @@ function MeetingCard({
                 href={event.html_link}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="ml-1 inline-flex items-center gap-0.5 text-muted-foreground/60 hover:text-foreground"
+                className="ml-1 inline-flex items-center gap-0.5 text-white/70 hover:text-white"
               >
                 <ExternalLink className="h-3 w-3" />
               </a>
             )}
           </div>
-          <h3 className="text-sm font-semibold text-foreground mt-1 truncate">
+          <h3 className="text-sm font-semibold text-white mt-1 truncate">
             {event.summary || '(no title)'}
           </h3>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5 text-xs text-white/75">
             {videoLink && (
               <a
                 href={videoLink}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1 text-primary hover:underline"
+                className="inline-flex items-center gap-1 text-white hover:underline"
               >
-                <Video className="h-3 w-3" /> Join video
+                <Video className="h-3 w-3 text-white" /> Join video
               </a>
             )}
             {event.location && !videoLink && (
               <span className="inline-flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> {event.location}
+                <MapPin className="h-3 w-3 text-white/85" /> {event.location}
               </span>
             )}
             {event.attendees && event.attendees.length > 0 && (
               <span className="inline-flex items-center gap-1">
-                <Users className="h-3 w-3" /> {event.attendees.length} attendee
+                <Users className="h-3 w-3 text-white/85" /> {event.attendees.length} attendee
                 {event.attendees.length === 1 ? '' : 's'}
               </span>
             )}
@@ -200,14 +200,14 @@ function MeetingCard({
             <Badge
               key={a.email}
               variant="outline"
-              className="text-[10px] font-normal border-border/40 bg-white/[0.02]"
+              className="text-[10px] font-normal border-white/20 bg-white/[0.05] text-white"
             >
               {a.display_name || a.email}
-              <span className="ml-1 opacity-50">@{emailDomain(a.email)}</span>
+              <span className="ml-1 text-white/65">@{emailDomain(a.email)}</span>
             </Badge>
           ))}
           {externalAttendees.length > 6 && (
-            <Badge variant="outline" className="text-[10px] font-normal">
+            <Badge variant="outline" className="text-[10px] font-normal border-white/20 text-white">
               +{externalAttendees.length - 6} more
             </Badge>
           )}
@@ -228,15 +228,15 @@ function MeetingCard({
               {dealMatch.name} — {dealMatch.stage}
             </button>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
+            <div className="flex items-center gap-2 text-xs text-white/70">
               <span>No linked deal</span>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-xs"
+                className="h-6 px-2 text-xs text-white hover:text-white"
                 onClick={onLinkDeal}
               >
-                <Plus className="h-3 w-3 mr-1" /> Link deal
+                <Plus className="h-3 w-3 mr-1 text-white" /> Link deal
               </Button>
             </div>
           )}
@@ -247,11 +247,11 @@ function MeetingCard({
       {!isPersonal && !isInternalOnly && (
         <div className="rounded-lg border border-primary/15 bg-primary/[0.04] p-3">
           <div className="flex items-center justify-between mb-1.5">
-            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-primary/80">
-              <Sparkles className="h-3 w-3" />
+            <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-white/90">
+              <Sparkles className="h-3 w-3 text-white" />
               AI Prep
               {prep && (
-                <span className="text-muted-foreground/50 normal-case tracking-normal">
+                <span className="text-white/60 normal-case tracking-normal">
                   — generated {format(new Date(prep.generatedAt), 'MMM d, h:mm a')}
                 </span>
               )}
@@ -259,7 +259,7 @@ function MeetingCard({
             {prep && !prepLoading && (
               <button
                 onClick={onRegenerate}
-                className="text-muted-foreground/60 hover:text-foreground"
+                className="text-white/70 hover:text-white"
                 aria-label="Regenerate prep"
               >
                 <RefreshCw className="h-3 w-3" />
@@ -267,15 +267,15 @@ function MeetingCard({
             )}
           </div>
           {prepLoading && !prep ? (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground/70">
+            <div className="flex items-center gap-2 text-xs text-white/80">
               <Loader2 className="h-3 w-3 animate-spin" /> Generating prep...
             </div>
           ) : prep ? (
-            <div className="prose prose-invert prose-xs max-w-none text-xs text-foreground/85 [&_ul]:my-0 [&_li]:my-0.5">
+            <div className="prose prose-invert prose-xs max-w-none text-xs text-white [&_ul]:my-0 [&_li]:my-0.5 [&_p]:text-white [&_li]:text-white">
               <ReactMarkdown>{prep.bullets}</ReactMarkdown>
             </div>
           ) : (
-            <div className="text-xs text-muted-foreground/60">No prep available.</div>
+            <div className="text-xs text-white/70">No prep available.</div>
           )}
         </div>
       )}
@@ -286,9 +286,9 @@ function MeetingCard({
           href={event.description.match(/https?:\/\/(?:www\.)?claap\.io\/[^\s)]+/i)?.[0]}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+          className="inline-flex items-center gap-1 text-xs text-white hover:underline"
         >
-          <Video className="h-3 w-3" /> Claap recording
+          <Video className="h-3 w-3 text-white" /> Claap recording
         </a>
       )}
 
@@ -298,28 +298,28 @@ function MeetingCard({
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-2 text-xs"
+            className="h-7 px-2 text-xs text-white hover:text-white"
             onClick={handleAddNote}
             disabled={!dealMatch}
           >
-            <StickyNote className="h-3 w-3 mr-1" /> Add note
+            <StickyNote className="h-3 w-3 mr-1 text-white" /> Add note
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-2 text-xs"
+            className="h-7 px-2 text-xs text-white hover:text-white"
             onClick={handleCreateTask}
           >
-            <CheckSquare className="h-3 w-3 mr-1" /> Create task
+            <CheckSquare className="h-3 w-3 mr-1 text-white" /> Create task
           </Button>
           <Button
             size="sm"
             variant="ghost"
-            className="h-7 px-2 text-xs"
+            className="h-7 px-2 text-xs text-white hover:text-white"
             onClick={handleEmail}
             disabled={(event.attendees || []).filter(a => !a.self).length === 0}
           >
-            <Mail className="h-3 w-3 mr-1" /> Send follow-up
+            <Mail className="h-3 w-3 mr-1 text-white" /> Send follow-up
           </Button>
         </div>
       )}
