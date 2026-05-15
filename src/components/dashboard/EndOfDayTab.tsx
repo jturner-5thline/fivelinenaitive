@@ -653,6 +653,10 @@ function EodContextSidebar({
   onClose,
   onCreateFollowUp,
   onCreateDeal,
+  affiliatedDeals,
+  manualClaapLinks,
+  onAddManualClaapLink,
+  onRemoveManualClaapLink,
 }: {
   event: CalendarEvent;
   note: string;
@@ -660,6 +664,10 @@ function EodContextSidebar({
   onClose: () => void;
   onCreateFollowUp: () => void;
   onCreateDeal: () => void;
+  affiliatedDeals: AffiliatedDeal[];
+  manualClaapLinks: ManualClaapLink[];
+  onAddManualClaapLink: (link: ManualClaapLink) => void;
+  onRemoveManualClaapLink: (recordingId: string) => void;
 }) {
   const attendees = event.attendees || [];
   const externals = attendees.filter((a) => !a.self);
@@ -759,35 +767,13 @@ function EodContextSidebar({
         </section>
 
         {/* Linked Claap */}
-        <section>
-          <div className="flex items-center gap-1.5 mb-2">
-            <Video className="h-3 w-3 text-muted-foreground" />
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
-              Linked Claap
-            </span>
-          </div>
-          {claapLinks.length === 0 ? (
-            <div className="text-[11px] text-muted-foreground/60 italic rounded-md border border-dashed border-white/10 px-3 py-2">
-              No Claap recording linked to this meeting.
-            </div>
-          ) : (
-            <ul className="space-y-1.5">
-              {claapLinks.map((url) => (
-                <li key={url}>
-                  <a
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-1.5 text-xs text-primary hover:underline truncate"
-                  >
-                    <ExternalLink className="h-3 w-3 shrink-0" />
-                    <span className="truncate">{url.replace(/^https?:\/\/(www\.)?/, '')}</span>
-                  </a>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
+        <MeetingClaapLinker
+          affiliatedDeals={affiliatedDeals}
+          inlineExistingUrls={claapLinks}
+          manualLinks={manualClaapLinks}
+          onAddManualLink={onAddManualClaapLink}
+          onRemoveManualLink={onRemoveManualClaapLink}
+        />
 
         {/* Attendees quick view */}
         {attendees.length > 0 && (
