@@ -210,9 +210,19 @@ export function AddLenderSlideOver({
           (l.industries || []).some((i) => i.toLowerCase().includes(q))
         );
       })
-      .map((l) => ({ lender: l, score: matchByName.get(l.name.toLowerCase()) ?? 0 }))
+      .filter((l) => {
+        if (!aiOnly) return true;
+        return aiByName.has(l.name.trim().toLowerCase());
+      })
+      .map((l) => {
+        const key = l.name.toLowerCase();
+        const ai = aiByName.get(key);
+        const ruleScore = matchByName.get(key) ?? 0;
+        const score = ai ? Math.max(ruleScore, ai.matchScore) : ruleScore;
+        return { lender: l, score, ai };
+      })
       .sort((a, b) => b.score - a.score);
-  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilter, search, matchByName]);
+  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilter, search, matchByName, aiOnly, aiByName]);
 
   const toggleSelect = (name: string) => {
     setSelected((prev) => {
