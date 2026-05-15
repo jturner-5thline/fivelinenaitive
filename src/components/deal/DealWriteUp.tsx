@@ -1106,58 +1106,96 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
     }
   };
 
-  const buildDraftSections = (
+  // Marker prefix used to identify AI-generated commentary/key-item entries
+  // so regenerating replaces (rather than duplicates) them in-place inside
+  // the existing template fields.
+  const AI_DRAFT_TAG = '[AI Draft] ';
+
+  /**
+   * Map the generated narrative sections into the *existing* Deal Write-Up
+   * template fields (Company Overview description, Use of Funds, Financial
+   * Commentary entries, Key Items). No separate draft container — the user
+   * reviews and edits each section in its real home in the form.
+   */
+  const populateTemplateFromDraft = (
     sectionsByKey: Record<string, string>,
     fallbackContent: string,
     lenderMarketUpdate: string,
-  ): DraftSection[] => {
+  ): number => {
     const get = (k: string) => (sectionsByKey[k] || '').trim();
-    return [
-      {
-        key: 'executive_summary',
-        title: 'Executive Summary',
-        content: get('executive_overview') || fallbackContent.slice(0, 800),
-      },
-      {
-        key: 'company_overview',
-        title: 'Company Overview',
-        content:
-          get('facility_overview') ||
-          [data.companyName, data.location, data.industries?.join(', ')]
-            .filter(Boolean)
-            .join(' • '),
-      },
-      {
-        key: 'financial_profile',
-        title: 'Financial Profile',
-        hint: 'Pulled from Data Room financials',
-        content: get('financial_profile') || '',
-      },
-      {
-        key: 'use_of_proceeds',
-        title: 'Use of Proceeds',
-        content:
-          get('facility_overview').match(/use of proceeds[\s\S]*/i)?.[0] ||
-          (data.capitalAsk ? `Capital ask: ${data.capitalAsk}` : ''),
-      },
-      {
-        key: 'lender_market_update',
-        title: 'Lender Market Update',
-        hint: 'Pulled from lender pipeline (active, in review, passed)',
-        content: lenderMarketUpdate,
-      },
-      {
-        key: 'key_risks',
-        title: 'Key Risks / Mitigants',
-        content: get('key_risks') || '',
-      },
-      {
-        key: 'fifth_line_commentary',
-        title: '5th Line Commentary',
-        hint: 'Editable by advisor',
-        content: get('recommendation') || '',
-      },
-    ];
+    const exec = get('executive_overview') || fallbackContent.slice(0, 800);
+    const overview =
+      get('facility_overview') ||
+      [data.companyName, data.location, data.industries?.join(', ')]
+        .filter(Boolean)
+        .join(' • ');
+    const financialProfile = get('financial_profile');
+    const uop =
+      (get('facility_overview').match(/use of proceeds[\s\S]*/i)?.[0] || '').trim() ||
+      (data.capitalAsk ? `Capital ask: ${data.capitalAsk}` : '');
+    const keyRisks = get('key_risks');
+    const commentary = get('recommendation');
+
+    const next: DealWriteUpData = { ...data } as DealWriteUpData;
+    let touched = 0;
+
+    // Company Overview field — combine Executive Summary (lead) + Overview
+    const composedOverview = [
+      exec ? `Executive Summary\n${exec}` : '',
+      overview ? `Company Overview\n${overview}` : '',
+    ].filter(Boolean).join('\n\n');
+    if (composedOverview && composedOverview !== (next.description || '').trim()) {
+      (next as any).description = composedOverview;
+      touched++;
+    }
+
+    // Use of Funds / Use of Proceeds
+    if (uop && uop !== (next.useOfFunds || '').trim()) {
+      (next as any).useOfFunds = uop;
+      touched++;
+    }
+
+    // Helper: upsert a titled entry into a list field, replacing any prior
+    // AI Draft entry with the same canonical title so regen stays clean.
+    const upsertCommented = (
+      list: Array<{ id: string; title: string; description: string }>,
+      title: string,
+      content: string,
+    ) => {
+      if (!content) return list;
+      const taggedTitle = `${AI_DRAFT_TAG}${title}`;
+      const existingIdx = list.findIndex(i => i.title === taggedTitle);
+      if (existingIdx >= 0) {
+        const copy = [...list];
+        copy[existingIdx] = { ...copy[existingIdx], description: content };
+        return copy;
+      }
+      return [
+        ...list,
+        { id: crypto.randomUUID(), title: taggedTitle, description: content },
+      ];
+    };
+
+    let financialComments = next.financialComments || [];
+    const beforeFC = financialComments;
+    financialComments = upsertCommented(financialComments, 'Financial Profile', financialProfile);
+    financialComments = upsertCommented(financialComments, 'Lender Market Update', lenderMarketUpdate);
+    financialComments = upsertCommented(financialComments, '5th Line Commentary', commentary);
+    if (financialComments !== beforeFC) {
+      (next as any).financialComments = financialComments;
+      touched++;
+    }
+
+    let keyItems = next.keyItems || [];
+    const beforeKI = keyItems;
+    keyItems = upsertCommented(keyItems as any, 'Key Risks / Mitigants', keyRisks) as any;
+    if (keyItems !== beforeKI) {
+      (next as any).keyItems = keyItems;
+      touched++;
+    }
+
+    if (touched > 0) onChange(next);
+    return touched;
   };
 
   const handleGenerateCompleteWriteUp = async () => {
@@ -1174,16 +1212,21 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
       const memo = await generateFullMemo();
       // 3. Pull live lender pipeline for the market update
       const lenderMarketUpdate = await buildLenderMarketUpdate();
-      // 4. Compose the 7 inline draft sections
-      const sections = buildDraftSections(
+      // 4. Write each generated section directly into the existing template
+      //    fields (Company Overview, Use of Funds, Financial Commentary, Key
+      //    Items). Nothing is exported or archived until the user approves.
+      const touched = populateTemplateFromDraft(
         memo?.sections || {},
         memo?.content || '',
         lenderMarketUpdate,
       );
-      setDraftSections(sections);
+      setAiPopulated(touched > 0);
       setDraftGeneratedAt(new Date());
-      toast.success('AI Draft Write-Up ready', {
-        description: 'Review the draft below — nothing is exported until you approve.',
+      toast.success('Write-up populated from AI', {
+        description:
+          touched > 0
+            ? `Updated ${touched} template section${touched === 1 ? '' : 's'}. Review and approve when ready.`
+            : 'No new content was generated.',
       });
     } catch (err) {
       console.error('Generate Complete Write-Up failed', err);
@@ -1193,18 +1236,33 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
     }
   };
 
-  const handleDraftSectionChange = (key: string, content: string) => {
-    setDraftSections((prev) =>
-      prev ? prev.map((s) => (s.key === key ? { ...s, content } : s)) : prev,
-    );
-    // Any edit after approval invalidates the approved state until re-approved.
-    if (isDraftApproved) setIsDraftApproved(false);
+  // Build the archival HTML directly from the live template fields so the
+  // approved/archived version always reflects what the user actually sees.
+  const buildWriteUpHtmlFromTemplate = (): string => {
+    const esc = (s: string) =>
+      (s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const block = (title: string, body: string) =>
+      body
+        ? `<section style="margin:0 0 24px 0;"><h2 style="font-size:16px;margin:0 0 8px 0;">${esc(title)}</h2><div style="white-space:pre-wrap;font-size:13px;line-height:1.55;">${esc(body)}</div></section>`
+        : '';
+    const parts: string[] = [];
+    parts.push(block('Company Overview', data.description || ''));
+    parts.push(block('Use of Funds', data.useOfFunds || ''));
+    (data.financialComments || []).forEach(c => {
+      const t = (c.title || '').replace(AI_DRAFT_TAG, '');
+      parts.push(block(t || 'Commentary', c.description || ''));
+    });
+    (data.keyItems || []).forEach(c => {
+      const t = (c.title || '').replace(AI_DRAFT_TAG, '');
+      parts.push(block(t || 'Key Item', c.description || ''));
+    });
+    return parts.filter(Boolean).join('\n');
   };
 
-  const handleApproveDraft = async (html: string) => {
-    if (!draftSections) return;
+  const handleApproveDraft = async () => {
     setIsApprovingDraft(true);
     try {
+      const html = buildWriteUpHtmlFromTemplate();
       const res = await archiveApprovedWriteUp({
         dealId,
         dealName: data.companyName || null,
