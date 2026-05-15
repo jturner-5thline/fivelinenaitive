@@ -4046,7 +4046,13 @@ export default function DealDetail() {
                                 Activity
                               </Button>
                             </PopoverTrigger>
-                            <PopoverContent align="end" className="w-[460px] max-w-[95vw] h-[min(85vh,720px)] overflow-y-auto p-3">
+                            <PopoverContent
+                              align="end"
+                              side="bottom"
+                              sideOffset={6}
+                              avoidCollisions={false}
+                              className="w-[460px] max-w-[95vw] h-[min(85vh,720px)] overflow-y-auto p-3 bg-background border border-border shadow-xl"
+                            >
                               <div className="text-sm font-semibold mb-2">Activity</div>
                               <ActivityTimeline activities={activities} />
                             </PopoverContent>
