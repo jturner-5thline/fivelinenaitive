@@ -1176,7 +1176,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
                 </Tooltip>
               </TooltipProvider>
               )}
-              {canGenerateMemo && (
+              {canUseBrandedDocument && (
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
