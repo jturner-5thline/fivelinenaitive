@@ -48,6 +48,7 @@ export function CopilotTaskConfirm({ action }: Props) {
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
   const initial = action.params || {};
+  const auditId: string | null = (initial as any).audit_id || null;
 
   const [title, setTitle] = useState<string>(initial.title || '');
   const [description, setDescription] = useState<string>(initial.description || '');
@@ -293,8 +294,23 @@ export function CopilotTaskConfirm({ action }: Props) {
           {status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
           Confirm & create
         </button>
-        <button
-          onClick={() => setStatus('cancelled')}
+      <button
+          onClick={async () => {
+            setStatus('cancelled');
+            if (auditId) {
+              try {
+                const { data: sessionData } = await supabase.auth.getSession();
+                const token = sessionData?.session?.access_token;
+                if (token) {
+                  await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ cancelAction: { audit_id: auditId, reason: 'user_cancelled' } }),
+                  });
+                }
+              } catch { /* audit best-effort */ }
+            }
+          }}
           disabled={status === 'loading'}
           style={{
             height: 32, padding: '0 12px', borderRadius: 8,

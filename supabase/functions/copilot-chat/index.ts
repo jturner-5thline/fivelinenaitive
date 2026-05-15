@@ -1,6 +1,84 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
+// ── AI action audit helpers ──────────────────────────────────────
+function adminClient() {
+  return createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+}
+
+/**
+ * Insert a "drafted" row into ai_action_audit when the AI proposes a task.
+ * Returns the new row id (or null on failure — auditing must never block the draft).
+ */
+async function writeAuditDraft(input: {
+  userId: string;
+  companyId?: string | null;
+  conversationId?: string | null;
+  actionType: string;
+  intent?: string | null;
+  prompt?: string | null;
+  resolvedDealId?: string | null;
+  resolvedDealName?: string | null;
+  resolvedAssigneeUserId?: string | null;
+  resolvedAssigneeName?: string | null;
+  extractedFields?: Record<string, unknown>;
+  confidence?: Record<string, unknown>;
+  clarificationRequired?: boolean;
+  clarificationReason?: string | null;
+  pageContext?: Record<string, unknown>;
+}): Promise<string | null> {
+  try {
+    const admin = adminClient();
+    const { data, error } = await admin.from("ai_action_audit").insert({
+      user_id: input.userId,
+      company_id: input.companyId || null,
+      conversation_id: input.conversationId || null,
+      action_type: input.actionType,
+      intent: input.intent || null,
+      prompt: input.prompt || null,
+      resolved_deal_id: input.resolvedDealId || null,
+      resolved_deal_name: input.resolvedDealName || null,
+      resolved_assignee_user_id: input.resolvedAssigneeUserId || null,
+      resolved_assignee_name: input.resolvedAssigneeName || null,
+      extracted_fields: input.extractedFields || {},
+      confidence: input.confidence || {},
+      clarification_required: !!input.clarificationRequired,
+      clarification_reason: input.clarificationReason || null,
+      outcome: "drafted",
+      page_context: input.pageContext || null,
+    }).select("id").single();
+    if (error) {
+      console.warn("[ai_audit] writeAuditDraft failed:", error.message);
+      return null;
+    }
+    return (data as any)?.id || null;
+  } catch (e) {
+    console.warn("[ai_audit] writeAuditDraft exception:", e);
+    return null;
+  }
+}
+
+async function updateAuditOutcome(auditId: string | null | undefined, patch: {
+  outcome: "confirmed" | "cancelled" | "error" | "abandoned" | "clarification_requested";
+  outcomeDetail?: string | null;
+  createdTaskId?: string | null;
+  errorMessage?: string | null;
+}): Promise<void> {
+  if (!auditId) return;
+  try {
+    const admin = adminClient();
+    await admin.from("ai_action_audit").update({
+      outcome: patch.outcome,
+      outcome_detail: patch.outcomeDetail ?? null,
+      created_task_id: patch.createdTaskId ?? null,
+      error_message: patch.errorMessage ?? null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", auditId);
+  } catch (e) {
+    console.warn("[ai_audit] updateAuditOutcome failed:", e);
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -184,6 +262,22 @@ const tools = [
             type: "array",
             items: { type: "string", enum: ["title", "description", "deal_id", "assignee_user_id", "due_date", "priority", "task_type"] },
             description: "Field names you INFERRED rather than the user explicitly stating them (e.g. defaulted deal_id from page context, defaulted priority to medium). The approval card highlights inferred fields so the user can correct them.",
+          },
+          intent: {
+            type: "string",
+            enum: ["personal_task", "deal_task", "delegated_task"],
+            description: "Which intent classification this draft falls under. Used for audit logging.",
+          },
+          confidence: {
+            type: "object",
+            description: "Self-reported 0.0-1.0 confidence per resolution dimension. Used for audit logging and to gate clarifications. Below 0.7 you MUST ask a clarifying question instead of calling create_task.",
+            properties: {
+              deal: { type: "number", description: "Confidence the resolved deal_id is correct (omit if no deal). 1.0 if the user is on the deal page or named it explicitly." },
+              assignee: { type: "number", description: "Confidence the resolved assignee_user_id is correct (omit if defaulting to current user). 1.0 if user explicitly named one teammate and search_team_members returned exactly one match." },
+              due_date: { type: "number", description: "Confidence the parsed due_date is what the user meant. 1.0 for explicit YYYY-MM-DD; lower for ambiguous relative phrases." },
+              task_type: { type: "number", description: "Confidence in the task_type classification. Default 1.0 for the default 'task' value." },
+              overall: { type: "number", description: "Overall confidence in this draft." },
+            },
           },
         },
         required: ["title"],
@@ -1454,6 +1548,8 @@ function selectToolsWithScopes(
 
 // ── Tool executors ──────────────────────────────────────────────
 async function executeTool(supabase: any, name: string, args: any, userId: string): Promise<any> {
+  // (See writeAuditDraft / updateAuditOutcome below for the audit log helpers.
+  // Audit writes happen at the call sites that have access to the user prompt.)
   switch (name) {
     case "get_deal": {
       if (args.deal_id) {
@@ -1624,6 +1720,8 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           due_date: args.due_date,
           task_type: args.task_type || "task",
           inferred: Array.isArray(args.inferred) ? args.inferred : [],
+          intent: args.intent || (args.assignee_user_id ? "delegated_task" : (args.deal_id ? "deal_task" : "personal_task")),
+          confidence: typeof args.confidence === "object" && args.confidence ? args.confidence : {},
         },
       };
     }
@@ -5007,8 +5105,33 @@ serve(async (req) => {
 
     // ── Handle confirm action ──
     if (body.confirmAction) {
+      const auditId: string | null = body.confirmAction.params?.audit_id || null;
       const result = await executeConfirmAction(supabaseUser, body.confirmAction.action_type, body.confirmAction.params, userId);
+      if (body.confirmAction.action_type === "create_task") {
+        if (result?.success) {
+          await updateAuditOutcome(auditId, {
+            outcome: "confirmed",
+            outcomeDetail: result?.message || null,
+            createdTaskId: result?.params?.task_id || null,
+          });
+        } else {
+          await updateAuditOutcome(auditId, {
+            outcome: "error",
+            errorMessage: result?.error || "unknown error",
+          });
+        }
+      }
       return new Response(JSON.stringify(result), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ── Handle cancel of a previously drafted action (logs the abandonment) ──
+    if (body.cancelAction) {
+      const auditId: string | null = body.cancelAction.audit_id || null;
+      await updateAuditOutcome(auditId, {
+        outcome: "cancelled",
+        outcomeDetail: body.cancelAction.reason || null,
+      });
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     const { message, context, history, conversationMutations } = body;
@@ -5318,6 +5441,22 @@ APPROVAL CARD INFERENCE FLAGS (apply to EVERY create_task call — personal, dea
   - assignee_user_id was set to anything other than the user's explicit "assign to <Person>" / "<Person> needs to" → include "assignee_user_id". Personal first-person reminders (omit assignee_user_id) do NOT count as inferred.
   - description was synthesised by you rather than quoted from the user → include "description".
 - Do NOT mark fields the user stated literally. The list may be empty. Prefer accuracy over completeness.
+
+CONFIDENCE THRESHOLDS & GUARDRAILS (apply to EVERY create_task call — these are HARD safety rules, not preferences):
+- create_task accepts a "confidence" object with fields { deal, assignee, due_date, task_type, overall } scored 0.0-1.0. Populate it on every call. The audit log records it.
+- Threshold rule: if ANY of deal / assignee / due_date confidence is below 0.7 (or you are uncertain enough that you would normally hedge), DO NOT call create_task. Instead ask ONE short clarifying question and wait for the user. Examples:
+  - Multiple deal candidates from search_deals → assign deal confidence < 0.7 → ask which deal.
+  - Multiple teammate matches from search_team_members → assign assignee confidence < 0.7 → ask which person.
+  - Ambiguous date phrase ("Tuesday" said on a Tuesday, "next Friday" mid-week, no year on a past month/day) → due_date confidence < 0.7 → ask.
+- Confidence anchors:
+  - deal: 1.0 if user is on the deal page OR named the deal exactly. 0.85 if a single fuzzy match. 0.5 if 2 candidates. <0.5 if 3+ or no clear match.
+  - assignee: 1.0 if explicit name + single search_team_members match. 0.85 if first-name only with a single match. <0.7 if multiple matches. (Personal first-person reminders default to current user — set assignee=1.0 and OMIT assignee_user_id.)
+  - due_date: 1.0 for explicit YYYY-MM-DD or unambiguous "today"/"tomorrow"/"in N days". 0.85 for "next <weekday>" / "end of week" computed against TODAY. <0.7 for ambiguous phrases.
+  - task_type: 1.0 for the default "task". 0.9 if user explicitly said "follow-up"/"call"/"email"/"meeting". Lower if you guessed.
+- Never silently fall back. If you cannot confidently resolve a deal, do NOT pick a different one or drop the link without telling the user. If you cannot confidently resolve an assignee, do NOT silently assign yourself or someone else — ask.
+- Tool failures: if a retrieval tool (search_deals, search_team_members, get_deal_full, etc.) returns an error or empty results, surface that to the user in plain language ("I couldn't find a deal called 'Worthy' — can you confirm the name?"). Do NOT call create_task with guessed values to compensate.
+- Intent field: also pass intent = "personal_task" | "deal_task" | "delegated_task" so the audit log can categorise the draft. Personal = no assignee, no deal. Deal = deal_id set, no assignee. Delegated = assignee_user_id set.
+- After confirm/cancel happens (handled by the UI), the audit row is updated automatically — you do not need to log anything yourself. Just keep the confidence + intent honest on the draft.
 
 INTENT DETECTION (run BEFORE deciding which tool to call — classify every user turn into one of these intents and route accordingly):
 - QUESTION about a deal / lender / contact / pipeline ("what's next on Worthy?", "summarize this deal", "who owns next steps", "what tasks are open here?", "which lenders passed?") → DO NOT call create_task. Answer with the deal-space rules above.
@@ -5899,6 +6038,42 @@ ${orgPreferencesSection}`;
                 };
               } else {
                 result = await executeTool(supabaseUser, tc.function.name, args, userId);
+              }
+              // Audit log: every AI-drafted task action (intent, confidence, resolved
+              // entities, extracted fields) — must happen even if the user later cancels.
+              if (
+                tc.function.name === "create_task" &&
+                result &&
+                result.action === "confirm" &&
+                result.params
+              ) {
+                const p = result.params as any;
+                const auditId = await writeAuditDraft({
+                  userId,
+                  companyId: companyId || null,
+                  conversationId: (body as any)?.conversationId || null,
+                  actionType: "create_task",
+                  intent: p.intent || null,
+                  prompt: typeof message === "string" ? message : null,
+                  resolvedDealId: p.deal_id || null,
+                  resolvedDealName: p.deal_name || null,
+                  resolvedAssigneeUserId: p.assignee_user_id || null,
+                  resolvedAssigneeName: p.assignee_name || null,
+                  extractedFields: {
+                    title: p.title,
+                    description: p.description || null,
+                    due_date: p.due_date || null,
+                    priority: p.priority || null,
+                    task_type: p.task_type || null,
+                    inferred: p.inferred || [],
+                  },
+                  confidence: p.confidence || {},
+                  pageContext: { page, entityType, entityId, activeTab },
+                });
+                if (auditId) {
+                  p.audit_id = auditId;
+                  result.params = p;
+                }
               }
               apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
             }
