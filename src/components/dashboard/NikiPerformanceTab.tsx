@@ -331,64 +331,134 @@ export function NikiPerformanceTab() {
   const conversionRows = ['clientsSigned', 'dollarsSigned', 'clientsReceivingTerms', 'termsSigned', 'volumeTermsSigned'] as MetricRowKey[];
   const revenueRows    = ['dealsClosed', 'dollarsFunded'] as MetricRowKey[];
 
-  const [period, setPeriod] = useState<QuarterKey | 'YEAR'>('YEAR');
-  const periodOptions: { key: QuarterKey | 'YEAR'; label: string }[] = [
-    ...NIKI_QUARTERS.map((q) => ({ key: q.key, label: q.key })),
-    { key: 'YEAR', label: 'Full Year' },
+  // ─── Period selection (multi-quarter capable) ────────────────────────────
+  type PeriodKey = QuarterKey | 'YEAR';
+  const allQuarterKeys: QuarterKey[] = NIKI_QUARTERS.map((q) => q.key);
+
+  // Default to current quarter (May 2026 → Q2)
+  const currentQuarter: QuarterKey = (() => {
+    const m = new Date().getMonth();
+    if (m <= 2) return 'Q1' as QuarterKey;
+    if (m <= 5) return 'Q2' as QuarterKey;
+    if (m <= 8) return 'Q3' as QuarterKey;
+    return 'Q4' as QuarterKey;
+  })();
+
+  const [selectedPeriods, setSelectedPeriods] = useState<PeriodKey[]>([currentQuarter]);
+
+  const togglePeriod = (k: PeriodKey) => {
+    setSelectedPeriods((prev) => {
+      const has = prev.includes(k);
+      if (has) {
+        if (prev.length === 1) return prev; // keep at least one
+        return prev.filter((p) => p !== k);
+      }
+      return [...prev, k];
+    });
+  };
+
+  const periodLabel = (k: PeriodKey) => (k === 'YEAR' ? '2026' : `${k} 2026`);
+
+  // Order selected periods consistently: Q1..Q4, then YEAR
+  const orderedSelected: PeriodKey[] = useMemo(() => {
+    const order: PeriodKey[] = [...allQuarterKeys, 'YEAR'];
+    return order.filter((k) => selectedPeriods.includes(k));
+  }, [selectedPeriods]);
+
+  const presets: { label: string; value: PeriodKey[] }[] = [
+    { label: 'Current Q', value: [currentQuarter] },
+    { label: 'H1', value: ['Q1' as QuarterKey, 'Q2' as QuarterKey] },
+    { label: 'H2', value: ['Q3' as QuarterKey, 'Q4' as QuarterKey] },
+    { label: 'All quarters', value: [...allQuarterKeys] },
+    { label: 'Full Year', value: ['YEAR'] },
   ];
 
-  const getCells = (row: MetricRow) => {
+  const isSingle = orderedSelected.length === 1;
+
+  const cellFor = (row: MetricRow, k: PeriodKey) => {
     const plan = NIKI_PLAN_2026[row.key];
-    const planVal = period === 'YEAR' ? plan.total : plan[period];
-    const actualVal = period === 'YEAR' ? row.yearTotal : row.byQuarter[period].value;
+    const planVal = k === 'YEAR' ? plan.total : plan[k];
+    const actualVal = k === 'YEAR' ? row.yearTotal : row.byQuarter[k].value;
     const v = variance(actualVal, planVal);
     return { planVal, actualVal, v, status: statusFromPct(v.pct) };
   };
 
-  const ScorecardSection = ({ title, keys }: { title: string; keys: MetricRowKey[] }) => (
-    <>
-      <TableRow className="hover:bg-transparent border-b-0">
-        <TableCell
-          colSpan={6}
-          className="py-2 px-4 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground bg-muted/30"
-        >
-          {title}
+  const totalCols = isSingle ? 6 : 1 + orderedSelected.length * 4;
+
+  const SectionHeaderRow = ({ title }: { title: string }) => (
+    <TableRow className="hover:bg-transparent border-b-0">
+      <TableCell
+        colSpan={totalCols}
+        className="py-2 px-4 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground bg-muted/30 sticky left-0"
+      >
+        {title}
+      </TableCell>
+    </TableRow>
+  );
+
+  const SingleRow = ({ row }: { row: MetricRow }) => {
+    const k = orderedSelected[0];
+    const { planVal, actualVal, v, status } = cellFor(row, k);
+    const s = STATUS_STYLES[status];
+    return (
+      <TableRow className="cursor-pointer border-border/40" onClick={() => openDrill(row, k)}>
+        <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
+        <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm text-muted-foreground">{fmt(planVal, row.unit)}</TableCell>
+        <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm font-semibold text-foreground">{fmt(actualVal, row.unit)}</TableCell>
+        <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
+          {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
+        </TableCell>
+        <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
+          {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
+        </TableCell>
+        <TableCell className="py-2.5 px-4 text-right">
+          <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
+            <s.Icon className="h-3 w-3" />
+            {s.label}
+          </span>
         </TableCell>
       </TableRow>
+    );
+  };
+
+  const MultiRow = ({ row }: { row: MetricRow }) => (
+    <TableRow className="border-border/40">
+      <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground sticky left-0 bg-card z-10">
+        {row.label}
+      </TableCell>
+      {orderedSelected.map((k) => {
+        const { planVal, actualVal, v, status } = cellFor(row, k);
+        const s = STATUS_STYLES[status];
+        return (
+          <Fragment key={k}>
+            <TableCell className="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
+              {fmt(planVal, row.unit)}
+            </TableCell>
+            <TableCell
+              className="py-2.5 px-3 text-right tabular-nums text-xs font-semibold text-foreground cursor-pointer hover:underline"
+              onClick={() => openDrill(row, k)}
+            >
+              {fmt(actualVal, row.unit)}
+            </TableCell>
+            <TableCell className={cn('py-2.5 px-3 text-right tabular-nums text-xs font-medium', s.text)}>
+              {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
+            </TableCell>
+            <TableCell className={cn('py-2.5 px-3 text-right tabular-nums text-xs font-medium border-r border-border/40 last:border-r-0', s.text)}>
+              {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
+            </TableCell>
+          </Fragment>
+        );
+      })}
+    </TableRow>
+  );
+
+  const ScorecardSection = ({ title, keys }: { title: string; keys: MetricRowKey[] }) => (
+    <>
+      <SectionHeaderRow title={title} />
       {keys.map((k) => {
         const row = get(k);
         if (!row) return null;
-        const { planVal, actualVal, v, status } = getCells(row);
-        const s = STATUS_STYLES[status];
-        return (
-          <TableRow
-            key={k}
-            className="cursor-pointer border-border/40"
-            onClick={() => openDrill(row, period)}
-          >
-            <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">
-              {row.label}
-            </TableCell>
-            <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm text-muted-foreground">
-              {fmt(planVal, row.unit)}
-            </TableCell>
-            <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm font-semibold text-foreground">
-              {fmt(actualVal, row.unit)}
-            </TableCell>
-            <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
-              {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
-            </TableCell>
-            <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
-              {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
-            </TableCell>
-            <TableCell className="py-2.5 px-4 text-right">
-              <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
-                <s.Icon className="h-3 w-3" />
-                {s.label}
-              </span>
-            </TableCell>
-          </TableRow>
-        );
+        return isSingle ? <SingleRow key={k} row={row} /> : <MultiRow key={k} row={row} />;
       })}
     </>
   );
@@ -453,37 +523,90 @@ export function NikiPerformanceTab() {
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Plan vs Actual across pipeline production, conversion, and revenue.
+                  {isSingle
+                    ? ` Showing ${periodLabel(orderedSelected[0])}.`
+                    : ` Comparing ${orderedSelected.length} periods.`}
                 </CardDescription>
               </div>
-              <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-                {periodOptions.map((p) => (
-                  <button
-                    key={p.key}
-                    type="button"
-                    onClick={() => setPeriod(p.key)}
-                    className={cn(
-                      'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
-                      period === p.key
-                        ? 'bg-card text-foreground shadow-sm'
-                        : 'text-muted-foreground hover:text-foreground',
-                    )}
-                  >
-                    {p.label}
-                  </button>
-                ))}
+              <div className="flex flex-col items-end gap-2">
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                  {([...allQuarterKeys, 'YEAR'] as PeriodKey[]).map((k) => {
+                    const active = selectedPeriods.includes(k);
+                    return (
+                      <button
+                        key={k}
+                        type="button"
+                        onClick={() => togglePeriod(k)}
+                        className={cn(
+                          'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                          active
+                            ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
+                            : 'text-muted-foreground hover:text-foreground',
+                        )}
+                        title={`Toggle ${k === 'YEAR' ? 'Full Year' : `${k} 2026`}`}
+                      >
+                        {k === 'YEAR' ? 'Year' : k}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mr-1">
+                    Presets
+                  </span>
+                  {presets.map((p) => (
+                    <button
+                      key={p.label}
+                      type="button"
+                      onClick={() => setSelectedPeriods(p.value)}
+                      className="px-2 py-0.5 text-[10px] font-medium rounded border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="p-0 overflow-x-auto">
               <Table>
                 <TableHeader>
-                  <TableRow className="hover:bg-transparent border-b border-border">
-                    <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
-                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Plan</TableHead>
-                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>
-                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>
-                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>
-                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
-                  </TableRow>
+                  {isSingle ? (
+                    <TableRow className="hover:bg-transparent border-b border-border">
+                      <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
+                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Plan</TableHead>
+                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>
+                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>
+                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>
+                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
+                    </TableRow>
+                  ) : (
+                    <>
+                      <TableRow className="hover:bg-transparent border-b border-border/60">
+                        <TableHead rowSpan={2} className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold sticky left-0 bg-card z-10 align-bottom">
+                          Metric
+                        </TableHead>
+                        {orderedSelected.map((k) => (
+                          <TableHead
+                            key={k}
+                            colSpan={4}
+                            className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-semibold text-foreground/80 border-l border-border/40"
+                          >
+                            {periodLabel(k)}
+                          </TableHead>
+                        ))}
+                      </TableRow>
+                      <TableRow className="hover:bg-transparent border-b border-border">
+                        {orderedSelected.map((k) => (
+                          <Fragment key={k}>
+                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground border-l border-border/40">Plan</TableHead>
+                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Actual</TableHead>
+                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Δ</TableHead>
+                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                          </Fragment>
+                        ))}
+                      </TableRow>
+                    </>
+                  )}
                 </TableHeader>
                 <TableBody>
                   <ScorecardSection title="Pipeline Production" keys={productionRows} />
