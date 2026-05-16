@@ -1592,6 +1592,65 @@ const tools = [
       },
     },
   },
+  // ── PHASE 3: EXTERNAL INTEGRATION STUBS (PREVIEW-ONLY) ──
+  {
+    type: "function",
+    function: {
+      name: "send_gmail",
+      description: "PREVIEW ONLY — does NOT actually send. Returns a Gmail send preview card the user must approve. Use when the user wants to send an email via Gmail (Nylas). The UI shows the draft and a 'Send via Gmail' button; nothing leaves the workspace until the user clicks it.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional deal UUID for context." },
+          to: { type: "array", items: { type: "string" }, description: "Recipient email addresses." },
+          cc: { type: "array", items: { type: "string" } },
+          bcc: { type: "array", items: { type: "string" } },
+          subject: { type: "string" },
+          body_html: { type: "string", description: "Email body as HTML." },
+        },
+        required: ["to", "subject", "body_html"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_asana_task",
+      description: "PREVIEW ONLY — does NOT actually create the Asana task. Returns a preview card the user must approve before the existing Asana bi-directional sync runs. Use when the user wants to mirror a task to Asana.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          name: { type: "string", description: "Task name." },
+          notes: { type: "string", description: "Task notes / description." },
+          due_on: { type: "string", description: "YYYY-MM-DD" },
+          assignee_email: { type: "string" },
+          project_gid: { type: "string", description: "Optional Asana project GID." },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "schedule_meeting",
+      description: "PREVIEW ONLY — does NOT actually create the calendar event. Returns a Google Calendar event preview card the user must approve before booking. Use for 'schedule a call with…', 'book a meeting…'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          start_iso: { type: "string", description: "ISO datetime for start." },
+          end_iso: { type: "string", description: "ISO datetime for end." },
+          attendees: { type: "array", items: { type: "string" }, description: "Attendee emails." },
+          location: { type: "string", description: "Physical location or video link." },
+        },
+        required: ["title", "start_iso", "end_iso"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -1648,6 +1707,8 @@ function selectToolsWithScopes(
     "get_task_details", "get_scheduled_followups",
     // Phase 2: preview-only drafts and summaries.
     "draft_status_report", "follow_up_summary",
+    // Phase 3: external integration stubs (preview-only — no external writes).
+    "send_gmail", "create_asana_task", "schedule_meeting",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
     // Always-available notifications & alerts (user-scoped).
@@ -4628,6 +4689,50 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         scheduled_emails: scheduledEmails || [],
         instruction:
           "Summarize follow-ups grouped by Overdue / Today / This week. Suggest 2-3 next actions as chips. Do NOT mark anything complete or send anything — this is read-only.",
+      };
+    }
+    // ── PHASE 3: EXTERNAL INTEGRATION STUBS (PREVIEW-ONLY) ──
+    case "send_gmail": {
+      return {
+        action: "send_gmail_preview",
+        preview_only: true,
+        provider: "gmail_nylas",
+        deal_id: args.deal_id || null,
+        to: args.to || [],
+        cc: args.cc || [],
+        bcc: args.bcc || [],
+        subject: args.subject || "",
+        body_html: args.body_html || "",
+        note: "Stubbed: not sent. Render this as a Send via Gmail preview card. The user must click Send to actually deliver via the existing Nylas integration.",
+      };
+    }
+    case "create_asana_task": {
+      return {
+        action: "create_asana_task_preview",
+        preview_only: true,
+        provider: "asana",
+        deal_id: args.deal_id || null,
+        name: args.name,
+        notes: args.notes || "",
+        due_on: args.due_on || null,
+        assignee_email: args.assignee_email || null,
+        project_gid: args.project_gid || null,
+        note: "Stubbed: not created in Asana. Render as a Create in Asana preview card; existing bi-directional sync runs only after user approval.",
+      };
+    }
+    case "schedule_meeting": {
+      return {
+        action: "schedule_meeting_preview",
+        preview_only: true,
+        provider: "google_calendar",
+        deal_id: args.deal_id || null,
+        title: args.title,
+        description: args.description || "",
+        start_iso: args.start_iso,
+        end_iso: args.end_iso,
+        attendees: args.attendees || [],
+        location: args.location || "",
+        note: "Stubbed: no calendar event created. Render as a Schedule meeting preview card; user must approve before booking.",
       };
     }
     default:
