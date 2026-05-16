@@ -18,6 +18,8 @@ import { AddPartnerDialog } from '@/components/partners/AddPartnerDialog';
 import { PartnerDetailPanel } from '@/components/partners/PartnerDetailPanel';
 import { PartnerPromotionDialog, getPromotionMode, type PromotionResult, type PromotionMode } from '@/components/partners/PartnerPromotionDialog';
 import { usePartnerPromotionCriteria } from '@/hooks/usePartnerPromotionCriteria';
+import { usePartnerTier } from '@/hooks/usePartnerTier';
+import { PartnerTierBadge, PartnerTier4WarningBadge } from '@/components/partners/PartnerTierBadge';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -30,7 +32,7 @@ function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; o
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const owner = partner.owner_id ? owners.get(partner.owner_id) : null;
   const { data: criteria } = usePartnerPromotionCriteria(partner.name);
-  const tier = (partner.metadata as any)?.tier as string | number | undefined;
+  const { data: tierInfo } = usePartnerTier(partner);
   const daysSince = Math.max(0, Math.floor((Date.now() - new Date(partner.created_at).getTime()) / (1000 * 60 * 60 * 24)));
 
   return (
@@ -48,11 +50,8 @@ function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; o
       </div>
       <p className="text-xs text-slate-400 mt-0.5">{partner.firm_type || 'Other'}</p>
       <div className="flex items-center flex-wrap gap-1.5 mt-2">
-        {tier !== undefined && tier !== '' && (
-          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/15 text-primary border border-primary/30">
-            Tier {tier}
-          </span>
-        )}
+        <PartnerTierBadge info={tierInfo} />
+        <PartnerTier4WarningBadge info={tierInfo} />
         <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600/60">
           {criteria?.metCount ?? 0} of 3 AP criteria met
         </span>
