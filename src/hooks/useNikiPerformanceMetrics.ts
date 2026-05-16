@@ -221,13 +221,43 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
  */
 const DEBT_REALM_ID = '193514877331929';
 
+/** Strip legal suffixes, parentheticals, and "via X" attribution tails. */
+const STOP_TOKENS = new Set([
+  'llc', 'inc', 'incorporated', 'corp', 'corporation', 'co', 'company',
+  'ltd', 'limited', 'lp', 'llp', 'plc', 'pllc',
+  'the', 'and', 'of', 'a', 'an',
+]);
+
 function normalizeCompany(name: string | null | undefined): string {
-  return (name || '')
-    .toLowerCase()
-    .replace(/[.,]/g, ' ')
-    .replace(/\b(llc|inc|corp|co|company|ltd|holdings?|group|technologies|holding)\b/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
+  let s = (name || '').toLowerCase();
+  // Strip parenthetical / bracketed asides: "Acme (Series B)" → "Acme"
+  s = s.replace(/\([^)]*\)/g, ' ').replace(/\[[^\]]*\]/g, ' ');
+  // Strip attribution tails: "Upflex via CapitalDesk" → "Upflex"
+  s = s.replace(/\s+via\s+.+$/i, ' ').replace(/\s+\/\s+.+$/, ' ');
+  s = s.replace(/[.,&'"]/g, ' ').replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+function significantTokens(name: string): string[] {
+  return normalizeCompany(name)
+    .split(/\s+/)
+    .filter((t) => t && t.length >= 2 && !STOP_TOKENS.has(t));
+}
+
+/** Token-sorted canonical form — order-insensitive equality. */
+function tokenKey(name: string): string {
+  return significantTokens(name).slice().sort().join(' ');
+}
+
+/** Jaccard similarity over significant tokens. */
+function jaccard(a: string[], b: string[]): number {
+  if (a.length === 0 || b.length === 0) return 0;
+  const sa = new Set(a);
+  const sb = new Set(b);
+  let inter = 0;
+  for (const t of sa) if (sb.has(t)) inter++;
+  const union = sa.size + sb.size - inter;
+  return union === 0 ? 0 : inter / union;
 }
 
 type RevenueBuckets = {
@@ -237,25 +267,126 @@ type RevenueBuckets = {
   total: PerfDeal[];
 };
 
+interface DealCandidate { id: string; company: string; }
+
+/**
+ * Structural invoice → deal matcher. Tries strategies in priority order:
+ *   1. Exact normalized name equality
+ *   2. Token-sorted equality (handles "Bar Back" ↔ "Back Bar" word-order swaps)
+ *   3. Substring containment (length-guarded)
+ *   4. Jaccard ≥ 0.6 on significant tokens (length-guarded fallback)
+ *
+ * `candidates` may include both deal.company and any linked
+ * crm_companies.name aliases so a deal still matches when QBO uses the
+ * canonical CRM name rather than the legacy deal label.
+ */
+function matchInvoiceToDeal(
+  invoiceCustomerName: string,
+  candidates: Array<{ key: string; sortedKey: string; tokens: string[]; deal: DealCandidate }>,
+): DealCandidate | null {
+  const invKey = normalizeCompany(invoiceCustomerName);
+  if (!invKey) return null;
+  const invSorted = tokenKey(invoiceCustomerName);
+  const invTokens = significantTokens(invoiceCustomerName);
+
+  // 1 + 2: exact and token-sorted equality
+  for (const c of candidates) {
+    if (c.key === invKey) return c.deal;
+    if (c.sortedKey && c.sortedKey === invSorted) return c.deal;
+  }
+  // 3: substring containment, guarded by length to avoid spurious hits
+  for (const c of candidates) {
+    if (c.key.length >= 5 && (invKey.includes(c.key) || c.key.includes(invKey))) {
+      return c.deal;
+    }
+  }
+  // 4: Jaccard similarity ≥ 0.6 on significant tokens
+  let best: { score: number; deal: DealCandidate } | null = null;
+  for (const c of candidates) {
+    const s = jaccard(invTokens, c.tokens);
+    if (s >= 0.6 && (!best || s > best.score)) best = { score: s, deal: c.deal };
+  }
+  return best?.deal ?? null;
+}
+
+/**
+ * Classify a QBO sales-item line into one of the Performance revenue buckets
+ * based on the item / account reference. Returns null for non-revenue lines
+ * (taxes, discounts, expense reimbursements, etc.) so they're excluded.
+ */
+function classifyRevenueLine(blob: string): 'retainer' | 'milestone' | 'closing' | null {
+  if (/\bretainer\b/.test(blob)) return 'retainer';
+  if (/\bmilestone\b|\bconsulting\b/.test(blob)) return 'milestone';
+  if (
+    /\bclosing fee\b|\bsuccess fee\b|\badvisory fee\b|\bfee revenue\b|\bplacement fee\b/.test(blob)
+  ) return 'closing';
+  return null;
+}
+
 function useNikiRevenueActuals() {
   const { user } = useAuth();
   return useQuery({
     queryKey: ['niki-perf-revenue-actuals'],
     enabled: !!user,
     queryFn: async (): Promise<RevenueBuckets> => {
-      // 1. Niki deals (any pipeline) — build matchable normalized-name set.
-      const { data: dealsData, error: dealsErr } = await supabase
-        .from('deals')
-        .select('id, company, value, deal_owner, manager')
-        .or(`deal_owner.eq.${NIKI_NAME},manager.eq.${NIKI_NAME}`);
-      if (dealsErr) throw dealsErr;
-      const nikiDeals = (dealsData ?? []).filter((d: any) => !isExcludedDealName(d.company));
-      const nikiCompanyMap = new Map<string, { id: string; company: string }>();
-      for (const d of nikiDeals as any[]) {
-        const k = normalizeCompany(d.company);
-        if (k && !nikiCompanyMap.has(k)) {
-          nikiCompanyMap.set(k, { id: d.id, company: d.company });
+      // 1. Niki deals — attribute on deal_owner OR manager. Two simple
+      // queries are easier to reason about than a PostgREST .or() filter
+      // on string columns and avoid quoting surprises.
+      const [ownedRes, managedRes] = await Promise.all([
+        supabase
+          .from('deals')
+          .select('id, company, crm_company_id, deal_owner, manager')
+          .eq('deal_owner', NIKI_NAME),
+        supabase
+          .from('deals')
+          .select('id, company, crm_company_id, deal_owner, manager')
+          .eq('manager', NIKI_NAME),
+      ]);
+      if (ownedRes.error) throw ownedRes.error;
+      if (managedRes.error) throw managedRes.error;
+      const dedup = new Map<string, any>();
+      for (const d of [...(ownedRes.data ?? []), ...(managedRes.data ?? [])]) {
+        if (!d?.id) continue;
+        if (isExcludedDealName(d.company)) continue;
+        if (!dedup.has(d.id)) dedup.set(d.id, d);
+      }
+      const nikiDeals = Array.from(dedup.values());
+
+      // 1b. Hydrate canonical CRM-company names as alternate match aliases.
+      const crmIds = Array.from(new Set(nikiDeals.map((d) => d.crm_company_id).filter(Boolean)));
+      const crmNameById = new Map<string, string>();
+      if (crmIds.length > 0) {
+        const { data: crmRows } = await supabase
+          .from('crm_companies')
+          .select('id, name')
+          .in('id', crmIds);
+        for (const c of (crmRows ?? []) as any[]) {
+          if (c?.id && c?.name) crmNameById.set(c.id, c.name);
         }
+      }
+
+      // 1c. Build candidate list: one entry per (deal, alias-name).
+      const candidates: Array<{
+        key: string; sortedKey: string; tokens: string[]; deal: DealCandidate;
+      }> = [];
+      const seenAlias = new Set<string>();
+      const pushAlias = (deal: DealCandidate, alias: string | null | undefined) => {
+        const key = normalizeCompany(alias);
+        if (!key) return;
+        const dedupeKey = `${deal.id}::${key}`;
+        if (seenAlias.has(dedupeKey)) return;
+        seenAlias.add(dedupeKey);
+        candidates.push({
+          key,
+          sortedKey: tokenKey(alias!),
+          tokens: significantTokens(alias!),
+          deal,
+        });
+      };
+      for (const d of nikiDeals) {
+        const deal: DealCandidate = { id: d.id, company: d.company ?? '—' };
+        pushAlias(deal, d.company);
+        if (d.crm_company_id) pushAlias(deal, crmNameById.get(d.crm_company_id));
       }
 
       // 2. QBO invoices for Debt realm in 2026.
@@ -270,18 +401,7 @@ function useNikiRevenueActuals() {
       const buckets: RevenueBuckets = { retainer: [], milestone: [], closing: [], total: [] };
 
       for (const inv of (invs ?? []) as any[]) {
-        const custKey = normalizeCompany(inv.customer_name);
-        if (!custKey) continue;
-        // Match by exact normalized equality OR substring containment.
-        let match = nikiCompanyMap.get(custKey);
-        if (!match) {
-          for (const [k, v] of nikiCompanyMap) {
-            if (k.length >= 4 && (custKey.includes(k) || k.includes(custKey))) {
-              match = v;
-              break;
-            }
-          }
-        }
+        const match = matchInvoiceToDeal(inv.customer_name || '', candidates);
         if (!match) continue;
 
         const lines = (inv.metadata?.Line || []) as any[];
@@ -295,16 +415,7 @@ function useNikiRevenueActuals() {
           const blob = `${acct} ${item}`;
           const amount = Number(line.Amount);
           if (!Number.isFinite(amount) || amount === 0) continue;
-
-          let category: keyof RevenueBuckets | null = null;
-          if (blob.includes('retainer')) category = 'retainer';
-          else if (blob.includes('milestone') || blob.includes('consulting')) category = 'milestone';
-          else if (
-            blob.includes('closing fee') ||
-            blob.includes('fee revenue') ||
-            blob.includes('success fee') ||
-            blob.includes('advisory fee')
-          ) category = 'closing';
+          const category = classifyRevenueLine(blob);
           if (!category) continue;
 
           const entry: PerfDeal = {
