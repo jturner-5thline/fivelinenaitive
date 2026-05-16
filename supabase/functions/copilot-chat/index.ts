@@ -5722,7 +5722,7 @@ Behavior when blocked:
     })();
     const todayLine = `TODAY: ${nowParts.weekday}, ${nowParts.ymd} (local time ${nowParts.hm}, timezone ${userTz})`;
 
-    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}${lenderPageOverride}
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}${copilotConfigPrefix ? copilotConfigPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}${lenderPageOverride}
 
 CURRENT CONTEXT:
 - ${todayLine}
@@ -6367,7 +6367,12 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const selectedTools = selectToolsWithScopes(page, entityType, scopes);
+    let selectedTools = selectToolsWithScopes(page, entityType, scopes);
+    // Phase 4: honor per-workspace tool toggles. A tool is disabled only when
+    // explicitly set to `false` in tools_enabled; missing keys default to on.
+    if (copilotToolsEnabled && Object.keys(copilotToolsEnabled).length > 0) {
+      selectedTools = selectedTools.filter((t: any) => copilotToolsEnabled[t.function.name] !== false);
+    }
 
     // ── Streaming tool loop ──
     // Opens a response stream immediately so the client sees tokens as they arrive,
