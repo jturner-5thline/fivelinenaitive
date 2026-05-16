@@ -26,6 +26,11 @@ async function writeAuditDraft(input: {
   clarificationRequired?: boolean;
   clarificationReason?: string | null;
   pageContext?: Record<string, unknown>;
+  rationale?: string | null;
+  duplicateStatus?: string | null;
+  duplicateCandidates?: unknown[];
+  inferredFields?: string[];
+  source?: string | null;
 }): Promise<string | null> {
   try {
     const admin = adminClient();
@@ -46,6 +51,11 @@ async function writeAuditDraft(input: {
       clarification_reason: input.clarificationReason || null,
       outcome: "drafted",
       page_context: input.pageContext || null,
+      rationale: input.rationale || null,
+      duplicate_status: input.duplicateStatus || null,
+      duplicate_candidates: input.duplicateCandidates || [],
+      inferred_fields: input.inferredFields || [],
+      source: input.source || "copilot",
     }).select("id").single();
     if (error) {
       console.warn("[ai_audit] writeAuditDraft failed:", error.message);
