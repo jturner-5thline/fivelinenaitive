@@ -22,6 +22,7 @@ import { CopilotPipelineSummary } from '@/components/copilot/CopilotPipelineSumm
 import { CopilotProactiveNudge } from '@/components/copilot/CopilotProactiveNudge';
 import { CopilotCorrectionPopover } from '@/components/copilot/CopilotCorrectionPopover';
 import { CopilotDemoConversation } from '@/components/copilot/CopilotDemoConversation';
+import { CopilotWorkspacePane, type WorkspaceItem, type WorkspaceItemType } from '@/components/copilot/CopilotWorkspacePane';
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
@@ -67,6 +68,44 @@ function checkClientRateLimit(): boolean {
   if (MSG_TIMESTAMPS.length >= RATE_LIMIT) return false;
   MSG_TIMESTAMPS.push(now);
   return true;
+}
+
+// Lightweight heuristic that mirrors structured assistant outputs into the
+// expanded workspace pane. Looks for known section headings produced by the
+// preview-only copilot tools (status reports, follow-up summaries, draft
+// emails, Asana tasks, meetings, deal notes). Returns at most one item per
+// message — the model can synthesize multiple sections in one reply but we
+// surface the most distinctive one as a single card.
+function detectWorkspaceItems(messageId: string, content: string): WorkspaceItem[] {
+  const text = content.trim();
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  const make = (type: WorkspaceItemType, title: string, previewOnly = true): WorkspaceItem => ({
+    id: `${messageId}-${type}`,
+    type,
+    title,
+    createdAt: new Date().toISOString(),
+    previewOnly,
+    body: text,
+    sourceMessageId: messageId,
+  });
+  const matchers: Array<{ test: RegExp; type: WorkspaceItemType; title: string }> = [
+    { test: /(^|\n)\s*#{1,3}\s*status report\b/i, type: 'status_report',     title: 'Status report' },
+    { test: /\bdraft\s+status\s+report\b/i,         type: 'status_report',     title: 'Status report' },
+    { test: /(^|\n)\s*#{1,3}\s*follow[- ]?up\b/i,   type: 'follow_up_summary', title: 'Follow-up summary' },
+    { test: /\bfollow[- ]?up\s+summary\b/i,         type: 'follow_up_summary', title: 'Follow-up summary' },
+    { test: /(^|\n)\s*(subject:|to:)\s/i,           type: 'draft_email',       title: 'Draft email' },
+    { test: /\bdraft\s+email\b/i,                   type: 'draft_email',       title: 'Draft email' },
+    { test: /\bcreate.*asana\s+task\b/i,            type: 'asana_task',        title: 'Asana task' },
+    { test: /\basana\s+task\s+preview\b/i,          type: 'asana_task',        title: 'Asana task' },
+    { test: /\bschedule\s+(a\s+)?meeting\b/i,       type: 'meeting',           title: 'Meeting' },
+    { test: /\bcalendar\s+invite\b/i,               type: 'meeting',           title: 'Meeting' },
+    { test: /\bdeal\s+note\b/i,                     type: 'deal_note',         title: 'Deal note' },
+  ];
+  for (const m of matchers) {
+    if (m.test.test(text) || m.test.test(lower)) return [make(m.type, m.title)];
+  }
+  return [];
 }
 
 // Online status hook
@@ -566,6 +605,24 @@ export function AICopilotPanel() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [workspaceItems, setWorkspaceItems] = useState<WorkspaceItem[]>([]);
+  const [activeWorkspaceItemId, setActiveWorkspaceItemId] = useState<string | null>(null);
+  // Extract structured "preview" items from finalized assistant messages so
+  // the right-hand workspace pane can render them as rich cards. Heuristic,
+  // no copilot logic changes — purely a UI mirror of what the model writes.
+  useEffect(() => {
+    if (!messages.length) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || !last.content || last.content === '__ERROR__' || last.isLoading) return;
+    setWorkspaceItems((prev) => {
+      if (prev.some((p) => p.sourceMessageId === last.id)) return prev;
+      const detected = detectWorkspaceItems(last.id, last.content);
+      if (detected.length === 0) return prev;
+      setActiveWorkspaceItemId(detected[detected.length - 1].id);
+      return [...prev, ...detected];
+    });
+  }, [messages]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -1384,6 +1441,16 @@ export function AICopilotPanel() {
       )}
 
       {/* Messages */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: isExpanded && !isMobile ? 'row' : 'column',
+          overflow: 'hidden',
+        }}
+      >
+      <div style={{ flex: isExpanded && !isMobile ? '1 1 58%' : 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
       {demoMode ? (
         <div role="log" aria-label="Onboarding demo conversation" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <CopilotDemoConversation />
@@ -1544,6 +1611,29 @@ export function AICopilotPanel() {
         <div ref={messagesEndRef} />
       </div>
       )}
+      </div>
+      {isExpanded && (
+        <aside
+          aria-label="naitive AI workspace"
+          style={{
+            flex: isMobile ? '0 0 45%' : '1 1 42%',
+            minWidth: 0,
+            minHeight: 0,
+            borderLeft: isMobile ? 'none' : '1px solid var(--glass-border)',
+            borderTop: isMobile ? '1px solid var(--glass-border)' : 'none',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <CopilotWorkspacePane
+            items={workspaceItems}
+            activeId={activeWorkspaceItemId}
+            onSelect={setActiveWorkspaceItemId}
+            onQuickStart={(p) => handleSend(p)}
+          />
+        </aside>
+      )}
+      </div>
 
       {/* Input intentionally omitted — typing happens in the floating Ask
           bar (CopilotToggleButton) which sits directly below this panel.
