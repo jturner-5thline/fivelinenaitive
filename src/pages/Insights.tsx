@@ -37,6 +37,7 @@ import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboard
 import { QuarterlyRevenueGrowthCard } from "@/components/insights/QuarterlyRevenueGrowthCard";
 import { IncomeYTDCard } from "@/components/insights/IncomeYTDCard";
 import { ClientCountMoMCard } from "@/components/insights/ClientCountMoMCard";
+import { FinServTopCustomersCard } from "@/components/insights/FinServTopCustomersCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
@@ -2645,6 +2646,7 @@ function MetricsInner() {
               <div className="space-y-5">
                 <IncomeYTDCard />
                 <ClientCountMoMCard />
+                <FinServTopCustomersCard />
                 <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
               </div>
             )}
