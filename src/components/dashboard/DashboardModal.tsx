@@ -634,10 +634,34 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                       </tr>
                     </thead>
                     <tbody>
-                      {displayedRows.map((d, i) => (
-                        <tr key={d.dealId}>
+                      <TooltipProvider delayDuration={150}>
+                      {displayedRows.map((d, i) => {
+                        const flags = rowFlags.get(d.dealId);
+                        const hasOverdue = !!flags && flags.overdue.length > 0;
+                        const approaching = !!flags && flags.approachingNoReview;
+                        const leftBorder = hasOverdue
+                          ? '3px solid hsl(var(--destructive))'
+                          : approaching
+                            ? '3px solid hsl(var(--chart-3))'
+                            : '3px solid transparent';
+                        return (
+                        <tr key={d.dealId} style={{ borderLeft: leftBorder }}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
-                          <td style={{ color: d.nameColor }}>{d.name}</td>
+                          <td style={{ color: d.nameColor }}>
+                            <span className="inline-flex items-center gap-1.5">
+                              {d.name}
+                              {approaching && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Clock className="h-3.5 w-3.5 text-amber-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Closing within 30 days · no lender in In Review
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </span>
+                          </td>
                           <td>{d.size}</td>
                           <td>{d.fee}</td>
                           <td>{d.gross}</td>
@@ -647,7 +671,21 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                           <td>{d.assocDir}</td>
                           <td>{d.dirMd}</td>
                           <td className={d.profitCls}>{d.profit}</td>
-                          <td style={{ color: 'rgba(130,165,190,0.5)' }}>{d.milestone}</td>
+                          <td style={{ color: 'rgba(130,165,190,0.5)' }}>
+                            <span className="inline-flex items-center gap-1.5 justify-end w-full">
+                              {hasOverdue && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {flags!.overdue.length} milestone{flags!.overdue.length === 1 ? '' : 's'} overdue — {flags!.overdue.join(', ')}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              <span>{d.milestone}</span>
+                            </span>
+                          </td>
                           <td>
                             <select
                               className="db-closing-select"
@@ -671,7 +709,9 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                             </select>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
+                      </TooltipProvider>
                       {displayedRows.length === 0 && (
                         <tr><td colSpan={13} style={{ textAlign: 'center', color: 'rgba(130,165,190,0.4)', padding: 20 }}>No active deals in pipeline</td></tr>
                       )}
