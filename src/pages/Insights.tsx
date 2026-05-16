@@ -2553,7 +2553,15 @@ function MetricsInner() {
           )}
 
           {/* Dashboard Content - always show pre-built dashboards */}
-          <QuarterlyRevenueGrowthCard />
+          {/* Liabilities & Debt Service — swapped from the grid slot below */}
+          <Card className="glass-module">
+            <CardHeader>
+              <CardTitle>Liabilities & Debt Service</CardTitle>
+              <CardDescription>
+                Data unavailable — no live debt schedule source
+              </CardDescription>
+            </CardHeader>
+          </Card>
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
             {selectedDashboard === 'management-snapshot' && (
               <WeeklyRundownCarousel
