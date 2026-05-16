@@ -1405,6 +1405,26 @@ export function AICopilotPanel() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <img src={naitiveFavicon} alt="" style={{ width: 20, height: 20 }} />
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>naitive AI</span>
+          <span
+            aria-label="Beta"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              height: 18,
+              padding: '0 6px',
+              borderRadius: 999,
+              border: '1px solid var(--glass-border)',
+              background: 'hsl(var(--muted) / 0.5)',
+              color: 'hsl(var(--muted-foreground))',
+              fontSize: 9,
+              fontWeight: 600,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              lineHeight: 1,
+            }}
+          >
+            Beta
+          </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
           <button onClick={handleNewConversation} aria-label="New conversation" title="New conversation" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
