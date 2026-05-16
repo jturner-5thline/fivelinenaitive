@@ -1208,6 +1208,21 @@ export function AICopilotPanel() {
     560,
   );
 
+  const expandedStyle: React.CSSProperties = isExpanded
+    ? {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: isMobile ? 'calc(100vw - 16px)' : 'min(1400px, 90vw)',
+        height: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
+        maxHeight: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
+        marginInline: 0,
+        zIndex: 60,
+        borderRadius: 18,
+      }
+    : {};
+
   return (
     <>
       <div
@@ -1244,6 +1259,7 @@ export function AICopilotPanel() {
           transition: 'height 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease-out',
           opacity: isMinimized ? 0 : 1,
           pointerEvents: isMinimized ? 'none' : 'auto',
+          ...expandedStyle,
         }}
       >
         <style>{`
