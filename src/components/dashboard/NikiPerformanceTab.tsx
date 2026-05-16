@@ -527,9 +527,12 @@ function NikiPerformanceTabInner() {
     <TableRow className="hover:bg-transparent border-b-0">
       <TableCell
         colSpan={totalCols}
-        className="py-2 px-4 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground bg-muted/30 sticky left-0"
+        className="pt-6 pb-2 px-4 text-[10px] uppercase tracking-[0.14em] font-semibold text-muted-foreground/80 bg-transparent"
       >
-        {title}
+        <span className="inline-flex items-center gap-2">
+          <span className="h-px w-3 bg-border/60" />
+          {title}
+        </span>
       </TableCell>
     </TableRow>
   );
@@ -539,27 +542,30 @@ function NikiPerformanceTabInner() {
     const { planVal, actualVal, v, status } = cellFor(row, k);
     const s = STATUS_STYLES[status];
     return (
-      <TableRow className="cursor-pointer border-b border-border/20 hover:bg-muted/20" onClick={() => openDrill(row, k)}>
-        <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
+      <TableRow
+        className="cursor-pointer border-b border-border/10 hover:bg-muted/10 transition-colors"
+        onClick={() => openDrill(row, k)}
+      >
+        <TableCell className="py-3 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
         {showPlan && (
-          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-semibold text-foreground bg-muted/20">
+          <TableCell className="py-3 px-4 text-center tabular-nums text-sm font-semibold tracking-tight text-foreground">
             {fmt(planVal, row.unit)}
           </TableCell>
         )}
         {showActual && (
-          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-medium text-foreground/90">{fmt(actualVal, row.unit)}</TableCell>
+          <TableCell className="py-3 px-4 text-center tabular-nums text-sm font-normal text-foreground/80">{fmt(actualVal, row.unit)}</TableCell>
         )}
         {showVarDelta && (
           <>
-            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+            <TableCell className={cn('py-3 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
               {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
             </TableCell>
-            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+            <TableCell className={cn('py-3 px-4 text-center tabular-nums text-sm font-semibold', s.text)}>
               {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
             </TableCell>
           </>
         )}
-        <TableCell className="py-2.5 px-4 text-center">
+        <TableCell className="py-3 px-4 text-center">
           <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
             <s.Icon className="h-3 w-3" />
             {s.label}
@@ -570,8 +576,8 @@ function NikiPerformanceTabInner() {
   };
 
   const MultiRow = ({ row }: { row: MetricRow }) => (
-    <TableRow className="border-b border-border/20 hover:bg-muted/20">
-      <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground sticky left-0 bg-card z-10">
+    <TableRow className="border-b border-border/10 hover:bg-muted/10 transition-colors">
+      <TableCell className="py-3 px-4 font-medium text-sm text-foreground sticky left-0 bg-card z-10">
         {row.label}
       </TableCell>
       {orderedSelected.map((k) => {
@@ -580,14 +586,14 @@ function NikiPerformanceTabInner() {
         return (
           <Fragment key={k}>
             {showPlan && (
-              <TableCell className="py-2.5 px-3 text-center tabular-nums text-xs font-semibold text-foreground bg-muted/20 border-l border-border/20">
+              <TableCell className="py-3 px-3 text-center tabular-nums text-xs font-semibold tracking-tight text-foreground border-l border-border/20">
                 {fmt(planVal, row.unit)}
               </TableCell>
             )}
             {showActual && (
               <TableCell
                 className={cn(
-                  'py-2.5 px-3 text-center tabular-nums text-xs font-medium text-foreground/90 cursor-pointer hover:underline',
+                  'py-3 px-3 text-center tabular-nums text-xs font-normal text-foreground/80 cursor-pointer hover:underline',
                   !showPlan && 'border-l border-border/20',
                 )}
                 onClick={() => openDrill(row, k)}
@@ -597,10 +603,10 @@ function NikiPerformanceTabInner() {
             )}
             {showVarDelta && (
               <>
-                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text, !showPlan && !showActual && 'border-l border-border/20')}>
+                <TableCell className={cn('py-3 px-3 text-center tabular-nums text-xs font-medium', s.text, !showPlan && !showActual && 'border-l border-border/20')}>
                   {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
                 </TableCell>
-                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
+                <TableCell className={cn('py-3 px-3 text-center tabular-nums text-xs font-semibold', s.text)}>
                   {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
                 </TableCell>
               </>
