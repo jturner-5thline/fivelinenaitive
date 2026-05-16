@@ -5,6 +5,7 @@ import { TrendingUp, TrendingDown, DollarSign, Percent } from 'lucide-react';
 import { fmtCurrency, fmtPct } from './formatters';
 import { cn } from '@/lib/utils';
 import { Toggle } from '@/components/ui/toggle';
+import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
 import { generateMonths } from './calculations';
 import type { MonthEntry } from './types';
@@ -28,31 +29,24 @@ function KpiCard({ label, value, delta, format, icon: Icon }: {
   const isPositive = (delta ?? 0) > 0;
 
   return (
-    <div className="rounded-lg border p-4"
-      style={{
-        background: 'var(--map-surface, hsl(var(--card)))',
-        borderColor: 'var(--map-border, hsl(var(--border) / 0.3))',
-      }}
-    >
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[10px] font-semibold uppercase tracking-[0.06em]"
-          style={{ color: 'var(--map-text-muted, hsl(var(--muted-foreground)))' }}
-        >{label}</span>
-        <Icon className="h-3.5 w-3.5" style={{ color: 'var(--map-text-faint, hsl(var(--muted-foreground) / 0.4))' }} />
-      </div>
-      <div className="text-lg font-bold tabular-nums tracking-[-0.01em]"
-        style={{ color: 'var(--map-text, hsl(var(--foreground)))' }}
-      >{formatted}</div>
-      {hasDelta && (
-        <div className={cn(
-          "flex items-center gap-1 mt-1.5 text-[10px] font-medium",
-          isPositive ? "text-emerald-400" : "text-destructive"
-        )}>
-          {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-          {isPositive ? '+' : ''}{delta!.toFixed(1)}% MoM
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">{label}</span>
+          <Icon className="h-3.5 w-3.5 text-muted-foreground/50" />
         </div>
-      )}
-    </div>
+        <div className="text-lg font-bold tabular-nums tracking-[-0.01em] text-foreground">{formatted}</div>
+        {hasDelta && (
+          <div className={cn(
+            "flex items-center gap-1 mt-1.5 text-[10px] font-medium",
+            isPositive ? "text-emerald-400" : "text-destructive"
+          )}>
+            {isPositive ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+            {isPositive ? '+' : ''}{delta!.toFixed(1)}% MoM
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
