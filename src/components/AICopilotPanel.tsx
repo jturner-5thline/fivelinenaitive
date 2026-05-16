@@ -1160,6 +1160,16 @@ export function AICopilotPanel() {
     handleSend(lastFailedMessage);
   }, [lastFailedMessage, handleSend, setMessages]);
 
+  // Suggested follow-up chips dispatch a CustomEvent; intercept and re-submit.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const prompt = (e as CustomEvent<{ prompt?: string }>).detail?.prompt;
+      if (prompt && prompt.trim()) handleSend(prompt.trim());
+    };
+    window.addEventListener('copilot-chip-click', handler as EventListener);
+    return () => window.removeEventListener('copilot-chip-click', handler as EventListener);
+  }, [handleSend]);
+
   // When the collapsed composer hands off a typed prompt, auto-send it
   // once the panel is open.
   useEffect(() => {
