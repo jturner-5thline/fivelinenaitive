@@ -1,9 +1,10 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   ResponsiveContainer,
   BarChart,
@@ -301,9 +302,55 @@ function FunnelSection({ rows, openDrill }: {
 
 export function NikiPerformanceTab() {
   const { rows, isLoading } = useNikiPerformanceMetrics();
+  const { user } = useAuth();
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [layout, setLayout] = useState<'table' | 'charts' | 'both'>('both');
+
+  // ─── User-scoped display preferences (persisted in localStorage) ─────────
+  const prefsKey = user?.id ? `nikiPerf.prefs.${user.id}` : 'nikiPerf.prefs.anon';
+  const [showCharts, setShowCharts] = useState(true);
+  const [showPlan, setShowPlan] = useState(true);
+  const [showActual, setShowActual] = useState(true);
+  const [showVarDelta, setShowVarDelta] = useState(true);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(prefsKey);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (typeof p.showCharts === 'boolean') setShowCharts(p.showCharts);
+        if (typeof p.showPlan === 'boolean') setShowPlan(p.showPlan);
+        if (typeof p.showActual === 'boolean') setShowActual(p.showActual);
+        if (typeof p.showVarDelta === 'boolean') setShowVarDelta(p.showVarDelta);
+      }
+    } catch {}
+    setPrefsLoaded(true);
+  }, [prefsKey]);
+
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    try {
+      localStorage.setItem(
+        prefsKey,
+        JSON.stringify({ showCharts, showPlan, showActual, showVarDelta }),
+      );
+    } catch {}
+  }, [prefsLoaded, prefsKey, showCharts, showPlan, showActual, showVarDelta]);
+
+  // Guard: at least one data group must remain visible
+  const togglePlan = () => {
+    if (showPlan && !showActual && !showVarDelta) return;
+    setShowPlan((v) => !v);
+  };
+  const toggleActual = () => {
+    if (showActual && !showPlan && !showVarDelta) return;
+    setShowActual((v) => !v);
+  };
+  const toggleVarDelta = () => {
+    if (showVarDelta && !showPlan && !showActual) return;
+    setShowVarDelta((v) => !v);
+  };
 
   const byKey = useMemo(() => {
     const m = new Map<MetricRowKey, MetricRow>();
@@ -367,14 +414,6 @@ export function NikiPerformanceTab() {
     return order.filter((k) => selectedPeriods.includes(k));
   }, [selectedPeriods]);
 
-  const presets: { label: string; value: PeriodKey[] }[] = [
-    { label: 'Current Q', value: [currentQuarter] },
-    { label: 'H1', value: ['Q1' as QuarterKey, 'Q2' as QuarterKey] },
-    { label: 'H2', value: ['Q3' as QuarterKey, 'Q4' as QuarterKey] },
-    { label: 'All quarters', value: [...allQuarterKeys] },
-    { label: 'Full Year', value: ['YEAR'] },
-  ];
-
   const isSingle = orderedSelected.length === 1;
 
   const cellFor = (row: MetricRow, k: PeriodKey) => {
@@ -385,7 +424,10 @@ export function NikiPerformanceTab() {
     return { planVal, actualVal, v, status: statusFromPct(v.pct) };
   };
 
-  const totalCols = isSingle ? 6 : 1 + orderedSelected.length * 4;
+  const perPeriodCols = (showPlan ? 1 : 0) + (showActual ? 1 : 0) + (showVarDelta ? 2 : 0);
+  const totalCols = isSingle
+    ? 1 + perPeriodCols + 1 /* status */
+    : 1 + orderedSelected.length * perPeriodCols;
 
   const SectionHeaderRow = ({ title }: { title: string }) => (
     <TableRow className="hover:bg-transparent border-b-0">
@@ -405,16 +447,24 @@ export function NikiPerformanceTab() {
     return (
       <TableRow className="cursor-pointer border-b border-border/20 hover:bg-muted/20" onClick={() => openDrill(row, k)}>
         <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
-        <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-semibold text-foreground bg-muted/20">
-          {fmt(planVal, row.unit)}
-        </TableCell>
-        <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-medium text-foreground/90">{fmt(actualVal, row.unit)}</TableCell>
-        <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
-          {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
-        </TableCell>
-        <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
-          {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
-        </TableCell>
+        {showPlan && (
+          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-semibold text-foreground bg-muted/20">
+            {fmt(planVal, row.unit)}
+          </TableCell>
+        )}
+        {showActual && (
+          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-medium text-foreground/90">{fmt(actualVal, row.unit)}</TableCell>
+        )}
+        {showVarDelta && (
+          <>
+            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+              {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
+            </TableCell>
+            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+              {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
+            </TableCell>
+          </>
+        )}
         <TableCell className="py-2.5 px-4 text-center">
           <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
             <s.Icon className="h-3 w-3" />
@@ -435,21 +485,32 @@ export function NikiPerformanceTab() {
         const s = STATUS_STYLES[status];
         return (
           <Fragment key={k}>
-            <TableCell className="py-2.5 px-3 text-center tabular-nums text-xs font-semibold text-foreground bg-muted/20 border-l border-border/20">
-              {fmt(planVal, row.unit)}
-            </TableCell>
-            <TableCell
-              className="py-2.5 px-3 text-center tabular-nums text-xs font-medium text-foreground/90 cursor-pointer hover:underline"
-              onClick={() => openDrill(row, k)}
-            >
-              {fmt(actualVal, row.unit)}
-            </TableCell>
-            <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
-              {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
-            </TableCell>
-            <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
-              {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
-            </TableCell>
+            {showPlan && (
+              <TableCell className="py-2.5 px-3 text-center tabular-nums text-xs font-semibold text-foreground bg-muted/20 border-l border-border/20">
+                {fmt(planVal, row.unit)}
+              </TableCell>
+            )}
+            {showActual && (
+              <TableCell
+                className={cn(
+                  'py-2.5 px-3 text-center tabular-nums text-xs font-medium text-foreground/90 cursor-pointer hover:underline',
+                  !showPlan && 'border-l border-border/20',
+                )}
+                onClick={() => openDrill(row, k)}
+              >
+                {fmt(actualVal, row.unit)}
+              </TableCell>
+            )}
+            {showVarDelta && (
+              <>
+                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text, !showPlan && !showActual && 'border-l border-border/20')}>
+                  {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
+                </TableCell>
+                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
+                  {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
+                </TableCell>
+              </>
+            )}
           </Fragment>
         );
       })}
