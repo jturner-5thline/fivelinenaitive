@@ -3077,11 +3077,21 @@ export default function DealDetail() {
           </Card>
 
           {/* Main Content Grid */}
-          <div className="grid gap-6 min-w-0 overflow-hidden">
+          <div className={cn(
+            "grid gap-6 min-w-0 overflow-hidden",
+            isEmbedded && "flex-1 min-h-0"
+          )}>
             {/* Main Content */}
-            <div className="flex flex-col gap-6 min-w-0 w-full pb-24">
+            <div className={cn(
+              "flex flex-col gap-6 min-w-0 w-full",
+              isEmbedded ? "flex-1 min-h-0 pb-2" : "pb-24"
+            )}>
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
+              <Tabs
+                value={dealInfoTab}
+                onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
+                className={isEmbedded ? "flex-1 flex flex-col min-h-0" : undefined}
+              >
 
                 <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
