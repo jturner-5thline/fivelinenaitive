@@ -343,10 +343,11 @@ function NikiPerformanceTabInner() {
 
   // ─── User-scoped display preferences (persisted in localStorage) ─────────
   const prefsKey = user?.id ? `nikiPerf.prefs.${user.id}` : 'nikiPerf.prefs.anon';
-  const [showCharts, setShowCharts] = useState(true);
   const [showPlan, setShowPlan] = useState(true);
   const [showActual, setShowActual] = useState(true);
   const [showVarDelta, setShowVarDelta] = useState(true);
+  const [perfMode, setPerfMode] = useState<PerfMode>('quarterly');
+  const [hiddenCharts, setHiddenCharts] = useState<string[]>([]);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   useEffect(() => {
@@ -354,10 +355,11 @@ function NikiPerformanceTabInner() {
       const raw = localStorage.getItem(prefsKey);
       if (raw) {
         const p = JSON.parse(raw);
-        if (typeof p.showCharts === 'boolean') setShowCharts(p.showCharts);
         if (typeof p.showPlan === 'boolean') setShowPlan(p.showPlan);
         if (typeof p.showActual === 'boolean') setShowActual(p.showActual);
         if (typeof p.showVarDelta === 'boolean') setShowVarDelta(p.showVarDelta);
+        if (p.perfMode === 'quarterly' || p.perfMode === 'ytd') setPerfMode(p.perfMode);
+        if (Array.isArray(p.hiddenCharts)) setHiddenCharts(p.hiddenCharts.filter((x: any) => typeof x === 'string'));
       }
     } catch {}
     setPrefsLoaded(true);
@@ -368,10 +370,14 @@ function NikiPerformanceTabInner() {
     try {
       localStorage.setItem(
         prefsKey,
-        JSON.stringify({ showCharts, showPlan, showActual, showVarDelta }),
+        JSON.stringify({ showPlan, showActual, showVarDelta, perfMode, hiddenCharts }),
       );
     } catch {}
-  }, [prefsLoaded, prefsKey, showCharts, showPlan, showActual, showVarDelta]);
+  }, [prefsLoaded, prefsKey, showPlan, showActual, showVarDelta, perfMode, hiddenCharts]);
+
+  const isChartHidden = (id: string) => hiddenCharts.includes(id);
+  const toggleChartHidden = (id: string) =>
+    setHiddenCharts((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   // Guard: at least one data group must remain visible
   const togglePlan = () => {
@@ -452,12 +458,22 @@ function NikiPerformanceTabInner() {
   const isSingle = orderedSelected.length === 1;
 
   const cellFor = (row: MetricRow, k: PeriodKey) => {
-    const plan = planMap[row.key];
-    const planVal = k === 'YEAR' ? plan.total : plan[k];
-    const actualVal = k === 'YEAR' ? row.yearTotal : row.byQuarter[k].value;
+    const { planVal, actualVal } = resolvePeriod(row, planMap, k, perfMode);
     const v = variance(actualVal, planVal);
     return { planVal, actualVal, v, status: statusFromPct(v.pct) };
   };
+
+  // Primary period for KPI cards: highest quarter selected (or YEAR if only YEAR).
+  const kpiPeriod: PeriodKey = useMemo(() => {
+    const quarters = orderedSelected.filter((k) => k !== 'YEAR') as QuarterKey[];
+    if (quarters.length === 0) return 'YEAR';
+    return quarters[quarters.length - 1];
+  }, [orderedSelected]);
+
+  const kpiPeriodLabel = (() => {
+    if (kpiPeriod === 'YEAR') return '2026';
+    return perfMode === 'ytd' ? `${kpiPeriod} YTD` : `${kpiPeriod} 2026`;
+  })();
 
   const perPeriodCols = (showPlan ? 1 : 0) + (showActual ? 1 : 0) + (showVarDelta ? 2 : 0);
   const totalCols = isSingle
