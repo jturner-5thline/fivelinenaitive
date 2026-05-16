@@ -27,8 +27,8 @@ const PERSONA_HEX: Record<string, string> = {
 
 // Stage progression for the SaaS-sales pipeline (left → right).
 const STAGE_ORDER = [
-  'prospects', 'qual-booked', 'demo-booked', 'onboarding-booked',
-  'trial-active', 'converted', 'closed-lost', 'tabled-on-hold',
+  'prospects', 'dormant', 'on-hold', 'qual-call', 'demo-access',
+  'pilot-agreed', 'onboarding', 'active', 'churned', 'closed-lost',
 ] as const;
 
 function reachedStage(deal: Deal, stageId: string): boolean {
@@ -75,7 +75,7 @@ function computePersonaMatrix(deals: Deal[]): PersonaRow[] {
   return PERSONA_TYPES.map((persona) => {
     const inPersona = deals.filter((d) => (d.prospectType || '') === persona);
     const converted = inPersona.filter(
-      (d) => d.outcome === 'Moved forward' || d.stage === 'converted'
+      (d) => d.outcome === 'Moved forward' || d.stage === 'active'
     ).length;
     const feedback = inPersona.filter((d) => d.outcome === 'Feedback only').length;
     const referral = inPersona.filter((d) => (d.sourcedVia || '') === 'Referral').length;
@@ -249,8 +249,8 @@ function PersonaMatrix({ data }: { data: PersonaRow[] }) {
 }
 
 export function NaitiveICPLeaderboard({ deals }: { deals: Deal[] }) {
-  const qualToDemo = useMemo(() => computeConversion(deals, 'qual-booked', 'demo-booked'), [deals]);
-  const demoToTrial = useMemo(() => computeConversion(deals, 'demo-booked', 'trial-active'), [deals]);
+  const qualToDemo = useMemo(() => computeConversion(deals, 'qual-call', 'demo-access'), [deals]);
+  const demoToTrial = useMemo(() => computeConversion(deals, 'demo-access', 'pilot-agreed'), [deals]);
   const persona = useMemo(() => computePersonaMatrix(deals), [deals]);
   const insights = useMemo(() => generateInsights(qualToDemo, demoToTrial, persona), [qualToDemo, demoToTrial, persona]);
 

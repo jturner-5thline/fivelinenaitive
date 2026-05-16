@@ -45,16 +45,16 @@ const DM_TARGET_PCT = 60;
 
 /* Canonical naitive pipeline stage order. A "forward" move is any transition
    to a stage with a STRICTLY GREATER index (excluding terminal/non-progress
-   stages like closed-lost / tabled-on-hold). */
+   stages like closed-lost / churned / on-hold / dormant). */
 const STAGE_ORDER = [
-  'prospects', 'qual-booked', 'demo-booked', 'onboarding-booked',
-  'trial-active', 'converted', 'closed-lost', 'tabled-on-hold',
+  'prospects', 'dormant', 'on-hold', 'qual-call', 'demo-access',
+  'pilot-agreed', 'onboarding', 'active', 'churned', 'closed-lost',
 ] as const;
 const FORWARD_STAGES_AFTER_QUAL = new Set([
-  'demo-booked', 'onboarding-booked', 'trial-active', 'converted',
+  'demo-access', 'pilot-agreed', 'onboarding', 'active',
 ]);
 function movedForwardOutOfQual(fromStage: string, toStage: string): boolean {
-  return fromStage === 'qual-booked' && FORWARD_STAGES_AFTER_QUAL.has(toStage);
+  return fromStage === 'qual-call' && FORWARD_STAGES_AFTER_QUAL.has(toStage);
 }
 
 function isDmYes(v?: string) {
@@ -121,12 +121,12 @@ function computeMetrics(
   for (const h of history) {
     const t = new Date(h.changedAt);
     if (!inRange(t, from, to)) continue;
-    if (h.toStage === 'qual-booked' && h.fromStage !== 'qual-booked') out.qualsBooked++;
+    if (h.toStage === 'qual-call' && h.fromStage !== 'qual-call') out.qualsBooked++;
     if (movedForwardOutOfQual(h.fromStage, h.toStage)) out.qualsHeld++;
-    if (h.fromStage === 'demo-booked' && h.toStage !== 'demo-booked') out.demosHeld++;
-    if (h.toStage === 'demo-booked' && h.fromStage !== 'demo-booked') out.demosBooked++;
-    if (h.toStage === 'trial-active' && h.fromStage !== 'trial-active') out.trialsStarted++;
-    if (h.toStage === 'converted' && h.fromStage !== 'converted') out.converted++;
+    if (h.fromStage === 'demo-access' && h.toStage !== 'demo-access') out.demosHeld++;
+    if (h.toStage === 'demo-access' && h.fromStage !== 'demo-access') out.demosBooked++;
+    if (h.toStage === 'pilot-agreed' && h.fromStage !== 'pilot-agreed') out.trialsStarted++;
+    if (h.toStage === 'active' && h.fromStage !== 'active') out.converted++;
   }
 
   let dmYes = 0;
@@ -174,12 +174,12 @@ function weeklyBuckets(deals: Deal[], history: NaitiveStageHistoryRow[]) {
     const wi = weeks.findIndex((w) => t >= w.weekStart && t <= w.weekEnd);
     if (wi === -1) return;
     const row = activity[wi];
-    if (h.toStage === 'qual-booked' && h.fromStage !== 'qual-booked') row.qualsBooked++;
+    if (h.toStage === 'qual-call' && h.fromStage !== 'qual-call') row.qualsBooked++;
     if (movedForwardOutOfQual(h.fromStage, h.toStage)) row.qualsHeld++;
-    if (h.fromStage === 'demo-booked' && h.toStage !== 'demo-booked') row.demosHeld++;
-    if (h.toStage === 'demo-booked' && h.fromStage !== 'demo-booked') row.demosBooked++;
-    if (h.toStage === 'trial-active' && h.fromStage !== 'trial-active') row.trialsStarted++;
-    if (h.toStage === 'converted' && h.fromStage !== 'converted') row.converted++;
+    if (h.fromStage === 'demo-access' && h.toStage !== 'demo-access') row.demosHeld++;
+    if (h.toStage === 'demo-access' && h.fromStage !== 'demo-access') row.demosBooked++;
+    if (h.toStage === 'pilot-agreed' && h.fromStage !== 'pilot-agreed') row.trialsStarted++;
+    if (h.toStage === 'active' && h.fromStage !== 'active') row.converted++;
   });
 
   deals.forEach((d) => {
