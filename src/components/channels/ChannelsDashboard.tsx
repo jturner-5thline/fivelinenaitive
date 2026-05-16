@@ -558,13 +558,16 @@ export function ChannelsDashboard() {
                     <tr
                       key={row.channelEntryId}
                       className="border-b border-border hover:bg-muted/40 transition-colors cursor-pointer"
-                      onClick={() => handleTableRowClick(row.channelEntryId, row.channelName)}
+                      onClick={() => setSourceTarget({ kind: 'company', name: row.channelName, channelType: row.channelType })}
                     >
                       <td className="p-3 font-medium text-foreground">{row.channelName}</td>
                       <td className="p-3">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSourceTarget({ kind: 'channel', channelType: row.channelType }); }}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/80"
+                        >
                           {row.channelType === 'M&A and Investment Bankers' ? 'M&A / IB' : row.channelType}
-                        </span>
+                        </button>
                       </td>
                       <td className="p-3 text-right font-mono tabular-nums">{row.added.count}</td>
                       <td className="p-3 text-right font-mono tabular-nums">{row.proposalIssued.count}</td>
@@ -586,6 +589,11 @@ export function ChannelsDashboard() {
       )}
 
       <ChannelDrilldownModal context={drilldown} onClose={() => setDrilldown(null)} />
+      <ChannelSourceDetailPanel
+        target={sourceTarget}
+        open={!!sourceTarget}
+        onClose={() => setSourceTarget(null)}
+      />
     </div>
   );
 }
