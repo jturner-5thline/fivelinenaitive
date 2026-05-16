@@ -17,6 +17,11 @@ import { prefillFollowupTitle } from '@/lib/dealNextBestAction';
 import { getAsanaSyncContext } from '@/hooks/useAsanaTaskSync';
 import { updateTaskInAsana } from '@/hooks/useAsanaTaskUpdate';
 import type { DealTaskItem as DealTaskItemType } from '@/hooks/usePipelineDealTasks';
+import {
+  TASK_STATUS_COMPLETE,
+  TASK_STATUS_REOPENED,
+  invalidateAllTaskCaches,
+} from '@/lib/taskCache';
 
 function shortName(full?: string | null): string | null {
   if (!full) return null;
@@ -269,13 +274,9 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   };
 
   const refreshTasks = async () => {
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['pipeline-deal-tasks'] }),
-      queryClient.invalidateQueries({ queryKey: ['tasks'] }),
-      queryClient.invalidateQueries({ queryKey: ['deal-tasks'] }),
-      queryClient.invalidateQueries({ queryKey: ['outstanding-items'] }),
-      queryClient.invalidateQueries({ queryKey: ['pipeline-digests'] }),
-    ]);
+    // Canonical cross-surface sync: invalidates Tasks page, Daily
+    // Rundown, Deal Rundown, Deal panels, dashboard widgets, etc.
+    invalidateAllTaskCaches(queryClient);
   };
 
   /**
@@ -320,9 +321,14 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
 
     try {
       if (task.kind === 'task') {
+        const { data: { user: u } } = await supabase.auth.getUser();
         const { error } = await supabase
           .from('tasks')
-          .update({ status: 'complete', completed_at: new Date().toISOString() })
+          .update({
+            status: TASK_STATUS_COMPLETE,
+            completed_at: new Date().toISOString(),
+            completed_by: u?.id ?? null,
+          })
           .eq('id', task.id);
         if (error) throw error;
       } else {
@@ -357,7 +363,11 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
               if (task.kind === 'task') {
                 await supabase
                   .from('tasks')
-                  .update({ status: 'not_started', completed_at: null })
+                  .update({
+                    status: TASK_STATUS_REOPENED,
+                    completed_at: null,
+                    completed_by: null,
+                  })
                   .eq('id', task.id);
               } else {
                 const realId = task.id.startsWith('o-') ? task.id.slice(2) : task.id;

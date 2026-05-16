@@ -1,8 +1,15 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { getAsanaSyncContext, syncTaskToAsana } from '@/hooks/useAsanaTaskSync';
 import { deriveTaskAssociations, logTaskCompletionAcrossTimelines } from '@/lib/taskAssociations';
+import {
+  TASK_STATUS_COMPLETE,
+  TASK_STATUS_REOPENED,
+  invalidateAllTaskCaches,
+  isTaskCompleted,
+} from '@/lib/taskCache';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
@@ -30,26 +37,25 @@ export interface DealTask {
 
 export function useDealTasks(dealId: string | undefined) {
   const { user } = useAuth();
-  const [tasks, setTasks] = useState<DealTask[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const queryClient = useQueryClient();
 
-  const fetchTasks = useCallback(async () => {
-    if (!dealId || !user) return;
-    setIsLoading(true);
-    try {
+  // Read via React Query so this hook participates in the global task
+  // cache. When ANY surface completes / edits / deletes a task, the
+  // shared `invalidateAllTaskCaches` invalidates `['deal-tasks', …]`
+  // and this list re-fetches automatically — no more local-state drift.
+  const { data: tasks = [], isLoading, refetch } = useQuery({
+    queryKey: ['deal-tasks', dealId],
+    enabled: !!dealId && !!user,
+    queryFn: async () => {
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
-        .eq('deal_id', dealId)
+        .eq('deal_id', dealId!)
         .order('created_at', { ascending: false });
       if (error) throw error;
-      setTasks((data as DealTask[]) || []);
-    } catch (error) {
-      console.error('Error fetching tasks:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [dealId, user]);
+      return (data as DealTask[]) || [];
+    },
+  });
 
   const createTask = useCallback(async (task: {
     title: string;
@@ -77,7 +83,9 @@ export function useDealTasks(dealId: string | undefined) {
         .select()
         .single();
       if (error) throw error;
-      setTasks(prev => [data as DealTask, ...prev]);
+      // Sync every task-aware cache so the new task shows up everywhere
+      // immediately (Tasks page, rundowns, dashboard widgets).
+      invalidateAllTaskCaches(queryClient);
 
       // Fire Zapier webhooks with assignee profile info for Asana matching
       if (data) {
@@ -221,21 +229,35 @@ export function useDealTasks(dealId: string | undefined) {
 
   const updateTaskStatus = useCallback(async (taskId: string, status: string) => {
     try {
-      const updates: any = { status };
-      if (status === 'completed') {
+      // Normalize to the canonical status literal so this surface can
+      // never write a value that other surfaces won't recognise. Any
+      // historic `'completed'` from existing callers is rewritten to
+      // `'complete'` before persistence.
+      const normalized =
+        status === 'completed' || status === 'complete'
+          ? TASK_STATUS_COMPLETE
+          : status;
+      const completing = normalized === TASK_STATUS_COMPLETE;
+      const updates: any = { status: normalized };
+      if (completing) {
         updates.completed_at = new Date().toISOString();
+        updates.completed_by = user?.id ?? null;
       } else {
         updates.completed_at = null;
+        updates.completed_by = null;
       }
       const { error } = await supabase
         .from('tasks')
         .update(updates)
         .eq('id', taskId);
       if (error) throw error;
-      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, ...updates } : t));
+      // Cross-surface sync: invalidate every task-aware cache so the
+      // Tasks page, Daily Rundown, Deal Rundown, and any open panels
+      // all reflect the new completion state immediately.
+      invalidateAllTaskCaches(queryClient);
 
       // Cross-log completion to all linked timelines.
-      if (status === 'complete' || status === 'completed') {
+      if (completing) {
         try {
           const { data: full } = await supabase
             .from('tasks')
@@ -272,7 +294,7 @@ export function useDealTasks(dealId: string | undefined) {
       console.error('Error updating task:', error);
       return false;
     }
-  }, [user]);
+  }, [user, queryClient]);
 
   const deleteTask = useCallback(async (taskId: string) => {
     try {
@@ -281,17 +303,13 @@ export function useDealTasks(dealId: string | undefined) {
         .delete()
         .eq('id', taskId);
       if (error) throw error;
-      setTasks(prev => prev.filter(t => t.id !== taskId));
+      invalidateAllTaskCaches(queryClient);
       return true;
     } catch (error) {
       console.error('Error deleting task:', error);
       return false;
     }
-  }, []);
+  }, [queryClient]);
 
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
-
-  return { tasks, isLoading, createTask, updateTaskStatus, deleteTask, refetch: fetchTasks };
+  return { tasks, isLoading, createTask, updateTaskStatus, deleteTask, refetch };
 }

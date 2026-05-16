@@ -5,6 +5,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { getAsanaSyncContext, syncTaskToAsana, updateTaskInAsana } from '@/hooks/useAsanaTaskSync';
 import { toast } from 'sonner';
 import { deriveTaskAssociations, logTaskCompletionAcrossTimelines } from '@/lib/taskAssociations';
+import { invalidateAllTaskCaches } from '@/lib/taskCache';
 
 async function fireZapierWebhook(eventType: string, payload: Record<string, any>) {
   try {
@@ -376,9 +377,10 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       return data;
     },
     onSuccess: async (data) => {
-      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
-      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
+      // Canonical: invalidate EVERY task-aware cache so newly-created
+      // tasks appear in every list (Tasks page, Daily/Deal Rundown,
+      // Deal panel, CRM panels, dashboard widgets) without a refresh.
+      invalidateAllTaskCaches(queryClient);
       if (user && data) {
         const taskUrl = `https://naitive.co/tasks?task=${(data as any).id}`;
         const { data: assigneeProfile } = await supabase
@@ -723,10 +725,11 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
-      queryClient.invalidateQueries({ queryKey: ['contact-tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['crm-company-tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['task-activity'] });
+      // Canonical: invalidate EVERY task-aware cache so a completion /
+      // reopen / edit immediately reflects on the Tasks page, Daily
+      // Rundown, Deal Rundown, Deal detail panel, and any other surface
+      // showing the same task row.
+      invalidateAllTaskCaches(queryClient);
     },
     onError: () => toast.error('Failed to update task'),
   });
@@ -737,7 +740,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: TASKS_KEY });
+      invalidateAllTaskCaches(queryClient);
       toast.success('Task deleted');
     },
     onError: () => toast.error('Failed to delete task'),
