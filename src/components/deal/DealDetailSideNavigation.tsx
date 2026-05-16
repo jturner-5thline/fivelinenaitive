@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  setDealCarouselDirection,
+  lockDealCarousel,
+  isDealCarouselLocked,
+} from '@/lib/dealCarouselNav';
 
 interface SiblingDeal {
   id: string;
@@ -116,7 +121,10 @@ export function DealDetailSideNavigation({
     : null;
 
   const goTo = useCallback(
-    (dealId: string) => {
+    (dealId: string, dir: 'left' | 'right') => {
+      if (isDealCarouselLocked()) return;
+      setDealCarouselDirection(dir);
+      lockDealCarousel();
       navigate(`/deal/${dealId}`, { replace: false });
     },
     [navigate],
@@ -131,10 +139,10 @@ export function DealDetailSideNavigation({
 
       if (e.key === 'ArrowLeft' && prevDeal) {
         e.preventDefault();
-        goTo(prevDeal.id);
+        goTo(prevDeal.id, 'left');
       } else if (e.key === 'ArrowRight' && nextDeal) {
         e.preventDefault();
-        goTo(nextDeal.id);
+        goTo(nextDeal.id, 'right');
       }
     }
 
@@ -151,14 +159,14 @@ export function DealDetailSideNavigation({
       <NavArrow
         direction="left"
         deal={prevDeal}
-        onClick={() => prevDeal && goTo(prevDeal.id)}
+        onClick={() => prevDeal && goTo(prevDeal.id, 'left')}
       />
 
       {/* Right arrow — next deal */}
       <NavArrow
         direction="right"
         deal={nextDeal}
-        onClick={() => nextDeal && goTo(nextDeal.id)}
+        onClick={() => nextDeal && goTo(nextDeal.id, 'right')}
       />
     </>
   );

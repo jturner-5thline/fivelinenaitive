@@ -2575,6 +2575,7 @@ export default function DealDetail() {
         <title>{deal.name} - naitive</title>
         <meta name="description" content={`Deal details for ${deal.name} with ${deal.company}`} />
       </Helmet>
+      <div key={deal.id} className="deal-carousel-viewport">
 
       {/* Archive Deal Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -5759,6 +5760,7 @@ export default function DealDetail() {
       </Suspense>
 
       {/* Floating left/right pipeline navigation arrows */}
+      </div>
       <DealDetailSideNavigation
         currentDealId={deal.id}
         pipelineId={deal.pipelineId}
