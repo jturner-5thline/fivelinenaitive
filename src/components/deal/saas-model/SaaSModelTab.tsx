@@ -221,23 +221,27 @@ export function SaaSModelTab({ dealId, dealData }: SaaSModelTabProps) {
 
 
       <Tabs value={activeTab} onValueChange={handleTabChange}>
-        <div className="flex items-center justify-between">
-          <TabsList className="h-8 bg-muted/30 rounded-sm">
-          {visibleTabList.map((tab, idx) => {
-            const Icon = tab.icon;
-            const shortcutKey = idx < 9 ? String(idx + 1) : idx === 9 ? '0' : undefined;
-            return (
-              <TabsTrigger
-                key={tab.key}
-                value={tab.key}
-                className="gap-1.5 text-xs rounded-sm h-7"
-                title={shortcutKey ? `Press ${shortcutKey}` : undefined}
-              >
-                <Icon className="h-3.5 w-3.5" /> {tab.label}
-              </TabsTrigger>
-            );
-          })}
-          </TabsList>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-thin border-b border-border/60">
+            <TabsList
+              className="h-9 bg-transparent p-0 gap-0 rounded-none border-0 flex-nowrap justify-start [&>span]:!bg-transparent [&>span]:!border-0 [&>span]:!shadow-none"
+            >
+              {visibleTabList.map((tab, idx) => {
+                const Icon = tab.icon;
+                const shortcutKey = idx < 9 ? String(idx + 1) : idx === 9 ? '0' : undefined;
+                return (
+                  <TabsTrigger
+                    key={tab.key}
+                    value={tab.key}
+                    className="gap-1.5 text-xs h-9 px-3 rounded-none whitespace-nowrap shrink-0 border-b-2 border-transparent text-muted-foreground hover:text-foreground data-[state=active]:border-primary data-[state=active]:text-foreground data-[state=active]:bg-transparent"
+                    title={shortcutKey ? `Press ${shortcutKey}` : undefined}
+                  >
+                    <Icon className="h-3.5 w-3.5" /> {tab.label}
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+          </div>
 
           <div className="flex items-center gap-2">
             {/* Tab visibility settings */}

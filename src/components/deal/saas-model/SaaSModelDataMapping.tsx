@@ -833,14 +833,14 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
 
   const renderSettingsSection = () => (
     <Collapsible open={settingsOpen} onOpenChange={setSettingsOpen}>
-      <Card className="border-border/[0.06] shadow-md">
+      <Card>
         <CollapsibleTrigger asChild>
-          <button className="w-full flex items-center justify-between p-4 hover:bg-muted/5 transition-colors rounded-t-lg">
-            <div className="flex items-center gap-2">
-              <Settings className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-semibold">Model Settings</span>
+          <button className="w-full flex items-center justify-between px-5 py-3.5 hover:bg-muted/10 transition-colors rounded-t-xl">
+            <div className="flex items-center gap-2.5">
+              <Settings className="h-4 w-4 text-primary" />
+              <span className="text-sm font-semibold tracking-tight text-foreground">Model Settings</span>
               <span className="text-xs text-muted-foreground">
-                — {localSettings.companyName} · {localSettings.businessModel}
+                · {localSettings.companyName} · {localSettings.businessModel}
               </span>
             </div>
             <ChevronDown
@@ -849,7 +849,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <CardContent className="px-4 pb-4 pt-0 space-y-4 border-t border-border/[0.06]">
+          <CardContent className="px-5 pb-5 pt-0 space-y-4 border-t border-border/60">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 pt-3">
               <div>
                 <Label className="text-xs">Company Name</Label>
@@ -1984,7 +1984,7 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
             </Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-7 gap-1.5">
+                <Button size="sm" className="h-8 gap-1.5">
                   <PlusCircle className="h-3.5 w-3.5" /> New Mapping
                 </Button>
               </AlertDialogTrigger>
@@ -2002,27 +2002,27 @@ export const SaaSModelDataMapping = forwardRef<DataMappingHandle, Props>(functio
                 </AlertDialogFooter>
               </AlertDialogContent>
             </AlertDialog>
-            <div className="flex gap-2 text-xs">
+            <div className="flex gap-1.5 text-xs">
               {counts.mappable > 0 && (
-                <Badge className="bg-success/8 text-success border-success/15">{counts.mappable} Mappable</Badge>
+                <Badge variant="green">{counts.mappable} Mappable</Badge>
               )}
               {counts.partial > 0 && (
-                <Badge className="bg-warning/8 text-warning border-warning/15">{counts.partial} Partial</Badge>
+                <Badge variant="amber">{counts.partial} Partial</Badge>
               )}
-              {counts.unrecognized > 0 && <Badge variant="secondary">{counts.unrecognized} Not Recognized</Badge>}
+              {counts.unrecognized > 0 && <Badge variant="gray">{counts.unrecognized} Not Recognized</Badge>}
               {counts.error > 0 && <Badge variant="destructive">{counts.error} Error</Badge>}
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
           {analyzedFiles.map((af, idx) => (
             <Card
               key={idx}
               className={cn(
-                "border-border/[0.06] cursor-pointer hover:border-primary/20 transition-all shadow-sm hover:shadow-md",
-                af.analysis.status === "mappable" && "border-success/15",
-                af.analysis.status === "partial" && "border-warning/15",
-                af.analysis.status === "error" && "border-destructive/15",
+                "cursor-pointer transition-all",
+                af.analysis.status === "mappable" && "border-success/30",
+                af.analysis.status === "partial" && "border-warning/30",
+                af.analysis.status === "error" && "border-destructive/30",
               )}
             >
               <CardContent
