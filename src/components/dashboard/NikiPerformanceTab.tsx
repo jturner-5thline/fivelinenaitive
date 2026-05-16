@@ -777,39 +777,39 @@ function NikiPerformanceTabInner() {
               <Table>
                 <TableHeader>
                   {isSingle ? (
-                    <TableRow className="hover:bg-transparent border-b border-border/40">
-                      <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
-                      {showPlan && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20">Plan</TableHead>}
-                      {showActual && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>}
-                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>}
-                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>}
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
+                    <TableRow className="hover:bg-transparent border-b border-border/30">
+                      <TableHead className="h-10 px-4 text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Metric</TableHead>
+                      {showPlan && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-semibold text-foreground/90">Plan</TableHead>}
+                      {showActual && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Actual</TableHead>}
+                      {showVarDelta && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Δ</TableHead>}
+                      {showVarDelta && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Var %</TableHead>}
+                      <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Status</TableHead>
                     </TableRow>
                   ) : (
                     <>
-                      <TableRow className="hover:bg-transparent border-b border-border/30">
-                        <TableHead rowSpan={2} className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold sticky left-0 bg-card z-10 align-bottom">
+                      <TableRow className="hover:bg-transparent border-b-0">
+                        <TableHead rowSpan={2} className="h-9 px-4 text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground sticky left-0 bg-card z-10 align-bottom">
                           Metric
                         </TableHead>
                         {orderedSelected.map((k) => (
                           <TableHead
                             key={k}
                             colSpan={perPeriodCols}
-                            className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-semibold text-foreground/80 border-l border-border/20"
+                            className="h-9 px-3 text-center text-[11px] tracking-tight font-semibold text-foreground border-l border-border/20"
                           >
                             {periodLabel(k)}
                           </TableHead>
                         ))}
                       </TableRow>
-                      <TableRow className="hover:bg-transparent border-b border-border/40">
+                      <TableRow className="hover:bg-transparent border-b border-border/30">
                         {orderedSelected.map((k) => (
                           <Fragment key={k}>
-                            {showPlan && <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20 border-l border-border/20">Plan</TableHead>}
-                            {showActual && <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && 'border-l border-border/20')}>Actual</TableHead>}
+                            {showPlan && <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-semibold text-foreground/90 border-l border-border/20">Plan</TableHead>}
+                            {showActual && <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground', !showPlan && 'border-l border-border/20')}>Actual</TableHead>}
                             {showVarDelta && (
                               <>
-                                <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && !showActual && 'border-l border-border/20')}>Δ</TableHead>
-                                <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                                <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground', !showPlan && !showActual && 'border-l border-border/20')}>Δ</TableHead>
+                                <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Var %</TableHead>
                               </>
                             )}
                           </Fragment>
