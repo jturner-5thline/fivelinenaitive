@@ -5818,6 +5818,16 @@ APPROVAL CARD INFERENCE FLAGS (apply to EVERY create_task call — personal, dea
   - description was synthesised by you rather than quoted from the user → include "description".
 - Do NOT mark fields the user stated literally. The list may be empty. Prefer accuracy over completeness.
 
+ENTITY-LINK RATIONALE (apply to EVERY create_task call where deal_id, contact_id, or crm_company_id was INFERRED rather than explicitly named by the user):
+- Prepend ONE short sentence to the description explaining why that entity was chosen, in this exact format: "Linked to <Entity Name> because <reason>." Examples: "Linked to Worthy because it is the deal currently open." "Linked to Censys because it was the most recently discussed deal in this conversation." Keep it to a single sentence and put it on its own line before any other description content.
+- Use this priority order when selecting the entity to link (and when writing the rationale):
+  1. Entity explicitly named in the user's current message (no rationale needed — do NOT prepend a sentence; this is not an inferred link).
+  2. Active deal/contact/company currently open in the UI (PAGE CONTEXT entityType/entityId).
+  3. Most recently discussed deal/contact/company in this conversation.
+  4. Highest-confidence entity from recent workspace context.
+- Never attach an entity at low confidence. If confidence in the inferred link is below high (≥ 0.85), ask ONE short disambiguation question BEFORE calling create_task instead of guessing.
+- Never invent a deal, contact, or company. Only link to entities returned by search_deals / search_team_members / search_contacts / page context. If no candidate exists, omit the link rather than fabricating one.
+
 CONFIDENCE THRESHOLDS & GUARDRAILS (apply to EVERY create_task call — these are HARD safety rules, not preferences):
 - create_task accepts a "confidence" object with fields { deal, assignee, due_date, task_type, overall } scored 0.0-1.0. Populate it on every call. The audit log records it.
 - Threshold rule: if ANY of deal / assignee / due_date confidence is below 0.7 (or you are uncertain enough that you would normally hedge), DO NOT call create_task. Instead ask ONE short clarifying question and wait for the user. Examples:
