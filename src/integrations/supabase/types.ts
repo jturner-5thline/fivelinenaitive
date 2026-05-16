@@ -1052,6 +1052,42 @@ export type Database = {
           },
         ]
       }
+      ai_copilot_config: {
+        Row: {
+          company_id: string
+          created_at: string
+          default_report_template: string
+          id: string
+          system_prompt_override: string
+          tone_override: string | null
+          tools_enabled: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          default_report_template?: string
+          id?: string
+          system_prompt_override?: string
+          tone_override?: string | null
+          tools_enabled?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          default_report_template?: string
+          id?: string
+          system_prompt_override?: string
+          tone_override?: string | null
+          tools_enabled?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ai_prompts: {
         Row: {
           created_at: string
@@ -22280,6 +22316,7 @@ export type Database = {
         Args: { _email: string; _page_key: string }
         Returns: boolean
       }
+      is_fifth_line_internal_admin: { Args: never; Returns: boolean }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean
