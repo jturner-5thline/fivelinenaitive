@@ -3094,7 +3094,7 @@ export default function DealDetail() {
               >
                 <div
                   className={cn(
-                    isEmbedded && "flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 pb-4"
+                    isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 pb-4"
                   )}
                   tabIndex={isEmbedded ? 0 : undefined}
                   data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
