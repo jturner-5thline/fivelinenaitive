@@ -109,7 +109,14 @@ const DONUT_PALETTE = [
 ];
 
 export function WidgetsSection({ deals }: WidgetsSectionProps) {
-  const { widgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget } = useWidgets();
+  const { widgets: allWidgets, addWidget, updateWidget, deleteWidget, reorderWidgets, specialWidgets, toggleSpecialWidget } = useWidgets();
+  // Hide the retired "Active Deal Volume" widget for users whose saved
+  // configuration still includes it. Filtering at render keeps stored
+  // layouts intact in case we want to bring it back later.
+  const widgets = useMemo(
+    () => allWidgets.filter(w => w.metric !== 'active-deal-volume'),
+    [allWidgets],
+  );
   const { formatCurrencyValue } = usePreferences();
   const { isHintVisible, dismissHint } = useFirstTimeHints();
   const { dealTypes: dealTypeOptions } = useDealTypes();
