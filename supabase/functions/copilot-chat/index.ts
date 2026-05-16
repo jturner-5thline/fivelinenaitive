@@ -1646,6 +1646,8 @@ function selectToolsWithScopes(
     "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
+    // Phase 2: preview-only drafts and summaries.
+    "draft_status_report", "follow_up_summary",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
     // Always-available notifications & alerts (user-scoped).
