@@ -4884,6 +4884,30 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       };
     }
     case "create_task": {
+      // ── Server-side safety guardrails (orchestration layer) ──
+      // These run AFTER explicit user approval but BEFORE persistence so a
+      // compromised/buggy client cannot bypass low-confidence or duplicate
+      // rules. Pair with the UI duplicate-review card and the LLM's
+      // pre-call gating prompt.
+      const conf = (params as any).confidence || {};
+      const dupStatus = (params as any).duplicate_status || "none";
+      const forceCreate = !!(params as any).force_create;
+      const linkedEntityProvided = !!(params.deal_id || params.contact_id);
+      if (linkedEntityProvided && typeof conf.deal === "number" && conf.deal < 0.7 && !forceCreate) {
+        return {
+          success: false,
+          error: "Linked entity confidence is too low to create this task automatically. Confirm the deal or contact and try again.",
+          actionType: "create_task",
+        };
+      }
+      if (dupStatus === "high" && !forceCreate) {
+        return {
+          success: false,
+          error: "A strong duplicate of this task already exists. Re-open the existing task or confirm 'Create anyway' to proceed.",
+          actionType: "create_task",
+        };
+      }
+
       // Normalise due_date — accept YYYY-MM-DD, ISO timestamps, or relative words.
       let dueDate: string | null = null;
       const rawDue = params.due_date ? String(params.due_date).trim() : "";
