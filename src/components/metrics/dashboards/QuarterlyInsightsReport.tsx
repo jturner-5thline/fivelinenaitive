@@ -22,6 +22,14 @@ import { QirContextualComments } from './qir/QirContextualComments';
 import WhatWorkingSections from './WhatWorkingSections';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
+import { AddKpiDialog } from './qir/AddKpiDialog';
+import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
+import {
+  KPI_TEMPLATES,
+  getKpiTemplate,
+  type KpiTemplateId,
+  type SalesClientsConfig,
+} from './qir/kpiTemplates';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
   type AsanaGoalFilterTemplates,
@@ -287,7 +295,19 @@ function Chip({ children }: { children: React.ReactNode }) {
 }
 
 export type KPIFormat = 'currency' | 'percent' | 'number';
-export interface KPI { id: string; label: string; actual: string; target: string; format: KPIFormat; }
+export interface KPI {
+  id: string;
+  label: string;
+  actual: string;
+  target: string;
+  format: KPIFormat;
+  /** When set, the KPI renders via the corresponding template component
+   *  (e.g. Sales & Clients pulls live deal-stage data) instead of the
+   *  legacy actual/target editor. */
+  template?: KpiTemplateId;
+  /** Template-specific config blob (shape depends on `template`). */
+  templateConfig?: Record<string, unknown>;
+}
 export interface Goal { id: string; title: string; owner: string; status: string; due: string; }
 export interface Initiative { id: string; title: string; status: string; progress: number; owner: string; }
 export interface Risk { id: string; description: string; mitigation: string; }
