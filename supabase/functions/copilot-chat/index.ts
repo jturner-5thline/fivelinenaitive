@@ -1670,15 +1670,40 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { error: "Provide deal_id or search" };
     }
     case "search_deals": {
-      let q = supabase.from("deals").select("id, company, value, stage, status, deal_type, updated_at").order("updated_at", { ascending: false }).limit(50);
+      const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
+      // When a name query is supplied, pull a broader candidate pool across
+      // ALL statuses (including archived/closed_lost/dead) so fuzzy matching
+      // can find near-misses like "censys technology" -> "Censys Technologies".
+      let q = supabase.from("deals").select("id, company, value, stage, status, deal_type, updated_at");
       if (args.status) q = q.eq("status", args.status);
       if (args.stage) q = q.ilike("stage", `%${args.stage}%`);
       if (args.deal_type) q = q.ilike("deal_type", `%${args.deal_type}%`);
+      if (queryText) {
+        // Broad ilike OR across the query and its tokens, then fuzzy-rank.
+        const tokens = Array.from(new Set(
+          [queryText, ..._normalizeDealName(queryText).split(" ")]
+            .map((t) => (t || "").trim())
+            .filter((t) => t.length >= 2),
+        )).slice(0, 6);
+        const orFilter = tokens.map((t) => `company.ilike.%${t.replace(/[%,()]/g, "")}%`).join(",");
+        if (orFilter) q = q.or(orFilter);
+        q = q.limit(200);
+      } else {
+        q = q.order("updated_at", { ascending: false }).limit(50);
+      }
       const { data } = await q;
-      let results = data || [];
+      let results: any[] = data || [];
       if (args.stale_days && results.length > 0) {
         const cutoff = Date.now() - args.stale_days * 24 * 60 * 60 * 1000;
         results = results.filter((d: any) => d.updated_at && new Date(d.updated_at).getTime() < cutoff);
+      }
+      if (queryText) {
+        const ranked = rankDealsByQuery(results, queryText, 0.45).slice(0, 8);
+        return {
+          count: ranked.length,
+          query: queryText,
+          deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)) })),
+        };
       }
       return { count: results.length, deals: results };
     }
