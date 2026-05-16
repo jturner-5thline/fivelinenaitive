@@ -607,6 +607,58 @@ export function AICopilotPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [workspaceItems, setWorkspaceItems] = useState<WorkspaceItem[]>([]);
   const [activeWorkspaceItemId, setActiveWorkspaceItemId] = useState<string | null>(null);
+  const workspaceHydratedRef = useRef<string | null>(null);
+  // ── Persist workspace state per conversation (localStorage) ───────────
+  // Keyed by conversationId so reopening or switching threads restores the
+  // last active preview card and the recent-items strip without round-
+  // tripping to the backend. Uses an isLoaded-style guard so the initial
+  // hydration from storage doesn't get overwritten by the empty defaults
+  // before saved state is read in.
+  useEffect(() => {
+    if (!conversationId) {
+      workspaceHydratedRef.current = null;
+      setWorkspaceItems([]);
+      setActiveWorkspaceItemId(null);
+      return;
+    }
+    if (workspaceHydratedRef.current === conversationId) return;
+    try {
+      const raw = localStorage.getItem(`naitive.copilot.workspace.${conversationId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as { items?: WorkspaceItem[]; activeId?: string | null };
+        setWorkspaceItems(Array.isArray(parsed.items) ? parsed.items : []);
+        setActiveWorkspaceItemId(parsed.activeId ?? null);
+      } else {
+        setWorkspaceItems([]);
+        setActiveWorkspaceItemId(null);
+      }
+    } catch { /* ignore */ }
+    workspaceHydratedRef.current = conversationId;
+  }, [conversationId]);
+  useEffect(() => {
+    if (!conversationId || workspaceHydratedRef.current !== conversationId) return;
+    try {
+      localStorage.setItem(
+        `naitive.copilot.workspace.${conversationId}`,
+        JSON.stringify({ items: workspaceItems.slice(-20), activeId: activeWorkspaceItemId }),
+      );
+    } catch { /* ignore */ }
+  }, [conversationId, workspaceItems, activeWorkspaceItemId]);
+  // Route a workspace card into the email / task / note workflow by
+  // re-prompting the copilot. Uses the preview-only tools already wired in
+  // the edge function — nothing leaves the workspace until the user
+  // approves the resulting preview card.
+  const handleWorkspaceSendTo = useCallback((target: 'email' | 'task' | 'note', item: WorkspaceItem) => {
+    const ctx = item.dealName ? ` for ${item.dealName}` : '';
+    const body = item.body.length > 2000 ? item.body.slice(0, 2000) + '…' : item.body;
+    if (target === 'email') {
+      handleSend(`Use the workspace draft below${ctx} as the body of an email and prepare a send_gmail preview. Keep the tone and structure intact; suggest a clear subject line.\n\n---\n${body}`);
+    } else if (target === 'task') {
+      handleSend(`Create an Asana task${ctx} for the follow-up implied by the workspace draft below using the create_asana_task preview tool. Set a clear name, helpful notes, and a reasonable due date.\n\n---\n${body}`);
+    } else {
+      handleSend(`Save the workspace draft below${ctx} as a deal note using the deal_note preview tool. Keep the original content verbatim.\n\n---\n${body}`);
+    }
+  }, [handleSend]);
   // Extract structured "preview" items from finalized assistant messages so
   // the right-hand workspace pane can render them as rich cards. Heuristic,
   // no copilot logic changes — purely a UI mirror of what the model writes.
