@@ -37,6 +37,8 @@ import { OutboundEmailTemplatesSettings } from '@/components/settings/OutboundEm
 import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSettings';
 import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSettings';
 import { EmailCadenceSettings } from '@/components/settings/EmailCadenceSettings';
+import { PartnerRulesSettings } from '@/components/settings/PartnerRulesSettings';
+import { useCanEditPartnerRules } from '@/hooks/usePartnerRules';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
@@ -77,6 +79,7 @@ const SETTINGS_SECTIONS = [
   { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
   { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
   { id: 'ai-configuration', keywords: ['ai', 'claude', 'anthropic', 'artificial', 'intelligence', 'model', 'temperature', 'tokens', 'chatbot'] },
+  { id: 'partner-rules', keywords: ['sales', 'bd', 'partner', 'partners', 'tier', 'tiers', 'rules', 'definitions', 'channel', 'channels', 'criteria'] },
 ];
 
 // Tab definitions with which section IDs belong to each
@@ -89,6 +92,7 @@ const TABS = [
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
   { id: 'crm', label: 'CRM', sectionIds: ['field-layout'] },
   { id: 'ai', label: 'AI', sectionIds: ['ai-configuration'] },
+  { id: 'sales-bd', label: 'Sales & BD', sectionIds: ['partner-rules'] },
 ];
 
 function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
@@ -139,6 +143,7 @@ export default function Settings() {
   const { features: companyFeatures } = useCompanyFeatures();
   const { hasPageAccess } = usePageAccessFlags();
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
+  const canEditPartnerRules = useCanEditPartnerRules();
 
   const visibleSections = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -160,9 +165,11 @@ export default function Settings() {
   const availableTabs = useMemo(() => {
     return TABS.filter(tab => {
       if (tab.id === 'automation' && !companyFeatures.workflows_enabled) return false;
+      // Sales & BD tab: only visible to admins or allowlisted partner-rules editors
+      if (tab.id === 'sales-bd' && !isAdmin && !canEditPartnerRules) return false;
       return true;
     });
-  }, [companyFeatures.workflows_enabled]);
+  }, [companyFeatures.workflows_enabled, isAdmin, canEditPartnerRules]);
 
   // When searching, find the first tab that has matching results and switch to it
   const filteredTabs = useMemo(() => {
@@ -331,6 +338,11 @@ export default function Settings() {
                     <AIConfigurationSettings isAdmin={isAdmin} />
                   )}
                   <AICopilotSettings />
+                </TabsContent>
+
+                {/* Sales & BD Tab */}
+                <TabsContent value="sales-bd" className="space-y-4 mt-4">
+                  {isVisible('partner-rules') && <PartnerRulesSettings />}
                 </TabsContent>
               </Tabs>
             )}

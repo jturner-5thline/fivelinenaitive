@@ -6,15 +6,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { AlertTriangle, CheckCircle2, XCircle } from 'lucide-react';
 import { usePartnerPromotionCriteria } from '@/hooks/usePartnerPromotionCriteria';
+import { usePartnerRules, DEFAULT_PARTNER_RULES } from '@/hooks/usePartnerRules';
 
 export type PromotionMode = 'trial' | 'active-partner';
 
-const TRIAL_CRITERIA: { id: string; label: string; desc: string }[] = [
-  { id: 'fit', label: 'Fit', desc: 'Client profile alignment' },
-  { id: 'responsiveness', label: 'Responsiveness', desc: 'Timeliness and openness to engage' },
-  { id: 'engagement', label: 'Engagement', desc: 'Participation in calls, enablement, or information sharing' },
-  { id: 'contribution', label: 'Contribution Potential', desc: 'Client base, influence, and overlap with 5th Line focus areas' },
-];
+const TRIAL_DESCRIPTIONS: Record<string, string> = {
+  fit: 'Client profile alignment',
+  responsiveness: 'Timeliness and openness to engage',
+  engagement: 'Participation in calls, enablement, or information sharing',
+  contribution: 'Client base, influence, and overlap with 5th Line focus areas',
+};
 
 export interface PromotionResult {
   mode: PromotionMode;
@@ -46,6 +47,15 @@ export function PartnerPromotionDialog({ open, mode, partnerName, onCancel, onCo
   const [publicConfirmed, setPublicConfirmed] = useState(false);
   const [overrideReason, setOverrideReason] = useState('');
   const [note, setNote] = useState('');
+  const { data: rules } = usePartnerRules();
+  const trialLabels = rules?.stages.trial.labels || DEFAULT_PARTNER_RULES.stages.trial.labels;
+  const ap = rules?.stages.activePartner || DEFAULT_PARTNER_RULES.stages.activePartner;
+  const trialCriteria = [
+    { id: 'fit', label: trialLabels.fit, desc: TRIAL_DESCRIPTIONS.fit },
+    { id: 'responsiveness', label: trialLabels.responsiveness, desc: TRIAL_DESCRIPTIONS.responsiveness },
+    { id: 'engagement', label: trialLabels.engagement, desc: TRIAL_DESCRIPTIONS.engagement },
+    { id: 'contribution', label: trialLabels.contribution, desc: TRIAL_DESCRIPTIONS.contribution },
+  ];
 
   useEffect(() => {
     if (open) {
@@ -57,8 +67,9 @@ export function PartnerPromotionDialog({ open, mode, partnerName, onCancel, onCo
 
   const trialMetCount = Object.values(trialChecks).filter(Boolean).length;
   const apAutoMet = !!criteria && criteria.metCount >= 1;
-  const apReqsMet = apAutoMet && publicConfirmed;
-  const apCanProceed = apReqsMet || (overrideReason.trim().length > 0 && publicConfirmed) || overrideReason.trim().length > 0;
+  const publicOk = !ap.publicPartnershipRequired || publicConfirmed;
+  const apReqsMet = apAutoMet && publicOk;
+  const apCanProceed = apReqsMet || overrideReason.trim().length > 0;
 
   const handleConfirm = () => {
     if (mode === 'trial') {
@@ -94,7 +105,7 @@ export function PartnerPromotionDialog({ open, mode, partnerName, onCancel, onCo
               Check all criteria that apply for <span className="text-white font-medium">{partnerName}</span>.
             </p>
             <div className="space-y-2">
-              {TRIAL_CRITERIA.map(c => (
+              {trialCriteria.map(c => (
                 <label key={c.id} className="flex items-start gap-2.5 p-2.5 rounded-md border border-slate-700 bg-slate-900/50 cursor-pointer hover:border-slate-600">
                   <Checkbox
                     checked={!!trialChecks[c.id]}
@@ -125,13 +136,13 @@ export function PartnerPromotionDialog({ open, mode, partnerName, onCancel, onCo
             ) : (
               <div className="rounded-md border border-slate-700 bg-slate-900/50 p-3 space-y-2">
                 <CriteriaRow met={!!criteria?.details.proposals}
-                  label="3+ referrals to Proposal Issued (TTM 3mo)"
-                  value={`${criteria?.proposalsCount ?? 0} in last 3 months`} />
+                  label={`${ap.referralToProposalThreshold}+ referrals to Proposal Issued (last ${ap.referralToProposalMonths}mo)`}
+                  value={`${criteria?.proposalsCount ?? 0} in last ${ap.referralToProposalMonths} months`} />
                 <CriteriaRow met={!!criteria?.details.signed}
-                  label="≥1 signed client (Final Credit Items / Active)"
+                  label={`≥${ap.signedClientThreshold} signed client (last ${ap.signedClientMonths}mo)`}
                   value={`${criteria?.signedCount ?? 0} signed`} />
                 <CriteriaRow met={!!criteria?.details.revenue}
-                  label="TTM referred revenue ≥ $100K"
+                  label={`Referred revenue ≥ ${fmt$(ap.referredRevenueThreshold)} (last ${ap.referredRevenueMonths}mo)`}
                   value={fmt$(criteria?.ttmRevenue ?? 0)} />
                 <div className="border-t border-slate-700 pt-2 text-xs text-slate-400">
                   {criteria?.metCount ?? 0} of 3 auto criteria met (need ≥1).
@@ -139,13 +150,15 @@ export function PartnerPromotionDialog({ open, mode, partnerName, onCancel, onCo
               </div>
             )}
 
-            <label className="flex items-start gap-2.5 p-2.5 rounded-md border border-slate-700 bg-slate-900/50 cursor-pointer">
-              <Checkbox checked={publicConfirmed} onCheckedChange={(v) => setPublicConfirmed(!!v)} className="mt-0.5" />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-white">Public-facing partnership confirmed</div>
-                <div className="text-xs text-slate-400">Public announcement, website mention, or joint marketing</div>
-              </div>
-            </label>
+            {ap.publicPartnershipRequired && (
+              <label className="flex items-start gap-2.5 p-2.5 rounded-md border border-slate-700 bg-slate-900/50 cursor-pointer">
+                <Checkbox checked={publicConfirmed} onCheckedChange={(v) => setPublicConfirmed(!!v)} className="mt-0.5" />
+                <div className="flex-1">
+                  <div className="text-sm font-medium text-white">Public-facing partnership confirmed</div>
+                  <div className="text-xs text-slate-400">Public announcement, website mention, or joint marketing</div>
+                </div>
+              </label>
+            )}
 
             {!apReqsMet && (
               <div className="rounded-md border border-amber-700/50 bg-amber-950/30 p-3 space-y-2">
