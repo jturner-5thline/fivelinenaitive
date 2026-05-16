@@ -9,7 +9,7 @@
  *   2. Add an entry to KPI_TEMPLATES below.
  *   3. Render its card in ReportKpisSection's switch.
  */
-export type KpiTemplateId = 'sales-clients';
+export type KpiTemplateId = 'sales-clients' | 'ttm-revenue-per-deal-hour';
 
 /** Status vocabulary already used elsewhere on the report. "Mixed" is
  *  reserved for a future multi-metric blended state but intentionally NOT
@@ -42,7 +42,31 @@ export interface SalesClientsConfig extends KpiTemplateConfigBase {
   pipelineIds?: string[];
 }
 
-export interface KpiTemplateMeta {
+/** Config for the TTM Revenue per Deal Hour template.
+ *  Numerator: trailing-12-month Income from QBO for `revenueRealmId`.
+ *  Denominator: SUM(weekly_time_entries.hours) where the entry's
+ *  week_start_date is within the trailing 12 months AND the deal is on a
+ *  pipeline matching one of `pipelineNames` (case-insensitive).
+ */
+export interface TtmRevPerHourConfig extends KpiTemplateConfigBase {
+  /** Locked-by-default QBO realm. Editable post-insert. */
+  revenueRealmId: string;
+  /** Display label for the entity (kept alongside realm id so UI can
+   *  render without re-querying the entity registry). */
+  entityLabel: string;
+  /** Pipeline names whose deals contribute hours (case-insensitive match
+   *  against deal_pipelines.name). Defaults to ["Active Pipeline",
+   *  "In Development"]. */
+  pipelineNames: string[];
+  /** Underlying hours source. Locked to `weekly_time_entries` today. */
+  hoursSource: 'weekly_time_entries';
+  /** Human label for the denominator shown next to the supporting metric. */
+  denominatorLabel: string;
+}
+
+export type KpiTemplateConfig = SalesClientsConfig | TtmRevPerHourConfig;
+
+export interface KpiTemplateMeta<C extends KpiTemplateConfig = KpiTemplateConfig> {
   id: KpiTemplateId;
   label: string;
   /** Short bulleted description shown inside the template picker. */
@@ -50,7 +74,7 @@ export interface KpiTemplateMeta {
   /** Default KPI label inserted when the template is picked. */
   defaultTitle: string;
   /** Default config persisted with the inserted KPI. */
-  defaultConfig: SalesClientsConfig;
+  defaultConfig: C;
 }
 
 export const KPI_TEMPLATES: KpiTemplateMeta[] = [
@@ -67,7 +91,25 @@ export const KPI_TEMPLATES: KpiTemplateMeta[] = [
       entryStageLabel: 'Final Credit Items',
       signedField: 'deals.value',
       comparison: 'prior-quarter',
-    },
+    } satisfies SalesClientsConfig,
+  },
+  {
+    id: 'ttm-revenue-per-deal-hour',
+    label: 'TTM Revenue per Deal Hour',
+    bullets: [
+      'Tracks trailing 12 month revenue efficiency for 5th Line Capital Advisors',
+      'Total TTM revenue divided by total active / in-development deal hours logged in the last 12 months',
+      'Supports drilldown into included deals and hours',
+    ],
+    defaultTitle: 'TTM Revenue per Deal Hour',
+    defaultConfig: {
+      // 5th Line Capital Advisors (Debt). Editable post-insert.
+      revenueRealmId: '193514877331929',
+      entityLabel: '5th Line Capital Advisors',
+      pipelineNames: ['Active Pipeline', 'In Development'],
+      hoursSource: 'weekly_time_entries',
+      denominatorLabel: 'Included Deal Hours (TTM)',
+    } satisfies TtmRevPerHourConfig,
   },
 ];
 
