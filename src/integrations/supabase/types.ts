@@ -10326,6 +10326,27 @@ export type Database = {
         }
         Relationships: []
       }
+      end_of_day_clears: {
+        Row: {
+          cleared_at: string
+          id: string
+          item_id: string
+          user_id: string
+        }
+        Insert: {
+          cleared_at?: string
+          id?: string
+          item_id: string
+          user_id: string
+        }
+        Update: {
+          cleared_at?: string
+          id?: string
+          item_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       error_logs: {
         Row: {
           created_at: string
