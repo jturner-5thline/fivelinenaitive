@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import {
   ResponsiveContainer,
   BarChart,
@@ -330,6 +331,68 @@ export function NikiPerformanceTab() {
   const conversionRows = ['clientsSigned', 'dollarsSigned', 'clientsReceivingTerms', 'termsSigned', 'volumeTermsSigned'] as MetricRowKey[];
   const revenueRows    = ['dealsClosed', 'dollarsFunded'] as MetricRowKey[];
 
+  const [period, setPeriod] = useState<QuarterKey | 'YEAR'>('YEAR');
+  const periodOptions: { key: QuarterKey | 'YEAR'; label: string }[] = [
+    ...NIKI_QUARTERS.map((q) => ({ key: q.key, label: q.key })),
+    { key: 'YEAR', label: 'Full Year' },
+  ];
+
+  const getCells = (row: MetricRow) => {
+    const plan = NIKI_PLAN_2026[row.key];
+    const planVal = period === 'YEAR' ? plan.total : plan[period];
+    const actualVal = period === 'YEAR' ? row.yearTotal : row.byQuarter[period].value;
+    const v = variance(actualVal, planVal);
+    return { planVal, actualVal, v, status: statusFromPct(v.pct) };
+  };
+
+  const ScorecardSection = ({ title, keys }: { title: string; keys: MetricRowKey[] }) => (
+    <>
+      <TableRow className="hover:bg-transparent border-b-0">
+        <TableCell
+          colSpan={6}
+          className="py-2 px-4 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground bg-muted/30"
+        >
+          {title}
+        </TableCell>
+      </TableRow>
+      {keys.map((k) => {
+        const row = get(k);
+        if (!row) return null;
+        const { planVal, actualVal, v, status } = getCells(row);
+        const s = STATUS_STYLES[status];
+        return (
+          <TableRow
+            key={k}
+            className="cursor-pointer border-border/40"
+            onClick={() => openDrill(row, period)}
+          >
+            <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">
+              {row.label}
+            </TableCell>
+            <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm text-muted-foreground">
+              {fmt(planVal, row.unit)}
+            </TableCell>
+            <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm font-semibold text-foreground">
+              {fmt(actualVal, row.unit)}
+            </TableCell>
+            <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
+              {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
+            </TableCell>
+            <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
+              {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
+            </TableCell>
+            <TableCell className="py-2.5 px-4 text-right">
+              <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
+                <s.Icon className="h-3 w-3" />
+                {s.label}
+              </span>
+            </TableCell>
+          </TableRow>
+        );
+      })}
+    </>
+  );
+
   const funnelRows = ['dealsOnBoard', 'proposalsIssued', 'clientsSigned', 'termsSigned', 'dealsClosed']
     .map(k => get(k as MetricRowKey)).filter(Boolean) as MetricRow[];
 
@@ -381,7 +444,57 @@ export function NikiPerformanceTab() {
             })}
           </div>
 
-          {/* Charts row */}
+          {/* Scorecard table */}
+          <Card>
+            <CardHeader className="pb-3 flex-row items-start justify-between space-y-0 gap-3">
+              <div>
+                <CardTitle className="text-base font-semibold tracking-tight">
+                  Performance Scorecard
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Plan vs Actual across pipeline production, conversion, and revenue.
+                </CardDescription>
+              </div>
+              <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                {periodOptions.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    onClick={() => setPeriod(p.key)}
+                    className={cn(
+                      'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                      period === p.key
+                        ? 'bg-card text-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground',
+                    )}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent border-b border-border">
+                    <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
+                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Plan</TableHead>
+                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>
+                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>
+                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>
+                    <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  <ScorecardSection title="Pipeline Production" keys={productionRows} />
+                  <ScorecardSection title="Conversion Milestones" keys={conversionRows} />
+                  <ScorecardSection title="Revenue" keys={revenueRows} />
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Supporting visuals */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <QuarterlyChart
               title="Quarterly Production — Dollars on Board"
@@ -397,38 +510,7 @@ export function NikiPerformanceTab() {
             />
           </div>
 
-          {/* Funnel + Conversion */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <FunnelSection rows={funnelRows} openDrill={openDrill} />
-            <QuarterlyChart
-              title="Quarterly Deal Count"
-              description="Deals on Board vs Deals Closed."
-              rows={[get('dealsOnBoard')!, get('dealsClosed')!].filter(Boolean)}
-              unit="count"
-            />
-          </div>
-
-          {/* Grouped Plan vs Actual */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <GroupCard
-              title="Pipeline Production"
-              description="Top-of-funnel volume."
-              rows={productionRows.map(k => get(k)!).filter(Boolean)}
-              openDrill={openDrill}
-            />
-            <GroupCard
-              title="Conversion Milestones"
-              description="Signed clients and terms."
-              rows={conversionRows.map(k => get(k)!).filter(Boolean)}
-              openDrill={openDrill}
-            />
-            <GroupCard
-              title="Revenue"
-              description="Closed and funded deals."
-              rows={revenueRows.map(k => get(k)!).filter(Boolean)}
-              openDrill={openDrill}
-            />
-          </div>
+          <FunnelSection rows={funnelRows} openDrill={openDrill} />
         </>
       ) : (
         <div className="space-y-4">
