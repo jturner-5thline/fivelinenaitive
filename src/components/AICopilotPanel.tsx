@@ -565,6 +565,7 @@ export function AICopilotPanel() {
   const [historyItems, setHistoryItems] = useState<Array<{ id: string; preview: string; date: string }>>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
