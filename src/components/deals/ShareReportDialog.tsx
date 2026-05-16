@@ -201,15 +201,17 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
 
   return (
     <Dialog open={open} onOpenChange={(o) => !sending && onOpenChange(o)}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
+      <DialogContent
+        className="p-0 gap-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20 w-[min(1100px,calc(100vw-32px))] sm:max-w-[min(1100px,calc(100vw-32px))] max-h-[calc(100vh-32px)] overflow-hidden"
+      >
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/40 shrink-0">
           <DialogTitle>Share Pipeline Report</DialogTitle>
           <DialogDescription>
             Review and edit the active pipeline status summary before sending. Test deals and archived deals are excluded.
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3">
           <div className="grid gap-1.5">
             <Label htmlFor="share-to">To</Label>
             <Input
@@ -239,8 +241,8 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
           </div>
           <div className="grid gap-1.5">
             <Label>Message</Label>
-            <div className="rounded-md border border-border bg-background">
-              <div className="flex items-center gap-1 p-1 border-b border-border/60">
+            <div className="rounded-md border border-border bg-background flex flex-col overflow-hidden">
+              <div className="flex items-center gap-1 p-1 border-b border-border/60 shrink-0 flex-wrap">
                 <TbBtn label="Bold" active={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}>
                   <BoldIcon className="h-3.5 w-3.5" />
                 </TbBtn>
@@ -276,7 +278,9 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
                   reset
                 </button>
               </div>
-              <EditorContent editor={editor} />
+              <div className="max-h-[40vh] overflow-y-auto">
+                <EditorContent editor={editor} />
+              </div>
             </div>
             <p className="text-[11px] text-muted-foreground">
               {filteredDeals.length} deal{filteredDeals.length === 1 ? '' : 's'} included. Edit lines or add commentary before sending.
@@ -284,7 +288,7 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
           </div>
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="px-6 py-3 border-t border-border/40 shrink-0">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
             Cancel
           </Button>
