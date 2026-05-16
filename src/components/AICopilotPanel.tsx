@@ -1319,17 +1319,19 @@ export function AICopilotPanel() {
     560,
   );
 
+  // In expanded mode the panel is portalled into document.body inside the
+  // same viewport-centered modal shell pattern used by NaitiveDealOverlay
+  // (fixed inset-0 + flex items-center justify-center). That guarantees the
+  // popup is centered and fully visible regardless of where the floating
+  // Ask-bar wrapper currently sits. In compact mode we keep the existing
+  // inline, bar-anchored rendering exactly as before.
   const expandedStyle: React.CSSProperties = isExpanded
     ? {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: isMobile ? 'calc(100vw - 16px)' : 'min(1400px, 90vw)',
-        height: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
-        maxHeight: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
+        width: '100%',
+        height: '100%',
+        maxWidth: isMobile ? 'none' : 1440,
+        maxHeight: 'calc(100vh - 48px)',
         marginInline: 0,
-        zIndex: 60,
         borderRadius: 18,
       }
     : {};
