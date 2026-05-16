@@ -69,6 +69,12 @@ export function CopilotToggleButton() {
   const unreadCount = useCopilotStore((s) => s.unreadCount);
   const demoMode = useCopilotStore((s) => s.demoMode);
   const demoTypedPrompt = useCopilotStore((s) => s.demoTypedPrompt);
+  // NOTE: we intentionally no longer early-return when a modal/sheet/drawer
+  // is open. The Ask naitive AI bar is a global top-layer assist surface
+  // and must remain visible & interactive above every overlay (deal
+  // popups, task popups, dialogs, sheets, dropdowns, popovers, command
+  // menus, expanded workspaces). We keep this hook around only so the
+  // debug overlay re-measures when modals open/close.
   const hasOpenModal = useAnyDialogOpen();
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
@@ -314,10 +320,10 @@ export function CopilotToggleButton() {
     setActiveIndex(0);
   }, [value]);
 
-  // Always render the Ask bar when the panel is open — the bar IS the
-  // input for the popup, so it must remain visible above the (sticky-bottom)
-  // panel even while the transcript is showing or minimized.
-  if (hasOpenModal) return null;
+  // (Previously: `if (hasOpenModal) return null;` — removed so the bar
+  // floats above all overlays. Its portal sits on <body> with
+  // z-[2147483000], which is above dialog overlays (1300), dialog content
+  // (1310), popovers/dropdowns (1340), and any app-level overlay layer.)
 
   const askAi = (text: string) => {
     const trimmed = text.trim();
@@ -361,7 +367,10 @@ export function CopilotToggleButton() {
     {createPortal(
     <div
       aria-hidden={false}
-      className="pointer-events-none fixed inset-x-0 z-[1400] flex justify-center"
+      // Top-of-app z-index. Deliberately set near the max 32-bit int so no
+      // app-level overlay can stack above the Ask naitive AI bar. Only true
+      // browser-system surfaces (native autofill, devtools) sit above this.
+      className="pointer-events-none fixed inset-x-0 z-[2147483000] flex justify-center"
       style={{
         bottom: 'calc(44px + max(16px, env(safe-area-inset-bottom)))',
       }}
