@@ -32,7 +32,7 @@ export default function SalesBD() {
       <Helmet>
         <title>Sales & BD | 5thLine</title>
       </Helmet>
-      <div className="bg-background">
+      <div className="popup-shell-surface min-h-screen">
         <DashboardPage
           padding="sm"
           wrapper={(children) => (
@@ -64,13 +64,13 @@ export default function SalesBD() {
               <div className="space-y-8">
                 <div className="space-y-6">
                   {/* Sub-navigation */}
-                  <div className="flex items-center gap-1 bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 w-fit shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
+                  <div className="flex items-center gap-1 bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 w-fit">
                     <button
                       onClick={() => setChannelsSubView("channels")}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
                         channelsSubView === "channels"
-                          ? "bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05] border border-transparent"
+                          ? "bg-background/60 text-foreground border border-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent"
                       }`}
                     >
                       <Network className="h-3.5 w-3.5" />
@@ -80,8 +80,8 @@ export default function SalesBD() {
                       onClick={() => setChannelsSubView("companies")}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
                         channelsSubView === "companies"
-                          ? "bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05] border border-transparent"
+                          ? "bg-background/60 text-foreground border border-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent"
                       }`}
                     >
                       <Building2 className="h-3.5 w-3.5" />
@@ -91,8 +91,8 @@ export default function SalesBD() {
                       onClick={() => setChannelsSubView("referral-sources")}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
                         channelsSubView === "referral-sources"
-                          ? "bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]"
-                          : "text-muted-foreground hover:text-foreground hover:bg-white/[0.05] border border-transparent"
+                          ? "bg-background/60 text-foreground border border-border"
+                          : "text-muted-foreground hover:text-foreground hover:bg-background/30 border border-transparent"
                       }`}
                     >
                       <UserCheck className="h-3.5 w-3.5" />
@@ -120,7 +120,7 @@ export default function SalesBD() {
                       <h2 className="text-lg font-semibold">Partners and Referrals Insights</h2>
                       <p className="text-xs text-muted-foreground mt-0.5">Activity, alerts, and follow-ups across partners and referral sources</p>
                     </div>
-                    <div className="flex items-center bg-[hsl(260,20%,14%,0.5)] backdrop-blur-xl border border-[hsl(260,30%,45%,0.1)] ring-1 ring-inset ring-white/[0.03] rounded-lg p-0.5 gap-0.5 shadow-[0_2px_8px_hsl(0,0%,0%,0.2)]">
+                    <div className="flex items-center bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 gap-0.5">
                       {([
                         { value: 'all', label: 'All' },
                         { value: 'partners', label: 'Partners only' },
@@ -131,8 +131,8 @@ export default function SalesBD() {
                           onClick={() => setInsightsSource(o.value)}
                           className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all duration-200 ${
                             insightsSource === o.value
-                              ? 'bg-[hsl(263,60%,55%,0.2)] text-primary shadow-[0_0_8px_hsl(263,60%,55%,0.15)] border border-[hsl(263,50%,55%,0.15)]'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.05]'
+                              ? 'bg-background/60 text-foreground border border-border'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-background/30'
                           }`}
                         >
                           {o.label}
