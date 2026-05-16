@@ -758,7 +758,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
           {visibleKpis.map(kpi => {
             // Templated KPIs render their own card (live data, dual metrics).
             if (kpi.template === 'sales-clients') {
-              const cfg = (kpi.templateConfig ?? {}) as SalesClientsConfig;
+              const cfg = (kpi.templateConfig ?? {}) as unknown as Partial<SalesClientsConfig>;
               const safeCfg: SalesClientsConfig = {
                 entryStageLabel: cfg.entryStageLabel || 'Final Credit Items',
                 signedField: 'deals.value',
