@@ -125,7 +125,11 @@ export type MetricRowKey =
   | 'termsSigned'
   | 'volumeTermsSigned'
   | 'dealsClosed'
-  | 'dollarsFunded';
+  | 'dollarsFunded'
+  | 'retainerRevenue'
+  | 'consultingMilestoneRevenue'
+  | 'feeRevenue'
+  | 'totalRevenue';
 
 export interface MetricRow {
   key: MetricRowKey;
@@ -167,6 +171,7 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
   const termsIssued = useStageEntryDeals('terms-issued');
   const inDueDil = useStageEntryDeals('in-due-diligence');
   const funded = useStageEntryDeals('funded-invoiced');
+  const revenue = useNikiRevenueActuals();
 
   const isLoading =
     added.isLoading ||
@@ -174,7 +179,8 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
     finalCredit.isLoading ||
     termsIssued.isLoading ||
     inDueDil.isLoading ||
-    funded.isLoading;
+    funded.isLoading ||
+    revenue.isLoading;
 
   const rows = useMemo<MetricRow[]>(() => {
     return [
@@ -189,10 +195,133 @@ export function useNikiPerformanceMetrics(): NikiPerformanceMetrics {
       aggregate('volumeTermsSigned',    'Volume of Terms Signed',   'currency', inDueDil.data ?? []),
       aggregate('dealsClosed',          'Deals Closed',             'count',    funded.data ?? []),
       aggregate('dollarsFunded',        'Dollars Funded',           'currency', funded.data ?? []),
+      aggregate('retainerRevenue',            'Retainer Revenue',  'currency', revenue.data?.retainer ?? []),
+      aggregate('consultingMilestoneRevenue', 'Milestone Revenue', 'currency', revenue.data?.milestone ?? []),
+      aggregate('feeRevenue',                 'Closing Fee',       'currency', revenue.data?.closing ?? []),
+      aggregate('totalRevenue',               'Total Revenue',     'currency', revenue.data?.total ?? []),
     ];
-  }, [added.data, proposal.data, finalCredit.data, termsIssued.data, inDueDil.data, funded.data]);
+  }, [added.data, proposal.data, finalCredit.data, termsIssued.data, inDueDil.data, funded.data, revenue.data]);
 
   return { isLoading, rows };
+}
+
+/**
+ * Niki revenue actuals — pulled from QuickBooks invoices for 5th Line Capital
+ * Advisors, LLC (realm 193514877331929 = "Debt"), matched to deals where Niki
+ * is owner or deal manager via fuzzy customer_name ↔ deal.company match.
+ *
+ * Line items are bucketed into:
+ *   - retainer:  account/item contains "retainer"
+ *   - milestone: account/item contains "milestone" or "consulting"
+ *   - closing:   account/item contains "closing fee", "fee revenue",
+ *                "success fee", or "advisory fee"
+ *
+ * `total` is the union of all three categories so the Total Revenue row
+ * mirrors retainer + milestone + closing.
+ */
+const DEBT_REALM_ID = '193514877331929';
+
+function normalizeCompany(name: string | null | undefined): string {
+  return (name || '')
+    .toLowerCase()
+    .replace(/[.,]/g, ' ')
+    .replace(/\b(llc|inc|corp|co|company|ltd|holdings?|group|technologies|holding)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+type RevenueBuckets = {
+  retainer: PerfDeal[];
+  milestone: PerfDeal[];
+  closing: PerfDeal[];
+  total: PerfDeal[];
+};
+
+function useNikiRevenueActuals() {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['niki-perf-revenue-actuals'],
+    enabled: !!user,
+    queryFn: async (): Promise<RevenueBuckets> => {
+      // 1. Niki deals (any pipeline) — build matchable normalized-name set.
+      const { data: dealsData, error: dealsErr } = await supabase
+        .from('deals')
+        .select('id, company, value, deal_owner, manager')
+        .or(`deal_owner.eq.${NIKI_NAME},manager.eq.${NIKI_NAME}`);
+      if (dealsErr) throw dealsErr;
+      const nikiDeals = (dealsData ?? []).filter((d: any) => !isExcludedDealName(d.company));
+      const nikiCompanyMap = new Map<string, { id: string; company: string }>();
+      for (const d of nikiDeals as any[]) {
+        const k = normalizeCompany(d.company);
+        if (k && !nikiCompanyMap.has(k)) {
+          nikiCompanyMap.set(k, { id: d.id, company: d.company });
+        }
+      }
+
+      // 2. QBO invoices for Debt realm in 2026.
+      const { data: invs, error: invErr } = await supabase
+        .from('quickbooks_invoices')
+        .select('id, customer_name, txn_date, total_amt, metadata')
+        .eq('realm_id', DEBT_REALM_ID)
+        .gte('txn_date', '2026-01-01')
+        .lte('txn_date', '2026-12-31');
+      if (invErr) throw invErr;
+
+      const buckets: RevenueBuckets = { retainer: [], milestone: [], closing: [], total: [] };
+
+      for (const inv of (invs ?? []) as any[]) {
+        const custKey = normalizeCompany(inv.customer_name);
+        if (!custKey) continue;
+        // Match by exact normalized equality OR substring containment.
+        let match = nikiCompanyMap.get(custKey);
+        if (!match) {
+          for (const [k, v] of nikiCompanyMap) {
+            if (k.length >= 4 && (custKey.includes(k) || k.includes(custKey))) {
+              match = v;
+              break;
+            }
+          }
+        }
+        if (!match) continue;
+
+        const lines = (inv.metadata?.Line || []) as any[];
+        if (!Array.isArray(lines)) continue;
+        let lineIdx = 0;
+        for (const line of lines) {
+          if (line?.DetailType !== 'SalesItemLineDetail') continue;
+          const detail = line.SalesItemLineDetail || {};
+          const acct = String(detail?.ItemAccountRef?.name || '').toLowerCase();
+          const item = String(detail?.ItemRef?.name || '').toLowerCase();
+          const blob = `${acct} ${item}`;
+          const amount = Number(line.Amount);
+          if (!Number.isFinite(amount) || amount === 0) continue;
+
+          let category: keyof RevenueBuckets | null = null;
+          if (blob.includes('retainer')) category = 'retainer';
+          else if (blob.includes('milestone') || blob.includes('consulting')) category = 'milestone';
+          else if (
+            blob.includes('closing fee') ||
+            blob.includes('fee revenue') ||
+            blob.includes('success fee') ||
+            blob.includes('advisory fee')
+          ) category = 'closing';
+          if (!category) continue;
+
+          const entry: PerfDeal = {
+            deal_id: `${match.id}:${inv.id}:${lineIdx}`,
+            company: match.company,
+            value: amount,
+            entered_at: `${inv.txn_date}T00:00:00.000Z`,
+          };
+          buckets[category].push(entry);
+          buckets.total.push(entry);
+          lineIdx++;
+        }
+      }
+
+      return buckets;
+    },
+  });
 }
 
 /**
