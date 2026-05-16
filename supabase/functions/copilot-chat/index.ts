@@ -5474,6 +5474,40 @@ serve(async (req) => {
       }
     }
 
+    // Phase 4: per-workspace AI Copilot configuration (Settings → AI Copilot,
+    // edited by 5th Line internal admins). Overrides tone, appends a custom
+    // system prompt, exposes a default report template, and toggles tools.
+    let copilotConfigPrefix = "";
+    let copilotToolsEnabled: Record<string, boolean> = {};
+    if (companyId) {
+      try {
+        const { data: cfg } = await supabaseAdmin
+          .from("ai_copilot_config")
+          .select("system_prompt_override, tone_override, default_report_template, tools_enabled")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        if (cfg) {
+          const parts: string[] = [];
+          const tone = (cfg as any).tone_override;
+          const TONE_GUIDANCE: Record<string, string> = {
+            professional_concise: "Use a professional, concise tone. Skip preamble. Favor short bullets.",
+            formal: "Use a formal, polished tone appropriate for institutional capital partners.",
+            casual: "Use a casual, conversational tone. Plain language is fine.",
+          };
+          if (tone && TONE_GUIDANCE[tone]) parts.push("## Communication Tone (workspace override)\n" + TONE_GUIDANCE[tone]);
+          const sys = ((cfg as any).system_prompt_override || "").trim();
+          if (sys) parts.push("## Workspace System Prompt\n" + sys);
+          const tpl = ((cfg as any).default_report_template || "").trim();
+          if (tpl) parts.push("## Default Status Report Template\nWhen drafting a status report, follow this template unless the user asks otherwise:\n" + tpl);
+          copilotConfigPrefix = parts.join("\n\n");
+          const te = (cfg as any).tools_enabled;
+          if (te && typeof te === "object") copilotToolsEnabled = te as Record<string, boolean>;
+        }
+      } catch (e) {
+        console.warn("[copilot-chat] ai_copilot_config load failed", e);
+      }
+    }
+
     // Fetch active org preferences/rules
     let orgPreferencesSection = "";
     if (companyId) {
