@@ -54,6 +54,7 @@ function PipelineMemoCardImpl({
       className="
         cursor-pointer transition-all duration-200
         rounded-xl overflow-hidden
+        min-h-[20rem] md:min-h-[22rem]
         border border-white/10 hover:border-primary/40
         bg-gradient-to-b from-white/[0.07] via-white/[0.04] to-white/[0.02]
         shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)] hover:shadow-[0_14px_36px_-16px_rgba(0,0,0,0.7)]
@@ -74,14 +75,14 @@ function PipelineMemoCardImpl({
 
       <div
         className="
-          grid items-start
+          grid items-stretch
           [grid-template-columns:1fr]
           md:[grid-template-columns:1fr_1fr]
           divide-y md:divide-y-0 md:divide-x divide-white/[0.08]
           bg-gradient-to-b from-transparent to-white/[0.015]
         "
       >
-        <div className="min-w-0">
+        <div className="min-w-0 flex flex-col">
           <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
           <ActivityPanel
             deal={deal}
