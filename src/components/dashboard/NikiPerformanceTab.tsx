@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { RepPerformanceModelGrid } from '@/components/metrics/rep-model/RepPerformanceModelGrid';
@@ -67,10 +67,10 @@ export function NikiPerformanceTab() {
               <tr className="text-[10px] text-muted-foreground/80">
                 <th className="px-3 py-1 border-b border-border" />
                 {NIKI_QUARTERS.map((q) => (
-                  <>
-                    <th key={`${q.key}-p`} className="text-right px-2 py-1 border-b border-border font-normal">Plan</th>
-                    <th key={`${q.key}-a`} className="text-right px-2 py-1 border-b border-border font-normal">Actual</th>
-                  </>
+                  <Fragment key={q.key}>
+                    <th className="text-right px-2 py-1 border-b border-border font-normal">Plan</th>
+                    <th className="text-right px-2 py-1 border-b border-border font-normal">Actual</th>
+                  </Fragment>
                 ))}
                 <th className="text-right px-2 py-1 border-b border-border font-normal">Plan</th>
                 <th className="text-right px-2 py-1 border-b border-border font-normal">Actual</th>
@@ -96,12 +96,11 @@ export function NikiPerformanceTab() {
                       const actual = row.byQuarter[q.key].value;
                       const planQ = plan[q.key];
                       return (
-                        <>
-                          <td key={`${q.key}-p`} className="text-right px-2 py-1.5 font-mono text-muted-foreground">
+                        <Fragment key={q.key}>
+                          <td className="text-right px-2 py-1.5 font-mono text-muted-foreground">
                             {fmt(planQ, row.unit)}
                           </td>
                           <td
-                            key={`${q.key}-a`}
                             className={cn(
                               'text-right px-2 py-1.5 font-mono cursor-pointer hover:underline',
                               actual >= planQ ? 'text-emerald-500' : 'text-foreground',
@@ -110,7 +109,7 @@ export function NikiPerformanceTab() {
                           >
                             {fmt(actual, row.unit)}
                           </td>
-                        </>
+                        </Fragment>
                       );
                     })}
                     <td className="text-right px-2 py-1.5 font-mono text-muted-foreground">
