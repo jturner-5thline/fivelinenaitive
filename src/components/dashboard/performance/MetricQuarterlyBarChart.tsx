@@ -31,22 +31,24 @@ interface MetricQuarterlyBarChartProps {
   onBarClick?: (quarter: QuarterKey) => void;
 }
 
-/** Custom shape that draws a horizontal dashed segment at the Plan value above each bar. */
+/** Custom Scatter shape: horizontal dashed segment at the Plan value, spanning bar width. */
 function PlanTick(props: any) {
-  const { cx, payload } = props;
-  if (cx == null || payload?.planY == null) return null;
-  const half = (payload.barWidth ?? 28) / 2 + 4;
+  const { cx, cy } = props;
+  if (cx == null || cy == null) return null;
+  const half = 22;
   return (
-    <line
-      x1={cx - half}
-      x2={cx + half}
-      y1={payload.planY}
-      y2={payload.planY}
-      stroke="hsl(var(--foreground))"
-      strokeWidth={1.5}
-      strokeDasharray="3 3"
-      opacity={0.85}
-    />
+    <g pointerEvents="none">
+      <line
+        x1={cx - half}
+        x2={cx + half}
+        y1={cy}
+        y2={cy}
+        stroke="hsl(var(--foreground))"
+        strokeWidth={1.5}
+        strokeDasharray="3 3"
+        opacity={0.85}
+      />
+    </g>
   );
 }
 
