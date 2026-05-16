@@ -19,6 +19,7 @@ import {
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 import { Plus, Trash2, CalendarIcon, CheckCircle2, Clock, ChevronUp, ChevronDown } from 'lucide-react';
 import { useDealTasks } from '@/hooks/useDealTasks';
+import { isTaskCompleted, TASK_STATUS_COMPLETE, TASK_STATUS_REOPENED } from '@/lib/taskCache';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -64,7 +65,11 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   };
 
   const handleToggleStatus = async (taskId: string, currentStatus: string) => {
-    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
+    // Canonical literals so the same task row reads as completed from
+    // every surface (Tasks page, rundowns, dashboard widgets).
+    const newStatus = isTaskCompleted({ status: currentStatus })
+      ? TASK_STATUS_REOPENED
+      : TASK_STATUS_COMPLETE;
     const ok = await updateTaskStatus(taskId, newStatus);
     if (!ok) toast.error('Failed to update task');
   };
@@ -79,8 +84,8 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
     return tasks;
   }, [tasks, viewFilter, user?.id]);
 
-  const pendingTasks = filteredTasks.filter(t => t.status !== 'completed');
-  const completedTasks = filteredTasks.filter(t => t.status === 'completed');
+  const pendingTasks = filteredTasks.filter(t => !isTaskCompleted(t));
+  const completedTasks = filteredTasks.filter(t => isTaskCompleted(t));
 
   const displayedTasks = useMemo(() => {
     switch (statusFilter) {
