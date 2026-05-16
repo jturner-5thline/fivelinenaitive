@@ -98,34 +98,55 @@ export const PLAN_METRIC_UNITS: Record<PlanMetricKey, 'count' | 'currency'> = PL
 );
 
 /**
- * Default Q1–Q4 plan targets for 2026 (sourced from the Rep Performance &
- * Pipeline Model sheet). Values are stored in raw units (USD for currency).
+ * Default Q1–Q4 plan targets for 2026 (sourced from the approved Niki
+ * Rep Performance & Pipeline Model sheet). Values are stored in raw units
+ * (USD for currency).
  */
 export const NIKI_DEFAULT_PLAN_2026: Record<PlanMetricKey, QuarterlyTargets> = {
   // Plan
-  dealsOnBoard:          { Q1: 33,        Q2: 33,        Q3: 33,        Q4: 33 },
-  dollarsOnBoard:        { Q1: 90.9 * MM, Q2: 90.9 * MM, Q3: 90.9 * MM, Q4: 151.5 * MM },
-  proposalsIssued:       { Q1: 21,        Q2: 21,        Q3: 21,        Q4: 21 },
-  dollarsProposed:       { Q1: 60 * MM,   Q2: 60 * MM,   Q3: 60 * MM,   Q4: 80 * MM },
-  clientsSigned:         { Q1: 11,        Q2: 12,        Q3: 12,        Q4: 12 },
-  dollarsSigned:         { Q1: 32 * MM,   Q2: 36 * MM,   Q3: 36 * MM,   Q4: 36 * MM },
-  clientsReceivingTerms: { Q1: 12,        Q2: 11,        Q3: 12,        Q4: 12 },
-  termsSigned:           { Q1: 12,        Q2: 11,        Q3: 12,        Q4: 12 },
-  volumeTermsSigned:     { Q1: 30 * MM,   Q2: 27.4 * MM, Q3: 36 * MM,   Q4: 36 * MM },
-  dealsClosed:           { Q1: 6,         Q2: 12,        Q3: 11,        Q4: 12 },
-  dollarsFunded:         { Q1: 24 * MM,   Q2: 31.4 * MM, Q3: 32 * MM,   Q4: 36 * MM },
-  // Pipeline Snapshot — stock measures, default 0 until user sets a target
-  dealsInDevelopment:    { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-  dollarsInDevelopment:  { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-  activeDeals:           { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-  activeDealVolume:      { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-  dealsInDiligence:      { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-  dollarsInDiligence:    { Q1: 0, Q2: 0, Q3: 0, Q4: 0 },
-  // Revenue (from Rep Performance sheet, Q-2026 columns)
-  retainerRevenue:             { Q1: 36.3 * K,  Q2: 43.5 * K,  Q3: 43.5 * K,  Q4: 43.5 * K },
-  consultingMilestoneRevenue:  { Q1: 158.7 * K, Q2: 134.0 * K, Q3: 158.7 * K, Q4: 158.7 * K },
-  feeRevenue:                  { Q1: 600 * K,   Q2: 755 * K,   Q3: 770 * K,   Q4: 870 * K },
-  totalRevenue:                { Q1: 790 * K,   Q2: 930 * K,   Q3: 970 * K,   Q4: 1070 * K },
+  dealsOnBoard:          { Q1: 9,         Q2: 9,         Q3: 9,         Q4: 9 },
+  dollarsOnBoard:        { Q1: 54.5 * MM, Q2: 54.5 * MM, Q3: 54.5 * MM, Q4: 54.5 * MM },
+  proposalsIssued:       { Q1: 6,         Q2: 6,         Q3: 6,         Q4: 6 },
+  dollarsProposed:       { Q1: 36 * MM,   Q2: 36 * MM,   Q3: 36 * MM,   Q4: 36 * MM },
+  clientsSigned:         { Q1: 3,         Q2: 3,         Q3: 3,         Q4: 3 },
+  dollarsSigned:         { Q1: 8 * MM,    Q2: 8 * MM,    Q3: 8 * MM,    Q4: 8 * MM },
+  clientsReceivingTerms: { Q1: 3,         Q2: 3,         Q3: 3,         Q4: 3 },
+  termsSigned:           { Q1: 3,         Q2: 3,         Q3: 3,         Q4: 3 },
+  volumeTermsSigned:     { Q1: 12 * MM,   Q2: 13.4 * MM, Q3: 18 * MM,   Q4: 18 * MM },
+  dealsClosed:           { Q1: 3,         Q2: 3,         Q3: 3,         Q4: 3 },
+  dollarsFunded:         { Q1: 12 * MM,   Q2: 13.4 * MM, Q3: 18 * MM,   Q4: 18 * MM },
+  // Pipeline Snapshot — stock measures (end-of-quarter snapshot, not a flow)
+  dealsInDevelopment:    { Q1: 16,           Q2: 22,           Q3: 28,           Q4: 34 },
+  dollarsInDevelopment:  { Q1: 162.9 * MM,   Q2: 172.1 * MM,   Q3: 181.4 * MM,   Q4: 190.7 * MM },
+  activeDeals:           { Q1: 5,            Q2: 3,            Q3: 0,            Q4: -3 },
+  activeDealVolume:      { Q1: 48 * MM,      Q2: 40.6 * MM,    Q3: 40.6 * MM,    Q4: 40.6 * MM },
+  dealsInDiligence:      { Q1: 4,            Q2: 4,            Q3: 4,            Q4: 4 },
+  dollarsInDiligence:    { Q1: 25.9 * MM,    Q2: 25.9 * MM,    Q3: 25.9 * MM,    Q4: 25.9 * MM },
+  // Revenue (raw USD; from Rep Performance sheet, Q-2026 columns)
+  retainerRevenue:             { Q1: 21_750,  Q2: 21_750,  Q3: 21_750,  Q4: 21_750 },
+  consultingMilestoneRevenue:  { Q1: 54_450,  Q2: 54_450,  Q3: 54_450,  Q4: 54_450 },
+  feeRevenue:                  { Q1: 300_000, Q2: 335_000, Q3: 450_000, Q4: 450_000 },
+  totalRevenue:                { Q1: 376_200, Q2: 411_200, Q3: 526_200, Q4: 526_200 },
+};
+
+/**
+ * 2026 annual totals that are NOT a simple Q1+Q2+Q3+Q4 sum. These come
+ * straight from the approved plan sheet — typically because the metric is
+ * either a stock (pipeline snapshot, latest = year value) or because the
+ * sheet caps the annual total independently of the quarterly cadence.
+ */
+export const NIKI_DEFAULT_PLAN_TOTAL_OVERRIDES_2026: Partial<Record<PlanMetricKey, number>> = {
+  // Flow totals from the sheet that differ from raw sum
+  dollarsOnBoard: 218.2 * MM,
+  dollarsSigned:  8 * MM,
+  // Pipeline Snapshot — stock measures: the 2026 column reflects the
+  // end-of-year snapshot (Q4), not a sum of quarterly snapshots.
+  dealsInDevelopment:   34,
+  dollarsInDevelopment: 190.7 * MM,
+  activeDeals:          -3,
+  activeDealVolume:     40.6 * MM,
+  dealsInDiligence:     4,
+  dollarsInDiligence:   25.9 * MM,
 };
 
 function resolveTotals(
@@ -134,7 +155,11 @@ function resolveTotals(
   const out = {} as Record<PlanMetricKey, ResolvedTargets>;
   for (const m of PLAN_METRICS) {
     const q = plan[m.key] ?? NIKI_DEFAULT_PLAN_2026[m.key];
-    out[m.key] = { ...q, total: q.Q1 + q.Q2 + q.Q3 + q.Q4 };
+    const override = NIKI_DEFAULT_PLAN_TOTAL_OVERRIDES_2026[m.key];
+    out[m.key] = {
+      ...q,
+      total: override !== undefined ? override : q.Q1 + q.Q2 + q.Q3 + q.Q4,
+    };
   }
   return out;
 }
@@ -154,7 +179,8 @@ export interface UseNikiPerformancePlan {
 
 function useNikiPerformancePlanState(): UseNikiPerformancePlan {
   const { user } = useAuth();
-  const storageKey = user?.id ? `nikiPerf.plan.${user.id}` : 'nikiPerf.plan.anon';
+  // v2 — reseeds prior incorrect quarterly defaults with the approved sheet.
+  const storageKey = user?.id ? `nikiPerf.plan.v2.${user.id}` : 'nikiPerf.plan.v2.anon';
   const [rawPlan, setRawPlan] = useState<Record<PlanMetricKey, QuarterlyTargets>>(
     () => structuredCloneDefault(),
   );

@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { formatUSD } from '@/lib/formatters/currency';
 import {
   PLAN_SECTIONS,
   useNikiPerformancePlan,
@@ -15,8 +14,32 @@ import type { QuarterKey } from '@/hooks/useNikiPerformanceMetrics';
 
 const QUARTERS: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
 
+/**
+ * Plan-editor money formatter.
+ *  - >= $1M  → $54.50MM / $190.70MM (matches the source sheet)
+ *  - >= $1K  → $300K / $1,535K
+ *  - else    → $750
+ * Negatives wrapped in parentheses.
+ */
+function fmtPlanMoney(value: number): string {
+  if (value === null || value === undefined || isNaN(value)) return '—';
+  const abs = Math.abs(value);
+  let out: string;
+  if (abs >= 1_000_000) {
+    out = `$${(abs / 1_000_000).toLocaleString('en-US', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}MM`;
+  } else if (abs >= 1_000) {
+    out = `$${Math.round(abs / 1_000).toLocaleString('en-US')}K`;
+  } else {
+    out = `$${Math.round(abs).toLocaleString('en-US')}`;
+  }
+  return value < 0 ? `(${out})` : out;
+}
+
 function formatDisplay(value: number, unit: 'count' | 'currency'): string {
-  if (unit === 'currency') return formatUSD(value);
+  if (unit === 'currency') return fmtPlanMoney(value);
   return value.toLocaleString('en-US');
 }
 
@@ -121,8 +144,10 @@ export function QuarterlyPlanEditor() {
             Quarterly Plan Model — 2026
           </CardTitle>
           <CardDescription className="text-xs">
-            Edit Q1–Q4 targets per metric. The 2026 column is derived as Q1+Q2+Q3+Q4 and
-            drives the Performance scorecard, charts, and variance calculations.
+            Edit Q1–Q4 targets per metric. The 2026 column is derived as Q1+Q2+Q3+Q4
+            for flow metrics, or pulled from the approved plan sheet for stock /
+            override metrics (e.g. Pipeline Snapshot end-of-year, Dollars Signed).
+            Drives the Performance scorecard, charts, and variance calculations.
           </CardDescription>
         </div>
         <div className="flex items-center gap-2">
