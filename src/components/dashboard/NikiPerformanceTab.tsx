@@ -63,7 +63,8 @@ interface KpiCardProps {
 }
 
 function KpiCard({ row, onClick }: KpiCardProps) {
-  const plan = NIKI_PLAN_2026[row.key];
+  const { plan: planMap } = useNikiPerformancePlan();
+  const plan = planMap[row.key];
   const v = variance(row.yearTotal, plan.total);
   const status = statusFromPct(v.pct);
   const s = STATUS_STYLES[status];
@@ -113,7 +114,8 @@ interface ComparisonRowProps {
   onClick: () => void;
 }
 function ComparisonRow({ row, onClick }: ComparisonRowProps) {
-  const plan = NIKI_PLAN_2026[row.key];
+  const { plan: planMap } = useNikiPerformancePlan();
+  const plan = planMap[row.key];
   const v = variance(row.yearTotal, plan.total);
   const status = statusFromPct(v.pct);
   const s = STATUS_STYLES[status];
@@ -191,17 +193,18 @@ function QuarterlyChart({ rows, title, description, unit }: {
   description?: string;
   unit: 'count' | 'currency';
 }) {
+  const { plan: planMap } = useNikiPerformancePlan();
   const data = useMemo(() => {
     return NIKI_QUARTERS.map(q => {
       const entry: any = { quarter: q.key };
       for (const r of rows) {
-        const plan = NIKI_PLAN_2026[r.key][q.key];
+        const plan = planMap[r.key][q.key];
         entry[`${r.label} · Plan`] = plan;
         entry[`${r.label} · Actual`] = r.byQuarter[q.key].value;
       }
       return entry;
     });
-  }, [rows]);
+  }, [rows, planMap]);
 
   const colors = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
 
@@ -246,7 +249,8 @@ function FunnelSection({ rows, openDrill }: {
   rows: MetricRow[];
   openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
 }) {
-  const max = Math.max(1, ...rows.map(r => NIKI_PLAN_2026[r.key].total));
+  const { plan: planMap } = useNikiPerformancePlan();
+  const max = Math.max(1, ...rows.map(r => planMap[r.key].total));
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -255,7 +259,7 @@ function FunnelSection({ rows, openDrill }: {
       </CardHeader>
       <CardContent className="pt-0 pb-4 space-y-2">
         {rows.map((r) => {
-          const plan = NIKI_PLAN_2026[r.key].total;
+          const plan = planMap[r.key].total;
           const actual = r.yearTotal;
           const planPct = (plan / max) * 100;
           const actualPct = (actual / max) * 100;
