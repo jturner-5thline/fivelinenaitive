@@ -159,27 +159,24 @@ export function EndOfDayAgendaSection({
   const { user } = useAuth();
   // composerKey = `${eventId}::${attendeeEmail}` so only one composer is open at a time
   const [composerKey, setComposerKey] = useState<string | null>(null);
+  const { clear: clearItem, isCleared } = usePersistentClears('eod-agenda');
 
   const userFirstName = useMemo(() => {
     const meta: any = user?.user_metadata || {};
     return firstNameOf(meta.full_name || meta.name, user?.email || undefined);
   }, [user]);
 
-  // Reuse the same calendar data already fetched by AgendaIntel via the
-  // module-level cache in useGoogleCalendar. Only trigger a fetch if the
-  // hook has nothing cached yet for today's window.
+  // Fetch the full End of Day backlog window: meetings from up to 90 days
+  // ago through end of today. Today's same-day cache from useGoogleCalendar
+  // is insufficient — we always need the wider window here.
   useEffect(() => {
     if (!enabled || !status?.connected) return;
-    if (hookEvents && hookEvents.length > 0) {
-      setEvents(hookEvents);
-      return;
-    }
     let cancelled = false;
     (async () => {
       setLoading(true);
-      const timeMin = startOfDay(new Date()).toISOString();
+      const timeMin = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS)).toISOString();
       const timeMax = endOfDay(new Date()).toISOString();
-      const res = await listEvents({ timeMin, timeMax, maxResults: 100 });
+      const res = await listEvents({ timeMin, timeMax, maxResults: 500 });
       if (!cancelled) {
         setEvents(res?.events || []);
         setLoading(false);
@@ -188,31 +185,60 @@ export function EndOfDayAgendaSection({
     return () => {
       cancelled = true;
     };
-  }, [enabled, status?.connected, hookEvents, listEvents]);
+  }, [enabled, status?.connected, listEvents]);
 
-  // Filter to today's meetings only and sort chronologically.
-  const todays = useMemo(() => {
-    const dayStart = startOfDay(new Date());
-    const dayEnd = endOfDay(new Date());
+  // Build the outstanding-meeting backlog for the last 90 days, excluding
+  // anything the user has explicitly cleared. Sorted oldest first so the
+  // most overdue follow-ups surface at the top of their group.
+  const outstanding = useMemo(() => {
+    const windowStart = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS));
+    const windowEnd = endOfDay(new Date());
     return (events || [])
       .filter(ev => {
         if (!ev.start) return false;
         try {
           const s = parseISO(ev.start);
-          return s >= dayStart && s <= dayEnd;
+          return s >= windowStart && s <= windowEnd;
         } catch {
           return false;
         }
       })
       .filter(ev => {
-        // Only show events with at least one attendee other than the signed-in user.
         const atts = ev.attendees || [];
-        const others = atts.filter(a => !a.self);
-        return others.length > 0;
+        return atts.some(a => !a.self);
       })
+      .filter(ev => !isCleared(ev.id))
       .slice()
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
-  }, [events]);
+  }, [events, isCleared]);
+
+  // Group by outstanding-age buckets.
+  type Bucket = { key: string; label: string; items: CalendarEvent[] };
+  const buckets: Bucket[] = useMemo(() => {
+    const today: CalendarEvent[] = [];
+    const week: CalendarEvent[] = [];
+    const month: CalendarEvent[] = [];
+    const quarter: CalendarEvent[] = [];
+    const ref = startOfDay(new Date());
+    for (const ev of outstanding) {
+      try {
+        const s = parseISO(ev.start);
+        const days = differenceInCalendarDays(ref, startOfDay(s));
+        if (days <= 0) today.push(ev);
+        else if (days <= 7) week.push(ev);
+        else if (days <= 30) month.push(ev);
+        else quarter.push(ev);
+      } catch {
+        today.push(ev);
+      }
+    }
+    return [
+      { key: 'today', label: 'Today', items: today },
+      { key: 'week', label: 'Last 7 days', items: week },
+      { key: 'month', label: '8–30 days', items: month },
+      { key: 'quarter', label: '31–90 days', items: quarter },
+    ].filter(b => b.items.length > 0);
+  }, [outstanding]);
 
   // Collect unique attendee emails to look up in CRM in a single batch.
   const allEmails = useMemo(() => {
@@ -258,37 +284,51 @@ export function EndOfDayAgendaSection({
 
   if (!status?.connected) {
     return (
-      <Section title="Today's Agenda">
-        <EmptySection message="Connect Google Calendar to see today's meetings here." />
+      <Section title="End of Day · Outstanding">
+        <EmptySection message="Connect Google Calendar to see outstanding meeting follow-ups here." />
       </Section>
     );
   }
 
-  if (loading && todays.length === 0) {
+  if (loading && outstanding.length === 0) {
     return (
-      <Section title="Today's Agenda">
+      <Section title="End of Day · Outstanding">
         <div className="flex items-center gap-2 text-xs text-muted-foreground py-6 justify-center">
           <Loader2 className="h-3.5 w-3.5 animate-spin" />
-          Loading today's meetings…
+          Loading outstanding meetings…
         </div>
       </Section>
     );
   }
 
-  if (todays.length === 0) {
+  if (outstanding.length === 0) {
     return (
-      <Section title="Today's Agenda">
-        <EmptySection message="No meetings on the calendar today." />
+      <Section title="End of Day · Outstanding">
+        <EmptySection message="No outstanding meeting follow-ups in the last 90 days." />
       </Section>
     );
   }
 
   const now = new Date();
+  const refDay = startOfDay(now);
 
   return (
-    <Section title="Today's Agenda">
-      <div className="space-y-3">
-        {todays.map(ev => {
+    <Section title="End of Day · Outstanding">
+      <p className="text-[11px] text-muted-foreground/80 -mt-1 mb-2">
+        Showing all unresolved End of Day items from the last 90 days. Clear an item to remove it from the backlog.
+      </p>
+      <div className="space-y-5">
+        {buckets.map(bucket => (
+          <div key={bucket.key} className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-[0.14em] font-semibold text-muted-foreground/80">
+                {bucket.label}
+              </span>
+              <span className="text-[10px] text-muted-foreground/60">· {bucket.items.length}</span>
+              <div className="flex-1 h-px bg-white/[0.06]" />
+            </div>
+            <div className="space-y-3">
+        {bucket.items.map(ev => {
           let startDate: Date | null = null;
           let endDate: Date | null = null;
           try {
@@ -301,6 +341,9 @@ export function EndOfDayAgendaSection({
           const isCurrent =
             !!startDate && !!endDate && !isAfter(startDate, now) && isAfter(endDate, now);
           const attendees = ev.attendees || [];
+          const ageDays = startDate ? differenceInCalendarDays(refDay, startOfDay(startDate)) : 0;
+          const isCarryForward = ageDays > 0;
+          const outstandingSince = startDate ? format(startDate, 'MMM d') : '';
 
           return (
             <ContextMenu key={ev.id}>
@@ -309,8 +352,9 @@ export function EndOfDayAgendaSection({
                   className={cn(
                     GLASS_CARD,
                     'p-4 transition-opacity',
-                    isPast && 'opacity-50',
+                    isPast && !isCarryForward && 'opacity-50',
                     isCurrent && 'ring-1 ring-primary/40 bg-primary/[0.04]',
+                    isCarryForward && 'border-l-2 border-amber-500/40',
                     selectedEventId === ev.id && 'ring-2 ring-primary/60 bg-primary/[0.06]',
                   )}
                 >
@@ -331,12 +375,20 @@ export function EndOfDayAgendaSection({
                         Now
                       </span>
                     )}
+                    {isCarryForward && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-500/15 text-amber-300 font-medium shrink-0">
+                        Carry-forward · {ageDays}d
+                      </span>
+                    )}
                     <ChevronRight className={cn(
                       'h-3 w-3 text-white/60 shrink-0 transition-transform',
                       selectedEventId === ev.id && 'rotate-90 text-primary',
                     )} />
                   </div>
                   <div className="text-[11px] text-white/80 mt-0.5 ml-5">
+                    {outstandingSince && (
+                      <span className="text-white/70">Outstanding since {outstandingSince} · </span>
+                    )}
                     {ev.all_day
                       ? 'All day'
                       : `${fmtTime(ev.start, false)}${
@@ -361,6 +413,21 @@ export function EndOfDayAgendaSection({
                   >
                     <ListPlus className="h-3.5 w-3.5 text-white" />
                     Create Follow Up
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-white/80 hover:text-emerald-300 hover:bg-emerald-500/15"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearItem(ev.id);
+                      toast.success('Cleared from End of Day backlog');
+                    }}
+                    title="Clear from End of Day (resolved)"
+                    aria-label="Clear from End of Day backlog"
+                  >
+                    <Check className="h-3.5 w-3.5" strokeWidth={2.5} />
                   </Button>
                   <div className="text-[11px] text-white/85 flex items-center gap-1">
                     <Users className="h-3 w-3 text-white" />
@@ -461,6 +528,9 @@ export function EndOfDayAgendaSection({
             </ContextMenu>
           );
         })}
+            </div>
+          </div>
+        ))}
       </div>
     </Section>
   );
