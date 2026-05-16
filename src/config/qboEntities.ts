@@ -9,7 +9,7 @@
  */
 export interface QBOEntity {
   /** Internal slug used in code & query keys. */
-  key: 'debt' | 'finserv' | 'tech';
+  key: 'debt' | 'finserv' | 'tech' | 'capital';
   /** Short display label used in legends / chips. */
   label: string;
   /** Long-form display name (matches QBO company_name). */
@@ -41,6 +41,13 @@ export const QBO_ENTITIES: QBOEntity[] = [
     label: 'Tech',
     fullName: '5th Line Technologies LLC',
     realmId: '9130350272677286',
+    className: undefined,
+  },
+  {
+    key: 'capital',
+    label: 'Capital',
+    fullName: '5th Line Capital, LLC',
+    realmId: '123146077561874',
     className: undefined,
   },
 ];
