@@ -54,6 +54,7 @@ function PipelineMemoCardImpl({
       className="
         cursor-pointer transition-all duration-200
         rounded-xl overflow-hidden
+        min-h-[20rem] md:min-h-[22rem]
         border border-white/10 hover:border-primary/40
         bg-gradient-to-b from-white/[0.07] via-white/[0.04] to-white/[0.02]
         shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)] hover:shadow-[0_14px_36px_-16px_rgba(0,0,0,0.7)]
