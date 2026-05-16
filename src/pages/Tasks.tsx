@@ -639,7 +639,6 @@ export default function Tasks() {
     { key: 'board', label: 'Board', icon: LayoutGrid },
     { key: 'calendar', label: 'Calendar', icon: Calendar },
     { key: 'reporting', label: 'Reports', icon: BarChart3 },
-    { key: 'focus', label: 'Focus', icon: Star },
   ] as const;
 
   return (
@@ -663,7 +662,7 @@ export default function Tasks() {
           or the Claap routing badge. Tabs may shrink/scroll before they
           ever reach into this reserved gutter.
         */}
-        <div className="flex items-center justify-between pl-6 pr-16 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
           <div className="min-w-0 flex-shrink">
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
@@ -678,50 +677,52 @@ export default function Tasks() {
               )}
             </p>
           </div>
-
-          <div className="flex items-center gap-2 flex-shrink min-w-0 flex-nowrap overflow-x-auto no-scrollbar">
-            {/* Primary navigation: List / Board / Calendar / Reports / Focus */}
-            <div
-              className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
-              style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}
-            >
-              {viewTabs.map(tab => {
-                const Icon = tab.icon;
-                const isActive = viewMode === tab.key && !showFocusMode;
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => {
-                      if (tab.key === 'focus') {
-                        setShowFocusMode(true);
-                        return;
-                      }
-                      setViewMode(tab.key as ViewMode);
-                    }}
-                    className={cn(
-                      'flex items-center gap-1.5 px-3 h-[26px] text-[12px] font-medium rounded-md transition-all'
-                    )}
-                    style={{
-                      backgroundColor: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
-                      color: isActive ? '#eef1f6' : '#8a93a6',
-                    }}
-                  >
-                    <Icon className="h-3.5 w-3.5" />
-                    <span>{tab.label}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <ClaapRoutingTasksBadge />
-          </div>
         </div>
 
-        {/* Compact filter / search / action toolbar */}
-        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
-          <div className="relative flex-1 max-w-[280px]">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8a93a6' }} />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search tasks…" className="h-8 text-[12px] pl-8 text-white placeholder:text-[#8a93a6]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }} />
+        {/*
+          Unified header rail: tab navigation (ending with Meeting Tasks) flows
+          directly into the task controls. `pr-16` reserves a guaranteed clear
+          zone on the right edge so the modal/page close X can never sit on
+          top of the last control (Add Task) or the rightmost tab. The rail
+          uses flex-wrap (not horizontal scroll) so controls reflow on narrow
+          widths instead of disappearing behind a scroll affordance.
+        */}
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap pr-16" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
+          {/* Primary navigation tabs — List / Board / Calendar / Reports */}
+          <div
+            className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
+            style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}
+          >
+            {viewTabs.map(tab => {
+              const Icon = tab.icon;
+              const isActive = viewMode === tab.key;
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setViewMode(tab.key as ViewMode)}
+                  className="flex items-center gap-1.5 px-3 h-[26px] text-[12px] font-medium rounded-md transition-all"
+                  style={{
+                    backgroundColor: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
+                    color: isActive ? '#eef1f6' : '#8a93a6',
+                  }}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
           </div>
+          {/* Meeting Tasks — last item in the tab rail, then transitions into controls */}
+          <div className="shrink-0">
+            <ClaapRoutingTasksBadge />
+          </div>
+
+          {/* Search lives inline so users don't lose it; sits between tab rail and controls */}
+          <div className="relative w-[200px] shrink-0">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8a93a6' }} />
+            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="h-8 text-[12px] pl-8 text-white placeholder:text-[#8a93a6]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }} />
+          </div>
+
           <Select value={ownerFilter} onValueChange={v => setOwnerFilter(v as TaskOwnerFilter)}>
             <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Users className="h-3 w-3 mr-1.5" /><SelectValue />
@@ -892,8 +893,6 @@ export default function Tasks() {
               )}
             </PopoverContent>
           </Popover>
-
-          <div className="flex-1" />
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
