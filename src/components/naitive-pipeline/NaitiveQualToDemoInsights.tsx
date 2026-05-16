@@ -15,13 +15,13 @@ const ICP_HEX: Record<string, string> = {
 };
 
 const STAGE_ORDER = [
-  'prospects', 'qual-booked', 'demo-booked', 'onboarding-booked',
-  'trial-active', 'converted', 'closed-lost', 'tabled-on-hold',
+  'prospects', 'dormant', 'on-hold', 'qual-call', 'demo-access',
+  'pilot-agreed', 'onboarding', 'active', 'churned', 'closed-lost',
 ] as const;
 
 function reachedDemo(deal: Deal): boolean {
   const idx = STAGE_ORDER.indexOf(deal.stage as any);
-  const demoIdx = STAGE_ORDER.indexOf('demo-booked');
+  const demoIdx = STAGE_ORDER.indexOf('demo-access');
   // include onboarding/trial/converted; closed-lost has higher index but
   // still counts since linear journey crossed demo.
   return idx >= demoIdx && idx !== -1;
