@@ -196,34 +196,48 @@ serve(async (req: Request): Promise<Response> => {
         const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         const timeMin = body.time_min || now.toISOString();
         const timeMax = body.time_max || weekFromNow.toISOString();
-        const maxResults = body.max_results || 50;
+        // Nylas caps page size at 200 — paginate internally to satisfy larger requests.
+        const requested = body.max_results || 50;
+        const pageLimit = Math.min(requested, 200);
 
         const startUnix = Math.floor(new Date(timeMin).getTime() / 1000);
         const endUnix = Math.floor(new Date(timeMax).getTime() / 1000);
 
-        const url = new URL(`${baseUrl}/events`);
-        url.searchParams.set("calendar_id", calendarId);
-        url.searchParams.set("start", String(startUnix));
-        url.searchParams.set("end", String(endUnix));
-        url.searchParams.set("limit", String(maxResults));
-        if (body.page_token) url.searchParams.set("page_token", body.page_token);
+        const allRaw: any[] = [];
+        let cursor: string | null = body.page_token || null;
+        let nextCursor: string | null = null;
 
-        const response = await fetch(url.toString(), { headers });
-        const data = await response.json();
+        while (allRaw.length < requested) {
+          const url = new URL(`${baseUrl}/events`);
+          url.searchParams.set("calendar_id", calendarId);
+          url.searchParams.set("start", String(startUnix));
+          url.searchParams.set("end", String(endUnix));
+          url.searchParams.set("limit", String(Math.min(pageLimit, requested - allRaw.length)));
+          if (cursor) url.searchParams.set("page_token", cursor);
 
-        if (!response.ok) {
-          console.error("Nylas events error:", data);
-          return new Response(JSON.stringify({ error: data.message || "Failed to list events" }), {
-            status: response.status,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
+          const response = await fetch(url.toString(), { headers });
+          const data = await response.json();
+
+          if (!response.ok) {
+            console.error("Nylas events error:", data);
+            return new Response(JSON.stringify({ error: data.message || "Failed to list events" }), {
+              status: response.status,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
+          const batch = data.data || [];
+          allRaw.push(...batch);
+          nextCursor = data.next_cursor || null;
+          if (!nextCursor || batch.length === 0) break;
+          cursor = nextCursor;
         }
 
-        const events = (data.data || []).map((e: any) => normalizeNylasEvent(e, calendarId));
+        const events = allRaw.map((e: any) => normalizeNylasEvent(e, calendarId));
 
         return new Response(JSON.stringify({
           events,
-          next_page_token: data.next_cursor || null,
+          next_page_token: nextCursor,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
