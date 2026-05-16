@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock, Briefcase } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Chart, registerables } from 'chart.js';
@@ -9,6 +9,7 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   useDashboardKpiYtd,
   useIsKpiPlanAdmin,
@@ -54,9 +55,14 @@ const TABLE_COLUMNS: { key: SortColumn; label: string; align?: 'left' }[] = [
 // Analytics is the legacy /analytics page repurposed as the second tab here.
 // Lazy so the heavy chart bundle only loads when the user picks the tab.
 const AnalyticsTabContent = lazy(() => import('@/pages/Analytics'));
+const NikiPerformanceTab = lazy(() =>
+  import('@/components/dashboard/NikiPerformanceTab').then(m => ({ default: m.NikiPerformanceTab })),
+);
 
 export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }: DashboardModalProps) {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics'>(initialTab);
+  const { user } = useAuth();
+  const canSeePerformance = user?.email === 'nheikali@5thline.co';
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance'>(initialTab);
   useEffect(() => {
     if (open) setActiveTab(initialTab);
   }, [open, initialTab]);
@@ -395,7 +401,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
           <style dangerouslySetInnerHTML={{ __html: DASHBOARD_CSS }} />
           <Tabs
             value={activeTab}
-            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics')}
+            onValueChange={(v) => setActiveTab(v as 'dashboard' | 'analytics' | 'performance')}
             className="flex flex-col flex-1 min-h-0"
           >
             <div className="px-5 pt-5 pb-2 shrink-0">
@@ -408,6 +414,12 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                   <BarChart3 className="h-3.5 w-3.5" />
                   Analytics
                 </TabsTrigger>
+                {canSeePerformance && (
+                  <TabsTrigger value="performance" className="gap-1.5">
+                    <Briefcase className="h-3.5 w-3.5" />
+                    Performance
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
 
@@ -722,6 +734,25 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                 </div>
               </Suspense>
             </TabsContent>
+
+            {canSeePerformance && (
+              <TabsContent
+                value="performance"
+                className="db-tab-panel flex-1 min-h-0 min-w-0 mt-0 overflow-x-hidden overflow-y-auto data-[state=inactive]:hidden bg-transparent"
+              >
+                <Suspense
+                  fallback={
+                    <div className="flex items-center justify-center h-full text-sm text-muted-foreground">
+                      Loading Performance…
+                    </div>
+                  }
+                >
+                  <div className="db-r min-w-0 max-w-full">
+                    <NikiPerformanceTab />
+                  </div>
+                </Suspense>
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </DialogContent>
