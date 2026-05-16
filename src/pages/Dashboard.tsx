@@ -973,6 +973,24 @@ export default function Dashboard() {
                 <Newspaper className="h-3 w-3" />
                 News Feed
               </button>
+              {canSeePerformance && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDashboardTabChange(dashboardTab === 'performance' ? 'overview' : 'performance')
+                  }
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0',
+                    dashboardTab === 'performance'
+                      ? 'bg-primary/10 text-primary border border-primary/20'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
+                  )}
+                  aria-pressed={dashboardTab === 'performance'}
+                >
+                  <Briefcase className="h-3 w-3" />
+                  Performance
+                </button>
+              )}
               <NewPresetButton onCreate={handleCreatePreset} className="ml-1" />
             </div>
             <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
