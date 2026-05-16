@@ -90,8 +90,8 @@ function PipelineMemoCardImpl({
             deal={deal}
             rawDigest={rawDigest}
             isLoading={!!isDigestLoading}
+            emails={rawDigest?.emails || []}
           />
-          <EmailsPanel emails={rawDigest?.emails || []} isLoading={!!isDigestLoading} />
           <LendersPanel deal={deal} />
         </div>
       </div>
