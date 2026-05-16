@@ -422,6 +422,7 @@ export function ChannelsDashboard() {
         </div>
       ) : (
         <>
+          <PartnersFunnelChart />
           {/* ── Stage Funnel ── */}
           <div className={`${glassCard} p-4`}>
             <h3 className="text-base font-semibold tracking-tight text-foreground mb-4">Stage Progression — Sourced Deals</h3>
