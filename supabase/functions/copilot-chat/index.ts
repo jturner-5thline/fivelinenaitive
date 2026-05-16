@@ -26,6 +26,11 @@ async function writeAuditDraft(input: {
   clarificationRequired?: boolean;
   clarificationReason?: string | null;
   pageContext?: Record<string, unknown>;
+  rationale?: string | null;
+  duplicateStatus?: string | null;
+  duplicateCandidates?: unknown[];
+  inferredFields?: string[];
+  source?: string | null;
 }): Promise<string | null> {
   try {
     const admin = adminClient();
@@ -46,6 +51,11 @@ async function writeAuditDraft(input: {
       clarification_reason: input.clarificationReason || null,
       outcome: "drafted",
       page_context: input.pageContext || null,
+      rationale: input.rationale || null,
+      duplicate_status: input.duplicateStatus || null,
+      duplicate_candidates: input.duplicateCandidates || [],
+      inferred_fields: input.inferredFields || [],
+      source: input.source || "copilot",
     }).select("id").single();
     if (error) {
       console.warn("[ai_audit] writeAuditDraft failed:", error.message);
@@ -375,6 +385,23 @@ const tools = [
               completed_at: { type: "string" },
               why: { type: "string", description: "One sentence covering which signals matched (verb+object, entity, date, etc.)." },
               differences: { type: "string", description: "One sentence calling out due-date / assignee / linked-entity diffs vs the proposed task. Empty string if none." },
+            },
+          },
+          duplicate_candidates: {
+            type: "array",
+            description: "All existing-task candidates considered during the duplicate check, ranked best-first. Persisted for audit even when none is a strong duplicate. Pull fields directly from get_tasks output — never fabricate.",
+            items: {
+              type: "object",
+              properties: {
+                task_id: { type: "string" },
+                title: { type: "string" },
+                status: { type: "string" },
+                due_date: { type: "string" },
+                assignee_name: { type: "string" },
+                deal_name: { type: "string" },
+                score: { type: "number", description: "0.0-1.0 similarity score." },
+                why: { type: "string" },
+              },
             },
           },
           inferred: {
@@ -1960,6 +1987,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           rationale: typeof args.rationale === "string" ? args.rationale : null,
           duplicate_status: ["none", "low", "possible", "high"].includes(args.duplicate_status) ? args.duplicate_status : "none",
           duplicate_match: args.duplicate_status && args.duplicate_status !== "none" && typeof args.duplicate_match === "object" && args.duplicate_match ? args.duplicate_match : null,
+          duplicate_candidates: Array.isArray(args.duplicate_candidates) ? args.duplicate_candidates.slice(0, 10) : [],
           inferred: Array.isArray(args.inferred) ? args.inferred : [],
           intent: args.intent || (args.assignee_user_id ? "delegated_task" : (args.deal_id ? "deal_task" : "personal_task")),
           confidence: typeof args.confidence === "object" && args.confidence ? args.confidence : {},
@@ -4856,6 +4884,30 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       };
     }
     case "create_task": {
+      // ── Server-side safety guardrails (orchestration layer) ──
+      // These run AFTER explicit user approval but BEFORE persistence so a
+      // compromised/buggy client cannot bypass low-confidence or duplicate
+      // rules. Pair with the UI duplicate-review card and the LLM's
+      // pre-call gating prompt.
+      const conf = (params as any).confidence || {};
+      const dupStatus = (params as any).duplicate_status || "none";
+      const forceCreate = !!(params as any).force_create;
+      const linkedEntityProvided = !!(params.deal_id || params.contact_id);
+      if (linkedEntityProvided && typeof conf.deal === "number" && conf.deal < 0.7 && !forceCreate) {
+        return {
+          success: false,
+          error: "Linked entity confidence is too low to create this task automatically. Confirm the deal or contact and try again.",
+          actionType: "create_task",
+        };
+      }
+      if (dupStatus === "high" && !forceCreate) {
+        return {
+          success: false,
+          error: "A strong duplicate of this task already exists. Re-open the existing task or confirm 'Create anyway' to proceed.",
+          actionType: "create_task",
+        };
+      }
+
       // Normalise due_date — accept YYYY-MM-DD, ISO timestamps, or relative words.
       let dueDate: string | null = null;
       const rawDue = params.due_date ? String(params.due_date).trim() : "";
@@ -6557,6 +6609,11 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                   },
                   confidence: p.confidence || {},
                   pageContext: { page, entityType, entityId, activeTab },
+                  rationale: p.rationale || null,
+                  duplicateStatus: p.duplicate_status || null,
+                  duplicateCandidates: Array.isArray(p.duplicate_candidates) ? p.duplicate_candidates : (p.duplicate_match ? [p.duplicate_match] : []),
+                  inferredFields: Array.isArray(p.inferred) ? p.inferred : [],
+                  source: "copilot",
                 });
                 if (auditId) {
                   p.audit_id = auditId;

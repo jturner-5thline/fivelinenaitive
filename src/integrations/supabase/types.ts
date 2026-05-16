@@ -770,18 +770,23 @@ export type Database = {
           conversation_id: string | null
           created_at: string
           created_task_id: string | null
+          duplicate_candidates: Json
+          duplicate_status: string | null
           error_message: string | null
           extracted_fields: Json | null
           id: string
+          inferred_fields: Json
           intent: string | null
           outcome: string
           outcome_detail: string | null
           page_context: Json | null
           prompt: string | null
+          rationale: string | null
           resolved_assignee_name: string | null
           resolved_assignee_user_id: string | null
           resolved_deal_id: string | null
           resolved_deal_name: string | null
+          source: string | null
           updated_at: string
           user_id: string
         }
@@ -794,18 +799,23 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           created_task_id?: string | null
+          duplicate_candidates?: Json
+          duplicate_status?: string | null
           error_message?: string | null
           extracted_fields?: Json | null
           id?: string
+          inferred_fields?: Json
           intent?: string | null
           outcome?: string
           outcome_detail?: string | null
           page_context?: Json | null
           prompt?: string | null
+          rationale?: string | null
           resolved_assignee_name?: string | null
           resolved_assignee_user_id?: string | null
           resolved_deal_id?: string | null
           resolved_deal_name?: string | null
+          source?: string | null
           updated_at?: string
           user_id: string
         }
@@ -818,18 +828,23 @@ export type Database = {
           conversation_id?: string | null
           created_at?: string
           created_task_id?: string | null
+          duplicate_candidates?: Json
+          duplicate_status?: string | null
           error_message?: string | null
           extracted_fields?: Json | null
           id?: string
+          inferred_fields?: Json
           intent?: string | null
           outcome?: string
           outcome_detail?: string | null
           page_context?: Json | null
           prompt?: string | null
+          rationale?: string | null
           resolved_assignee_name?: string | null
           resolved_assignee_user_id?: string | null
           resolved_deal_id?: string | null
           resolved_deal_name?: string | null
+          source?: string | null
           updated_at?: string
           user_id?: string
         }
