@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
+import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, Eye, EyeOff } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -31,6 +31,35 @@ import {
   NikiPerformancePlanProvider,
   useNikiPerformancePlan,
 } from '@/hooks/useNikiPerformancePlan';
+
+type PerfMode = 'quarterly' | 'ytd';
+const QUARTER_ORDER_LIST: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
+
+/**
+ * Resolve plan/actual for a row at a given period, accounting for
+ * quarter-by-quarter vs cumulative YTD display mode.
+ */
+function resolvePeriod(
+  row: MetricRow,
+  planMap: ReturnType<typeof useNikiPerformancePlan>['plan'],
+  k: QuarterKey | 'YEAR',
+  mode: PerfMode,
+): { planVal: number; actualVal: number } {
+  const p = planMap[row.key];
+  if (k === 'YEAR') return { planVal: p.total, actualVal: row.yearTotal };
+  if (mode === 'quarterly') {
+    return { planVal: p[k], actualVal: row.byQuarter[k].value };
+  }
+  const idx = QUARTER_ORDER_LIST.indexOf(k);
+  let plan = 0;
+  let actual = 0;
+  for (let i = 0; i <= idx; i++) {
+    const qk = QUARTER_ORDER_LIST[i];
+    plan += p[qk];
+    actual += row.byQuarter[qk].value;
+  }
+  return { planVal: plan, actualVal: actual };
+}
 
 function fmt(value: number, unit: 'count' | 'currency'): string {
   if (unit === 'currency') return formatUSD(value);
@@ -62,13 +91,11 @@ interface KpiCardProps {
   onClick?: () => void;
 }
 
-function KpiCard({ row, onClick }: KpiCardProps) {
-  const { plan: planMap } = useNikiPerformancePlan();
-  const plan = planMap[row.key];
-  const v = variance(row.yearTotal, plan.total);
+function KpiCard({ row, onClick, planVal, actualVal, periodLabel }: KpiCardProps & { planVal: number; actualVal: number; periodLabel: string }) {
+  const v = variance(actualVal, planVal);
   const status = statusFromPct(v.pct);
   const s = STATUS_STYLES[status];
-  const pctOfPlan = plan.total ? Math.round((row.yearTotal / plan.total) * 100) : null;
+  const pctOfPlan = planVal ? Math.round((actualVal / planVal) * 100) : null;
 
   return (
     <button
@@ -89,11 +116,11 @@ function KpiCard({ row, onClick }: KpiCardProps) {
         </span>
       </div>
       <div className="mt-2 text-2xl font-bold text-foreground tabular-nums">
-        {fmt(row.yearTotal, row.unit)}
+        {fmt(actualVal, row.unit)}
       </div>
       <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
-        Plan: <span className="text-foreground/80">{fmt(plan.total, row.unit)}</span>
-        {pctOfPlan !== null && <span className="ml-1.5 text-muted-foreground">· {pctOfPlan}% of plan</span>}
+        {periodLabel} Plan: <span className="text-foreground/80">{fmt(planVal, row.unit)}</span>
+        {pctOfPlan !== null && <span className="ml-1.5 text-muted-foreground">· {pctOfPlan}%</span>}
       </div>
       <div className="mt-2 h-1.5 rounded-full bg-muted/40 overflow-hidden">
         <div
@@ -245,22 +272,40 @@ function QuarterlyChart({ rows, title, description, unit }: {
   );
 }
 
-function FunnelSection({ rows, openDrill }: {
+function FunnelSection({ rows, openDrill, mode, period, periodLabel, onToggleHide }: {
   rows: MetricRow[];
   openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
+  mode: PerfMode;
+  period: QuarterKey | 'YEAR';
+  periodLabel: string;
+  onToggleHide?: () => void;
 }) {
   const { plan: planMap } = useNikiPerformancePlan();
-  const max = Math.max(1, ...rows.map(r => planMap[r.key].total));
+  const resolved = rows.map((r) => ({ row: r, ...resolvePeriod(r, planMap, period, mode) }));
+  const max = Math.max(1, ...resolved.map((r) => r.planVal));
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">Pipeline Funnel — 2026 YTD</CardTitle>
-        <CardDescription className="text-xs">Conversion progression from deals on board to closed.</CardDescription>
+      <CardHeader className="pb-2 flex-row items-start justify-between space-y-0 gap-2">
+        <div>
+          <CardTitle className="text-sm font-semibold">Pipeline Funnel — {periodLabel}</CardTitle>
+          <CardDescription className="text-xs">
+            Conversion progression {mode === 'ytd' ? '(cumulative YTD)' : '(quarter only)'}.
+          </CardDescription>
+        </div>
+        {onToggleHide && (
+          <button
+            type="button"
+            onClick={onToggleHide}
+            aria-label="Hide funnel"
+            title="Hide funnel"
+            className="inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        )}
       </CardHeader>
       <CardContent className="pt-0 pb-4 space-y-2">
-        {rows.map((r) => {
-          const plan = planMap[r.key].total;
-          const actual = r.yearTotal;
+        {resolved.map(({ row: r, planVal: plan, actualVal: actual }) => {
           const planPct = (plan / max) * 100;
           const actualPct = (actual / max) * 100;
           const v = variance(actual, plan);
@@ -269,7 +314,7 @@ function FunnelSection({ rows, openDrill }: {
             <button
               key={r.key}
               type="button"
-              onClick={() => openDrill(r, 'YEAR')}
+              onClick={() => openDrill(r, period)}
               className="w-full text-left group"
             >
               <div className="flex items-center justify-between text-xs mb-1">
@@ -316,10 +361,11 @@ function NikiPerformanceTabInner() {
 
   // ─── User-scoped display preferences (persisted in localStorage) ─────────
   const prefsKey = user?.id ? `nikiPerf.prefs.${user.id}` : 'nikiPerf.prefs.anon';
-  const [showCharts, setShowCharts] = useState(true);
   const [showPlan, setShowPlan] = useState(true);
   const [showActual, setShowActual] = useState(true);
   const [showVarDelta, setShowVarDelta] = useState(true);
+  const [perfMode, setPerfMode] = useState<PerfMode>('quarterly');
+  const [hiddenCharts, setHiddenCharts] = useState<string[]>([]);
   const [prefsLoaded, setPrefsLoaded] = useState(false);
 
   useEffect(() => {
@@ -327,10 +373,11 @@ function NikiPerformanceTabInner() {
       const raw = localStorage.getItem(prefsKey);
       if (raw) {
         const p = JSON.parse(raw);
-        if (typeof p.showCharts === 'boolean') setShowCharts(p.showCharts);
         if (typeof p.showPlan === 'boolean') setShowPlan(p.showPlan);
         if (typeof p.showActual === 'boolean') setShowActual(p.showActual);
         if (typeof p.showVarDelta === 'boolean') setShowVarDelta(p.showVarDelta);
+        if (p.perfMode === 'quarterly' || p.perfMode === 'ytd') setPerfMode(p.perfMode);
+        if (Array.isArray(p.hiddenCharts)) setHiddenCharts(p.hiddenCharts.filter((x: any) => typeof x === 'string'));
       }
     } catch {}
     setPrefsLoaded(true);
@@ -341,10 +388,14 @@ function NikiPerformanceTabInner() {
     try {
       localStorage.setItem(
         prefsKey,
-        JSON.stringify({ showCharts, showPlan, showActual, showVarDelta }),
+        JSON.stringify({ showPlan, showActual, showVarDelta, perfMode, hiddenCharts }),
       );
     } catch {}
-  }, [prefsLoaded, prefsKey, showCharts, showPlan, showActual, showVarDelta]);
+  }, [prefsLoaded, prefsKey, showPlan, showActual, showVarDelta, perfMode, hiddenCharts]);
+
+  const isChartHidden = (id: string) => hiddenCharts.includes(id);
+  const toggleChartHidden = (id: string) =>
+    setHiddenCharts((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
 
   // Guard: at least one data group must remain visible
   const togglePlan = () => {
@@ -414,7 +465,10 @@ function NikiPerformanceTabInner() {
     });
   };
 
-  const periodLabel = (k: PeriodKey) => (k === 'YEAR' ? '2026' : `${k} 2026`);
+  const periodLabel = (k: PeriodKey) => {
+    if (k === 'YEAR') return '2026';
+    return perfMode === 'ytd' ? `${k} YTD` : `${k} 2026`;
+  };
 
   // Order selected periods consistently: Q1..Q4, then YEAR
   const orderedSelected: PeriodKey[] = useMemo(() => {
@@ -425,12 +479,22 @@ function NikiPerformanceTabInner() {
   const isSingle = orderedSelected.length === 1;
 
   const cellFor = (row: MetricRow, k: PeriodKey) => {
-    const plan = planMap[row.key];
-    const planVal = k === 'YEAR' ? plan.total : plan[k];
-    const actualVal = k === 'YEAR' ? row.yearTotal : row.byQuarter[k].value;
+    const { planVal, actualVal } = resolvePeriod(row, planMap, k, perfMode);
     const v = variance(actualVal, planVal);
     return { planVal, actualVal, v, status: statusFromPct(v.pct) };
   };
+
+  // Primary period for KPI cards: highest quarter selected (or YEAR if only YEAR).
+  const kpiPeriod: PeriodKey = useMemo(() => {
+    const quarters = orderedSelected.filter((k) => k !== 'YEAR') as QuarterKey[];
+    if (quarters.length === 0) return 'YEAR';
+    return quarters[quarters.length - 1];
+  }, [orderedSelected]);
+
+  const kpiPeriodLabel = (() => {
+    if (kpiPeriod === 'YEAR') return '2026';
+    return perfMode === 'ytd' ? `${kpiPeriod} YTD` : `${kpiPeriod} 2026`;
+  })();
 
   const perPeriodCols = (showPlan ? 1 : 0) + (showActual ? 1 : 0) + (showVarDelta ? 2 : 0);
   const totalCols = isSingle
@@ -583,7 +647,17 @@ function NikiPerformanceTabInner() {
             {kpiKeys.map((k) => {
               const r = get(k);
               if (!r) return null;
-              return <KpiCard key={k} row={r} onClick={() => openDrill(r, 'YEAR')} />;
+              const { planVal, actualVal } = resolvePeriod(r, planMap, kpiPeriod, perfMode);
+              return (
+                <KpiCard
+                  key={k}
+                  row={r}
+                  planVal={planVal}
+                  actualVal={actualVal}
+                  periodLabel={kpiPeriodLabel}
+                  onClick={() => openDrill(r, kpiPeriod)}
+                />
+              );
             })}
           </div>
 
@@ -602,6 +676,28 @@ function NikiPerformanceTabInner() {
                 </CardDescription>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Master mode: Quarter by Quarter vs YTD */}
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                  {([
+                    { key: 'quarterly', label: 'Quarter by Quarter' },
+                    { key: 'ytd', label: 'YTD' },
+                  ] as const).map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setPerfMode(m.key as PerfMode)}
+                      className={cn(
+                        'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                        perfMode === m.key
+                          ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                      title={`Switch to ${m.label} mode`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
                 {/* Quarter selector */}
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([...allQuarterKeys, 'YEAR'] as PeriodKey[]).map((k) => {
@@ -647,21 +743,6 @@ function NikiPerformanceTabInner() {
                     </button>
                   ))}
                 </div>
-                {/* Chart visibility toggle */}
-                <button
-                  type="button"
-                  onClick={() => setShowCharts((v) => !v)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors',
-                    showCharts
-                      ? 'border-primary/40 bg-primary/10 text-foreground'
-                      : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground',
-                  )}
-                  title="Toggle supporting charts"
-                >
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Charts {showCharts ? 'on' : 'off'}
-                </button>
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
@@ -719,38 +800,88 @@ function NikiPerformanceTabInner() {
           </Card>
 
           {/* Per-metric quarterly bar charts */}
-          {showCharts && (
+          {(() => {
+            const allChartIds = [
+              ...productionRows,
+              ...conversionRows,
+              ...revenueRows,
+              'funnel',
+            ];
+            const hiddenIds = allChartIds.filter((id) => isChartHidden(id));
+            return (
             <div className="space-y-5">
+              {hiddenIds.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                    Hidden charts ({hiddenIds.length})
+                  </span>
+                  {hiddenIds.map((id) => {
+                    const r = id === 'funnel' ? null : get(id as MetricRowKey);
+                    const label = id === 'funnel' ? 'Pipeline Funnel' : r?.label ?? id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleChartHidden(id)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title={`Show ${label}`}
+                      >
+                        <EyeOff className="h-3 w-3" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {[
                 { title: 'Pipeline Production', keys: productionRows },
                 { title: 'Conversion Milestones', keys: conversionRows },
                 { title: 'Revenue', keys: revenueRows },
-              ].map((section) => (
+              ].map((section) => {
+                const visibleKeys = section.keys.filter((k) => !isChartHidden(k));
+                if (visibleKeys.length === 0) return null;
+                return (
                 <div key={section.title}>
                   <div className="flex items-baseline justify-between mb-2 px-1">
                     <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                       {section.title}
+                      {perfMode === 'ytd' && (
+                        <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">· cumulative YTD</span>
+                      )}
                     </h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                    {section.keys.map((k) => {
+                    {visibleKeys.map((k) => {
                       const r = get(k);
                       if (!r) return null;
                       return (
                         <MetricQuarterlyBarChart
                           key={k}
                           row={r}
+                          mode={perfMode}
                           onBarClick={(q) => openDrill(r, q)}
+                          onToggleHide={() => toggleChartHidden(k)}
                         />
                       );
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
-              <FunnelSection rows={funnelRows} openDrill={openDrill} />
+              {!isChartHidden('funnel') && (
+                <FunnelSection
+                  rows={funnelRows}
+                  openDrill={openDrill}
+                  mode={perfMode}
+                  period={kpiPeriod}
+                  periodLabel={kpiPeriodLabel}
+                  onToggleHide={() => toggleChartHidden('funnel')}
+                />
+              )}
             </div>
-          )}
+            );
+          })()}
         </>
       ) : (
         <div className="space-y-4">

@@ -12,6 +12,7 @@ import {
   Scatter,
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Eye } from 'lucide-react';
 import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
 import {
@@ -29,6 +30,8 @@ function fmt(value: number, unit: 'count' | 'currency'): string {
 interface MetricQuarterlyBarChartProps {
   row: MetricRow;
   onBarClick?: (quarter: QuarterKey) => void;
+  mode?: 'quarterly' | 'ytd';
+  onToggleHide?: () => void;
 }
 
 /** Custom Scatter shape: horizontal dashed segment at the Plan value, spanning bar width. */
@@ -52,25 +55,33 @@ function PlanTick(props: any) {
   );
 }
 
-export function MetricQuarterlyBarChart({ row, onBarClick }: MetricQuarterlyBarChartProps) {
+const QUARTER_ORDER: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
+
+export function MetricQuarterlyBarChart({ row, onBarClick, mode = 'quarterly', onToggleHide }: MetricQuarterlyBarChartProps) {
   const { plan } = useNikiPerformancePlan();
   const planTotals = plan[row.key];
   const data = useMemo(() => {
+    let cumPlan = 0;
+    let cumActual = 0;
     return NIKI_QUARTERS.map((q) => {
-      const plan = planTotals[q.key];
-      const actual = row.byQuarter[q.key].value;
-      const diff = actual - plan;
-      const pct = plan ? diff / plan : null;
+      const qPlan = planTotals[q.key];
+      const qActual = row.byQuarter[q.key].value;
+      cumPlan += qPlan;
+      cumActual += qActual;
+      const planVal = mode === 'ytd' ? cumPlan : qPlan;
+      const actualVal = mode === 'ytd' ? cumActual : qActual;
+      const diff = actualVal - planVal;
+      const pct = planVal ? diff / planVal : null;
       return {
         quarter: q.key,
-        actual,
-        plan,
+        actual: actualVal,
+        plan: planVal,
         diff,
         pct,
-        ahead: actual >= plan,
+        ahead: actualVal >= planVal,
       };
     });
-  }, [row, planTotals]);
+  }, [row, planTotals, mode]);
 
   const ytdActual = row.yearTotal;
   const ytdPlan = planTotals.total;
@@ -99,7 +110,12 @@ export function MetricQuarterlyBarChart({ row, onBarClick }: MetricQuarterlyBarC
       <CardHeader className="pb-2">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <CardTitle className="text-sm font-semibold truncate">{row.label}</CardTitle>
+            <CardTitle className="text-sm font-semibold truncate">
+              {row.label}
+              {mode === 'ytd' && (
+                <span className="ml-1.5 text-[10px] font-medium text-muted-foreground uppercase tracking-wide">YTD</span>
+              )}
+            </CardTitle>
             <CardDescription className="text-[11px] mt-0.5">
               YTD <span className="text-foreground font-semibold">{fmt(ytdActual, row.unit)}</span>
               <span className="text-muted-foreground"> / {fmt(ytdPlan, row.unit)}</span>
@@ -119,6 +135,17 @@ export function MetricQuarterlyBarChart({ row, onBarClick }: MetricQuarterlyBarC
               <span className="inline-block w-3 h-px border-t border-dashed border-foreground/80" />
               Plan
             </span>
+            {onToggleHide && (
+              <button
+                type="button"
+                onClick={onToggleHide}
+                aria-label="Hide chart"
+                title="Hide chart"
+                className="ml-1 inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
       </CardHeader>
