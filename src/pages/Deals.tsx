@@ -8,6 +8,7 @@ import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { DealFilters } from '@/components/deals/DealFilters';
+import { AIFilterChips } from '@/components/deals/AIFilterChips';
 import { MilestoneManagerFilter } from '@/components/deals/MilestoneManagerFilter';
 import { DealsList } from '@/components/deals/DealsList';
 import { DealMilestonesView } from '@/components/deals/DealMilestonesView';
