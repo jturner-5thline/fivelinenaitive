@@ -1561,6 +1561,37 @@ const tools = [
       },
     },
   },
+  // ── PHASE 2: READ-ONLY DRAFTS / SUMMARIES ──
+  {
+    type: "function",
+    function: {
+      name: "draft_status_report",
+      description: "Generate a PREVIEW-ONLY status report draft for a deal (no DB writes, no sends). Pulls deal info, active lenders, recent activity and outstanding items, and returns structured data the assistant should format into a status report the user can review and edit. Use for 'draft a status report on <deal>', 'status update for <deal>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          lookback_days: { type: "number", description: "Days of recent activity to include. Default 14." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "follow_up_summary",
+      description: "Read-only summary of upcoming and overdue follow-ups: open tasks, scheduled emails, and scheduled follow-ups. Scope to a single deal when deal_id is given, otherwise the current user. Returns lists for the assistant to render — never auto-sends or completes anything.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional deal UUID to scope to one deal." },
+          horizon_days: { type: "number", description: "How many days ahead to look. Default 7." },
+          include_overdue: { type: "boolean", description: "Include overdue items. Default true." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
