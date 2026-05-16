@@ -6,7 +6,7 @@ import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
-import { X } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -156,20 +156,29 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
       <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
         {visible.map((deal, index) => (
           <div key={deal.id} className="relative group/dismiss">
-            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-0 group-hover/dismiss:opacity-100 focus-within:opacity-100 transition-opacity">
+            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-60 group-hover/dismiss:opacity-100 focus-within:opacity-100 transition-opacity">
               <button
                 type="button"
-                aria-label="Dismiss for today"
-                title="Dismiss for today (returns at 5 AM ET)"
+                aria-label="Clear for today"
+                title="Clear for today (returns at 5 AM ET)"
                 onClick={(e) => {
                   e.stopPropagation();
                   dismiss(deal.id);
                 }}
                 onPointerDown={(e) => e.stopPropagation()}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="inline-flex items-center justify-center h-6 w-6 rounded-full text-muted-foreground/70 hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="
+                  inline-flex items-center justify-center h-7 w-7 rounded-full
+                  border border-border/60 bg-background/60 text-muted-foreground
+                  shadow-sm transition-all duration-150
+                  hover:h-8 hover:w-8 hover:border-emerald-500/60 hover:bg-emerald-500/15
+                  hover:text-emerald-400 hover:shadow-[0_4px_14px_-4px_rgba(16,185,129,0.45)]
+                  active:scale-95 active:bg-emerald-500/25
+                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
+                  focus-visible:ring-offset-2 focus-visible:ring-offset-background
+                "
               >
-                <X className="h-3.5 w-3.5" />
+                <Check className="h-4 w-4" strokeWidth={2.5} />
               </button>
             </div>
             <PipelineMemoCard
