@@ -285,10 +285,11 @@ const tools = [
     type: "function",
     function: {
       name: "search_deals",
-      description: "Search/filter deals by status, stage, stale days, or deal type.",
+      description: "Search/filter deals by free-text name (fuzzy/phonetic), status, stage, stale days, or deal type. ALWAYS pass `query` when the user references a deal by name — matching tolerates typos, missing suffixes (Inc/LLC/Technologies), word reorderings, singular/plural, and phonetic near-misses (e.g. 'censys technology' matches 'Censys Technologies').",
       parameters: {
         type: "object",
         properties: {
+          query: { type: "string", description: "Free-text deal/company name. Fuzzy-matched across ALL deals (active, archived, closed_won, closed_lost). Use this whenever the user mentions a deal by name." },
           status: { type: "string", enum: ["active", "closed_won", "closed_lost", "archived", "won", "lost"] },
           stage: { type: "string" },
           stale_days: { type: "number", description: "No activity in N days" },
