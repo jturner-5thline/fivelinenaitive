@@ -4,6 +4,8 @@ import { Deal, DealStage, DealStatus, EngagementType } from '@/types/deal';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
+import { useAiDealFilterStore } from '@/stores/aiDealFilterStore';
+import { applyDealFilterRules } from '@/lib/dealFilterEngine';
 
 export type SortField = 'name' | 'value' | 'createdAt' | 'updatedAt' | 'status' | 'stage' | 'flexEngagement';
 export type SortDirection = 'asc' | 'desc';
@@ -55,6 +57,8 @@ export function useDeals(options?: UseDealsOptions) {
   const [filters, setFilters] = useState<DealFilters>(options?.initialFilters ?? DEFAULT_DEAL_FILTERS);
   const [sortField, setSortField] = useState<SortField>(options?.initialSortField ?? 'updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>(options?.initialSortDirection ?? 'desc');
+  const aiRules = useAiDealFilterStore((s) => s.rules);
+  const aiMatchMode = useAiDealFilterStore((s) => s.matchMode);
 
   const filteredAndSortedDeals = useMemo(() => {
     let result = [...deals];
@@ -113,6 +117,14 @@ export function useDeals(options?: UseDealsOptions) {
       result = result.filter((deal) => deal.isFlagged === true);
     }
 
+    // ── AI-driven natural-language filters ──────────────────
+    // Applied on top of the standard filters as an AND layer so the AI
+    // assistant cooperates with whatever the user already set via the
+    // existing UI controls.
+    if (aiRules.length > 0) {
+      result = applyDealFilterRules(result, aiRules, { stages }, aiMatchMode);
+    }
+
     // Apply sorting
     // Status order for sorting
     const statusOrder: Record<DealStatus, number> = {
@@ -155,7 +167,7 @@ export function useDeals(options?: UseDealsOptions) {
     });
 
     return result;
-  }, [deals, filters, sortField, sortDirection, stages]);
+  }, [deals, filters, sortField, sortDirection, stages, aiRules, aiMatchMode]);
 
   const updateDealStatus = (dealId: string, newStatus: DealStatus) => {
     updateStatus(dealId, newStatus);
