@@ -679,7 +679,7 @@ function NikiPerformanceTabInner() {
         </div>
       </div>
 
-      {mode === 'view' ? (
+      {effectiveMode === 'view' ? (
         <>
           {/* KPI strip */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
