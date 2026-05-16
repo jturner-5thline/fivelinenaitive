@@ -387,6 +387,23 @@ const tools = [
               differences: { type: "string", description: "One sentence calling out due-date / assignee / linked-entity diffs vs the proposed task. Empty string if none." },
             },
           },
+          duplicate_candidates: {
+            type: "array",
+            description: "All existing-task candidates considered during the duplicate check, ranked best-first. Persisted for audit even when none is a strong duplicate. Pull fields directly from get_tasks output — never fabricate.",
+            items: {
+              type: "object",
+              properties: {
+                task_id: { type: "string" },
+                title: { type: "string" },
+                status: { type: "string" },
+                due_date: { type: "string" },
+                assignee_name: { type: "string" },
+                deal_name: { type: "string" },
+                score: { type: "number", description: "0.0-1.0 similarity score." },
+                why: { type: "string" },
+              },
+            },
+          },
           inferred: {
             type: "array",
             items: { type: "string", enum: ["title", "description", "deal_id", "assignee_user_id", "due_date", "priority", "task_type"] },
