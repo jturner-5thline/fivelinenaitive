@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, ChevronDown, ChevronRight, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Chart, registerables } from 'chart.js';
@@ -120,8 +120,9 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
   }, [sortedRows, activeDealsOnly, activeStageIds, dealStageById]);
 
   // ── Deals Running Behind ────────────────────────────────────────
-  // Surface deals whose expected close has slipped, that have gone
-  // quiet near the closing window, or that carry overdue milestones.
+  // Same logic that previously powered the standalone "Deals Running
+  // Behind" panel. Now consumed directly by the Deal Pipeline table to
+  // tint qualifying rows red.
   const stageLabelById = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of pipelines) {
@@ -130,25 +131,11 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
     return m;
   }, [pipelines]);
 
-  const [behindOpen, setBehindOpen] = useState(true);
-
-  const behindDeals = useMemo(() => {
+  const behindMap = useMemo(() => {
     const now = Date.now();
     const DAY = 86_400_000;
-    const scope = activeDealsOnly && activeStageIds.size > 0
-      ? filteredDeals.filter(d => activeStageIds.has(d.stage as string))
-      : filteredDeals;
-
-    type Row = {
-      id: string;
-      name: string;
-      stage: string;
-      reason: string;
-      daysBehind: number;
-      missed: number;
-    };
-    const rows: Row[] = [];
-    for (const d of scope) {
+    const out = new Map<string, { reason: string; daysBehind: number }>();
+    for (const d of filteredDeals) {
       const eff = d.dashboardClosingDate || d.closingDate || null;
       const closeTs = eff ? new Date(eff).getTime() : NaN;
       const updatedTs = d.updatedAt ? new Date(d.updatedAt).getTime() : NaN;
@@ -183,19 +170,10 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
       } else {
         continue;
       }
-
-      rows.push({
-        id: d.id,
-        name: d.company || d.name,
-        stage: stageLabelById.get(d.stage as string) || (d.stage as string) || '—',
-        reason,
-        daysBehind,
-        missed: overdueMs.length,
-      });
+      out.set(d.id, { reason, daysBehind });
     }
-    rows.sort((a, b) => b.daysBehind - a.daysBehind);
-    return rows;
-  }, [filteredDeals, activeDealsOnly, activeStageIds, stageLabelById]);
+    return out;
+  }, [filteredDeals]);
 
   // Per-deal row indicators for the Deal Pipeline table:
   // - overdue milestone names
