@@ -15,11 +15,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
 import {
-  NIKI_PLAN_2026,
   NIKI_QUARTERS,
   type MetricRow,
   type QuarterKey,
 } from '@/hooks/useNikiPerformanceMetrics';
+import { useNikiPerformancePlan } from '@/hooks/useNikiPerformancePlan';
 
 function fmt(value: number, unit: 'count' | 'currency'): string {
   if (unit === 'currency') return formatUSD(value);
@@ -53,7 +53,8 @@ function PlanTick(props: any) {
 }
 
 export function MetricQuarterlyBarChart({ row, onBarClick }: MetricQuarterlyBarChartProps) {
-  const planTotals = NIKI_PLAN_2026[row.key];
+  const { plan } = useNikiPerformancePlan();
+  const planTotals = plan[row.key];
   const data = useMemo(() => {
     return NIKI_QUARTERS.map((q) => {
       const plan = planTotals[q.key];
