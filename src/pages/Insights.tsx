@@ -48,6 +48,7 @@ import { IncomeYTDChangeByEntityCard } from "@/components/insights/IncomeYTDChan
 import { FinServTTMTop5CustomersCard } from "@/components/insights/FinServTTMTop5CustomersCard";
 import { IncomeVsCOGSRolling12MoCard } from "@/components/insights/IncomeVsCOGSRolling12MoCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
+import { RevenueCustomersDashboard } from "@/components/insights/revenue-customers/RevenueCustomersDashboard";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2652,20 +2653,11 @@ function MetricsInner() {
             )}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'revenue-customers' && (
-              <div className="space-y-5">
-                <IncomeYTDCard />
-                <IncomeYTDMoMVarianceCard />
-                <IncomeYTDByEntityCard />
-                <YTDIncomeBreakdownByEntityCard />
-                <IncomeYTDChangeByEntityCard />
-                <FinServTTMTop5CustomersCard />
-                <TotalIncomeRolling12MoCard />
-                <IncomeVsCOGSRolling12MoCard />
-                <IncomeMoMCard />
-                <ClientCountMoMCard />
-                <IncomeTop5CustomersMoMCard />
-                <FinServTopCustomersCard />
-                <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
+              <div>
+                <RevenueCustomersDashboard />
+                <div className="mt-4">
+                  <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
+                </div>
               </div>
             )}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
