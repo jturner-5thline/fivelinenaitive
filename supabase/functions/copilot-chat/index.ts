@@ -4577,6 +4577,57 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (overdueOnly) milestones = milestones.filter((m: any) => m.is_overdue);
       return { count: milestones.length, milestones };
     }
+    // ── PHASE 2: READ-ONLY DRAFTS / SUMMARIES ──
+    case "draft_status_report": {
+      const lookbackDays = Math.min(Math.max(args.lookback_days || 14, 1), 90);
+      const cutoff = new Date(Date.now() - lookbackDays * 86400000).toISOString();
+      const [{ data: deal }, { data: lenders }, { data: activities }, { data: outstanding }, { data: milestones }] = await Promise.all([
+        supabase.from("deals").select("id, company, value, stage, status, deal_type, closing_date, deal_manager").eq("id", args.deal_id).maybeSingle(),
+        supabase.from("deal_lenders").select("lender_name, status, indicated_amount, indicated_rate, last_contact_date, notes").eq("deal_id", args.deal_id).limit(50),
+        supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", args.deal_id).gte("created_at", cutoff).order("created_at", { ascending: false }).limit(30),
+        supabase.from("outstanding_items").select("title, status, due_date, owner").eq("deal_id", args.deal_id).neq("status", "completed").limit(50),
+        supabase.from("deal_milestones").select("title, completed, due_date").eq("deal_id", args.deal_id).limit(50),
+      ]);
+      if (!deal) return { action: "draft_status_report", error: "Deal not found." };
+      return {
+        action: "draft_status_report",
+        preview_only: true,
+        deal,
+        lenders: lenders || [],
+        recent_activity: activities || [],
+        outstanding_items: outstanding || [],
+        milestones: milestones || [],
+        instruction:
+          "Compose a concise status report draft for human review. Use sections: Headline, Pipeline & Lender Update, Recent Activity, Outstanding Items, Next Steps. Do NOT claim it was saved or sent — this is preview-only.",
+      };
+    }
+    case "follow_up_summary": {
+      const horizon = Math.min(Math.max(args.horizon_days || 7, 1), 60);
+      const now = new Date();
+      const horizonIso = new Date(now.getTime() + horizon * 86400000).toISOString();
+      const includeOverdue = args.include_overdue !== false;
+      let tasksQ = supabase.from("tasks").select("id, title, due_date, status, deal_id, assignee_id").neq("status", "completed").lte("due_date", horizonIso).order("due_date", { ascending: true }).limit(100);
+      if (args.deal_id) tasksQ = tasksQ.eq("deal_id", args.deal_id);
+      else tasksQ = tasksQ.eq("assignee_id", userId);
+      let scheduledEmailsQ = supabase.from("scheduled_emails").select("id, subject, scheduled_for, recipient_email, deal_id, status").eq("status", "scheduled").lte("scheduled_for", horizonIso).order("scheduled_for", { ascending: true }).limit(50);
+      if (args.deal_id) scheduledEmailsQ = scheduledEmailsQ.eq("deal_id", args.deal_id);
+      const [{ data: tasks }, { data: scheduledEmails }] = await Promise.all([tasksQ, scheduledEmailsQ]);
+      const todayIso = now.toISOString();
+      const allTasks = tasks || [];
+      const overdue = allTasks.filter((t: any) => t.due_date && t.due_date < todayIso);
+      const upcoming = allTasks.filter((t: any) => !t.due_date || t.due_date >= todayIso);
+      return {
+        action: "follow_up_summary",
+        preview_only: true,
+        scope: args.deal_id ? { deal_id: args.deal_id } : { user_id: userId },
+        horizon_days: horizon,
+        overdue_tasks: includeOverdue ? overdue : [],
+        upcoming_tasks: upcoming,
+        scheduled_emails: scheduledEmails || [],
+        instruction:
+          "Summarize follow-ups grouped by Overdue / Today / This week. Suggest 2-3 next actions as chips. Do NOT mark anything complete or send anything — this is read-only.",
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
