@@ -330,6 +330,7 @@ function useNikiRevenueActuals() {
  * Currency values are in raw USD.
  */
 const MM = 1_000_000;
+const K = 1_000;
 export const NIKI_PLAN_2026: Record<MetricRowKey, { Q1: number; Q2: number; Q3: number; Q4: number; total: number }> = {
   dealsOnBoard:          { Q1: 33,          Q2: 33,          Q3: 33,          Q4: 33,          total: 132 },
   dollarsOnBoard:        { Q1: 90.9 * MM,   Q2: 90.9 * MM,   Q3: 90.9 * MM,   Q4: 151.5 * MM,  total: 424.2 * MM },
@@ -342,4 +343,8 @@ export const NIKI_PLAN_2026: Record<MetricRowKey, { Q1: number; Q2: number; Q3: 
   volumeTermsSigned:     { Q1: 30 * MM,     Q2: 27.4 * MM,   Q3: 36 * MM,     Q4: 36 * MM,     total: 129.4 * MM },
   dealsClosed:           { Q1: 6,           Q2: 12,          Q3: 11,          Q4: 12,          total: 41 },
   dollarsFunded:         { Q1: 24 * MM,     Q2: 31.4 * MM,   Q3: 32 * MM,     Q4: 36 * MM,     total: 123.4 * MM },
+  retainerRevenue:            { Q1: 36.3 * K,  Q2: 43.5 * K,  Q3: 43.5 * K,  Q4: 43.5 * K,  total: 166.8 * K },
+  consultingMilestoneRevenue: { Q1: 158.7 * K, Q2: 134.0 * K, Q3: 158.7 * K, Q4: 158.7 * K, total: 610.1 * K },
+  feeRevenue:                 { Q1: 600 * K,   Q2: 755 * K,   Q3: 770 * K,   Q4: 870 * K,   total: 2995 * K },
+  totalRevenue:               { Q1: 790 * K,   Q2: 930 * K,   Q3: 970 * K,   Q4: 1070 * K,  total: 3760 * K },
 };
