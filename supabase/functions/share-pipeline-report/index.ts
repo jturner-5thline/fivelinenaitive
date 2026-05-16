@@ -75,7 +75,7 @@ serve(async (req) => {
 
     const resend = new Resend(RESEND_API_KEY);
     const fromName = user.user_metadata?.full_name || user.email || "Naitive";
-    const fromEmail = "Naitive <notifications@5thline.co>";
+    const fromEmail = "Naitive <noreply@updates.naitive.co>";
 
     const html = bodyHtmlInput
       ? `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.55;">${bodyHtmlInput}</body></html>`
