@@ -15,19 +15,22 @@ import {
   Legend,
   CartesianGrid,
 } from 'recharts';
-import { RepPerformanceModelGrid } from '@/components/metrics/rep-model/RepPerformanceModelGrid';
 import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
 import { MetricQuarterlyBarChart } from '@/components/dashboard/performance/MetricQuarterlyBarChart';
+import { QuarterlyPlanEditor } from '@/components/dashboard/performance/QuarterlyPlanEditor';
 import {
   useNikiPerformanceMetrics,
-  NIKI_PLAN_2026,
   NIKI_QUARTERS,
   type MetricRow,
   type MetricRowKey,
   type PerfDeal,
   type QuarterKey,
 } from '@/hooks/useNikiPerformanceMetrics';
+import {
+  NikiPerformancePlanProvider,
+  useNikiPerformancePlan,
+} from '@/hooks/useNikiPerformancePlan';
 
 function fmt(value: number, unit: 'count' | 'currency'): string {
   if (unit === 'currency') return formatUSD(value);
@@ -60,7 +63,8 @@ interface KpiCardProps {
 }
 
 function KpiCard({ row, onClick }: KpiCardProps) {
-  const plan = NIKI_PLAN_2026[row.key];
+  const { plan: planMap } = useNikiPerformancePlan();
+  const plan = planMap[row.key];
   const v = variance(row.yearTotal, plan.total);
   const status = statusFromPct(v.pct);
   const s = STATUS_STYLES[status];
@@ -110,7 +114,8 @@ interface ComparisonRowProps {
   onClick: () => void;
 }
 function ComparisonRow({ row, onClick }: ComparisonRowProps) {
-  const plan = NIKI_PLAN_2026[row.key];
+  const { plan: planMap } = useNikiPerformancePlan();
+  const plan = planMap[row.key];
   const v = variance(row.yearTotal, plan.total);
   const status = statusFromPct(v.pct);
   const s = STATUS_STYLES[status];
@@ -188,17 +193,18 @@ function QuarterlyChart({ rows, title, description, unit }: {
   description?: string;
   unit: 'count' | 'currency';
 }) {
+  const { plan: planMap } = useNikiPerformancePlan();
   const data = useMemo(() => {
     return NIKI_QUARTERS.map(q => {
       const entry: any = { quarter: q.key };
       for (const r of rows) {
-        const plan = NIKI_PLAN_2026[r.key][q.key];
+        const plan = planMap[r.key][q.key];
         entry[`${r.label} · Plan`] = plan;
         entry[`${r.label} · Actual`] = r.byQuarter[q.key].value;
       }
       return entry;
     });
-  }, [rows]);
+  }, [rows, planMap]);
 
   const colors = ['hsl(var(--primary))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))'];
 
@@ -243,7 +249,8 @@ function FunnelSection({ rows, openDrill }: {
   rows: MetricRow[];
   openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
 }) {
-  const max = Math.max(1, ...rows.map(r => NIKI_PLAN_2026[r.key].total));
+  const { plan: planMap } = useNikiPerformancePlan();
+  const max = Math.max(1, ...rows.map(r => planMap[r.key].total));
   return (
     <Card>
       <CardHeader className="pb-2">
@@ -252,7 +259,7 @@ function FunnelSection({ rows, openDrill }: {
       </CardHeader>
       <CardContent className="pt-0 pb-4 space-y-2">
         {rows.map((r) => {
-          const plan = NIKI_PLAN_2026[r.key].total;
+          const plan = planMap[r.key].total;
           const actual = r.yearTotal;
           const planPct = (plan / max) * 100;
           const actualPct = (actual / max) * 100;
@@ -300,9 +307,10 @@ function FunnelSection({ rows, openDrill }: {
   );
 }
 
-export function NikiPerformanceTab() {
+function NikiPerformanceTabInner() {
   const { rows, isLoading } = useNikiPerformanceMetrics();
   const { user } = useAuth();
+  const { plan: planMap } = useNikiPerformancePlan();
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
 
@@ -417,7 +425,7 @@ export function NikiPerformanceTab() {
   const isSingle = orderedSelected.length === 1;
 
   const cellFor = (row: MetricRow, k: PeriodKey) => {
-    const plan = NIKI_PLAN_2026[row.key];
+    const plan = planMap[row.key];
     const planVal = k === 'YEAR' ? plan.total : plan[k];
     const actualVal = k === 'YEAR' ? row.yearTotal : row.byQuarter[k].value;
     const v = variance(actualVal, planVal);
@@ -750,98 +758,7 @@ export function NikiPerformanceTab() {
             Edit mode — configure the underlying plan model. Click the button again to return to the
             dashboard view.
           </div>
-          <RepPerformanceModelGrid />
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Actuals vs Plan — 2026 (Niki Heikali)</CardTitle>
-              <CardDescription>
-                Raw quarterly Plan / Actual / Variance grid. Click any actual cell to see the
-                underlying deals.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0 overflow-x-auto">
-              <table className="w-full border-collapse text-xs">
-                <thead className="sticky top-0 bg-muted">
-                  <tr className="text-muted-foreground">
-                    <th className="text-left px-3 py-2 font-medium border-b border-border">Metric</th>
-                    {NIKI_QUARTERS.map((q) => (
-                      <th key={q.key} className="text-right px-3 py-2 font-medium border-b border-border" colSpan={2}>
-                        {q.key} 2026
-                      </th>
-                    ))}
-                    <th className="text-right px-3 py-2 font-medium border-b border-border" colSpan={2}>
-                      2026 Total
-                    </th>
-                    <th className="text-right px-3 py-2 font-medium border-b border-border">Variance</th>
-                    <th className="text-right px-3 py-2 font-medium border-b border-border">Var %</th>
-                  </tr>
-                  <tr className="text-[10px] text-muted-foreground/80">
-                    <th className="px-3 py-1 border-b border-border" />
-                    {NIKI_QUARTERS.map((q) => (
-                      <Fragment key={q.key}>
-                        <th className="text-right px-2 py-1 border-b border-border font-normal">Plan</th>
-                        <th className="text-right px-2 py-1 border-b border-border font-normal">Actual</th>
-                      </Fragment>
-                    ))}
-                    <th className="text-right px-2 py-1 border-b border-border font-normal">Plan</th>
-                    <th className="text-right px-2 py-1 border-b border-border font-normal">Actual</th>
-                    <th className="px-2 py-1 border-b border-border" />
-                    <th className="px-2 py-1 border-b border-border" />
-                  </tr>
-                </thead>
-                <tbody>
-                  {rows.map((row) => {
-                    const plan = NIKI_PLAN_2026[row.key];
-                    const v = variance(row.yearTotal, plan.total);
-                    return (
-                      <tr key={row.key} className="border-b border-border/40 hover:bg-muted/30">
-                        <td className="px-3 py-1.5 font-medium whitespace-nowrap">{row.label}</td>
-                        {NIKI_QUARTERS.map((q) => {
-                          const actual = row.byQuarter[q.key].value;
-                          const planQ = plan[q.key];
-                          return (
-                            <Fragment key={q.key}>
-                              <td className="text-right px-2 py-1.5 font-mono text-muted-foreground">
-                                {fmt(planQ, row.unit)}
-                              </td>
-                              <td
-                                className={cn(
-                                  'text-right px-2 py-1.5 font-mono cursor-pointer hover:underline',
-                                  actual >= planQ ? 'text-emerald-500' : 'text-foreground',
-                                )}
-                                onClick={() => openDrill(row, q.key)}
-                              >
-                                {fmt(actual, row.unit)}
-                              </td>
-                            </Fragment>
-                          );
-                        })}
-                        <td className="text-right px-2 py-1.5 font-mono text-muted-foreground">
-                          {fmt(plan.total, row.unit)}
-                        </td>
-                        <td
-                          className={cn(
-                            'text-right px-2 py-1.5 font-mono font-semibold cursor-pointer hover:underline',
-                            row.yearTotal >= plan.total ? 'text-emerald-500' : 'text-foreground',
-                          )}
-                          onClick={() => openDrill(row, 'YEAR')}
-                        >
-                          {fmt(row.yearTotal, row.unit)}
-                        </td>
-                        <td className={cn('text-right px-2 py-1.5 font-mono', v.diff >= 0 ? 'text-emerald-500' : 'text-destructive')}>
-                          {v.diff > 0 ? '+' : ''}{fmt(v.diff, row.unit)}
-                        </td>
-                        <td className={cn('text-right px-2 py-1.5 font-mono', v.pct === null ? 'text-muted-foreground' : v.pct >= 0 ? 'text-emerald-500' : 'text-destructive')}>
-                          {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(1)}%`}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
+          <QuarterlyPlanEditor />
         </div>
       )}
 
@@ -882,5 +799,13 @@ export function NikiPerformanceTab() {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export function NikiPerformanceTab() {
+  return (
+    <NikiPerformancePlanProvider>
+      <NikiPerformanceTabInner />
+    </NikiPerformancePlanProvider>
   );
 }
