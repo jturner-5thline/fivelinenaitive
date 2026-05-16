@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
@@ -1318,22 +1319,24 @@ export function AICopilotPanel() {
     560,
   );
 
+  // In expanded mode the panel is portalled into document.body inside the
+  // same viewport-centered modal shell pattern used by NaitiveDealOverlay
+  // (fixed inset-0 + flex items-center justify-center). That guarantees the
+  // popup is centered and fully visible regardless of where the floating
+  // Ask-bar wrapper currently sits. In compact mode we keep the existing
+  // inline, bar-anchored rendering exactly as before.
   const expandedStyle: React.CSSProperties = isExpanded
     ? {
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        width: isMobile ? 'calc(100vw - 16px)' : 'min(1400px, 90vw)',
-        height: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
-        maxHeight: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
+        width: '100%',
+        height: '100%',
+        maxWidth: isMobile ? 'none' : 1440,
+        maxHeight: 'calc(100vh - 48px)',
         marginInline: 0,
-        zIndex: 60,
         borderRadius: 18,
       }
     : {};
 
-  return (
+  const panelNode = (
     <>
       <div
         ref={panelRef}
@@ -1696,4 +1699,42 @@ export function AICopilotPanel() {
       </div>
     </>
   );
+
+  if (isExpanded) {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[1300] flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-label="naitive AI expanded"
+        style={{ padding: isMobile ? 8 : 24 }}
+      >
+        <div
+          aria-hidden
+          onClick={() => setIsExpanded(false)}
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'radial-gradient(circle at 50% 40%, rgba(10,14,24,0.18) 0%, rgba(7,10,18,0.34) 58%, rgba(4,6,12,0.46) 100%)',
+            backdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
+            WebkitBackdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
+          }}
+        />
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            maxWidth: isMobile ? 'none' : 1440,
+            maxHeight: 'calc(100vh - 48px)',
+            display: 'flex',
+          }}
+        >
+          {panelNode}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return panelNode;
 }
