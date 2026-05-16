@@ -1441,6 +1441,16 @@ export function AICopilotPanel() {
       )}
 
       {/* Messages */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: 'flex',
+          flexDirection: isExpanded && !isMobile ? 'row' : 'column',
+          overflow: 'hidden',
+        }}
+      >
+      <div style={{ flex: isExpanded && !isMobile ? '1 1 58%' : 1, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
       {demoMode ? (
         <div role="log" aria-label="Onboarding demo conversation" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
           <CopilotDemoConversation />
@@ -1601,6 +1611,29 @@ export function AICopilotPanel() {
         <div ref={messagesEndRef} />
       </div>
       )}
+      </div>
+      {isExpanded && (
+        <aside
+          aria-label="naitive AI workspace"
+          style={{
+            flex: isMobile ? '0 0 45%' : '1 1 42%',
+            minWidth: 0,
+            minHeight: 0,
+            borderLeft: isMobile ? 'none' : '1px solid var(--glass-border)',
+            borderTop: isMobile ? '1px solid var(--glass-border)' : 'none',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <CopilotWorkspacePane
+            items={workspaceItems}
+            activeId={activeWorkspaceItemId}
+            onSelect={setActiveWorkspaceItemId}
+            onQuickStart={(p) => handleSend(p)}
+          />
+        </aside>
+      )}
+      </div>
 
       {/* Input intentionally omitted — typing happens in the floating Ask
           bar (CopilotToggleButton) which sits directly below this panel.
