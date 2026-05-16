@@ -560,9 +560,20 @@ export default function Dashboard() {
                   <FileText className="h-4 w-4 mr-2" />
                   Export as Word
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShareReportOpen(true)}>
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Share Report
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
             <CreateDealDialog />
+            <ShareReportDialog
+              open={shareReportOpen}
+              onOpenChange={setShareReportOpen}
+              deals={allDeals}
+              activePipelineId={activePipelineId}
+              pipelineName={activePipelineName}
+            />
           </div>
         }
       >
