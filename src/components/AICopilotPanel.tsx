@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, Trash2 } from 'lucide-react';
+import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -565,6 +565,7 @@ export function AICopilotPanel() {
   const [historyItems, setHistoryItems] = useState<Array<{ id: string; preview: string; date: string }>>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -1207,6 +1208,21 @@ export function AICopilotPanel() {
     560,
   );
 
+  const expandedStyle: React.CSSProperties = isExpanded
+    ? {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        width: isMobile ? 'calc(100vw - 16px)' : 'min(1400px, 90vw)',
+        height: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
+        maxHeight: isMobile ? 'calc(100vh - 16px)' : 'min(900px, 88vh)',
+        marginInline: 0,
+        zIndex: 60,
+        borderRadius: 18,
+      }
+    : {};
+
   return (
     <>
       <div
@@ -1243,6 +1259,7 @@ export function AICopilotPanel() {
           transition: 'height 220ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease-out',
           opacity: isMinimized ? 0 : 1,
           pointerEvents: isMinimized ? 'none' : 'auto',
+          ...expandedStyle,
         }}
       >
         <style>{`
@@ -1282,6 +1299,9 @@ export function AICopilotPanel() {
           </button>
           <button onClick={loadHistory} aria-label="Conversation history" title="Conversation history" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
             <Clock size={18} />
+          </button>
+          <button onClick={() => setIsExpanded((v) => !v)} aria-label={isExpanded ? 'Collapse copilot' : 'Expand copilot'} title={isExpanded ? 'Collapse copilot' : 'Expand copilot'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
+            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
           </button>
           <button onClick={minimizePanel} aria-label="Minimize copilot" title="Minimize (keep running)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
             <ChevronDown size={18} />
