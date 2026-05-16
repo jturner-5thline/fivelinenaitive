@@ -192,11 +192,15 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       // (the deal-popup modal), making <main> a properly bounded scroll
       // container. This lets a sticky bottom bar inside DealDetail pin to
       // the modal's bottom edge instead of the viewport bottom.
-      <SidebarProvider defaultOpen={false} className="h-full" style={{ isolation: 'auto' } as React.CSSProperties}>
-        <div className="h-full w-full overflow-hidden bg-transparent">
+      // SidebarProvider's wrapper has `min-h-svh` baked in, which forces
+      // the embedded shell taller than the deal modal and breaks the
+      // bounded scroll container. Override with `!min-h-0` so `<main>`
+      // can size to the modal and become the actual scroll region.
+      <SidebarProvider defaultOpen={false} className="!min-h-0 h-full" style={{ isolation: 'auto' } as React.CSSProperties}>
+        <div className="h-full w-full min-h-0 overflow-hidden bg-transparent flex flex-col">
           <BodyScrollLock />
           <main
-            className={cn('relative h-full w-full overflow-y-auto overflow-x-hidden bg-background', mainClassName)}
+            className={cn('relative flex-1 min-h-0 w-full overflow-y-auto overflow-x-hidden bg-background', mainClassName)}
             data-tour="workspace"
           >
             {content}
