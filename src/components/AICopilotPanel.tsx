@@ -1683,6 +1683,7 @@ export function AICopilotPanel() {
             activeId={activeWorkspaceItemId}
             onSelect={setActiveWorkspaceItemId}
             onQuickStart={(p) => handleSend(p)}
+            onSendTo={handleWorkspaceSendTo}
           />
         </aside>
       )}
