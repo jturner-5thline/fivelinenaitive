@@ -584,6 +584,7 @@ export default function NaitivePipeline() {
                         onSetMulti={naitiveFilters.setMulti}
                         onSetDateRange={naitiveFilters.setDateRange}
                         onSetDateField={naitiveFilters.setDateField}
+                        onSetActiveOnly={naitiveFilters.setActiveOnly}
                         onClearAll={naitiveFilters.clearAll}
                         showDateRange
                       />
@@ -636,6 +637,7 @@ export default function NaitivePipeline() {
                         onSetMulti={naitiveFilters.setMulti}
                         onSetDateRange={naitiveFilters.setDateRange}
                         onSetDateField={naitiveFilters.setDateField}
+                        onSetActiveOnly={naitiveFilters.setActiveOnly}
                         onClearAll={naitiveFilters.clearAll}
                       />
                       <div className="flex justify-end mb-2">
