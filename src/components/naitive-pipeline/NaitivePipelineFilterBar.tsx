@@ -36,6 +36,7 @@ interface NaitivePipelineFilterBarProps {
   onSetMulti: (key: NaitiveFilterKey, values: string[]) => void;
   onSetDateRange: (range: NaitiveDateRangePreset) => void;
   onSetDateField: (field: NaitiveDateField) => void;
+  onSetActiveOnly?: (value: boolean) => void;
   onClearAll: () => void;
   /** Show the date range filter (analytics dashboard only). */
   showDateRange?: boolean;
@@ -145,6 +146,7 @@ export function NaitivePipelineFilterBar({
   onSetMulti,
   onSetDateRange,
   onSetDateField,
+  onSetActiveOnly,
   onClearAll,
   showDateRange = false,
   sticky = true,
@@ -171,6 +173,22 @@ export function NaitivePipelineFilterBar({
 
       {/* Desktop: inline pills. Mobile (sm:hidden) collapses to a single button. */}
       <div className="hidden sm:flex flex-wrap items-center gap-2">
+        {onSetActiveOnly && (
+          <button
+            type="button"
+            onClick={() => onSetActiveOnly(!filters.activeOnly)}
+            title="Show only deals at or beyond Final Credit Items"
+            className={cn(
+              'inline-flex items-center gap-1.5 h-8 rounded-full border px-3 text-xs font-medium transition-all',
+              filters.activeOnly
+                ? 'border-primary/50 bg-primary/15 text-primary shadow-[0_0_0_1px_hsl(var(--primary)/0.25)]'
+                : 'border-border/60 bg-background/40 text-foreground/80 hover:bg-background/70 hover:border-border',
+            )}
+          >
+            <span className={cn('h-1.5 w-1.5 rounded-full', filters.activeOnly ? 'bg-primary' : 'bg-muted-foreground/40')} />
+            Active Deals
+          </button>
+        )}
         {multiConfigs.map((c) => (
           <MultiPill
             key={c.key}
