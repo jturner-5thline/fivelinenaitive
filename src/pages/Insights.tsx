@@ -41,6 +41,7 @@ import { FinServTopCustomersCard } from "@/components/insights/FinServTopCustome
 import { IncomeYTDMoMVarianceCard } from "@/components/insights/IncomeYTDMoMVarianceCard";
 import { IncomeMoMCard } from "@/components/insights/IncomeMoMCard";
 import { IncomeTop5CustomersMoMCard } from "@/components/insights/IncomeTop5CustomersMoMCard";
+import { TotalIncomeRolling12MoCard } from "@/components/insights/TotalIncomeRolling12MoCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
@@ -2649,6 +2650,7 @@ function MetricsInner() {
               <div className="space-y-5">
                 <IncomeYTDCard />
                 <IncomeYTDMoMVarianceCard />
+                <TotalIncomeRolling12MoCard />
                 <IncomeMoMCard />
                 <ClientCountMoMCard />
                 <IncomeTop5CustomersMoMCard />
