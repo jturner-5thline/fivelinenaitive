@@ -1,7 +1,7 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, ChevronDown, ChevronRight, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Chart, registerables } from 'chart.js';
@@ -120,8 +120,9 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
   }, [sortedRows, activeDealsOnly, activeStageIds, dealStageById]);
 
   // ── Deals Running Behind ────────────────────────────────────────
-  // Surface deals whose expected close has slipped, that have gone
-  // quiet near the closing window, or that carry overdue milestones.
+  // Same logic that previously powered the standalone "Deals Running
+  // Behind" panel. Now consumed directly by the Deal Pipeline table to
+  // tint qualifying rows red.
   const stageLabelById = useMemo(() => {
     const m = new Map<string, string>();
     for (const p of pipelines) {
@@ -130,25 +131,11 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
     return m;
   }, [pipelines]);
 
-  const [behindOpen, setBehindOpen] = useState(true);
-
-  const behindDeals = useMemo(() => {
+  const behindMap = useMemo(() => {
     const now = Date.now();
     const DAY = 86_400_000;
-    const scope = activeDealsOnly && activeStageIds.size > 0
-      ? filteredDeals.filter(d => activeStageIds.has(d.stage as string))
-      : filteredDeals;
-
-    type Row = {
-      id: string;
-      name: string;
-      stage: string;
-      reason: string;
-      daysBehind: number;
-      missed: number;
-    };
-    const rows: Row[] = [];
-    for (const d of scope) {
+    const out = new Map<string, { reason: string; daysBehind: number }>();
+    for (const d of filteredDeals) {
       const eff = d.dashboardClosingDate || d.closingDate || null;
       const closeTs = eff ? new Date(eff).getTime() : NaN;
       const updatedTs = d.updatedAt ? new Date(d.updatedAt).getTime() : NaN;
@@ -183,19 +170,10 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
       } else {
         continue;
       }
-
-      rows.push({
-        id: d.id,
-        name: d.company || d.name,
-        stage: stageLabelById.get(d.stage as string) || (d.stage as string) || '—',
-        reason,
-        daysBehind,
-        missed: overdueMs.length,
-      });
+      out.set(d.id, { reason, daysBehind });
     }
-    rows.sort((a, b) => b.daysBehind - a.daysBehind);
-    return rows;
-  }, [filteredDeals, activeDealsOnly, activeStageIds, stageLabelById]);
+    return out;
+  }, [filteredDeals]);
 
   // Per-deal row indicators for the Deal Pipeline table:
   // - overdue milestone names
@@ -494,60 +472,6 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
             </div>
 
             {/* ROW 1 */}
-            {/* Deals Running Behind — collapsible, between KPIs and pipeline grid */}
-            <div className="glass-module p-4" style={{ marginBottom: 16 }}>
-              <button
-                type="button"
-                onClick={() => setBehindOpen(v => !v)}
-                className="w-full flex items-center justify-between gap-3 text-left"
-                aria-expanded={behindOpen}
-              >
-                <div className="flex items-center gap-2">
-                  {behindOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                  <span className="db-ct" style={{ marginBottom: 0 }}>Deals Running Behind</span>
-                  <span
-                    className={
-                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ' +
-                      (behindDeals.length === 0
-                        ? 'border-border/60 bg-background/40 text-muted-foreground'
-                        : behindDeals.length >= 5
-                          ? 'border-destructive/50 bg-destructive/15 text-destructive'
-                          : 'border-amber-500/50 bg-amber-500/15 text-amber-400')
-                    }
-                  >
-                    <AlertTriangle className="h-3 w-3" />
-                    {behindDeals.length}
-                  </span>
-                </div>
-              </button>
-              {behindOpen && (
-                <div style={{ marginTop: 12 }}>
-                  {behindDeals.length === 0 ? (
-                    <div className="text-xs text-muted-foreground py-2">No deals running behind.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
-                      {behindDeals.map(r => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => { onOpenChange(false); navigate(`/deals/${r.id}`); }}
-                          className="w-full text-left glass-module px-3 py-2 hover:border-primary/40 transition-colors"
-                          style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.6fr) minmax(0,1fr) minmax(0,2fr) auto', gap: 12, alignItems: 'center' }}
-                        >
-                          <span className="text-sm font-medium text-foreground truncate">{r.name}</span>
-                          <span className="text-xs text-muted-foreground truncate">{r.stage}</span>
-                          <span className="text-xs value-warning truncate">{r.reason}</span>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {r.missed > 0 ? `${r.missed} missed milestone${r.missed === 1 ? '' : 's'}` : '—'}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 16, marginBottom: 16 }}>
               {/* LEFT — combined "By Status" card (height matches Deal Pipeline) */}
               <div className="glass-module p-4 flex flex-col" style={{ height: '100%' }}>
@@ -639,17 +563,36 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                         const flags = rowFlags.get(d.dealId);
                         const hasOverdue = !!flags && flags.overdue.length > 0;
                         const approaching = !!flags && flags.approachingNoReview;
-                        const leftBorder = hasOverdue
+                        const behind = behindMap.get(d.dealId);
+                        // Running-behind takes visual priority: red left border
+                        // + subtle red row tint. Falls back to the existing
+                        // overdue-milestone (red) / approaching-close (amber)
+                        // left-border treatments.
+                        const leftBorder = behind
                           ? '3px solid hsl(var(--destructive))'
-                          : approaching
-                            ? '3px solid hsl(var(--chart-3))'
-                            : '3px solid transparent';
+                          : hasOverdue
+                            ? '3px solid hsl(var(--destructive))'
+                            : approaching
+                              ? '3px solid hsl(var(--chart-3))'
+                              : '3px solid transparent';
+                        const rowBg = behind ? 'hsl(var(--destructive) / 0.08)' : undefined;
                         return (
-                        <tr key={d.dealId} style={{ borderLeft: leftBorder }}>
+                        <tr key={d.dealId} style={{ borderLeft: leftBorder, backgroundColor: rowBg }}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
                           <td style={{ color: d.nameColor }}>
                             <span className="inline-flex items-center gap-1.5">
                               {d.name}
+                              {behind && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border border-destructive/50 bg-destructive/15 text-destructive">
+                                      <AlertTriangle className="h-2.5 w-2.5" />
+                                      Behind
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{behind.reason}</TooltipContent>
+                                </Tooltip>
+                              )}
                               {approaching && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
