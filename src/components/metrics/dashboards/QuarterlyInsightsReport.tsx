@@ -786,6 +786,34 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
                 />
               );
             }
+            if (kpi.template === 'ttm-revenue-per-deal-hour') {
+              const cfg = (kpi.templateConfig ?? {}) as unknown as Partial<TtmRevPerHourConfig>;
+              const safeCfg: TtmRevPerHourConfig = {
+                revenueRealmId: cfg.revenueRealmId || '193514877331929',
+                entityLabel: cfg.entityLabel || '5th Line Capital Advisors',
+                pipelineNames: cfg.pipelineNames && cfg.pipelineNames.length > 0
+                  ? cfg.pipelineNames
+                  : ['Active Pipeline', 'In Development'],
+                hoursSource: 'weekly_time_entries',
+                denominatorLabel: cfg.denominatorLabel || 'Included Deal Hours (TTM)',
+              };
+              const isEditing = editingId === kpi.id;
+              return (
+                <TtmRevenuePerHourKpiCard
+                  key={kpi.id}
+                  kpiId={kpi.id}
+                  title={kpi.label}
+                  config={safeCfg}
+                  reportLabel={reportLabel}
+                  isEditing={isEditing}
+                  onToggleEdit={() => setEditingId(isEditing ? null : kpi.id)}
+                  onClose={() => setEditingId(null)}
+                  onPatchTitle={(next) => updateKPI(kpi.id, { label: next })}
+                  onPatchConfig={(next) => updateKPI(kpi.id, { templateConfig: next as unknown as Record<string, unknown> })}
+                  onRemove={() => removeKPI(kpi.id)}
+                />
+              );
+            }
             const status = deriveStatus(kpi.actual, kpi.target);
             const tone = status === 'Above Plan' ? 'pos' : status === 'On Plan' ? 'neu' : 'neg';
             const isEditing = editingId === kpi.id;
