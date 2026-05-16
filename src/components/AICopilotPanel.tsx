@@ -451,6 +451,29 @@ function CopilotAssistantContent({ content }: { content: string }) {
           </ReactMarkdown>
         );
       })}
+      {chips.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+          {chips.map((chip, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={() => window.dispatchEvent(new CustomEvent('copilot-chip-click', { detail: { prompt: chip } }))}
+              style={{
+                padding: '4px 10px',
+                fontSize: 12,
+                borderRadius: 999,
+                background: 'rgba(126,184,247,0.10)',
+                border: '1px solid rgba(126,184,247,0.30)',
+                color: 'hsl(var(--primary))',
+                cursor: 'pointer',
+                lineHeight: 1.3,
+              }}
+            >
+              {chip}
+            </button>
+          ))}
+        </div>
+      )}
     </>
   );
 }
