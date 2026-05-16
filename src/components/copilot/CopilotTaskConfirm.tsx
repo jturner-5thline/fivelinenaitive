@@ -60,6 +60,25 @@ const PRIORITY_LABELS: Record<string, string> = {
   urgent: 'Urgent',
 };
 
+const quickActionStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  height: 26, padding: '0 9px', borderRadius: 6,
+  background: 'var(--glass-surface)', color: 'hsl(var(--foreground))',
+  border: '1px solid var(--glass-border)', fontSize: 11, cursor: 'pointer',
+};
+const primaryActionStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  height: 28, padding: '0 10px', borderRadius: 6,
+  background: 'hsl(var(--primary))', color: 'white',
+  border: 'none', fontSize: 12, fontWeight: 500, cursor: 'pointer',
+};
+const secondaryActionStyle: React.CSSProperties = {
+  display: 'inline-flex', alignItems: 'center', gap: 4,
+  height: 28, padding: '0 10px', borderRadius: 6,
+  background: 'transparent', color: 'hsl(var(--foreground))',
+  border: '1px solid var(--glass-border)', fontSize: 12, cursor: 'pointer',
+};
+
 export function CopilotTaskConfirm({ action }: Props) {
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
