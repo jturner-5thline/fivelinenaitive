@@ -639,7 +639,6 @@ export default function Tasks() {
     { key: 'board', label: 'Board', icon: LayoutGrid },
     { key: 'calendar', label: 'Calendar', icon: Calendar },
     { key: 'reporting', label: 'Reports', icon: BarChart3 },
-    { key: 'focus', label: 'Focus', icon: Star },
   ] as const;
 
   return (
