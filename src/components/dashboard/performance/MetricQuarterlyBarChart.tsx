@@ -180,13 +180,17 @@ export function MetricQuarterlyBarChart({ row, onBarClick, mode = 'quarterly', o
                   if (!active || !payload?.length) return null;
                   const d = payload[0].payload as typeof data[number];
                   const ahead = d.actual >= d.plan;
+                  const isYtd = mode === 'ytd';
+                  const headerLabel = isYtd ? `${d.quarter} YTD · 2026` : `${d.quarter} 2026`;
+                  const actualLabel = isYtd ? `${d.quarter} YTD Actual` : 'Actual';
+                  const planLabel = isYtd ? `${d.quarter} YTD Plan` : 'Plan';
                   return (
                     <div className="rounded-md border border-border bg-card px-2.5 py-2 text-[11px] shadow-sm">
-                      <div className="font-semibold text-foreground mb-1">{d.quarter} 2026</div>
+                      <div className="font-semibold text-foreground mb-1">{headerLabel}</div>
                       <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 tabular-nums">
-                        <span className="text-muted-foreground">Actual</span>
+                        <span className="text-muted-foreground">{actualLabel}</span>
                         <span className="text-right text-foreground font-medium">{fmt(d.actual, row.unit)}</span>
-                        <span className="text-muted-foreground">Plan</span>
+                        <span className="text-muted-foreground">{planLabel}</span>
                         <span className="text-right text-foreground/80">{fmt(d.plan, row.unit)}</span>
                         <span className="text-muted-foreground">Δ</span>
                         <span className={cn('text-right font-medium', ahead ? 'text-emerald-500' : 'text-destructive')}>
