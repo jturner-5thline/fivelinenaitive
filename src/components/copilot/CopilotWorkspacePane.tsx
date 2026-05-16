@@ -1,5 +1,5 @@
-import { useMemo } from 'react';
-import { Copy, FileText, ListChecks, Mail, ClipboardCheck, CalendarPlus, StickyNote, Sparkles } from 'lucide-react';
+import { useMemo, useState, useEffect, useRef } from 'react';
+import { Copy, FileText, ListChecks, Mail, ClipboardCheck, CalendarPlus, StickyNote, Sparkles, Send } from 'lucide-react';
 
 export type WorkspaceItemType =
   | 'status_report'
@@ -42,9 +42,10 @@ interface Props {
   activeId: string | null;
   onSelect: (id: string) => void;
   onQuickStart?: (prompt: string) => void;
+  onSendTo?: (target: 'email' | 'task' | 'note', item: WorkspaceItem) => void;
 }
 
-export function CopilotWorkspacePane({ items, activeId, onSelect, onQuickStart }: Props) {
+export function CopilotWorkspacePane({ items, activeId, onSelect, onQuickStart, onSendTo }: Props) {
   const active = useMemo(() => items.find((i) => i.id === activeId) ?? items[items.length - 1] ?? null, [items, activeId]);
 
   return (
@@ -84,7 +85,7 @@ export function CopilotWorkspacePane({ items, activeId, onSelect, onQuickStart }
         {!active ? (
           <EmptyState onQuickStart={onQuickStart} />
         ) : (
-          <PreviewCard item={active} />
+          <PreviewCard item={active} onSendTo={onSendTo} />
         )}
       </div>
     </div>
@@ -122,10 +123,24 @@ function EmptyState({ onQuickStart }: { onQuickStart?: (prompt: string) => void 
   );
 }
 
-function PreviewCard({ item }: { item: WorkspaceItem }) {
+function PreviewCard({ item, onSendTo }: { item: WorkspaceItem; onSendTo?: (target: 'email' | 'task' | 'note', item: WorkspaceItem) => void }) {
   const Meta = TYPE_META[item.type];
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [menuOpen]);
   const copy = () => {
     try { navigator.clipboard.writeText(item.body); } catch { /* noop */ }
+  };
+  const send = (target: 'email' | 'task' | 'note') => {
+    setMenuOpen(false);
+    onSendTo?.(target, item);
   };
   return (
     <div style={{
@@ -152,11 +167,58 @@ function PreviewCard({ item }: { item: WorkspaceItem }) {
         >
           <Copy size={12} /> Copy
         </button>
+        {onSendTo && (
+          <div ref={menuRef} style={{ position: 'relative' }}>
+            <button
+              onClick={() => setMenuOpen((v) => !v)}
+              aria-label="Send to…"
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              title="Send to…"
+              style={{ background: 'rgba(126,184,247,0.12)', border: '1px solid rgba(126,184,247,0.4)', cursor: 'pointer', color: 'hsl(var(--primary))', padding: '4px 10px', borderRadius: 6, display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600 }}
+            >
+              <Send size={12} /> Send to…
+            </button>
+            {menuOpen && (
+              <div
+                role="menu"
+                style={{
+                  position: 'absolute', top: '100%', right: 0, marginTop: 4, minWidth: 180,
+                  background: 'var(--glass-surface)', border: '1px solid var(--glass-border)',
+                  borderRadius: 8, boxShadow: '0 12px 32px rgba(0,0,0,0.4)', zIndex: 40, padding: 4,
+                }}
+              >
+                <SendMenuItem icon={<Mail size={12} />} label="Email draft"     onClick={() => send('email')} />
+                <SendMenuItem icon={<ClipboardCheck size={12} />} label="Follow-up task" onClick={() => send('task')}  />
+                <SendMenuItem icon={<StickyNote size={12} />} label="Deal note"        onClick={() => send('note')}  />
+              </div>
+            )}
+          </div>
+        )}
       </div>
       <pre style={{
         margin: 0, fontSize: 12, lineHeight: 1.55, color: 'var(--foreground)',
         whiteSpace: 'pre-wrap', wordBreak: 'break-word', fontFamily: 'inherit',
       }}>{item.body}</pre>
     </div>
+  );
+}
+
+function SendMenuItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+  return (
+    <button
+      role="menuitem"
+      onClick={onClick}
+      style={{
+        width: '100%', textAlign: 'left', display: 'inline-flex', alignItems: 'center', gap: 8,
+        background: 'none', border: 'none', cursor: 'pointer', color: 'var(--foreground)',
+        padding: '8px 10px', fontSize: 12, borderRadius: 6,
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(126,184,247,0.1)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
+    >
+      <span style={{ color: 'hsl(var(--muted-foreground))' }}>{icon}</span>
+      {label}
+    </button>
   );
 }
