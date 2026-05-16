@@ -1,65 +1,62 @@
-## AI Recommended Lenders — Lenders tab
+# Revenue & Customers Dashboard Refactor
 
-Add a new collapsible **AI Recommended** section pinned above the existing lenders board on the Lenders tab of the deal detail page. It calls Claude (via the existing centralized proxy) with the deal context + master lender directory and renders the top 5–10 ranked matches with one-click add/skip.
+This is a substantial refactor (current page renders 13 stacked one-off cards; ask is full toolbar + 12-col grid + per-widget drilldowns/kebabs + 8 new widgets + shared primitives). To land it safely without breaking the rest of `/insights` (which shares the same page shell as 10+ other dashboards), I'll do it in phases.
 
-### Database (1 new table)
+## Phase 1 — Foundations (this turn)
 
-`deal_lender_recommendation_exclusions`
-- `deal_id uuid` (indexed)
-- `lender_name text` (case-insensitive unique per deal)
-- `excluded_by uuid` (auth.uid())
-- `org_company_id uuid` (RLS scoping consistent with deals)
-- standard timestamps
-- RLS: members of the deal's `org_company_id` can read/insert/delete
+Build the shared primitives + filter context the rest of the work plugs into.
 
-Used for the Skip action and the "Reset exclusions" control. No cache table — recommendations are recomputed on demand.
+1. **`RevenueCustomersFilterContext`** — React context + `localStorage` persistence (key: `insights:revenue-customers:filters`)
+   - `entities: string[]` (default: all 4 realm IDs from `src/config/qboEntities.ts` + Capital LLC `123146077561874`)
+   - `range: { preset: 'MTD'|'QTD'|'YTD'|'TTM'|'custom'; start: Date; end: Date }`
+   - `comparison: 'prior-year' | 'prior-period' | 'none'`
+   - `granularity: 'day' | 'week' | 'month' | 'quarter'`
+   - Helper `useRevenueFilters()` + derived `comparisonRange`
 
-### Edge function: `recommend-lenders`
+2. **`RevenueCustomersToolbar`** — single compact row: title + subtitle, sync chip (reuses `SyncStatusBar`'s QB badge logic), entity multi-select popover, date range picker w/ presets, comparison toggle, granularity segmented control. Matches `ManagementSnapshotDashboard` toolbar density.
 
-- `verify_jwt` enabled, validates `supabase.auth.getUser()`
-- Input: `{ dealId }`
-- Server pulls:
-  - deal record (type, size, industry, sponsorship, narrative, write-up sections)
-  - data-room document titles + summaries
-  - master lender directory (shared + workspace lenders)
-  - exclusion list + lenders already on the deal (excluded automatically)
-- Calls Claude with a strict JSON schema and the weighted scoring rubric in the system prompt:
-  - Deal type alignment 40%
-  - Deal size fit 30%
-  - Industry match 20%
-  - Recent activity in naitive (last 90d) 10%
-- Returns `{ recommendations: [{ lenderId, lenderName, logoUrl, matchScore, rationale, components }], generatedAt, sufficiency: { ok, missing[] } }`
-- Caps to 10 items, filters anything below 50% score.
+3. **Shared card primitives** under `src/components/insights/revenue-customers/`:
+   - `KpiTile` — compact tile (icon, label, value, delta chip, optional sparkline). Same surface as Operational/Management dashboards (`glass-module` token).
+   - `ChartCard` — title row (inline legend slot, filter icon, kebab menu: View details / Change chart type / Download CSV / Copy link / Hide), `min-h-[260px] max-h-[300px]` chart area, standard loading/empty/error states.
+   - `RevenueDrilldownDrawer` — right-side `Sheet` showing underlying rows (invoices/customers) with sortable table + CSV export. Opened by chart click handlers via a `useDrilldown()` hook.
 
-### Frontend
+4. **Page wiring**: replace the `space-y-5` stack at `Insights.tsx:2654-2670` with `<RevenueCustomersDashboard />` that renders the toolbar + a `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4` of widgets.
 
-New `src/components/deal/AiRecommendedLendersSection.tsx`:
-- Collapsible card (Liquid Glass styling) with header: title, count badge, Refresh, Reset exclusions, Collapse toggle.
-- Persists collapsed state in `user_ui_preferences`.
-- Auto-runs on mount when sufficiency check passes (deal type + deal size + at least one of: Deal Space financials, Write Up narrative, Data Room documents).
-- Friendly empty state when sufficiency fails listing what's missing.
-- Each recommendation card:
-  - Lender logo + name
-  - Match score chip (85+ green, 70+ blue, 50+ amber)
-  - One-line rationale from Claude
-  - **+ Add to Deal** → small stage selector popover (default: "NDA/Needs List Sent" if present, else first stage). On confirm calls existing `addLenderToDeal`, optimistically removes the card, shows "✓ Added" toast.
-  - **✕ Skip** → inserts into exclusions table, removes the card.
-- Loading shows skeletons; errors show retry CTA.
+## Phase 2 — Migrate existing widgets (next turn)
 
-Integration in `DealDetail.tsx`:
-- Render `<AiRecommendedLendersSection />` at the very top of `TabsContent value="lenders"`, above the current `LenderSuggestionsPanel` trigger and kanban summary.
-- Reuses existing add-lender handler and `existingLenderNames` already wired to the kanban.
+Rewrite the 13 existing one-off cards as thin wrappers over `KpiTile` / `ChartCard` consuming `useRevenueFilters()`. Strip the per-card "QuickBooks · synced …" badge (moves to toolbar). Convert hero cards (`IncomeYTDCard`, `IncomeYTDMoMVarianceCard`) to compact tiles with sparklines.
 
-### Hooks
+- Quarterly Revenue → grouped bar, 280px, inline legend
+- Income YTD → KPI tile + sparkline + delta chip
+- Income YTD MoM Variance → compact pos/neg bar tile
+- YTD by Entity → small-multiples toggle
+- YTD Breakdown by Entity → donut (replaces pie)
+- YTD Change by Entity → pos/neg bar
+- FinServ TTM Top 5 → donut
+- Total Income Rolling 12M → line + trend
+- Income vs COGS Rolling 12M → area
+- Income MoM → bar
+- Client Count MoM → line
+- Top 5 Customers MoM → grouped bar
+- FinServ Top Customers → table tile
 
-- `useAiRecommendedLenders(dealId)` — React Query; invokes `recommend-lenders`; exposes `data`, `isLoading`, `refetch`, and a `skip(lenderName)` mutation.
-- `useDealRecommendationExclusions(dealId)` — list + reset.
+## Phase 3 — New widgets (next turn)
 
-### Out of scope
+- Total Customers / New Customers / Churned Customers — KPI tiles from `quickbooks_customers` + first-invoice date logic
+- ARPU — KPI tile (period income ÷ active customers)
+- Revenue by Entity — donut
+- Revenue by Product/Service — stacked bar from `quickbooks_invoices` line items (`ItemRef`)
+- Top 10 Customers — sortable table
+- AR Aging — uses existing `useOutstandingARByEntity` + aging buckets from `quickbooks_invoices.due_date`
 
-- Existing rule-based `LenderSuggestionsPanel` dialog stays as-is — the new section sits above it.
-- No changes to other tabs, kanban internals, or unrelated pages.
+## Technical details
 
-### Open question
+- Data: all hooks query existing `quickbooks_invoices` / `quickbooks_customers` / `quickbooks_expenses` / `quickbooks_bills` tables filtered by `realm_id IN (selected entities)` and `txn_date` within selected range. No schema changes, no new edge functions, no hardcoded values.
+- Realm IDs: 5th Line Capital LLC (`123146077561874`) is missing from `QBO_ENTITIES`. I'll add a `capital` key in the same module rather than hardcoding.
+- Drilldown drawer reuses shadcn `Sheet` (right side, `w-[560px]`) and the CSV helper in `src/utils/insightsExport.ts`.
+- Kebab "Change chart type" persists per-widget choice in `localStorage` under the same dashboard key.
+- All other dashboard cases in `Insights.tsx` are untouched.
 
-Use the existing Anthropic proxy (`claude-chat` per the **Claude AI Engine** memory) or create a dedicated `recommend-lenders` function calling the same upstream? Plan assumes a new dedicated function so the prompt and JSON schema stay server-side and auditable.
+## Scope confirmation
+
+Phase 1 is ~6 new files + 1 small edit to `Insights.tsx`. Phases 2 & 3 are mechanical but voluminous (~20 widgets). **I'll ship Phase 1 now and continue with Phase 2 + 3 immediately after you approve, in follow-up turns** so each turn stays reviewable. If you'd rather I attempt all three phases in one massive turn, say "do it all" and I will — but the diff will be very large.
