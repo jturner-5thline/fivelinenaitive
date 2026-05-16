@@ -569,6 +569,22 @@ export function AICopilotPanel() {
   const [isExpanded, setIsExpanded] = useState(false);
   const [workspaceItems, setWorkspaceItems] = useState<WorkspaceItem[]>([]);
   const [activeWorkspaceItemId, setActiveWorkspaceItemId] = useState<string | null>(null);
+  // Extract structured "preview" items from finalized assistant messages so
+  // the right-hand workspace pane can render them as rich cards. Heuristic,
+  // no copilot logic changes — purely a UI mirror of what the model writes.
+  useEffect(() => {
+    if (!messages.length) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || !last.content || last.content === '__ERROR__' || last.isLoading) return;
+    setWorkspaceItems((prev) => {
+      if (prev.some((p) => p.sourceMessageId === last.id)) return prev;
+      const detected = detectWorkspaceItems(last.id, last.content);
+      if (detected.length === 0) return prev;
+      setActiveWorkspaceItemId(detected[detected.length - 1].id);
+      return [...prev, ...detected];
+    });
+  }, [messages]);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
