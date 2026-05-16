@@ -1,4 +1,5 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { canEditPerformanceModel } from '@/lib/performanceModelAccess';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MetricRowKey, QuarterKey } from '@/hooks/useNikiPerformanceMetrics';
 
@@ -179,6 +180,7 @@ export interface UseNikiPerformancePlan {
 
 function useNikiPerformancePlanState(): UseNikiPerformancePlan {
   const { user } = useAuth();
+  const canEdit = canEditPerformanceModel(user);
   // v2 — reseeds prior incorrect quarterly defaults with the approved sheet.
   const storageKey = user?.id ? `nikiPerf.plan.v2.${user.id}` : 'nikiPerf.plan.v2.anon';
   const [rawPlan, setRawPlan] = useState<Record<PlanMetricKey, QuarterlyTargets>>(
@@ -221,15 +223,23 @@ function useNikiPerformancePlanState(): UseNikiPerformancePlan {
   }, [isLoaded, storageKey, rawPlan]);
 
   const setTarget = useCallback((key: PlanMetricKey, q: QuarterKey, value: number) => {
+    if (!canEdit) {
+      console.warn('[NikiPerformancePlan] setTarget blocked: user not authorized to edit performance model');
+      return;
+    }
     setRawPlan((prev) => ({
       ...prev,
       [key]: { ...prev[key], [q]: Number.isFinite(value) ? value : 0 },
     }));
-  }, []);
+  }, [canEdit]);
 
   const resetAll = useCallback(() => {
+    if (!canEdit) {
+      console.warn('[NikiPerformancePlan] resetAll blocked: user not authorized to edit performance model');
+      return;
+    }
     setRawPlan(structuredCloneDefault());
-  }, []);
+  }, [canEdit]);
 
   const plan = useMemo(() => resolveTotals(rawPlan), [rawPlan]);
 
