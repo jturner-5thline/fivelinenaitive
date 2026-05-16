@@ -472,60 +472,6 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
             </div>
 
             {/* ROW 1 */}
-            {/* Deals Running Behind — collapsible, between KPIs and pipeline grid */}
-            <div className="glass-module p-4" style={{ marginBottom: 16 }}>
-              <button
-                type="button"
-                onClick={() => setBehindOpen(v => !v)}
-                className="w-full flex items-center justify-between gap-3 text-left"
-                aria-expanded={behindOpen}
-              >
-                <div className="flex items-center gap-2">
-                  {behindOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-                  <span className="db-ct" style={{ marginBottom: 0 }}>Deals Running Behind</span>
-                  <span
-                    className={
-                      'inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ' +
-                      (behindDeals.length === 0
-                        ? 'border-border/60 bg-background/40 text-muted-foreground'
-                        : behindDeals.length >= 5
-                          ? 'border-destructive/50 bg-destructive/15 text-destructive'
-                          : 'border-amber-500/50 bg-amber-500/15 text-amber-400')
-                    }
-                  >
-                    <AlertTriangle className="h-3 w-3" />
-                    {behindDeals.length}
-                  </span>
-                </div>
-              </button>
-              {behindOpen && (
-                <div style={{ marginTop: 12 }}>
-                  {behindDeals.length === 0 ? (
-                    <div className="text-xs text-muted-foreground py-2">No deals running behind.</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, maxHeight: 240, overflowY: 'auto' }}>
-                      {behindDeals.map(r => (
-                        <button
-                          key={r.id}
-                          type="button"
-                          onClick={() => { onOpenChange(false); navigate(`/deals/${r.id}`); }}
-                          className="w-full text-left glass-module px-3 py-2 hover:border-primary/40 transition-colors"
-                          style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1.6fr) minmax(0,1fr) minmax(0,2fr) auto', gap: 12, alignItems: 'center' }}
-                        >
-                          <span className="text-sm font-medium text-foreground truncate">{r.name}</span>
-                          <span className="text-xs text-muted-foreground truncate">{r.stage}</span>
-                          <span className="text-xs value-warning truncate">{r.reason}</span>
-                          <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-                            {r.missed > 0 ? `${r.missed} missed milestone${r.missed === 1 ? '' : 's'}` : '—'}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 16, marginBottom: 16 }}>
               {/* LEFT — combined "By Status" card (height matches Deal Pipeline) */}
               <div className="glass-module p-4 flex flex-col" style={{ height: '100%' }}>
