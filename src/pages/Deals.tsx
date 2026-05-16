@@ -630,6 +630,9 @@ export default function Dashboard() {
                       filters={filters}
                       onFilterChange={updateFilters}
                     />
+                    <div className="mt-2">
+                      <AIFilterChips />
+                    </div>
                   </div>
                 )}
 
