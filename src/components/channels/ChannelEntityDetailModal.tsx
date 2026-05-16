@@ -11,8 +11,9 @@ import { Network, Loader2 } from 'lucide-react';
 import { ContactDetailContent } from '@/components/crm/ContactDetailContent';
 import { CompanyDetailContent } from '@/components/crm/CompanyDetailContent';
 import { useUpdateChannelEntry, type ChannelType, type ChannelEntry } from '@/hooks/useChannelEntries';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 
-const CHANNEL_TYPES: ChannelType[] = ['Banks', 'M&A and Investment Bankers', 'Service Providers', 'Investors'];
+const CHANNEL_TYPES: ChannelType[] = CHANNEL_TYPE_OPTIONS.map(o => o.value);
 
 interface Props {
   entry: ChannelEntry;
