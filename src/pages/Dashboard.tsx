@@ -997,7 +997,7 @@ export default function Dashboard() {
               {isSaving && (
                 <span className="text-[11px] text-muted-foreground animate-pulse shrink-0">Saving…</span>
               )}
-              {dashboardTab !== 'news-feed' && (
+              {dashboardTab !== 'news-feed' && dashboardTab !== 'performance' && (
                 <>
                   <DashboardTemplatesDialog
                     mode="replace"
@@ -1034,7 +1034,9 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {dashboardTab !== 'news-feed' ? (
+          {dashboardTab === 'performance' ? (
+            <NikiPerformanceTab />
+          ) : dashboardTab !== 'news-feed' ? (
             <>
               {/* Grid */}
               {activePreset && activePreset.widgets_config.length > 0 && (
