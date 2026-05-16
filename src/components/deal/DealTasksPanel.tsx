@@ -155,7 +155,7 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                 <div className="space-y-2 pr-2">
                   {displayedTasks.map(task => {
                     const assignee = memberMap.get(task.assigned_to);
-                    const isCompleted = task.status === 'completed';
+                    const isCompleted = isTaskCompleted(task);
                     return (
                       <div key={task.id} className={cn(
                         "flex items-start gap-3 group rounded-lg border p-2.5 transition-colors",
