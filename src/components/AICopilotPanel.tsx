@@ -606,6 +606,11 @@ export function AICopilotPanel() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  // Always reset to compact on close or minimize. Expanded mode is
+  // strictly opt-in via the Expand button — never persisted across launches.
+  useEffect(() => {
+    if (!isOpen || isMinimized) setIsExpanded(false);
+  }, [isOpen, isMinimized]);
   const [workspaceItems, setWorkspaceItems] = useState<WorkspaceItem[]>([]);
   const [activeWorkspaceItemId, setActiveWorkspaceItemId] = useState<string | null>(null);
   const workspaceHydratedRef = useRef<string | null>(null);
