@@ -25,7 +25,6 @@ import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import { AddKpiDialog } from './qir/AddKpiDialog';
 import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
 import {
-  KPI_TEMPLATES,
   getKpiTemplate,
   type KpiTemplateId,
   type SalesClientsConfig,
