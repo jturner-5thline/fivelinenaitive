@@ -19,6 +19,7 @@ import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
 import { MetricQuarterlyBarChart } from '@/components/dashboard/performance/MetricQuarterlyBarChart';
 import { QuarterlyPlanEditor } from '@/components/dashboard/performance/QuarterlyPlanEditor';
+import { canEditPerformanceModel } from '@/lib/performanceModelAccess';
 import {
   useNikiPerformanceMetrics,
   NIKI_QUARTERS,
@@ -380,6 +381,8 @@ function NikiPerformanceTabInner() {
   const { plan: planMap } = useNikiPerformancePlan();
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const canEditModel = canEditPerformanceModel(user);
+  const effectiveMode: 'view' | 'edit' = canEditModel ? mode : 'view';
 
   // ─── User-scoped display preferences (persisted in localStorage) ─────────
   const prefsKey = user?.id ? `nikiPerf.prefs.${user.id}` : 'nikiPerf.prefs.anon';
@@ -662,19 +665,21 @@ function NikiPerformanceTabInner() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button
-            variant={mode === 'edit' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}
-            className="gap-1.5"
-          >
-            {mode === 'edit' ? <LayoutDashboard className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-            {mode === 'edit' ? 'Dashboard view' : 'Edit model'}
-          </Button>
+          {canEditModel && (
+            <Button
+              variant={mode === 'edit' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setMode(mode === 'edit' ? 'view' : 'edit')}
+              className="gap-1.5"
+            >
+              {mode === 'edit' ? <LayoutDashboard className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+              {mode === 'edit' ? 'Dashboard view' : 'Edit model'}
+            </Button>
+          )}
         </div>
       </div>
 
-      {mode === 'view' ? (
+      {effectiveMode === 'view' ? (
         <>
           {/* KPI strip */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
