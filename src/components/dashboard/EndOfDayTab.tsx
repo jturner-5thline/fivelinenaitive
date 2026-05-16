@@ -671,7 +671,7 @@ function EodContextSidebar({
   onNoteChange: (v: string) => void;
   onClose: () => void;
   onCreateFollowUp: () => void;
-  onCreateDeal: () => void;
+  onCreateDeal?: () => void;
   affiliatedDeals: AffiliatedDeal[];
   manualClaapLinks: ManualClaapLink[];
   onAddManualClaapLink: (link: ManualClaapLink) => void;
@@ -819,16 +819,6 @@ function EodContextSidebar({
         >
           <Plus className="h-3.5 w-3.5" />
           Create task
-        </Button>
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="w-full justify-start h-8 text-xs gap-2"
-          onClick={onCreateDeal}
-        >
-          <Briefcase className="h-3.5 w-3.5" />
-          Create deal
         </Button>
       </div>
     </aside>
