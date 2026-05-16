@@ -556,25 +556,6 @@ export function NikiPerformanceTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {mode === 'view' && (
-            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-              {(['table', 'charts', 'both'] as const).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setLayout(opt)}
-                  className={cn(
-                    'px-2.5 py-1 text-[11px] font-medium rounded-md capitalize transition-colors',
-                    layout === opt
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          )}
           <Button
             variant={mode === 'edit' ? 'default' : 'outline'}
             size="sm"
@@ -599,7 +580,6 @@ export function NikiPerformanceTab() {
           </div>
 
           {/* Scorecard table */}
-          {(layout === 'table' || layout === 'both') && (
           <Card>
             <CardHeader className="pb-3 flex-row items-start justify-between space-y-0 gap-3">
               <div>
@@ -613,7 +593,8 @@ export function NikiPerformanceTab() {
                     : ` Comparing ${orderedSelected.length} periods.`}
                 </CardDescription>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Quarter selector */}
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([...allQuarterKeys, 'YEAR'] as PeriodKey[]).map((k) => {
                     const active = selectedPeriods.includes(k);
@@ -635,21 +616,44 @@ export function NikiPerformanceTab() {
                     );
                   })}
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mr-1">
-                    Presets
-                  </span>
-                  {presets.map((p) => (
+                {/* Column visibility toggles */}
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                  {([
+                    { key: 'plan', label: 'Plan', active: showPlan, toggle: togglePlan },
+                    { key: 'actual', label: 'Actual', active: showActual, toggle: toggleActual },
+                    { key: 'var', label: 'Variance + Δ', active: showVarDelta, toggle: toggleVarDelta },
+                  ] as const).map((c) => (
                     <button
-                      key={p.label}
+                      key={c.key}
                       type="button"
-                      onClick={() => setSelectedPeriods(p.value)}
-                      className="px-2 py-0.5 text-[10px] font-medium rounded border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                      onClick={c.toggle}
+                      className={cn(
+                        'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                        c.active
+                          ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                      title={`Toggle ${c.label} column${c.key === 'var' ? 's' : ''}`}
                     >
-                      {p.label}
+                      {c.label}
                     </button>
                   ))}
                 </div>
+                {/* Chart visibility toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowCharts((v) => !v)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors',
+                    showCharts
+                      ? 'border-primary/40 bg-primary/10 text-foreground'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground',
+                  )}
+                  title="Toggle supporting charts"
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Charts {showCharts ? 'on' : 'off'}
+                </button>
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
@@ -658,10 +662,10 @@ export function NikiPerformanceTab() {
                   {isSingle ? (
                     <TableRow className="hover:bg-transparent border-b border-border/40">
                       <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20">Plan</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>
+                      {showPlan && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20">Plan</TableHead>}
+                      {showActual && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>}
+                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>}
+                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>}
                       <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
                     </TableRow>
                   ) : (
@@ -673,7 +677,7 @@ export function NikiPerformanceTab() {
                         {orderedSelected.map((k) => (
                           <TableHead
                             key={k}
-                            colSpan={4}
+                            colSpan={perPeriodCols}
                             className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-semibold text-foreground/80 border-l border-border/20"
                           >
                             {periodLabel(k)}
@@ -683,10 +687,14 @@ export function NikiPerformanceTab() {
                       <TableRow className="hover:bg-transparent border-b border-border/40">
                         {orderedSelected.map((k) => (
                           <Fragment key={k}>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20 border-l border-border/20">Plan</TableHead>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Actual</TableHead>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Δ</TableHead>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                            {showPlan && <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20 border-l border-border/20">Plan</TableHead>}
+                            {showActual && <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && 'border-l border-border/20')}>Actual</TableHead>}
+                            {showVarDelta && (
+                              <>
+                                <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && !showActual && 'border-l border-border/20')}>Δ</TableHead>
+                                <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                              </>
+                            )}
                           </Fragment>
                         ))}
                       </TableRow>
@@ -701,10 +709,9 @@ export function NikiPerformanceTab() {
               </Table>
             </CardContent>
           </Card>
-          )}
 
           {/* Per-metric quarterly bar charts */}
-          {(layout === 'charts' || layout === 'both') && (
+          {showCharts && (
             <div className="space-y-5">
               {[
                 { title: 'Pipeline Production', keys: productionRows },
