@@ -13,6 +13,8 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
 import { PartnerLinkedCompanyContacts } from '@/components/partners/PartnerLinkedCompanyContacts';
 import { PartnerPromotionDialog, getPromotionMode, type PromotionMode, type PromotionResult } from '@/components/partners/PartnerPromotionDialog';
+import { PartnerTierBadge, PartnerTier4WarningBadge } from '@/components/partners/PartnerTierBadge';
+import { usePartnerTier, PARTNER_TIER_OVERRIDE_EMAILS, type AutoTier } from '@/hooks/usePartnerTier';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -60,6 +62,43 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const [latestStageNote, setLatestStageNote] = useState<StageNote | null>(null);
   const [stageHistory, setStageHistory] = useState<StageNote[]>([]);
   const [stageHistoryOpen, setStageHistoryOpen] = useState(false);
+
+  // Tier override
+  const { data: tierInfo } = usePartnerTier(partner);
+  const canOverrideTier = !!user?.email && PARTNER_TIER_OVERRIDE_EMAILS.includes(user.email.toLowerCase());
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overrideTier, setOverrideTier] = useState<string>('');
+  const [overrideReason, setOverrideReason] = useState('');
+
+  const handleSaveTierOverride = async (clear = false) => {
+    if (!partner) return;
+    const meta = { ...((partner.metadata || {}) as Record<string, any>) };
+    if (clear) {
+      delete meta.tierOverride;
+    } else {
+      if (!overrideTier || !overrideReason.trim()) {
+        toast.error('Tier and reason are required');
+        return;
+      }
+      meta.tierOverride = {
+        tier: Number(overrideTier) as AutoTier,
+        reason: overrideReason.trim(),
+        by: user?.email || user?.id || null,
+        at: new Date().toISOString(),
+      };
+    }
+    updatePartner.mutate(
+      { id: partner.id, metadata: meta },
+      {
+        onSuccess: () => {
+          toast.success(clear ? 'Tier override cleared' : 'Tier override applied');
+          setOverrideOpen(false);
+          setOverrideReason('');
+          setOverrideTier('');
+        },
+      },
+    );
+  };
 
   const checkUnseenMemoChanges = useCallback(async () => {
     if (!partner?.id || !user?.id) { setHasUnseenMemoChanges(false); return; }
@@ -257,6 +296,56 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
                   <h2 className="text-xl font-semibold text-white">{partner.name}</h2>
                 )}
                 <p className="text-xs text-slate-500 mt-1">Added {format(new Date(partner.created_at), 'MMM d, yyyy')}</p>
+                <div className="mt-3 flex items-center flex-wrap gap-1.5">
+                  <PartnerTierBadge info={tierInfo} size="md" />
+                  <PartnerTier4WarningBadge info={tierInfo} />
+                  {canOverrideTier && (
+                    <Popover open={overrideOpen} onOpenChange={setOverrideOpen}>
+                      <PopoverTrigger asChild>
+                        <button
+                          className="text-[10px] text-slate-400 hover:text-white underline underline-offset-2"
+                          onClick={() => {
+                            setOverrideTier(tierInfo ? String(tierInfo.tier) : '');
+                            setOverrideReason(tierInfo?.overrideReason || '');
+                          }}
+                        >
+                          {tierInfo?.manualOverride ? 'Edit override' : 'Override tier'}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 bg-slate-900 border-slate-700 text-white" align="start">
+                        <div className="space-y-2">
+                          <Label className="text-xs">Tier</Label>
+                          <Select value={overrideTier} onValueChange={setOverrideTier}>
+                            <SelectTrigger className="bg-slate-800 border-slate-600 text-white"><SelectValue placeholder="Select tier" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">Tier 1</SelectItem>
+                              <SelectItem value="2">Tier 2</SelectItem>
+                              <SelectItem value="3">Tier 3</SelectItem>
+                              <SelectItem value="4">Tier 4</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Label className="text-xs">Reason</Label>
+                          <Textarea
+                            value={overrideReason}
+                            onChange={e => setOverrideReason(e.target.value)}
+                            rows={3}
+                            className="bg-slate-800 border-slate-600 text-white"
+                            placeholder="Why are you overriding the auto-calculated tier?"
+                          />
+                          <div className="flex justify-between gap-2 pt-1">
+                            {tierInfo?.manualOverride ? (
+                              <Button size="sm" variant="outline" onClick={() => handleSaveTierOverride(true)}>Clear</Button>
+                            ) : <span />}
+                            <Button size="sm" onClick={() => handleSaveTierOverride(false)}>Save override</Button>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                </div>
+                {tierInfo?.manualOverride && tierInfo.overrideReason && (
+                  <p className="text-[10px] text-slate-500 mt-1">Override: {tierInfo.overrideReason}</p>
+                )}
               </div>
 
               {/* Fields */}
