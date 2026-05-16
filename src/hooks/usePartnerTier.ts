@@ -1,0 +1,131 @@
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
+import { usePartnerRules, DEFAULT_PARTNER_RULES } from '@/hooks/usePartnerRules';
+
+const SIGNED_STAGES = ['final-credit-items', 'closed-won', 'funded-invoiced', 'terms-issued', 'agreement-pending'];
+
+export type AutoTier = 1 | 2 | 3 | 4;
+
+export interface PartnerTierInfo {
+  tier: AutoTier;
+  manualOverride: boolean;
+  overrideReason?: string;
+  overrideBy?: string;
+  overrideAt?: string;
+  // raw computed
+  qualifiedTrailing3mo: number;
+  signedTrailing3mo: number;
+  addedToBoardTrailing3mo: number;
+  addedToBoardTrailing12mo: number;
+  totalDeals: number;
+  daysSinceAdded: number;
+  daysUntilRemovalEligible: number | null; // null if not tier 4
+  removalWarning: '60d' | '30d' | 'eligible' | null;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+export function usePartnerTier(partner: {
+  id: string;
+  name?: string | null;
+  created_at: string;
+  metadata?: Record<string, any> | null;
+} | null) {
+  const { company } = useCompany();
+  const { data: rules } = usePartnerRules();
+  const qualifiedStages =
+    (rules?.tiers.qualifiedDealStages) || DEFAULT_PARTNER_RULES.tiers.qualifiedDealStages;
+  const tier4Months = rules?.tiers.tier4.monthsBeforeRemoval ?? DEFAULT_PARTNER_RULES.tiers.tier4.monthsBeforeRemoval;
+
+  return useQuery({
+    queryKey: ['partner_tier', company?.id, partner?.id, qualifiedStages, tier4Months],
+    enabled: !!company?.id && !!partner?.id && !!partner?.name,
+    queryFn: async (): Promise<PartnerTierInfo> => {
+      const name = (partner!.name || '').toLowerCase().trim();
+      const now = Date.now();
+      const win3 = new Date(now - 3 * 30 * MS_PER_DAY).toISOString();
+      const win12 = new Date(now - 12 * 30 * MS_PER_DAY).toISOString();
+
+      const { data: deals } = await supabase
+        .from('deals')
+        .select('id, stage, referred_by, sourced_via, created_at, closing_date')
+        .eq('company_id', company!.id)
+        .or(`referred_by.ilike.${name},sourced_via.ilike.${name}`);
+
+      const rows = (deals || []) as Array<{
+        stage: string | null;
+        created_at: string;
+        closing_date: string | null;
+      }>;
+
+      const qualifiedTrailing3mo = rows.filter(
+        d => d.stage && qualifiedStages.includes(d.stage) && d.created_at >= win3,
+      ).length;
+      const signedTrailing3mo = rows.filter(
+        d => d.stage && SIGNED_STAGES.includes(d.stage) &&
+          (d.closing_date || d.created_at) >= win3,
+      ).length;
+      const addedToBoardTrailing3mo = rows.filter(d => d.created_at >= win3).length;
+      const addedToBoardTrailing12mo = rows.filter(d => d.created_at >= win12).length;
+      const totalDeals = rows.length;
+
+      // Manual override wins
+      const meta = (partner!.metadata || {}) as Record<string, any>;
+      const override = meta.tierOverride as
+        | { tier: AutoTier; reason?: string; by?: string; at?: string }
+        | undefined;
+
+      let tier: AutoTier;
+      if (override && [1, 2, 3, 4].includes(Number(override.tier))) {
+        tier = Number(override.tier) as AutoTier;
+      } else if (qualifiedTrailing3mo >= 3 || signedTrailing3mo >= 1) {
+        tier = 1;
+      } else if (
+        (qualifiedTrailing3mo > 1 && qualifiedTrailing3mo < 3) ||
+        addedToBoardTrailing3mo >= 4
+      ) {
+        tier = 2;
+      } else if (addedToBoardTrailing12mo >= 4 /* at least 1/quarter */) {
+        tier = 3;
+      } else if (totalDeals === 0) {
+        tier = 4;
+      } else {
+        tier = 3;
+      }
+
+      const daysSinceAdded = Math.max(
+        0,
+        Math.floor((now - new Date(partner!.created_at).getTime()) / MS_PER_DAY),
+      );
+      const cutoffDays = tier4Months * 30;
+      let daysUntilRemovalEligible: number | null = null;
+      let removalWarning: PartnerTierInfo['removalWarning'] = null;
+      if (tier === 4) {
+        daysUntilRemovalEligible = cutoffDays - daysSinceAdded;
+        if (daysUntilRemovalEligible <= 0) removalWarning = 'eligible';
+        else if (daysUntilRemovalEligible <= 30) removalWarning = '30d';
+        else if (daysUntilRemovalEligible <= 60) removalWarning = '60d';
+      }
+
+      return {
+        tier,
+        manualOverride: !!override,
+        overrideReason: override?.reason,
+        overrideBy: override?.by,
+        overrideAt: override?.at,
+        qualifiedTrailing3mo,
+        signedTrailing3mo,
+        addedToBoardTrailing3mo,
+        addedToBoardTrailing12mo,
+        totalDeals,
+        daysSinceAdded,
+        daysUntilRemovalEligible,
+        removalWarning,
+      };
+    },
+    staleTime: 60_000,
+  });
+}
+
+export const PARTNER_TIER_OVERRIDE_EMAILS = ['jturner@5thline.co', 'jmoffitt@5thline.co'];
