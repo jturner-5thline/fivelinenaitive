@@ -1,8 +1,12 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { format, startOfDay, endOfDay, parseISO, isBefore, isAfter } from 'date-fns';
+import {
+  format, startOfDay, endOfDay, parseISO, isBefore, isAfter,
+  subDays, differenceInCalendarDays,
+} from 'date-fns';
 import {
   Mail, Users, Calendar as CalendarIcon, Loader2, ListPlus,
   PanelRightClose, Sparkles, StickyNote, Video, Plus, Briefcase, ExternalLink, ChevronRight,
+  Check,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -28,6 +32,9 @@ import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } 
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { MeetingClaapLinker, type AffiliatedDeal, type ManualClaapLink } from './MeetingClaapLinker';
+import { usePersistentClears } from '@/hooks/usePersistentClears';
+
+const EOD_LOOKBACK_DAYS = 90;
 
 interface ContactInfo {
   fullName: string | null;
