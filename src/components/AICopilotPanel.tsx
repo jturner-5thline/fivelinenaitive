@@ -28,6 +28,7 @@ import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
 import type { ConversationMutation } from '@/lib/copilot-utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
