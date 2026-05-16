@@ -5760,13 +5760,13 @@ export default function DealDetail() {
       </Suspense>
 
       {/* Floating left/right pipeline navigation arrows */}
+      </div>
       <DealDetailSideNavigation
         currentDealId={deal.id}
         pipelineId={deal.pipelineId}
         dealClass={deal.dealClass}
         companyId={company?.id}
       />
-      </div>
     </>
   );
 }
