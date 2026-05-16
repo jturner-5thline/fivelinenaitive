@@ -4689,6 +4689,50 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           "Summarize follow-ups grouped by Overdue / Today / This week. Suggest 2-3 next actions as chips. Do NOT mark anything complete or send anything — this is read-only.",
       };
     }
+    // ── PHASE 3: EXTERNAL INTEGRATION STUBS (PREVIEW-ONLY) ──
+    case "send_gmail": {
+      return {
+        action: "send_gmail_preview",
+        preview_only: true,
+        provider: "gmail_nylas",
+        deal_id: args.deal_id || null,
+        to: args.to || [],
+        cc: args.cc || [],
+        bcc: args.bcc || [],
+        subject: args.subject || "",
+        body_html: args.body_html || "",
+        note: "Stubbed: not sent. Render this as a Send via Gmail preview card. The user must click Send to actually deliver via the existing Nylas integration.",
+      };
+    }
+    case "create_asana_task": {
+      return {
+        action: "create_asana_task_preview",
+        preview_only: true,
+        provider: "asana",
+        deal_id: args.deal_id || null,
+        name: args.name,
+        notes: args.notes || "",
+        due_on: args.due_on || null,
+        assignee_email: args.assignee_email || null,
+        project_gid: args.project_gid || null,
+        note: "Stubbed: not created in Asana. Render as a Create in Asana preview card; existing bi-directional sync runs only after user approval.",
+      };
+    }
+    case "schedule_meeting": {
+      return {
+        action: "schedule_meeting_preview",
+        preview_only: true,
+        provider: "google_calendar",
+        deal_id: args.deal_id || null,
+        title: args.title,
+        description: args.description || "",
+        start_iso: args.start_iso,
+        end_iso: args.end_iso,
+        attendees: args.attendees || [],
+        location: args.location || "",
+        note: "Stubbed: no calendar event created. Render as a Schedule meeting preview card; user must approve before booking.",
+      };
+    }
     default:
       return { error: `Unknown tool: ${name}` };
   }
