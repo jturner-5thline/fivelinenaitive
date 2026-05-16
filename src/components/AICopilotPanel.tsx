@@ -1336,7 +1336,7 @@ export function AICopilotPanel() {
       }
     : {};
 
-  return (
+  const panelNode = (
     <>
       <div
         ref={panelRef}
