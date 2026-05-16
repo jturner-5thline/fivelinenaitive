@@ -34,6 +34,7 @@ import { InsightsTimeframePicker } from "@/components/metrics/InsightsTimeframeP
 import { InsightsTimeframeProvider, useInsightsTimeframe } from "@/contexts/InsightsTimeframeContext";
 import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
+import { QuarterlyRevenueGrowthCard } from "@/components/insights/QuarterlyRevenueGrowthCard";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2552,6 +2553,7 @@ function MetricsInner() {
           )}
 
           {/* Dashboard Content - always show pre-built dashboards */}
+          <QuarterlyRevenueGrowthCard />
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
             {selectedDashboard === 'management-snapshot' && (
               <WeeklyRundownCarousel
