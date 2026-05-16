@@ -23,6 +23,7 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
 import { AsanaGoalsPortfoliosSection } from './AsanaGoalsPortfoliosSection';
 import { DraggableGridLayout } from '@/components/metrics/DraggableGridLayout';
 import { useGridLayout, GridLayoutItem } from '@/hooks/useGridLayout';
+import { QuarterlyRevenueGrowthCard } from '@/components/insights/QuarterlyRevenueGrowthCard';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '@/components/metrics/insights/InsightsDrilldownDrawer';
@@ -1337,10 +1338,9 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <NaPlaceholder height={140} label="Data unavailable — no live period-scoped bank balance source" />
           </GridShell>
         </div>
-        <div key="liabilities" className="h-full">
-          <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
-            <NaPlaceholder height={140} label="Data unavailable — no live debt schedule source" />
-          </GridShell>
+        <div key="liabilities" className="h-full overflow-auto">
+          {/* Quarterly Revenue Growth (YoY) — swapped into the Liabilities slot */}
+          <QuarterlyRevenueGrowthCard />
         </div>
         <div key="dscr" className="h-full">
           <GridShell isEditMode={isEditMode} title="DSCR / Debt Coverage">
