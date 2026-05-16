@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { formatDistanceToNow } from "date-fns";
 import {
@@ -148,6 +149,47 @@ export function FinServTopCustomersCard() {
   });
 
   const rows = data?.top ?? [];
+
+  type SortKey = "customer" | "current" | "prior" | "variance" | "pct";
+  const [sortKey, setSortKey] = useState<SortKey>("current");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) => {
+      const av = a[sortKey];
+      const bv = b[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === "string" && typeof bv === "string") {
+        return sortDir === "asc" ? av.localeCompare(bv) : bv.localeCompare(av);
+      }
+      const an = Number(av);
+      const bn = Number(bv);
+      return sortDir === "asc" ? an - bn : bn - an;
+    });
+    return copy;
+  }, [rows, sortKey, sortDir]);
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else {
+      setSortKey(k);
+      setSortDir(k === "customer" ? "asc" : "desc");
+    }
+  };
+
+  const SortIcon = ({ k }: { k: SortKey }) => {
+    if (sortKey !== k)
+      return <ArrowUpDown className="inline h-3 w-3 ml-1 opacity-40" />;
+    return sortDir === "asc" ? (
+      <ArrowUp className="inline h-3 w-3 ml-1" />
+    ) : (
+      <ArrowDown className="inline h-3 w-3 ml-1" />
+    );
+  };
+
   const chartData = rows.map((r) => ({
     name: truncate(r.customer, 18),
     fullName: r.customer,
@@ -308,15 +350,45 @@ export function FinServTopCustomersCard() {
                     className="text-[10px] uppercase tracking-wider"
                     style={{ color: "rgba(160,210,255,0.6)" }}
                   >
-                    <th className="text-left py-2 font-semibold">Customer</th>
-                    <th className="text-right py-2 font-semibold">Current Period</th>
-                    <th className="text-right py-2 font-semibold">Prior Year</th>
-                    <th className="text-right py-2 font-semibold">$ Variance</th>
-                    <th className="text-right py-2 font-semibold">% Variance</th>
+                    <th
+                      className="text-left py-2 font-semibold cursor-pointer select-none"
+                      onClick={() => toggleSort("customer")}
+                    >
+                      Customer
+                      <SortIcon k="customer" />
+                    </th>
+                    <th
+                      className="text-right py-2 font-semibold cursor-pointer select-none"
+                      onClick={() => toggleSort("current")}
+                    >
+                      Current Period
+                      <SortIcon k="current" />
+                    </th>
+                    <th
+                      className="text-right py-2 font-semibold cursor-pointer select-none"
+                      onClick={() => toggleSort("prior")}
+                    >
+                      Prior Year
+                      <SortIcon k="prior" />
+                    </th>
+                    <th
+                      className="text-right py-2 font-semibold cursor-pointer select-none"
+                      onClick={() => toggleSort("variance")}
+                    >
+                      $ Variance
+                      <SortIcon k="variance" />
+                    </th>
+                    <th
+                      className="text-right py-2 font-semibold cursor-pointer select-none"
+                      onClick={() => toggleSort("pct")}
+                    >
+                      % Variance
+                      <SortIcon k="pct" />
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((r) => {
+                  {sortedRows.map((r) => {
                     const positive = r.variance >= 0;
                     const color = positive
                       ? "hsl(142 71% 55%)"
