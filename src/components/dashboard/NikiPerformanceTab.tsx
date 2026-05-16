@@ -272,22 +272,40 @@ function QuarterlyChart({ rows, title, description, unit }: {
   );
 }
 
-function FunnelSection({ rows, openDrill }: {
+function FunnelSection({ rows, openDrill, mode, period, periodLabel, onToggleHide }: {
   rows: MetricRow[];
   openDrill: (row: MetricRow, q: QuarterKey | 'YEAR') => void;
+  mode: PerfMode;
+  period: QuarterKey | 'YEAR';
+  periodLabel: string;
+  onToggleHide?: () => void;
 }) {
   const { plan: planMap } = useNikiPerformancePlan();
-  const max = Math.max(1, ...rows.map(r => planMap[r.key].total));
+  const resolved = rows.map((r) => ({ row: r, ...resolvePeriod(r, planMap, period, mode) }));
+  const max = Math.max(1, ...resolved.map((r) => r.planVal));
   return (
     <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-semibold">Pipeline Funnel — 2026 YTD</CardTitle>
-        <CardDescription className="text-xs">Conversion progression from deals on board to closed.</CardDescription>
+      <CardHeader className="pb-2 flex-row items-start justify-between space-y-0 gap-2">
+        <div>
+          <CardTitle className="text-sm font-semibold">Pipeline Funnel — {periodLabel}</CardTitle>
+          <CardDescription className="text-xs">
+            Conversion progression {mode === 'ytd' ? '(cumulative YTD)' : '(quarter only)'}.
+          </CardDescription>
+        </div>
+        {onToggleHide && (
+          <button
+            type="button"
+            onClick={onToggleHide}
+            aria-label="Hide funnel"
+            title="Hide funnel"
+            className="inline-flex items-center justify-center h-6 w-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+          </button>
+        )}
       </CardHeader>
       <CardContent className="pt-0 pb-4 space-y-2">
-        {rows.map((r) => {
-          const plan = planMap[r.key].total;
-          const actual = r.yearTotal;
+        {resolved.map(({ row: r, planVal: plan, actualVal: actual }) => {
           const planPct = (plan / max) * 100;
           const actualPct = (actual / max) * 100;
           const v = variance(actual, plan);
@@ -296,7 +314,7 @@ function FunnelSection({ rows, openDrill }: {
             <button
               key={r.key}
               type="button"
-              onClick={() => openDrill(r, 'YEAR')}
+              onClick={() => openDrill(r, period)}
               className="w-full text-left group"
             >
               <div className="flex items-center justify-between text-xs mb-1">
