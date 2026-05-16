@@ -978,19 +978,16 @@ export default function Tasks() {
             side="bottom"
           >
             <Button
+              type="button"
+              variant="liquid-glass"
               size="sm"
-              className="h-8 text-[12px] gap-1.5 rounded-md font-medium border"
-              style={{
-                backgroundColor: 'rgba(126,184,247,0.14)',
-                color: '#eaf2ff',
-                borderColor: 'rgba(126,184,247,0.3)',
-              }}
+              className="gap-2"
               onClick={(e) => {
                 quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
                 setShowQuickCreate(true);
               }}
             >
-              <Plus className="h-3.5 w-3.5" />
+              <Plus className="h-4 w-4" />
               Add Task
             </Button>
           </HintTooltip>
