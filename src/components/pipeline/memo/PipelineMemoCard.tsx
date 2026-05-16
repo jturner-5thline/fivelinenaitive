@@ -8,7 +8,6 @@ import { MemoHeader } from './MemoHeader';
 import { ActivityPanel } from './ActivityPanel';
 import { TasksMilestonesBand } from './TasksMilestonesBand';
 import { NextBestActionRow } from './NextBestActionRow';
-import { EmailsPanel } from './EmailsPanel';
 import { LendersPanel } from './LendersPanel';
 
 interface PipelineMemoCardProps {
@@ -82,16 +81,16 @@ function PipelineMemoCardImpl({
           bg-gradient-to-b from-transparent to-white/[0.015]
         "
       >
-        <div className="min-w-0">
-          <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
-        </div>
         <div className="min-w-0 divide-y divide-white/[0.08]">
+          <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
           <ActivityPanel
             deal={deal}
             rawDigest={rawDigest}
             isLoading={!!isDigestLoading}
+            emails={rawDigest?.emails || []}
           />
-          <EmailsPanel emails={rawDigest?.emails || []} isLoading={!!isDigestLoading} />
+        </div>
+        <div className="min-w-0">
           <LendersPanel deal={deal} />
         </div>
       </div>

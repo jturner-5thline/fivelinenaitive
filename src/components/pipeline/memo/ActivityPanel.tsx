@@ -1,11 +1,21 @@
 import type { Deal } from '@/types/deal';
 import type { PipelineDigestRaw } from '@/hooks/usePipelineDigests';
 import { formatSlug } from '@/utils/dealTypeLabels';
+import { Mail } from 'lucide-react';
+
+interface RawEmail {
+  id: string;
+  subject: string | null;
+  snippet: string | null;
+  from_name: string | null;
+  from_email: string | null;
+}
 
 interface ActivityPanelProps {
   deal: Deal;
   rawDigest: PipelineDigestRaw | undefined;
   isLoading: boolean;
+  emails?: RawEmail[];
 }
 
 type Tone = 'reviewing' | 'onhold' | 'passed' | 'neutral';
@@ -30,7 +40,15 @@ function toneFromStage(stage?: string): Tone {
  * (e.g. "PFG → in review (from on-deck)") sourced from the per-deal
  * activity_logs already loaded by usePipelineDigests().
  */
-export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps) {
+function senderOrg(e: RawEmail): string | null {
+  const dom = (e.from_email || '').split('@')[1];
+  if (!dom) return null;
+  const root = dom.split('.').slice(-2, -1)[0];
+  if (!root) return null;
+  return root.charAt(0).toUpperCase() + root.slice(1);
+}
+
+export function ActivityPanel({ deal, rawDigest, isLoading, emails = [] }: ActivityPanelProps) {
   if (isLoading) {
     return (
       <div className="p-5 space-y-2">
@@ -45,6 +63,8 @@ export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps
   const stageEvents = activities.filter((a) =>
     ['lender_stage_change', 'stage_change'].includes(a.activity_type),
   );
+  const recentEmails = emails.slice(0, 4);
+  const hasAny = stageEvents.length > 0 || recentEmails.length > 0;
 
   return (
     <div className="p-5 min-w-0 self-start">
@@ -52,7 +72,7 @@ export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps
         Activity · Last 24h
       </div>
 
-      {stageEvents.length === 0 ? (
+      {!hasAny ? (
         <p className="text-xs text-muted-foreground">
           No activity. Deal at <span className="font-semibold text-foreground">{formatSlug(deal.stage) || '—'}</span>.
         </p>
@@ -73,6 +93,26 @@ export function ActivityPanel({ deal, rawDigest, isLoading }: ActivityPanelProps
                   <span>{formatSlug(to) || 'updated'}</span>
                   {from && (
                     <span className="text-muted-foreground"> (from {formatSlug(from)})</span>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+          {recentEmails.map((e) => {
+            const sender = e.from_name || e.from_email || 'Unknown';
+            const org = senderOrg(e);
+            const preview = (e.snippet || e.subject || '').slice(0, 140);
+            return (
+              <div key={`email-${e.id}`} className="flex gap-2 items-start">
+                <Mail className="mt-0.5 h-3 w-3 text-primary/70 shrink-0" />
+                <div className="min-w-0 text-xs leading-snug">
+                  <div className="truncate text-foreground">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground mr-1.5">Email</span>
+                    <span className="font-semibold">{sender}</span>
+                    {org && <span className="text-muted-foreground"> · {org}</span>}
+                  </div>
+                  {preview && (
+                    <div className="text-muted-foreground line-clamp-2">{preview}</div>
                   )}
                 </div>
               </div>
