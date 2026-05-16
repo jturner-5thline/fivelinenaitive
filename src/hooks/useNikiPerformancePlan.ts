@@ -219,10 +219,18 @@ export function NikiPerformancePlanProvider({ children }: { children: ReactNode 
 
 export function useNikiPerformancePlan(): UseNikiPerformancePlan {
   const ctx = useContext(NikiPerformancePlanContext);
-  if (ctx) return ctx;
-  // Fallback for consumers used outside a provider — keeps behavior safe,
-  // but updates won't propagate across separate hook instances.
-  return useNikiPerformancePlanState();
+  if (!ctx) {
+    // Static fallback when used outside a provider — returns sheet defaults.
+    const raw = structuredCloneDefault();
+    return {
+      plan: resolveTotals(raw),
+      rawPlan: raw,
+      isLoaded: true,
+      setTarget: () => {},
+      resetAll: () => {},
+    };
+  }
+  return ctx;
 }
 
 function structuredCloneDefault(): Record<PlanMetricKey, QuarterlyTargets> {
