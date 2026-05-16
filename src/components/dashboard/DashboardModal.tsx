@@ -403,20 +403,6 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                 </div>
 
                 <div className="glass-module p-4">
-                  <div className="db-ct">Revenue Totals</div>
-                  {[
-                    ['Total Pipeline', metrics.totalPipeline, 'db-bl'],
-                    ['Gross Revenue', metrics.grossRevenue, ''],
-                    ['Billed @ Close', metrics.billedAtClose, ''],
-                    ['Referral Comm.', metrics.referralTotal, ''],
-                    ['"Live" Revenue', metrics.liveRevenue, 'db-up'],
-                    ['Total Profit', metrics.totalProfit, ''],
-                  ].map(([n, v, c], i) => (
-                    <div key={i} className="db-stat-row"><span className="db-sn">{n}</span><span className={`db-sv ${c}`}>{v}</span></div>
-                  ))}
-                </div>
-
-                <div className="glass-module p-4">
                   <div className="db-ct">Fee Revenue by Status</div>
                   <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv value-positive">{metrics.onTrack.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.onTrack.count} deals</span></span></div>
                   <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv value-warning">{metrics.atRisk.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.atRisk.count} deals</span></span></div>
