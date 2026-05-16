@@ -136,6 +136,8 @@ export default function Dashboard() {
   const { isFirstTimeUser, dismissAllHints } = useFirstTimeHints();
   const { activePipelineId, pipelines } = usePipelineContext();
   const { company } = useCompany();
+  const activePipelineName = pipelines.find(p => p.id === activePipelineId)?.name ?? null;
+  const [shareReportOpen, setShareReportOpen] = useState(false);
   
   const { preferences } = usePreferences();
   const { visibleColumns, toggleColumnVisibility } = useDealListColumnOrder();
