@@ -13,6 +13,8 @@ import StarterKit from '@tiptap/starter-kit';
 import { cn } from '@/lib/utils';
 import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal, DealStatus } from '@/types/deal';
+import { RecipientField } from '@/components/deal/email/RecipientField';
+import { useEmailContacts } from '@/hooks/useEmailContacts';
 
 interface ShareReportDialogProps {
   open: boolean;
@@ -125,6 +127,7 @@ function MiniToolbar({ editor }: { editor: Editor | null }) {
 
 export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId, pipelineName }: ShareReportDialogProps) {
   const { updateDeal } = useDealsContext();
+  const { search: searchContacts } = useEmailContacts();
 
   const filteredDeals = useMemo(() => {
     return deals.filter((d) => {
@@ -146,8 +149,8 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     }));
   }, [filteredDeals]);
 
-  const [to, setTo] = useState('');
-  const [cc, setCc] = useState('');
+  const [to, setTo] = useState<string[]>([]);
+  const [cc, setCc] = useState<string[]>([]);
   const [subject, setSubject] = useState('');
   const [sending, setSending] = useState(false);
 
@@ -191,8 +194,6 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     setSyncState({});
   }, [open, filteredDeals, pipelineName, introEditor, outroEditor]);
 
-  const parseList = (s: string) => s.split(/[,;\n]/).map((x) => x.trim()).filter(Boolean);
-
   const handleStatusTextChange = (dealId: string, next: string) => {
     setStatusTexts((prev) => ({ ...prev, [dealId]: next }));
     setSyncState((prev) => {
@@ -230,8 +231,8 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
   };
 
   const handleSend = async () => {
-    const toList = parseList(to);
-    const ccList = parseList(cc);
+    const toList = to;
+    const ccList = cc;
     if (toList.length === 0) {
       toast({ title: 'Add at least one recipient', variant: 'destructive' });
       return;
@@ -254,8 +255,8 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
       }
       toast({ title: 'Report sent', description: `Sent to ${toList.length} recipient${toList.length === 1 ? '' : 's'}.` });
       onOpenChange(false);
-      setTo('');
-      setCc('');
+      setTo([]);
+      setCc([]);
     } catch (e) {
       toast({ title: 'Could not send report', description: (e as Error).message, variant: 'destructive' });
     } finally {
@@ -276,13 +277,23 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4 space-y-3">
-          <div className="grid gap-1.5">
-            <Label htmlFor="share-to">To</Label>
-            <Input id="share-to" placeholder="name@example.com, other@example.com" value={to} onChange={(e) => setTo(e.target.value)} autoFocus />
+          <div className="rounded-md border border-border bg-background px-3 py-2">
+            <RecipientField
+              label="To"
+              recipients={to}
+              onChange={setTo}
+              search={searchContacts}
+              placeholder="Add recipient…"
+            />
           </div>
-          <div className="grid gap-1.5">
-            <Label htmlFor="share-cc">Cc (optional)</Label>
-            <Input id="share-cc" placeholder="cc@example.com" value={cc} onChange={(e) => setCc(e.target.value)} />
+          <div className="rounded-md border border-border bg-background px-3 py-2">
+            <RecipientField
+              label="Cc"
+              recipients={cc}
+              onChange={setCc}
+              search={searchContacts}
+              placeholder="Add cc recipient…"
+            />
           </div>
           <div className="grid gap-1.5">
             <Label htmlFor="share-subject">Subject</Label>
