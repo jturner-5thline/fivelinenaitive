@@ -11,7 +11,6 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -33,7 +32,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
-import { TrendingUp, Filter, MousePointerClick } from "lucide-react";
+import { Filter, MousePointerClick } from "lucide-react";
 import { Link } from "react-router-dom";
 import { QBO_ENTITIES } from "@/config/qboEntities";
 
@@ -206,26 +205,45 @@ export function QuarterlyRevenueGrowthCard() {
 
   return (
     <>
-      <Card className="bg-card/60 backdrop-blur border-border/60">
-        <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between space-y-0">
-          <div className="flex flex-col gap-1">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-primary" />
-              <CardTitle className="text-lg">Quarterly Revenue Growth (YoY)</CardTitle>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Rolling last 4 quarters · {filterLabel} ·{" "}
-              <span className="inline-flex items-center gap-1">
-                <MousePointerClick className="h-3 w-3" /> click a bar to drill in
-              </span>
-            </p>
+      <div
+        className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
+        style={{
+          background: "rgba(10,60,110,0.55)",
+          border: "1px solid rgba(40,120,200,0.28)",
+        }}
+      >
+        <div
+          className="absolute top-0 left-0 right-0 h-px"
+          style={{
+            background:
+              "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+          }}
+        />
+        <div
+          className="px-3 py-2 flex items-center justify-between gap-3"
+          style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+        >
+          <div
+            style={{
+              fontSize: 9,
+              fontWeight: 700,
+              letterSpacing: "1.2px",
+              textTransform: "uppercase",
+              color: "rgba(160,210,255,0.6)",
+            }}
+          >
+            Quarterly Revenue Growth (YoY)
           </div>
           <div className="flex items-center gap-2">
             {entityOptions.length > 1 && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                    <Filter className="h-3.5 w-3.5" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-6 px-2 gap-1 text-[10px] font-semibold uppercase tracking-wider bg-transparent border-[rgba(80,160,230,0.25)] text-[rgba(200,225,255,0.75)] hover:bg-[rgba(40,120,200,0.18)]"
+                  >
+                    <Filter className="h-3 w-3" />
                     {filterLabel}
                   </Button>
                 </DropdownMenuTrigger>
@@ -255,21 +273,33 @@ export function QuarterlyRevenueGrowthCard() {
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
-            <Badge variant="outline" className="text-xs font-normal whitespace-nowrap">
+            <span
+              className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
+              style={{ color: "rgba(160,210,255,0.55)" }}
+            >
               QuickBooks ·{" "}
               {data?.lastSync
                 ? `synced ${formatDistanceToNow(new Date(data.lastSync), { addSuffix: true })}`
                 : dataUpdatedAt
                 ? `synced ${formatDistanceToNow(new Date(dataUpdatedAt), { addSuffix: true })}`
                 : "—"}
-            </Badge>
+            </span>
           </div>
-        </CardHeader>
-        <CardContent>
+        </div>
+        <div className="p-3 overflow-hidden">
+          <div
+            className="mb-2 text-[10px] tracking-wide"
+            style={{ color: "rgba(160,210,255,0.55)" }}
+          >
+            Rolling last 4 quarters · {filterLabel} ·{" "}
+            <span className="inline-flex items-center gap-1">
+              <MousePointerClick className="h-3 w-3" /> click a bar to drill in
+            </span>
+          </div>
           {isLoading ? (
-            <Skeleton className="h-72 w-full" />
+            <Skeleton className="h-[260px] w-full" />
           ) : !hasConnections ? (
-            <div className="flex flex-col items-center justify-center h-72 gap-3 text-center">
+            <div className="flex flex-col items-center justify-center h-[260px] gap-3 text-center">
               <p className="text-sm text-muted-foreground">
                 Connect QuickBooks to view revenue growth
               </p>
@@ -278,11 +308,11 @@ export function QuarterlyRevenueGrowthCard() {
               </Button>
             </div>
           ) : (
-            <div className="h-72 w-full cursor-pointer">
+            <div className="h-[260px] w-full cursor-pointer">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={chartData}
-                  margin={{ top: 28, right: 16, left: 0, bottom: 8 }}
+                  margin={{ top: 24, right: 12, left: 0, bottom: 4 }}
                   onClick={(e: any) => {
                     const idx = e?.activeTooltipIndex;
                     if (typeof idx === "number" && chartData[idx]) setDrillRow(chartData[idx]);
@@ -364,8 +394,8 @@ export function QuarterlyRevenueGrowthCard() {
               </ResponsiveContainer>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <QuarterDrilldownDialog
         row={drillRow}
