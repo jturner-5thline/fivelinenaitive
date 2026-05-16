@@ -269,6 +269,25 @@ type RevenueBuckets = {
 
 interface DealCandidate { id: string; company: string; }
 
+/** Extract second-level-domain token from an email address. */
+function emailDomainSld(email: string | null | undefined): string | null {
+  if (!email) return null;
+  const at = email.indexOf('@');
+  if (at < 0) return null;
+  const host = email.slice(at + 1).toLowerCase().trim();
+  if (!host) return null;
+  // Strip common public mailbox hosts so we don't bucket every Gmail invoice
+  // under a single accidental match.
+  const PUBLIC = new Set([
+    'gmail.com','yahoo.com','outlook.com','hotmail.com','aol.com','icloud.com',
+    'me.com','msn.com','live.com','proton.me','protonmail.com',
+  ]);
+  if (PUBLIC.has(host)) return null;
+  const parts = host.split('.');
+  if (parts.length < 2) return null;
+  return parts[parts.length - 2];
+}
+
 /**
  * Structural invoice → deal matcher. Tries strategies in priority order:
  *   1. Exact normalized name equality
@@ -283,30 +302,48 @@ interface DealCandidate { id: string; company: string; }
 function matchInvoiceToDeal(
   invoiceCustomerName: string,
   candidates: Array<{ key: string; sortedKey: string; tokens: string[]; deal: DealCandidate }>,
+  invoiceEmailDomainSld?: string | null,
+  domainIndex?: Map<string, DealCandidate>,
 ): DealCandidate | null {
   const invKey = normalizeCompany(invoiceCustomerName);
-  if (!invKey) return null;
-  const invSorted = tokenKey(invoiceCustomerName);
-  const invTokens = significantTokens(invoiceCustomerName);
+  const invSorted = invoiceCustomerName ? tokenKey(invoiceCustomerName) : '';
+  const invTokens = invoiceCustomerName ? significantTokens(invoiceCustomerName) : [];
 
-  // 1 + 2: exact and token-sorted equality
-  for (const c of candidates) {
-    if (c.key === invKey) return c.deal;
-    if (c.sortedKey && c.sortedKey === invSorted) return c.deal;
+  if (invKey) {
+    // 1 + 2: exact and token-sorted equality
+    for (const c of candidates) {
+      if (c.key === invKey) return c.deal;
+      if (c.sortedKey && c.sortedKey === invSorted) return c.deal;
+    }
+    // 3: substring containment, guarded by length to avoid spurious hits
+    for (const c of candidates) {
+      if (c.key.length >= 5 && (invKey.includes(c.key) || c.key.includes(invKey))) {
+        return c.deal;
+      }
+    }
+    // 4: Jaccard similarity ≥ 0.6 on significant tokens
+    let best: { score: number; deal: DealCandidate } | null = null;
+    for (const c of candidates) {
+      const s = jaccard(invTokens, c.tokens);
+      if (s >= 0.6 && (!best || s > best.score)) best = { score: s, deal: c.deal };
+    }
+    if (best) return best.deal;
   }
-  // 3: substring containment, guarded by length to avoid spurious hits
-  for (const c of candidates) {
-    if (c.key.length >= 5 && (invKey.includes(c.key) || c.key.includes(invKey))) {
-      return c.deal;
+
+  // 5: Email-domain fallback. QBO often invoices a contact person (e.g.
+  // "Steven Adler") rather than the company, but the billing email domain
+  // (steven.adler@upflex.com) reliably identifies the company. We match the
+  // domain's second-level label against any deal whose CRM company shares
+  // that domain, or whose normalized name equals the domain SLD.
+  if (invoiceEmailDomainSld) {
+    const fromIdx = domainIndex?.get(invoiceEmailDomainSld);
+    if (fromIdx) return fromIdx;
+    for (const c of candidates) {
+      if (c.key === invoiceEmailDomainSld) return c.deal;
+      if (c.tokens.includes(invoiceEmailDomainSld)) return c.deal;
     }
   }
-  // 4: Jaccard similarity ≥ 0.6 on significant tokens
-  let best: { score: number; deal: DealCandidate } | null = null;
-  for (const c of candidates) {
-    const s = jaccard(invTokens, c.tokens);
-    if (s >= 0.6 && (!best || s > best.score)) best = { score: s, deal: c.deal };
-  }
-  return best?.deal ?? null;
+  return null;
 }
 
 /**
@@ -352,23 +389,48 @@ function useNikiRevenueActuals() {
       }
       const nikiDeals = Array.from(dedup.values());
 
-      // 1b. Hydrate canonical CRM-company names as alternate match aliases.
+      // 1b. Hydrate canonical CRM-company aliases. We resolve aliases through
+      // two paths because deals are not always linked via `crm_company_id`:
+      //   (a) explicit crm_company_id → crm_companies row
+      //   (b) implicit name match: deals.company ↔ crm_companies.name
+      // Both paths contribute a `name` alias plus a `domain` alias so we can
+      // match QBO invoices whose customer is a contact person rather than
+      // the company (Upflex: customer="Steven Adler", email=…@upflex.com).
+      type CrmRow = { id: string; name: string | null; domain: string | null };
+      const crmRowsAll: CrmRow[] = [];
       const crmIds = Array.from(new Set(nikiDeals.map((d) => d.crm_company_id).filter(Boolean)));
-      const crmNameById = new Map<string, string>();
       if (crmIds.length > 0) {
-        const { data: crmRows } = await supabase
+        const { data: byId } = await supabase
           .from('crm_companies')
-          .select('id, name')
+          .select('id, name, domain')
           .in('id', crmIds);
-        for (const c of (crmRows ?? []) as any[]) {
-          if (c?.id && c?.name) crmNameById.set(c.id, c.name);
-        }
+        for (const c of (byId ?? []) as CrmRow[]) crmRowsAll.push(c);
+      }
+      const candidateNames = Array.from(new Set(
+        nikiDeals.map((d) => (d.company || '').trim()).filter(Boolean),
+      ));
+      if (candidateNames.length > 0) {
+        const { data: byName } = await supabase
+          .from('crm_companies')
+          .select('id, name, domain')
+          .in('name', candidateNames);
+        for (const c of (byName ?? []) as CrmRow[]) crmRowsAll.push(c);
+      }
+      const crmById = new Map<string, CrmRow>();
+      const crmByNormName = new Map<string, CrmRow>();
+      for (const c of crmRowsAll) {
+        if (c.id) crmById.set(c.id, c);
+        const nk = normalizeCompany(c.name);
+        if (nk) crmByNormName.set(nk, c);
       }
 
-      // 1c. Build candidate list: one entry per (deal, alias-name).
+      // 1c. Build candidate list: one entry per (deal, alias-name). Also
+      // build a domain → deal index used as an email-domain fallback when
+      // the invoice customer name doesn't resolve to any deal.
       const candidates: Array<{
         key: string; sortedKey: string; tokens: string[]; deal: DealCandidate;
       }> = [];
+      const domainIndex = new Map<string, DealCandidate>();
       const seenAlias = new Set<string>();
       const pushAlias = (deal: DealCandidate, alias: string | null | undefined) => {
         const key = normalizeCompany(alias);
@@ -383,10 +445,22 @@ function useNikiRevenueActuals() {
           deal,
         });
       };
+      const pushDomain = (deal: DealCandidate, domain: string | null | undefined) => {
+        if (!domain) return;
+        const sld = domain.toLowerCase().trim().split('.').filter(Boolean)[0];
+        if (!sld) return;
+        if (!domainIndex.has(sld)) domainIndex.set(sld, deal);
+      };
       for (const d of nikiDeals) {
         const deal: DealCandidate = { id: d.id, company: d.company ?? '—' };
         pushAlias(deal, d.company);
-        if (d.crm_company_id) pushAlias(deal, crmNameById.get(d.crm_company_id));
+        const crmDirect = d.crm_company_id ? crmById.get(d.crm_company_id) : undefined;
+        const crmFallback = crmByNormName.get(normalizeCompany(d.company));
+        const crm = crmDirect ?? crmFallback;
+        if (crm) {
+          pushAlias(deal, crm.name);
+          pushDomain(deal, crm.domain);
+        }
       }
 
       // 2. QBO invoices for Debt realm in 2026.
@@ -401,7 +475,17 @@ function useNikiRevenueActuals() {
       const buckets: RevenueBuckets = { retainer: [], milestone: [], closing: [], total: [] };
 
       for (const inv of (invs ?? []) as any[]) {
-        const match = matchInvoiceToDeal(inv.customer_name || '', candidates);
+        const billEmail =
+          (inv.metadata?.BillEmail?.Address as string | undefined) ||
+          (inv.metadata?.CustomerMemo?.value as string | undefined) ||
+          null;
+        const emailSld = emailDomainSld(billEmail);
+        const match = matchInvoiceToDeal(
+          inv.customer_name || '',
+          candidates,
+          emailSld,
+          domainIndex,
+        );
         if (!match) continue;
 
         const lines = (inv.metadata?.Line || []) as any[];
