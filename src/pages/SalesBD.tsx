@@ -1,5 +1,5 @@
 import { Helmet } from "react-helmet-async";
-import { Users, Handshake, Network } from "lucide-react";
+import { Users, Handshake, Network, Settings as SettingsIcon } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lazy, Suspense, useState } from "react";
 import { Building2, UserCheck } from "lucide-react";
@@ -16,6 +16,9 @@ import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
+import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
+import { useCanEditPartnerRules } from "@/hooks/usePartnerRules";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
@@ -26,6 +29,7 @@ export default function SalesBD() {
   const [insightsSource, setInsightsSource] = useState<InsightsSource>("all");
   const { data: partners = [] } = usePartners();
   const viewPartner = viewPartnerId ? partners.find(p => p.id === viewPartnerId) || null : null;
+  const canEditPartnerRules = useCanEditPartnerRules();
 
   return (
     <>
@@ -47,7 +51,17 @@ export default function SalesBD() {
                     Manage your sales pipeline and business development activities
                   </p>
                 </div>
-                <CrmUpdateQueueButton />
+                <div className="flex items-center gap-2">
+                  {canEditPartnerRules && (
+                    <Button asChild variant="outline" size="sm" className="gap-1.5">
+                      <Link to="/settings?tab=sales-bd" title="Configure tiers, stage criteria, and channel definitions">
+                        <SettingsIcon className="h-3.5 w-3.5" />
+                        Rules & Definitions
+                      </Link>
+                    </Button>
+                  )}
+                  <CrmUpdateQueueButton />
+                </div>
               </div>
               <TabsList>
                 <TabsTrigger value="overview" className="gap-1.5">
