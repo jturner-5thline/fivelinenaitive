@@ -12,6 +12,7 @@ import { usePipelineStages, useUpdatePartner, useDeletePartner, type Partner } f
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PartnerMemoModal } from '@/components/partners/PartnerMemoModal';
 import { PartnerLinkedCompanyContacts } from '@/components/partners/PartnerLinkedCompanyContacts';
+import { PartnerPromotionDialog, getPromotionMode, type PromotionMode, type PromotionResult } from '@/components/partners/PartnerPromotionDialog';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
@@ -50,6 +51,10 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
   const [stageMoveNote, setStageMoveNote] = useState('');
   const [showStageMoveConfirm, setShowStageMoveConfirm] = useState(false);
   const [stageMoveSubmitting, setStageMoveSubmitting] = useState(false);
+
+  // Promotion (Trial / Active Partner) dialog state
+  const [promotion, setPromotion] = useState<{ stageId: string; mode: PromotionMode } | null>(null);
+  const [promotionSubmitting, setPromotionSubmitting] = useState(false);
 
   // Latest stage note state
   const [latestStageNote, setLatestStageNote] = useState<StageNote | null>(null);
@@ -146,9 +151,50 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
 
   const handleStageSelect = (newStageId: string) => {
     if (!partner || newStageId === partner.stage_id) return;
+    const targetStage = stages.find(s => s.id === newStageId);
+    const mode = getPromotionMode(targetStage?.name);
+    if (mode) {
+      setPromotion({ stageId: newStageId, mode });
+      return;
+    }
     setPendingStageId(newStageId);
     setStageMoveNote('');
     setShowStageMoveConfirm(true);
+  };
+
+  const handlePromotionConfirm = async (result: PromotionResult) => {
+    if (!partner || !promotion || !user?.id || !company?.id) return;
+    setPromotionSubmitting(true);
+    try {
+      await supabase.from('partner_stage_notes' as any).insert({
+        partner_id: partner.id,
+        user_id: user.id,
+        company_id: company.id,
+        from_stage: partner.stage_id || null,
+        to_stage: promotion.stageId,
+        note: result.note,
+      });
+      const existingMeta = (partner.metadata || {}) as Record<string, any>;
+      const promotions = { ...(existingMeta.promotions || {}) };
+      promotions[result.mode] = {
+        at: new Date().toISOString(),
+        by: user.id,
+        trialChecks: result.trialChecks,
+        publicConfirmed: result.publicConfirmed,
+        override: result.override,
+        overrideReason: result.overrideReason,
+        autoCriteriaSnapshot: result.autoCriteriaSnapshot,
+      };
+      updatePartner.mutate(
+        { id: partner.id, stage_id: promotion.stageId, metadata: { ...existingMeta, promotions } },
+        { onSuccess: () => { fetchLatestStageNote(); toast.success(`Moved to ${promotion.mode === 'trial' ? 'Trial' : 'Active Partner'}`); } },
+      );
+      setPromotion(null);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to promote partner');
+    } finally {
+      setPromotionSubmitting(false);
+    }
   };
 
   const handleStageMoveConfirm = async () => {
@@ -485,6 +531,16 @@ export function PartnerDetailPanel({ partner, onClose }: { partner: Partner | nu
         partnerId={partner.id}
         partnerName={partner.name}
         onReadReceiptUpdated={() => setHasUnseenMemoChanges(false)}
+      />
+    )}
+    {partner && promotion && (
+      <PartnerPromotionDialog
+        open={!!promotion}
+        mode={promotion.mode}
+        partnerName={partner.name}
+        onCancel={() => setPromotion(null)}
+        onConfirm={handlePromotionConfirm}
+        submitting={promotionSubmitting}
       />
     )}
     </>
