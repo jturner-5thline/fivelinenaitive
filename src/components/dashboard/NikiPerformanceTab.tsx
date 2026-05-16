@@ -124,12 +124,12 @@ function KpiCard({ row, onClick, planVal, actualVal, periodLabel }: KpiCardProps
       type="button"
       onClick={onClick}
       className={cn(
-        'group text-left rounded-xl border border-border bg-card p-4 transition-all',
-        'hover:border-primary/40 hover:shadow-sm focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'group rounded-xl border border-border/30 bg-card p-4 transition-all flex flex-col items-center text-center',
+        'hover:border-primary/40 hover:bg-muted/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
       )}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+      <div className="flex flex-col items-center gap-1.5">
+        <div className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground font-medium">
           {row.label}
         </div>
         <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
@@ -137,14 +137,14 @@ function KpiCard({ row, onClick, planVal, actualVal, periodLabel }: KpiCardProps
           {s.label}
         </span>
       </div>
-      <div className="mt-2 text-2xl font-bold text-foreground tabular-nums">
+      <div className="mt-3 text-2xl font-bold text-foreground tabular-nums tracking-tight">
         {fmt(actualVal, row.unit)}
       </div>
-      <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
+      <div className="mt-1 text-[11px] text-muted-foreground tabular-nums">
         {periodLabel} Plan: <span className="text-foreground/80">{fmt(planVal, row.unit)}</span>
         {pctOfPlan !== null && <span className="ml-1.5 text-muted-foreground">· {pctOfPlan}%</span>}
       </div>
-      <div className="mt-2 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+      <div className="mt-3 w-full h-1.5 rounded-full bg-muted/40 overflow-hidden">
         <div
           className={cn('h-full', status === 'ahead' ? 'bg-emerald-500' : status === 'ontrack' ? 'bg-amber-400' : status === 'behind' ? 'bg-destructive' : 'bg-muted-foreground')}
           style={{ width: `${Math.max(2, Math.min(100, pctOfPlan ?? 0))}%` }}
