@@ -12,6 +12,7 @@ interface Payload {
   cc?: string[];
   subject: string;
   body: string; // plain text, newlines preserved
+  bodyHtml?: string; // optional pre-rendered HTML from rich text editor
 }
 
 function escapeHtml(s: string) {
@@ -58,6 +59,7 @@ serve(async (req) => {
     const cc = (payload.cc || []).map((s) => s.trim()).filter(Boolean);
     const subject = (payload.subject || "").trim();
     const body = payload.body || "";
+    const bodyHtmlInput = (payload.bodyHtml || "").trim();
     if (to.length === 0) {
       return new Response(JSON.stringify({ error: "Missing recipients" }), {
         status: 400,
@@ -75,13 +77,17 @@ serve(async (req) => {
     const fromName = user.user_metadata?.full_name || user.email || "Naitive";
     const fromEmail = "Naitive <notifications@5thline.co>";
 
+    const html = bodyHtmlInput
+      ? `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.55;">${bodyHtmlInput}</body></html>`
+      : toHtml(body);
+
     const sent = await resend.emails.send({
       from: fromEmail,
       to,
       cc: cc.length > 0 ? cc : undefined,
       reply_to: user.email || undefined,
       subject,
-      html: toHtml(body),
+      html,
       text: body,
       headers: { "X-Sent-By": fromName },
     });

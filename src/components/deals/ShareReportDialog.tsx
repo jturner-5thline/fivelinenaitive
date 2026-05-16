@@ -1,13 +1,19 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, Loader2, Bold as BoldIcon, Italic as ItalicIcon, Underline as UnderlineIcon, List as ListIcon } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
+import { stripHtml } from '@/lib/stripHtml';
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import { TextStyle } from '@tiptap/extension-text-style';
+import { Color } from '@tiptap/extension-color';
+import { cn } from '@/lib/utils';
 import type { Deal, DealStatus } from '@/types/deal';
 
 interface ShareReportDialogProps {
@@ -18,11 +24,11 @@ interface ShareReportDialogProps {
   pipelineName?: string | null;
 }
 
-const STATUS_ORDER: { key: DealStatus; label: string }[] = [
-  { key: 'on-track', label: 'On Track' },
-  { key: 'at-risk', label: 'At Risk' },
-  { key: 'off-track', label: 'Off Track' },
-  { key: 'on-hold', label: 'On Hold' },
+const STATUS_ORDER: { key: DealStatus; label: string; color: string }[] = [
+  { key: 'on-track', label: 'On Track', color: '#16a34a' },      // green
+  { key: 'at-risk', label: 'At Risk', color: '#d97706' },        // amber/orange
+  { key: 'off-track', label: 'Off Track', color: '#dc2626' },    // red
+  { key: 'on-hold', label: 'On Hold', color: '#2563eb' },        // blue
 ];
 
 function formatAmount(value: number): string {
@@ -42,7 +48,17 @@ function startsWithTestPrefix(name: string): boolean {
   return /^\s*test\s*-/i.test(name || '');
 }
 
-function buildReportBody(deals: Deal[], pipelineName?: string | null): string {
+function escapeHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+/** Pull the per-deal status text from the deal title card status input. */
+function dealStatusText(deal: Deal, fallback: string): string {
+  const raw = stripHtml(deal.notes || '').trim();
+  return raw || fallback;
+}
+
+function buildReportHtml(deals: Deal[], pipelineName?: string | null): string {
   const grouped = new Map<DealStatus, Deal[]>();
   STATUS_ORDER.forEach(s => grouped.set(s.key, []));
 
@@ -50,42 +66,42 @@ function buildReportBody(deals: Deal[], pipelineName?: string | null): string {
     if (!d?.name) continue;
     if (isExcludedDealName(d.name)) continue;
     if (startsWithTestPrefix(d.name)) continue;
-    if (!STATUS_ORDER.some(s => s.key === d.status)) continue; // exclude archived & anything else
+    if (!STATUS_ORDER.some(s => s.key === d.status)) continue;
     grouped.get(d.status as DealStatus)!.push(d);
   }
 
-  const lines: string[] = [];
-  lines.push(`Team,`);
-  lines.push('');
-  lines.push(
-    `Here's the latest status for the ${pipelineName ? `${pipelineName} ` : 'active '}pipeline:`
+  const parts: string[] = [];
+  parts.push(`<p>Team,</p>`);
+  parts.push(
+    `<p>Here's the latest status for the ${escapeHtml(pipelineName || 'active')} pipeline:</p>`
   );
-  lines.push('');
 
   let total = 0;
   for (const s of STATUS_ORDER) {
     const rows = grouped.get(s.key) || [];
     if (rows.length === 0) continue;
-    lines.push(`${s.label} (${rows.length})`);
-    rows
+    parts.push(
+      `<p><strong><span style="color: ${s.color}">${escapeHtml(s.label)}</span></strong> (${rows.length})</p>`
+    );
+    const items = rows
       .slice()
       .sort((a, b) => (b.value || 0) - (a.value || 0))
-      .forEach(d => {
-        lines.push(`• ${d.name} — ${formatAmount(d.value || 0)} — ${s.label}`);
+      .map(d => {
+        const status = dealStatusText(d, s.label);
         total += 1;
-      });
-    lines.push('');
+        return `<li>${escapeHtml(d.name)} — ${escapeHtml(formatAmount(d.value || 0))} — <span style="color: ${s.color}">${escapeHtml(status)}</span></li>`;
+      })
+      .join('');
+    parts.push(`<ul>${items}</ul>`);
   }
 
   if (total === 0) {
-    lines.push('No active deals to report at this time.');
-    lines.push('');
+    parts.push(`<p>No active deals to report at this time.</p>`);
   }
 
-  lines.push('Reply with any questions.');
-  lines.push('');
-  lines.push('Thanks');
-  return lines.join('\n');
+  parts.push(`<p>Reply with any questions.</p>`);
+  parts.push(`<p>Thanks</p>`);
+  return parts.join('');
 }
 
 function defaultSubject(pipelineName?: string | null): string {
@@ -108,14 +124,28 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
   const [to, setTo] = useState('');
   const [cc, setCc] = useState('');
   const [subject, setSubject] = useState('');
-  const [body, setBody] = useState('');
+  const [bodyHtml, setBodyHtml] = useState('');
   const [sending, setSending] = useState(false);
+
+  const editor = useEditor({
+    extensions: [StarterKit, Underline, TextStyle, Color],
+    content: '',
+    editorProps: {
+      attributes: {
+        class:
+          'prose prose-sm max-w-none min-h-[320px] p-3 focus:outline-none [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5',
+      },
+    },
+    onUpdate: ({ editor }) => setBodyHtml(editor.getHTML()),
+  });
 
   useEffect(() => {
     if (!open) return;
     setSubject(defaultSubject(pipelineName));
-    setBody(buildReportBody(filteredDeals, pipelineName));
-  }, [open, filteredDeals, pipelineName]);
+    const html = buildReportHtml(filteredDeals, pipelineName);
+    setBodyHtml(html);
+    if (editor) editor.commands.setContent(html, { emitUpdate: false });
+  }, [open, filteredDeals, pipelineName, editor]);
 
   const parseList = (s: string) =>
     s.split(/[,;\n]/).map(x => x.trim()).filter(Boolean);
@@ -133,8 +163,10 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     }
     setSending(true);
     try {
+      const html = editor?.getHTML() || bodyHtml;
+      const text = stripHtml(html);
       const { data, error } = await supabase.functions.invoke('share-pipeline-report', {
-        body: { to: toList, cc: ccList, subject: subject.trim(), body },
+        body: { to: toList, cc: ccList, subject: subject.trim(), body: text, bodyHtml: html },
       });
       if (error || (data as any)?.error) {
         throw new Error((error as any)?.message || (data as any)?.error || 'Failed to send');
@@ -149,6 +181,23 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
       setSending(false);
     }
   };
+
+  const TbBtn = ({ active, onClick, label, children }: { active?: boolean; onClick: () => void; label: string; children: React.ReactNode }) => (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      onMouseDown={(e) => { e.preventDefault(); onClick(); }}
+      className={cn(
+        'h-7 w-7 inline-flex items-center justify-center rounded-md border border-transparent text-muted-foreground hover:bg-muted hover:text-foreground transition-colors',
+        active && 'bg-muted text-foreground'
+      )}
+    >
+      {children}
+    </button>
+  );
+
+  const STATUS_COLOR_SWATCHES = STATUS_ORDER;
 
   return (
     <Dialog open={open} onOpenChange={(o) => !sending && onOpenChange(o)}>
@@ -189,13 +238,46 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
             />
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="share-body">Message</Label>
-            <Textarea
-              id="share-body"
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              className="min-h-[320px] font-mono text-xs leading-relaxed"
-            />
+            <Label>Message</Label>
+            <div className="rounded-md border border-border bg-background">
+              <div className="flex items-center gap-1 p-1 border-b border-border/60">
+                <TbBtn label="Bold" active={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}>
+                  <BoldIcon className="h-3.5 w-3.5" />
+                </TbBtn>
+                <TbBtn label="Italic" active={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}>
+                  <ItalicIcon className="h-3.5 w-3.5" />
+                </TbBtn>
+                <TbBtn label="Underline" active={editor?.isActive('underline')} onClick={() => editor?.chain().focus().toggleUnderline().run()}>
+                  <UnderlineIcon className="h-3.5 w-3.5" />
+                </TbBtn>
+                <TbBtn label="Bulleted list" active={editor?.isActive('bulletList')} onClick={() => editor?.chain().focus().toggleBulletList().run()}>
+                  <ListIcon className="h-3.5 w-3.5" />
+                </TbBtn>
+                <span className="mx-1 h-4 w-px bg-border" aria-hidden />
+                <span className="text-[10px] uppercase tracking-wide text-muted-foreground mr-1">Color</span>
+                {STATUS_COLOR_SWATCHES.map((s) => (
+                  <button
+                    key={s.key}
+                    type="button"
+                    aria-label={`${s.label} color`}
+                    title={s.label}
+                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setColor(s.color).run(); }}
+                    className="h-4 w-4 rounded-full border border-border/60 hover:scale-110 transition-transform"
+                    style={{ backgroundColor: s.color }}
+                  />
+                ))}
+                <button
+                  type="button"
+                  aria-label="Clear color"
+                  title="Clear color"
+                  onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().unsetColor().run(); }}
+                  className="ml-1 text-[10px] text-muted-foreground hover:text-foreground px-1.5 h-5 rounded border border-border/60"
+                >
+                  reset
+                </button>
+              </div>
+              <EditorContent editor={editor} />
+            </div>
             <p className="text-[11px] text-muted-foreground">
               {filteredDeals.length} deal{filteredDeals.length === 1 ? '' : 's'} included. Edit lines or add commentary before sending.
             </p>
@@ -206,8 +288,8 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={sending}>
             Cancel
           </Button>
-          <Button onClick={handleSend} disabled={sending}>
-            {sending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+          <Button type="button" variant="liquid-glass" size="sm" className="gap-2" onClick={handleSend} disabled={sending}>
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             {sending ? 'Sending…' : 'Send report'}
           </Button>
         </DialogFooter>
