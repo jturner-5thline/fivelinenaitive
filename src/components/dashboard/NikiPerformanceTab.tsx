@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
+import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, EyeOff } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -31,6 +31,35 @@ import {
   NikiPerformancePlanProvider,
   useNikiPerformancePlan,
 } from '@/hooks/useNikiPerformancePlan';
+
+type PerfMode = 'quarterly' | 'ytd';
+const QUARTER_ORDER_LIST: QuarterKey[] = ['Q1', 'Q2', 'Q3', 'Q4'];
+
+/**
+ * Resolve plan/actual for a row at a given period, accounting for
+ * quarter-by-quarter vs cumulative YTD display mode.
+ */
+function resolvePeriod(
+  row: MetricRow,
+  planMap: ReturnType<typeof useNikiPerformancePlan>['plan'],
+  k: QuarterKey | 'YEAR',
+  mode: PerfMode,
+): { planVal: number; actualVal: number } {
+  const p = planMap[row.key];
+  if (k === 'YEAR') return { planVal: p.total, actualVal: row.yearTotal };
+  if (mode === 'quarterly') {
+    return { planVal: p[k], actualVal: row.byQuarter[k].value };
+  }
+  const idx = QUARTER_ORDER_LIST.indexOf(k);
+  let plan = 0;
+  let actual = 0;
+  for (let i = 0; i <= idx; i++) {
+    const qk = QUARTER_ORDER_LIST[i];
+    plan += p[qk];
+    actual += row.byQuarter[qk].value;
+  }
+  return { planVal: plan, actualVal: actual };
+}
 
 function fmt(value: number, unit: 'count' | 'currency'): string {
   if (unit === 'currency') return formatUSD(value);
