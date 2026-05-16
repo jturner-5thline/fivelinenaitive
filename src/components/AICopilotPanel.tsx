@@ -267,10 +267,26 @@ function DealSuggestionChips({
 /** Renders assistant content with entity links, JSON formatting, and stage display names */
 function CopilotAssistantContent({ content }: { content: string }) {
   const navigate = useNavigate();
-  
+
+  // Extract trailing chip suggestions emitted by the copilot system prompt
+  // in the form: [[CHIPS:["A","B","C"]]]. They are stripped from the visible
+  // content and rendered as clickable quick-action chips below the bubble.
+  let chips: string[] = [];
+  let strippedContent = content;
+  const chipsMatch = content.match(/\[\[CHIPS:\s*(\[[\s\S]*?\])\s*\]\]\s*$/);
+  if (chipsMatch) {
+    try {
+      const parsed = JSON.parse(chipsMatch[1]);
+      if (Array.isArray(parsed)) {
+        chips = parsed.filter((c) => typeof c === 'string' && c.trim().length > 0).slice(0, 3);
+        strippedContent = content.slice(0, chipsMatch.index).trimEnd();
+      }
+    } catch { /* ignore malformed chip tail */ }
+  }
+
   // Fix 1: Detect and format raw JSON responses
-  const formattedJson = formatAIResponse(content);
-  const processedContent = formattedJson || content;
+  const formattedJson = formatAIResponse(strippedContent);
+  const processedContent = formattedJson || strippedContent;
   
   // Fix 5: Replace stage slugs with display names in the content
   const displayContent = processedContent.replace(
