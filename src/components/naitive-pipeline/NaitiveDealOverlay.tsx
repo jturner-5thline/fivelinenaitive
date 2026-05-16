@@ -462,7 +462,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             duplicating app shell chrome. */}
         <div
           className={cn(
-            'deal-popup-scroll relative flex-1 min-h-0 w-full bg-transparent overflow-y-auto overflow-x-hidden',
+            'deal-popup-scroll relative flex-1 min-h-0 w-full bg-transparent overflow-y-auto overflow-x-hidden flex flex-col',
           )}
           style={{
             opacity: reduceMotion ? 1 : contentVisible ? 1 : 0,
@@ -474,7 +474,7 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
         >
           <div
             key={`carousel-${deal.id}`}
-            className="w-full h-full"
+            className="w-full flex-1 flex flex-col min-h-0"
             style={{ animation: carouselAnimation, willChange: carouselAnimation ? 'transform, opacity' : undefined }}
           >
           <Suspense fallback={<DealOverlayHydrating />}>
