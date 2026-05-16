@@ -5381,8 +5381,7 @@ serve(async (req) => {
             .from("deals")
             .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
             .or(orFilter)
-            .neq("status", "closed")
-            .limit(8);
+            .limit(40);
           // Filter out globally excluded deal names (test / example).
           const excluded = (n: string | null) => {
             const x = (n || "").toLowerCase().trim();
@@ -5391,16 +5390,44 @@ serve(async (req) => {
             if (x === "test" || x.startsWith("test ")) return true;
             return false;
           };
-          const filtered = (matches || []).filter((d: any) => !excluded(d.company));
+          const filteredAll = (matches || []).filter((d: any) => !excluded(d.company));
+          // Rank against the strongest probe (capitalized phrase if present,
+          // otherwise the full user text) so typos / missing suffixes / phonetic
+          // near-misses surface as a confident match.
+          const rankerQuery = (caps[0] || userText).trim();
+          const ranked = rankDealsByQuery(filteredAll, rankerQuery, 0.55);
+          // Promote active deals on ties so a live deal beats an archived
+          // namesake when both score identically.
+          ranked.sort((a: any, b: any) => {
+            if (b._score !== a._score) return b._score - a._score;
+            const aw = a.status === "active" ? 1 : 0;
+            const bw = b.status === "active" ? 1 : 0;
+            return bw - aw;
+          });
+          const filtered = ranked.length > 0 ? ranked : filteredAll;
           dealResolverLog.query = probes.join(" | ");
           dealResolverLog.candidates = filtered.map((d: any) => ({ id: d.id, company: d.company }));
 
-          if (filtered.length === 1) {
+          // Confident single match: top score >= 0.85 AND either only one
+          // candidate above threshold OR a clear gap of >= 0.10 to #2.
+          const top: any = filtered[0];
+          const second: any = filtered[1];
+          const isConfidentSingle = ranked.length > 0 && top && top._score >= 0.85 && (!second || (top._score - (second._score || 0)) >= 0.10);
+          if (isConfidentSingle) {
+            const d: any = top;
+            dealResolverLog.resolved_deal_id = d.id;
+            const matchedDifferently = _normalizeDealName(d.company) !== _normalizeDealName(rankerQuery);
+            const interpretNote = matchedDifferently
+              ? `\n- INTERPRETATION: The user wrote "${rankerQuery}" — fuzzy-matched to "${d.company}" (similarity ${(d._score).toFixed(2)}). When you reply, PREFACE your answer with exactly: Interpreting "${rankerQuery}" as "${d.company}" — let me know if that's wrong.`
+              : "";
+            dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}${interpretNote}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
+          } else if (filtered.length === 1) {
             const d: any = filtered[0];
             dealResolverLog.resolved_deal_id = d.id;
             dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
           } else if (filtered.length > 1) {
-            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT (the user's message could refer to more than one deal — DO NOT guess; ask a single clarifying question listing these candidates by name, then proceed once they pick):\n${filtered.slice(0, 6).map((d: any) => `- ${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"}) — deal_id: ${d.id}`).join("\n")}`;
+            const top3 = filtered.slice(0, 3);
+            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT (the user's message could refer to more than one deal — DO NOT guess; ask a single clarifying question listing these top candidates by name with confidence, then proceed once they pick):\n${top3.map((d: any) => `- ${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"}) — similarity ${(d._score || 0).toFixed(2)} — deal_id: ${d.id}`).join("\n")}`;
           }
         }
       }
