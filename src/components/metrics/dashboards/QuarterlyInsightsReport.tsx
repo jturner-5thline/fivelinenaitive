@@ -24,10 +24,12 @@ import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } 
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import { AddKpiDialog } from './qir/AddKpiDialog';
 import { SalesClientsKpiCard } from './qir/SalesClientsKpiCard';
+import { TtmRevenuePerHourKpiCard } from './qir/TtmRevenuePerHourKpiCard';
 import {
   getKpiTemplate,
   type KpiTemplateId,
   type SalesClientsConfig,
+  type TtmRevPerHourConfig,
 } from './qir/kpiTemplates';
 import {
   DEFAULT_ASANA_GOAL_FILTERS,
