@@ -5720,6 +5720,36 @@ export type Database = {
           },
         ]
       }
+      dashboard_kpi_plans: {
+        Row: {
+          comparison_mode: string
+          format_type: string
+          label: string
+          metric_key: string
+          plan_value: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          comparison_mode?: string
+          format_type?: string
+          label: string
+          metric_key: string
+          plan_value?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          comparison_mode?: string
+          format_type?: string
+          label?: string
+          metric_key?: string
+          plan_value?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       dashboard_layouts: {
         Row: {
           company_id: string | null

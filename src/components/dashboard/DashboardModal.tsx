@@ -1,12 +1,19 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil } from 'lucide-react';
 import { Chart, registerables } from 'chart.js';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import {
+  useDashboardKpiYtd,
+  useIsKpiPlanAdmin,
+  type KpiMetricKey,
+} from '@/hooks/useDashboardKpiYtd';
+import { KpiPlanEditDialog } from './KpiPlanEditDialog';
+import { formatUSD } from '@/lib/formatters/currency';
 import {
   mapDealToDashboardRow,
   buildDashboardMetrics,
@@ -80,6 +87,68 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
     if (!sortCol) return rows;
     return sortDashboardRows(rows, sortCol, sortDir);
   }, [rows, sortCol, sortDir]);
+
+  // ── Plan vs Actual KPIs (YTD) ──────────────────────────────────
+  const kpi = useDashboardKpiYtd();
+  const isPlanAdmin = useIsKpiPlanAdmin();
+  const [editingMetric, setEditingMetric] = useState<KpiMetricKey | null>(null);
+
+  const planTiles = useMemo(() => {
+    const fmtNum = (n: number) => n.toLocaleString('en-US');
+    const fmtCur = (n: number | null) =>
+      n === null || !Number.isFinite(n) ? '—' : formatUSD(n);
+    const tiles: Array<{
+      key: KpiMetricKey;
+      label: string;
+      actualDisplay: string;
+      actualValue: number | null;
+      planValue: number;
+      cls: string;
+      formatType: 'number' | 'currency';
+    }> = [
+      {
+        key: 'deals_closed',
+        label: 'Deals Closed',
+        actualDisplay: fmtNum(kpi.dealsClosed),
+        actualValue: kpi.dealsClosed,
+        planValue: Number(kpi.plans.deals_closed?.plan_value ?? 0),
+        cls: 'db-bl',
+        formatType: 'number',
+      },
+      {
+        key: 'dollars_funded',
+        label: 'Dollars Funded',
+        actualDisplay: fmtCur(kpi.dollarsFunded),
+        actualValue: kpi.dollarsFunded,
+        planValue: Number(kpi.plans.dollars_funded?.plan_value ?? 0),
+        cls: 'db-up',
+        formatType: 'currency',
+      },
+      {
+        key: 'new_clients',
+        label: 'New Clients',
+        actualDisplay: fmtNum(kpi.newClients),
+        actualValue: kpi.newClients,
+        planValue: Number(kpi.plans.new_clients?.plan_value ?? 0),
+        cls: 'db-bl',
+        formatType: 'number',
+      },
+      {
+        key: 'fee_revenue',
+        label: 'Fee Revenue',
+        actualDisplay: fmtCur(kpi.feeRevenue),
+        actualValue: kpi.feeRevenue,
+        planValue: Number(kpi.plans.fee_revenue?.plan_value ?? 0),
+        cls: 'db-am',
+        formatType: 'currency',
+      },
+    ];
+    return tiles;
+  }, [kpi]);
+
+  const editingPlan = editingMetric
+    ? planTiles.find(t => t.key === editingMetric)
+    : null;
 
   const handleSort = useCallback((col: SortColumn) => {
     setSortCol(prev => {
@@ -233,20 +302,56 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
               <div className="db-r min-w-0 max-w-full">
             {/* KPI STRIP */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6,minmax(0,1fr))', gap: 16, marginBottom: 16 }}>
-              {[
-                { label: 'Deals Closed', value: String(metrics.dealCount), cls: 'db-bl', sub: 'Target: 2025 goal' },
-                { label: 'Dollars Funded', value: metrics.totalVolume, cls: 'db-up', sub: 'On Track' },
-                { label: 'New Clients', value: String(metrics.dealCount), cls: 'db-bl', sub: '2025 target' },
-                { label: 'Fee Revenue', value: metrics.grossRevenue, cls: 'db-am', sub: `${metrics.dealCount} deals` },
-                { label: 'Deal Volume', value: metrics.totalVolume, cls: 'db-bl', sub: `${metrics.dealCount} active deals` },
-                { label: 'Avg Deal Size', value: metrics.avgDealSize, cls: 'db-bl', sub: `"Live" Rev: ${metrics.liveRevenue}` },
-              ].map((k, i) => (
-                <div key={i} className="glass-module p-4">
-                  <div className="text-sm text-muted-foreground">{k.label}</div>
-                  <div className={`text-2xl font-bold text-foreground mt-1 ${k.cls}`}>{k.value}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{k.sub}</div>
-                </div>
-              ))}
+              {planTiles.map((t) => {
+                const planSet = t.planValue > 0;
+                const actual = t.actualValue ?? 0;
+                const pct = planSet ? Math.round((actual / t.planValue) * 100) : null;
+                const planDisplay =
+                  t.formatType === 'currency' ? formatUSD(t.planValue) : t.planValue.toLocaleString('en-US');
+                const subColor =
+                  pct === null
+                    ? 'text-muted-foreground'
+                    : pct >= 100
+                      ? 'text-emerald-400'
+                      : pct >= 75
+                        ? 'text-amber-400'
+                        : 'text-muted-foreground';
+                return (
+                  <div key={t.key} className="glass-module p-4 group relative">
+                    {isPlanAdmin && (
+                      <button
+                        type="button"
+                        onClick={() => setEditingMetric(t.key)}
+                        className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-foreground p-1 rounded"
+                        aria-label={`Edit ${t.label} plan`}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    )}
+                    <div className="text-sm text-muted-foreground">{t.label}</div>
+                    <div className={`text-2xl font-bold text-foreground mt-1 ${t.cls}`}>
+                      {kpi.isLoading ? '…' : t.actualDisplay}
+                    </div>
+                    <div className={`text-xs mt-1 ${subColor}`}>
+                      {pct === null ? 'Plan not set' : `${pct}% of Plan`}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-0.5">
+                      Plan: {planSet ? planDisplay : '—'}
+                    </div>
+                  </div>
+                );
+              })}
+              {/* Keep the secondary live tiles for context. */}
+              <div className="glass-module p-4">
+                <div className="text-sm text-muted-foreground">Deal Volume</div>
+                <div className={`text-2xl font-bold text-foreground mt-1 db-bl`}>{metrics.totalVolume}</div>
+                <div className="text-xs text-muted-foreground mt-1">{`${metrics.dealCount} active deals`}</div>
+              </div>
+              <div className="glass-module p-4">
+                <div className="text-sm text-muted-foreground">Avg Deal Size</div>
+                <div className={`text-2xl font-bold text-foreground mt-1 db-bl`}>{metrics.avgDealSize}</div>
+                <div className="text-xs text-muted-foreground mt-1">{`"Live" Rev: ${metrics.liveRevenue}`}</div>
+              </div>
             </div>
 
             {/* ROW 1 */}
@@ -423,6 +528,17 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
           </Tabs>
         </div>
       </DialogContent>
+      {editingPlan && (
+        <KpiPlanEditDialog
+          open={!!editingMetric}
+          onOpenChange={(o) => !o && setEditingMetric(null)}
+          plan={kpi.plans[editingPlan.key]}
+          metricKey={editingPlan.key}
+          label={editingPlan.label}
+          formatType={editingPlan.formatType}
+          onSaved={() => kpi.refetchPlans()}
+        />
+      )}
     </Dialog>
   );
 }
