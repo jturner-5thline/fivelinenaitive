@@ -21,6 +21,7 @@ const IncomeMoMCard = lazy(() => import('../IncomeMoMCard').then(m => ({ default
 const ClientCountMoMCard = lazy(() => import('../ClientCountMoMCard').then(m => ({ default: m.ClientCountMoMCard })));
 const IncomeTop5CustomersMoMCard = lazy(() => import('../IncomeTop5CustomersMoMCard').then(m => ({ default: m.IncomeTop5CustomersMoMCard })));
 const FinServTopCustomersCard = lazy(() => import('../FinServTopCustomersCard').then(m => ({ default: m.FinServTopCustomersCard })));
+const IncomeByProductServiceCard = lazy(() => import('../IncomeByProductServiceCard').then(m => ({ default: m.IncomeByProductServiceCard })));
 
 function fmtCurrency(n: number): string {
   const abs = Math.abs(n);
@@ -153,6 +154,7 @@ export function RevenueCustomersDashboard() {
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><ClientCountMoMCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-2"><IncomeTop5CustomersMoMCard /></div></Suspense>
           <Suspense fallback={<ChartFallback />}><div className="xl:col-span-4"><FinServTopCustomersCard /></div></Suspense>
+          <Suspense fallback={<ChartFallback />}><div className="xl:col-span-4"><IncomeByProductServiceCard /></div></Suspense>
         </div>
       </RevenueDrilldownProvider>
     </RevenueFiltersProvider>
