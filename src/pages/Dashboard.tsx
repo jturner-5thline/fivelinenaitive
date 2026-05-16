@@ -427,7 +427,6 @@ const FullCalendarView = lazy(() =>
 );
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
-import { NikiPerformanceTab } from '@/components/dashboard/NikiPerformanceTab';
 import { toast } from 'sonner';
 import {
   canSeeNikiBriefing,
@@ -465,9 +464,6 @@ export default function Dashboard() {
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
-  // Performance tab is restricted to Niki and James.
-  const canSeePerformance =
-    user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
   // 5th Line workspace gating for the Deal Rundown quick-action tile.
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const {
@@ -542,8 +538,7 @@ export default function Dashboard() {
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'news-feed') setDashboardTab('news-feed');
-    if (tab === 'performance' && canSeePerformance) setDashboardTab('performance');
-  }, [searchParams, canSeePerformance]);
+  }, [searchParams]);
 
   // Auto-open Daily Rundown from email link (?briefing=true)
   useEffect(() => {
@@ -973,31 +968,13 @@ export default function Dashboard() {
                 <Newspaper className="h-3 w-3" />
                 News Feed
               </button>
-              {canSeePerformance && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    handleDashboardTabChange(dashboardTab === 'performance' ? 'overview' : 'performance')
-                  }
-                  className={cn(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors shrink-0',
-                    dashboardTab === 'performance'
-                      ? 'bg-primary/10 text-primary border border-primary/20'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                  )}
-                  aria-pressed={dashboardTab === 'performance'}
-                >
-                  <Briefcase className="h-3 w-3" />
-                  Performance
-                </button>
-              )}
               <NewPresetButton onCreate={handleCreatePreset} className="ml-1" />
             </div>
             <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap justify-end">
               {isSaving && (
                 <span className="text-[11px] text-muted-foreground animate-pulse shrink-0">Saving…</span>
               )}
-              {dashboardTab !== 'news-feed' && dashboardTab !== 'performance' && (
+              {dashboardTab !== 'news-feed' && (
                 <>
                   <DashboardTemplatesDialog
                     mode="replace"
@@ -1034,9 +1011,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {dashboardTab === 'performance' ? (
-            <NikiPerformanceTab />
-          ) : dashboardTab !== 'news-feed' ? (
+          {dashboardTab !== 'news-feed' ? (
             <>
               {/* Grid */}
               {activePreset && activePreset.widgets_config.length > 0 && (
