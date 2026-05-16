@@ -8,7 +8,6 @@ import { MemoHeader } from './MemoHeader';
 import { ActivityPanel } from './ActivityPanel';
 import { TasksMilestonesBand } from './TasksMilestonesBand';
 import { NextBestActionRow } from './NextBestActionRow';
-import { EmailsPanel } from './EmailsPanel';
 import { LendersPanel } from './LendersPanel';
 
 interface PipelineMemoCardProps {
