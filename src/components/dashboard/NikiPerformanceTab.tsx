@@ -401,17 +401,19 @@ export function NikiPerformanceTab() {
     const { planVal, actualVal, v, status } = cellFor(row, k);
     const s = STATUS_STYLES[status];
     return (
-      <TableRow className="cursor-pointer border-border/40" onClick={() => openDrill(row, k)}>
+      <TableRow className="cursor-pointer border-b border-border/20 hover:bg-muted/20" onClick={() => openDrill(row, k)}>
         <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
-        <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm text-muted-foreground">{fmt(planVal, row.unit)}</TableCell>
-        <TableCell className="py-2.5 px-4 text-right tabular-nums text-sm font-semibold text-foreground">{fmt(actualVal, row.unit)}</TableCell>
-        <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
+        <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-semibold text-foreground bg-muted/20">
+          {fmt(planVal, row.unit)}
+        </TableCell>
+        <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-medium text-foreground/90">{fmt(actualVal, row.unit)}</TableCell>
+        <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
           {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
         </TableCell>
-        <TableCell className={cn('py-2.5 px-4 text-right tabular-nums text-sm font-medium', s.text)}>
+        <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
           {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
         </TableCell>
-        <TableCell className="py-2.5 px-4 text-right">
+        <TableCell className="py-2.5 px-4 text-center">
           <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
             <s.Icon className="h-3 w-3" />
             {s.label}
@@ -422,7 +424,7 @@ export function NikiPerformanceTab() {
   };
 
   const MultiRow = ({ row }: { row: MetricRow }) => (
-    <TableRow className="border-border/40">
+    <TableRow className="border-b border-border/20 hover:bg-muted/20">
       <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground sticky left-0 bg-card z-10">
         {row.label}
       </TableCell>
@@ -431,19 +433,19 @@ export function NikiPerformanceTab() {
         const s = STATUS_STYLES[status];
         return (
           <Fragment key={k}>
-            <TableCell className="py-2.5 px-3 text-right tabular-nums text-xs text-muted-foreground">
+            <TableCell className="py-2.5 px-3 text-center tabular-nums text-xs font-semibold text-foreground bg-muted/20 border-l border-border/20">
               {fmt(planVal, row.unit)}
             </TableCell>
             <TableCell
-              className="py-2.5 px-3 text-right tabular-nums text-xs font-semibold text-foreground cursor-pointer hover:underline"
+              className="py-2.5 px-3 text-center tabular-nums text-xs font-medium text-foreground/90 cursor-pointer hover:underline"
               onClick={() => openDrill(row, k)}
             >
               {fmt(actualVal, row.unit)}
             </TableCell>
-            <TableCell className={cn('py-2.5 px-3 text-right tabular-nums text-xs font-medium', s.text)}>
+            <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
               {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
             </TableCell>
-            <TableCell className={cn('py-2.5 px-3 text-right tabular-nums text-xs font-medium border-r border-border/40 last:border-r-0', s.text)}>
+            <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
               {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
             </TableCell>
           </Fragment>
@@ -571,17 +573,17 @@ export function NikiPerformanceTab() {
               <Table>
                 <TableHeader>
                   {isSingle ? (
-                    <TableRow className="hover:bg-transparent border-b border-border">
+                    <TableRow className="hover:bg-transparent border-b border-border/40">
                       <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
-                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Plan</TableHead>
-                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>
-                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>
-                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>
-                      <TableHead className="h-9 px-4 text-right text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
+                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20">Plan</TableHead>
+                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>
+                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>
+                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>
+                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
                     </TableRow>
                   ) : (
                     <>
-                      <TableRow className="hover:bg-transparent border-b border-border/60">
+                      <TableRow className="hover:bg-transparent border-b border-border/30">
                         <TableHead rowSpan={2} className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold sticky left-0 bg-card z-10 align-bottom">
                           Metric
                         </TableHead>
@@ -589,19 +591,19 @@ export function NikiPerformanceTab() {
                           <TableHead
                             key={k}
                             colSpan={4}
-                            className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-semibold text-foreground/80 border-l border-border/40"
+                            className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-semibold text-foreground/80 border-l border-border/20"
                           >
                             {periodLabel(k)}
                           </TableHead>
                         ))}
                       </TableRow>
-                      <TableRow className="hover:bg-transparent border-b border-border">
+                      <TableRow className="hover:bg-transparent border-b border-border/40">
                         {orderedSelected.map((k) => (
                           <Fragment key={k}>
-                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground border-l border-border/40">Plan</TableHead>
-                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Actual</TableHead>
-                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Δ</TableHead>
-                            <TableHead className="h-8 px-3 text-right text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20 border-l border-border/20">Plan</TableHead>
+                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Actual</TableHead>
+                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Δ</TableHead>
+                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
                           </Fragment>
                         ))}
                       </TableRow>
