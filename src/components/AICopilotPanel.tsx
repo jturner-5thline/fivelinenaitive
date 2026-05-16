@@ -70,6 +70,44 @@ function checkClientRateLimit(): boolean {
   return true;
 }
 
+// Lightweight heuristic that mirrors structured assistant outputs into the
+// expanded workspace pane. Looks for known section headings produced by the
+// preview-only copilot tools (status reports, follow-up summaries, draft
+// emails, Asana tasks, meetings, deal notes). Returns at most one item per
+// message — the model can synthesize multiple sections in one reply but we
+// surface the most distinctive one as a single card.
+function detectWorkspaceItems(messageId: string, content: string): WorkspaceItem[] {
+  const text = content.trim();
+  if (!text) return [];
+  const lower = text.toLowerCase();
+  const make = (type: WorkspaceItemType, title: string, previewOnly = true): WorkspaceItem => ({
+    id: `${messageId}-${type}`,
+    type,
+    title,
+    createdAt: new Date().toISOString(),
+    previewOnly,
+    body: text,
+    sourceMessageId: messageId,
+  });
+  const matchers: Array<{ test: RegExp; type: WorkspaceItemType; title: string }> = [
+    { test: /(^|\n)\s*#{1,3}\s*status report\b/i, type: 'status_report',     title: 'Status report' },
+    { test: /\bdraft\s+status\s+report\b/i,         type: 'status_report',     title: 'Status report' },
+    { test: /(^|\n)\s*#{1,3}\s*follow[- ]?up\b/i,   type: 'follow_up_summary', title: 'Follow-up summary' },
+    { test: /\bfollow[- ]?up\s+summary\b/i,         type: 'follow_up_summary', title: 'Follow-up summary' },
+    { test: /(^|\n)\s*(subject:|to:)\s/i,           type: 'draft_email',       title: 'Draft email' },
+    { test: /\bdraft\s+email\b/i,                   type: 'draft_email',       title: 'Draft email' },
+    { test: /\bcreate.*asana\s+task\b/i,            type: 'asana_task',        title: 'Asana task' },
+    { test: /\basana\s+task\s+preview\b/i,          type: 'asana_task',        title: 'Asana task' },
+    { test: /\bschedule\s+(a\s+)?meeting\b/i,       type: 'meeting',           title: 'Meeting' },
+    { test: /\bcalendar\s+invite\b/i,               type: 'meeting',           title: 'Meeting' },
+    { test: /\bdeal\s+note\b/i,                     type: 'deal_note',         title: 'Deal note' },
+  ];
+  for (const m of matchers) {
+    if (m.test.test(text) || m.test.test(lower)) return [make(m.type, m.title)];
+  }
+  return [];
+}
+
 // Online status hook
 function useOnlineStatus() {
   const [online, setOnline] = useState(navigator.onLine);
