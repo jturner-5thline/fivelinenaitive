@@ -91,13 +91,11 @@ interface KpiCardProps {
   onClick?: () => void;
 }
 
-function KpiCard({ row, onClick }: KpiCardProps) {
-  const { plan: planMap } = useNikiPerformancePlan();
-  const plan = planMap[row.key];
-  const v = variance(row.yearTotal, plan.total);
+function KpiCard({ row, onClick, planVal, actualVal, periodLabel }: KpiCardProps & { planVal: number; actualVal: number; periodLabel: string }) {
+  const v = variance(actualVal, planVal);
   const status = statusFromPct(v.pct);
   const s = STATUS_STYLES[status];
-  const pctOfPlan = plan.total ? Math.round((row.yearTotal / plan.total) * 100) : null;
+  const pctOfPlan = planVal ? Math.round((actualVal / planVal) * 100) : null;
 
   return (
     <button
@@ -118,11 +116,11 @@ function KpiCard({ row, onClick }: KpiCardProps) {
         </span>
       </div>
       <div className="mt-2 text-2xl font-bold text-foreground tabular-nums">
-        {fmt(row.yearTotal, row.unit)}
+        {fmt(actualVal, row.unit)}
       </div>
       <div className="mt-0.5 text-[11px] text-muted-foreground tabular-nums">
-        Plan: <span className="text-foreground/80">{fmt(plan.total, row.unit)}</span>
-        {pctOfPlan !== null && <span className="ml-1.5 text-muted-foreground">· {pctOfPlan}% of plan</span>}
+        {periodLabel} Plan: <span className="text-foreground/80">{fmt(planVal, row.unit)}</span>
+        {pctOfPlan !== null && <span className="ml-1.5 text-muted-foreground">· {pctOfPlan}%</span>}
       </div>
       <div className="mt-2 h-1.5 rounded-full bg-muted/40 overflow-hidden">
         <div
