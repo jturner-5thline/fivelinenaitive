@@ -62,8 +62,30 @@ function resolvePeriod(
 }
 
 function fmt(value: number, unit: 'count' | 'currency'): string {
-  if (unit === 'currency') return formatUSD(value);
+  if (unit === 'currency') return fmtMoney(value);
   return value.toLocaleString('en-US');
+}
+
+/**
+ * Compact, scorecard-friendly money formatter for RAW dollar values.
+ * - >= $1M  →  $1.25M  (one or two decimals when meaningful)
+ * - >= $1K  →  $750K   (no decimals)
+ * - else    →  $250
+ * Negatives wrapped in parentheses to match accounting convention.
+ */
+function fmtMoney(value: number): string {
+  if (value === null || value === undefined || isNaN(value)) return '—';
+  const abs = Math.abs(value);
+  let out: string;
+  if (abs >= 1_000_000) {
+    const m = abs / 1_000_000;
+    out = `$${m >= 10 ? m.toFixed(1) : m.toFixed(2)}M`;
+  } else if (abs >= 1_000) {
+    out = `$${Math.round(abs / 1_000).toLocaleString('en-US')}K`;
+  } else {
+    out = `$${Math.round(abs).toLocaleString('en-US')}`;
+  }
+  return value < 0 ? `(${out})` : out;
 }
 
 function statusFromPct(pct: number | null): 'ahead' | 'ontrack' | 'behind' | 'na' {
@@ -505,9 +527,12 @@ function NikiPerformanceTabInner() {
     <TableRow className="hover:bg-transparent border-b-0">
       <TableCell
         colSpan={totalCols}
-        className="py-2 px-4 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground bg-muted/30 sticky left-0"
+        className="pt-6 pb-2 px-4 text-[10px] uppercase tracking-[0.14em] font-semibold text-muted-foreground/80 bg-transparent"
       >
-        {title}
+        <span className="inline-flex items-center gap-2">
+          <span className="h-px w-3 bg-border/60" />
+          {title}
+        </span>
       </TableCell>
     </TableRow>
   );
@@ -517,27 +542,30 @@ function NikiPerformanceTabInner() {
     const { planVal, actualVal, v, status } = cellFor(row, k);
     const s = STATUS_STYLES[status];
     return (
-      <TableRow className="cursor-pointer border-b border-border/20 hover:bg-muted/20" onClick={() => openDrill(row, k)}>
-        <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
+      <TableRow
+        className="cursor-pointer border-b border-border/10 hover:bg-muted/10 transition-colors"
+        onClick={() => openDrill(row, k)}
+      >
+        <TableCell className="py-3 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
         {showPlan && (
-          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-semibold text-foreground bg-muted/20">
+          <TableCell className="py-3 px-4 text-center tabular-nums text-sm font-semibold tracking-tight text-foreground">
             {fmt(planVal, row.unit)}
           </TableCell>
         )}
         {showActual && (
-          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-medium text-foreground/90">{fmt(actualVal, row.unit)}</TableCell>
+          <TableCell className="py-3 px-4 text-center tabular-nums text-sm font-normal text-foreground/80">{fmt(actualVal, row.unit)}</TableCell>
         )}
         {showVarDelta && (
           <>
-            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+            <TableCell className={cn('py-3 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
               {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
             </TableCell>
-            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+            <TableCell className={cn('py-3 px-4 text-center tabular-nums text-sm font-semibold', s.text)}>
               {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
             </TableCell>
           </>
         )}
-        <TableCell className="py-2.5 px-4 text-center">
+        <TableCell className="py-3 px-4 text-center">
           <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
             <s.Icon className="h-3 w-3" />
             {s.label}
@@ -548,8 +576,8 @@ function NikiPerformanceTabInner() {
   };
 
   const MultiRow = ({ row }: { row: MetricRow }) => (
-    <TableRow className="border-b border-border/20 hover:bg-muted/20">
-      <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground sticky left-0 bg-card z-10">
+    <TableRow className="border-b border-border/10 hover:bg-muted/10 transition-colors">
+      <TableCell className="py-3 px-4 font-medium text-sm text-foreground sticky left-0 bg-card z-10">
         {row.label}
       </TableCell>
       {orderedSelected.map((k) => {
@@ -558,14 +586,14 @@ function NikiPerformanceTabInner() {
         return (
           <Fragment key={k}>
             {showPlan && (
-              <TableCell className="py-2.5 px-3 text-center tabular-nums text-xs font-semibold text-foreground bg-muted/20 border-l border-border/20">
+              <TableCell className="py-3 px-3 text-center tabular-nums text-xs font-semibold tracking-tight text-foreground border-l border-border/20">
                 {fmt(planVal, row.unit)}
               </TableCell>
             )}
             {showActual && (
               <TableCell
                 className={cn(
-                  'py-2.5 px-3 text-center tabular-nums text-xs font-medium text-foreground/90 cursor-pointer hover:underline',
+                  'py-3 px-3 text-center tabular-nums text-xs font-normal text-foreground/80 cursor-pointer hover:underline',
                   !showPlan && 'border-l border-border/20',
                 )}
                 onClick={() => openDrill(row, k)}
@@ -575,10 +603,10 @@ function NikiPerformanceTabInner() {
             )}
             {showVarDelta && (
               <>
-                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text, !showPlan && !showActual && 'border-l border-border/20')}>
+                <TableCell className={cn('py-3 px-3 text-center tabular-nums text-xs font-medium', s.text, !showPlan && !showActual && 'border-l border-border/20')}>
                   {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
                 </TableCell>
-                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
+                <TableCell className={cn('py-3 px-3 text-center tabular-nums text-xs font-semibold', s.text)}>
                   {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
                 </TableCell>
               </>
@@ -749,39 +777,39 @@ function NikiPerformanceTabInner() {
               <Table>
                 <TableHeader>
                   {isSingle ? (
-                    <TableRow className="hover:bg-transparent border-b border-border/40">
-                      <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
-                      {showPlan && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20">Plan</TableHead>}
-                      {showActual && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>}
-                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>}
-                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>}
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
+                    <TableRow className="hover:bg-transparent border-b border-border/30">
+                      <TableHead className="h-10 px-4 text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Metric</TableHead>
+                      {showPlan && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-semibold text-foreground/90">Plan</TableHead>}
+                      {showActual && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Actual</TableHead>}
+                      {showVarDelta && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Δ</TableHead>}
+                      {showVarDelta && <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Var %</TableHead>}
+                      <TableHead className="h-10 px-4 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Status</TableHead>
                     </TableRow>
                   ) : (
                     <>
-                      <TableRow className="hover:bg-transparent border-b border-border/30">
-                        <TableHead rowSpan={2} className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold sticky left-0 bg-card z-10 align-bottom">
+                      <TableRow className="hover:bg-transparent border-b-0">
+                        <TableHead rowSpan={2} className="h-9 px-4 text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground sticky left-0 bg-card z-10 align-bottom">
                           Metric
                         </TableHead>
                         {orderedSelected.map((k) => (
                           <TableHead
                             key={k}
                             colSpan={perPeriodCols}
-                            className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-semibold text-foreground/80 border-l border-border/20"
+                            className="h-9 px-3 text-center text-[11px] tracking-tight font-semibold text-foreground border-l border-border/20"
                           >
                             {periodLabel(k)}
                           </TableHead>
                         ))}
                       </TableRow>
-                      <TableRow className="hover:bg-transparent border-b border-border/40">
+                      <TableRow className="hover:bg-transparent border-b border-border/30">
                         {orderedSelected.map((k) => (
                           <Fragment key={k}>
-                            {showPlan && <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20 border-l border-border/20">Plan</TableHead>}
-                            {showActual && <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && 'border-l border-border/20')}>Actual</TableHead>}
+                            {showPlan && <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-semibold text-foreground/90 border-l border-border/20">Plan</TableHead>}
+                            {showActual && <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground', !showPlan && 'border-l border-border/20')}>Actual</TableHead>}
                             {showVarDelta && (
                               <>
-                                <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && !showActual && 'border-l border-border/20')}>Δ</TableHead>
-                                <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                                <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground', !showPlan && !showActual && 'border-l border-border/20')}>Δ</TableHead>
+                                <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-[0.12em] font-medium text-muted-foreground">Var %</TableHead>
                               </>
                             )}
                           </Fragment>
