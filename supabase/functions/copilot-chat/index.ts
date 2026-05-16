@@ -85,6 +85,106 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ── Fuzzy deal-name matching helpers ─────────────────────────────
+// Used by both the off-page deal resolver and the search_deals tool so the
+// model never says "not found" on a near-miss like "censys technology" vs
+// "Censys Technologies". Pure-JS, no extra deps — runs inside the Deno edge.
+function _normalizeDealName(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .replace(/[''`]/g, "")
+    .replace(/\s*(inc\.?|llc|ltd\.?|corp(?:oration)?\.?|co\.?|company|group|holdings?|holding|partners|labs?|technologies|technology|systems|software|solutions?|services?|capital)\b/gi, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function _levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const v0 = new Array(b.length + 1);
+  const v1 = new Array(b.length + 1);
+  for (let i = 0; i <= b.length; i++) v0[i] = i;
+  for (let i = 0; i < a.length; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < b.length; j++) {
+      const cost = a.charCodeAt(i) === b.charCodeAt(j) ? 0 : 1;
+      v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+    }
+    for (let j = 0; j <= b.length; j++) v0[j] = v1[j];
+  }
+  return v1[b.length];
+}
+function _soundex(s: string): string {
+  const w = (s || "").toUpperCase().replace(/[^A-Z]/g, "");
+  if (!w) return "";
+  const codes: Record<string, string> = {
+    B: "1", F: "1", P: "1", V: "1",
+    C: "2", G: "2", J: "2", K: "2", Q: "2", S: "2", X: "2", Z: "2",
+    D: "3", T: "3", L: "4", M: "5", N: "5", R: "6",
+  };
+  let out = w[0];
+  let prev = codes[w[0]] || "";
+  for (let i = 1; i < w.length && out.length < 4; i++) {
+    const c = codes[w[i]] || "";
+    if (c && c !== prev) out += c;
+    if (c) prev = c; else prev = "";
+  }
+  return (out + "0000").slice(0, 4);
+}
+function _tokenSetRatio(a: string, b: string): number {
+  const ta = new Set(_normalizeDealName(a).split(" ").filter(Boolean));
+  const tb = new Set(_normalizeDealName(b).split(" ").filter(Boolean));
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  return (2 * inter) / (ta.size + tb.size);
+}
+/**
+ * Returns a similarity score in [0,1] between a free-text query and a candidate
+ * deal/company name. Combines normalized Levenshtein, token-set ratio, soundex
+ * agreement and case-insensitive substring containment so reorderings,
+ * singular/plural variations, missing suffixes, and phonetic near-misses all
+ * match. 1.0 means an exact normalized match.
+ */
+function dealNameSimilarity(query: string, candidate: string): number {
+  const q = _normalizeDealName(query);
+  const c = _normalizeDealName(candidate);
+  if (!q || !c) return 0;
+  if (q === c) return 1;
+  // Substring containment is a very strong signal.
+  let contain = 0;
+  if (c.includes(q) || q.includes(c)) {
+    const shorter = Math.min(q.length, c.length);
+    const longer = Math.max(q.length, c.length);
+    contain = 0.9 + 0.1 * (shorter / longer);
+  }
+  const dist = _levenshtein(q, c);
+  const lenMax = Math.max(q.length, c.length);
+  const lev = lenMax === 0 ? 1 : 1 - dist / lenMax;
+  const tokens = _tokenSetRatio(query, candidate);
+  // Soundex on the first token of each.
+  const sx = _soundex(q.split(" ")[0]) === _soundex(c.split(" ")[0]) ? 1 : 0;
+  // Weighted blend.
+  let score = Math.max(contain, 0.55 * lev + 0.35 * tokens + 0.10 * sx);
+  // Allow Levenshtein ≤ 2 or ≤ 25% of length to count as a strong match.
+  if (dist <= 2 || dist / Math.max(1, lenMax) <= 0.25) score = Math.max(score, 0.9);
+  return Math.min(1, score);
+}
+/**
+ * Rank an array of deals by similarity to `query`. Returns sorted desc with
+ * the `_score` attached. Filters out scores below `minScore` (default 0.55).
+ */
+function rankDealsByQuery<T extends { company?: string | null }>(deals: T[], query: string, minScore = 0.55): Array<T & { _score: number }> {
+  const out: Array<T & { _score: number }> = [];
+  for (const d of deals || []) {
+    const score = dealNameSimilarity(query, d.company || "");
+    if (score >= minScore) out.push({ ...d, _score: score });
+  }
+  out.sort((a, b) => b._score - a._score);
+  return out;
+}
+
 // Bumped to 20 to support chained autonomous task execution: a 3–5 step plan
 // (e.g. "scan Gmail → match deals → draft tasks") commonly needs 2–3 tool
 // calls per step before the model emits confirm cards + the final summary.
