@@ -17,6 +17,7 @@ import {
 import { RepPerformanceModelGrid } from '@/components/metrics/rep-model/RepPerformanceModelGrid';
 import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
+import { MetricQuarterlyBarChart } from '@/components/dashboard/performance/MetricQuarterlyBarChart';
 import {
   useNikiPerformanceMetrics,
   NIKI_PLAN_2026,
@@ -302,6 +303,7 @@ export function NikiPerformanceTab() {
   const { rows, isLoading } = useNikiPerformanceMetrics();
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [layout, setLayout] = useState<'table' | 'charts' | 'both'>('both');
 
   const byKey = useMemo(() => {
     const m = new Map<MetricRowKey, MetricRow>();
@@ -493,6 +495,25 @@ export function NikiPerformanceTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {mode === 'view' && (
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+              {(['table', 'charts', 'both'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setLayout(opt)}
+                  className={cn(
+                    'px-2.5 py-1 text-[11px] font-medium rounded-md capitalize transition-colors',
+                    layout === opt
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
           <Button
             variant={mode === 'edit' ? 'default' : 'outline'}
             size="sm"
@@ -517,6 +538,7 @@ export function NikiPerformanceTab() {
           </div>
 
           {/* Scorecard table */}
+          {(layout === 'table' || layout === 'both') && (
           <Card>
             <CardHeader className="pb-3 flex-row items-start justify-between space-y-0 gap-3">
               <div>
@@ -618,24 +640,41 @@ export function NikiPerformanceTab() {
               </Table>
             </CardContent>
           </Card>
+          )}
 
-          {/* Supporting visuals */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-            <QuarterlyChart
-              title="Quarterly Production — Dollars on Board"
-              description="Plan vs Actual by quarter."
-              rows={[get('dollarsOnBoard')!].filter(Boolean)}
-              unit="currency"
-            />
-            <QuarterlyChart
-              title="Quarterly Revenue — Dollars Funded"
-              description="Plan vs Actual by quarter."
-              rows={[get('dollarsFunded')!].filter(Boolean)}
-              unit="currency"
-            />
-          </div>
+          {/* Per-metric quarterly bar charts */}
+          {(layout === 'charts' || layout === 'both') && (
+            <div className="space-y-5">
+              {[
+                { title: 'Pipeline Production', keys: productionRows },
+                { title: 'Conversion Milestones', keys: conversionRows },
+                { title: 'Revenue', keys: revenueRows },
+              ].map((section) => (
+                <div key={section.title}>
+                  <div className="flex items-baseline justify-between mb-2 px-1">
+                    <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
+                      {section.title}
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                    {section.keys.map((k) => {
+                      const r = get(k);
+                      if (!r) return null;
+                      return (
+                        <MetricQuarterlyBarChart
+                          key={k}
+                          row={r}
+                          onBarClick={(q) => openDrill(r, q)}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
 
-          <FunnelSection rows={funnelRows} openDrill={openDrill} />
+              <FunnelSection rows={funnelRows} openDrill={openDrill} />
+            </div>
+          )}
         </>
       ) : (
         <div className="space-y-4">
