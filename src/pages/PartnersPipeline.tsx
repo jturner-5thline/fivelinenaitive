@@ -16,6 +16,12 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { ConfigureStagesModal } from '@/components/partners/ConfigureStagesModal';
 import { AddPartnerDialog } from '@/components/partners/AddPartnerDialog';
 import { PartnerDetailPanel } from '@/components/partners/PartnerDetailPanel';
+import { PartnerPromotionDialog, getPromotionMode, type PromotionResult, type PromotionMode } from '@/components/partners/PartnerPromotionDialog';
+import { usePartnerPromotionCriteria } from '@/hooks/usePartnerPromotionCriteria';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { toast } from 'sonner';
 
 
 
@@ -23,6 +29,9 @@ function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; o
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: partner.id });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
   const owner = partner.owner_id ? owners.get(partner.owner_id) : null;
+  const { data: criteria } = usePartnerPromotionCriteria(partner.name);
+  const tier = (partner.metadata as any)?.tier as string | number | undefined;
+  const daysSince = Math.max(0, Math.floor((Date.now() - new Date(partner.created_at).getTime()) / (1000 * 60 * 60 * 24)));
 
   return (
     <div
@@ -38,6 +47,19 @@ function SortablePartnerCard({ partner, owners, onClick }: { partner: Partner; o
         <GripVertical data-drag-handle className="h-4 w-4 text-slate-600 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
       </div>
       <p className="text-xs text-slate-400 mt-0.5">{partner.firm_type || 'Other'}</p>
+      <div className="flex items-center flex-wrap gap-1.5 mt-2">
+        {tier !== undefined && tier !== '' && (
+          <span className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-primary/15 text-primary border border-primary/30">
+            Tier {tier}
+          </span>
+        )}
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/60 text-slate-300 border border-slate-600/60">
+          {criteria?.metCount ?? 0} of 3 AP criteria met
+        </span>
+        <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-700/60 text-slate-400 border border-slate-600/60">
+          {daysSince}d in pipeline
+        </span>
+      </div>
       <div className="flex items-center gap-1.5 mt-2">
         <User className="h-3.5 w-3.5 shrink-0" style={{ color: owner ? 'hsl(var(--primary))' : undefined }} />
         {owner ? (
@@ -91,6 +113,8 @@ export default function PartnersPipeline() {
   const { data: partners = [], isLoading: partnersLoading } = usePartners();
   const teamMembers = useTeamMembers();
   const updatePartner = useUpdatePartner();
+  const { user } = useAuth();
+  const { company } = useCompany();
 
   const [showConfigure, setShowConfigure] = useState(false);
   const [showAdd, setShowAdd] = useState(false);
@@ -98,6 +122,10 @@ export default function PartnersPipeline() {
   const [selectedPartnerId, setSelectedPartnerId] = useState<string | null>(null);
   const selectedPartner = useMemo(() => partners.find(p => p.id === selectedPartnerId) || null, [partners, selectedPartnerId]);
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Promotion dialog state for drag-to-Trial / Active Partner
+  const [promo, setPromo] = useState<{ partner: Partner; targetStageId: string; mode: PromotionMode } | null>(null);
+  const [promoSubmitting, setPromoSubmitting] = useState(false);
 
   const owners = useMemo(() => {
     const map = new Map<string, { display_name: string; avatar_url?: string }>();
@@ -136,11 +164,56 @@ export default function PartnersPipeline() {
     const overPartner = partners.find(p => p.id === over.id);
     const targetStageId = overPartner ? overPartner.stage_id : (stages.find(s => s.id === over.id)?.id || draggedPartner.stage_id);
 
+    // If moving into Trial or Active Partner, intercept with criteria dialog
+    if (targetStageId && targetStageId !== draggedPartner.stage_id) {
+      const targetStage = stages.find(s => s.id === targetStageId);
+      const mode = getPromotionMode(targetStage?.name);
+      if (mode) {
+        setPromo({ partner: draggedPartner, targetStageId, mode });
+        return;
+      }
+    }
+
     updatePartner.mutate({
       id: draggedPartner.id,
       stage_id: targetStageId,
       sort_order_in_stage: overPartner ? overPartner.sort_order_in_stage : 0,
     });
+  };
+
+  const handlePromotionConfirm = async (result: PromotionResult) => {
+    if (!promo || !user?.id || !company?.id) return;
+    setPromoSubmitting(true);
+    try {
+      await supabase.from('partner_stage_notes' as any).insert({
+        partner_id: promo.partner.id,
+        user_id: user.id,
+        company_id: company.id,
+        from_stage: promo.partner.stage_id || null,
+        to_stage: promo.targetStageId,
+        note: result.note,
+      });
+      const existingMeta = (promo.partner.metadata || {}) as Record<string, any>;
+      const promotions = { ...(existingMeta.promotions || {}) };
+      promotions[result.mode] = {
+        at: new Date().toISOString(),
+        by: user.id,
+        trialChecks: result.trialChecks,
+        publicConfirmed: result.publicConfirmed,
+        override: result.override,
+        overrideReason: result.overrideReason,
+        autoCriteriaSnapshot: result.autoCriteriaSnapshot,
+      };
+      updatePartner.mutate(
+        { id: promo.partner.id, stage_id: promo.targetStageId, metadata: { ...existingMeta, promotions } },
+        { onSuccess: () => toast.success(`Moved to ${promo.mode === 'trial' ? 'Trial' : 'Active Partner'}`) },
+      );
+      setPromo(null);
+    } catch (e: any) {
+      toast.error(e.message || 'Failed to promote partner');
+    } finally {
+      setPromoSubmitting(false);
+    }
   };
 
   const handleAddPartnerHere = (stageId: string) => {
@@ -213,6 +286,16 @@ export default function PartnersPipeline() {
       <ConfigureStagesModal open={showConfigure} onOpenChange={setShowConfigure} />
       <AddPartnerDialog open={showAdd} onOpenChange={setShowAdd} defaultStageId={addStageId} />
       <PartnerDetailPanel partner={selectedPartner} onClose={() => setSelectedPartnerId(null)} />
+      {promo && (
+        <PartnerPromotionDialog
+          open={!!promo}
+          mode={promo.mode}
+          partnerName={promo.partner.name}
+          onCancel={() => setPromo(null)}
+          onConfirm={handlePromotionConfirm}
+          submitting={promoSubmitting}
+        />
+      )}
     </div>
   );
 }
