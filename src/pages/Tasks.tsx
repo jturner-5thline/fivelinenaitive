@@ -894,8 +894,6 @@ export default function Tasks() {
             </PopoverContent>
           </Popover>
 
-          <div className="flex-1" />
-
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.025)', color: '#b3bccc' }}>
