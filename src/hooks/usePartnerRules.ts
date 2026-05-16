@@ -142,7 +142,7 @@ export function usePartnerRulesAudit() {
         .eq('company_id', company!.id)
         .order('changed_at', { ascending: false })
         .limit(50);
-      return (data || []) as Array<{ id: string; changed_at: string; changed_by_email: string | null; summary: string | null }>;
+      return ((data as unknown) || []) as Array<{ id: string; changed_at: string; changed_by_email: string | null; summary: string | null }>;
     },
   });
 }
