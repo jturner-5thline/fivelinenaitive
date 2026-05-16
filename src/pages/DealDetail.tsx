@@ -4960,7 +4960,6 @@ export default function DealDetail() {
                         >
                           <Sparkles className="h-3.5 w-3.5" />
                           Deal Space
-                          {!isDemoAccount && <BetaBadge featureKey="page_deal_space" />}
                         </TabsTrigger>
                       )}
                       <TabsTrigger
