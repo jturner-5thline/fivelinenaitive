@@ -427,6 +427,7 @@ const FullCalendarView = lazy(() =>
 );
 import { NewsFeedPanel } from '@/components/dashboard/NewsFeedPanel';
 import { NewsFeedDialog } from '@/components/dashboard/NewsFeedDialog';
+import { NikiPerformanceTab } from '@/components/dashboard/NikiPerformanceTab';
 import { toast } from 'sonner';
 import {
   canSeeNikiBriefing,
@@ -464,6 +465,9 @@ export default function Dashboard() {
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
+  // Performance tab is restricted to Niki and James.
+  const canSeePerformance =
+    user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
   // 5th Line workspace gating for the Deal Rundown quick-action tile.
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const {
@@ -538,7 +542,8 @@ export default function Dashboard() {
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'news-feed') setDashboardTab('news-feed');
-  }, [searchParams]);
+    if (tab === 'performance' && canSeePerformance) setDashboardTab('performance');
+  }, [searchParams, canSeePerformance]);
 
   // Auto-open Daily Rundown from email link (?briefing=true)
   useEffect(() => {
