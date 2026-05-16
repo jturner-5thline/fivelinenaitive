@@ -14902,6 +14902,36 @@ export type Database = {
         }
         Relationships: []
       }
+      partner_channel_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       partner_companies: {
         Row: {
           company_id: string
@@ -15130,6 +15160,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      partner_pipeline_rules: {
+        Row: {
+          company_id: string
+          rules: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          company_id: string
+          rules?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          company_id?: string
+          rules?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      partner_pipeline_rules_audit: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_email: string | null
+          company_id: string
+          id: string
+          new_rules: Json | null
+          prev_rules: Json | null
+          summary: string | null
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          company_id: string
+          id?: string
+          new_rules?: Json | null
+          prev_rules?: Json | null
+          summary?: string | null
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          company_id?: string
+          id?: string
+          new_rules?: Json | null
+          prev_rules?: Json | null
+          summary?: string | null
+        }
+        Relationships: []
       }
       partner_pipeline_stages: {
         Row: {
