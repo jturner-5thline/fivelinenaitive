@@ -4930,10 +4930,19 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
-                {/* Floating tab rail — fixed to the viewport bottom so it stays
-                    visible while the user scrolls the deal popup. No background
-                    fill — the tabs themselves carry the styling. */}
-                <div className="fixed bottom-0 inset-x-0 z-40 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]">
+                {/* Floating tab rail — pinned to the bottom of the modal
+                    shell. In the embedded overlay we use mt-auto + sticky
+                    bottom-0 so the rail always sits flush against the
+                    modal's bottom edge regardless of tab content length,
+                    and stays pinned there while the inner content scrolls.
+                    On the standalone /deal/:id route it falls back to a
+                    viewport-fixed bar. */}
+                <div className={cn(
+                  "z-40 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]",
+                  isEmbedded
+                    ? "sticky bottom-0 mt-auto pt-2 bg-gradient-to-t from-background/60 to-transparent backdrop-blur-sm"
+                    : "fixed bottom-0 inset-x-0"
+                )}>
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
                     visible={isHintVisible('deal-tabs')}
