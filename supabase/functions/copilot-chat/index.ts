@@ -5474,6 +5474,40 @@ serve(async (req) => {
       }
     }
 
+    // Phase 4: per-workspace AI Copilot configuration (Settings → AI Copilot,
+    // edited by 5th Line internal admins). Overrides tone, appends a custom
+    // system prompt, exposes a default report template, and toggles tools.
+    let copilotConfigPrefix = "";
+    let copilotToolsEnabled: Record<string, boolean> = {};
+    if (companyId) {
+      try {
+        const { data: cfg } = await supabaseAdmin
+          .from("ai_copilot_config")
+          .select("system_prompt_override, tone_override, default_report_template, tools_enabled")
+          .eq("company_id", companyId)
+          .maybeSingle();
+        if (cfg) {
+          const parts: string[] = [];
+          const tone = (cfg as any).tone_override;
+          const TONE_GUIDANCE: Record<string, string> = {
+            professional_concise: "Use a professional, concise tone. Skip preamble. Favor short bullets.",
+            formal: "Use a formal, polished tone appropriate for institutional capital partners.",
+            casual: "Use a casual, conversational tone. Plain language is fine.",
+          };
+          if (tone && TONE_GUIDANCE[tone]) parts.push("## Communication Tone (workspace override)\n" + TONE_GUIDANCE[tone]);
+          const sys = ((cfg as any).system_prompt_override || "").trim();
+          if (sys) parts.push("## Workspace System Prompt\n" + sys);
+          const tpl = ((cfg as any).default_report_template || "").trim();
+          if (tpl) parts.push("## Default Status Report Template\nWhen drafting a status report, follow this template unless the user asks otherwise:\n" + tpl);
+          copilotConfigPrefix = parts.join("\n\n");
+          const te = (cfg as any).tools_enabled;
+          if (te && typeof te === "object") copilotToolsEnabled = te as Record<string, boolean>;
+        }
+      } catch (e) {
+        console.warn("[copilot-chat] ai_copilot_config load failed", e);
+      }
+    }
+
     // Fetch active org preferences/rules
     let orgPreferencesSection = "";
     if (companyId) {
@@ -5688,7 +5722,7 @@ Behavior when blocked:
     })();
     const todayLine = `TODAY: ${nowParts.weekday}, ${nowParts.ymd} (local time ${nowParts.hm}, timezone ${userTz})`;
 
-    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}${lenderPageOverride}
+    const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}${copilotConfigPrefix ? copilotConfigPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}${lenderPageOverride}
 
 CURRENT CONTEXT:
 - ${todayLine}
@@ -6333,7 +6367,12 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const AI_GATEWAY = "https://ai.gateway.lovable.dev/v1/chat/completions";
-    const selectedTools = selectToolsWithScopes(page, entityType, scopes);
+    let selectedTools = selectToolsWithScopes(page, entityType, scopes);
+    // Phase 4: honor per-workspace tool toggles. A tool is disabled only when
+    // explicitly set to `false` in tools_enabled; missing keys default to on.
+    if (copilotToolsEnabled && Object.keys(copilotToolsEnabled).length > 0) {
+      selectedTools = selectedTools.filter((t: any) => copilotToolsEnabled[t.function.name] !== false);
+    }
 
     // ── Streaming tool loop ──
     // Opens a response stream immediately so the client sees tokens as they arrive,

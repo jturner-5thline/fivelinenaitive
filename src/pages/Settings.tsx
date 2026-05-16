@@ -32,6 +32,7 @@ import { DistributionStatsSettings } from '@/components/settings/DistributionSta
 import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemplatesSettings';
 import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSettings';
+import { AICopilotSettings } from '@/components/settings/AICopilotSettings';
 import { OutboundEmailTemplatesSettings } from '@/components/settings/OutboundEmailTemplatesSettings';
 import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSettings';
 import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSettings';
@@ -329,6 +330,7 @@ export default function Settings() {
                   {isVisible('ai-configuration') && (
                     <AIConfigurationSettings isAdmin={isAdmin} />
                   )}
+                  <AICopilotSettings />
                 </TabsContent>
               </Tabs>
             )}
