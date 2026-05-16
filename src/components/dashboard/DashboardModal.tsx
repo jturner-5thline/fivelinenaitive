@@ -459,7 +459,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                       </tr>
                     </thead>
                     <tbody>
-                      {sortedRows.map((d, i) => (
+                      {displayedRows.map((d, i) => (
                         <tr key={d.dealId}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
                           <td style={{ color: d.nameColor }}>{d.name}</td>
@@ -497,7 +497,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                           </td>
                         </tr>
                       ))}
-                      {sortedRows.length === 0 && (
+                      {displayedRows.length === 0 && (
                         <tr><td colSpan={13} style={{ textAlign: 'center', color: 'rgba(130,165,190,0.4)', padding: 20 }}>No active deals in pipeline</td></tr>
                       )}
                     </tbody>
