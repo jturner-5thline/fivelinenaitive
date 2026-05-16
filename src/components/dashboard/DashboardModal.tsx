@@ -59,6 +59,10 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
     if (open) setActiveTab(initialTab);
   }, [open, initialTab]);
 
+  // Combined "By Status" widget supports two metric modes that share the
+  // same status taxonomy (On Track / At Risk / Off Track) and dataset.
+  const [statusMode, setStatusMode] = useState<'deal_volume' | 'fee_revenue'>('deal_volume');
+
   const donutRef = useRef<HTMLCanvasElement>(null);
   const barRef = useRef<HTMLCanvasElement>(null);
   const donutChart = useRef<Chart | null>(null);
@@ -230,12 +234,19 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
         const onTrack = hsl('--chart-2');       // green / positive
         const atRisk  = hsl('--chart-3');       // amber / warning
         const offTrack = hsl('--destructive');  // red
+        const isFee = statusMode === 'fee_revenue';
+        const donutValues = isFee
+          ? [metrics.onTrack.feeTotal / 1000, metrics.atRisk.feeTotal / 1000, metrics.offTrack.feeTotal / 1000]
+          : metrics.donutData;
+        const tooltipFmt = isFee
+          ? (v: number) => ' $' + Math.round(v) + 'K'
+          : (v: number) => ' $' + v.toFixed(1) + 'MM';
         donutChart.current = new Chart(donutRef.current, {
           type: 'doughnut',
           data: {
             labels: ['On Track', 'At Risk', 'Off Track'],
             datasets: [{
-              data: metrics.donutData,
+              data: donutValues,
               backgroundColor: [onTrack, atRisk, offTrack],
               borderColor: [onTrack, atRisk, offTrack],
               borderWidth: 1,
@@ -246,7 +257,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
             responsive: true, maintainAspectRatio: false, cutout: '68%',
             plugins: {
               legend: { display: true, position: 'bottom', labels: { color: hsl('--muted-foreground'), font: { size: 10 }, padding: 14, boxWidth: 10, boxHeight: 10 } },
-              tooltip: { callbacks: { label: (ctx: any) => ' $' + ctx.parsed.toFixed(1) + 'MM' } }
+              tooltip: { callbacks: { label: (ctx: any) => tooltipFmt(ctx.parsed) } }
             }
           }
         });
@@ -283,7 +294,7 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
       donutChart.current = null;
       barChart.current = null;
     };
-  }, [open, metrics]);
+  }, [open, metrics, statusMode]);
 
   const sortArrow = (col: SortColumn) => {
     if (sortCol !== col) return '';
@@ -380,34 +391,54 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
 
             {/* ROW 1 */}
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,2.2fr)', gap: 16, marginBottom: 16 }}>
-              {/* LEFT */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-                <div className="glass-module p-4">
-                  <div className="db-ct">Pipeline Summary</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
-                    {[
-                      { label: 'On Track',  value: metrics.onTrack.volumeStr,  pillCls: 'db-pill db-pill-on',   valueCls: 'value-positive', sub: `${metrics.onTrack.count} deals · ${metrics.onTrack.pct}` },
-                      { label: 'At Risk',   value: metrics.atRisk.volumeStr,   pillCls: 'db-pill db-pill-risk', valueCls: 'value-warning',  sub: `${metrics.atRisk.count} deals · ${metrics.atRisk.pct}` },
-                      { label: 'Off Track', value: metrics.offTrack.volumeStr, pillCls: 'db-pill db-pill-off',  valueCls: 'value-negative', sub: `${metrics.offTrack.count} deals · ${metrics.offTrack.pct}` },
-                    ].map((s, i) => (
-                      <div key={i} className="glass-module p-3 text-center">
-                        <div className="mb-2 flex justify-center">
-                          <span className={s.pillCls}>{s.label}</span>
-                        </div>
-                        <div className={`text-lg font-bold ${s.valueCls}`}>{s.value}</div>
-                        <div className="text-xs text-muted-foreground mt-1">{s.sub}</div>
-                      </div>
+              {/* LEFT — combined "By Status" card (height matches Deal Pipeline) */}
+              <div className="glass-module p-4 flex flex-col" style={{ height: '100%' }}>
+                <div className="db-ct flex items-center justify-between gap-3">
+                  <span>By Status</span>
+                  <div className="flex items-center gap-1">
+                    {([
+                      { key: 'deal_volume', label: 'Deal Volume' },
+                      { key: 'fee_revenue', label: 'Fee Revenue' },
+                    ] as const).map(t => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => setStatusMode(t.key)}
+                        className={
+                          'px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border transition-colors ' +
+                          (statusMode === t.key
+                            ? 'border-primary/50 bg-primary/15 text-primary'
+                            : 'border-border/60 bg-background/40 text-foreground/80 hover:text-foreground')
+                        }
+                        aria-pressed={statusMode === t.key}
+                      >
+                        {t.label}
+                      </button>
                     ))}
                   </div>
-                  <div className="db-cw" style={{ height: 180 }}><canvas ref={donutRef} /></div>
                 </div>
-
-                <div className="glass-module p-4">
-                  <div className="db-ct">Fee Revenue by Status</div>
-                  <div className="db-stat-row"><span className="db-sn">On Track</span><span className="db-sv value-positive">{metrics.onTrack.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.onTrack.count} deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">At Risk</span><span className="db-sv value-warning">{metrics.atRisk.feeTotalStr} <span className="text-muted-foreground" style={{ fontSize: 10 }}>· {metrics.atRisk.count} deals</span></span></div>
-                  <div className="db-stat-row"><span className="db-sn">Off Track</span><span className="db-sv text-muted-foreground">{metrics.offTrack.feeTotalStr} <span style={{ fontSize: 10 }}>· {metrics.offTrack.count} deals</span></span></div>
-                </div>
+                {(() => {
+                  const isFee = statusMode === 'fee_revenue';
+                  const tiles = [
+                    { label: 'On Track',  value: isFee ? metrics.onTrack.feeTotalStr  : metrics.onTrack.volumeStr,  pillCls: 'db-pill db-pill-on',   valueCls: 'value-positive', sub: `${metrics.onTrack.count} deals${isFee ? '' : ` · ${metrics.onTrack.pct}`}` },
+                    { label: 'At Risk',   value: isFee ? metrics.atRisk.feeTotalStr   : metrics.atRisk.volumeStr,   pillCls: 'db-pill db-pill-risk', valueCls: 'value-warning',  sub: `${metrics.atRisk.count} deals${isFee ? '' : ` · ${metrics.atRisk.pct}`}` },
+                    { label: 'Off Track', value: isFee ? metrics.offTrack.feeTotalStr : metrics.offTrack.volumeStr, pillCls: 'db-pill db-pill-off',  valueCls: 'value-negative', sub: `${metrics.offTrack.count} deals${isFee ? '' : ` · ${metrics.offTrack.pct}`}` },
+                  ];
+                  return (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8, marginBottom: 12 }}>
+                      {tiles.map((s, i) => (
+                        <div key={i} className="glass-module p-3 text-center">
+                          <div className="mb-2 flex justify-center">
+                            <span className={s.pillCls}>{s.label}</span>
+                          </div>
+                          <div className={`text-lg font-bold ${s.valueCls}`}>{s.value}</div>
+                          <div className="text-xs text-muted-foreground mt-1">{s.sub}</div>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+                <div className="db-cw flex-1 min-h-[180px]"><canvas ref={donutRef} /></div>
               </div>
 
               {/* RIGHT: Deal Table */}
