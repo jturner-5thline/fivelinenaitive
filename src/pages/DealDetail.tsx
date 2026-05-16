@@ -2682,7 +2682,10 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="bg-transparent relative">
+      <div className={cn(
+        "bg-transparent relative",
+        isEmbedded && "flex-1 flex flex-col min-h-0 w-full"
+      )}>
         <GlobalSaveBar isAnySaving={isAnySaving} />
 
         <main
@@ -2691,7 +2694,10 @@ export default function DealDetail() {
               // Inside the deal pop-up: wider stable canvas with
               // breakpoint-stepped padding so modules keep their
               // proportions instead of stretching freely with the viewport.
-              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 overflow-x-hidden"
+              // Also flex-col + flex-1 so the bottom tab bar can `mt-auto`
+              // pin itself to the modal's bottom edge regardless of how
+              // short the current tab's content is.
+              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 overflow-x-hidden flex-1 flex flex-col min-h-0"
               : "container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden"
           }
         >
@@ -3071,11 +3077,21 @@ export default function DealDetail() {
           </Card>
 
           {/* Main Content Grid */}
-          <div className="grid gap-6 min-w-0 overflow-hidden">
+          <div className={cn(
+            "grid gap-6 min-w-0 overflow-hidden",
+            isEmbedded && "flex-1 min-h-0"
+          )}>
             {/* Main Content */}
-            <div className="flex flex-col gap-6 min-w-0 w-full pb-24">
+            <div className={cn(
+              "flex flex-col gap-6 min-w-0 w-full",
+              isEmbedded ? "flex-1 min-h-0 pb-2" : "pb-24"
+            )}>
               {/* Tab Navigation */}
-              <Tabs value={dealInfoTab} onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}>
+              <Tabs
+                value={dealInfoTab}
+                onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
+                className={isEmbedded ? "flex-1 flex flex-col min-h-0" : undefined}
+              >
 
                 <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
@@ -4914,10 +4930,19 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
-                {/* Floating tab rail — fixed to the viewport bottom so it stays
-                    visible while the user scrolls the deal popup. No background
-                    fill — the tabs themselves carry the styling. */}
-                <div className="fixed bottom-0 inset-x-0 z-40 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]">
+                {/* Floating tab rail — pinned to the bottom of the modal
+                    shell. In the embedded overlay we use mt-auto + sticky
+                    bottom-0 so the rail always sits flush against the
+                    modal's bottom edge regardless of tab content length,
+                    and stays pinned there while the inner content scrolls.
+                    On the standalone /deal/:id route it falls back to a
+                    viewport-fixed bar. */}
+                <div className={cn(
+                  "z-40 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]",
+                  isEmbedded
+                    ? "sticky bottom-0 mt-auto pt-2 bg-gradient-to-t from-background/60 to-transparent backdrop-blur-sm"
+                    : "fixed bottom-0 inset-x-0"
+                )}>
                   <HintTooltip
                     hint="Use these tabs to navigate a deal: Deal Space for AI insights, Deal Information for key details, Lenders for tracking, Deal Management for tasks, Deal Write Up for the memo, Data Room for documents, and Emails for correspondence."
                     visible={isHintVisible('deal-tabs')}
