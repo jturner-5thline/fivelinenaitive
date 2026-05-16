@@ -14,7 +14,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
-  Check, Clock, ArrowUpRight, Moon,
+  Check, Clock, ArrowUpRight, Sunset,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -1548,7 +1548,7 @@ const ALL_TABS = [
   { value: 'financial', label: 'Financial', icon: DollarSign },
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Operational', icon: ListChecks },
-  { value: 'end_of_day', label: 'End of Day', icon: Moon },
+  { value: 'end_of_day', label: 'End of Day', icon: Sunset },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
