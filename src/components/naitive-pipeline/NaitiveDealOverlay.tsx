@@ -462,7 +462,11 @@ function NaitiveDealOverlayImpl({ deal, orderedDeals, stages, onClose, onNavigat
             duplicating app shell chrome. */}
         <div
           className={cn(
-            'deal-popup-scroll relative flex-1 min-h-0 w-full bg-transparent overflow-y-auto overflow-x-hidden flex flex-col',
+            // The inner <main> (rendered by AppLayout in embedded mode) is
+            // the actual scroll container. Keep this wrapper as a fixed-
+            // height flex shell so the bottom tab rail inside DealDetail
+            // can stay pinned to the modal's bottom edge via sticky.
+            'deal-popup-scroll relative flex-1 min-h-0 w-full bg-transparent overflow-hidden flex flex-col',
           )}
           style={{
             opacity: reduceMotion ? 1 : contentVisible ? 1 : 0,

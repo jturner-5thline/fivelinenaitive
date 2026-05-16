@@ -188,8 +188,12 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
       // Still wrap in SidebarProvider so descendants that call `useSidebar()`
       // (e.g. DealDetail) don't crash when rendered inside the deal overlay
       // iframe. The actual <AppSidebar /> chrome is intentionally omitted.
-      <SidebarProvider defaultOpen={false} className="h-svh" style={{ isolation: 'auto' } as React.CSSProperties}>
-        <div className="h-svh w-full overflow-hidden bg-transparent">
+      // Use h-full (not h-svh) so the embedded shell sizes to its parent
+      // (the deal-popup modal), making <main> a properly bounded scroll
+      // container. This lets a sticky bottom bar inside DealDetail pin to
+      // the modal's bottom edge instead of the viewport bottom.
+      <SidebarProvider defaultOpen={false} className="h-full" style={{ isolation: 'auto' } as React.CSSProperties}>
+        <div className="h-full w-full overflow-hidden bg-transparent">
           <BodyScrollLock />
           <main
             className={cn('relative h-full w-full overflow-y-auto overflow-x-hidden bg-background', mainClassName)}
