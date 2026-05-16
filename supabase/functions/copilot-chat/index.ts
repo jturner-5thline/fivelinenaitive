@@ -1707,6 +1707,8 @@ function selectToolsWithScopes(
     "get_task_details", "get_scheduled_followups",
     // Phase 2: preview-only drafts and summaries.
     "draft_status_report", "follow_up_summary",
+    // Phase 3: external integration stubs (preview-only — no external writes).
+    "send_gmail", "create_asana_task", "schedule_meeting",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
     // Always-available notifications & alerts (user-scoped).
