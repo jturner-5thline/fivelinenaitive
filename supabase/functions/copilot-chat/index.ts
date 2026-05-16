@@ -1592,6 +1592,65 @@ const tools = [
       },
     },
   },
+  // ── PHASE 3: EXTERNAL INTEGRATION STUBS (PREVIEW-ONLY) ──
+  {
+    type: "function",
+    function: {
+      name: "send_gmail",
+      description: "PREVIEW ONLY — does NOT actually send. Returns a Gmail send preview card the user must approve. Use when the user wants to send an email via Gmail (Nylas). The UI shows the draft and a 'Send via Gmail' button; nothing leaves the workspace until the user clicks it.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional deal UUID for context." },
+          to: { type: "array", items: { type: "string" }, description: "Recipient email addresses." },
+          cc: { type: "array", items: { type: "string" } },
+          bcc: { type: "array", items: { type: "string" } },
+          subject: { type: "string" },
+          body_html: { type: "string", description: "Email body as HTML." },
+        },
+        required: ["to", "subject", "body_html"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_asana_task",
+      description: "PREVIEW ONLY — does NOT actually create the Asana task. Returns a preview card the user must approve before the existing Asana bi-directional sync runs. Use when the user wants to mirror a task to Asana.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          name: { type: "string", description: "Task name." },
+          notes: { type: "string", description: "Task notes / description." },
+          due_on: { type: "string", description: "YYYY-MM-DD" },
+          assignee_email: { type: "string" },
+          project_gid: { type: "string", description: "Optional Asana project GID." },
+        },
+        required: ["name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "schedule_meeting",
+      description: "PREVIEW ONLY — does NOT actually create the calendar event. Returns a Google Calendar event preview card the user must approve before booking. Use for 'schedule a call with…', 'book a meeting…'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string" },
+          title: { type: "string" },
+          description: { type: "string" },
+          start_iso: { type: "string", description: "ISO datetime for start." },
+          end_iso: { type: "string", description: "ISO datetime for end." },
+          attendees: { type: "array", items: { type: "string" }, description: "Attendee emails." },
+          location: { type: "string", description: "Physical location or video link." },
+        },
+        required: ["title", "start_iso", "end_iso"],
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
