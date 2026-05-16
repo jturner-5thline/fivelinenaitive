@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
