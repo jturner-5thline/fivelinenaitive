@@ -14,7 +14,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
-  Check, Clock, ArrowUpRight, Moon,
+  Check, Clock, ArrowUpRight, Sunset,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -1548,16 +1548,27 @@ const ALL_TABS = [
   { value: 'financial', label: 'Financial', icon: DollarSign },
   { value: 'pipeline', label: 'Deals', icon: GitBranch },
   { value: 'operational', label: 'Operational', icon: ListChecks },
-  { value: 'end_of_day', label: 'End of Day', icon: Moon },
+  { value: 'end_of_day', label: 'End of Day', icon: Sunset },
 ] as const;
 
 // ── Main modal component ───────────────────────────────────────
 export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown', targetUserId, targetAssigneeName, excludeTabs, initialTab, briefingType = 'daily_briefing' }: DailyBriefingModalProps) {
   const navigate = useNavigate();
   const window = useBriefingWindow();
+  const { user: currentUser } = useAuth();
+  const END_OF_DAY_ALLOWLIST = useMemo(
+    () => new Set(['jmoffitt@5thline.co', 'swilliams@5thline.co']),
+    [],
+  );
+  const canSeeEndOfDay = !!currentUser?.email && END_OF_DAY_ALLOWLIST.has(currentUser.email.toLowerCase());
   const TABS = useMemo(
-    () => ALL_TABS.filter(t => !excludeTabs?.includes(t.value as any)),
-    [excludeTabs],
+    () =>
+      ALL_TABS.filter(t => {
+        if (excludeTabs?.includes(t.value as any)) return false;
+        if (t.value === 'end_of_day' && !canSeeEndOfDay) return false;
+        return true;
+      }),
+    [excludeTabs, canSeeEndOfDay],
   );
   const resolveInitialTab = () => {
     if (initialTab && TABS.find(t => t.value === initialTab)) return initialTab;
