@@ -6585,6 +6585,11 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                   },
                   confidence: p.confidence || {},
                   pageContext: { page, entityType, entityId, activeTab },
+                  rationale: p.rationale || null,
+                  duplicateStatus: p.duplicate_status || null,
+                  duplicateCandidates: Array.isArray(p.duplicate_candidates) ? p.duplicate_candidates : (p.duplicate_match ? [p.duplicate_match] : []),
+                  inferredFields: Array.isArray(p.inferred) ? p.inferred : [],
+                  source: "copilot",
                 });
                 if (auditId) {
                   p.audit_id = auditId;
