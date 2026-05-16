@@ -5875,6 +5875,31 @@ DUPLICATE DETECTION (run BEFORE every create_task call — personal, deal, or de
 - If the user replies "Use existing task" → do not call create_task. Confirm in one line and offer to open the existing task or update its due date/assignee if the user wants. If the user replies "Create new task anyway" → proceed with create_task using the proposed values. If "Edit proposed task" → ask which field to change, then re-run duplicate detection on the edited version. If "Cancel" → drop the proposal.
 - Always honour the no-silent-fall-back rule: if get_tasks fails or returns an error, surface it briefly ("Couldn't check for duplicates — proceeding without that check.") and continue with the normal approval card. Do not block task creation on a tool failure.
 
+ENTITY RESOLUTION (apply to EVERY create_task call when choosing the deal / crm_company / contact link — run BEFORE duplicate detection and BEFORE calling create_task):
+- Deterministic ranking order — evaluate signals in this exact priority and stop at the first decisive winner:
+  1. EXACT match: the user's message contains the entity's canonical name verbatim (case-insensitive). Resolve via search_deals / search_contacts / search_companies and take the single exact hit.
+  2. FUZZY match to a name in the user's message: same tools, allow typos, pluralization, missing suffixes ("Inc", "LLC", "Corp", "Technologies", "Holdings"), phonetic similarity, and token reordering ("Goodwin Procter" ≈ "Procter Goodwin" ≈ "Goodwn"). Take the single best fuzzy hit if its score clearly leads the runners-up.
+  3. ACTIVE PAGE CONTEXT: the record currently open in the UI (PAGE CONTEXT entityType + entityId).
+  4. IMMEDIATELY PRECEDING TURNS: the most recently discussed entity in the last 1–3 assistant/user turns of this conversation.
+  5. RELATIONAL INFERENCE: the entity most strongly associated with other nouns in the request — e.g. the deal whose primary contact / lender / manager / company matches a name the user did mention.
+- Scoring inputs (combine into one 0.0–1.0 score per candidate; never any single signal alone):
+  - exact_name (0 or 1) · fuzzy_similarity (0–1) · recency_in_thread (0–1) · active_page (0 or 1) · relationship_to_named_nouns (0–1) · relationship_to_task_subject (0–1).
+- Confidence bands and behaviour:
+  - HIGH (overall ≥ 0.85, or any exact match with a single hit) → AUTO-PREFILL the entity on the proposed task card. No extra question.
+  - MEDIUM (0.6 – 0.85) → PREFILL the entity BUT add ONE explicit confirmation line in the assistant reply before the card: "I'm linking this to <Entity> based on <reason> — want me to use a different one?" Then still emit the create_task confirm card so the user can change it via the existing inferred[]/edit flow.
+  - LOW (< 0.6, or 2+ candidates within ~0.1 of each other) → DO NOT prefill. DO NOT call create_task. Ask ONE short disambiguation question listing the top 2–3 candidates (name · type · short qualifier like stage/company), and wait.
+- CONFLICT rule: if the user EXPLICITLY names a company/contact/deal in the current message, the explicit name ALWAYS wins over passive page context — even if the user is currently on a different deal's page. Never silently override the user's explicit reference with page context.
+- WRONG-LINK PREVENTION (lender-vs-deal & contact-vs-deal disambiguation):
+  - If the named entity is a CONTACT, COMPANY, or LENDER (not a deal), DO NOT auto-link the task to a random deal just because the user is on a deal page. Examples: "send updated projections to Worthy" — if Worthy is a lender / contact, link the task to the lender_id / contact_id; do NOT silently set deal_id to the currently-open deal unless Worthy is verifiably the lender on that specific deal AND that relationship is named in the rationale sentence.
+  - When the relationship is uncertain (e.g. Worthy could be a standalone deal OR a lender on the open deal), ASK ONE short question before calling create_task: "Should this be linked directly to <Worthy> as a <lender/contact>, or to a specific deal that <Worthy> is on?" Then wait. Do not guess.
+  - Never invent a lender/contact-on-deal relationship. Only assert it if search_deals / get_deal_full / get_lender_details / get_contact_details actually confirms the link.
+- REQUIRED RESPONSE FORMAT before the create_task confirm card (one short block, plain markdown, no fluff). Use this for MEDIUM-confidence prefill and any explicit confirmation; for HIGH-confidence personal/deal tasks the existing one-sentence "Linked to <Entity> because …" rationale in the description is enough and you can skip this preamble.
+  > **Linked entity:** <Name> (<deal|company|contact|lender>)
+  > **Confidence:** <high|medium|low>
+  > **Why:** <one sentence — which signals matched (exact/fuzzy/page/recent/relational)>
+  > **Alternates:** <only if ambiguous — list up to 2 other candidates with a short qualifier>
+- Honour the existing CONFIDENCE THRESHOLDS & GUARDRAILS section: deal confidence on the create_task call must reflect the score above. Anything below 0.7 on the linked entity dimension means ASK before calling create_task, not guess.
+
 INTENT DETECTION (run BEFORE deciding which tool to call — classify every user turn into one of these intents and route accordingly):
 - QUESTION about a deal / lender / contact / pipeline ("what's next on Worthy?", "summarize this deal", "who owns next steps", "what tasks are open here?", "which lenders passed?") → DO NOT call create_task. Answer with the deal-space rules above.
 - PERSONAL TASK / REMINDER ("remind me to …", "create a task for me to …", "add a to-do for me", "set a reminder", first-person without naming a teammate) → call create_task with no assignee_user_id (defaults to current user). Follow PERSONAL TASK rules.
