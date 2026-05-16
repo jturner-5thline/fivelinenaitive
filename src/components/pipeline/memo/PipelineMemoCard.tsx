@@ -81,7 +81,7 @@ function PipelineMemoCardImpl({
           bg-gradient-to-b from-transparent to-white/[0.015]
         "
       >
-        <div className="min-w-0 divide-y divide-white/[0.08]">
+        <div className="min-w-0">
           <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
           <ActivityPanel
             deal={deal}
