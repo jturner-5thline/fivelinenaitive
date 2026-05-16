@@ -595,10 +595,10 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                   setActiveFilter(selected ? null : f.key);
                 }}
                 className={cn(
-                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors',
+                  'rounded-full border px-2 py-0.5 text-[10px] font-medium transition-colors outline-none focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background',
                   selected
-                    ? 'border-primary/60 bg-primary/15 text-primary'
-                    : 'border-border/60 bg-background/40 text-muted-foreground hover:text-foreground hover:border-primary/40'
+                    ? 'border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary hover:text-primary-foreground hover:border-primary'
+                    : 'border-border/60 bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 hover:border-border'
                 )}
               >
                 {f.label}
