@@ -943,6 +943,12 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
         month={s.month}
         reportLabel={reportLabel}
       />
+      <AddKpiDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onPickTemplate={(id) => addTemplateKPI(id)}
+        onPickCustom={() => addCustomKPI()}
+      />
     </Card>
   );
 }
