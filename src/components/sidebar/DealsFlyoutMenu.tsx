@@ -161,26 +161,11 @@ export function DealsFlyoutMenu() {
   const handleSubItemClick = (dealId: string) => {
     clearTimers();
     openedViaKeyboardRef.current = false;
-    // Force synchronous unmount of the popover BEFORE navigation kicks off
-    // so the menu visibly dismisses on the same frame as the click.
     flushSync(() => setOpen(false));
     setSelectedDealId(dealId);
-    // Broadcast the selection so any inbox view (open or about to mount)
-    // can sync its deal filter chip without prop drilling.
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(
-        new CustomEvent(SIDEBAR_DEAL_FILTER_EVENT, { detail: { dealId } }),
-      );
-    }
-    // Land on the dashboard with the email widget open. The dashboard auto-
-    // opens it via ?widget=email, which the carousel handler picks up.
-    if (location.pathname !== '/dashboard') {
-      navigate(`/dashboard?widget=email&inboxDeal=${encodeURIComponent(dealId)}`);
-    } else {
-      navigate(`/dashboard?widget=email&inboxDeal=${encodeURIComponent(dealId)}`, {
-        replace: true,
-      });
-    }
+    // Open the deal detail view, matching deal-card click behavior in the
+    // /deals pipeline.
+    navigate(`/deal/${dealId}`);
   };
 
   const handleSubItemKeyDown = (
