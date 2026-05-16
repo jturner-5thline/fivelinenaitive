@@ -75,14 +75,14 @@ function PipelineMemoCardImpl({
 
       <div
         className="
-          grid items-start
+          grid items-stretch
           [grid-template-columns:1fr]
           md:[grid-template-columns:1fr_1fr]
           divide-y md:divide-y-0 md:divide-x divide-white/[0.08]
           bg-gradient-to-b from-transparent to-white/[0.015]
         "
       >
-        <div className="min-w-0">
+        <div className="min-w-0 flex flex-col">
           <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
           <ActivityPanel
             deal={deal}
