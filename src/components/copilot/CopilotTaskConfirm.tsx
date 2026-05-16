@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, Flag } from 'lucide-react';
+import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, Flag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -7,6 +7,19 @@ import { useCopilotStore } from '@/stores/copilotStore';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
+interface DuplicateMatch {
+  task_id?: string;
+  title?: string;
+  status?: string;
+  priority?: string;
+  due_date?: string | null;
+  assignee_name?: string;
+  deal_name?: string;
+  completed_at?: string;
+  why?: string;
+  differences?: string;
+}
 
 interface ConfirmAction {
   action: 'confirm';
@@ -24,6 +37,9 @@ interface ConfirmAction {
     due_date?: string | null;
     task_type?: 'task' | 'follow_up' | 'call' | 'email' | 'meeting';
     inferred?: string[];
+    rationale?: string | null;
+    duplicate_status?: 'none' | 'low' | 'possible' | 'high';
+    duplicate_match?: DuplicateMatch | null;
   };
 }
 
@@ -58,11 +74,20 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [dealLinked, setDealLinked] = useState<boolean>(!!initial.deal_id);
   const [assigneeMe, setAssigneeMe] = useState<boolean>(!initial.assignee_user_id);
   const [editing, setEditing] = useState(false);
-  const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled'>('pending');
+  const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'used_existing'>('pending');
+  const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
 
   const inferredSet = new Set(initial.inferred || []);
   const isInferred = (k: string) => inferredSet.has(k);
   const ambiguous = !title.trim();
+  const rationale = (initial.rationale || '').trim();
+  const dupStatus = initial.duplicate_status || 'none';
+  const dup = initial.duplicate_match || null;
+  const showDupCompare = (dupStatus === 'high' || dupStatus === 'possible') && !!dup;
+  const showDupLowHint = dupStatus === 'low' && !!dup;
+  const dueIsInferredToday = isInferred('due_date') && !!dueDate && dueDate === new Date().toISOString().slice(0, 10);
+  const entityInferred = (isInferred('deal_id') && !!initial.deal_id) || (isInferred('contact_id') && !!initial.contact_id);
+  const entityLabel = initial.deal_name || (initial.contact_id ? 'this contact' : '');
 
   async function handleConfirm() {
     if (ambiguous) {
@@ -97,6 +122,7 @@ export function CopilotTaskConfirm({ action }: Props) {
       if (!result.success) throw new Error(result.error || 'Failed to create task');
 
       setStatus('done');
+      setCreatedTaskId(result?.params?.task_id || null);
       toast.success(result.message || 'Task created');
       addMutation({
         type: 'create_task',
@@ -114,19 +140,78 @@ export function CopilotTaskConfirm({ action }: Props) {
     }
   }
 
+  function goto(path: string) {
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+
+  function handleUseExisting() {
+    setStatus('used_existing');
+    toast.success('Using the existing task — nothing new was created.');
+  }
+
   if (status === 'done') {
+    const linkedSummary: string[] = [];
+    if (initial.deal_name && dealLinked) linkedSummary.push(initial.deal_name);
+    if (!assigneeMe && initial.assignee_name) linkedSummary.push(`assigned to ${initial.assignee_name}`);
+    else linkedSummary.push('assigned to you');
+    if (dueDate) linkedSummary.push(`due ${new Date(dueDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`);
     return (
       <div
         style={{
-          display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
+          display: 'flex', flexDirection: 'column', gap: 8, padding: '12px 14px',
           borderRadius: 8, background: 'rgba(34, 197, 94, 0.08)',
           border: '1px solid rgba(34, 197, 94, 0.25)', marginTop: 8,
         }}
       >
-        <Check size={16} style={{ color: 'rgb(34, 197, 94)' }} />
-        <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>
-          Task created — "{title}"{!assigneeMe && initial.assignee_name ? ` for ${initial.assignee_name}` : ''}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Check size={16} style={{ color: 'rgb(34, 197, 94)' }} />
+          <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)', fontWeight: 600 }}>
+            Task created — "{title}"
+          </span>
+        </div>
+        {linkedSummary.length > 0 && (
+          <div style={{ fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
+            {linkedSummary.join(' · ')}
+          </div>
+        )}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+          {createdTaskId && (
+            <button onClick={() => goto(`/tasks?task=${createdTaskId}`)} style={quickActionStyle}>
+              <ExternalLink size={11} /> Open task
+            </button>
+          )}
+          {initial.deal_id && dealLinked && (
+            <button onClick={() => goto(`/deals?deal=${initial.deal_id}`)} style={quickActionStyle}>
+              <Building2 size={11} /> Open linked deal
+            </button>
+          )}
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Draft an email related to "${title}"${initial.deal_name ? ` on ${initial.deal_name}` : ''}.` } }))}
+            style={quickActionStyle}
+          >
+            <Mail size={11} /> Draft email
+          </button>
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Add a note related to "${title}"${initial.deal_name ? ` on ${initial.deal_name}` : ''}.` } }))}
+            style={quickActionStyle}
+          >
+            <FileText size={11} /> Add note
+          </button>
+        </div>
+      </div>
+    );
+  }
+  if (status === 'used_existing') {
+    return (
+      <div style={{ marginTop: 8, padding: '10px 14px', borderRadius: 8, background: 'var(--glass-surface)', border: '1px solid var(--glass-border)', fontSize: 13, color: 'hsl(var(--foreground))', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <Check size={14} style={{ color: 'hsl(var(--muted-foreground))' }} />
+        Using existing task — "{dup?.title}". No new task was created.
+        {dup?.task_id && (
+          <button onClick={() => goto(`/tasks?task=${dup.task_id}`)} style={{ ...quickActionStyle, marginLeft: 'auto' }}>
+            <ExternalLink size={11} /> Open existing
+          </button>
+        )}
       </div>
     );
   }
@@ -180,7 +265,7 @@ export function CopilotTaskConfirm({ action }: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <Plus size={14} style={{ color: 'hsl(var(--primary))' }} />
           <span style={{ fontSize: 12, fontWeight: 600, color: 'hsl(var(--foreground))', letterSpacing: 0.3 }}>
-            Proposed task — not yet created
+            {showDupCompare ? 'I found a possible duplicate' : "I've prepared a task — not yet created"}
           </span>
         </div>
         <button
@@ -196,6 +281,86 @@ export function CopilotTaskConfirm({ action }: Props) {
           {editing ? 'Done editing' : 'Edit'}
         </button>
       </div>
+
+      {(dueIsInferredToday || entityInferred || rationale || showDupLowHint) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10, padding: '8px 10px', borderRadius: 6, background: 'rgba(126,184,247,0.07)', border: '1px solid rgba(126,184,247,0.18)' }}>
+          {dueIsInferredToday && (
+            <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <CalendarIcon size={10} /> No due date was specified, so I set this for today.
+            </div>
+          )}
+          {entityInferred && entityLabel && (
+            <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Sparkles size={10} /> I linked this to <strong style={{ color: 'hsl(var(--foreground))', fontWeight: 600 }}>{entityLabel}</strong> based on the current conversation/context.
+            </div>
+          )}
+          {rationale && !entityInferred && (
+            <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+              <Sparkles size={10} style={{ marginTop: 2 }} /> {rationale}
+            </div>
+          )}
+          {showDupLowHint && dup && (
+            <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <AlertTriangle size={10} /> Heads up — this looks similar to "{dup.title}"{dup.due_date ? ` (due ${dup.due_date})` : ''}.
+            </div>
+          )}
+        </div>
+      )}
+
+      {showDupCompare && dup && (
+        <div style={{ marginBottom: 10, padding: 10, borderRadius: 8, background: dupStatus === 'high' ? 'rgba(245,158,11,0.08)' : 'rgba(126,184,247,0.07)', border: `1px solid ${dupStatus === 'high' ? 'rgba(245,158,11,0.30)' : 'rgba(126,184,247,0.25)'}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8, fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, color: dupStatus === 'high' ? 'rgb(217, 119, 6)' : 'hsl(var(--primary))' }}>
+            <AlertTriangle size={12} />
+            {dupStatus === 'high' ? 'Likely duplicate — recommend reuse' : 'Possible duplicate — please review'}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, fontSize: 12 }}>
+            <div style={{ padding: 8, borderRadius: 6, background: 'var(--glass-surface)', border: '1px solid var(--glass-border)' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, color: 'hsl(var(--muted-foreground))', marginBottom: 4 }}>Proposed (new)</div>
+              <div style={{ fontWeight: 500, color: 'hsl(var(--foreground))' }}>{title || <em>Untitled</em>}</div>
+              <div style={{ marginTop: 4, color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>
+                {dueDate ? `Due ${dueDate}` : 'No due date'} · {PRIORITY_LABELS[priority] || priority}
+              </div>
+              <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>
+                {initial.deal_name ? `Deal: ${initial.deal_name}` : 'No deal'} · {assigneeMe || !initial.assignee_name ? 'You' : initial.assignee_name}
+              </div>
+            </div>
+            <div style={{ padding: 8, borderRadius: 6, background: 'var(--glass-surface)', border: '1px solid var(--glass-border)' }}>
+              <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, color: 'hsl(var(--muted-foreground))', marginBottom: 4, display: 'flex', alignItems: 'center', gap: 4 }}>
+                Existing
+                {dup.task_id && (
+                  <button onClick={() => goto(`/tasks?task=${dup.task_id}`)} style={{ marginLeft: 'auto', background: 'transparent', border: 'none', color: 'hsl(var(--primary))', fontSize: 10, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                    Open <ExternalLink size={9} />
+                  </button>
+                )}
+              </div>
+              <div style={{ fontWeight: 500, color: 'hsl(var(--foreground))' }}>{dup.title || <em>Untitled</em>}</div>
+              <div style={{ marginTop: 4, color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>
+                {dup.due_date ? `Due ${dup.due_date}` : 'No due date'}{dup.status ? ` · ${dup.status}` : ''}{dup.priority ? ` · ${dup.priority}` : ''}
+              </div>
+              <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>
+                {dup.deal_name ? `Deal: ${dup.deal_name}` : 'No deal'}{dup.assignee_name ? ` · ${dup.assignee_name}` : ''}
+              </div>
+            </div>
+          </div>
+          {(dup.why || dup.differences) && (
+            <div style={{ marginTop: 8, fontSize: 11, color: 'hsl(var(--muted-foreground))', display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {dup.why && <div><strong style={{ color: 'hsl(var(--foreground))' }}>Why:</strong> {dup.why}</div>}
+              {dup.differences && <div><strong style={{ color: 'hsl(var(--foreground))' }}>Differences:</strong> {dup.differences}</div>}
+            </div>
+          )}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 10 }}>
+            <button onClick={handleUseExisting} style={dupStatus === 'high' ? primaryActionStyle : secondaryActionStyle}>
+              <ArrowRight size={12} /> Use existing task
+            </button>
+            <button onClick={handleConfirm} disabled={status === 'loading' || ambiguous} style={dupStatus === 'high' ? secondaryActionStyle : primaryActionStyle}>
+              <Plus size={12} /> Create new task anyway
+            </button>
+            <button onClick={() => setEditing(true)} style={secondaryActionStyle}>
+              <Pencil size={12} /> Edit proposed
+            </button>
+          </div>
+        </div>
+      )}
 
       {editing ? (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
