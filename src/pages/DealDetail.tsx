@@ -3092,6 +3092,13 @@ export default function DealDetail() {
                 onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
                 className={isEmbedded ? "flex-1 flex flex-col min-h-0" : undefined}
               >
+                <div
+                  className={cn(
+                    isEmbedded && "flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 pb-4"
+                  )}
+                  tabIndex={isEmbedded ? 0 : undefined}
+                  data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
+                >
 
                 <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
@@ -4930,6 +4937,8 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
+                </div>
+
                 {/* Floating tab rail — pinned to the bottom of the modal
                     shell. In the embedded overlay we use mt-auto + sticky
                     bottom-0 so the rail always sits flush against the
@@ -4938,9 +4947,9 @@ export default function DealDetail() {
                     On the standalone /deal/:id route it falls back to a
                     viewport-fixed bar. */}
                 <div className={cn(
-                  "z-40 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]",
+                  "z-40 shrink-0 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]",
                   isEmbedded
-                    ? "sticky bottom-0 mt-auto pt-2 bg-gradient-to-t from-background/60 to-transparent backdrop-blur-sm"
+                    ? "mt-auto pt-2 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
                     : "fixed bottom-0 inset-x-0"
                 )}>
                   <HintTooltip
