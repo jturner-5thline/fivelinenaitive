@@ -654,9 +654,17 @@ export default function Tasks() {
         existing internal layout/scroll behavior unchanged.
       */}
       <div className="flex flex-col h-full bg-transparent">
-        {/* Header — title + muted summary + primary navigation */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
-          <div className="min-w-0">
+        {/*
+          Header — title + muted summary + primary navigation.
+          Layout zones (left | center-right tabs | reserved right gutter):
+          the trailing `pr-16` reserves a guaranteed clear zone on the right
+          edge so the page/modal close "X" (rendered by the shell above this
+          surface) never sits on top of the rightmost tab ("Meeting Tasks")
+          or the Claap routing badge. Tabs may shrink/scroll before they
+          ever reach into this reserved gutter.
+        */}
+        <div className="flex items-center justify-between pl-6 pr-16 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
+          <div className="min-w-0 flex-shrink">
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
@@ -671,10 +679,10 @@ export default function Tasks() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2 flex-shrink-0 flex-nowrap">
+          <div className="flex items-center gap-2 flex-shrink min-w-0 flex-nowrap overflow-x-auto no-scrollbar">
             {/* Primary navigation: List / Board / Calendar / Reports / Focus */}
             <div
-              className="flex items-center rounded-lg p-[3px] border"
+              className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
               style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}
             >
               {viewTabs.map(tab => {
