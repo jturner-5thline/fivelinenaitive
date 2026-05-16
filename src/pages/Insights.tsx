@@ -40,6 +40,7 @@ import { ClientCountMoMCard } from "@/components/insights/ClientCountMoMCard";
 import { FinServTopCustomersCard } from "@/components/insights/FinServTopCustomersCard";
 import { IncomeYTDMoMVarianceCard } from "@/components/insights/IncomeYTDMoMVarianceCard";
 import { IncomeMoMCard } from "@/components/insights/IncomeMoMCard";
+import { IncomeTop5CustomersMoMCard } from "@/components/insights/IncomeTop5CustomersMoMCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
@@ -2650,6 +2651,7 @@ function MetricsInner() {
                 <IncomeYTDMoMVarianceCard />
                 <IncomeMoMCard />
                 <ClientCountMoMCard />
+                <IncomeTop5CustomersMoMCard />
                 <FinServTopCustomersCard />
                 <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
               </div>
