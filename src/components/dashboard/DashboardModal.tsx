@@ -61,7 +61,8 @@ const NikiPerformanceTab = lazy(() =>
 
 export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }: DashboardModalProps) {
   const { user } = useAuth();
-  const canSeePerformance = user?.email === 'nheikali@5thline.co';
+  const canSeePerformance =
+    user?.email === 'nheikali@5thline.co' || user?.email === 'jturner@5thline.co';
   const [activeTab, setActiveTab] = useState<'dashboard' | 'analytics' | 'performance'>(initialTab);
   useEffect(() => {
     if (open) setActiveTab(initialTab);
