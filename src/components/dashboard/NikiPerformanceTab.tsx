@@ -81,7 +81,7 @@ export function NikiPerformanceTab() {
             <tbody>
               {isLoading && (
                 <tr>
-                  <td colSpan={12} className="text-center text-muted-foreground py-6">
+                  <td colSpan={13} className="text-center text-muted-foreground py-6">
                     Loading actuals…
                   </td>
                 </tr>
