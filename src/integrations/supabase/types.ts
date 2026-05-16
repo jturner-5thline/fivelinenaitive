@@ -22541,6 +22541,8 @@ export type Database = {
         | "M&A and Investment Bankers"
         | "Service Providers"
         | "Investors"
+        | "Advisors"
+        | "Other"
       claap_meeting_status:
         | "pending_review"
         | "routed"
@@ -22786,6 +22788,8 @@ export const Constants = {
         "M&A and Investment Bankers",
         "Service Providers",
         "Investors",
+        "Advisors",
+        "Other",
       ],
       claap_meeting_status: [
         "pending_review",
