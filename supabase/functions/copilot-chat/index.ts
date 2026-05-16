@@ -85,6 +85,106 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ── Fuzzy deal-name matching helpers ─────────────────────────────
+// Used by both the off-page deal resolver and the search_deals tool so the
+// model never says "not found" on a near-miss like "censys technology" vs
+// "Censys Technologies". Pure-JS, no extra deps — runs inside the Deno edge.
+function _normalizeDealName(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .replace(/[''`]/g, "")
+    .replace(/\s*(inc\.?|llc|ltd\.?|corp(?:oration)?\.?|co\.?|company|group|holdings?|holding|partners|labs?|technologies|technology|systems|software|solutions?|services?|capital)\b/gi, "")
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+function _levenshtein(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const v0 = new Array(b.length + 1);
+  const v1 = new Array(b.length + 1);
+  for (let i = 0; i <= b.length; i++) v0[i] = i;
+  for (let i = 0; i < a.length; i++) {
+    v1[0] = i + 1;
+    for (let j = 0; j < b.length; j++) {
+      const cost = a.charCodeAt(i) === b.charCodeAt(j) ? 0 : 1;
+      v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost);
+    }
+    for (let j = 0; j <= b.length; j++) v0[j] = v1[j];
+  }
+  return v1[b.length];
+}
+function _soundex(s: string): string {
+  const w = (s || "").toUpperCase().replace(/[^A-Z]/g, "");
+  if (!w) return "";
+  const codes: Record<string, string> = {
+    B: "1", F: "1", P: "1", V: "1",
+    C: "2", G: "2", J: "2", K: "2", Q: "2", S: "2", X: "2", Z: "2",
+    D: "3", T: "3", L: "4", M: "5", N: "5", R: "6",
+  };
+  let out = w[0];
+  let prev = codes[w[0]] || "";
+  for (let i = 1; i < w.length && out.length < 4; i++) {
+    const c = codes[w[i]] || "";
+    if (c && c !== prev) out += c;
+    if (c) prev = c; else prev = "";
+  }
+  return (out + "0000").slice(0, 4);
+}
+function _tokenSetRatio(a: string, b: string): number {
+  const ta = new Set(_normalizeDealName(a).split(" ").filter(Boolean));
+  const tb = new Set(_normalizeDealName(b).split(" ").filter(Boolean));
+  if (!ta.size || !tb.size) return 0;
+  let inter = 0;
+  for (const t of ta) if (tb.has(t)) inter++;
+  return (2 * inter) / (ta.size + tb.size);
+}
+/**
+ * Returns a similarity score in [0,1] between a free-text query and a candidate
+ * deal/company name. Combines normalized Levenshtein, token-set ratio, soundex
+ * agreement and case-insensitive substring containment so reorderings,
+ * singular/plural variations, missing suffixes, and phonetic near-misses all
+ * match. 1.0 means an exact normalized match.
+ */
+function dealNameSimilarity(query: string, candidate: string): number {
+  const q = _normalizeDealName(query);
+  const c = _normalizeDealName(candidate);
+  if (!q || !c) return 0;
+  if (q === c) return 1;
+  // Substring containment is a very strong signal.
+  let contain = 0;
+  if (c.includes(q) || q.includes(c)) {
+    const shorter = Math.min(q.length, c.length);
+    const longer = Math.max(q.length, c.length);
+    contain = 0.9 + 0.1 * (shorter / longer);
+  }
+  const dist = _levenshtein(q, c);
+  const lenMax = Math.max(q.length, c.length);
+  const lev = lenMax === 0 ? 1 : 1 - dist / lenMax;
+  const tokens = _tokenSetRatio(query, candidate);
+  // Soundex on the first token of each.
+  const sx = _soundex(q.split(" ")[0]) === _soundex(c.split(" ")[0]) ? 1 : 0;
+  // Weighted blend.
+  let score = Math.max(contain, 0.55 * lev + 0.35 * tokens + 0.10 * sx);
+  // Allow Levenshtein ≤ 2 or ≤ 25% of length to count as a strong match.
+  if (dist <= 2 || dist / Math.max(1, lenMax) <= 0.25) score = Math.max(score, 0.9);
+  return Math.min(1, score);
+}
+/**
+ * Rank an array of deals by similarity to `query`. Returns sorted desc with
+ * the `_score` attached. Filters out scores below `minScore` (default 0.55).
+ */
+function rankDealsByQuery<T extends { company?: string | null }>(deals: T[], query: string, minScore = 0.55): Array<T & { _score: number }> {
+  const out: Array<T & { _score: number }> = [];
+  for (const d of deals || []) {
+    const score = dealNameSimilarity(query, d.company || "");
+    if (score >= minScore) out.push({ ...d, _score: score });
+  }
+  out.sort((a, b) => b._score - a._score);
+  return out;
+}
+
 // Bumped to 20 to support chained autonomous task execution: a 3–5 step plan
 // (e.g. "scan Gmail → match deals → draft tasks") commonly needs 2–3 tool
 // calls per step before the model emits confirm cards + the final summary.
@@ -185,10 +285,11 @@ const tools = [
     type: "function",
     function: {
       name: "search_deals",
-      description: "Search/filter deals by status, stage, stale days, or deal type.",
+      description: "Search/filter deals by free-text name (fuzzy/phonetic), status, stage, stale days, or deal type. ALWAYS pass `query` when the user references a deal by name — matching tolerates typos, missing suffixes (Inc/LLC/Technologies), word reorderings, singular/plural, and phonetic near-misses (e.g. 'censys technology' matches 'Censys Technologies').",
       parameters: {
         type: "object",
         properties: {
+          query: { type: "string", description: "Free-text deal/company name. Fuzzy-matched across ALL deals (active, archived, closed_won, closed_lost). Use this whenever the user mentions a deal by name." },
           status: { type: "string", enum: ["active", "closed_won", "closed_lost", "archived", "won", "lost"] },
           stage: { type: "string" },
           stale_days: { type: "number", description: "No activity in N days" },
@@ -1569,15 +1670,40 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { error: "Provide deal_id or search" };
     }
     case "search_deals": {
-      let q = supabase.from("deals").select("id, company, value, stage, status, deal_type, updated_at").order("updated_at", { ascending: false }).limit(50);
+      const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
+      // When a name query is supplied, pull a broader candidate pool across
+      // ALL statuses (including archived/closed_lost/dead) so fuzzy matching
+      // can find near-misses like "censys technology" -> "Censys Technologies".
+      let q = supabase.from("deals").select("id, company, value, stage, status, deal_type, updated_at");
       if (args.status) q = q.eq("status", args.status);
       if (args.stage) q = q.ilike("stage", `%${args.stage}%`);
       if (args.deal_type) q = q.ilike("deal_type", `%${args.deal_type}%`);
+      if (queryText) {
+        // Broad ilike OR across the query and its tokens, then fuzzy-rank.
+        const tokens = Array.from(new Set(
+          [queryText, ..._normalizeDealName(queryText).split(" ")]
+            .map((t) => (t || "").trim())
+            .filter((t) => t.length >= 2),
+        )).slice(0, 6);
+        const orFilter = tokens.map((t) => `company.ilike.%${t.replace(/[%,()]/g, "")}%`).join(",");
+        if (orFilter) q = q.or(orFilter);
+        q = q.limit(200);
+      } else {
+        q = q.order("updated_at", { ascending: false }).limit(50);
+      }
       const { data } = await q;
-      let results = data || [];
+      let results: any[] = data || [];
       if (args.stale_days && results.length > 0) {
         const cutoff = Date.now() - args.stale_days * 24 * 60 * 60 * 1000;
         results = results.filter((d: any) => d.updated_at && new Date(d.updated_at).getTime() < cutoff);
+      }
+      if (queryText) {
+        const ranked = rankDealsByQuery(results, queryText, 0.45).slice(0, 8);
+        return {
+          count: ranked.length,
+          query: queryText,
+          deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)) })),
+        };
       }
       return { count: results.length, deals: results };
     }
@@ -5255,8 +5381,7 @@ serve(async (req) => {
             .from("deals")
             .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
             .or(orFilter)
-            .neq("status", "closed")
-            .limit(8);
+            .limit(40);
           // Filter out globally excluded deal names (test / example).
           const excluded = (n: string | null) => {
             const x = (n || "").toLowerCase().trim();
@@ -5265,16 +5390,44 @@ serve(async (req) => {
             if (x === "test" || x.startsWith("test ")) return true;
             return false;
           };
-          const filtered = (matches || []).filter((d: any) => !excluded(d.company));
+          const filteredAll = (matches || []).filter((d: any) => !excluded(d.company));
+          // Rank against the strongest probe (capitalized phrase if present,
+          // otherwise the full user text) so typos / missing suffixes / phonetic
+          // near-misses surface as a confident match.
+          const rankerQuery = (caps[0] || userText).trim();
+          const ranked = rankDealsByQuery(filteredAll, rankerQuery, 0.55);
+          // Promote active deals on ties so a live deal beats an archived
+          // namesake when both score identically.
+          ranked.sort((a: any, b: any) => {
+            if (b._score !== a._score) return b._score - a._score;
+            const aw = a.status === "active" ? 1 : 0;
+            const bw = b.status === "active" ? 1 : 0;
+            return bw - aw;
+          });
+          const filtered = ranked.length > 0 ? ranked : filteredAll;
           dealResolverLog.query = probes.join(" | ");
           dealResolverLog.candidates = filtered.map((d: any) => ({ id: d.id, company: d.company }));
 
-          if (filtered.length === 1) {
+          // Confident single match: top score >= 0.85 AND either only one
+          // candidate above threshold OR a clear gap of >= 0.10 to #2.
+          const top: any = filtered[0];
+          const second: any = filtered[1];
+          const isConfidentSingle = ranked.length > 0 && top && top._score >= 0.85 && (!second || (top._score - (second._score || 0)) >= 0.10);
+          if (isConfidentSingle) {
+            const d: any = top;
+            dealResolverLog.resolved_deal_id = d.id;
+            const matchedDifferently = _normalizeDealName(d.company) !== _normalizeDealName(rankerQuery);
+            const interpretNote = matchedDifferently
+              ? `\n- INTERPRETATION: The user wrote "${rankerQuery}" — fuzzy-matched to "${d.company}" (similarity ${(d._score).toFixed(2)}). When you reply, PREFACE your answer with exactly: Interpreting "${rankerQuery}" as "${d.company}" — let me know if that's wrong.`
+              : "";
+            dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}${interpretNote}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
+          } else if (filtered.length === 1) {
             const d: any = filtered[0];
             dealResolverLog.resolved_deal_id = d.id;
             dealResolverBlock = `\n\nRESOLVED DEAL FROM PROMPT — ${d.company} (deal_id: ${d.id}) (matched the user's message; treat this as the focused deal for THIS turn unless the user clearly references another):\n- Stage: ${d.stage || "N/A"} | Status: ${d.status || "N/A"} | Type: ${d.deal_type || "N/A"} | Value: ${d.value != null ? `$${Number(d.value).toLocaleString()}` : "N/A"}\n- Owner: ${d.deal_owner || "N/A"} | Manager: ${d.manager || "N/A"} | Last updated: ${d.updated_at?.slice(0, 10) || "N/A"}\n- For full record (write-up, lenders, outstanding items, milestones, activity, docs) call get_deal_full({ deal_id: "${d.id}" }). For tasks call get_tasks({ deal_id: "${d.id}" }).`;
           } else if (filtered.length > 1) {
-            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT (the user's message could refer to more than one deal — DO NOT guess; ask a single clarifying question listing these candidates by name, then proceed once they pick):\n${filtered.slice(0, 6).map((d: any) => `- ${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"}) — deal_id: ${d.id}`).join("\n")}`;
+            const top3 = filtered.slice(0, 3);
+            dealResolverBlock = `\n\nPOSSIBLE DEAL MATCHES FROM PROMPT (the user's message could refer to more than one deal — DO NOT guess; ask a single clarifying question listing these top candidates by name with confidence, then proceed once they pick):\n${top3.map((d: any) => `- ${d.company} — ${d.stage || "N/A"} (${d.status || "N/A"}) — similarity ${(d._score || 0).toFixed(2)} — deal_id: ${d.id}`).join("\n")}`;
           }
         }
       }
@@ -5964,7 +6117,22 @@ WRITE ACTION TOOLS:
 
 READ TOOLS:
 - get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
-${orgPreferencesSection}`;
+${orgPreferencesSection}
+
+FUZZY DEAL NAME INTERPRETATION (STRICT):
+- NEVER reply "I couldn't find a deal called X" / "no deal found" / "not in our system" based on a strict string match alone. The deal name the user typed may be a typo, missing a suffix (Inc, LLC, Technologies), reordered, singular/plural, or phonetically off.
+- When the user references a deal by name and no RESOLVED DEAL FROM PROMPT is present, ALWAYS call search_deals({ query: "<the name they used>" }) FIRST. That tool does fuzzy + phonetic + token-set ranking across ALL deals (active, archived, closed_won, closed_lost).
+- If search_deals returns exactly one match with similarity >= 0.85, proceed with that deal and PREFACE your reply with: Interpreting "<user input>" as "<matched deal>" — let me know if that's wrong.
+- If it returns 2–3 plausible matches (top scores within 0.10 of each other, or none >= 0.85), ask ONE short clarifying question listing the top 3 by name + stage + status, ranked by confidence. Do NOT guess.
+- Only respond that no deal exists after search_deals returns zero matches above 0.45 similarity.
+
+SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confirmation-card-only responses):
+- At the very end of EVERY normal reply, append a single line in EXACTLY this format with no extra prose around it:
+  [[CHIPS:["<chip 1>","<chip 2>","<chip 3>"]]]
+- Include 2 or 3 chips. Each chip MUST be a short imperative phrase under 40 characters that the user could click to send as their next prompt (e.g. "Draft a status email", "Create task to chase Trevor", "Summarize recent activity on Censys").
+- Chips MUST be contextual to the deal/lender/topic just discussed. Do not repeat the user's last message verbatim. Do not include generic chips like "Tell me more" or "What else?".
+- If the focused deal is set, at least one chip should reference it by name.
+- DO NOT emit chips when (a) you are emitting only a tool confirmation card with no prose, or (b) you are asking a clarifying question that already lists choices for the user.`;
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt },
