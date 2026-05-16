@@ -2,6 +2,7 @@ import { forwardRef, useLayoutEffect, useRef, type KeyboardEvent, type ReactNode
 import { Search as SearchIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
  * AskNaitiveBar — the canonical "Ask naitive AI" search/ask input.
@@ -144,21 +145,27 @@ export const AskNaitiveBar = forwardRef<HTMLDivElement, AskNaitiveBarProps>(func
       </span>
 
       {/* Gradient logo badge (open panel) */}
-      <button
-        type="button"
-        aria-label={logoAriaLabel}
-        onClick={(e) => {
-          e.stopPropagation();
-          onLogoClick?.(e);
-        }}
-        className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_10px_hsl(270_65%_55%/0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
-        style={{
-          background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
-        }}
-      >
-        <img src={naitiveAiIcon} alt="" className="h-4 w-4 brightness-0 invert" />
-        {logoOverlay}
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            aria-label={logoAriaLabel}
+            title={logoAriaLabel}
+            onClick={(e) => {
+              e.stopPropagation();
+              onLogoClick?.(e);
+            }}
+            className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-[0_2px_10px_hsl(270_65%_55%/0.45)] cursor-pointer hover:scale-105 active:scale-95 transition-transform"
+            style={{
+              background: 'linear-gradient(to right, hsl(270, 65%, 55%), hsl(220, 70%, 62%))',
+            }}
+          >
+            <img src={naitiveAiIcon} alt="" className="h-4 w-4 brightness-0 invert" />
+            {logoOverlay}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="top">{logoAriaLabel}</TooltipContent>
+      </Tooltip>
 
       {/* Search affordance */}
       <SearchIcon className="relative z-10 h-3.5 w-3.5 shrink-0 text-white/40 group-hover:text-white/55 transition-colors" />

@@ -28,6 +28,7 @@ import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
 import type { ConversationMutation } from '@/lib/copilot-utils';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
@@ -1432,21 +1433,29 @@ export function AICopilotPanel() {
           </span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
-          <button onClick={handleNewConversation} aria-label="New conversation" title="New conversation" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
-            <Plus size={18} />
-          </button>
-          <button onClick={loadHistory} aria-label="Conversation history" title="Conversation history" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
-            <Clock size={18} />
-          </button>
-          <button onClick={() => setIsExpanded((v) => !v)} aria-label={isExpanded ? 'Collapse copilot' : 'Expand copilot'} title={isExpanded ? 'Collapse copilot' : 'Expand copilot'} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
-            {isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
-          </button>
-          <button onClick={minimizePanel} aria-label="Minimize copilot" title="Minimize (keep running)" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
-            <ChevronDown size={18} />
-          </button>
-          <button onClick={closePanel} aria-label="Close copilot" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }} onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
-            <X size={18} />
-          </button>
+          {([
+            { key: 'new', label: 'New conversation', onClick: handleNewConversation, icon: <Plus size={18} /> },
+            { key: 'history', label: 'Conversation history', onClick: loadHistory, icon: <Clock size={18} /> },
+            { key: 'expand', label: isExpanded ? 'Collapse copilot' : 'Expand copilot', onClick: () => setIsExpanded((v) => !v), icon: isExpanded ? <Minimize2 size={16} /> : <Maximize2 size={16} /> },
+            { key: 'minimize', label: 'Minimize (keep running)', onClick: minimizePanel, icon: <ChevronDown size={18} /> },
+            { key: 'close', label: 'Close copilot', onClick: closePanel, icon: <X size={18} /> },
+          ] as const).map((b) => (
+            <Tooltip key={b.key}>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={b.onClick}
+                  aria-label={b.label}
+                  title={b.label}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 4, borderRadius: 6, display: 'flex', transition: 'color 150ms' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--foreground)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}
+                >
+                  {b.icon}
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">{b.label}</TooltipContent>
+            </Tooltip>
+          ))}
 
           {/* History Dropdown */}
           {showHistory && (
