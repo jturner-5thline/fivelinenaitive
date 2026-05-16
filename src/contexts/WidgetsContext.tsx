@@ -54,7 +54,6 @@ export const COLOR_OPTIONS: { value: Widget['color']; label: string; className: 
 
 const DEFAULT_WIDGETS: Widget[] = [
   { id: 'w1', label: 'Active Deals', metric: 'active-deals', color: 'primary' },
-  { id: 'w2', label: 'Active Deal Volume', metric: 'active-deal-volume', color: 'accent' },
   { id: 'w3', label: 'Deals in Diligence', metric: 'deals-in-diligence', color: 'success' },
   { id: 'w4', label: 'Dollars in Diligence', metric: 'dollars-in-diligence', color: 'warning' },
 ];
