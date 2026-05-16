@@ -465,7 +465,10 @@ function NikiPerformanceTabInner() {
     });
   };
 
-  const periodLabel = (k: PeriodKey) => (k === 'YEAR' ? '2026' : `${k} 2026`);
+  const periodLabel = (k: PeriodKey) => {
+    if (k === 'YEAR') return '2026';
+    return perfMode === 'ytd' ? `${k} YTD` : `${k} 2026`;
+  };
 
   // Order selected periods consistently: Q1..Q4, then YEAR
   const orderedSelected: PeriodKey[] = useMemo(() => {
