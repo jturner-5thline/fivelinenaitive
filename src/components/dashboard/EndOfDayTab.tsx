@@ -243,14 +243,14 @@ export function EndOfDayAgendaSection({
   // Collect unique attendee emails to look up in CRM in a single batch.
   const allEmails = useMemo(() => {
     const set = new Set<string>();
-    todays.forEach(ev => {
+    outstanding.forEach(ev => {
       (ev.attendees || []).forEach(a => {
         const e = (a.email || '').trim().toLowerCase();
         if (e) set.add(e);
       });
     });
     return Array.from(set);
-  }, [todays]);
+  }, [outstanding]);
 
   const { data: contactsByEmail = {} } = useQuery({
     queryKey: ['eod-attendee-contacts', allEmails.sort().join('|')],
