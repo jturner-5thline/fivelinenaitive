@@ -15,19 +15,22 @@ import {
   Legend,
   CartesianGrid,
 } from 'recharts';
-import { RepPerformanceModelGrid } from '@/components/metrics/rep-model/RepPerformanceModelGrid';
 import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
 import { MetricQuarterlyBarChart } from '@/components/dashboard/performance/MetricQuarterlyBarChart';
+import { QuarterlyPlanEditor } from '@/components/dashboard/performance/QuarterlyPlanEditor';
 import {
   useNikiPerformanceMetrics,
-  NIKI_PLAN_2026,
   NIKI_QUARTERS,
   type MetricRow,
   type MetricRowKey,
   type PerfDeal,
   type QuarterKey,
 } from '@/hooks/useNikiPerformanceMetrics';
+import {
+  NikiPerformancePlanProvider,
+  useNikiPerformancePlan,
+} from '@/hooks/useNikiPerformancePlan';
 
 function fmt(value: number, unit: 'count' | 'currency'): string {
   if (unit === 'currency') return formatUSD(value);
