@@ -9,13 +9,15 @@ const NAITIVE_PIPELINE_NAME = 'naitive Pipeline';
 
 const DEFAULT_NAITIVE_STAGES: DealStageOption[] = [
   { id: 'prospects', label: 'Prospects', color: 'bg-slate-500' },
-  { id: 'qual-booked', label: 'Qual Booked', color: 'bg-blue-500' },
-  { id: 'demo-booked', label: 'Demo Booked', color: 'bg-indigo-500' },
-  { id: 'onboarding-booked', label: 'Onboarding Booked', color: 'bg-violet-500' },
-  { id: 'trial-active', label: 'Trial Active', color: 'bg-cyan-500' },
-  { id: 'converted', label: 'Converted', color: 'bg-green-500' },
+  { id: 'dormant', label: 'Dormant', color: 'bg-zinc-500' },
+  { id: 'on-hold', label: 'On Hold', color: 'bg-amber-500' },
+  { id: 'qual-call', label: 'Qual Call', color: 'bg-blue-500' },
+  { id: 'demo-access', label: 'Demo Access', color: 'bg-indigo-500' },
+  { id: 'pilot-agreed', label: 'Pilot Agreed', color: 'bg-cyan-500' },
+  { id: 'onboarding', label: 'Onboarding', color: 'bg-violet-500' },
+  { id: 'active', label: 'Active', color: 'bg-green-500' },
+  { id: 'churned', label: 'Churned', color: 'bg-orange-500' },
   { id: 'closed-lost', label: 'Closed Lost', color: 'bg-red-500' },
-  { id: 'tabled-on-hold', label: 'Tabled — On Hold', color: 'bg-amber-500' },
 ];
 
 interface NaitivePipelineData {
