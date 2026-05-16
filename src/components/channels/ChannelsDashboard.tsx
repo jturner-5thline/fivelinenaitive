@@ -1,6 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useChannelPerformanceData, type ChannelTimePeriod, type AttributedDeal } from '@/hooks/useChannelPerformanceData';
 import { ChannelDrilldownModal, type DrilldownContext } from './ChannelDrilldownModal';
+import { ChannelSourceDetailPanel, type SourceTarget } from './ChannelSourceDetailPanel';
+import { PartnersFunnelChart } from './PartnersFunnelChart';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, TrendingUp, DollarSign, Layers, AlertCircle, X, RotateCcw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,12 +33,7 @@ const TIME_PRESETS: { value: ChannelTimePeriod; label: string; short: string }[]
   { value: 'last-12m', label: 'Last 12 Months', short: '12M' },
 ];
 
-const CHANNEL_OPTIONS = [
-  { value: 'Banks', label: 'Banks' },
-  { value: 'M&A and Investment Bankers', label: 'M&A / IB' },
-  { value: 'Service Providers', label: 'Service Providers' },
-  { value: 'Investors', label: 'Investors' },
-];
+const CHANNEL_OPTIONS = CHANNEL_TYPE_OPTIONS.map(o => ({ value: o.value, label: o.label }));
 
 const STAGE_LABELS: Record<string, string> = {
   added: 'Added',
@@ -164,6 +162,7 @@ export function ChannelsDashboard() {
   const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [chartGroupBy, setChartGroupBy] = useState<ChartGroupBy>('channel');
   const [drilldown, setDrilldown] = useState<DrilldownContext | null>(null);
+  const [sourceTarget, setSourceTarget] = useState<SourceTarget | null>(null);
 
   const { channelSources, attributedDeals, performanceRows, kpis, isLoading } = useChannelPerformanceData(
     timePeriod, channelTypeFilters, sourceFilters,
