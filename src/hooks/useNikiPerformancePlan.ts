@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, createElement, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import type { MetricRowKey, QuarterKey } from '@/hooks/useNikiPerformanceMetrics';
 
@@ -152,7 +152,7 @@ export interface UseNikiPerformancePlan {
   resetAll: () => void;
 }
 
-export function useNikiPerformancePlan(): UseNikiPerformancePlan {
+function useNikiPerformancePlanState(): UseNikiPerformancePlan {
   const { user } = useAuth();
   const storageKey = user?.id ? `nikiPerf.plan.${user.id}` : 'nikiPerf.plan.anon';
   const [rawPlan, setRawPlan] = useState<Record<PlanMetricKey, QuarterlyTargets>>(
@@ -208,6 +208,21 @@ export function useNikiPerformancePlan(): UseNikiPerformancePlan {
   const plan = useMemo(() => resolveTotals(rawPlan), [rawPlan]);
 
   return { plan, rawPlan, isLoaded, setTarget, resetAll };
+}
+
+const NikiPerformancePlanContext = createContext<UseNikiPerformancePlan | null>(null);
+
+export function NikiPerformancePlanProvider({ children }: { children: ReactNode }) {
+  const value = useNikiPerformancePlanState();
+  return createElement(NikiPerformancePlanContext.Provider, { value }, children);
+}
+
+export function useNikiPerformancePlan(): UseNikiPerformancePlan {
+  const ctx = useContext(NikiPerformancePlanContext);
+  if (ctx) return ctx;
+  // Fallback for consumers used outside a provider — keeps behavior safe,
+  // but updates won't propagate across separate hook instances.
+  return useNikiPerformancePlanState();
 }
 
 function structuredCloneDefault(): Record<PlanMetricKey, QuarterlyTargets> {
