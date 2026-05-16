@@ -10,9 +10,6 @@ import { isExcludedDealName } from '@/utils/excludedDeals';
 import { stripHtml } from '@/lib/stripHtml';
 import { useEditor, EditorContent, type Editor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
-import Underline from '@tiptap/extension-underline';
-import { TextStyle } from '@tiptap/extension-text-style';
-import { Color } from '@tiptap/extension-color';
 import { cn } from '@/lib/utils';
 import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal, DealStatus } from '@/types/deal';
@@ -162,12 +159,12 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
   const [syncState, setSyncState] = useState<Record<string, 'idle' | 'prompt' | 'syncing' | 'synced' | 'kept'>>({});
 
   const introEditor = useEditor({
-    extensions: [StarterKit, Underline, TextStyle, Color],
+    extensions: [StarterKit],
     content: '',
     editorProps: { attributes: { class: 'prose prose-sm max-w-none p-3 focus:outline-none min-h-[80px]' } },
   });
   const outroEditor = useEditor({
-    extensions: [StarterKit, Underline, TextStyle, Color],
+    extensions: [StarterKit],
     content: '',
     editorProps: { attributes: { class: 'prose prose-sm max-w-none p-3 focus:outline-none min-h-[60px]' } },
   });
