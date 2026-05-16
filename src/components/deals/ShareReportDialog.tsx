@@ -80,7 +80,7 @@ function assembleEmailHtml(opts: {
       .map((d) => {
         const txt = (opts.statusTexts[d.id] ?? originalStatusText(d, g.status.label)).trim() || g.status.label;
         total += 1;
-        return `<li>${escapeHtml(d.name)} — ${escapeHtml(formatAmount(d.value || 0))} — ${escapeHtml(txt)}</li>`;
+        return `<li><strong>${escapeHtml(d.name)}</strong> — <strong>${escapeHtml(formatAmount(d.value || 0))}</strong> — ${escapeHtml(txt)}</li>`;
       })
       .join('');
     parts.push(`<ul>${items}</ul>`);
