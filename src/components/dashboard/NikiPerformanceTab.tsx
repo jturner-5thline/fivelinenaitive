@@ -460,6 +460,12 @@ function NikiPerformanceTabInner() {
   const productionRows = ['dealsOnBoard', 'dollarsOnBoard', 'proposalsIssued', 'dollarsProposed'] as MetricRowKey[];
   const conversionRows = ['clientsSigned', 'dollarsSigned', 'clientsReceivingTerms', 'termsSigned', 'volumeTermsSigned'] as MetricRowKey[];
   const revenueRows    = ['dealsClosed', 'dollarsFunded'] as MetricRowKey[];
+  const revenueDollarsRows = [
+    'retainerRevenue',
+    'consultingMilestoneRevenue',
+    'feeRevenue',
+    'totalRevenue',
+  ] as MetricRowKey[];
 
   // ─── Period selection (multi-quarter capable) ────────────────────────────
   type PeriodKey = QuarterKey | 'YEAR';
@@ -822,6 +828,7 @@ function NikiPerformanceTabInner() {
                   <ScorecardSection title="Pipeline Production" keys={productionRows} />
                   <ScorecardSection title="Conversion Milestones" keys={conversionRows} />
                   <ScorecardSection title="Revenue" keys={revenueRows} />
+                  <ScorecardSection title="Revenue ($)" keys={revenueDollarsRows} />
                 </TableBody>
               </Table>
             </CardContent>
