@@ -1987,6 +1987,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           rationale: typeof args.rationale === "string" ? args.rationale : null,
           duplicate_status: ["none", "low", "possible", "high"].includes(args.duplicate_status) ? args.duplicate_status : "none",
           duplicate_match: args.duplicate_status && args.duplicate_status !== "none" && typeof args.duplicate_match === "object" && args.duplicate_match ? args.duplicate_match : null,
+          duplicate_candidates: Array.isArray(args.duplicate_candidates) ? args.duplicate_candidates.slice(0, 10) : [],
           inferred: Array.isArray(args.inferred) ? args.inferred : [],
           intent: args.intent || (args.assignee_user_id ? "delegated_task" : (args.deal_id ? "deal_task" : "personal_task")),
           confidence: typeof args.confidence === "object" && args.confidence ? args.confidence : {},
