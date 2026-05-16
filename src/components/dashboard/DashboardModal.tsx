@@ -1,8 +1,9 @@
 import { useEffect, useRef, useMemo, useState, useCallback, lazy, Suspense } from 'react';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { LayoutDashboard, BarChart3, Pencil, ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, BarChart3, Pencil, ChevronDown, ChevronRight, AlertTriangle, AlertCircle, Clock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Chart, registerables } from 'chart.js';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
@@ -195,6 +196,29 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
     rows.sort((a, b) => b.daysBehind - a.daysBehind);
     return rows;
   }, [filteredDeals, activeDealsOnly, activeStageIds, stageLabelById]);
+
+  // Per-deal row indicators for the Deal Pipeline table:
+  // - overdue milestone names
+  // - "approaching close" (within 30 days) with no lender in In Review
+  const rowFlags = useMemo(() => {
+    const DAY = 86_400_000;
+    const now = Date.now();
+    const m = new Map<string, { overdue: string[]; approachingNoReview: boolean }>();
+    for (const d of filteredDeals) {
+      const overdue: string[] = [];
+      for (const ms of (d.milestones ?? [])) {
+        if (ms.completed || !ms.dueDate) continue;
+        const t = new Date(ms.dueDate).getTime();
+        if (Number.isFinite(t) && t < now) overdue.push(ms.title);
+      }
+      const eff = d.dashboardClosingDate || d.closingDate || null;
+      const closeTs = eff ? new Date(eff).getTime() : NaN;
+      const approaching = Number.isFinite(closeTs) && (closeTs - now) <= 30 * DAY && (closeTs - now) >= -1 * DAY;
+      const hasInReview = (d.lenders ?? []).some(l => (l.status === 'in-review') || (String(l.stage || '').toLowerCase() === 'in-review'));
+      m.set(d.id, { overdue, approachingNoReview: approaching && !hasInReview });
+    }
+    return m;
+  }, [filteredDeals]);
 
   // ── Plan vs Actual KPIs (YTD) ──────────────────────────────────
   const kpi = useDashboardKpiYtd();
@@ -610,10 +634,34 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                       </tr>
                     </thead>
                     <tbody>
-                      {displayedRows.map((d, i) => (
-                        <tr key={d.dealId}>
+                      <TooltipProvider delayDuration={150}>
+                      {displayedRows.map((d, i) => {
+                        const flags = rowFlags.get(d.dealId);
+                        const hasOverdue = !!flags && flags.overdue.length > 0;
+                        const approaching = !!flags && flags.approachingNoReview;
+                        const leftBorder = hasOverdue
+                          ? '3px solid hsl(var(--destructive))'
+                          : approaching
+                            ? '3px solid hsl(var(--chart-3))'
+                            : '3px solid transparent';
+                        return (
+                        <tr key={d.dealId} style={{ borderLeft: leftBorder }}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
-                          <td style={{ color: d.nameColor }}>{d.name}</td>
+                          <td style={{ color: d.nameColor }}>
+                            <span className="inline-flex items-center gap-1.5">
+                              {d.name}
+                              {approaching && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Clock className="h-3.5 w-3.5 text-amber-400" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    Closing within 30 days · no lender in In Review
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                            </span>
+                          </td>
                           <td>{d.size}</td>
                           <td>{d.fee}</td>
                           <td>{d.gross}</td>
@@ -623,7 +671,21 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                           <td>{d.assocDir}</td>
                           <td>{d.dirMd}</td>
                           <td className={d.profitCls}>{d.profit}</td>
-                          <td style={{ color: 'rgba(130,165,190,0.5)' }}>{d.milestone}</td>
+                          <td style={{ color: 'rgba(130,165,190,0.5)' }}>
+                            <span className="inline-flex items-center gap-1.5 justify-end w-full">
+                              {hasOverdue && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    {flags!.overdue.length} milestone{flags!.overdue.length === 1 ? '' : 's'} overdue — {flags!.overdue.join(', ')}
+                                  </TooltipContent>
+                                </Tooltip>
+                              )}
+                              <span>{d.milestone}</span>
+                            </span>
+                          </td>
                           <td>
                             <select
                               className="db-closing-select"
@@ -647,7 +709,9 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                             </select>
                           </td>
                         </tr>
-                      ))}
+                        );
+                      })}
+                      </TooltipProvider>
                       {displayedRows.length === 0 && (
                         <tr><td colSpan={13} style={{ textAlign: 'center', color: 'rgba(130,165,190,0.4)', padding: 20 }}>No active deals in pipeline</td></tr>
                       )}
