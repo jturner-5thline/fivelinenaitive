@@ -11,6 +11,12 @@ import { useCopilotStore } from '@/stores/copilotStore';
 import { useAnyDialogOpen } from '@/hooks/useAnyDialogOpen';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useLenders } from '@/contexts/LendersContext';
+import { useDealStages } from '@/contexts/DealStagesContext';
+import { useDealTypes } from '@/contexts/DealTypesContext';
+import { useAiDealFilterStore } from '@/stores/aiDealFilterStore';
+import { naturalLanguageToDealFilter } from '@/lib/naturalLanguageToDealFilter';
+import { useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
 import { cn } from '@/lib/utils';
 import { AICopilotPanel } from '@/components/AICopilotPanel';
@@ -84,6 +90,14 @@ export function CopilotToggleButton() {
   const navigate = useNavigate();
   const { deals } = useDealsContext();
   const { lenders } = useLenders();
+  const { stages } = useDealStages();
+  const dealTypesCtx = (() => { try { return useDealTypes(); } catch { return null; } })();
+  const location = useLocation();
+  const setRules = useAiDealFilterStore((s) => s.setRules);
+  const addRules = useAiDealFilterStore((s) => s.addRules);
+  const clearAi = useAiDealFilterStore((s) => s.clear);
+  const setTranslating = useAiDealFilterStore((s) => s.setTranslating);
+  const setClarification = useAiDealFilterStore((s) => s.setClarification);
 
   // ── Persisted bar width ────────────────────────────────────────────────
   // The user can drag the left edge of the bar to resize it. The pixel
