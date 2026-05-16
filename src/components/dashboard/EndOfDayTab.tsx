@@ -26,8 +26,6 @@ import {
 import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
 import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useMyTasks } from '@/hooks/useTasks';
-import { useDealsContext } from '@/contexts/DealsContext';
-import { PipelineTab } from './DailyBriefingModal';
 import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
@@ -552,7 +550,6 @@ export function EndOfDayTab({
   const { user } = useAuth();
   const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
-  const { deals } = useDealsContext();
 
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [prefillTitle, setPrefillTitle] = useState('');
@@ -561,71 +558,15 @@ export function EndOfDayTab({
   const [notesByEvent, setNotesByEvent] = useState<Record<string, string>>({});
   const [claapLinksByEvent, setClaapLinksByEvent] = useState<Record<string, ManualClaapLink[]>>({});
 
-  const matchAffiliatedDeals = useCallback(
-    (ev: CalendarEvent): AffiliatedDeal[] => {
-      const COMMON = new Set([
-        'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
-        'me.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com', 'msn.com',
-      ]);
-      const emails = (ev.attendees || [])
-        .map((a) => (a.email || '').trim().toLowerCase())
-        .filter(Boolean);
-      const matched = new Map<string, AffiliatedDeal>();
-      for (const email of emails) {
-        const domain = email.split('@')[1]?.toLowerCase();
-        if (!domain || COMMON.has(domain)) continue;
-        for (const d of deals || []) {
-          try {
-            const url = (d as any).companyUrl as string | undefined;
-            if (!url) continue;
-            const host = new URL(url.startsWith('http') ? url : `https://${url}`)
-              .hostname.toLowerCase().replace(/^www\./, '');
-            if (host === domain || domain.endsWith(`.${host}`) || host.endsWith(`.${domain}`)) {
-              matched.set(d.id, { id: d.id, name: d.name || (d as any).company || 'Untitled deal' });
-            }
-          } catch {
-            /* ignore */
-          }
-        }
-      }
-      return Array.from(matched.values());
-    },
-    [deals],
-  );
-
   const handleCreateFollowUp = useCallback(
-    (ev: CalendarEvent, attendeeEmails: string[]) => {
-      // Best-effort deal match: match attendee email domains to a deal's
-      // company URL host. Common email providers (gmail, etc.) are skipped.
-      const COMMON = new Set([
-        'gmail.com', 'yahoo.com', 'outlook.com', 'hotmail.com', 'icloud.com',
-        'me.com', 'aol.com', 'proton.me', 'protonmail.com', 'live.com', 'msn.com',
-      ]);
-      let matchedId: string | null = null;
-      for (const email of attendeeEmails) {
-        const domain = email.split('@')[1]?.toLowerCase();
-        if (!domain || COMMON.has(domain)) continue;
-        const found = (deals || []).find(d => {
-          try {
-            const url = (d as any).companyUrl as string | undefined;
-            if (!url) return false;
-            const host = new URL(url.startsWith('http') ? url : `https://${url}`)
-              .hostname.toLowerCase().replace(/^www\./, '');
-            return host === domain || domain.endsWith(`.${host}`) || host.endsWith(`.${domain}`);
-          } catch {
-            return false;
-          }
-        });
-        if (found) {
-          matchedId = found.id;
-          break;
-        }
-      }
+    (ev: CalendarEvent, _attendeeEmails: string[]) => {
+      // End of Day intentionally excludes deals entirely — follow-ups are
+      // created without any deal association.
       setPrefillTitle(`Follow Up: ${ev.summary || '(No title)'}`);
-      setPrefillDealId(matchedId);
+      setPrefillDealId(null);
       setFollowUpOpen(true);
     },
-    [deals],
+    [],
   );
 
   return (
@@ -642,16 +583,6 @@ export function EndOfDayTab({
           selectedEventId={selectedEvent?.id || null}
           onSelectEvent={(ev) => setSelectedEvent(ev)}
         />
-
-        <div className="pt-2 border-t border-white/10">
-          <PipelineTab
-            enabled={enabled}
-            onNavigate={onNavigate || (() => {})}
-            targetDealOwnerName={targetAssigneeName}
-            targetUserId={targetUserId}
-            briefingType={briefingType}
-          />
-        </div>
       </div>
 
       {selectedEvent && (
@@ -661,7 +592,7 @@ export function EndOfDayTab({
           onNoteChange={(v) =>
             setNotesByEvent((prev) => ({ ...prev, [selectedEvent.id]: v }))
           }
-          affiliatedDeals={matchAffiliatedDeals(selectedEvent)}
+          affiliatedDeals={[]}
           manualClaapLinks={claapLinksByEvent[selectedEvent.id] || []}
           onAddManualClaapLink={(link) =>
             setClaapLinksByEvent((prev) => ({
@@ -687,7 +618,7 @@ export function EndOfDayTab({
                 .filter(Boolean),
             )
           }
-          onCreateDeal={() => onNavigate?.('/deals?new=1')}
+          onCreateDeal={undefined as any}
         />
       )}
 
