@@ -36,6 +36,7 @@ import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { QuarterlyRevenueGrowthCard } from "@/components/insights/QuarterlyRevenueGrowthCard";
 import { IncomeYTDCard } from "@/components/insights/IncomeYTDCard";
+import { ClientCountMoMCard } from "@/components/insights/ClientCountMoMCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
@@ -2643,6 +2644,7 @@ function MetricsInner() {
             {selectedDashboard === 'revenue-customers' && (
               <div className="space-y-5">
                 <IncomeYTDCard />
+                <ClientCountMoMCard />
                 <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
               </div>
             )}
