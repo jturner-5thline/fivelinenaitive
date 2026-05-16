@@ -43,6 +43,7 @@ import { IncomeMoMCard } from "@/components/insights/IncomeMoMCard";
 import { IncomeTop5CustomersMoMCard } from "@/components/insights/IncomeTop5CustomersMoMCard";
 import { TotalIncomeRolling12MoCard } from "@/components/insights/TotalIncomeRolling12MoCard";
 import { IncomeYTDByEntityCard } from "@/components/insights/IncomeYTDByEntityCard";
+import { YTDIncomeBreakdownByEntityCard } from "@/components/insights/YTDIncomeBreakdownByEntityCard";
 import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
@@ -2652,6 +2653,7 @@ function MetricsInner() {
                 <IncomeYTDCard />
                 <IncomeYTDMoMVarianceCard />
                 <IncomeYTDByEntityCard />
+                <YTDIncomeBreakdownByEntityCard />
                 <TotalIncomeRolling12MoCard />
                 <IncomeMoMCard />
                 <ClientCountMoMCard />
