@@ -15,6 +15,7 @@ export interface NaitivePipelineFilterState {
   outcome: string[];
   dateRange: NaitiveDateRangePreset;
   dateField: NaitiveDateField;
+  activeOnly: boolean;
 }
 
 const EMPTY: NaitivePipelineFilterState = {
@@ -25,6 +26,7 @@ const EMPTY: NaitivePipelineFilterState = {
   outcome: [],
   dateRange: 'all',
   dateField: 'created',
+  activeOnly: false,
 };
 
 export interface NaitiveFilterOption {
@@ -76,6 +78,15 @@ export function useNaitivePipelineFilters(deals: Deal[], stages: DealStageOption
     };
   }, [deals, stages]);
 
+  // Stage IDs at or after "Final Credit Items" in the active pipeline order.
+  const activeStageIds = useMemo(() => {
+    const idx = stages.findIndex(
+      (s) => (s.label || '').trim().toLowerCase() === 'final credit items',
+    );
+    if (idx < 0) return new Set<string>();
+    return new Set(stages.slice(idx).map((s) => s.id));
+  }, [stages]);
+
   // ── Apply filters ─────────────────────────────────────────────────────
   const apply = useCallback(
     (input: Deal[]): Deal[] => {
@@ -98,6 +109,9 @@ export function useNaitivePipelineFilters(deals: Deal[], stages: DealStageOption
       const lc = (v: unknown) => String(v ?? '').trim().toLowerCase();
 
       return input.filter((d) => {
+        if (f.activeOnly) {
+          if (!activeStageIds.has(d.stage)) return false;
+        }
         if (hasOwner) {
           const v = lc(d.dealOwner || d.ownedBy || d.manager);
           if (!f.owner.includes(v)) return false;
@@ -125,7 +139,7 @@ export function useNaitivePipelineFilters(deals: Deal[], stages: DealStageOption
         return true;
       });
     },
-    [filters],
+    [filters, activeStageIds],
   );
 
   const setMulti = useCallback((key: NaitiveFilterKey, values: string[]) => {
@@ -140,6 +154,10 @@ export function useNaitivePipelineFilters(deals: Deal[], stages: DealStageOption
     setFilters((prev) => ({ ...prev, dateField }));
   }, []);
 
+  const setActiveOnly = useCallback((activeOnly: boolean) => {
+    setFilters((prev) => ({ ...prev, activeOnly }));
+  }, []);
+
   const clearAll = useCallback(() => setFilters(EMPTY), []);
 
   const activeCount = useMemo(() => {
@@ -150,6 +168,7 @@ export function useNaitivePipelineFilters(deals: Deal[], stages: DealStageOption
       filters.source.length +
       filters.outcome.length;
     if (filters.dateRange !== 'all') n += 1;
+    if (filters.activeOnly) n += 1;
     return n;
   }, [filters]);
 
@@ -160,6 +179,8 @@ export function useNaitivePipelineFilters(deals: Deal[], stages: DealStageOption
     setMulti,
     setDateRange,
     setDateField,
+    setActiveOnly,
+    activeStageIds,
     clearAll,
     activeCount,
   };
