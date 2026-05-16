@@ -1699,4 +1699,42 @@ export function AICopilotPanel() {
       </div>
     </>
   );
+
+  if (isExpanded) {
+    return createPortal(
+      <div
+        className="fixed inset-0 z-[1300] flex items-center justify-center"
+        role="dialog"
+        aria-modal="true"
+        aria-label="naitive AI expanded"
+        style={{ padding: isMobile ? 8 : 24 }}
+      >
+        <div
+          aria-hidden
+          onClick={() => setIsExpanded(false)}
+          style={{
+            position: 'absolute', inset: 0,
+            background: 'radial-gradient(circle at 50% 40%, rgba(10,14,24,0.18) 0%, rgba(7,10,18,0.34) 58%, rgba(4,6,12,0.46) 100%)',
+            backdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
+            WebkitBackdropFilter: 'blur(8px) saturate(80%) brightness(0.72)',
+          }}
+        />
+        <div
+          style={{
+            position: 'relative',
+            width: '100%',
+            height: '100%',
+            maxWidth: isMobile ? 'none' : 1440,
+            maxHeight: 'calc(100vh - 48px)',
+            display: 'flex',
+          }}
+        >
+          {panelNode}
+        </div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return panelNode;
 }
