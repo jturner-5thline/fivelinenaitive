@@ -736,16 +736,6 @@ export function AICopilotPanel() {
     setLastFailedMessage(null);
   }, [setConversationId, setMessages]);
 
-  // Suggested follow-up chips dispatch a CustomEvent; intercept and re-submit.
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const prompt = (e as CustomEvent<{ prompt?: string }>).detail?.prompt;
-      if (prompt && prompt.trim()) handleSend(prompt.trim());
-    };
-    window.addEventListener('copilot-chip-click', handler as EventListener);
-    return () => window.removeEventListener('copilot-chip-click', handler as EventListener);
-  }, [handleSend]);
-
   const loadHistory = useCallback(async () => {
     if (!user) return;
     const { data } = await supabase.from('copilot_conversations').select('id, messages, updated_at').eq('user_id', user.id).order('updated_at', { ascending: false }).limit(10);
