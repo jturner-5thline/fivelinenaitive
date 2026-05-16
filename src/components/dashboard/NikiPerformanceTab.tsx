@@ -62,8 +62,30 @@ function resolvePeriod(
 }
 
 function fmt(value: number, unit: 'count' | 'currency'): string {
-  if (unit === 'currency') return formatUSD(value);
+  if (unit === 'currency') return fmtMoney(value);
   return value.toLocaleString('en-US');
+}
+
+/**
+ * Compact, scorecard-friendly money formatter for RAW dollar values.
+ * - >= $1M  →  $1.25M  (one or two decimals when meaningful)
+ * - >= $1K  →  $750K   (no decimals)
+ * - else    →  $250
+ * Negatives wrapped in parentheses to match accounting convention.
+ */
+function fmtMoney(value: number): string {
+  if (value === null || value === undefined || isNaN(value)) return '—';
+  const abs = Math.abs(value);
+  let out: string;
+  if (abs >= 1_000_000) {
+    const m = abs / 1_000_000;
+    out = `$${m >= 10 ? m.toFixed(1) : m.toFixed(2)}M`;
+  } else if (abs >= 1_000) {
+    out = `$${Math.round(abs / 1_000).toLocaleString('en-US')}K`;
+  } else {
+    out = `$${Math.round(abs).toLocaleString('en-US')}`;
+  }
+  return value < 0 ? `(${out})` : out;
 }
 
 function statusFromPct(pct: number | null): 'ahead' | 'ontrack' | 'behind' | 'na' {
