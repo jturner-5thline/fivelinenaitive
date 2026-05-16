@@ -88,6 +88,30 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
     return sortDashboardRows(rows, sortCol, sortDir);
   }, [rows, sortCol, sortDir]);
 
+  // "Active Deals" toggle — restrict the table to deals at "Final Credit
+  // Items" or later in the active pipeline's stage order. Stacks on top of
+  // the existing filteredDeals dataset.
+  const [activeDealsOnly, setActiveDealsOnly] = useState(false);
+  const activeStageIds = useMemo(() => {
+    const defaultPipeline = pipelines.find(p => p.isDefault);
+    if (!defaultPipeline) return new Set<string>();
+    const stages = defaultPipeline.stages ?? [];
+    const idx = stages.findIndex(
+      s => (s.label ?? '').trim().toLowerCase() === 'final credit items',
+    );
+    if (idx < 0) return new Set<string>();
+    return new Set(stages.slice(idx).map(s => s.id));
+  }, [pipelines]);
+  const dealStageById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const d of filteredDeals) m.set(d.id, d.stage as string);
+    return m;
+  }, [filteredDeals]);
+  const displayedRows = useMemo(() => {
+    if (!activeDealsOnly || activeStageIds.size === 0) return sortedRows;
+    return sortedRows.filter(r => activeStageIds.has(dealStageById.get(r.dealId) ?? ''));
+  }, [sortedRows, activeDealsOnly, activeStageIds, dealStageById]);
+
   // ── Plan vs Actual KPIs (YTD) ──────────────────────────────────
   const kpi = useDashboardKpiYtd();
   const isPlanAdmin = useIsKpiPlanAdmin();
@@ -402,7 +426,22 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
 
               {/* RIGHT: Deal Table */}
               <div className="glass-module p-4">
-                <div className="db-ct">Deal Pipeline — Active Deals</div>
+                <div className="db-ct flex items-center justify-between gap-3">
+                  <span>Deal Pipeline</span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveDealsOnly(v => !v)}
+                    className={
+                      'px-2.5 py-1 rounded-full text-[10px] font-semibold tracking-wide border transition-colors ' +
+                      (activeDealsOnly
+                        ? 'border-primary/50 bg-primary/15 text-primary'
+                        : 'border-border/60 bg-background/40 text-foreground/80 hover:text-foreground')
+                    }
+                    aria-pressed={activeDealsOnly}
+                  >
+                    Active Deals
+                  </button>
+                </div>
                 <div style={{ overflowX: 'auto' }}>
                   <table className="db-tbl">
                     <thead>
