@@ -1,9 +1,10 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, BarChart3 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   ResponsiveContainer,
   BarChart,
@@ -301,9 +302,55 @@ function FunnelSection({ rows, openDrill }: {
 
 export function NikiPerformanceTab() {
   const { rows, isLoading } = useNikiPerformanceMetrics();
+  const { user } = useAuth();
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
-  const [layout, setLayout] = useState<'table' | 'charts' | 'both'>('both');
+
+  // ─── User-scoped display preferences (persisted in localStorage) ─────────
+  const prefsKey = user?.id ? `nikiPerf.prefs.${user.id}` : 'nikiPerf.prefs.anon';
+  const [showCharts, setShowCharts] = useState(true);
+  const [showPlan, setShowPlan] = useState(true);
+  const [showActual, setShowActual] = useState(true);
+  const [showVarDelta, setShowVarDelta] = useState(true);
+  const [prefsLoaded, setPrefsLoaded] = useState(false);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(prefsKey);
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (typeof p.showCharts === 'boolean') setShowCharts(p.showCharts);
+        if (typeof p.showPlan === 'boolean') setShowPlan(p.showPlan);
+        if (typeof p.showActual === 'boolean') setShowActual(p.showActual);
+        if (typeof p.showVarDelta === 'boolean') setShowVarDelta(p.showVarDelta);
+      }
+    } catch {}
+    setPrefsLoaded(true);
+  }, [prefsKey]);
+
+  useEffect(() => {
+    if (!prefsLoaded) return;
+    try {
+      localStorage.setItem(
+        prefsKey,
+        JSON.stringify({ showCharts, showPlan, showActual, showVarDelta }),
+      );
+    } catch {}
+  }, [prefsLoaded, prefsKey, showCharts, showPlan, showActual, showVarDelta]);
+
+  // Guard: at least one data group must remain visible
+  const togglePlan = () => {
+    if (showPlan && !showActual && !showVarDelta) return;
+    setShowPlan((v) => !v);
+  };
+  const toggleActual = () => {
+    if (showActual && !showPlan && !showVarDelta) return;
+    setShowActual((v) => !v);
+  };
+  const toggleVarDelta = () => {
+    if (showVarDelta && !showPlan && !showActual) return;
+    setShowVarDelta((v) => !v);
+  };
 
   const byKey = useMemo(() => {
     const m = new Map<MetricRowKey, MetricRow>();
@@ -367,14 +414,6 @@ export function NikiPerformanceTab() {
     return order.filter((k) => selectedPeriods.includes(k));
   }, [selectedPeriods]);
 
-  const presets: { label: string; value: PeriodKey[] }[] = [
-    { label: 'Current Q', value: [currentQuarter] },
-    { label: 'H1', value: ['Q1' as QuarterKey, 'Q2' as QuarterKey] },
-    { label: 'H2', value: ['Q3' as QuarterKey, 'Q4' as QuarterKey] },
-    { label: 'All quarters', value: [...allQuarterKeys] },
-    { label: 'Full Year', value: ['YEAR'] },
-  ];
-
   const isSingle = orderedSelected.length === 1;
 
   const cellFor = (row: MetricRow, k: PeriodKey) => {
@@ -385,7 +424,10 @@ export function NikiPerformanceTab() {
     return { planVal, actualVal, v, status: statusFromPct(v.pct) };
   };
 
-  const totalCols = isSingle ? 6 : 1 + orderedSelected.length * 4;
+  const perPeriodCols = (showPlan ? 1 : 0) + (showActual ? 1 : 0) + (showVarDelta ? 2 : 0);
+  const totalCols = isSingle
+    ? 1 + perPeriodCols + 1 /* status */
+    : 1 + orderedSelected.length * perPeriodCols;
 
   const SectionHeaderRow = ({ title }: { title: string }) => (
     <TableRow className="hover:bg-transparent border-b-0">
@@ -405,16 +447,24 @@ export function NikiPerformanceTab() {
     return (
       <TableRow className="cursor-pointer border-b border-border/20 hover:bg-muted/20" onClick={() => openDrill(row, k)}>
         <TableCell className="py-2.5 px-4 font-medium text-sm text-foreground">{row.label}</TableCell>
-        <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-semibold text-foreground bg-muted/20">
-          {fmt(planVal, row.unit)}
-        </TableCell>
-        <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-medium text-foreground/90">{fmt(actualVal, row.unit)}</TableCell>
-        <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
-          {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
-        </TableCell>
-        <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
-          {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
-        </TableCell>
+        {showPlan && (
+          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-semibold text-foreground bg-muted/20">
+            {fmt(planVal, row.unit)}
+          </TableCell>
+        )}
+        {showActual && (
+          <TableCell className="py-2.5 px-4 text-center tabular-nums text-sm font-medium text-foreground/90">{fmt(actualVal, row.unit)}</TableCell>
+        )}
+        {showVarDelta && (
+          <>
+            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+              {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
+            </TableCell>
+            <TableCell className={cn('py-2.5 px-4 text-center tabular-nums text-sm font-medium', s.text)}>
+              {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
+            </TableCell>
+          </>
+        )}
         <TableCell className="py-2.5 px-4 text-center">
           <span className={cn('inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1', s.bg, s.text, s.ring)}>
             <s.Icon className="h-3 w-3" />
@@ -435,21 +485,32 @@ export function NikiPerformanceTab() {
         const s = STATUS_STYLES[status];
         return (
           <Fragment key={k}>
-            <TableCell className="py-2.5 px-3 text-center tabular-nums text-xs font-semibold text-foreground bg-muted/20 border-l border-border/20">
-              {fmt(planVal, row.unit)}
-            </TableCell>
-            <TableCell
-              className="py-2.5 px-3 text-center tabular-nums text-xs font-medium text-foreground/90 cursor-pointer hover:underline"
-              onClick={() => openDrill(row, k)}
-            >
-              {fmt(actualVal, row.unit)}
-            </TableCell>
-            <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
-              {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
-            </TableCell>
-            <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
-              {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
-            </TableCell>
+            {showPlan && (
+              <TableCell className="py-2.5 px-3 text-center tabular-nums text-xs font-semibold text-foreground bg-muted/20 border-l border-border/20">
+                {fmt(planVal, row.unit)}
+              </TableCell>
+            )}
+            {showActual && (
+              <TableCell
+                className={cn(
+                  'py-2.5 px-3 text-center tabular-nums text-xs font-medium text-foreground/90 cursor-pointer hover:underline',
+                  !showPlan && 'border-l border-border/20',
+                )}
+                onClick={() => openDrill(row, k)}
+              >
+                {fmt(actualVal, row.unit)}
+              </TableCell>
+            )}
+            {showVarDelta && (
+              <>
+                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text, !showPlan && !showActual && 'border-l border-border/20')}>
+                  {v.diff >= 0 ? '+' : ''}{fmt(v.diff, row.unit)}
+                </TableCell>
+                <TableCell className={cn('py-2.5 px-3 text-center tabular-nums text-xs font-medium', s.text)}>
+                  {v.pct === null ? '—' : `${v.pct >= 0 ? '+' : ''}${(v.pct * 100).toFixed(0)}%`}
+                </TableCell>
+              </>
+            )}
           </Fragment>
         );
       })}
@@ -495,25 +556,6 @@ export function NikiPerformanceTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {mode === 'view' && (
-            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
-              {(['table', 'charts', 'both'] as const).map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setLayout(opt)}
-                  className={cn(
-                    'px-2.5 py-1 text-[11px] font-medium rounded-md capitalize transition-colors',
-                    layout === opt
-                      ? 'bg-card text-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground',
-                  )}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          )}
           <Button
             variant={mode === 'edit' ? 'default' : 'outline'}
             size="sm"
@@ -538,7 +580,6 @@ export function NikiPerformanceTab() {
           </div>
 
           {/* Scorecard table */}
-          {(layout === 'table' || layout === 'both') && (
           <Card>
             <CardHeader className="pb-3 flex-row items-start justify-between space-y-0 gap-3">
               <div>
@@ -552,7 +593,8 @@ export function NikiPerformanceTab() {
                     : ` Comparing ${orderedSelected.length} periods.`}
                 </CardDescription>
               </div>
-              <div className="flex flex-col items-end gap-2">
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Quarter selector */}
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([...allQuarterKeys, 'YEAR'] as PeriodKey[]).map((k) => {
                     const active = selectedPeriods.includes(k);
@@ -574,21 +616,44 @@ export function NikiPerformanceTab() {
                     );
                   })}
                 </div>
-                <div className="flex items-center gap-1">
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold mr-1">
-                    Presets
-                  </span>
-                  {presets.map((p) => (
+                {/* Column visibility toggles */}
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                  {([
+                    { key: 'plan', label: 'Plan', active: showPlan, toggle: togglePlan },
+                    { key: 'actual', label: 'Actual', active: showActual, toggle: toggleActual },
+                    { key: 'var', label: 'Variance + Δ', active: showVarDelta, toggle: toggleVarDelta },
+                  ] as const).map((c) => (
                     <button
-                      key={p.label}
+                      key={c.key}
                       type="button"
-                      onClick={() => setSelectedPeriods(p.value)}
-                      className="px-2 py-0.5 text-[10px] font-medium rounded border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
+                      onClick={c.toggle}
+                      className={cn(
+                        'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                        c.active
+                          ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                      title={`Toggle ${c.label} column${c.key === 'var' ? 's' : ''}`}
                     >
-                      {p.label}
+                      {c.label}
                     </button>
                   ))}
                 </div>
+                {/* Chart visibility toggle */}
+                <button
+                  type="button"
+                  onClick={() => setShowCharts((v) => !v)}
+                  className={cn(
+                    'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors',
+                    showCharts
+                      ? 'border-primary/40 bg-primary/10 text-foreground'
+                      : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground',
+                  )}
+                  title="Toggle supporting charts"
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Charts {showCharts ? 'on' : 'off'}
+                </button>
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
@@ -597,10 +662,10 @@ export function NikiPerformanceTab() {
                   {isSingle ? (
                     <TableRow className="hover:bg-transparent border-b border-border/40">
                       <TableHead className="h-9 px-4 text-[10px] uppercase tracking-wider font-semibold">Metric</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20">Plan</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>
-                      <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>
+                      {showPlan && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20">Plan</TableHead>}
+                      {showActual && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Actual</TableHead>}
+                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Δ</TableHead>}
+                      {showVarDelta && <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Var %</TableHead>}
                       <TableHead className="h-9 px-4 text-center text-[10px] uppercase tracking-wider font-semibold">Status</TableHead>
                     </TableRow>
                   ) : (
@@ -612,7 +677,7 @@ export function NikiPerformanceTab() {
                         {orderedSelected.map((k) => (
                           <TableHead
                             key={k}
-                            colSpan={4}
+                            colSpan={perPeriodCols}
                             className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-semibold text-foreground/80 border-l border-border/20"
                           >
                             {periodLabel(k)}
@@ -622,10 +687,14 @@ export function NikiPerformanceTab() {
                       <TableRow className="hover:bg-transparent border-b border-border/40">
                         {orderedSelected.map((k) => (
                           <Fragment key={k}>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20 border-l border-border/20">Plan</TableHead>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Actual</TableHead>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Δ</TableHead>
-                            <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                            {showPlan && <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-bold text-foreground bg-muted/20 border-l border-border/20">Plan</TableHead>}
+                            {showActual && <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && 'border-l border-border/20')}>Actual</TableHead>}
+                            {showVarDelta && (
+                              <>
+                                <TableHead className={cn('h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground', !showPlan && !showActual && 'border-l border-border/20')}>Δ</TableHead>
+                                <TableHead className="h-8 px-3 text-center text-[10px] uppercase tracking-wider font-medium text-muted-foreground">Var %</TableHead>
+                              </>
+                            )}
                           </Fragment>
                         ))}
                       </TableRow>
@@ -640,10 +709,9 @@ export function NikiPerformanceTab() {
               </Table>
             </CardContent>
           </Card>
-          )}
 
           {/* Per-metric quarterly bar charts */}
-          {(layout === 'charts' || layout === 'both') && (
+          {showCharts && (
             <div className="space-y-5">
               {[
                 { title: 'Pipeline Production', keys: productionRows },
