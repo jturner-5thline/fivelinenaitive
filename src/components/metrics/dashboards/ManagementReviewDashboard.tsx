@@ -1338,9 +1338,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <NaPlaceholder height={140} label="Data unavailable — no live period-scoped bank balance source" />
           </GridShell>
         </div>
-        <div key="liabilities" className="h-full overflow-auto">
-          {/* Quarterly Revenue Growth (YoY) — swapped into the Liabilities slot */}
-          <QuarterlyRevenueGrowthCard />
+        <div key="liabilities" className="h-full">
+          <GridShell isEditMode={isEditMode} title="Liabilities & Debt Service">
+            <NaPlaceholder height={140} label="Data unavailable — no live debt schedule source" />
+          </GridShell>
         </div>
         <div key="dscr" className="h-full">
           <GridShell isEditMode={isEditMode} title="DSCR / Debt Coverage">
