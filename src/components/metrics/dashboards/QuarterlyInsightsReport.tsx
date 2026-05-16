@@ -720,7 +720,22 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
 function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: ReportSetState; reportLabel: string }) {
   const updateKPI = (id: string, patch: Partial<KPI>) => set(prev => ({ ...prev, kpis: prev.kpis.map(k => k.id === id ? { ...k, ...patch } : k) }));
   const removeKPI = (id: string) => set(prev => ({ ...prev, kpis: prev.kpis.filter(k => k.id !== id) }));
-  const addKPI = () => set(prev => ({ ...prev, kpis: [...prev.kpis, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }] }));
+  const addCustomKPI = () => set(prev => ({ ...prev, kpis: [...prev.kpis, { id: uid(), label: 'New KPI', actual: '0', target: '0', format: 'number' }] }));
+  const addTemplateKPI = (templateId: KpiTemplateId) => {
+    const tpl = getKpiTemplate(templateId);
+    if (!tpl) return;
+    set(prev => ({
+      ...prev,
+      kpis: [...prev.kpis, {
+        id: uid(),
+        label: tpl.defaultTitle,
+        actual: '0', target: '0', format: 'number',
+        template: tpl.id,
+        templateConfig: { ...tpl.defaultConfig },
+      }],
+    }));
+  };
+  const [addOpen, setAddOpen] = useState(false);
   const [drillKpi, setDrillKpi] = useState<KpiLike | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const MAX_KPIS = 5;
@@ -732,7 +747,7 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={
           <span title={canAdd ? '' : `Max ${MAX_KPIS} KPIs`}>
-            <Btn icon={Plus} variant="ghost" onClick={canAdd ? addKPI : undefined}>Add KPI</Btn>
+            <Btn icon={Plus} variant="ghost" onClick={canAdd ? () => setAddOpen(true) : undefined}>Add KPI</Btn>
           </span>
         }>KPIs</SectionTitle>
         <div style={{
@@ -741,6 +756,35 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
           gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
         }}>
           {visibleKpis.map(kpi => {
+            // Templated KPIs render their own card (live data, dual metrics).
+            if (kpi.template === 'sales-clients') {
+              const cfg = (kpi.templateConfig ?? {}) as SalesClientsConfig;
+              const safeCfg: SalesClientsConfig = {
+                entryStageLabel: cfg.entryStageLabel || 'Final Credit Items',
+                signedField: 'deals.value',
+                comparison: cfg.comparison ?? 'prior-quarter',
+                reportingQuarter: cfg.reportingQuarter,
+                entityIds: cfg.entityIds,
+                pipelineIds: cfg.pipelineIds,
+              };
+              const isEditing = editingId === kpi.id;
+              return (
+                <SalesClientsKpiCard
+                  key={kpi.id}
+                  kpiId={kpi.id}
+                  title={kpi.label}
+                  config={safeCfg}
+                  reportQuarter={s.quarter}
+                  reportLabel={reportLabel}
+                  isEditing={isEditing}
+                  onToggleEdit={() => setEditingId(isEditing ? null : kpi.id)}
+                  onClose={() => setEditingId(null)}
+                  onPatchTitle={(next) => updateKPI(kpi.id, { label: next })}
+                  onPatchConfig={(next) => updateKPI(kpi.id, { templateConfig: next as unknown as Record<string, unknown> })}
+                  onRemove={() => removeKPI(kpi.id)}
+                />
+              );
+            }
             const status = deriveStatus(kpi.actual, kpi.target);
             const tone = status === 'Above Plan' ? 'pos' : status === 'On Plan' ? 'neu' : 'neg';
             const isEditing = editingId === kpi.id;
