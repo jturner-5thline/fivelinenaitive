@@ -233,3 +233,6 @@ verify_jwt = false
 
 [functions.send-weekly-rundown]
 verify_jwt = false
+
+[functions.share-pipeline-report]
+verify_jwt = true
