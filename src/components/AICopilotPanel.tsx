@@ -1278,6 +1278,22 @@ export function AICopilotPanel() {
     handleSend(prompt);
   }, [handleSend]);
 
+  // Route a workspace card into the email / task / note workflow by
+  // re-prompting the copilot to invoke the matching preview-only tool.
+  // Nothing leaves the workspace until the user approves the resulting
+  // preview card.
+  const handleWorkspaceSendTo = useCallback((target: 'email' | 'task' | 'note', item: WorkspaceItem) => {
+    const ctx = item.dealName ? ` for ${item.dealName}` : '';
+    const body = item.body.length > 2000 ? item.body.slice(0, 2000) + '…' : item.body;
+    if (target === 'email') {
+      handleSend(`Use the workspace draft below${ctx} as the body of an email and prepare a send_gmail preview. Keep the tone and structure intact; suggest a clear subject line.\n\n---\n${body}`);
+    } else if (target === 'task') {
+      handleSend(`Create an Asana task${ctx} for the follow-up implied by the workspace draft below using the create_asana_task preview tool. Set a clear name, helpful notes, and a reasonable due date.\n\n---\n${body}`);
+    } else {
+      handleSend(`Save the workspace draft below${ctx} as a deal note using the deal note preview tool. Keep the original content verbatim.\n\n---\n${body}`);
+    }
+  }, [handleSend]);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
