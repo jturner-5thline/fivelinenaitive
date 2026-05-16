@@ -17,6 +17,7 @@ import {
 import { RepPerformanceModelGrid } from '@/components/metrics/rep-model/RepPerformanceModelGrid';
 import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
+import { MetricQuarterlyBarChart } from '@/components/dashboard/performance/MetricQuarterlyBarChart';
 import {
   useNikiPerformanceMetrics,
   NIKI_PLAN_2026,
@@ -302,6 +303,7 @@ export function NikiPerformanceTab() {
   const { rows, isLoading } = useNikiPerformanceMetrics();
   const [drill, setDrill] = useState<{ title: string; deals: PerfDeal[] } | null>(null);
   const [mode, setMode] = useState<'view' | 'edit'>('view');
+  const [layout, setLayout] = useState<'table' | 'charts' | 'both'>('both');
 
   const byKey = useMemo(() => {
     const m = new Map<MetricRowKey, MetricRow>();
@@ -493,6 +495,25 @@ export function NikiPerformanceTab() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {mode === 'view' && (
+            <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+              {(['table', 'charts', 'both'] as const).map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setLayout(opt)}
+                  className={cn(
+                    'px-2.5 py-1 text-[11px] font-medium rounded-md capitalize transition-colors',
+                    layout === opt
+                      ? 'bg-card text-foreground shadow-sm'
+                      : 'text-muted-foreground hover:text-foreground',
+                  )}
+                >
+                  {opt}
+                </button>
+              ))}
+            </div>
+          )}
           <Button
             variant={mode === 'edit' ? 'default' : 'outline'}
             size="sm"
