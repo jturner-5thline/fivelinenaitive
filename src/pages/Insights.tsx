@@ -2653,20 +2653,11 @@ function MetricsInner() {
             )}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
             {selectedDashboard === 'revenue-customers' && (
-              <div className="space-y-5">
-                <IncomeYTDCard />
-                <IncomeYTDMoMVarianceCard />
-                <IncomeYTDByEntityCard />
-                <YTDIncomeBreakdownByEntityCard />
-                <IncomeYTDChangeByEntityCard />
-                <FinServTTMTop5CustomersCard />
-                <TotalIncomeRolling12MoCard />
-                <IncomeVsCOGSRolling12MoCard />
-                <IncomeMoMCard />
-                <ClientCountMoMCard />
-                <IncomeTop5CustomersMoMCard />
-                <FinServTopCustomersCard />
-                <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
+              <div>
+                <RevenueCustomersDashboard />
+                <div className="mt-4">
+                  <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
+                </div>
               </div>
             )}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
