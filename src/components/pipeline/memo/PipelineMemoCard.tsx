@@ -71,28 +71,29 @@ function PipelineMemoCardImpl({
     >
       <MemoHeader deal={deal} showLiveDot={showLiveDot} />
 
-      <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
-
       <NextBestActionRow deal={deal} tasks={tasks} rawDigest={rawDigest} />
 
       <div
         className="
-          grid
-          items-start
+          grid items-start
           [grid-template-columns:1fr]
           md:[grid-template-columns:1fr_1fr]
-          lg:[grid-template-columns:1fr_1fr_minmax(240px,280px)]
           divide-y md:divide-y-0 md:divide-x divide-white/[0.08]
           bg-gradient-to-b from-transparent to-white/[0.015]
         "
       >
-        <ActivityPanel
-          deal={deal}
-          rawDigest={rawDigest}
-          isLoading={!!isDigestLoading}
-        />
-        <EmailsPanel emails={rawDigest?.emails || []} isLoading={!!isDigestLoading} />
-        <LendersPanel deal={deal} />
+        <div className="min-w-0">
+          <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
+        </div>
+        <div className="min-w-0 divide-y divide-white/[0.08]">
+          <ActivityPanel
+            deal={deal}
+            rawDigest={rawDigest}
+            isLoading={!!isDigestLoading}
+          />
+          <EmailsPanel emails={rawDigest?.emails || []} isLoading={!!isDigestLoading} />
+          <LendersPanel deal={deal} />
+        </div>
       </div>
     </Card>
   );
