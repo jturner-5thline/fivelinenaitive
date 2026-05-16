@@ -2682,7 +2682,10 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
-      <div className="bg-transparent relative">
+      <div className={cn(
+        "bg-transparent relative",
+        isEmbedded && "flex-1 flex flex-col min-h-0 w-full"
+      )}>
         <GlobalSaveBar isAnySaving={isAnySaving} />
 
         <main
@@ -2691,7 +2694,10 @@ export default function DealDetail() {
               // Inside the deal pop-up: wider stable canvas with
               // breakpoint-stepped padding so modules keep their
               // proportions instead of stretching freely with the viewport.
-              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 overflow-x-hidden"
+              // Also flex-col + flex-1 so the bottom tab bar can `mt-auto`
+              // pin itself to the modal's bottom edge regardless of how
+              // short the current tab's content is.
+              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 overflow-x-hidden flex-1 flex flex-col min-h-0"
               : "container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden"
           }
         >
