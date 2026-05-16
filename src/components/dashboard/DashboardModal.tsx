@@ -563,17 +563,36 @@ export function DashboardModal({ open, onOpenChange, initialTab = 'dashboard' }:
                         const flags = rowFlags.get(d.dealId);
                         const hasOverdue = !!flags && flags.overdue.length > 0;
                         const approaching = !!flags && flags.approachingNoReview;
-                        const leftBorder = hasOverdue
+                        const behind = behindMap.get(d.dealId);
+                        // Running-behind takes visual priority: red left border
+                        // + subtle red row tint. Falls back to the existing
+                        // overdue-milestone (red) / approaching-close (amber)
+                        // left-border treatments.
+                        const leftBorder = behind
                           ? '3px solid hsl(var(--destructive))'
-                          : approaching
-                            ? '3px solid hsl(var(--chart-3))'
-                            : '3px solid transparent';
+                          : hasOverdue
+                            ? '3px solid hsl(var(--destructive))'
+                            : approaching
+                              ? '3px solid hsl(var(--chart-3))'
+                              : '3px solid transparent';
+                        const rowBg = behind ? 'hsl(var(--destructive) / 0.08)' : undefined;
                         return (
-                        <tr key={d.dealId} style={{ borderLeft: leftBorder }}>
+                        <tr key={d.dealId} style={{ borderLeft: leftBorder, backgroundColor: rowBg }}>
                           <td style={{ color: 'rgba(130,165,190,0.5)' }}>{i + 1}</td>
                           <td style={{ color: d.nameColor }}>
                             <span className="inline-flex items-center gap-1.5">
                               {d.name}
+                              {behind && (
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold border border-destructive/50 bg-destructive/15 text-destructive">
+                                      <AlertTriangle className="h-2.5 w-2.5" />
+                                      Behind
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent>{behind.reason}</TooltipContent>
+                                </Tooltip>
+                              )}
                               {approaching && (
                                 <Tooltip>
                                   <TooltipTrigger asChild>
