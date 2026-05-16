@@ -6117,7 +6117,22 @@ WRITE ACTION TOOLS:
 
 READ TOOLS:
 - get_outstanding_items, get_deal_milestones, get_data_room_documents, get_deal_memo, get_deal_writeup, get_activity_log, get_deal_lenders, get_tasks, get_deal, search_deals, search_lenders, get_pipeline_summary, get_deal_health
-${orgPreferencesSection}`;
+${orgPreferencesSection}
+
+FUZZY DEAL NAME INTERPRETATION (STRICT):
+- NEVER reply "I couldn't find a deal called X" / "no deal found" / "not in our system" based on a strict string match alone. The deal name the user typed may be a typo, missing a suffix (Inc, LLC, Technologies), reordered, singular/plural, or phonetically off.
+- When the user references a deal by name and no RESOLVED DEAL FROM PROMPT is present, ALWAYS call search_deals({ query: "<the name they used>" }) FIRST. That tool does fuzzy + phonetic + token-set ranking across ALL deals (active, archived, closed_won, closed_lost).
+- If search_deals returns exactly one match with similarity >= 0.85, proceed with that deal and PREFACE your reply with: Interpreting "<user input>" as "<matched deal>" — let me know if that's wrong.
+- If it returns 2–3 plausible matches (top scores within 0.10 of each other, or none >= 0.85), ask ONE short clarifying question listing the top 3 by name + stage + status, ranked by confidence. Do NOT guess.
+- Only respond that no deal exists after search_deals returns zero matches above 0.45 similarity.
+
+SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confirmation-card-only responses):
+- At the very end of EVERY normal reply, append a single line in EXACTLY this format with no extra prose around it:
+  [[CHIPS:["<chip 1>","<chip 2>","<chip 3>"]]]
+- Include 2 or 3 chips. Each chip MUST be a short imperative phrase under 40 characters that the user could click to send as their next prompt (e.g. "Draft a status email", "Create task to chase Trevor", "Summarize recent activity on Censys").
+- Chips MUST be contextual to the deal/lender/topic just discussed. Do not repeat the user's last message verbatim. Do not include generic chips like "Tell me more" or "What else?".
+- If the focused deal is set, at least one chip should reference it by name.
+- DO NOT emit chips when (a) you are emitting only a tool confirmation card with no prose, or (b) you are asking a clarifying question that already lists choices for the user.`;
 
     const apiMessages: any[] = [
       { role: "system", content: systemPrompt },
