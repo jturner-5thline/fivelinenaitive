@@ -196,7 +196,7 @@ serve(async (req: Request): Promise<Response> => {
         const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
         const timeMin = body.time_min || now.toISOString();
         const timeMax = body.time_max || weekFromNow.toISOString();
-        const maxResults = body.max_results || 50;
+        const maxResults = Math.min(body.max_results || 50, 200);
 
         const startUnix = Math.floor(new Date(timeMin).getTime() / 1000);
         const endUnix = Math.floor(new Date(timeMax).getTime() / 1000);
