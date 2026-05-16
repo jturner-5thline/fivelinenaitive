@@ -566,6 +566,8 @@ export function AICopilotPanel() {
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [lastFailedMessage, setLastFailedMessage] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [workspaceItems, setWorkspaceItems] = useState<import('./copilot/CopilotWorkspacePane').WorkspaceItem[]>([]);
+  const [activeWorkspaceItemId, setActiveWorkspaceItemId] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
