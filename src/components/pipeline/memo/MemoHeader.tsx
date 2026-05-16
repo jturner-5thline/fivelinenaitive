@@ -1,6 +1,5 @@
 import type { Deal } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { formatDealType } from '@/utils/dealTypeLabels';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 
@@ -69,28 +68,6 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
           >
             {deal.company || deal.name}
           </h2>
-          {statusDisplay && (
-            <TooltipProvider delayDuration={150}>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge
-                    variant="outline"
-                    className="rounded-full border-primary/30 text-primary/90 bg-primary/5 max-w-[360px] truncate cursor-help"
-                    title={statusDisplay}
-                  >
-                    {statusDisplay}
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent
-                  side="bottom"
-                  align="start"
-                  className="max-w-[480px] whitespace-pre-wrap break-words text-sm leading-snug"
-                >
-                  {statusDisplay}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
           {structureLabel && (
             <Badge variant="gray" className="rounded-full">{structureLabel}</Badge>
           )}
@@ -100,6 +77,15 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
         </div>
         <Badge variant="green" className="rounded-full shrink-0">{amountLabel}</Badge>
       </div>
+      {statusDisplay && (
+        <p
+          className="mt-1.5 text-[12px] leading-snug text-muted-foreground break-words"
+          title={statusDisplay}
+        >
+          <span className="text-muted-foreground/70">Status:</span>{' '}
+          <span className="text-foreground/80">{statusDisplay}</span>
+        </p>
+      )}
     </div>
   );
 }
