@@ -35,6 +35,8 @@ import { InsightsTimeframeProvider, useInsightsTimeframe } from "@/contexts/Insi
 import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { QuarterlyRevenueGrowthCard } from "@/components/insights/QuarterlyRevenueGrowthCard";
+import { IncomeYTDCard } from "@/components/insights/IncomeYTDCard";
+import { RevenueQuarterlySection } from "@/components/metrics/dashboards";
 import { GridWidgetCard } from "@/components/metrics/GridWidgetCard";
 import { useGridLayout, generateDefaultLayout } from "@/hooks/useGridLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -2638,6 +2640,12 @@ function MetricsInner() {
               />
             )}
             {selectedDashboard === 'sales-bd-roi' && <SalesBDROIDashboard />}
+            {selectedDashboard === 'revenue-customers' && (
+              <div className="space-y-5">
+                <IncomeYTDCard />
+                <RevenueQuarterlySection selectedQuarter={dashboardSelectedQuarter} />
+              </div>
+            )}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
             {selectedDashboard === 'consolidated-debt-pipeline' && (
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
