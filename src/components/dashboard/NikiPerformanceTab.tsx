@@ -2,7 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, EyeOff } from 'lucide-react';
+import { Pencil, LayoutDashboard, TrendingUp, TrendingDown, Minus, Eye, EyeOff } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -644,7 +644,17 @@ function NikiPerformanceTabInner() {
             {kpiKeys.map((k) => {
               const r = get(k);
               if (!r) return null;
-              return <KpiCard key={k} row={r} onClick={() => openDrill(r, 'YEAR')} />;
+              const { planVal, actualVal } = resolvePeriod(r, planMap, kpiPeriod, perfMode);
+              return (
+                <KpiCard
+                  key={k}
+                  row={r}
+                  planVal={planVal}
+                  actualVal={actualVal}
+                  periodLabel={kpiPeriodLabel}
+                  onClick={() => openDrill(r, kpiPeriod)}
+                />
+              );
             })}
           </div>
 
@@ -663,6 +673,28 @@ function NikiPerformanceTabInner() {
                 </CardDescription>
               </div>
               <div className="flex flex-wrap items-center justify-end gap-2">
+                {/* Master mode: Quarter by Quarter vs YTD */}
+                <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
+                  {([
+                    { key: 'quarterly', label: 'Quarter by Quarter' },
+                    { key: 'ytd', label: 'YTD' },
+                  ] as const).map((m) => (
+                    <button
+                      key={m.key}
+                      type="button"
+                      onClick={() => setPerfMode(m.key as PerfMode)}
+                      className={cn(
+                        'px-2.5 py-1 text-[11px] font-medium rounded-md transition-colors',
+                        perfMode === m.key
+                          ? 'bg-card text-foreground shadow-sm ring-1 ring-primary/30'
+                          : 'text-muted-foreground hover:text-foreground',
+                      )}
+                      title={`Switch to ${m.label} mode`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
                 {/* Quarter selector */}
                 <div className="inline-flex items-center rounded-lg border border-border bg-muted/30 p-0.5">
                   {([...allQuarterKeys, 'YEAR'] as PeriodKey[]).map((k) => {
@@ -708,21 +740,6 @@ function NikiPerformanceTabInner() {
                     </button>
                   ))}
                 </div>
-                {/* Chart visibility toggle */}
-                <button
-                  type="button"
-                  onClick={() => setShowCharts((v) => !v)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium rounded-lg border transition-colors',
-                    showCharts
-                      ? 'border-primary/40 bg-primary/10 text-foreground'
-                      : 'border-border bg-muted/30 text-muted-foreground hover:text-foreground',
-                  )}
-                  title="Toggle supporting charts"
-                >
-                  <BarChart3 className="h-3.5 w-3.5" />
-                  Charts {showCharts ? 'on' : 'off'}
-                </button>
               </div>
             </CardHeader>
             <CardContent className="p-0 overflow-x-auto">
@@ -780,38 +797,88 @@ function NikiPerformanceTabInner() {
           </Card>
 
           {/* Per-metric quarterly bar charts */}
-          {showCharts && (
+          {(() => {
+            const allChartIds = [
+              ...productionRows,
+              ...conversionRows,
+              ...revenueRows,
+              'funnel',
+            ];
+            const hiddenIds = allChartIds.filter((id) => isChartHidden(id));
+            return (
             <div className="space-y-5">
+              {hiddenIds.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-2">
+                  <span className="text-[11px] uppercase tracking-wide text-muted-foreground font-semibold">
+                    Hidden charts ({hiddenIds.length})
+                  </span>
+                  {hiddenIds.map((id) => {
+                    const r = id === 'funnel' ? null : get(id as MetricRowKey);
+                    const label = id === 'funnel' ? 'Pipeline Funnel' : r?.label ?? id;
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() => toggleChartHidden(id)}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                        title={`Show ${label}`}
+                      >
+                        <EyeOff className="h-3 w-3" />
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
               {[
                 { title: 'Pipeline Production', keys: productionRows },
                 { title: 'Conversion Milestones', keys: conversionRows },
                 { title: 'Revenue', keys: revenueRows },
-              ].map((section) => (
+              ].map((section) => {
+                const visibleKeys = section.keys.filter((k) => !isChartHidden(k));
+                if (visibleKeys.length === 0) return null;
+                return (
                 <div key={section.title}>
                   <div className="flex items-baseline justify-between mb-2 px-1">
                     <h3 className="text-[11px] uppercase tracking-wider text-muted-foreground font-semibold">
                       {section.title}
+                      {perfMode === 'ytd' && (
+                        <span className="ml-1.5 normal-case tracking-normal text-muted-foreground/70">· cumulative YTD</span>
+                      )}
                     </h3>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                    {section.keys.map((k) => {
+                    {visibleKeys.map((k) => {
                       const r = get(k);
                       if (!r) return null;
                       return (
                         <MetricQuarterlyBarChart
                           key={k}
                           row={r}
+                          mode={perfMode}
                           onBarClick={(q) => openDrill(r, q)}
+                          onToggleHide={() => toggleChartHidden(k)}
                         />
                       );
                     })}
                   </div>
                 </div>
-              ))}
+                );
+              })}
 
-              <FunnelSection rows={funnelRows} openDrill={openDrill} />
+              {!isChartHidden('funnel') && (
+                <FunnelSection
+                  rows={funnelRows}
+                  openDrill={openDrill}
+                  mode={perfMode}
+                  period={kpiPeriod}
+                  periodLabel={kpiPeriodLabel}
+                  onToggleHide={() => toggleChartHidden('funnel')}
+                />
+              )}
             </div>
-          )}
+            );
+          })()}
         </>
       ) : (
         <div className="space-y-4">
