@@ -10,13 +10,16 @@ import { ChannelCard } from './ChannelCard';
 import { AddChannelDialog } from './AddChannelDialog';
 import { ChannelDetailDialog } from './ChannelDetailDialog';
 import { ChannelEntityDetailModal } from './ChannelEntityDetailModal';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 
-const COLUMNS: { type: ChannelType; label: string; color: string }[] = [
-  { type: 'Banks', label: 'Banks', color: 'bg-blue-500' },
-  { type: 'M&A and Investment Bankers', label: 'M&A / IB', color: 'bg-violet-500' },
-  { type: 'Service Providers', label: 'Service Providers', color: 'bg-amber-500' },
-  { type: 'Investors', label: 'Investors', color: 'bg-emerald-500' },
-];
+const COLUMNS: { type: ChannelType; label: string; color: string }[] = CHANNEL_TYPE_OPTIONS.map(o => ({
+  type: o.value,
+  label: o.label,
+  color: '',
+})).map((c, i) => ({
+  ...c,
+  color: ['bg-blue-500', 'bg-violet-500', 'bg-amber-500', 'bg-emerald-500', 'bg-pink-500', 'bg-slate-500'][i] || 'bg-slate-500',
+}));
 
 const COLUMN_TYPES = new Set(COLUMNS.map(c => c.type));
 
@@ -72,12 +75,10 @@ export function ChannelsBoard() {
   );
 
   const grouped = useMemo(() => {
-    const map: Record<ChannelType, ChannelEntry[]> = {
-      'Banks': [],
-      'M&A and Investment Bankers': [],
-      'Service Providers': [],
-      'Investors': [],
-    };
+    const map: Record<ChannelType, ChannelEntry[]> = CHANNEL_TYPE_OPTIONS.reduce(
+      (acc, o) => ({ ...acc, [o.value]: [] }),
+      {} as Record<ChannelType, ChannelEntry[]>,
+    );
     entries.forEach((e) => {
       if (map[e.channel_type]) map[e.channel_type].push(e);
     });
@@ -159,7 +160,7 @@ export function ChannelsBoard() {
         onDragEnd={handleDragEnd}
         onDragCancel={() => setActiveId(null)}
       >
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
           {COLUMNS.map((col) => (
             <DroppableColumn
               key={col.type}

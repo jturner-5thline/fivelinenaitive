@@ -1,6 +1,9 @@
 import { useState, useMemo, useCallback } from 'react';
 import { useChannelPerformanceData, type ChannelTimePeriod, type AttributedDeal } from '@/hooks/useChannelPerformanceData';
 import { ChannelDrilldownModal, type DrilldownContext } from './ChannelDrilldownModal';
+import { ChannelSourceDetailPanel, type SourceTarget } from './ChannelSourceDetailPanel';
+import { PartnersFunnelChart } from './PartnersFunnelChart';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 import { Skeleton } from '@/components/ui/skeleton';
 import { BarChart3, TrendingUp, DollarSign, Layers, AlertCircle, X, RotateCcw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -30,12 +33,7 @@ const TIME_PRESETS: { value: ChannelTimePeriod; label: string; short: string }[]
   { value: 'last-12m', label: 'Last 12 Months', short: '12M' },
 ];
 
-const CHANNEL_OPTIONS = [
-  { value: 'Banks', label: 'Banks' },
-  { value: 'M&A and Investment Bankers', label: 'M&A / IB' },
-  { value: 'Service Providers', label: 'Service Providers' },
-  { value: 'Investors', label: 'Investors' },
-];
+const CHANNEL_OPTIONS = CHANNEL_TYPE_OPTIONS.map(o => ({ value: o.value, label: o.label }));
 
 const STAGE_LABELS: Record<string, string> = {
   added: 'Added',
@@ -164,6 +162,7 @@ export function ChannelsDashboard() {
   const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [chartGroupBy, setChartGroupBy] = useState<ChartGroupBy>('channel');
   const [drilldown, setDrilldown] = useState<DrilldownContext | null>(null);
+  const [sourceTarget, setSourceTarget] = useState<SourceTarget | null>(null);
 
   const { channelSources, attributedDeals, performanceRows, kpis, isLoading } = useChannelPerformanceData(
     timePeriod, channelTypeFilters, sourceFilters,
@@ -423,6 +422,7 @@ export function ChannelsDashboard() {
         </div>
       ) : (
         <>
+          <PartnersFunnelChart />
           {/* ── Stage Funnel ── */}
           <div className={`${glassCard} p-4`}>
             <h3 className="text-base font-semibold tracking-tight text-foreground mb-4">Stage Progression — Sourced Deals</h3>
@@ -559,13 +559,16 @@ export function ChannelsDashboard() {
                     <tr
                       key={row.channelEntryId}
                       className="border-b border-border hover:bg-muted/40 transition-colors cursor-pointer"
-                      onClick={() => handleTableRowClick(row.channelEntryId, row.channelName)}
+                      onClick={() => setSourceTarget({ kind: 'company', name: row.channelName, channelType: row.channelType })}
                     >
                       <td className="p-3 font-medium text-foreground">{row.channelName}</td>
                       <td className="p-3">
-                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setSourceTarget({ kind: 'channel', channelType: row.channelType }); }}
+                          className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground hover:bg-muted/80"
+                        >
                           {row.channelType === 'M&A and Investment Bankers' ? 'M&A / IB' : row.channelType}
-                        </span>
+                        </button>
                       </td>
                       <td className="p-3 text-right font-mono tabular-nums">{row.added.count}</td>
                       <td className="p-3 text-right font-mono tabular-nums">{row.proposalIssued.count}</td>
@@ -587,6 +590,11 @@ export function ChannelsDashboard() {
       )}
 
       <ChannelDrilldownModal context={drilldown} onClose={() => setDrilldown(null)} />
+      <ChannelSourceDetailPanel
+        target={sourceTarget}
+        open={!!sourceTarget}
+        onClose={() => setSourceTarget(null)}
+      />
     </div>
   );
 }

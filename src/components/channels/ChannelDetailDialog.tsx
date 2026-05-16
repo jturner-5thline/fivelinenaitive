@@ -7,8 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Building2, User, Mail, Phone, Trash2, Loader2 } from 'lucide-react';
 import { useUpdateChannelEntry, useDeleteChannelEntry, type ChannelType, type ChannelEntry } from '@/hooks/useChannelEntries';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 
-const CHANNEL_TYPES: ChannelType[] = ['Banks', 'M&A and Investment Bankers', 'Service Providers', 'Investors'];
+const CHANNEL_TYPES: ChannelType[] = CHANNEL_TYPE_OPTIONS.map(o => o.value);
 
 interface Props {
   entry: ChannelEntry;

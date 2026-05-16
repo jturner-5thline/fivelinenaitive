@@ -8,8 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Building2, User, Search, Check, Loader2, AlertCircle, Link2 } from 'lucide-react';
 import { useSearchContacts, useSearchCrmCompanies, useCreateChannelEntry, useChannelEntries, type ChannelType } from '@/hooks/useChannelEntries';
+import { CHANNEL_TYPE_OPTIONS } from './channelOptions';
 
-const CHANNEL_TYPES: ChannelType[] = ['Banks', 'M&A and Investment Bankers', 'Service Providers', 'Investors'];
+const CHANNEL_TYPES: ChannelType[] = CHANNEL_TYPE_OPTIONS.map(o => o.value);
 
 interface Props {
   open: boolean;
