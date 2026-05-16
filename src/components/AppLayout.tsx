@@ -200,7 +200,7 @@ export function AppLayout({ children, mainClassName }: AppLayoutProps) {
         <div className="h-full w-full min-h-0 overflow-hidden bg-transparent flex flex-col">
           <BodyScrollLock />
           <main
-            className={cn('relative flex-1 min-h-0 w-full overflow-hidden bg-background', mainClassName)}
+            className={cn('relative flex flex-1 min-h-0 w-full flex-col overflow-hidden bg-background', mainClassName)}
             data-tour="workspace"
           >
             {content}
