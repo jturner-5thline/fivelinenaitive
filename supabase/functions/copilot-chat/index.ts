@@ -1561,6 +1561,37 @@ const tools = [
       },
     },
   },
+  // ── PHASE 2: READ-ONLY DRAFTS / SUMMARIES ──
+  {
+    type: "function",
+    function: {
+      name: "draft_status_report",
+      description: "Generate a PREVIEW-ONLY status report draft for a deal (no DB writes, no sends). Pulls deal info, active lenders, recent activity and outstanding items, and returns structured data the assistant should format into a status report the user can review and edit. Use for 'draft a status report on <deal>', 'status update for <deal>'.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Deal UUID" },
+          lookback_days: { type: "number", description: "Days of recent activity to include. Default 14." },
+        },
+        required: ["deal_id"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "follow_up_summary",
+      description: "Read-only summary of upcoming and overdue follow-ups: open tasks, scheduled emails, and scheduled follow-ups. Scope to a single deal when deal_id is given, otherwise the current user. Returns lists for the assistant to render — never auto-sends or completes anything.",
+      parameters: {
+        type: "object",
+        properties: {
+          deal_id: { type: "string", description: "Optional deal UUID to scope to one deal." },
+          horizon_days: { type: "number", description: "How many days ahead to look. Default 7." },
+          include_overdue: { type: "boolean", description: "Include overdue items. Default true." },
+        },
+      },
+    },
+  },
 ];
 
 // ── Tool selection by context ──────────────────────────────────
@@ -1615,6 +1646,8 @@ function selectToolsWithScopes(
     "get_email_thread", "get_deal_emails", "list_email_drafts", "get_sent_emails", "get_scheduled_emails",
     // Always-available task & follow-up context.
     "get_task_details", "get_scheduled_followups",
+    // Phase 2: preview-only drafts and summaries.
+    "draft_status_report", "follow_up_summary",
     // Always-available finance / QuickBooks context (firm-level, shared org-wide).
     "get_quickbooks_pnl", "get_outstanding_invoices", "get_outstanding_bills", "get_revenue_breakdown",
     // Always-available notifications & alerts (user-scoped).
@@ -4545,6 +4578,57 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       }));
       if (overdueOnly) milestones = milestones.filter((m: any) => m.is_overdue);
       return { count: milestones.length, milestones };
+    }
+    // ── PHASE 2: READ-ONLY DRAFTS / SUMMARIES ──
+    case "draft_status_report": {
+      const lookbackDays = Math.min(Math.max(args.lookback_days || 14, 1), 90);
+      const cutoff = new Date(Date.now() - lookbackDays * 86400000).toISOString();
+      const [{ data: deal }, { data: lenders }, { data: activities }, { data: outstanding }, { data: milestones }] = await Promise.all([
+        supabase.from("deals").select("id, company, value, stage, status, deal_type, closing_date, deal_manager").eq("id", args.deal_id).maybeSingle(),
+        supabase.from("deal_lenders").select("lender_name, status, indicated_amount, indicated_rate, last_contact_date, notes").eq("deal_id", args.deal_id).limit(50),
+        supabase.from("activity_logs").select("activity_type, description, created_at, user_display_name").eq("deal_id", args.deal_id).gte("created_at", cutoff).order("created_at", { ascending: false }).limit(30),
+        supabase.from("outstanding_items").select("title, status, due_date, owner").eq("deal_id", args.deal_id).neq("status", "completed").limit(50),
+        supabase.from("deal_milestones").select("title, completed, due_date").eq("deal_id", args.deal_id).limit(50),
+      ]);
+      if (!deal) return { action: "draft_status_report", error: "Deal not found." };
+      return {
+        action: "draft_status_report",
+        preview_only: true,
+        deal,
+        lenders: lenders || [],
+        recent_activity: activities || [],
+        outstanding_items: outstanding || [],
+        milestones: milestones || [],
+        instruction:
+          "Compose a concise status report draft for human review. Use sections: Headline, Pipeline & Lender Update, Recent Activity, Outstanding Items, Next Steps. Do NOT claim it was saved or sent — this is preview-only.",
+      };
+    }
+    case "follow_up_summary": {
+      const horizon = Math.min(Math.max(args.horizon_days || 7, 1), 60);
+      const now = new Date();
+      const horizonIso = new Date(now.getTime() + horizon * 86400000).toISOString();
+      const includeOverdue = args.include_overdue !== false;
+      let tasksQ = supabase.from("tasks").select("id, title, due_date, status, deal_id, assignee_id").neq("status", "completed").lte("due_date", horizonIso).order("due_date", { ascending: true }).limit(100);
+      if (args.deal_id) tasksQ = tasksQ.eq("deal_id", args.deal_id);
+      else tasksQ = tasksQ.eq("assignee_id", userId);
+      let scheduledEmailsQ = supabase.from("scheduled_emails").select("id, subject, scheduled_for, recipient_email, deal_id, status").eq("status", "scheduled").lte("scheduled_for", horizonIso).order("scheduled_for", { ascending: true }).limit(50);
+      if (args.deal_id) scheduledEmailsQ = scheduledEmailsQ.eq("deal_id", args.deal_id);
+      const [{ data: tasks }, { data: scheduledEmails }] = await Promise.all([tasksQ, scheduledEmailsQ]);
+      const todayIso = now.toISOString();
+      const allTasks = tasks || [];
+      const overdue = allTasks.filter((t: any) => t.due_date && t.due_date < todayIso);
+      const upcoming = allTasks.filter((t: any) => !t.due_date || t.due_date >= todayIso);
+      return {
+        action: "follow_up_summary",
+        preview_only: true,
+        scope: args.deal_id ? { deal_id: args.deal_id } : { user_id: userId },
+        horizon_days: horizon,
+        overdue_tasks: includeOverdue ? overdue : [],
+        upcoming_tasks: upcoming,
+        scheduled_emails: scheduledEmails || [],
+        instruction:
+          "Summarize follow-ups grouped by Overdue / Today / This week. Suggest 2-3 next actions as chips. Do NOT mark anything complete or send anything — this is read-only.",
+      };
     }
     default:
       return { error: `Unknown tool: ${name}` };
