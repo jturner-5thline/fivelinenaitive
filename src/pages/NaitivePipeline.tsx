@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond, Mail } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
