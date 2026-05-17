@@ -43,21 +43,8 @@ export function PartnerRulesSettings() {
   const { upsert: upsertChannel, remove: removeChannel } = useMutateChannelType();
   const { stages: globalStages } = useDealStages();
 
-  // Seed the four canonical channel type definitions if empty (Apr 10, 2026 spec).
-  const [seeded, setSeeded] = useState(false);
-  useEffect(() => {
-    if (!canEdit || seeded || !channels) return;
-    if (channels.length === 0) {
-      setSeeded(true);
-      const seed = [
-        { name: 'Banks', description: 'Commercial / community banks referring out debt and finserv deals.', sort_order: 0 },
-        { name: 'Service Providers', description: 'Accountants, attorneys, consultants, advisors.', sort_order: 1 },
-        { name: 'Investors', description: 'VC, PE, family offices, angel networks.', sort_order: 2 },
-        { name: 'M&A', description: 'M&A advisors, business brokers, investment banks.', sort_order: 3 },
-      ];
-      seed.forEach(s => upsertChannel.mutate(s));
-    }
-  }, [channels, canEdit, seeded, upsertChannel]);
+  // Channel types are seeded by migration only — no client-side seeder
+  // (previous useEffect re-seeded on every empty render and caused 6x duplicates).
 
   const [draft, setDraft] = useState<PartnerRules>(DEFAULT_PARTNER_RULES);
   const [loaded, setLoaded] = useState(false);
