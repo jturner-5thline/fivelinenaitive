@@ -48,7 +48,7 @@ function fmtCount(value: number): string {
 function fmtPct(v: number) { return `${Math.round(v * 100)}%`; }
 
 export function PipelineConversionForecastCard() {
-  const { transitions, setTransition, reset, months, transitionStats, avgDollarsPerDeal } = usePipelineConversionForecast();
+  const { transitions, setTransition, reset, months, baselineMonths, transitionStats, avgDollarsPerDeal } = usePipelineConversionForecast();
 
   const [metric, setMetric] = useState<MetricKey>('revenue');
   const [view, setView] = useState<ViewKey>('plan_vs_forecast');
@@ -92,16 +92,25 @@ export function PipelineConversionForecastCard() {
   }, [months, metric, time, metricDef]);
 
   const stageChartData = useMemo(() => {
-    return months.map(m => ({
-      month: m.monthLabel,
-      'Deals on Board': m.dealsOnBoard,
-      'Proposals Issued': m.proposalsIssued,
-      'Clients Signed': m.clientsSigned,
-      'Receiving Terms': m.clientsReceivingTerms,
-      'Terms Signed': m.termsSigned,
-      'Deals Closed': m.dealsClosed,
-    }));
-  }, [months]);
+    return months.map((m, i) => {
+      const b = baselineMonths[i];
+      return {
+        month: m.monthLabel,
+        'Deals on Board': b?.dealsOnBoard,
+        'Deals on Board (Forecast)': m.dealsOnBoard,
+        'Proposals Issued': b?.proposalsIssued,
+        'Proposals Issued (Forecast)': m.proposalsIssued,
+        'Clients Signed': b?.clientsSigned,
+        'Clients Signed (Forecast)': m.clientsSigned,
+        'Receiving Terms': b?.clientsReceivingTerms,
+        'Receiving Terms (Forecast)': m.clientsReceivingTerms,
+        'Terms Signed': b?.termsSigned,
+        'Terms Signed (Forecast)': m.termsSigned,
+        'Deals Closed': b?.dealsClosed,
+        'Deals Closed (Forecast)': m.dealsClosed,
+      };
+    });
+  }, [months, baselineMonths]);
 
   const totals = useMemo(() => {
     const sum = (k: keyof (typeof months)[number]) => months.reduce((s, m) => s + (Number(m[k]) || 0), 0);
@@ -299,16 +308,32 @@ export function PipelineConversionForecastCard() {
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
                 {(['Deals on Board', 'Proposals Issued', 'Clients Signed', 'Receiving Terms', 'Terms Signed', 'Deals Closed'] as const)
-                  .map((name, idx) => visibleStages[name] ? (
-                    <Line
-                      key={name}
-                      type="monotone"
-                      dataKey={name}
-                      stroke={['hsl(var(--primary))', 'hsl(var(--chart-2, 200 80% 60%))', 'hsl(var(--chart-3, 280 70% 65%))', 'hsl(var(--chart-4, 35 90% 60%))', 'hsl(var(--chart-5, 150 65% 55%))', 'hsl(var(--destructive))'][idx % 6]}
-                      strokeWidth={2}
-                      dot={false}
-                    />
-                  ) : null)}
+                  .flatMap((name, idx) => {
+                    if (!visibleStages[name]) return [];
+                    const color = ['hsl(var(--primary))', 'hsl(var(--chart-2, 200 80% 60%))', 'hsl(var(--chart-3, 280 70% 65%))', 'hsl(var(--chart-4, 35 90% 60%))', 'hsl(var(--chart-5, 150 65% 55%))', 'hsl(var(--destructive))'][idx % 6];
+                    return [
+                      <Line
+                        key={`${name}-baseline`}
+                        type="monotone"
+                        dataKey={name}
+                        name={`${name} (Baseline)`}
+                        stroke={color}
+                        strokeWidth={2}
+                        dot={false}
+                      />,
+                      <Line
+                        key={`${name}-forecast`}
+                        type="monotone"
+                        dataKey={`${name} (Forecast)`}
+                        name={`${name} (Forecast)`}
+                        stroke={color}
+                        strokeWidth={2}
+                        strokeDasharray="4 4"
+                        strokeOpacity={0.85}
+                        dot={false}
+                      />,
+                    ];
+                  })}
               </LineChart>
             </ResponsiveContainer>
           </div>
