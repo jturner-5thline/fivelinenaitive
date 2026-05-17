@@ -14,6 +14,9 @@ import { NaitiveDealCard } from '@/components/naitive-pipeline/NaitiveDealCard';
 import { NaitiveDealOverlay } from '@/components/naitive-pipeline/NaitiveDealOverlay';
 
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Info } from 'lucide-react';
+import { getStageDescription } from '@/config/naitivePipelineConfig';
 import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
 import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveMilestoneDiamonds';
 import { cn } from '@/lib/utils';
@@ -169,6 +172,7 @@ function StageColumn({
   onDeleted?: () => void;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
+  const description = getStageDescription(stage);
 
   return (
     <div ref={setNodeRef} className={cn("flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border transition-colors", isOver && "ring-2 ring-primary bg-primary/5")}>
@@ -176,6 +180,18 @@ function StageColumn({
         <div className="flex items-center gap-2">
           <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", stage.color)} />
           <h3 className="font-medium text-sm truncate">{stage.label}</h3>
+          {description && (
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button type="button" data-no-card-open className="text-muted-foreground/70 hover:text-foreground" aria-label={`About ${stage.label}`}>
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs text-xs leading-relaxed">{description}</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           <span className="ml-auto text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded">{deals.length}</span>
         </div>
       </div>
