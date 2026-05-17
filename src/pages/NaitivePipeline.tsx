@@ -213,7 +213,9 @@ export default function NaitivePipeline() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const dealIds = useMemo(() => deals.map(d => d.id), [deals]);
-  const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
+  const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds, {
+    onDealStageChanged: () => { refetch(); },
+  });
 
   const [activeView, setActiveView] = useState<0 | 1>(() => readStoredNaitivePipelineView());
   const [slideDirection, setSlideDirection] = useState<'left' | 'right' | null>(null);
