@@ -80,17 +80,21 @@ export function PipelineConversionForecastCard() {
   const chartData = useMemo(() => {
     let cumForecast = 0;
     let cumPlan = 0;
-    return months.map(m => {
+    let cumTrend = 0;
+    return months.map((m, i) => {
       const fv = (m as any)[metricDef.forecastField] as number;
       const pv = metricDef.planField ? ((m as any)[metricDef.planField] as number | undefined) : undefined;
+      const b = baselineMonths[i];
+      const tv = b ? ((b as any)[metricDef.forecastField] as number | undefined) : undefined;
       if (time === 'cumulative') {
         cumForecast += fv ?? 0;
         if (pv != null) cumPlan += pv;
-        return { month: m.monthLabel, Forecast: cumForecast, Plan: pv != null ? cumPlan : undefined };
+        if (tv != null) cumTrend += tv;
+        return { month: m.monthLabel, Forecast: cumForecast, Plan: pv != null ? cumPlan : undefined, Trend: tv != null ? cumTrend : undefined };
       }
-      return { month: m.monthLabel, Forecast: fv, Plan: pv };
+      return { month: m.monthLabel, Forecast: fv, Plan: pv, Trend: tv };
     });
-  }, [months, metric, time, metricDef]);
+  }, [months, baselineMonths, metric, time, metricDef]);
 
   const stageChartData = useMemo(() => {
     return months.map((m, i) => {
@@ -243,7 +247,7 @@ export function PipelineConversionForecastCard() {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+              <ComposedChart data={chartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="hsl(var(--border) / 0.3)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} tickFormatter={v => metricDef.unit === 'currency' ? fmtMoney(v) : String(v)} />
@@ -253,10 +257,26 @@ export function PipelineConversionForecastCard() {
                 />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
                 {view === 'plan_vs_forecast' && metricDef.planField && (
-                  <Bar dataKey="Plan" fill="hsl(var(--muted-foreground) / 0.4)" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="Plan" name="Plan" fill="hsl(var(--muted-foreground) / 0.4)" radius={[3, 3, 0, 0]} />
                 )}
-                <Bar dataKey="Forecast" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-              </BarChart>
+                <Bar
+                  dataKey="Forecast"
+                  name={metric === 'revenue' && time === 'monthly' ? 'Revenue Forecast' : 'Forecast'}
+                  fill="hsl(var(--primary))"
+                  radius={[3, 3, 0, 0]}
+                />
+                {metric === 'revenue' && time === 'monthly' && (
+                  <Line
+                    type="monotone"
+                    dataKey="Trend"
+                    name="Revenue Trend"
+                    stroke="hsl(var(--chart-2, 200 80% 60%))"
+                    strokeWidth={1.75}
+                    dot={{ r: 2.5, strokeWidth: 0, fill: 'hsl(var(--chart-2, 200 80% 60%))' }}
+                    activeDot={{ r: 4 }}
+                  />
+                )}
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
