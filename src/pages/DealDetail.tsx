@@ -3109,18 +3109,10 @@ export default function DealDetail() {
               isEmbedded ? "flex-1 min-h-0 pb-0" : "pb-24"
             )}>
               {/* Tab Navigation */}
-              <Tabs
-                value={dealInfoTab}
-                onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
-                className={isEmbedded ? "flex-1 min-h-0 flex flex-col" : undefined}
-              >
-                <div
-                  className={cn(
-                    isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-6 deal-popup-scroll"
-                  )}
-                  tabIndex={isEmbedded ? 0 : undefined}
-                  data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
-                >
+              {/* Tabs and scroll wrapper are opened above the Header Card
+                  so the header scrolls with the body. Only the TabsList
+                  footer below remains a frozen sibling. */}
+              <>
 
                 <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
