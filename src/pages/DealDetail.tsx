@@ -3112,7 +3112,6 @@ export default function DealDetail() {
               {/* Tabs and scroll wrapper are opened above the Header Card
                   so the header scrolls with the body. Only the TabsList
                   footer below remains a frozen sibling. */}
-              <>
 
                 <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
