@@ -207,7 +207,7 @@ const VIEWS = ['Dashboard', 'Pipeline'] as const;
 
 export default function NaitivePipeline() {
   const { hasAccess, isLoading: accessLoading } = useNaitivePipelineAccess();
-  const { pipelineId, stages, deals, isLoading: dataLoading, refetch } = useNaitivePipelineData();
+  const { pipelineId, stages, deals, isLoading: dataLoading, refetch, saveStages } = useNaitivePipelineData();
   const { kpis, funnelData, agingData, healthMix, trendData, notifications, recommendations, hurdles } = useNaitivePipelineMetrics(deals, stages);
   const { history: stageHistory } = useNaitiveStageHistory(pipelineId);
   const navigate = useNavigate();
@@ -713,6 +713,7 @@ export default function NaitivePipeline() {
         open={isMilestonesOpen}
         onOpenChange={setIsMilestonesOpen}
         stages={stages}
+        saveStages={saveStages}
       />
     </>
   );
