@@ -289,9 +289,94 @@ const NO_SHOW_FEEDBACK_CALL: EmailCadenceDef = {
   sortOrder: 2,
 };
 
+// ---------------------------------------------------------------------------
+// Dormant re-engagement cadence (3 emails from record owner — spec § Dormant)
+// ---------------------------------------------------------------------------
+
+const DORMANT_EMAIL_1: CadenceEmail = {
+  id: 'dormant-1',
+  sequenceOrder: 1,
+  name: 'Re-engagement #1',
+  subject: 'Still curious about [Company]?',
+  body:
+    `Hey [First Name],\n\n` +
+    `Wanted to circle back, last we spoke things felt promising but went quiet.\n\n` +
+    `Happy to pick up where we left off whenever the timing makes sense.\n\n[Name]`,
+  senderType: 'deal-owner',
+  triggerType: 'cadence-start',
+  triggerOffset: 0,
+  triggerOffsetUnit: 'days',
+  businessDaysOnly: true,
+  conditions: [],
+};
+
+const DORMANT_EMAIL_2: CadenceEmail = {
+  id: 'dormant-2',
+  sequenceOrder: 2,
+  name: 'Re-engagement #2',
+  subject: 'Quick nudge',
+  body:
+    `Hey [First Name],\n\n` +
+    `Just a soft bump in case my last note got buried.\n\n` +
+    `If now isn't the right time, totally fine — a one-liner back and I'll get out of your inbox.\n\n[Name]`,
+  senderType: 'deal-owner',
+  triggerType: 'after-previous',
+  triggerOffset: 5,
+  triggerOffsetUnit: 'days',
+  businessDaysOnly: true,
+  conditions: [],
+};
+
+const DORMANT_EMAIL_3: CadenceEmail = {
+  id: 'dormant-3',
+  sequenceOrder: 3,
+  name: 'Re-engagement #3 — closing the loop',
+  subject: 'Closing the loop',
+  body:
+    `Hey [First Name],\n\n` +
+    `I'll stop nudging — sounds like the timing isn't right.\n\n` +
+    `Door's always open. Whenever it makes sense, just drop me a line.\n\n[Name]`,
+  senderType: 'deal-owner',
+  triggerType: 'after-previous',
+  triggerOffset: 7,
+  triggerOffsetUnit: 'days',
+  businessDaysOnly: true,
+  conditions: [],
+};
+
+const DORMANT_REENGAGEMENT: EmailCadenceDef = {
+  id: 'dormant-reengagement',
+  name: 'Dormant Re-engagement',
+  description:
+    'Three re-engagement emails sent from the record owner\u2019s email account at ' +
+    'day 0 / day 5 / day 12 (business days). If there is no reply or engagement by ' +
+    'the end of the sequence, the deal auto-moves to Closed Lost with reason ' +
+    '"No response to re-engagement sequence".',
+  isActive: true,
+  systemCadenceType: 'dormant-reengagement',
+  applicableStageTypes: ['dormant'],
+  senderType: 'deal-owner',
+  triggerType: 'stage-entered',
+  triggerOffset: 0,
+  triggerOffsetUnit: 'days',
+  businessDaysOnly: true,
+  branchRules: [],
+  emails: [DORMANT_EMAIL_1, DORMANT_EMAIL_2, DORMANT_EMAIL_3],
+  stageActions: [
+    {
+      id: 'dormant-to-closed-lost',
+      trigger: 'on-cadence-complete',
+      targetStage: 'closed-lost',
+      closedLostReason: 'No response to re-engagement sequence',
+    },
+  ],
+  sortOrder: 3,
+};
+
 export const DEFAULT_EMAIL_CADENCES: EmailCadenceDef[] = [
   ACCESS_PERIOD_CHECKIN,
   NO_SHOW_FEEDBACK_CALL,
+  DORMANT_REENGAGEMENT,
 ];
 
 // ---------------------------------------------------------------------------

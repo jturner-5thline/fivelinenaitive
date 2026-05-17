@@ -14115,6 +14115,45 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_pipeline_audit: {
+        Row: {
+          action: string
+          actor_user_id: string | null
+          context: Json | null
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          field: string | null
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+        }
+        Insert: {
+          action: string
+          actor_user_id?: string | null
+          context?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string | null
+          context?: Json | null
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Relationships: []
+      }
       naitive_pipeline_narrative_snapshots: {
         Row: {
           company_id: string
