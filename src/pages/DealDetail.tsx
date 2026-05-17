@@ -2719,7 +2719,6 @@ export default function DealDetail() {
                 className="gap-2 shrink-0"
                 onClick={handleSmartBack}
                 title={dealOrigin.label}
-                className={isEmbedded ? "flex-1 flex flex-col min-h-0 overflow-hidden" : undefined}
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">{dealOrigin.label}</span>
