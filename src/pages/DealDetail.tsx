@@ -2697,19 +2697,13 @@ export default function DealDetail() {
         <main
           className={
             isEmbedded
-              // Inside the deal pop-up: wider stable canvas with
-              // breakpoint-stepped padding so modules keep their
-              // proportions instead of stretching freely with the viewport.
-              // This <main> is THE single scroll owner for the modal so the
-              // entire deal page (header card, tabs row, and body) scrolls
-              // together as one unit. Scrollbar is hidden via
-              // `.deal-popup-scroll` while wheel/trackpad/keyboard scrolling
-              // continue to work.
-              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain deal-popup-scroll"
+              // Inside the deal pop-up: <main> is a non-scrolling flex
+              // column shell. The middle TabsContent region is the only
+              // scroll owner, and the bottom tab rail is a frozen footer
+              // that always remains flush with the modal's bottom edge.
+              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 flex-1 min-h-0 flex flex-col overflow-hidden"
               : "container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden"
           }
-          tabIndex={isEmbedded ? 0 : undefined}
-          data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
         >
           {/* Back button, alerts, and undo - side by side. Hidden in
               embedded (overlay) mode — the modal provides its own close
@@ -3089,19 +3083,27 @@ export default function DealDetail() {
           {/* Main Content Grid */}
           <div className={cn(
             "flex flex-col gap-6 min-w-0",
-            !isEmbedded && "overflow-hidden"
+            !isEmbedded && "overflow-hidden",
+            isEmbedded && "flex-1 min-h-0"
           )}>
             {/* Main Content */}
             <div className={cn(
               "flex flex-col gap-6 min-w-0 w-full",
-              isEmbedded ? "pb-2" : "pb-24"
+              isEmbedded ? "flex-1 min-h-0 pb-0" : "pb-24"
             )}>
               {/* Tab Navigation */}
               <Tabs
                 value={dealInfoTab}
                 onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
+                className={isEmbedded ? "flex-1 min-h-0 flex flex-col" : undefined}
               >
-                <div>
+                <div
+                  className={cn(
+                    isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-6 deal-popup-scroll"
+                  )}
+                  tabIndex={isEmbedded ? 0 : undefined}
+                  data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
+                >
 
                 <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
