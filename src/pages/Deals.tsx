@@ -578,16 +578,6 @@ export default function Dashboard() {
           </div>
         }
       >
-            {/* 1. Page header (title + subtitle removed; actions row only) */}
-            <div
-              className="flex items-center justify-between gap-4 flex-wrap opacity-0"
-              style={{ animation: 'fadeInUp 0.4s ease-out forwards' }}
-            >
-              <div className="min-w-0 flex items-center gap-3">
-                <PipelineSelector />
-              </div>
-            </div>
-
             {/* 2. Stats / widgets row */}
             {isLoading || widgetsLoading ? (
               <WidgetsSectionSkeleton />
