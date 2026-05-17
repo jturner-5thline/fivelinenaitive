@@ -2786,6 +2786,23 @@ export default function DealDetail() {
 
           {/* Deal Pulse Dashboard - hidden per user request */}
 
+          {/* Tabs + scroll owner opened ABOVE the Header Card so the
+              header card lives inside the scrollable region and scrolls
+              away with the body. Only the TabsList footer (sibling, below)
+              stays frozen at the modal's bottom edge. */}
+          <Tabs
+            value={dealInfoTab}
+            onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
+            className={isEmbedded ? "flex-1 min-h-0 flex flex-col" : undefined}
+          >
+            <div
+              className={cn(
+                isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-6 deal-popup-scroll"
+              )}
+              tabIndex={isEmbedded ? 0 : undefined}
+              data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
+            >
+
           {/* Header Card */}
           <Card className="w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]">
             <CardHeader className="pb-4">
