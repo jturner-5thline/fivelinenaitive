@@ -15,6 +15,7 @@ import {
   CartesianGrid,
   LineChart,
   Line,
+  ComposedChart,
 } from 'recharts';
 import {
   usePipelineConversionForecast,
@@ -96,18 +97,20 @@ export function PipelineConversionForecastCard() {
       const b = baselineMonths[i];
       return {
         month: m.monthLabel,
-        'Deals on Board': b?.dealsOnBoard,
-        'Deals on Board (Forecast)': m.dealsOnBoard,
-        'Proposals Issued': b?.proposalsIssued,
-        'Proposals Issued (Forecast)': m.proposalsIssued,
-        'Clients Signed': b?.clientsSigned,
-        'Clients Signed (Forecast)': m.clientsSigned,
-        'Receiving Terms': b?.clientsReceivingTerms,
-        'Receiving Terms (Forecast)': m.clientsReceivingTerms,
-        'Terms Signed': b?.termsSigned,
-        'Terms Signed (Forecast)': m.termsSigned,
-        'Deals Closed': b?.dealsClosed,
-        'Deals Closed (Forecast)': m.dealsClosed,
+        // Forecast (line) — current performance baseline
+        'Deals on Board Forecast': b?.dealsOnBoard,
+        'Proposals Issued Forecast': b?.proposalsIssued,
+        'Clients Signed Forecast': b?.clientsSigned,
+        'Receiving Terms Forecast': b?.clientsReceivingTerms,
+        'Terms Signed Forecast': b?.termsSigned,
+        'Deals Closed Forecast': b?.dealsClosed,
+        // Model (bar) — driven by Edit Model assumptions
+        'Deals on Board Model': m.dealsOnBoard,
+        'Proposals Issued Model': m.proposalsIssued,
+        'Clients Signed Model': m.clientsSigned,
+        'Receiving Terms Model': m.clientsReceivingTerms,
+        'Terms Signed Model': m.termsSigned,
+        'Deals Closed Model': m.dealsClosed,
       };
     });
   }, [months, baselineMonths]);
@@ -298,7 +301,7 @@ export function PipelineConversionForecastCard() {
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={stageChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
+              <ComposedChart data={stageChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                 <CartesianGrid stroke="hsl(var(--border) / 0.3)" vertical={false} />
                 <XAxis dataKey="month" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} axisLine={false} tickLine={false} />
@@ -312,29 +315,26 @@ export function PipelineConversionForecastCard() {
                     if (!visibleStages[name]) return [];
                     const color = ['hsl(var(--primary))', 'hsl(var(--chart-2, 200 80% 60%))', 'hsl(var(--chart-3, 280 70% 65%))', 'hsl(var(--chart-4, 35 90% 60%))', 'hsl(var(--chart-5, 150 65% 55%))', 'hsl(var(--destructive))'][idx % 6];
                     return [
-                      <Line
-                        key={`${name}-baseline`}
-                        type="monotone"
-                        dataKey={name}
-                        name={`${name} (Baseline)`}
-                        stroke={color}
-                        strokeWidth={2}
-                        dot={false}
+                      <Bar
+                        key={`${name}-model`}
+                        dataKey={`${name} Model`}
+                        name={`${name} Model`}
+                        fill={color}
+                        fillOpacity={0.35}
+                        radius={[2, 2, 0, 0]}
                       />,
                       <Line
                         key={`${name}-forecast`}
                         type="monotone"
-                        dataKey={`${name} (Forecast)`}
-                        name={`${name} (Forecast)`}
+                        dataKey={`${name} Forecast`}
+                        name={`${name} Forecast`}
                         stroke={color}
                         strokeWidth={2}
-                        strokeDasharray="4 4"
-                        strokeOpacity={0.85}
                         dot={false}
                       />,
                     ];
                   })}
-              </LineChart>
+              </ComposedChart>
             </ResponsiveContainer>
           </div>
         </div>
