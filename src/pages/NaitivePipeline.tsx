@@ -473,7 +473,7 @@ export default function NaitivePipeline() {
               stage={stage}
               deals={dealsByStage.get(stage.id) || []}
               onStatusChange={handleStatusChange}
-              onStageChange={handleStageChange}
+              onStageChange={requestStageChange}
               activeDealId={activeDealId}
               isOver={overId === stage.id}
               fullscreen={fullscreen}
@@ -761,7 +761,7 @@ export default function NaitivePipeline() {
         stages={stages}
         onClose={closeDealOverlay}
         onNavigate={navigateOverlayTo}
-        onStageChange={handleStageChange}
+        onStageChange={requestStageChange}
       />
 
       <MilestoneConfigModal
@@ -775,6 +775,17 @@ export default function NaitivePipeline() {
         open={isEmailsOpen}
         onOpenChange={setIsEmailsOpen}
         stages={stages}
+      />
+
+      <NaitiveStageTransitionDialog
+        transition={pendingTransition}
+        onCancel={() => setPendingTransition(null)}
+        onConfirmed={async () => {
+          if (!pendingTransition) return;
+          const { dealId, toStageId } = pendingTransition;
+          setPendingTransition(null);
+          await handleStageChange(dealId, toStageId);
+        }}
       />
     </>
   );
