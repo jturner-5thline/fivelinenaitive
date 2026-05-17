@@ -2575,7 +2575,13 @@ export default function DealDetail() {
         <title>{deal.name} - naitive</title>
         <meta name="description" content={`Deal details for ${deal.name} with ${deal.company}`} />
       </Helmet>
-      <div key={deal.id} className="deal-carousel-viewport">
+      <div
+        key={deal.id}
+        className={cn(
+          "deal-carousel-viewport",
+          isEmbedded && "flex h-full min-h-0 flex-1 flex-col overflow-hidden"
+        )}
+      >
 
       {/* Archive Deal Confirmation Dialog */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
@@ -2684,7 +2690,7 @@ export default function DealDetail() {
 
       <div className={cn(
         "bg-transparent relative",
-        isEmbedded && "flex-1 flex flex-col min-h-0 w-full"
+        isEmbedded && "flex-1 flex flex-col min-h-0 w-full overflow-hidden"
       )}>
         <GlobalSaveBar isAnySaving={isAnySaving} />
 
@@ -2713,6 +2719,7 @@ export default function DealDetail() {
                 className="gap-2 shrink-0"
                 onClick={handleSmartBack}
                 title={dealOrigin.label}
+                className={isEmbedded ? "flex-1 flex flex-col min-h-0 overflow-hidden" : undefined}
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span className="hidden sm:inline">{dealOrigin.label}</span>
