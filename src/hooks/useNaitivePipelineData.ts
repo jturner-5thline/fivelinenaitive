@@ -4,20 +4,21 @@ import { Deal, DealLender, DealMilestone } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 import { resetNaitivePipelineCache } from '@/utils/naitivePipelineExclusion';
+import { seedMissingStageDescriptions, resolveSystemStageType } from '@/config/naitivePipelineConfig';
 
 const NAITIVE_PIPELINE_NAME = 'naitive Pipeline';
 
 const DEFAULT_NAITIVE_STAGES: DealStageOption[] = [
-  { id: 'prospects', label: 'Prospects', color: 'bg-slate-500' },
-  { id: 'dormant', label: 'Dormant', color: 'bg-zinc-500' },
-  { id: 'on-hold', label: 'On Hold', color: 'bg-amber-500' },
-  { id: 'qual-call', label: 'Qual Call', color: 'bg-blue-500' },
-  { id: 'demo-access', label: 'Demo Access', color: 'bg-indigo-500' },
-  { id: 'pilot-agreed', label: 'Pilot Agreed', color: 'bg-cyan-500' },
-  { id: 'onboarding', label: 'Onboarding', color: 'bg-violet-500' },
-  { id: 'active', label: 'Active', color: 'bg-green-500' },
-  { id: 'churned', label: 'Churned', color: 'bg-orange-500' },
-  { id: 'closed-lost', label: 'Closed Lost', color: 'bg-red-500' },
+  { id: 'prospects', label: 'Prospects', color: 'bg-slate-500', systemStageType: 'prospects', isActive: true },
+  { id: 'dormant', label: 'Dormant', color: 'bg-zinc-500', systemStageType: 'dormant', isActive: true },
+  { id: 'on-hold', label: 'On Hold', color: 'bg-amber-500', systemStageType: 'on-hold', isActive: true },
+  { id: 'qual-call', label: 'Qual Call', color: 'bg-blue-500', systemStageType: 'qual-call', isActive: true },
+  { id: 'demo-access', label: 'Demo Access', color: 'bg-indigo-500', systemStageType: 'demo-access', isActive: true },
+  { id: 'pilot-agreed', label: 'Pilot Agreed', color: 'bg-cyan-500', systemStageType: 'pilot-agreed', isActive: true },
+  { id: 'onboarding', label: 'Onboarding', color: 'bg-violet-500', systemStageType: 'onboarding', isActive: true },
+  { id: 'active', label: 'Active', color: 'bg-green-500', systemStageType: 'active', isActive: true },
+  { id: 'churned', label: 'Churned', color: 'bg-orange-500', systemStageType: 'churned', isActive: true },
+  { id: 'closed-lost', label: 'Closed Lost', color: 'bg-red-500', systemStageType: 'closed-lost', isActive: true },
 ];
 
 interface NaitivePipelineData {
@@ -27,6 +28,7 @@ interface NaitivePipelineData {
   isLoading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  saveStages: (next: DealStageOption[]) => Promise<boolean>;
 }
 
 export function useNaitivePipelineData(): NaitivePipelineData {
@@ -54,10 +56,32 @@ export function useNaitivePipelineData(): NaitivePipelineData {
     if (existing) {
       // Parse stages
       if (existing.stages && Array.isArray(existing.stages)) {
-        const parsed = (existing.stages as any[]).filter(
-          (s: any) => s && typeof s.id === 'string' && typeof s.label === 'string' && typeof s.color === 'string'
-        ) as DealStageOption[];
-        if (parsed.length > 0) setStages(parsed);
+        const parsed = (existing.stages as any[])
+          .filter(
+            (s: any) =>
+              s && typeof s.id === 'string' && typeof s.label === 'string' && typeof s.color === 'string',
+          )
+          .map((s: any) => ({
+            id: s.id,
+            label: s.label,
+            color: s.color,
+            description: typeof s.description === 'string' ? s.description : undefined,
+            systemStageType: typeof s.systemStageType === 'string' ? s.systemStageType : undefined,
+            isActive: typeof s.isActive === 'boolean' ? s.isActive : true,
+            sortOrder: typeof s.sortOrder === 'number' ? s.sortOrder : undefined,
+          })) as DealStageOption[];
+        if (parsed.length > 0) {
+          // Auto-seed canonical type + description on load (non-destructive)
+          const { stages: seeded, changed } = seedMissingStageDescriptions(parsed);
+          setStages(seeded);
+          if (changed) {
+            supabase
+              .from('deal_pipelines')
+              .update({ stages: seeded as any })
+              .eq('id', existing.id)
+              .then(() => {});
+          }
+        }
       }
       return existing.id;
     }
@@ -203,5 +227,29 @@ export function useNaitivePipelineData(): NaitivePipelineData {
     }
   }, [pipelineId, fetchDeals]);
 
-  return { pipelineId, stages, deals, isLoading, error, refetch };
+  const saveStages = useCallback(
+    async (next: DealStageOption[]): Promise<boolean> => {
+      if (!pipelineId) return false;
+      // Normalize sortOrder + ensure canonical type resolved when possible
+      const normalized = next.map((s, idx) => ({
+        ...s,
+        sortOrder: idx,
+        isActive: s.isActive !== false,
+        systemStageType: s.systemStageType || resolveSystemStageType(s) || undefined,
+      }));
+      const { error: updErr } = await supabase
+        .from('deal_pipelines')
+        .update({ stages: normalized as any })
+        .eq('id', pipelineId);
+      if (updErr) {
+        console.error('Error saving naitive stages:', updErr);
+        return false;
+      }
+      setStages(normalized);
+      return true;
+    },
+    [pipelineId],
+  );
+
+  return { pipelineId, stages, deals, isLoading, error, refetch, saveStages };
 }
