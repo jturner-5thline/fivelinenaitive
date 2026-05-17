@@ -2786,6 +2786,23 @@ export default function DealDetail() {
 
           {/* Deal Pulse Dashboard - hidden per user request */}
 
+          {/* Tabs + scroll owner opened ABOVE the Header Card so the
+              header card lives inside the scrollable region and scrolls
+              away with the body. Only the TabsList footer (sibling, below)
+              stays frozen at the modal's bottom edge. */}
+          <Tabs
+            value={dealInfoTab}
+            onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
+            className={isEmbedded ? "flex-1 min-h-0 flex flex-col" : undefined}
+          >
+            <div
+              className={cn(
+                isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-6 deal-popup-scroll"
+              )}
+              tabIndex={isEmbedded ? 0 : undefined}
+              data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
+            >
+
           {/* Header Card */}
           <Card className="w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]">
             <CardHeader className="pb-4">
@@ -3092,18 +3109,9 @@ export default function DealDetail() {
               isEmbedded ? "flex-1 min-h-0 pb-0" : "pb-24"
             )}>
               {/* Tab Navigation */}
-              <Tabs
-                value={dealInfoTab}
-                onValueChange={(v) => handleTabChange(v as 'deal-info' | 'lenders' | 'deal-management' | 'deal-writeup' | 'data-room' | 'deal-space' | 'communication')}
-                className={isEmbedded ? "flex-1 min-h-0 flex flex-col" : undefined}
-              >
-                <div
-                  className={cn(
-                    isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-6 deal-popup-scroll"
-                  )}
-                  tabIndex={isEmbedded ? 0 : undefined}
-                  data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
-                >
+              {/* Tabs and scroll wrapper are opened above the Header Card
+                  so the header scrolls with the body. Only the TabsList
+                  footer below remains a frozen sibling. */}
 
                 <TabsContent value="deal-info" className={cn("mt-0 space-y-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`deal-info-${tabDirection}`}>
                   {/* Naitive pipeline deals get a fully Naitive-specific layout —
@@ -4942,7 +4950,9 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
-                </div>
+                </div>{/* close Main Content div */}
+              </div>{/* close Main Content Grid div */}
+            </div>{/* close scroll wrapper div */}
 
                 {/* Floating tab rail — pinned to the bottom of the modal
                     shell. In the embedded overlay we use mt-auto + sticky
@@ -5040,9 +5050,7 @@ export default function DealDetail() {
                   </HintTooltip>
                 </div>
 
-              </Tabs>
-            </div>
-          </div>
+          </Tabs>
         </main>
       </div>
 
