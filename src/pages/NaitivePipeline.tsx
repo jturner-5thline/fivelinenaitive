@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
@@ -31,6 +31,7 @@ import { NaitiveDidNotMoveInsights } from '@/components/naitive-pipeline/Naitive
 import { NaitivePipelineNarrative } from '@/components/naitive-pipeline/NaitivePipelineNarrative';
 import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUpCard';
 import { NaitivePipelineFilterBar } from '@/components/naitive-pipeline/NaitivePipelineFilterBar';
+import { MilestoneConfigModal } from '@/components/naitive-pipeline/MilestoneConfigModal';
 import { useNaitivePipelineFilters } from '@/hooks/useNaitivePipelineFilters';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import {
@@ -220,6 +221,7 @@ export default function NaitivePipeline() {
   const [activeDeal, setActiveDeal] = useState<Deal | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -505,6 +507,16 @@ export default function NaitivePipeline() {
                     </button>
                   ))}
                 </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setIsMilestonesOpen(true)}
+                  aria-label="Configure stage milestones"
+                >
+                  <Diamond className="h-3.5 w-3.5" />
+                  Milestones
+                </Button>
               </div>
             </div>
           }
@@ -693,6 +705,12 @@ export default function NaitivePipeline() {
         onClose={closeDealOverlay}
         onNavigate={navigateOverlayTo}
         onStageChange={handleStageChange}
+      />
+
+      <MilestoneConfigModal
+        open={isMilestonesOpen}
+        onOpenChange={setIsMilestonesOpen}
+        stages={stages}
       />
     </>
   );
