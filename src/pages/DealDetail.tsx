@@ -4950,7 +4950,9 @@ export default function DealDetail() {
                 </TabsContent>
                 )}
 
-                </div>
+                </div>{/* close Main Content div */}
+              </div>{/* close Main Content Grid div */}
+            </div>{/* close scroll wrapper div */}
 
                 {/* Floating tab rail — pinned to the bottom of the modal
                     shell. In the embedded overlay we use mt-auto + sticky
@@ -5048,9 +5050,7 @@ export default function DealDetail() {
                   </HintTooltip>
                 </div>
 
-              </Tabs>
-            </div>
-          </div>
+          </Tabs>
         </main>
       </div>
 
