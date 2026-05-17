@@ -125,7 +125,9 @@ export function getStageMilestones(
   if (!list || list.length === 0) {
     // Canonical fallback (works for renamed stages and id-only lookups)
     const canonicalInput =
-      typeof stageOrId === 'string' ? { id: stageOrId, label: stageOrId } : stageOrId;
+      typeof stageOrId === 'string'
+        ? { id: stageOrId, label: stageOrId }
+        : { id: stageOrId.id, label: stageOrId.label || stageOrId.id, systemStageType: stageOrId.systemStageType };
     const canonical = resolveSystemStageType(canonicalInput);
     if (canonical) list = all[canonical] || MILESTONE_DEFAULTS_BY_SYSTEM_TYPE[canonical];
   }
