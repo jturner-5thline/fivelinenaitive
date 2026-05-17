@@ -1981,6 +1981,36 @@ export type Database = {
           },
         ]
       }
+      channel_types: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string
@@ -2975,6 +3005,7 @@ export type Database = {
           address: string | null
           archived_at: string | null
           archived_reason: string | null
+          channel_type_id: string | null
           city: string | null
           converted_at: string | null
           converted_by: string | null
@@ -3005,6 +3036,7 @@ export type Database = {
           address?: string | null
           archived_at?: string | null
           archived_reason?: string | null
+          channel_type_id?: string | null
           city?: string | null
           converted_at?: string | null
           converted_by?: string | null
@@ -3035,6 +3067,7 @@ export type Database = {
           address?: string | null
           archived_at?: string | null
           archived_reason?: string | null
+          channel_type_id?: string | null
           city?: string | null
           converted_at?: string | null
           converted_by?: string | null
@@ -3060,7 +3093,15 @@ export type Database = {
           updated_at?: string
           website_url?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "companies_channel_type_id_fkey"
+            columns: ["channel_type_id"]
+            isOneToOne: false
+            referencedRelation: "channel_types"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       company_email_style_guide: {
         Row: {
@@ -8735,6 +8776,7 @@ export type Database = {
           projected_close_date: string | null
           prospect_type: string | null
           referral_source: string | null
+          referral_source_id: string | null
           referred_by: string | null
           retainer_fee: number | null
           services_offered: string[] | null
@@ -8815,6 +8857,7 @@ export type Database = {
           projected_close_date?: string | null
           prospect_type?: string | null
           referral_source?: string | null
+          referral_source_id?: string | null
           referred_by?: string | null
           retainer_fee?: number | null
           services_offered?: string[] | null
@@ -8895,6 +8938,7 @@ export type Database = {
           projected_close_date?: string | null
           prospect_type?: string | null
           referral_source?: string | null
+          referral_source_id?: string | null
           referred_by?: string | null
           retainer_fee?: number | null
           services_offered?: string[] | null
@@ -8936,6 +8980,13 @@ export type Database = {
             columns: ["pipeline_id"]
             isOneToOne: false
             referencedRelation: "deal_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_referral_source_id_fkey"
+            columns: ["referral_source_id"]
+            isOneToOne: false
+            referencedRelation: "referral_sources"
             referencedColumns: ["id"]
           },
         ]
@@ -17027,6 +17078,7 @@ export type Database = {
           company: string | null
           company_id: string | null
           contact_email: string | null
+          contact_id: string | null
           contact_name: string | null
           created_at: string
           email: string | null
@@ -17048,6 +17100,7 @@ export type Database = {
           company?: string | null
           company_id?: string | null
           contact_email?: string | null
+          contact_id?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
@@ -17069,6 +17122,7 @@ export type Database = {
           company?: string | null
           company_id?: string | null
           contact_email?: string | null
+          contact_id?: string | null
           contact_name?: string | null
           created_at?: string
           email?: string | null
@@ -17091,6 +17145,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_sources_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -17328,6 +17389,105 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sales_bd_audit: {
+        Row: {
+          actor_id: string | null
+          created_at: string
+          entity: string
+          field: string | null
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+        }
+        Insert: {
+          actor_id?: string | null
+          created_at?: string
+          entity: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Update: {
+          actor_id?: string | null
+          created_at?: string
+          entity?: string
+          field?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+        }
+        Relationships: []
+      }
+      sales_bd_rules: {
+        Row: {
+          active_referral_to_proposal: number
+          active_referral_trailing_months: number
+          active_referred_revenue: number
+          active_revenue_trailing_months: number
+          active_signed_client: number
+          active_signed_trailing_months: number
+          id: string
+          public_partnership_required: boolean
+          qualified_deal_stages: string[]
+          tier1_qualified_deals: number
+          tier1_signed_clients: number
+          tier1_trailing_months: number
+          tier2_deals_on_board: number
+          tier2_qualified_deals_max: number
+          tier2_qualified_deals_min: number
+          tier2_trailing_months: number
+          tier3_deals_per_quarter: number
+          tier4_months_before_removal: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          active_referral_to_proposal?: number
+          active_referral_trailing_months?: number
+          active_referred_revenue?: number
+          active_revenue_trailing_months?: number
+          active_signed_client?: number
+          active_signed_trailing_months?: number
+          id?: string
+          public_partnership_required?: boolean
+          qualified_deal_stages?: string[]
+          tier1_qualified_deals?: number
+          tier1_signed_clients?: number
+          tier1_trailing_months?: number
+          tier2_deals_on_board?: number
+          tier2_qualified_deals_max?: number
+          tier2_qualified_deals_min?: number
+          tier2_trailing_months?: number
+          tier3_deals_per_quarter?: number
+          tier4_months_before_removal?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          active_referral_to_proposal?: number
+          active_referral_trailing_months?: number
+          active_referred_revenue?: number
+          active_revenue_trailing_months?: number
+          active_signed_client?: number
+          active_signed_trailing_months?: number
+          id?: string
+          public_partnership_required?: boolean
+          qualified_deal_stages?: string[]
+          tier1_qualified_deals?: number
+          tier1_signed_clients?: number
+          tier1_trailing_months?: number
+          tier2_deals_on_board?: number
+          tier2_qualified_deals_max?: number
+          tier2_qualified_deals_min?: number
+          tier2_trailing_months?: number
+          tier3_deals_per_quarter?: number
+          tier4_months_before_removal?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
       }
       scheduled_actions: {
         Row: {
