@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, ChevronDown, Layers } from 'lucide-react';
+import { Plus, ChevronDown, Layers, GitBranch } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -17,11 +17,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { toast } from 'sonner';
 
-export function PipelineSelector() {
+interface PipelineSelectorProps {
+  iconOnly?: boolean;
+}
+
+export function PipelineSelector({ iconOnly = false }: PipelineSelectorProps = {}) {
   const { pipelines, activePipelineId, activePipeline, setActivePipelineId, createPipeline, isLoading } = usePipelineContext();
   const defaultPipeline = pipelines.find(p => p.isDefault) || pipelines[0] || null;
   const { stages: currentStages } = useDealStages();
@@ -69,11 +74,31 @@ export function PipelineSelector() {
     <>
       <DropdownMenu modal={false}>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2 max-w-[200px]">
-            <Layers className="h-4 w-4 shrink-0" />
-            <span className="truncate">{activePipeline?.isDefault ? 'Active Pipeline' : activePipeline?.name || 'Active Pipeline'}</span>
-            <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
-          </Button>
+          {iconOnly ? (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2 h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+                    aria-label="Pipeline"
+                  >
+                    <GitBranch className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {activePipeline?.isDefault ? 'Active Pipeline' : activePipeline?.name || 'Pipeline'}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          ) : (
+            <Button variant="outline" size="sm" className="gap-2 max-w-[200px]">
+              <Layers className="h-4 w-4 shrink-0" />
+              <span className="truncate">{activePipeline?.isDefault ? 'Active Pipeline' : activePipeline?.name || 'Active Pipeline'}</span>
+              <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
+            </Button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-[200px]">
           {defaultPipeline && (
