@@ -69,6 +69,21 @@ export function isCanonicalSystemStageType(t: SystemStageType | null | undefined
 export const CANONICAL_STAGES_HELP_TEXT =
   'Spec-canonical stages: Qualification Call Scheduled, Demo Access, Pilot Agreed, On Hold, Dormant, Closed Lost. Other stages (Prospects, Onboarding, Active, Churned) are kept as extended/operational stages and are not part of the canonical spec.';
 
+/** Allowed tag values for the On Hold stage (spec § On Hold). */
+export const ON_HOLD_TAG_OPTIONS = ['Timing', 'Product Gap'] as const;
+export type OnHoldTag = (typeof ON_HOLD_TAG_OPTIONS)[number];
+
+/** Disqualification reasons required when moving a deal to Closed Lost. */
+export const CLOSED_LOST_REASON_OPTIONS = [
+  'Not a fit',
+  'Pricing',
+  'Timing',
+  'Competitor',
+  'No response to re-engagement',
+  'Other',
+] as const;
+export type ClosedLostReason = (typeof CLOSED_LOST_REASON_OPTIONS)[number];
+
 /** Alias / synonym map → canonical stage type. Keys are normalized strings. */
 const STAGE_ALIASES: Record<string, SystemStageType> = {
   // qual-call
