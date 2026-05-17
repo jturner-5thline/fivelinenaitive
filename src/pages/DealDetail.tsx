@@ -4962,9 +4962,9 @@ export default function DealDetail() {
                     On the standalone /deal/:id route it falls back to a
                     viewport-fixed bar. */}
                 <div className={cn(
-                  "z-40 shrink-0 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]",
+                  "z-40 shrink-0 pointer-events-none flex justify-start px-0",
                   isEmbedded
-                    ? "mt-auto pt-2 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
+                    ? "mt-auto pt-0 pb-0 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
                     : "fixed bottom-0 inset-x-0"
                 )}>
                   <HintTooltip
