@@ -4964,7 +4964,7 @@ export default function DealDetail() {
                 <div className={cn(
                   "z-40 shrink-0 pointer-events-none flex justify-start px-0",
                   isEmbedded
-                    ? "mt-auto pt-0 pb-0 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
+                    ? "mt-auto pt-0 pb-0 -mx-4 sm:-mx-6 lg:-mx-10 xl:-mx-12 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
                     : "fixed bottom-0 inset-x-0"
                 )}>
                   <HintTooltip
