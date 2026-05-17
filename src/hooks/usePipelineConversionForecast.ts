@@ -92,6 +92,8 @@ export interface UsePipelineConversionForecast {
   setTransition: (id: string, patch: Partial<Pick<PipelineForecastTransition, 'conversionRate' | 'timelineMonths'>>) => void;
   reset: () => void;
   months: PipelineForecastMonth[];
+  /** Baseline projection using DEFAULT_FORECAST_TRANSITIONS (unedited model). */
+  baselineMonths: PipelineForecastMonth[];
   /** Aggregated per-transition forecasted volumes used in assumptions table. */
   transitionStats: Record<string, { avgExitVolume: number; avgEntryVolume: number; avgExitDollars: number }>;
   /** Avg deal $ per stage inferred from current actuals. */
@@ -132,7 +134,7 @@ export function usePipelineConversionForecast(): UsePipelineConversionForecast {
     return out;
   }, [byKey]);
 
-  const { months, transitionStats, baselineMonthlyInflow } = useMemo(() => {
+  const computeProjection = (txs: PipelineForecastTransition[]) => {
     const now = new Date();
     // Initial in-flight population at each stage = current-quarter actuals so far
     const cq = currentQuarter();
@@ -151,7 +153,7 @@ export function usePipelineConversionForecast(): UsePipelineConversionForecast {
     let pop = { ...initialPop };
     const monthsOut: PipelineForecastMonth[] = [];
     const stats: Record<string, { exit: number[]; entry: number[]; exitDollars: number[] }> = {};
-    transitions.forEach(t => { stats[t.id] = { exit: [], entry: [], exitDollars: [] }; });
+    txs.forEach(t => { stats[t.id] = { exit: [], entry: [], exitDollars: [] }; });
 
     for (let i = 0; i < HORIZON; i++) {
       const date = new Date(now.getFullYear(), now.getMonth() + i + 1, 1);
@@ -164,13 +166,13 @@ export function usePipelineConversionForecast(): UsePipelineConversionForecast {
 
       // Compute monthly movements
       const movements: Record<string, number> = {};
-      transitions.forEach(t => {
+      txs.forEach(t => {
         const months = Math.max(0.25, t.timelineMonths);
         const monthlyFrac = Math.min(1, Math.max(0, t.conversionRate) / months);
         const moved = pop[t.fromStage] * monthlyFrac;
         movements[t.id] = moved;
       });
-      transitions.forEach(t => {
+      txs.forEach(t => {
         const moved = movements[t.id];
         pop[t.fromStage] -= moved;
         pop[t.toStage] += moved;
@@ -183,7 +185,7 @@ export function usePipelineConversionForecast(): UsePipelineConversionForecast {
       const pipelineDollars = pop.deals_on_board * (avgDollarsPerDeal.deals_on_board || 0);
       const signedDollars = pop.clients_signed * (avgDollarsPerDeal.clients_signed || 0);
       // Deals closed accumulates; per-month delta funded is what arrived this month
-      const dealsClosedThisMonth = movements[transitions.find(t => t.toStage === 'deals_closed')?.id ?? ''] ?? 0;
+      const dealsClosedThisMonth = movements[txs.find(t => t.toStage === 'deals_closed')?.id ?? ''] ?? 0;
       const fundedDollars = dealsClosedThisMonth * (avgDollarsPerDeal.deals_closed || 0);
 
       // Project revenue using current rep total revenue / funded ratio
@@ -228,10 +230,22 @@ export function usePipelineConversionForecast(): UsePipelineConversionForecast {
     });
 
     return { months: monthsOut, transitionStats, baselineMonthlyInflow };
-  }, [transitions, byKey, plan, avgDollarsPerDeal]);
+  };
+
+  const { months, transitionStats, baselineMonthlyInflow } = useMemo(
+    () => computeProjection(transitions),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [transitions, byKey, plan, avgDollarsPerDeal],
+  );
+
+  const baselineMonths = useMemo(
+    () => computeProjection(DEFAULT_FORECAST_TRANSITIONS).months,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [byKey, plan, avgDollarsPerDeal],
+  );
 
   // suppress unused
   void NIKI_QUARTERS;
 
-  return { transitions, setTransition, reset, months, transitionStats, avgDollarsPerDeal, baselineMonthlyInflow };
+  return { transitions, setTransition, reset, months, baselineMonths, transitionStats, avgDollarsPerDeal, baselineMonthlyInflow };
 }
