@@ -17,6 +17,8 @@ import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import { getStageDescription } from '@/config/naitivePipelineConfig';
+import { resolveSystemStageType } from '@/config/naitivePipelineConfig';
+import { NaitiveStageTransitionDialog, type PendingTransition } from '@/components/naitive-pipeline/NaitiveStageTransitionDialog';
 import { useNaitiveStageMilestones, DealStageMilestone } from '@/hooks/useNaitiveStageMilestones';
 import { NaitiveMilestoneDiamonds } from '@/components/naitive-pipeline/NaitiveMilestoneDiamonds';
 import { cn } from '@/lib/utils';
@@ -391,6 +393,31 @@ export default function NaitivePipeline() {
     }
   };
 
+  // ---- Stage transition gating (On Hold / Dormant / Closed Lost) ----
+  const [pendingTransition, setPendingTransition] = useState<PendingTransition | null>(null);
+
+  const requestStageChange = useCallback((dealId: string, newStage: string) => {
+    const deal = deals.find(d => d.id === dealId);
+    if (!deal || deal.stage === newStage) return;
+    const fromStage = stages.find(s => s.id === deal.stage);
+    const toStage = stages.find(s => s.id === newStage);
+    if (!toStage) return;
+    const canonical = resolveSystemStageType(toStage);
+    if (canonical === 'on-hold' || canonical === 'closed-lost' || canonical === 'dormant') {
+      setPendingTransition({
+        dealId,
+        dealName: (deal as any).company || (deal as any).name || 'Deal',
+        fromStageId: deal.stage,
+        fromStageLabel: fromStage?.label || deal.stage,
+        toStageId: newStage,
+        toStageLabel: toStage.label,
+        canonicalType: canonical,
+      });
+      return;
+    }
+    void handleStageChange(dealId, newStage);
+  }, [deals, stages]);
+
   const handleStatusChange = async (dealId: string, newStatus: DealStatus) => {
     try {
       const { error } = await supabase.from('deals').update({ status: newStatus, updated_at: new Date().toISOString() }).eq('id', dealId);
@@ -418,7 +445,7 @@ export default function NaitivePipeline() {
     if (!newStage) return;
     const deal = deals.find(d => d.id === dealId);
     if (!deal || deal.stage === newStage) return;
-    handleStageChange(dealId, newStage);
+    requestStageChange(dealId, newStage);
   };
   const handleDragCancel = () => { setActiveDealId(null); setActiveDeal(null); setOverId(null); };
 
