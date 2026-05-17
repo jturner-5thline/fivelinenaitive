@@ -16,6 +16,13 @@ export interface DealStageOption {
   isActive?: boolean;
   /** Optional explicit sort order. When omitted, array order applies. */
   sortOrder?: number;
+  /**
+   * Whether this stage is part of the canonical naitive pipeline spec
+   * (Qualification Call Scheduled, Demo Access, Pilot Agreed, On Hold,
+   * Dormant, Closed Lost). Non-canonical stages are extended/legacy and
+   * surfaced with a help hint in the UI.
+   */
+  isCanonical?: boolean;
 }
 
 interface DealStagesContextType {
