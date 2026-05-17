@@ -48,9 +48,9 @@ export function NaitiveStageMilestonesSection({ dealId, stage }: Props) {
         <CardTitle className="text-sm font-medium flex items-center gap-2">
           <Diamond className="h-4 w-4 text-primary" />
           Stage Milestones
-          {stageDef?.systemStageType && (
+          {canonical && (
             <span className="ml-auto text-[10px] uppercase tracking-wide text-muted-foreground/70">
-              {SYSTEM_STAGE_LABELS[stageDef.systemStageType as keyof typeof SYSTEM_STAGE_LABELS] || stageDef.systemStageType}
+              {SYSTEM_STAGE_LABELS[canonical] || canonical}
             </span>
           )}
         </CardTitle>
