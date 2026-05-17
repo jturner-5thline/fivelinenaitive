@@ -53,7 +53,26 @@ export function PipelineConversionForecastCard() {
   const [metric, setMetric] = useState<MetricKey>('revenue');
   const [view, setView] = useState<ViewKey>('plan_vs_forecast');
   const [time, setTime] = useState<TimeKey>('monthly');
-  const [stageFilter, setStageFilter] = useState<ForecastStage | 'all'>('all');
+  const STAGE_PILLS: { key: string; label: string }[] = [
+    { key: 'Deals on Board', label: 'Deals on Board' },
+    { key: 'Proposals Issued', label: 'Proposals Issued' },
+    { key: 'Clients Signed', label: 'Clients Signed' },
+    { key: 'Receiving Terms', label: 'Receiving Terms' },
+    { key: 'Terms Signed', label: 'Terms Signed' },
+    { key: 'Deals Closed', label: 'Deals Closed' },
+  ];
+  const allOn = STAGE_PILLS.reduce((acc, s) => ({ ...acc, [s.key]: true }), {} as Record<string, boolean>);
+  const [visibleStages, setVisibleStages] = useState<Record<string, boolean>>(allOn);
+
+  const toggleStage = (key: string) => {
+    setVisibleStages(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      if (!Object.values(next).some(Boolean)) return allOn;
+      return next;
+    });
+  };
+  const showAllStages = () => setVisibleStages(allOn);
+  const allVisible = STAGE_PILLS.every(s => visibleStages[s.key]);
 
   const metricDef = METRICS.find(m => m.key === metric)!;
 
@@ -194,16 +213,6 @@ export function PipelineConversionForecastCard() {
               { value: 'cumulative', label: 'Cumulative' },
             ]}
           />
-          <select
-            value={stageFilter}
-            onChange={e => setStageFilter(e.target.value as any)}
-            className="h-8 text-xs rounded-md border border-border bg-background px-2"
-          >
-            <option value="all">All Stages</option>
-            {Object.entries(FORECAST_STAGE_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
         </div>
 
         {/* Summary tiles */}
@@ -246,6 +255,38 @@ export function PipelineConversionForecastCard() {
             <h4 className="text-xs font-semibold text-foreground">Stage-by-Stage Forecast</h4>
             <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Population by stage</span>
           </div>
+          <div className="flex flex-wrap items-center gap-1.5 mb-3">
+            <button
+              type="button"
+              onClick={showAllStages}
+              className={cn(
+                'px-2.5 py-1 text-[11px] rounded-full border transition-colors',
+                allVisible
+                  ? 'border-primary/40 bg-primary/10 text-foreground font-semibold'
+                  : 'border-border/60 bg-muted/20 text-muted-foreground hover:text-foreground hover:border-border',
+              )}
+            >
+              All Stages
+            </button>
+            {STAGE_PILLS.map(s => {
+              const active = visibleStages[s.key];
+              return (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => toggleStage(s.key)}
+                  className={cn(
+                    'px-2.5 py-1 text-[11px] rounded-full border transition-colors',
+                    active
+                      ? 'border-primary/40 bg-primary/10 text-foreground font-medium'
+                      : 'border-border/60 bg-muted/10 text-muted-foreground hover:text-foreground hover:border-border',
+                  )}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={stageChartData} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
@@ -258,19 +299,7 @@ export function PipelineConversionForecastCard() {
                 />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
                 {(['Deals on Board', 'Proposals Issued', 'Clients Signed', 'Receiving Terms', 'Terms Signed', 'Deals Closed'] as const)
-                  .filter(name => {
-                    if (stageFilter === 'all') return true;
-                    const map: Record<ForecastStage, string> = {
-                      deals_on_board: 'Deals on Board',
-                      proposals_issued: 'Proposals Issued',
-                      clients_signed: 'Clients Signed',
-                      clients_receiving_terms: 'Receiving Terms',
-                      terms_signed: 'Terms Signed',
-                      deals_closed: 'Deals Closed',
-                    };
-                    return map[stageFilter] === name;
-                  })
-                  .map((name, idx) => (
+                  .map((name, idx) => visibleStages[name] ? (
                     <Line
                       key={name}
                       type="monotone"
@@ -279,7 +308,7 @@ export function PipelineConversionForecastCard() {
                       strokeWidth={2}
                       dot={false}
                     />
-                  ))}
+                  ) : null)}
               </LineChart>
             </ResponsiveContainer>
           </div>
