@@ -5759,17 +5759,19 @@ export default function DealDetail() {
       )}
 
       {/* Floating Deal AI Assistant with operations */}
-      <Suspense fallback={null}>
-      <FloatingDealAssistant
-        dealId={deal.id}
-        dealName={deal.company}
-        dealValue={deal.value}
-        dealStage={deal.stage}
-        dealStatus={deal.status}
-        dealManager={deal.manager}
-        dealNotes={deal.notes}
-      />
-      </Suspense>
+      {!isEmbedded && (
+        <Suspense fallback={null}>
+        <FloatingDealAssistant
+          dealId={deal.id}
+          dealName={deal.company}
+          dealValue={deal.value}
+          dealStage={deal.stage}
+          dealStatus={deal.status}
+          dealManager={deal.manager}
+          dealNotes={deal.notes}
+        />
+        </Suspense>
+      )}
 
       {/* Floating left/right pipeline navigation arrows */}
       </div>
