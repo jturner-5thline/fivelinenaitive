@@ -5,7 +5,7 @@
  * bypassed via state manipulation or direct invocation.
  */
 const PERFORMANCE_MODEL_EDITORS = new Set<string>([
-  'jtutner@5thline.co',
+  'jturner@5thline.co',
 ]);
 
 export function canEditPerformanceModel(
