@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond, Mail } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
@@ -35,6 +35,7 @@ import { NaitivePipelineNarrative } from '@/components/naitive-pipeline/NaitiveP
 import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUpCard';
 import { NaitivePipelineFilterBar } from '@/components/naitive-pipeline/NaitivePipelineFilterBar';
 import { MilestoneConfigModal } from '@/components/naitive-pipeline/MilestoneConfigModal';
+import { EmailCadenceConfigModal } from '@/components/naitive-pipeline/EmailCadenceConfigModal';
 import { useNaitivePipelineFilters } from '@/hooks/useNaitivePipelineFilters';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import {
@@ -240,6 +241,7 @@ export default function NaitivePipeline() {
   const [overId, setOverId] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
+  const [isEmailsOpen, setIsEmailsOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -535,6 +537,16 @@ export default function NaitivePipeline() {
                   <Diamond className="h-3.5 w-3.5" />
                   Milestones
                 </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setIsEmailsOpen(true)}
+                  aria-label="Configure email cadences"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  Emails
+                </Button>
               </div>
             </div>
           }
@@ -730,6 +742,12 @@ export default function NaitivePipeline() {
         onOpenChange={setIsMilestonesOpen}
         stages={stages}
         saveStages={saveStages}
+      />
+
+      <EmailCadenceConfigModal
+        open={isEmailsOpen}
+        onOpenChange={setIsEmailsOpen}
+        stages={stages}
       />
     </>
   );
