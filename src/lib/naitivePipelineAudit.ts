@@ -26,7 +26,7 @@ export async function logNaitivePipelineAudit(entry: NaitivePipelineAuditInput):
   try {
     const { data: userData } = await supabase.auth.getUser();
     const actor = userData?.user?.id ?? null;
-    const { error } = await supabase.from('naitive_pipeline_audit').insert({
+    const { error } = await supabase.from('naitive_pipeline_audit').insert([{
       actor_user_id: actor,
       entity_type: entry.entityType,
       entity_id: entry.entityId ?? null,
@@ -35,7 +35,7 @@ export async function logNaitivePipelineAudit(entry: NaitivePipelineAuditInput):
       old_value: entry.oldValue == null ? null : (entry.oldValue as any),
       new_value: entry.newValue == null ? null : (entry.newValue as any),
       context: entry.context ?? null,
-    });
+    }]);
     if (error) {
       // eslint-disable-next-line no-console
       console.warn('naitive audit insert failed:', error.message);
