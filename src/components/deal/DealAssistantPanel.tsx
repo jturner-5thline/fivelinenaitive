@@ -3,7 +3,6 @@ import { Send, Trash2, User, Bot, Loader2 } from 'lucide-react';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useDealAssistant } from '@/hooks/useDealAssistant';
 import { cn } from '@/lib/utils';
@@ -134,7 +133,7 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
       </div>
 
       {/* Messages Area */}
-      <ScrollArea className="h-[300px] pr-4" ref={scrollRef}>
+      <div className="pr-4">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-center py-8">
             <Sparkles className="h-10 w-10 text-primary/50 mb-4" />
@@ -211,7 +210,7 @@ export function DealAssistantPanel({ dealContext }: DealAssistantPanelProps) {
             )}
           </div>
         )}
-      </ScrollArea>
+      </div>
 
       {/* Input Area */}
       <div className="flex gap-2">

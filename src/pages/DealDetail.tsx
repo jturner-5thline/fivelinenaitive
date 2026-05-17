@@ -3078,7 +3078,7 @@ export default function DealDetail() {
 
           {/* Main Content Grid */}
           <div className={cn(
-            "grid gap-6 min-w-0 overflow-hidden",
+            "flex flex-col gap-6 min-w-0 overflow-hidden",
             isEmbedded && "flex-1 min-h-0"
           )}>
             {/* Main Content */}
@@ -3094,7 +3094,7 @@ export default function DealDetail() {
               >
                 <div
                   className={cn(
-                    isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overscroll-contain pr-1 pb-4"
+                    isEmbedded && "relative flex-1 min-h-0 overflow-y-auto overflow-x-hidden overscroll-contain pb-6"
                   )}
                   tabIndex={isEmbedded ? 0 : undefined}
                   data-deal-modal-scroll-region={isEmbedded ? 'true' : undefined}
@@ -3942,10 +3942,10 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="lenders" className={cn("mt-6", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`lenders-${tabDirection}`}>
-              <div className="w-full space-y-6">
+              <div className="w-full min-h-0 space-y-6">
               <DealDataUpdateBanner dealId={id} />
               {/* Lenders Card */}
-                 <Card className="max-h-[750px] flex flex-col">
+                 <Card className="flex flex-col min-h-0">
                    <CardHeader className="pb-3 pt-3">
                        <div className="flex items-center gap-2 flex-wrap">
                          <Button
@@ -4107,7 +4107,7 @@ export default function DealDetail() {
                     </div>
                   </CardHeader>
                   
-                    <CardContent className="overflow-y-auto flex-1" style={{ scrollbarWidth: 'thin', scrollbarColor: 'transparent transparent' }} onMouseEnter={(e) => { e.currentTarget.style.scrollbarColor = 'hsl(var(--border)) transparent'; }} onMouseLeave={(e) => { e.currentTarget.style.scrollbarColor = 'transparent transparent'; }}>
+                    <CardContent className="flex-1 min-h-0">
                   <div className="space-y-4">
                     {deal.lenders && deal.lenders.length > 0 && (
                       <>
@@ -5759,17 +5759,19 @@ export default function DealDetail() {
       )}
 
       {/* Floating Deal AI Assistant with operations */}
-      <Suspense fallback={null}>
-      <FloatingDealAssistant
-        dealId={deal.id}
-        dealName={deal.company}
-        dealValue={deal.value}
-        dealStage={deal.stage}
-        dealStatus={deal.status}
-        dealManager={deal.manager}
-        dealNotes={deal.notes}
-      />
-      </Suspense>
+      {!isEmbedded && (
+        <Suspense fallback={null}>
+        <FloatingDealAssistant
+          dealId={deal.id}
+          dealName={deal.company}
+          dealValue={deal.value}
+          dealStage={deal.stage}
+          dealStatus={deal.status}
+          dealManager={deal.manager}
+          dealNotes={deal.notes}
+        />
+        </Suspense>
+      )}
 
       {/* Floating left/right pipeline navigation arrows */}
       </div>
