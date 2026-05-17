@@ -2701,7 +2701,7 @@ export default function DealDetail() {
               // column shell. The middle TabsContent region is the only
               // scroll owner, and the bottom tab rail is a frozen footer
               // that always remains flush with the modal's bottom edge.
-              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 py-1 flex-1 min-h-0 flex flex-col overflow-hidden"
+              ? "container mx-auto w-full max-w-[1680px] 2xl:max-w-[1760px] px-4 sm:px-6 lg:px-10 xl:px-12 pt-1 pb-0 flex-1 min-h-0 flex flex-col overflow-hidden"
               : "container mx-auto max-w-7xl px-4 py-1 sm:px-6 lg:px-8 overflow-x-hidden"
           }
         >
@@ -4962,9 +4962,9 @@ export default function DealDetail() {
                     On the standalone /deal/:id route it falls back to a
                     viewport-fixed bar. */}
                 <div className={cn(
-                  "z-40 shrink-0 pointer-events-none flex justify-start px-0 pb-[env(safe-area-inset-bottom)]",
+                  "z-40 shrink-0 pointer-events-none flex justify-start px-0",
                   isEmbedded
-                    ? "mt-auto pt-2 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
+                    ? "mt-auto pt-0 pb-0 bg-gradient-to-t from-background/80 via-background/70 to-transparent backdrop-blur-sm"
                     : "fixed bottom-0 inset-x-0"
                 )}>
                   <HintTooltip
