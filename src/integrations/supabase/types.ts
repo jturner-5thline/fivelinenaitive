@@ -14073,6 +14073,50 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_deal_stage_meta: {
+        Row: {
+          closed_lost_reason: string | null
+          deal_id: string
+          dormant_started_at: string | null
+          hold_reason: string | null
+          hold_tag: string | null
+          revisit_date: string | null
+          transition_notes: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          closed_lost_reason?: string | null
+          deal_id: string
+          dormant_started_at?: string | null
+          hold_reason?: string | null
+          hold_tag?: string | null
+          revisit_date?: string | null
+          transition_notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          closed_lost_reason?: string | null
+          deal_id?: string
+          dormant_started_at?: string | null
+          hold_reason?: string | null
+          hold_tag?: string | null
+          revisit_date?: string | null
+          transition_notes?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "naitive_deal_stage_meta_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       naitive_pipeline_agenda_items: {
         Row: {
           company_id: string
