@@ -1,37 +1,176 @@
 /**
  * Stage-specific milestone definitions for the naitive pipeline.
- * Only stages listed here show milestone diamonds on deal tiles.
+ *
+ * Each stage in the pipeline can have an ordered list of milestones.
+ * Milestones can optionally route a deal to a different stage when completed
+ * (e.g. "Disqualified" → "closed-lost"). Defaults are seeded below and can
+ * be overridden by user configuration persisted via the helpers in this file.
+ *
+ * The persistence layer currently uses localStorage, but the shape is
+ * structured so it can be swapped for a Supabase-backed store later.
  */
+
 export interface NaitiveMilestoneDef {
   key: string;
   label: string;
   position: number;
+  description?: string;
+  /** If set, completing this milestone moves the deal to this stage. */
+  outcomeTargetStage?: string;
+  isActive?: boolean;
 }
 
-export const NAITIVE_STAGE_MILESTONES: Record<string, NaitiveMilestoneDef[]> = {
-  'intro-conversations': [
-    { key: 'scheduled', label: 'Scheduled', position: 0 },
-    { key: 'completed', label: 'Completed', position: 1 },
+/** Stage IDs that match the actual naitive pipeline stages. */
+export const NAITIVE_STAGE_DEFAULT_MILESTONES: Record<string, NaitiveMilestoneDef[]> = {
+  'qual-call': [
+    {
+      key: 'demo-access-granted',
+      label: 'Demo Access',
+      description: 'Lead is qualified, credentials sent.',
+      position: 0,
+      isActive: true,
+    },
+    {
+      key: 'disqualified',
+      label: 'Disqualified',
+      description: 'Lead is not a fit. Moves deal to Closed Lost.',
+      position: 1,
+      outcomeTargetStage: 'closed-lost',
+      isActive: true,
+    },
+    {
+      key: 'no-show',
+      label: 'No-Show',
+      description: 'Lead did not attend. Moves deal to Dormant.',
+      position: 2,
+      outcomeTargetStage: 'dormant',
+      isActive: true,
+    },
   ],
-  'demo-completed': [
-    { key: 'trial-access-granted', label: 'Trial Access Granted', position: 0 },
-    { key: 'verbal-commit', label: 'Verbal Commit', position: 1 },
+  'demo-access': [
+    {
+      key: 'feedback-call-scheduled',
+      label: 'Feedback & Walkthrough Call scheduled',
+      position: 0,
+      isActive: true,
+    },
+    {
+      key: 'feedback-call-completed',
+      label: 'Feedback & Walkthrough Call completed',
+      position: 1,
+      isActive: true,
+    },
   ],
-  'offer-sent': [
-    { key: 'sent', label: 'Sent', position: 0 },
-    { key: 'signed', label: 'Signed', position: 1 },
-  ],
-  'onboarding': [
-    { key: 'info-gathered', label: 'Info Gathered', position: 0 },
-    { key: 'kickoff-call-completed', label: 'Kick off call Completed', position: 1 },
-    { key: 'data-migration-complete', label: 'Data Migration Complete', position: 2 },
-    { key: 'team-onboarded', label: 'Team Onboarded', position: 3 },
+  'pilot-agreed': [
+    {
+      key: 'proposal-issued',
+      label: 'Proposal Issued',
+      description: 'Formal proposal has been sent to the lead. Awaiting review and sign-off.',
+      position: 0,
+      isActive: true,
+    },
+    {
+      key: 'proposal-agreed',
+      label: 'Proposal Agreed',
+      description: 'Lead has agreed to the proposal terms. Contract or booking process begins.',
+      position: 1,
+      isActive: true,
+    },
+    {
+      key: 'client-booked',
+      label: 'Client Booked',
+      description: 'Lead has signed. Handoff to onboarding is confirmed and scheduled.',
+      position: 2,
+      isActive: true,
+    },
   ],
 };
 
-/** Stages that have no milestones */
-export const NAITIVE_NO_MILESTONE_STAGES = ['prospects', 'active-customer', 'close-lost-opportunity'];
+/** Stages that intentionally have no milestones. */
+export const NAITIVE_NO_MILESTONE_STAGES = [
+  'prospects',
+  'dormant',
+  'on-hold',
+  'onboarding',
+  'active',
+  'churned',
+  'closed-lost',
+];
 
+const STORAGE_KEY = 'naitive:stage-milestone-config:v1';
+const CHANGE_EVENT = 'naitive:stage-milestone-config:change';
+
+type ConfigMap = Record<string, NaitiveMilestoneDef[]>;
+
+function readOverrides(): ConfigMap | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as ConfigMap;
+    if (parsed && typeof parsed === 'object') return parsed;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+function writeOverrides(map: ConfigMap) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(map));
+    window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+  } catch {
+    // ignore
+  }
+}
+
+/** Read effective milestone config for all stages (overrides ?? defaults). */
+export function getAllStageMilestoneConfig(): ConfigMap {
+  const overrides = readOverrides();
+  if (overrides) return overrides;
+  // Deep clone defaults to avoid accidental mutation.
+  return JSON.parse(JSON.stringify(NAITIVE_STAGE_DEFAULT_MILESTONES));
+}
+
+/** Persist the full milestone config map. */
+export function setAllStageMilestoneConfig(map: ConfigMap) {
+  // Re-normalize positions per stage.
+  const next: ConfigMap = {};
+  for (const [stageId, list] of Object.entries(map)) {
+    next[stageId] = list
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((m, idx) => ({ ...m, position: idx, isActive: m.isActive !== false }));
+  }
+  writeOverrides(next);
+}
+
+/** Reset to seeded defaults. */
+export function resetStageMilestoneConfig() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+}
+
+/** Subscribe to config changes (storage in this tab + other tabs). */
+export function subscribeToStageMilestoneConfig(cb: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const handler = () => cb();
+  window.addEventListener(CHANGE_EVENT, handler);
+  window.addEventListener('storage', handler);
+  return () => {
+    window.removeEventListener(CHANGE_EVENT, handler);
+    window.removeEventListener('storage', handler);
+  };
+}
+
+/** Get active milestone definitions for a stage (in sort order). */
 export function getStageMilestones(stageId: string): NaitiveMilestoneDef[] {
-  return NAITIVE_STAGE_MILESTONES[stageId] || [];
+  const all = getAllStageMilestoneConfig();
+  const list = all[stageId] || [];
+  return list
+    .filter((m) => m.isActive !== false)
+    .slice()
+    .sort((a, b) => a.position - b.position);
 }
