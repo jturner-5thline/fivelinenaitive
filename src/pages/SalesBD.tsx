@@ -14,6 +14,7 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
+import { SalesBdFunnelChart } from "@/components/channels/SalesBdFunnelChart";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
@@ -76,6 +77,7 @@ export default function SalesBD() {
         >
             <TabsContent value="overview" className="mt-4">
               <div className="space-y-8">
+                <SalesBdFunnelChart />
                 <div className="space-y-6">
                   {/* Sub-navigation */}
                   <div className="flex items-center gap-1 bg-muted/40 backdrop-blur-xl border border-border rounded-lg p-0.5 w-fit">
