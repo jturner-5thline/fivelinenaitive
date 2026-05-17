@@ -20,71 +20,15 @@ export interface NaitiveMilestoneDef {
   isActive?: boolean;
 }
 
-/** Stage IDs that match the actual naitive pipeline stages. */
-export const NAITIVE_STAGE_DEFAULT_MILESTONES: Record<string, NaitiveMilestoneDef[]> = {
-  'qual-call': [
-    {
-      key: 'demo-access-granted',
-      label: 'Demo Access',
-      description: 'Lead is qualified, credentials sent.',
-      position: 0,
-      isActive: true,
-    },
-    {
-      key: 'disqualified',
-      label: 'Disqualified',
-      description: 'Lead is not a fit. Moves deal to Closed Lost.',
-      position: 1,
-      outcomeTargetStage: 'closed-lost',
-      isActive: true,
-    },
-    {
-      key: 'no-show',
-      label: 'No-Show',
-      description: 'Lead did not attend. Moves deal to Dormant.',
-      position: 2,
-      outcomeTargetStage: 'dormant',
-      isActive: true,
-    },
-  ],
-  'demo-access': [
-    {
-      key: 'feedback-call-scheduled',
-      label: 'Feedback & Walkthrough Call scheduled',
-      position: 0,
-      isActive: true,
-    },
-    {
-      key: 'feedback-call-completed',
-      label: 'Feedback & Walkthrough Call completed',
-      position: 1,
-      isActive: true,
-    },
-  ],
-  'pilot-agreed': [
-    {
-      key: 'proposal-issued',
-      label: 'Proposal Issued',
-      description: 'Formal proposal has been sent to the lead. Awaiting review and sign-off.',
-      position: 0,
-      isActive: true,
-    },
-    {
-      key: 'proposal-agreed',
-      label: 'Proposal Agreed',
-      description: 'Lead has agreed to the proposal terms. Contract or booking process begins.',
-      position: 1,
-      isActive: true,
-    },
-    {
-      key: 'client-booked',
-      label: 'Client Booked',
-      description: 'Lead has signed. Handoff to onboarding is confirmed and scheduled.',
-      position: 2,
-      isActive: true,
-    },
-  ],
-};
+/**
+ * Default milestone templates keyed by the stage's canonical system type.
+ * Lookups resolve via the canonical-type matcher in `naitivePipelineConfig`
+ * so a renamed "Qualification Call" stage still receives the right defaults.
+ */
+import { MILESTONE_DEFAULTS_BY_SYSTEM_TYPE, resolveSystemStageType } from '@/config/naitivePipelineConfig';
+
+export const NAITIVE_STAGE_DEFAULT_MILESTONES: Record<string, NaitiveMilestoneDef[]> =
+  MILESTONE_DEFAULTS_BY_SYSTEM_TYPE as Record<string, NaitiveMilestoneDef[]>;
 
 /** Stages that intentionally have no milestones. */
 export const NAITIVE_NO_MILESTONE_STAGES = [
@@ -165,11 +109,30 @@ export function subscribeToStageMilestoneConfig(cb: () => void): () => void {
   };
 }
 
-/** Get active milestone definitions for a stage (in sort order). */
-export function getStageMilestones(stageId: string): NaitiveMilestoneDef[] {
+/**
+ * Get active milestone definitions for a stage.
+ * Lookup order: per-stage override (by id) → per-canonical-type override → seeded defaults.
+ * The optional `stage` argument lets callers pass label/systemStageType for
+ * canonical resolution when only an id would otherwise be available.
+ */
+export function getStageMilestones(
+  stageOrId: string | { id: string; label?: string; systemStageType?: string },
+): NaitiveMilestoneDef[] {
   const all = getAllStageMilestoneConfig();
-  const list = all[stageId] || [];
-  return list
+  const stageId = typeof stageOrId === 'string' ? stageOrId : stageOrId.id;
+  let list = all[stageId];
+
+  if (!list || list.length === 0) {
+    // Canonical fallback (works for renamed stages and id-only lookups)
+    const canonicalInput =
+      typeof stageOrId === 'string'
+        ? { id: stageOrId, label: stageOrId }
+        : { id: stageOrId.id, label: stageOrId.label || stageOrId.id, systemStageType: stageOrId.systemStageType };
+    const canonical = resolveSystemStageType(canonicalInput);
+    if (canonical) list = all[canonical] || MILESTONE_DEFAULTS_BY_SYSTEM_TYPE[canonical];
+  }
+
+  return (list || [])
     .filter((m) => m.isActive !== false)
     .slice()
     .sort((a, b) => a.position - b.position);
