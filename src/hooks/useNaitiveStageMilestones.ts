@@ -1,6 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { getStageMilestones, NaitiveMilestoneDef } from '@/config/naitiveStageMilestones';
+import {
+  getStageMilestones,
+  subscribeToStageMilestoneConfig,
+  NaitiveMilestoneDef,
+} from '@/config/naitiveStageMilestones';
+import { toast } from 'sonner';
 
 export interface NaitiveMilestoneRecord {
   id: string;
@@ -23,6 +28,11 @@ export interface DealStageMilestone extends NaitiveMilestoneDef {
 export function useNaitiveStageMilestones(dealIds: string[]) {
   const [records, setRecords] = useState<NaitiveMilestoneRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [configVersion, setConfigVersion] = useState(0);
+
+  useEffect(() => {
+    return subscribeToStageMilestoneConfig(() => setConfigVersion((v) => v + 1));
+  }, []);
 
   const fetchMilestones = useCallback(async () => {
     if (dealIds.length === 0) return;
@@ -60,7 +70,7 @@ export function useNaitiveStageMilestones(dealIds: string[]) {
         };
       });
     },
-    [records]
+    [records, configVersion]
   );
 
   const toggleMilestone = useCallback(
@@ -68,6 +78,8 @@ export function useNaitiveStageMilestones(dealIds: string[]) {
       const existing = records.find(
         (r) => r.deal_id === dealId && r.stage === stage && r.milestone_key === milestoneKey
       );
+      const def = getStageMilestones(stage).find((d) => d.key === milestoneKey);
+      const willBeCompleted = existing ? !existing.completed : true;
 
       if (existing) {
         const newCompleted = !existing.completed;
@@ -94,6 +106,7 @@ export function useNaitiveStageMilestones(dealIds: string[]) {
           setRecords((prev) =>
             prev.map((r) => (r.id === existing.id ? existing : r))
           );
+          return;
         }
       } else {
         // Insert new record as completed
@@ -123,10 +136,26 @@ export function useNaitiveStageMilestones(dealIds: string[]) {
         if (error) {
           console.error('Error inserting milestone:', error);
           setRecords((prev) => prev.filter((r) => r.id !== tempId));
+          return;
         } else if (data) {
           setRecords((prev) =>
             prev.map((r) => (r.id === tempId ? { ...r, id: data.id } : r))
           );
+        }
+      }
+
+      // Apply outcome routing: if milestone is now completed and has an
+      // outcomeTargetStage, move the deal to that stage automatically.
+      if (willBeCompleted && def?.outcomeTargetStage && def.outcomeTargetStage !== stage) {
+        const { error: stageErr } = await supabase
+          .from('deals')
+          .update({ stage: def.outcomeTargetStage, updated_at: new Date().toISOString() })
+          .eq('id', dealId);
+        if (stageErr) {
+          console.error('Error applying milestone outcome:', stageErr);
+          toast.error('Milestone saved, but failed to update deal stage');
+        } else {
+          toast.success(`Deal moved (${def.label})`);
         }
       }
     },
