@@ -32,11 +32,25 @@ export interface PartnerRules {
 
 export const DEFAULT_PARTNER_RULES: PartnerRules = {
   tiers: {
-    tier1: { qualifiedDeals: 5, trailingMonths: 12, signedClients: 1 },
-    tier2: { qualifiedDealsMin: 2, qualifiedDealsMax: 4, trailingMonths: 12, dealsOnBoard: 1 },
+    // Apr 10, 2026 Partnerships Channel Review spec
+    tier1: { qualifiedDeals: 3, trailingMonths: 3, signedClients: 1 },
+    tier2: { qualifiedDealsMin: 2, qualifiedDealsMax: 3, trailingMonths: 3, dealsOnBoard: 4 },
     tier3: { dealsPerQuarter: 1 },
     tier4: { monthsBeforeRemoval: 6 },
-    qualifiedDealStages: ['proposal-issued', 'final-credit-items', 'terms-issued', 'agreement-pending', 'closed-won', 'funded-invoiced'],
+    // Qualified Deal = "Proposal Issued stage or greater" in Active or FinServ pipelines
+    qualifiedDealStages: [
+      'proposal-issued',
+      'agreement-pending',
+      'final-credit-items',
+      'client-strategy-review',
+      'write-up-pending',
+      'submitted-to-lenders',
+      'lenders-in-review',
+      'terms-issued',
+      'in-due-diligence',
+      'funded-invoiced',
+      'closed-won',
+    ],
   },
   stages: {
     trial: {

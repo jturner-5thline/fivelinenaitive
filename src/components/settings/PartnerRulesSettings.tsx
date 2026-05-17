@@ -43,6 +43,22 @@ export function PartnerRulesSettings() {
   const { upsert: upsertChannel, remove: removeChannel } = useMutateChannelType();
   const { stages: globalStages } = useDealStages();
 
+  // Seed the four canonical channel type definitions if empty (Apr 10, 2026 spec).
+  const [seeded, setSeeded] = useState(false);
+  useEffect(() => {
+    if (!canEdit || seeded || !channels) return;
+    if (channels.length === 0) {
+      setSeeded(true);
+      const seed = [
+        { name: 'Banks', description: 'Commercial / community banks referring out debt and finserv deals.', sort_order: 0 },
+        { name: 'Service Providers', description: 'Accountants, attorneys, consultants, advisors.', sort_order: 1 },
+        { name: 'Investors', description: 'VC, PE, family offices, angel networks.', sort_order: 2 },
+        { name: 'M&A', description: 'M&A advisors, business brokers, investment banks.', sort_order: 3 },
+      ];
+      seed.forEach(s => upsertChannel.mutate(s));
+    }
+  }, [channels, canEdit, seeded, upsertChannel]);
+
   const [draft, setDraft] = useState<PartnerRules>(DEFAULT_PARTNER_RULES);
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
@@ -82,6 +98,9 @@ export function PartnerRulesSettings() {
 
           <div className="rounded-md border p-3 space-y-3">
             <div className="text-xs font-medium uppercase text-muted-foreground">Tier 1</div>
+            <p className="text-[11px] text-muted-foreground">
+              Meet <span className="font-semibold text-foreground">either</span> condition (OR) to qualify for Tier 1 (debt / finserv).
+            </p>
             <div className="grid grid-cols-3 gap-3">
               <NumberField label="Qualified deals" disabled={ro}
                 value={draft.tiers.tier1.qualifiedDeals}
@@ -89,7 +108,7 @@ export function PartnerRulesSettings() {
               <NumberField label="Trailing months" disabled={ro} suffix="mo"
                 value={draft.tiers.tier1.trailingMonths}
                 onChange={v => setDraft({ ...draft, tiers: { ...draft.tiers, tier1: { ...draft.tiers.tier1, trailingMonths: v } } })} />
-              <NumberField label="Signed clients" disabled={ro}
+              <NumberField label="OR signed clients" disabled={ro}
                 value={draft.tiers.tier1.signedClients}
                 onChange={v => setDraft({ ...draft, tiers: { ...draft.tiers, tier1: { ...draft.tiers.tier1, signedClients: v } } })} />
             </div>
@@ -97,6 +116,9 @@ export function PartnerRulesSettings() {
 
           <div className="rounded-md border p-3 space-y-3">
             <div className="text-xs font-medium uppercase text-muted-foreground">Tier 2</div>
+            <p className="text-[11px] text-muted-foreground">
+              Meet <span className="font-semibold text-foreground">either</span> condition (OR) to qualify for Tier 2 (debt / finserv).
+            </p>
             <div className="grid grid-cols-4 gap-3">
               <NumberField label="Qualified deals min" disabled={ro}
                 value={draft.tiers.tier2.qualifiedDealsMin}
@@ -107,7 +129,7 @@ export function PartnerRulesSettings() {
               <NumberField label="Trailing months" disabled={ro} suffix="mo"
                 value={draft.tiers.tier2.trailingMonths}
                 onChange={v => setDraft({ ...draft, tiers: { ...draft.tiers, tier2: { ...draft.tiers.tier2, trailingMonths: v } } })} />
-              <NumberField label="Deals on board" disabled={ro}
+              <NumberField label="OR deals on board" disabled={ro}
                 value={draft.tiers.tier2.dealsOnBoard}
                 onChange={v => setDraft({ ...draft, tiers: { ...draft.tiers, tier2: { ...draft.tiers.tier2, dealsOnBoard: v } } })} />
             </div>
@@ -119,12 +141,14 @@ export function PartnerRulesSettings() {
               <NumberField label="Deals per quarter" disabled={ro}
                 value={draft.tiers.tier3.dealsPerQuarter}
                 onChange={v => setDraft({ ...draft, tiers: { ...draft.tiers, tier3: { ...draft.tiers.tier3, dealsPerQuarter: v } } })} />
+              <p className="text-[11px] text-muted-foreground">Added to board (debt / finserv) — at least this many per quarter.</p>
             </div>
             <div className="rounded-md border p-3 space-y-3">
               <div className="text-xs font-medium uppercase text-muted-foreground">Tier 4 (Temp)</div>
               <NumberField label="Months before removal" disabled={ro} suffix="mo"
                 value={draft.tiers.tier4.monthsBeforeRemoval}
                 onChange={v => setDraft({ ...draft, tiers: { ...draft.tiers, tier4: { ...draft.tiers.tier4, monthsBeforeRemoval: v } } })} />
+              <p className="text-[11px] text-muted-foreground">No deals sent yet; must meet Tier 3 criteria within {draft.tiers.tier4.monthsBeforeRemoval} months or auto-removed.</p>
             </div>
           </div>
 

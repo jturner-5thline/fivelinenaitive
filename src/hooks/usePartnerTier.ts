@@ -37,15 +37,20 @@ export function usePartnerTier(partner: {
   const qualifiedStages =
     (rules?.tiers.qualifiedDealStages) || DEFAULT_PARTNER_RULES.tiers.qualifiedDealStages;
   const tier4Months = rules?.tiers.tier4.monthsBeforeRemoval ?? DEFAULT_PARTNER_RULES.tiers.tier4.monthsBeforeRemoval;
+  const t1 = rules?.tiers.tier1 || DEFAULT_PARTNER_RULES.tiers.tier1;
+  const t2 = rules?.tiers.tier2 || DEFAULT_PARTNER_RULES.tiers.tier2;
+  const t3 = rules?.tiers.tier3 || DEFAULT_PARTNER_RULES.tiers.tier3;
 
   return useQuery({
-    queryKey: ['partner_tier', company?.id, partner?.id, qualifiedStages, tier4Months],
+    queryKey: ['partner_tier', company?.id, partner?.id, qualifiedStages, tier4Months, t1, t2, t3],
     enabled: !!company?.id && !!partner?.id && !!partner?.name,
     queryFn: async (): Promise<PartnerTierInfo> => {
       const name = (partner!.name || '').toLowerCase().trim();
       const now = Date.now();
-      const win3 = new Date(now - 3 * 30 * MS_PER_DAY).toISOString();
+      const winT1 = new Date(now - t1.trailingMonths * 30 * MS_PER_DAY).toISOString();
+      const winT2 = new Date(now - t2.trailingMonths * 30 * MS_PER_DAY).toISOString();
       const win12 = new Date(now - 12 * 30 * MS_PER_DAY).toISOString();
+      const win3 = new Date(now - 3 * 30 * MS_PER_DAY).toISOString();
 
       const { data: deals } = await supabase
         .from('deals')
@@ -59,13 +64,19 @@ export function usePartnerTier(partner: {
         closing_date: string | null;
       }>;
 
-      const qualifiedTrailing3mo = rows.filter(
-        d => d.stage && qualifiedStages.includes(d.stage) && d.created_at >= win3,
+      const qualifiedTrailingT1 = rows.filter(
+        d => d.stage && qualifiedStages.includes(d.stage) && d.created_at >= winT1,
       ).length;
-      const signedTrailing3mo = rows.filter(
+      const qualifiedTrailingT2 = rows.filter(
+        d => d.stage && qualifiedStages.includes(d.stage) && d.created_at >= winT2,
+      ).length;
+      const signedTrailingT1 = rows.filter(
         d => d.stage && SIGNED_STAGES.includes(d.stage) &&
-          (d.closing_date || d.created_at) >= win3,
+          (d.closing_date || d.created_at) >= winT1,
       ).length;
+      const addedToBoardTrailingT2 = rows.filter(d => d.created_at >= winT2).length;
+      const qualifiedTrailing3mo = qualifiedTrailingT1;
+      const signedTrailing3mo = signedTrailingT1;
       const addedToBoardTrailing3mo = rows.filter(d => d.created_at >= win3).length;
       const addedToBoardTrailing12mo = rows.filter(d => d.created_at >= win12).length;
       const totalDeals = rows.length;
@@ -79,14 +90,19 @@ export function usePartnerTier(partner: {
       let tier: AutoTier;
       if (override && [1, 2, 3, 4].includes(Number(override.tier))) {
         tier = Number(override.tier) as AutoTier;
-      } else if (qualifiedTrailing3mo >= 3 || signedTrailing3mo >= 1) {
+      } else if (
+        // Tier 1: qualifiedDeals threshold in trailingMonths OR signedClients threshold
+        qualifiedTrailingT1 >= t1.qualifiedDeals ||
+        signedTrailingT1 >= t1.signedClients
+      ) {
         tier = 1;
       } else if (
-        (qualifiedTrailing3mo > 1 && qualifiedTrailing3mo < 3) ||
-        addedToBoardTrailing3mo >= 4
+        // Tier 2: qualified within [min..max] in trailingMonths OR dealsOnBoard threshold
+        (qualifiedTrailingT2 >= t2.qualifiedDealsMin && qualifiedTrailingT2 <= t2.qualifiedDealsMax) ||
+        addedToBoardTrailingT2 >= t2.dealsOnBoard
       ) {
         tier = 2;
-      } else if (addedToBoardTrailing12mo >= 4 /* at least 1/quarter */) {
+      } else if (addedToBoardTrailing12mo >= (t3.dealsPerQuarter * 4)) {
         tier = 3;
       } else if (totalDeals === 0) {
         tier = 4;
