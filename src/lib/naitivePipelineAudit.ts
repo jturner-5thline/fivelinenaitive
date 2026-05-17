@@ -34,7 +34,7 @@ export async function logNaitivePipelineAudit(entry: NaitivePipelineAuditInput):
       field: entry.field ?? null,
       old_value: entry.oldValue == null ? null : (entry.oldValue as any),
       new_value: entry.newValue == null ? null : (entry.newValue as any),
-      context: entry.context ?? null,
+      context: (entry.context ?? null) as any,
     }]);
     if (error) {
       // eslint-disable-next-line no-console
