@@ -19,6 +19,7 @@ import { formatUSD } from '@/lib/formatters/currency';
 import { cn } from '@/lib/utils';
 import { MetricQuarterlyBarChart } from '@/components/dashboard/performance/MetricQuarterlyBarChart';
 import { QuarterlyPlanEditor } from '@/components/dashboard/performance/QuarterlyPlanEditor';
+import { PipelineConversionForecastCard } from '@/components/dashboard/performance/PipelineConversionForecastCard';
 import { canEditPerformanceModel } from '@/lib/performanceModelAccess';
 import {
   useNikiPerformanceMetrics,
@@ -919,6 +920,8 @@ function NikiPerformanceTabInner() {
                   onToggleHide={() => toggleChartHidden('funnel')}
                 />
               )}
+
+              <PipelineConversionForecastCard />
             </div>
             );
           })()}
