@@ -8,6 +8,14 @@ export interface DealStageOption {
   id: string;
   label: string;
   color: string;
+  /** Optional admin-authored description shown in column tooltips and deal details. */
+  description?: string;
+  /** Canonical mapping used by validation rules and milestone defaults. */
+  systemStageType?: string;
+  /** Optional active toggle. Inactive stages are hidden from boards. */
+  isActive?: boolean;
+  /** Optional explicit sort order. When omitted, array order applies. */
+  sortOrder?: number;
 }
 
 interface DealStagesContextType {
