@@ -1,11 +1,10 @@
 import { useMemo } from 'react';
 import { useNaitiveStageMilestones } from '@/hooks/useNaitiveStageMilestones';
 import { getStageMilestones } from '@/config/naitiveStageMilestones';
-import { getStageDescription, SYSTEM_STAGE_LABELS } from '@/config/naitivePipelineConfig';
+import { getStageDescription, resolveSystemStageType, SYSTEM_STAGE_LABELS } from '@/config/naitivePipelineConfig';
 import { NaitiveMilestoneDiamonds } from './NaitiveMilestoneDiamonds';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Diamond } from 'lucide-react';
-import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 
 interface Props {
   dealId: string;
@@ -15,11 +14,13 @@ interface Props {
 export function NaitiveStageMilestonesSection({ dealId, stage }: Props) {
   const dealIds = useMemo(() => [dealId], [dealId]);
   const { getMilestonesForDeal, toggleMilestone } = useNaitiveStageMilestones(dealIds);
-  const { stages } = useNaitivePipelineData();
-  const stageDef = useMemo(() => stages.find((s) => s.id === stage) || null, [stages, stage]);
-  const defs = getStageMilestones(stageDef ? { id: stageDef.id, label: stageDef.label, systemStageType: stageDef.systemStageType } : stage);
+  // Stage id is sufficient for canonical resolution because seeded ids match
+  // canonical types (e.g. 'qual-call'); we don't fetch full pipeline here.
+  const stageLike = useMemo(() => ({ id: stage, label: stage, color: '' }), [stage]);
+  const canonical = resolveSystemStageType(stageLike);
+  const defs = getStageMilestones(stageLike);
   const milestones = getMilestonesForDeal(dealId, stage);
-  const description = stageDef ? getStageDescription(stageDef) : '';
+  const description = getStageDescription(stageLike);
 
   if (defs.length === 0) {
     return (
