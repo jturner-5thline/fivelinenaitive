@@ -37,7 +37,7 @@ export const SYSTEM_STAGE_TYPES: SystemStageType[] = [
 
 export const SYSTEM_STAGE_LABELS: Record<SystemStageType, string> = {
   'prospects': 'Prospects',
-  'qual-call': 'Qualification Call',
+  'qual-call': 'Qualification Call Scheduled',
   'demo-access': 'Demo Access',
   'pilot-agreed': 'Pilot Agreed',
   'onboarding': 'Onboarding',
@@ -47,6 +47,27 @@ export const SYSTEM_STAGE_LABELS: Record<SystemStageType, string> = {
   'closed-lost': 'Closed Lost',
   'churned': 'Churned',
 };
+
+/**
+ * The canonical spec stages from the Nomenclature & Pipeline Stages doc.
+ * Everything else (Prospects, Onboarding, Active, Churned) is an extended
+ * stage kept for backwards compatibility but flagged as non-canonical.
+ */
+export const CANONICAL_SYSTEM_STAGE_TYPES: SystemStageType[] = [
+  'qual-call',
+  'demo-access',
+  'pilot-agreed',
+  'on-hold',
+  'dormant',
+  'closed-lost',
+];
+
+export function isCanonicalSystemStageType(t: SystemStageType | null | undefined): boolean {
+  return !!t && CANONICAL_SYSTEM_STAGE_TYPES.includes(t);
+}
+
+export const CANONICAL_STAGES_HELP_TEXT =
+  'Spec-canonical stages: Qualification Call Scheduled, Demo Access, Pilot Agreed, On Hold, Dormant, Closed Lost. Other stages (Prospects, Onboarding, Active, Churned) are kept as extended/operational stages and are not part of the canonical spec.';
 
 /** Alias / synonym map → canonical stage type. Keys are normalized strings. */
 const STAGE_ALIASES: Record<string, SystemStageType> = {
@@ -253,6 +274,22 @@ export const MILESTONE_DEFAULTS_BY_SYSTEM_TYPE: Partial<Record<SystemStageType, 
       label: 'Client Booked',
       description: 'Lead has signed. Handoff to onboarding is confirmed and scheduled.',
       position: 2,
+      isActive: true,
+    },
+    {
+      key: 'onboarding',
+      label: 'Onboarding',
+      description: 'Handoff to onboarding complete. Moves deal to Onboarding stage.',
+      position: 3,
+      outcomeTargetStage: 'onboarding',
+      isActive: true,
+    },
+    {
+      key: 'active',
+      label: 'Active',
+      description: 'Client is live on the platform. Moves deal to Active stage.',
+      position: 4,
+      outcomeTargetStage: 'active',
       isActive: true,
     },
   ],
