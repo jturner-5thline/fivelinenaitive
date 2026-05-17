@@ -25,7 +25,10 @@ export interface DealStageMilestone extends NaitiveMilestoneDef {
  * Hook to manage naitive pipeline stage milestones for a set of deals.
  * Fetches all milestone records for given deal IDs and provides toggle functionality.
  */
-export function useNaitiveStageMilestones(dealIds: string[]) {
+export function useNaitiveStageMilestones(
+  dealIds: string[],
+  options?: { onDealStageChanged?: () => void },
+) {
   const [records, setRecords] = useState<NaitiveMilestoneRecord[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [configVersion, setConfigVersion] = useState(0);
@@ -156,10 +159,11 @@ export function useNaitiveStageMilestones(dealIds: string[]) {
           toast.error('Milestone saved, but failed to update deal stage');
         } else {
           toast.success(`Deal moved (${def.label})`);
+          options?.onDealStageChanged?.();
         }
       }
     },
-    [records]
+    [records, options]
   );
 
   return { records, isLoading, getMilestonesForDeal, toggleMilestone, refetch: fetchMilestones };
