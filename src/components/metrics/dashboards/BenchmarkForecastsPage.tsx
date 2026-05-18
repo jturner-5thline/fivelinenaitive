@@ -291,6 +291,7 @@ export function BenchmarkForecastsPage() {
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
+      <PlanToggleLegend visible={visible} onToggle={toggle} />
       {/* Header */}
       <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px' }}>
         <div>
@@ -349,10 +350,10 @@ export function BenchmarkForecastsPage() {
           {/* Actuals 2026 */}
           <PlanTable title="Actuals 2026" pill="Thru Mar-26" pillVariant="a"
             rows={[
-              { label: 'Revenue', q1: '$0.33MM', q2: '$0.19MM', q3: '$0.41MM', q4: '$0.96MM', total: '$1.88MM', totalColor: '#ffc53d' },
+              { label: 'Revenue', q1: '$0.33MM', q2: '$0.19MM', q3: '$0.41MM', q4: '$0.96MM', total: '$1.88MM', totalColor: PLAN_COLORS.Actuals },
               { label: 'Gross Profit', q1: '$210.4K', q2: '$102.6K', q3: '$303.4K', q4: '$836.0K', total: '$1.45MM' },
               { label: 'Gross %', q1: '65%', q2: '53%', q3: '75%', q4: '87%', total: '77%' },
-              { label: 'Op. Profit', q1: '-$40.5K', q2: '-$120.0K', q3: '$54.4K', q4: '$553.4K', total: '$447.3K', totalColor: '#3de89a', isNeg: [true, true, false, false] },
+              { label: 'Op. Profit', q1: '-$40.5K', q2: '-$120.0K', q3: '$54.4K', q4: '$553.4K', total: '$447.3K', totalColor: PLAN_COLORS.Reach, isNeg: [true, true, false, false] },
             ]}
             ttmRows={[
               { label: 'TTM Revenue', q1: '$1.69MM', q2: '$1.30MM', q3: '$1.34MM', q4: '$1.88MM' },
@@ -371,10 +372,10 @@ export function BenchmarkForecastsPage() {
               </thead>
               <tbody>
                 {[
-                  { label: 'YTD Revenue', vals: ['$0.33MM','$0.52MM','$0.93MM','$1.88MM','$1.88MM'], totalColor: '#ffc53d' },
+                  { label: 'YTD Revenue', vals: ['$0.33MM','$0.52MM','$0.93MM','$1.88MM','$1.88MM'], totalColor: PLAN_COLORS.Actuals },
                   { label: 'YTD Gross Profit', vals: ['$0.21MM','$0.31MM','$0.62MM','$1.45MM','$1.45MM'] },
                   { label: 'YTD GP%', vals: ['65%','62%','64%','71%','71%'] },
-                  { label: 'YTD Op. Profit', vals: ['-$40.5K','-$160.5K','-$106.2K','$447.3K','$447.3K'], totalColor: '#3de89a', neg: [true, true, true, false, false] },
+                  { label: 'YTD Op. Profit', vals: ['-$40.5K','-$160.5K','-$106.2K','$447.3K','$447.3K'], totalColor: PLAN_COLORS.Reach, neg: [true, true, true, false, false] },
                 ].map((r, i) => (
                   <tr key={i}>
                     <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
