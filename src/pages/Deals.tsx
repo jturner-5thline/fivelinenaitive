@@ -770,12 +770,31 @@ export default function Dashboard() {
                       className="relative h-9 w-9 shrink-0 rounded-md"
                     >
                       <ArrowUpDown className="h-3.5 w-3.5" />
-                      {sortField === 'flexEngagement' && (
-                        <Flame className="absolute -top-1 -right-1 h-3 w-3 text-orange-500" />
-                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {(() => {
+                      const isDefaultSort = sortField === 'updatedAt' && sortDirection === 'desc';
+                      return (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (isDefaultSort) return;
+                              setSortField('updatedAt');
+                              setSortDirection('desc');
+                            }}
+                            disabled={isDefaultSort}
+                            className="gap-2"
+                            title={isDefaultSort ? 'No active sort to clear' : undefined}
+                            aria-disabled={isDefaultSort}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Clear sort
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      );
+                    })()}
                     <DropdownMenuItem onClick={() => toggleSort('updatedAt')} className={sortField === 'updatedAt' ? 'bg-accent' : ''}>
                       Last Updated {sortField === 'updatedAt' && (sortDirection === 'desc' ? '↓' : '↑')}
                     </DropdownMenuItem>
@@ -793,10 +812,6 @@ export default function Dashboard() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toggleSort('stage')} className={sortField === 'stage' ? 'bg-accent' : ''}>
                       Stage {sortField === 'stage' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('flexEngagement')} className={`gap-2 ${sortField === 'flexEngagement' ? 'bg-accent' : ''}`}>
-                      <Flame className="h-3.5 w-3.5 text-orange-500" />
-                      FLEx Engagement {sortField === 'flexEngagement' && (sortDirection === 'desc' ? '↓' : '↑')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
