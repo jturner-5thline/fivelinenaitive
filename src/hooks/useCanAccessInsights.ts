@@ -34,7 +34,13 @@ export function useCanAccessInsightsStatus(): { allowed: boolean; isLoading: boo
       );
     },
     enabled: !!email,
-    staleTime: 5 * 60_000,
+    // Always re-evaluate the allowlist on mount so a freshly-added user sees
+    // the Insights button immediately after a hard refresh, without waiting
+    // for a long-lived cached result to expire.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   });
 
   return {
