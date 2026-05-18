@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2 } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw } from 'lucide-react';
 import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
 import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
@@ -63,6 +63,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
