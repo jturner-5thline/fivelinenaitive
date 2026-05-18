@@ -73,6 +73,15 @@ function MetricGridShort({ title, headers, rows }: { title: string; headers: str
 }
 
 export function KeyMetricsPage() {
+  const { visible, toggle } = usePlanVisibility();
+  const planVisible = (plan: string) => {
+    if (plan === 'Actuals') return true;
+    if (plan === 'Reach' || plan === 'Operating' || plan === 'Conservative') {
+      return visible[plan as TogglePlanKey];
+    }
+    return true;
+  };
+  const filterRows = (rows: PlanRow[]) => rows.filter(r => planVisible(r.plan));
   const mkRow = (plan: string, color: string, vals: string[], totalColor?: string, negCells?: boolean[]): PlanRow => ({
     plan, color, q1: vals[0], q2: vals[1], q3: vals[2], q4: vals[3], total: vals[4], totalColor, negCells,
   });
@@ -154,6 +163,7 @@ export function KeyMetricsPage() {
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
+      <PlanToggleLegend visible={visible} onToggle={toggle} />
       <SortableWidgetGrid
         storageKey="insights.keyMetrics.widgetOrder.v1"
         items={items}
