@@ -7,7 +7,7 @@ import {
 import {
   Calendar as CalendarIcon, CheckCircle2, X, Clock, Users, Mail,
   Search, ChevronDown, ChevronRight, Loader2, ListPlus, Link2,
-  ExternalLink, Sparkles, StickyNote, Inbox, MoreHorizontal,
+  ExternalLink, Sparkles, StickyNote, Inbox,
   PartyPopper, GripVertical, ArrowLeft, Copy as CopyIcon,
   Briefcase,
 } from 'lucide-react';
@@ -19,10 +19,9 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
-  DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel,
+  DropdownMenuTrigger, DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
 import {
   Popover, PopoverContent, PopoverTrigger,
