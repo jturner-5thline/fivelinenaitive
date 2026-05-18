@@ -74,15 +74,49 @@ export function useMetricsData() {
   const { data: deals, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: ['metrics-deals'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const startedAt = Date.now();
+      const queryPromise = supabase
         .from('deals')
-        .select('id, company, value, total_fee, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date')
+        .select(
+          'id, company, value, total_fee, status, stage, deal_type, manager, created_at, updated_at, pipeline_id, projected_close_date',
+        )
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
-      return (data || []) as DbDeal[];
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(
+          () =>
+            reject(
+              new Error(
+                'Insights metrics query timed out after 15s. The deals table did not respond. This usually indicates a transient RLS / database slowness.',
+              ),
+            ),
+          15_000,
+        ),
+      );
+
+      try {
+        const { data, error } = (await Promise.race([
+          queryPromise,
+          timeoutPromise,
+        ])) as Awaited<typeof queryPromise>;
+        if (error) {
+          console.error('[useMetricsData] supabase error', error);
+          throw error;
+        }
+        console.info(
+          `[useMetricsData] loaded ${data?.length ?? 0} deals in ${Date.now() - startedAt}ms`,
+        );
+        return (data || []) as DbDeal[];
+      } catch (err) {
+        console.error(
+          `[useMetricsData] failed after ${Date.now() - startedAt}ms`,
+          err,
+        );
+        throw err;
+      }
     },
     staleTime: 30000,
+    retry: 1,
   });
 
   const metricsData = useMemo<MetricsData>(() => {
