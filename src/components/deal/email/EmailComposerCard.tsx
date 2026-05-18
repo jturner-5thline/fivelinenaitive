@@ -290,7 +290,6 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     const plain = /<[a-z][\s\S]*>/i.test(body || '') ? htmlToPlainText(body || '') : (body || '');
     return plain.replace(/\s+/g, ' ').trim().length;
   }, [body]);
-  const canPolish = plainBodyLength >= 60 && !aiInsertedAt && !aiPending;
   const signaturePlainText = useMemo(() => signatureToPlainText(signature), [signature]);
   const hasSignatureContent = signaturePlainText.trim().length > 0;
 
