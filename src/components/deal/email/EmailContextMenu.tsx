@@ -9,7 +9,10 @@ import {
   ContextMenuSubContent,
   ContextMenuLabel,
 } from '@/components/ui/context-menu';
-import { Mail, MailOpen, Star, Archive, Trash2, Tag, Check, Plus, ListChecks } from 'lucide-react';
+import {
+  Mail, MailOpen, Star, Archive, Trash2, Tag, Check, Plus, ListChecks,
+  Reply, ReplyAll, Forward, Link2, Link2Off, Copy, AtSign,
+} from 'lucide-react';
 import { useState, useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -33,9 +36,24 @@ interface EmailContextMenuProps {
   onToggleStar: () => void;
   onArchive: () => void;
   onDelete: () => void;
-  /** Optional: when provided, shows a "Create Task" item that opens the
-   *  email-to-task creation modal in the parent. */
   onCreateTask?: () => void;
+  // Reply / forward
+  onReply?: () => void;
+  onReplyAll?: () => void;
+  onForward?: () => void;
+  // Save Email to Deal (toggles link)
+  onSaveToDeal?: () => void;
+  isLinkedToDeal?: boolean;
+  // Clipboard helpers
+  subject?: string;
+  fromEmail?: string;
+  // Multi-select
+  selectedCount?: number;
+  isInBulkSelection?: boolean;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
 }
 
 export function EmailContextMenu({
@@ -49,6 +67,19 @@ export function EmailContextMenu({
   onArchive,
   onDelete,
   onCreateTask,
+  onReply,
+  onReplyAll,
+  onForward,
+  onSaveToDeal,
+  isLinkedToDeal,
+  subject,
+  fromEmail,
+  selectedCount = 0,
+  isInBulkSelection = false,
+  onBulkMarkRead,
+  onBulkMarkUnread,
+  onBulkArchive,
+  onBulkDelete,
 }: EmailContextMenuProps) {
   const { data: labels = [] } = useLabels();
   const { data: assignments = [] } = useAllLabelAssignments();
@@ -86,10 +117,55 @@ export function EmailContextMenu({
     }
   };
 
+  const copy = async (value: string, label: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      toast.success(`${label} copied`);
+    } catch {
+      toast.error(`Couldn't copy ${label.toLowerCase()}`);
+    }
+  };
+
+  // ── Bulk mode (right-click on a row that's part of a multi-selection) ──
+  if (isInBulkSelection && selectedCount > 1) {
+    return (
+      <ContextMenu>
+        <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
+        <ContextMenuContent className="w-52">
+          <ContextMenuLabel className="text-[11px] text-muted-foreground font-normal">
+            {selectedCount} selected
+          </ContextMenuLabel>
+          <ContextMenuSeparator />
+          {onBulkMarkRead && (
+            <ContextMenuItem onClick={onBulkMarkRead} className="gap-2 text-xs">
+              <MailOpen className="h-3.5 w-3.5" /> Mark as Read
+            </ContextMenuItem>
+          )}
+          {onBulkMarkUnread && (
+            <ContextMenuItem onClick={onBulkMarkUnread} className="gap-2 text-xs">
+              <Mail className="h-3.5 w-3.5" /> Mark as Unread
+            </ContextMenuItem>
+          )}
+          <ContextMenuSeparator />
+          {onBulkArchive && (
+            <ContextMenuItem onClick={onBulkArchive} className="gap-2 text-xs">
+              <Archive className="h-3.5 w-3.5" /> Archive
+            </ContextMenuItem>
+          )}
+          {onBulkDelete && (
+            <ContextMenuItem onClick={onBulkDelete} className="gap-2 text-xs text-destructive">
+              <Trash2 className="h-3.5 w-3.5" /> Delete
+            </ContextMenuItem>
+          )}
+        </ContextMenuContent>
+      </ContextMenu>
+    );
+  }
+
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild>{children}</ContextMenuTrigger>
-      <ContextMenuContent className="w-48">
+      <ContextMenuContent className="w-52">
         {isRead ? (
           <ContextMenuItem onClick={onMarkUnread} className="gap-2 text-xs">
             <Mail className="h-3.5 w-3.5" />
@@ -105,15 +181,48 @@ export function EmailContextMenu({
           <Star className={`h-3.5 w-3.5 ${isStarred ? 'fill-yellow-400 text-yellow-400' : ''}`} />
           {isStarred ? 'Unstar' : 'Star'}
         </ContextMenuItem>
-        {onCreateTask && (
+
+        {(onReply || onReplyAll || onForward) && (
           <>
             <ContextMenuSeparator />
-            <ContextMenuItem onClick={onCreateTask} className="gap-2 text-xs">
-              <ListChecks className="h-3.5 w-3.5" />
-              Create Task
-            </ContextMenuItem>
+            {onReply && (
+              <ContextMenuItem onClick={onReply} className="gap-2 text-xs">
+                <Reply className="h-3.5 w-3.5" /> Reply
+              </ContextMenuItem>
+            )}
+            {onReplyAll && (
+              <ContextMenuItem onClick={onReplyAll} className="gap-2 text-xs">
+                <ReplyAll className="h-3.5 w-3.5" /> Reply All
+              </ContextMenuItem>
+            )}
+            {onForward && (
+              <ContextMenuItem onClick={onForward} className="gap-2 text-xs">
+                <Forward className="h-3.5 w-3.5" /> Forward
+              </ContextMenuItem>
+            )}
           </>
         )}
+
+        {(onCreateTask || onSaveToDeal) && (
+          <>
+            <ContextMenuSeparator />
+            {onCreateTask && (
+              <ContextMenuItem onClick={onCreateTask} className="gap-2 text-xs">
+                <ListChecks className="h-3.5 w-3.5" />
+                Create Task
+              </ContextMenuItem>
+            )}
+            {onSaveToDeal && (
+              <ContextMenuItem onClick={onSaveToDeal} className="gap-2 text-xs">
+                {isLinkedToDeal
+                  ? <Link2Off className="h-3.5 w-3.5" />
+                  : <Link2 className="h-3.5 w-3.5" />}
+                {isLinkedToDeal ? 'Unlink from Deal' : 'Save Email to Deal'}
+              </ContextMenuItem>
+            )}
+          </>
+        )}
+
         {threadId && (
           <>
             <ContextMenuSeparator />
@@ -183,6 +292,31 @@ export function EmailContextMenu({
             </ContextMenuSub>
           </>
         )}
+
+        {(subject || fromEmail) && (
+          <>
+            <ContextMenuSeparator />
+            {subject && (
+              <ContextMenuItem
+                onClick={() => copy(subject, 'Subject')}
+                className="gap-2 text-xs"
+              >
+                <Copy className="h-3.5 w-3.5" />
+                Copy Subject
+              </ContextMenuItem>
+            )}
+            {fromEmail && (
+              <ContextMenuItem
+                onClick={() => copy(fromEmail, 'Sender email')}
+                className="gap-2 text-xs"
+              >
+                <AtSign className="h-3.5 w-3.5" />
+                Copy Sender Email
+              </ContextMenuItem>
+            )}
+          </>
+        )}
+
         <ContextMenuSeparator />
         <ContextMenuItem onClick={onArchive} className="gap-2 text-xs">
           <Archive className="h-3.5 w-3.5" />
