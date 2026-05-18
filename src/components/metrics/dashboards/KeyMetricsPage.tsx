@@ -5,8 +5,8 @@ import WhatWorkingSections from './WhatWorkingSections';
 // ── Card ──
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <div className="relative overflow-hidden rounded-xl" style={{ background: '#182535', border: '1px solid rgba(255,255,255,0.07)', ...style }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(120,190,255,0.15),transparent)' }} />
+    <div className="relative overflow-hidden rounded-xl" style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', ...style }}>
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.25),transparent)' }} />
       {children}
     </div>
   );
@@ -35,22 +35,22 @@ type PlanRow = { plan: string; color: string; q1: string; q2: string; q3: string
 function MetricGrid({ title, rows }: { title: string; rows: PlanRow[] }) {
   return (
     <Card style={{ padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(160,200,230,0.7)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{title}</div>
       {/* Header */}
       <div style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 2 }}>
         {['Plan','Q1-2026','Q2-2026','Q3-2026','Q4-2026','2026'].map((h, i) => (
-          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.4)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
+          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
         ))}
       </div>
       {/* Rows */}
       {rows.map((r, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', alignItems: 'center', padding: '4px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', fontSize: 11 }}>
-          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(170,205,225,0.7)' }}>
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', alignItems: 'center', padding: '4px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', fontSize: 11 }}>
+          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(255,255,255,0.7)' }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
             {r.plan}
           </div>
           {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(160,190,210,0.3)' : 'rgba(190,215,230,0.7)' }}>{v}</div>
+            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)' }}>{v}</div>
           ))}
           <div style={{ textAlign: 'right', color: r.totalColor || r.color, fontWeight: 700 }}>{r.total}</div>
         </div>
@@ -62,20 +62,20 @@ function MetricGrid({ title, rows }: { title: string; rows: PlanRow[] }) {
 function MetricGridShort({ title, headers, rows }: { title: string; headers: string[]; rows: PlanRow[] }) {
   return (
     <Card style={{ padding: '12px 14px' }}>
-      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(160,200,230,0.7)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>{title}</div>
+      <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.7)', marginBottom: 8, paddingBottom: 5, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>{title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', padding: '3px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', marginBottom: 2 }}>
         {headers.map((h, i) => (
-          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(140,175,200,0.4)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
+          <span key={h} style={{ textAlign: i === 0 ? 'left' : 'right', fontSize: 9, fontWeight: 700, color: 'rgba(255,255,255,0.45)', letterSpacing: '.5px', textTransform: 'uppercase' }}>{h}</span>
         ))}
       </div>
       {rows.map((r, i) => (
-        <div key={i} style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', alignItems: 'center', padding: '4px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', fontSize: 11 }}>
-          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(170,205,225,0.7)' }}>
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: '105px repeat(5, minmax(0,1fr))', alignItems: 'center', padding: '4px 0', borderBottom: i < rows.length - 1 ? '1px solid rgba(255,255,255,0.08)' : 'none', fontSize: 11 }}>
+          <div style={{ fontSize: 10, display: 'flex', alignItems: 'center', gap: 5, color: 'rgba(255,255,255,0.7)' }}>
             <div style={{ width: 7, height: 7, borderRadius: '50%', background: r.color, flexShrink: 0 }} />
             {r.plan}
           </div>
           {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(160,190,210,0.3)' : 'rgba(190,215,230,0.7)' }}>{v}</div>
+            <div key={j} style={{ textAlign: 'right', color: r.negCells?.[j] ? '#ff6b7a' : v === '0%' || v === '$0K' || v === '$0.00MM' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.7)' }}>{v}</div>
           ))}
           <div style={{ textAlign: 'right', color: r.totalColor || r.color, fontWeight: 700 }}>{r.total}</div>
         </div>
@@ -165,12 +165,12 @@ export function KeyMetricsPage() {
   ];
 
   return (
-    <div style={{ background: 'transparent', color: '#d0dce8', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
+    <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
       {/* Header */}
-      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px', background: '#1a2d42', borderColor: 'rgba(255,255,255,0.09)' }}>
+      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px', background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.08)' }}>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f4ff', letterSpacing: '-.3px' }}>5th<span style={{ color: '#5ba3d0' }}>Line</span> Key Metrics</div>
-          <div style={{ fontSize: 9, color: 'rgba(140,175,200,0.4)', marginTop: 2, fontStyle: 'italic' }}>Parent Co. Total · Services · Debt Advisory · FinServ</div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff', letterSpacing: '-.3px' }}>5th<span style={{ color: 'hsl(213,90%,70%)' }}>Line</span> Key Metrics</div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2, fontStyle: 'italic' }}>Parent Co. Total · Services · Debt Advisory · FinServ</div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Pill variant="r">Reach Plan</Pill>
@@ -183,7 +183,7 @@ export function KeyMetricsPage() {
       {/* Legend */}
       <div style={{ display: 'flex', gap: 14, marginBottom: 10, padding: '0 2px' }}>
         {Object.entries(planColors).map(([label, color]) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'rgba(140,175,200,0.55)' }}>
+          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
             {label === 'Actuals' ? 'Actuals' : `${label} Plan`}
           </div>
