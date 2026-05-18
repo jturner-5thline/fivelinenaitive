@@ -84,6 +84,9 @@ export function AppSidebar() {
   const visibleMenuItems = menuItems.filter(item => {
     // Insights restricted to a specific allowlist
     if (item.url === "/insights" && !canAccessInsights) return false;
+    // Insights uses the allowlist as the source of truth — bypass the
+    // featureKey/company-override gate once the user is on the allowlist.
+    if (item.url === "/insights" && canAccessInsights) return true;
     // Reports hidden for the shared demo account (parity with previous header behavior)
     if ('hideForDemoEmail' in item && item.hideForDemoEmail && user?.email === 'demo@5thline.co') return false;
     // Check page-level feature flag access
