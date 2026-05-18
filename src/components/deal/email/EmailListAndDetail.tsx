@@ -852,9 +852,17 @@ interface EmailListProps {
    * IntersectionObservers continue to work unchanged.
    */
   scrollParent?: HTMLElement | null;
+  onRowReply?: (email: MockEmail) => void;
+  onRowReplyAll?: (email: MockEmail) => void;
+  onRowForward?: (email: MockEmail) => void;
+  onSaveToDeal?: (email: MockEmail) => void;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
 }
 
-export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete, scrollParent }: EmailListProps) {
+export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete, scrollParent, onRowReply, onRowReplyAll, onRowForward, onSaveToDeal, onBulkMarkRead, onBulkMarkUnread, onBulkArchive, onBulkDelete }: EmailListProps) {
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
   // Detect high-priority deal signals (e.g. "due diligence", "term sheet",
   // "wire", "signed") and dispatch in-app + Slack notifications. Returns a
