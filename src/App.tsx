@@ -267,6 +267,7 @@ const App = () => (
                       <Toaster />
                       <Sonner />
                       <WorkflowEmailModalListener />
+                      <InsightsAccessDebug />
                       
                       <BrowserRouter>
                         <ScrollToTop />
