@@ -60,12 +60,12 @@ export function BlogRichTextEditor({ value, onChange, placeholder }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const editor = useEditor({
     extensions: [
-      StarterKit as any,
-      Underline as any,
-      (Link as any).configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer" } }),
-      (Image as any).configure({ HTMLAttributes: { class: "rounded-md max-w-full h-auto" } }),
-      (TextAlign as any).configure({ types: ["heading", "paragraph"] }),
-      (Placeholder as any).configure({ placeholder: placeholder || "Write your post…" }),
+      StarterKit,
+      Underline,
+      Link.configure({ openOnClick: false, autolink: true, HTMLAttributes: { rel: "noopener noreferrer" } }),
+      Image.configure({ HTMLAttributes: { class: "rounded-md max-w-full h-auto" } }),
+      TextAlign.configure({ types: ["heading", "paragraph"] }),
+      Placeholder.configure({ placeholder: placeholder || "Write your post…" }),
     ],
     content: value || "",
     editorProps: {
