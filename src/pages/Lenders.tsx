@@ -1506,12 +1506,13 @@ export default function Lenders() {
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
                     endReached={() => loadMore()}
+                    computeItemKey={(index) => sortedLenders[index]?.id ?? index}
+                    increaseViewportBy={{ top: 600, bottom: 600 }}
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
-                        <div className="pb-3">
+                        <div className="pb-3" data-lender-row={lender.id}>
                           <LenderListCard
-                            key={lender.id}
                             lender={lender}
                             activeDealCount={activeDealCounts[lender.name] || 0}
                             summary={getLenderSummary(lender.name)}
@@ -1558,12 +1559,13 @@ export default function Lenders() {
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
                     endReached={() => loadMore()}
+                    computeItemKey={(index) => sortedLenders[index]?.id ?? index}
+                    increaseViewportBy={{ top: 600, bottom: 600 }}
                     listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
                         <LenderGridCard
-                          key={lender.id}
                           lender={lender}
                           activeDealCount={activeDealCounts[lender.name] || 0}
                           tileDisplaySettings={tileDisplaySettings}
