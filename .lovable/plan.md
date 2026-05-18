@@ -1,62 +1,48 @@
-# Revenue & Customers Dashboard Refactor
+# Blog Management CMS for Admin
 
-This is a substantial refactor (current page renders 13 stacked one-off cards; ask is full toolbar + 12-col grid + per-widget drilldowns/kebabs + 8 new widgets + shared primitives). To land it safely without breaking the rest of `/insights` (which shares the same page shell as 10+ other dashboards), I'll do it in phases.
+Add a full blog CMS to the admin area with list/edit views, image uploads, rich text editing, and draft/published/disabled states.
 
-## Phase 1 — Foundations (this turn)
+## Database (Lovable Cloud)
 
-Build the shared primitives + filter context the rest of the work plugs into.
+New tables:
+- `blog_posts` — title, slug (unique), excerpt, body_html, cover_image_url, cover_image_alt, author_id, status (draft|published|disabled), seo_title, seo_description, published_at, disabled_at, tags (text[]), created_at, updated_at
+- `blog_categories` (optional initial seed)
 
-1. **`RevenueCustomersFilterContext`** — React context + `localStorage` persistence (key: `insights:revenue-customers:filters`)
-   - `entities: string[]` (default: all 4 realm IDs from `src/config/qboEntities.ts` + Capital LLC `123146077561874`)
-   - `range: { preset: 'MTD'|'QTD'|'YTD'|'TTM'|'custom'; start: Date; end: Date }`
-   - `comparison: 'prior-year' | 'prior-period' | 'none'`
-   - `granularity: 'day' | 'week' | 'month' | 'quarter'`
-   - Helper `useRevenueFilters()` + derived `comparisonRange`
+RLS:
+- SELECT: published posts public; drafts/disabled visible to admins only
+- INSERT/UPDATE/DELETE: admins only (via existing `has_role(auth.uid(), 'admin')`)
 
-2. **`RevenueCustomersToolbar`** — single compact row: title + subtitle, sync chip (reuses `SyncStatusBar`'s QB badge logic), entity multi-select popover, date range picker w/ presets, comparison toggle, granularity segmented control. Matches `ManagementSnapshotDashboard` toolbar density.
+Storage:
+- New public bucket `blog-media` with folders `covers/` and `inline/`
+- Policies: public read; admin write/update/delete
 
-3. **Shared card primitives** under `src/components/insights/revenue-customers/`:
-   - `KpiTile` — compact tile (icon, label, value, delta chip, optional sparkline). Same surface as Operational/Management dashboards (`glass-module` token).
-   - `ChartCard` — title row (inline legend slot, filter icon, kebab menu: View details / Change chart type / Download CSV / Copy link / Hide), `min-h-[260px] max-h-[300px]` chart area, standard loading/empty/error states.
-   - `RevenueDrilldownDrawer` — right-side `Sheet` showing underlying rows (invoices/customers) with sortable table + CSV export. Opened by chart click handlers via a `useDrilldown()` hook.
+## UI
 
-4. **Page wiring**: replace the `space-y-5` stack at `Insights.tsx:2654-2670` with `<RevenueCustomersDashboard />` that renders the toolbar + a `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4` of widgets.
+New admin section `blog` added to Admin.tsx sidebar nav (icon: `Newspaper`). Section component `BlogManagementPanel` with three sub-tabs:
+1. **All Posts** — table (thumbnail, title, slug, status badge, author, updated, published) with search, status filter, and row actions: Edit, Duplicate, Publish/Unpublish, Disable/Enable, Delete (confirm).
+2. **New Post** — form view (also used for Edit via `?postId=...`).
+3. **Media Library** — simple grid of uploaded images from `blog-media` (basic; expandable later).
 
-## Phase 2 — Migrate existing widgets (next turn)
+### Post editor
 
-Rewrite the 13 existing one-off cards as thin wrappers over `KpiTile` / `ChartCard` consuming `useRevenueFilters()`. Strip the per-card "QuickBooks · synced …" badge (moves to toolbar). Convert hero cards (`IncomeYTDCard`, `IncomeYTDMoMVarianceCard`) to compact tiles with sparklines.
+- Fields: title, slug (auto-generated from title, editable), excerpt, cover image upload + alt, tags input, author (defaults to current user), SEO title, SEO description, status, published date.
+- Body: rich text editor using **TipTap** (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-link`, `@tiptap/extension-image`, `@tiptap/extension-underline`, `@tiptap/extension-text-align`) with toolbar: bold, italic, underline, strike, H1/H2/H3, bullet/ordered list, blockquote, link, alignment, image insert (uploads to `blog-media/inline/`), undo/redo, code block.
+- Preview toggle renders the saved HTML inside a styled preview pane (sanitized via DOMPurify).
+- Save as Draft / Publish / Update / Disable buttons; toast feedback; validation for required title, slug, body.
 
-- Quarterly Revenue → grouped bar, 280px, inline legend
-- Income YTD → KPI tile + sparkline + delta chip
-- Income YTD MoM Variance → compact pos/neg bar tile
-- YTD by Entity → small-multiples toggle
-- YTD Breakdown by Entity → donut (replaces pie)
-- YTD Change by Entity → pos/neg bar
-- FinServ TTM Top 5 → donut
-- Total Income Rolling 12M → line + trend
-- Income vs COGS Rolling 12M → area
-- Income MoM → bar
-- Client Count MoM → line
-- Top 5 Customers MoM → grouped bar
-- FinServ Top Customers → table tile
+## Access control
 
-## Phase 3 — New widgets (next turn)
+Gate the Blog section in `Admin.tsx` behind existing admin role check (same as other admin panels).
 
-- Total Customers / New Customers / Churned Customers — KPI tiles from `quickbooks_customers` + first-invoice date logic
-- ARPU — KPI tile (period income ÷ active customers)
-- Revenue by Entity — donut
-- Revenue by Product/Service — stacked bar from `quickbooks_invoices` line items (`ItemRef`)
-- Top 10 Customers — sortable table
-- AR Aging — uses existing `useOutstandingARByEntity` + aging buckets from `quickbooks_invoices.due_date`
+## Files
 
-## Technical details
+- New: `src/components/admin/BlogManagementPanel.tsx`, `BlogPostsTable.tsx`, `BlogPostEditor.tsx`, `BlogRichTextEditor.tsx`, `BlogMediaLibrary.tsx`
+- New hook: `src/hooks/useBlogPosts.ts`
+- Edited: `src/pages/Admin.tsx` (add nav item + section render)
+- Migration: create tables, RLS, storage bucket + policies
+- Dependencies: `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-*`, `dompurify`, `slugify`
 
-- Data: all hooks query existing `quickbooks_invoices` / `quickbooks_customers` / `quickbooks_expenses` / `quickbooks_bills` tables filtered by `realm_id IN (selected entities)` and `txn_date` within selected range. No schema changes, no new edge functions, no hardcoded values.
-- Realm IDs: 5th Line Capital LLC (`123146077561874`) is missing from `QBO_ENTITIES`. I'll add a `capital` key in the same module rather than hardcoding.
-- Drilldown drawer reuses shadcn `Sheet` (right side, `w-[560px]`) and the CSV helper in `src/utils/insightsExport.ts`.
-- Kebab "Change chart type" persists per-widget choice in `localStorage` under the same dashboard key.
-- All other dashboard cases in `Insights.tsx` are untouched.
+## Notes
 
-## Scope confirmation
-
-Phase 1 is ~6 new files + 1 small edit to `Insights.tsx`. Phases 2 & 3 are mechanical but voluminous (~20 widgets). **I'll ship Phase 1 now and continue with Phase 2 + 3 immediately after you approve, in follow-up turns** so each turn stays reviewable. If you'd rather I attempt all three phases in one massive turn, say "do it all" and I will — but the diff will be very large.
+- Public blog rendering pages are out of scope for this task; the CMS produces data and a `/blog/:slug` consumer can be added later.
+- Categories table is scaffolded but the Categories sub-tab is marked "coming soon" to keep this PR focused.
