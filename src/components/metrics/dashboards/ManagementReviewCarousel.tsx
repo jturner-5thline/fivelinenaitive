@@ -354,6 +354,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
           </button>
         )}
       </div>
+      )}
       <div style={{ position: 'relative' }}>
         <QuarterlyReportPrintStyles />
         {activePage.render()}
