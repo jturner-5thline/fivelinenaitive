@@ -134,20 +134,20 @@ export function IncomeYTDMoMVarianceCard() {
     <div
       className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
-        background: "rgba(10,60,110,0.55)",
-        border: "1px solid rgba(40,120,200,0.28)",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+            "linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)",
         }}
       />
       <div
         className="px-3 py-2 flex items-center justify-between gap-3"
-        style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
@@ -155,14 +155,14 @@ export function IncomeYTDMoMVarianceCard() {
             fontWeight: 700,
             letterSpacing: "1.2px",
             textTransform: "uppercase",
-            color: "rgba(160,210,255,0.6)",
+            color: "rgba(255,255,255,0.6)",
           }}
         >
           Income · YTD MoM Variance
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           QuickBooks ·{" "}
           {data?.lastSync
@@ -176,7 +176,7 @@ export function IncomeYTDMoMVarianceCard() {
           <div>
             <div
               className="text-[10px] tracking-wide uppercase"
-              style={{ color: "rgba(160,210,255,0.55)" }}
+              style={{ color: "rgba(255,255,255,0.55)" }}
             >
               YTD Total Income · 4 entities
             </div>
@@ -193,7 +193,7 @@ export function IncomeYTDMoMVarianceCard() {
           </div>
           <div
             className="text-[10px] tracking-wide"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             MoM variance · Jan – {MONTH_LABELS[currentMonth]} {year}
           </div>
@@ -204,7 +204,7 @@ export function IncomeYTDMoMVarianceCard() {
         ) : !hasAnyData ? (
           <div
             className="h-[260px] flex items-center justify-center text-sm"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             No data available
           </div>
@@ -222,22 +222,22 @@ export function IncomeYTDMoMVarianceCard() {
                 />
                 <XAxis
                   dataKey="month"
-                  tick={{ fontSize: 11, fill: "rgba(200,225,255,0.7)" }}
-                  axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.7)" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "rgba(200,225,255,0.6)" }}
-                  axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                   tickLine={false}
                   tickFormatter={fmtCompact}
                 />
                 <ReferenceLine y={0} stroke="rgba(180,210,255,0.35)" />
                 <Tooltip
-                  cursor={{ fill: "rgba(80,160,230,0.08)" }}
+                  cursor={{ fill: "rgba(255,255,255,0.15)" }}
                   contentStyle={{
                     background: "rgba(10,30,55,0.95)",
-                    border: "1px solid rgba(80,160,230,0.35)",
+                    border: "1px solid rgba(255,255,255,0.15)",
                     borderRadius: 6,
                     fontSize: 12,
                     color: "rgb(220,235,255)",

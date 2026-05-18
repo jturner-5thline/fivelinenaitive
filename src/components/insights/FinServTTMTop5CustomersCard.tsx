@@ -107,20 +107,20 @@ export function FinServTTMTop5CustomersCard() {
     <div
       className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
-        background: "rgba(10,60,110,0.55)",
-        border: "1px solid rgba(40,120,200,0.28)",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+            "linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)",
         }}
       />
       <div
         className="px-3 py-2 flex items-center justify-between gap-3"
-        style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
@@ -128,14 +128,14 @@ export function FinServTTMTop5CustomersCard() {
             fontWeight: 700,
             letterSpacing: "1.2px",
             textTransform: "uppercase",
-            color: "rgba(160,210,255,0.6)",
+            color: "rgba(255,255,255,0.6)",
           }}
         >
           FinServ · TTM Top 5 Customers
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           QuickBooks ·{" "}
           {data?.lastSync
@@ -149,7 +149,7 @@ export function FinServTTMTop5CustomersCard() {
           <div>
             <div
               className="text-[10px] tracking-wide uppercase"
-              style={{ color: "rgba(160,210,255,0.55)" }}
+              style={{ color: "rgba(255,255,255,0.55)" }}
             >
               Top 5 · Trailing 12 Months
             </div>
@@ -166,7 +166,7 @@ export function FinServTTMTop5CustomersCard() {
           </div>
           <div
             className="text-[10px] tracking-wide"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             {rangeStart} → {rangeEnd}
           </div>
@@ -177,7 +177,7 @@ export function FinServTTMTop5CustomersCard() {
         ) : slices.length === 0 ? (
           <div
             className="h-[320px] flex items-center justify-center text-sm"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             No data available
           </div>
@@ -188,7 +188,7 @@ export function FinServTTMTop5CustomersCard() {
                 <Tooltip
                   contentStyle={{
                     background: "rgba(10,30,55,0.95)",
-                    border: "1px solid rgba(80,160,230,0.35)",
+                    border: "1px solid rgba(255,255,255,0.15)",
                     borderRadius: 6,
                     fontSize: 12,
                     color: "rgb(220,235,255)",
@@ -201,7 +201,7 @@ export function FinServTTMTop5CustomersCard() {
                 <Legend
                   verticalAlign="bottom"
                   iconType="circle"
-                  wrapperStyle={{ fontSize: 11, color: "rgba(200,225,255,0.8)" }}
+                  wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.8)" }}
                   formatter={(value, entry) => {
                     const v = (entry?.payload as { value?: number } | undefined)?.value ?? 0;
                     const pct = total > 0 ? (v / total) * 100 : 0;

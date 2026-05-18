@@ -13,27 +13,27 @@ const ASANA_GOALS_URL = 'https://app.asana.com/0/goals';
 function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
     <div className={`relative overflow-hidden rounded-[10px] ${className}`}
-      style={{ background: 'rgba(10,60,110,0.55)', border: '1px solid rgba(40,120,200,0.28)' }}>
+      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
       <div className="absolute top-0 left-0 right-0 h-px"
-        style={{ background: 'linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)' }} />
+        style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)' }} />
       {children}
     </div>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)', marginBottom: 8 }}>{children}</div>;
+  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{children}</div>;
 }
 
 const STATUS_COLOR: Record<string, string> = {
   'On Track': '#3de89a',
   'At Risk': '#ffb71e',
   'Behind': '#ff6b7a',
-  'Achieved': '#4db8ff',
+  'Achieved': 'hsl(213,90%,70%)',
 };
 
 function StatusPill({ status }: { status: string }) {
-  const color = STATUS_COLOR[status] || 'rgba(160,210,255,0.6)';
+  const color = STATUS_COLOR[status] || 'rgba(255,255,255,0.6)';
   return (
     <span style={{
       display: 'inline-flex', alignItems: 'center', gap: 4,
@@ -78,7 +78,7 @@ function formatProgressSource(src: string | null): string {
 function MetricCell({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'rgba(160,210,255,0.5)' }}>{label}</span>
+      <span style={{ fontSize: 8, fontWeight: 700, letterSpacing: '0.6px', textTransform: 'uppercase', color: 'rgba(255,255,255,0.5)' }}>{label}</span>
       <span style={{ fontSize: 10, color: '#e8f6ff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={value}>{value}</span>
     </div>
   );
@@ -90,8 +90,8 @@ function RefreshBtn({ onClick, busy }: { onClick: () => void; busy: boolean }) {
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '3px 9px', borderRadius: 6, fontSize: 10, fontWeight: 600,
-        background: 'rgba(40,120,200,0.25)', color: '#4db8ff',
-        border: '1px solid rgba(40,120,200,0.45)', cursor: busy ? 'wait' : 'pointer',
+        background: 'rgba(255,255,255,0.08)', color: 'hsl(213,90%,70%)',
+        border: '1px solid rgba(255,255,255,0.08)', cursor: busy ? 'wait' : 'pointer',
         opacity: busy ? 0.6 : 1,
       }}>
       {busy ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />} Refresh
@@ -172,8 +172,8 @@ export function AsanaGoalsPortfoliosSection() {
 
   const selectStyle: React.CSSProperties = {
     fontSize: 10, padding: '3px 6px', borderRadius: 5,
-    background: 'rgba(20,80,160,0.35)', color: '#d0eaff',
-    border: '1px solid rgba(40,120,200,0.4)', outline: 'none', cursor: 'pointer',
+    background: 'rgba(255,255,255,0.08)', color: 'hsl(0,0%,100%)',
+    border: '1px solid rgba(255,255,255,0.08)', outline: 'none', cursor: 'pointer',
     // Force the native dropdown panel to render in dark mode (no white bg).
     colorScheme: 'dark',
     appearance: 'none', WebkitAppearance: 'none', MozAppearance: 'none',
@@ -183,7 +183,7 @@ export function AsanaGoalsPortfoliosSection() {
     backgroundRepeat: 'no-repeat',
     backgroundPosition: 'right 6px center',
   };
-  const optionStyle: React.CSSProperties = { background: '#0f1c34', color: '#d0eaff' };
+  const optionStyle: React.CSSProperties = { background: '#0f1c34', color: 'hsl(0,0%,100%)' };
 
   return (
     <>
@@ -195,7 +195,7 @@ export function AsanaGoalsPortfoliosSection() {
             <SectionLabel>Company Goals · Asana</SectionLabel>
             <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
               {lastSync && (
-                <span style={{ fontSize: 9, color: 'rgba(160,210,255,0.5)' }}>
+                <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>
                   Updated {format(new Date(lastSync), 'MMM d, h:mm a')}
                 </span>
               )}
@@ -208,7 +208,7 @@ export function AsanaGoalsPortfoliosSection() {
               <div role="group" aria-label="Filter by status" style={{ display: 'inline-flex', gap: 4 }}>
                 {STATUS_OPTIONS.map(s => {
                   const active = statusFilter.has(s);
-                  const color = STATUS_COLOR[s] || 'rgba(160,210,255,0.7)';
+                  const color = STATUS_COLOR[s] || 'rgba(255,255,255,0.7)';
                   return (
                     <button
                       key={s}
@@ -219,9 +219,9 @@ export function AsanaGoalsPortfoliosSection() {
                       style={{
                         fontSize: 9, fontWeight: 700, letterSpacing: '0.4px',
                         padding: '3px 7px', borderRadius: 5, cursor: 'pointer',
-                        background: active ? `${color}22` : 'rgba(20,80,160,0.25)',
-                        color: active ? color : 'rgba(160,210,255,0.7)',
-                        border: `1px solid ${active ? `${color}66` : 'rgba(40,120,200,0.3)'}`,
+                        background: active ? `${color}22` : 'rgba(255,255,255,0.08)',
+                        color: active ? color : 'rgba(255,255,255,0.7)',
+                        border: `1px solid ${active ? `${color}66` : 'rgba(255,255,255,0.08)'}`,
                         display: 'inline-flex', alignItems: 'center', gap: 4,
                       }}
                     >
@@ -245,12 +245,12 @@ export function AsanaGoalsPortfoliosSection() {
               {filtersActive && (
                 <button
                   onClick={() => { setStatusFilter(new Set()); setOwnerFilter('all'); setDueFilter('all'); }}
-                  style={{ ...selectStyle, color: '#4db8ff', cursor: 'pointer' }}
+                  style={{ ...selectStyle, color: 'hsl(213,90%,70%)', cursor: 'pointer' }}
                 >
                   Clear
                 </button>
               )}
-              <span style={{ marginLeft: 'auto', fontSize: 9, color: 'rgba(160,210,255,0.5)' }}>
+              <span style={{ marginLeft: 'auto', fontSize: 9, color: 'rgba(255,255,255,0.5)' }}>
                 {filteredGoals.length} of {goals.goals.length}
               </span>
             </div>
@@ -263,22 +263,22 @@ export function AsanaGoalsPortfoliosSection() {
               </div>
               <button onClick={() => void goals.refresh()}
                 style={{ padding: '4px 10px', fontSize: 10, fontWeight: 600, borderRadius: 6,
-                  background: 'rgba(40,120,200,0.25)', color: '#4db8ff',
-                  border: '1px solid rgba(40,120,200,0.45)', cursor: 'pointer' }}>
+                  background: 'rgba(255,255,255,0.08)', color: 'hsl(213,90%,70%)',
+                  border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}>
                 Retry
               </button>
             </div>
           ) : goals.loading && goals.goals.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'rgba(160,210,255,0.5)', fontSize: 11 }}>Loading goals…</div>
+            <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>Loading goals…</div>
           ) : goals.goals.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.6)', fontSize: 11 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>
               No active goals —{' '}
-              <a href={ASANA_GOALS_URL} target="_blank" rel="noreferrer" style={{ color: '#4db8ff', textDecoration: 'underline' }}>
+              <a href={ASANA_GOALS_URL} target="_blank" rel="noreferrer" style={{ color: 'hsl(213,90%,70%)', textDecoration: 'underline' }}>
                 create one in Asana
               </a>
             </div>
           ) : filteredGoals.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.6)', fontSize: 11 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>
               No goals match the current filters
             </div>
           ) : (
@@ -287,11 +287,11 @@ export function AsanaGoalsPortfoliosSection() {
                 const realPct = g.progressPercent;
                 const pct = realPct ?? fallbackProgressFromStatus(g.status);
                 const isEstimate = realPct === null && pct !== null;
-                const color = STATUS_COLOR[g.status] || '#4db8ff';
+                const color = STATUS_COLOR[g.status] || 'hsl(213,90%,70%)';
                 const expanded = expandedGoals.has(g.id);
                 const hasMetric = !!g.metric && (g.metric.currentValue !== null || g.metric.targetValue !== null || !!g.metric.currentDisplay);
                 return (
-                  <div key={g.id} style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)' }}>
+                  <div key={g.id} style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                       <div style={{ minWidth: 0, flex: 1 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600, color: '#e8f6ff' }}>
@@ -301,7 +301,7 @@ export function AsanaGoalsPortfoliosSection() {
                               onClick={() => toggleGoalExpanded(g.id)}
                               aria-expanded={expanded}
                               aria-label={expanded ? 'Collapse metric details' : 'Expand metric details'}
-                              style={{ background: 'transparent', border: 'none', padding: 0, color: 'rgba(160,210,255,0.7)', cursor: 'pointer', display: 'inline-flex' }}
+                              style={{ background: 'transparent', border: 'none', padding: 0, color: 'rgba(255,255,255,0.7)', cursor: 'pointer', display: 'inline-flex' }}
                             >
                               {expanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                             </button>
@@ -314,11 +314,11 @@ export function AsanaGoalsPortfoliosSection() {
                             ) : g.title}
                           </span>
                         </div>
-                        <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.5)', marginTop: 2 }}>
+                        <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', marginTop: 2 }}>
                           {g.owner}{g.due ? ` · due ${g.due}` : ''}{g.timePeriod ? ` · ${g.timePeriod}` : ''}
                         </div>
                         {g.progressDisplay && (
-                          <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.7)', marginTop: 2 }}>
+                          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>
                             {g.progressDisplay}
                           </div>
                         )}
@@ -327,7 +327,7 @@ export function AsanaGoalsPortfoliosSection() {
                     </div>
                     {pct !== null && (
                       <div style={{ marginTop: 5, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ flex: 1, height: 4, background: 'rgba(40,100,180,0.25)', borderRadius: 2, overflow: 'hidden' }}>
+                        <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
                           <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 2 }} />
                         </div>
                         <span
@@ -341,7 +341,7 @@ export function AsanaGoalsPortfoliosSection() {
                     {expanded && hasMetric && g.metric && (
                       <div style={{
                         marginTop: 6, padding: '6px 8px', borderRadius: 5,
-                        background: 'rgba(10,50,100,0.35)', border: '1px solid rgba(40,120,200,0.25)',
+                        background: 'rgba(10,50,100,0.35)', border: '1px solid rgba(255,255,255,0.08)',
                         display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 6, fontSize: 9,
                       }}>
                         <MetricCell label="Current" value={
@@ -370,7 +370,7 @@ export function AsanaGoalsPortfoliosSection() {
             {portfolios.portfolios.length > 0 && (
               <div style={{ display: 'inline-flex', gap: 4 }}>
                 {([
-                  { key: 'all', label: 'All', color: 'rgba(160,210,255,0.7)' },
+                  { key: 'all', label: 'All', color: 'rgba(255,255,255,0.7)' },
                   { key: 'on', label: 'On track', color: STATUS_COLOR['On Track'] },
                   { key: 'at', label: 'At risk', color: STATUS_COLOR['At Risk'] },
                   { key: 'off', label: 'Off track', color: STATUS_COLOR['Behind'] },
@@ -383,9 +383,9 @@ export function AsanaGoalsPortfoliosSection() {
                       style={{
                         fontSize: 9, fontWeight: 700, letterSpacing: '0.4px',
                         padding: '3px 7px', borderRadius: 5, cursor: 'pointer',
-                        background: active ? `${opt.color}22` : 'rgba(20,80,160,0.25)',
-                        color: active ? opt.color : 'rgba(160,210,255,0.7)',
-                        border: `1px solid ${active ? `${opt.color}66` : 'rgba(40,120,200,0.3)'}`,
+                        background: active ? `${opt.color}22` : 'rgba(255,255,255,0.08)',
+                        color: active ? opt.color : 'rgba(255,255,255,0.7)',
+                        border: `1px solid ${active ? `${opt.color}66` : 'rgba(255,255,255,0.08)'}`,
                       }}
                     >
                       {opt.label}
@@ -402,17 +402,17 @@ export function AsanaGoalsPortfoliosSection() {
               </div>
               <button onClick={() => void portfolios.refresh()}
                 style={{ padding: '4px 10px', fontSize: 10, fontWeight: 600, borderRadius: 6,
-                  background: 'rgba(40,120,200,0.25)', color: '#4db8ff',
-                  border: '1px solid rgba(40,120,200,0.45)', cursor: 'pointer' }}>
+                  background: 'rgba(255,255,255,0.08)', color: 'hsl(213,90%,70%)',
+                  border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}>
                 Retry
               </button>
             </div>
           ) : portfolios.loading && portfolios.portfolios.length === 0 ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'rgba(160,210,255,0.5)', fontSize: 11 }}>Loading portfolios…</div>
+            <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>Loading portfolios…</div>
           ) : portfolios.portfolios.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.6)', fontSize: 11 }}>No portfolios available</div>
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>No portfolios available</div>
           ) : filteredPortfolios.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.6)', fontSize: 11 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(255,255,255,0.6)', fontSize: 11 }}>
               No portfolios match this filter
             </div>
           ) : (
@@ -429,7 +429,7 @@ export function AsanaGoalsPortfoliosSection() {
                     tabIndex={0}
                     onClick={() => setOpenPortfolio({ gid: p.gid, name: p.name, url: p.permalink_url })}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setOpenPortfolio({ gid: p.gid, name: p.name, url: p.permalink_url }); }}
-                    style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)', cursor: 'pointer' }}
+                    style={{ padding: '6px 8px', borderRadius: 6, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
                       <div style={{ fontSize: 11, fontWeight: 600, color: '#e8f6ff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -439,13 +439,13 @@ export function AsanaGoalsPortfoliosSection() {
                           </a>
                         ) : p.name}
                       </div>
-                      <span style={{ fontSize: 9, color: 'rgba(160,210,255,0.6)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+                      <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.6)', whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: 2 }}>
                         {p.projectCount} projects <ChevronRight size={10} style={{ opacity: 0.6 }} />
                       </span>
                     </div>
                     {p.projectCount > 0 ? (
                       <>
-                        <div style={{ marginTop: 5, display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', background: 'rgba(40,100,180,0.25)' }}>
+                        <div style={{ marginTop: 5, display: 'flex', height: 4, borderRadius: 2, overflow: 'hidden', background: 'rgba(255,255,255,0.08)' }}>
                           <div style={{ width: `${onPct}%`, background: STATUS_COLOR['On Track'] }} />
                           <div style={{ width: `${atPct}%`, background: STATUS_COLOR['At Risk'] }} />
                           <div style={{ width: `${offPct}%`, background: STATUS_COLOR['Behind'] }} />
@@ -462,13 +462,13 @@ export function AsanaGoalsPortfoliosSection() {
                           </div>
                         </div>
                         {p.noStatus > 0 && (
-                          <div style={{ marginTop: 2, fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>
+                          <div style={{ marginTop: 2, fontSize: 9, color: 'rgba(255,255,255,0.45)' }}>
                             {p.noStatus} no status ({Math.round((p.noStatus / total) * 100)}%)
                           </div>
                         )}
                       </>
                     ) : (
-                      <div style={{ marginTop: 4, fontSize: 9, color: 'rgba(160,210,255,0.4)' }}>No active projects</div>
+                      <div style={{ marginTop: 4, fontSize: 9, color: 'rgba(255,255,255,0.4)' }}>No active projects</div>
                     )}
                   </div>
                 );
@@ -576,24 +576,24 @@ function PortfolioGoalsDrawer({
 
   return (
     <Sheet open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <SheetContent side="right" className="w-[460px] sm:max-w-[460px] overflow-y-auto bg-[#061633] border-[rgba(40,120,200,0.3)]">
+      <SheetContent side="right" className="w-[460px] sm:max-w-[460px] overflow-y-auto bg-[#061633] border-[rgba(255,255,255,0.08)]">
         <SheetHeader>
           <SheetTitle className="text-[#e8f6ff]">
             {portfolio.name}
             {portfolio.url && (
-              <a href={portfolio.url} target="_blank" rel="noreferrer" style={{ marginLeft: 6, color: '#4db8ff' }}>
+              <a href={portfolio.url} target="_blank" rel="noreferrer" style={{ marginLeft: 6, color: 'hsl(213,90%,70%)' }}>
                 <ExternalLink size={12} style={{ display: 'inline' }} />
               </a>
             )}
           </SheetTitle>
-          <SheetDescription className="text-[rgba(160,210,255,0.6)] text-xs">
+          <SheetDescription className="text-[rgba(255,255,255,0.6)] text-xs">
             Goals supporting this portfolio
           </SheetDescription>
         </SheetHeader>
 
         <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
           {loading ? (
-            <div style={{ padding: 24, textAlign: 'center', color: 'rgba(160,210,255,0.55)', fontSize: 12 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>
               <Loader2 size={14} className="animate-spin" style={{ display: 'inline', marginRight: 6 }} />
               Loading goals…
             </div>
@@ -602,14 +602,14 @@ function PortfolioGoalsDrawer({
               <AlertCircle size={14} /> {error}
             </div>
           ) : goals.length === 0 ? (
-            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.55)', fontSize: 12 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>
               No goals attached to this portfolio.
             </div>
           ) : (
             goals.map((g) => {
               const rawStatus = g.current_status_update?.status_type || g.progress_status || g.status || null;
               const status = mapGoalStatus(rawStatus);
-              const color = STATUS_COLOR[status] || 'rgba(160,210,255,0.6)';
+              const color = STATUS_COLOR[status] || 'rgba(255,255,255,0.6)';
               const due = g.due_on ? format(new Date(g.due_on), 'MMM d, yyyy') : null;
               const m = g.metric;
               let pct: number | null = null;
@@ -619,7 +619,7 @@ function PortfolioGoalsDrawer({
                 if (span !== 0) pct = Math.max(0, Math.min(100, Math.round(((m.current_number_value - start) / span) * 100)));
               }
               return (
-                <div key={g.gid} style={{ padding: 10, borderRadius: 8, background: 'rgba(20,80,160,0.18)', border: '1px solid rgba(40,100,180,0.25)' }}>
+                <div key={g.gid} style={{ padding: 10, borderRadius: 8, background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 12, fontWeight: 600, color: '#e8f6ff' }}>
@@ -629,20 +629,20 @@ function PortfolioGoalsDrawer({
                           </a>
                         ) : g.name}
                       </div>
-                      <div style={{ fontSize: 10, color: 'rgba(160,210,255,0.55)', marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', marginTop: 2 }}>
                         {g.owner?.name || '—'}
                         {due ? ` · due ${due}` : ''}
                         {g.time_period?.display_name ? ` · ${g.time_period.display_name}` : ''}
                       </div>
                       {m?.current_display_value && (
-                        <div style={{ fontSize: 10, color: 'rgba(160,210,255,0.7)', marginTop: 2 }}>{m.current_display_value}</div>
+                        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.7)', marginTop: 2 }}>{m.current_display_value}</div>
                       )}
                     </div>
                     <StatusPill status={status} />
                   </div>
                   {pct !== null && (
                     <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <div style={{ flex: 1, height: 4, background: 'rgba(40,100,180,0.25)', borderRadius: 2, overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
                         <div style={{ width: `${pct}%`, height: '100%', background: color }} />
                       </div>
                       <span style={{ fontSize: 10, color, fontWeight: 700, minWidth: 32, textAlign: 'right' }}>{pct}%</span>
@@ -657,7 +657,7 @@ function PortfolioGoalsDrawer({
         <div style={{ marginTop: 24 }}>
           <SectionLabel>Recent Activity</SectionLabel>
           {activityLoading ? (
-            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(160,210,255,0.55)', fontSize: 12 }}>
+            <div style={{ padding: 16, textAlign: 'center', color: 'rgba(255,255,255,0.55)', fontSize: 12 }}>
               <Loader2 size={12} className="animate-spin" style={{ display: 'inline', marginRight: 6 }} />
               Loading activity…
             </div>
@@ -666,15 +666,15 @@ function PortfolioGoalsDrawer({
               <AlertCircle size={12} /> {activityError}
             </div>
           ) : activity.length === 0 ? (
-            <div style={{ padding: 12, textAlign: 'center', color: 'rgba(160,210,255,0.5)', fontSize: 11 }}>
+            <div style={{ padding: 12, textAlign: 'center', color: 'rgba(255,255,255,0.5)', fontSize: 11 }}>
               No recent updates from Asana.
             </div>
           ) : (
             <div style={{ position: 'relative', paddingLeft: 14, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ position: 'absolute', top: 4, bottom: 4, left: 5, width: 1, background: 'rgba(40,120,200,0.3)' }} />
+              <div style={{ position: 'absolute', top: 4, bottom: 4, left: 5, width: 1, background: 'rgba(255,255,255,0.08)' }} />
               {activity.map((a) => {
                 const status = mapGoalStatus(a.status_type);
-                const color = STATUS_COLOR[status] || 'rgba(160,210,255,0.5)';
+                const color = STATUS_COLOR[status] || 'rgba(255,255,255,0.5)';
                 const when = a.created_at ? format(new Date(a.created_at), 'MMM d, h:mm a') : '';
                 return (
                   <div key={a.id} style={{ position: 'relative' }}>
@@ -682,7 +682,7 @@ function PortfolioGoalsDrawer({
                       position: 'absolute', left: -13, top: 4, width: 9, height: 9, borderRadius: '50%',
                       background: color, boxShadow: `0 0 0 2px #061633`,
                     }} />
-                    <div style={{ fontSize: 10, color: 'rgba(160,210,255,0.55)', display: 'flex', justifyContent: 'space-between', gap: 6 }}>
+                    <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', display: 'flex', justifyContent: 'space-between', gap: 6 }}>
                       <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {a.author || 'Asana'} · {when}
                       </span>
@@ -696,7 +696,7 @@ function PortfolioGoalsDrawer({
                       ) : a.goal_name}
                     </div>
                     {(a.title || a.text) && (
-                      <div style={{ fontSize: 10, color: 'rgba(200,225,255,0.75)', marginTop: 2, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.75)', marginTop: 2, lineHeight: 1.35, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                         {a.title ? <span style={{ fontWeight: 600 }}>{a.title}{a.text ? ' — ' : ''}</span> : null}
                         {a.text || ''}
                       </div>

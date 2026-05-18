@@ -115,20 +115,20 @@ export function ClientCountMoMCard() {
     <div
       className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
-        background: "rgba(10,60,110,0.55)",
-        border: "1px solid rgba(40,120,200,0.28)",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+            "linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)",
         }}
       />
       <div
         className="px-3 py-2 flex items-center justify-between gap-3"
-        style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
@@ -136,20 +136,20 @@ export function ClientCountMoMCard() {
             fontWeight: 700,
             letterSpacing: "1.2px",
             textTransform: "uppercase",
-            color: "rgba(160,210,255,0.6)",
+            color: "rgba(255,255,255,0.6)",
           }}
         >
           Client Count · MoM Change
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex rounded overflow-hidden border border-[rgba(80,160,230,0.25)]">
+          <div className="flex rounded overflow-hidden border border-[rgba(255,255,255,0.15)]">
             <Button
               size="sm"
               variant="ghost"
               className={`h-6 px-2 text-[10px] uppercase tracking-wider rounded-none ${
                 view === "chart"
-                  ? "bg-[rgba(80,160,230,0.18)] text-foreground"
-                  : "text-[rgba(200,225,255,0.65)]"
+                  ? "bg-[rgba(255,255,255,0.15)] text-foreground"
+                  : "text-[rgba(255,255,255,0.65)]"
               }`}
               onClick={() => setView("chart")}
             >
@@ -160,8 +160,8 @@ export function ClientCountMoMCard() {
               variant="ghost"
               className={`h-6 px-2 text-[10px] uppercase tracking-wider rounded-none ${
                 view === "table"
-                  ? "bg-[rgba(80,160,230,0.18)] text-foreground"
-                  : "text-[rgba(200,225,255,0.65)]"
+                  ? "bg-[rgba(255,255,255,0.15)] text-foreground"
+                  : "text-[rgba(255,255,255,0.65)]"
               }`}
               onClick={() => setView("table")}
             >
@@ -170,7 +170,7 @@ export function ClientCountMoMCard() {
           </div>
           <span
             className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             QuickBooks ·{" "}
             {data?.lastSync
@@ -183,7 +183,7 @@ export function ClientCountMoMCard() {
       <div className="p-4">
         <div
           className="text-[10px] tracking-wide mb-2"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           Distinct active customers per month · 4 entities · last 3 months
         </div>
@@ -204,21 +204,21 @@ export function ClientCountMoMCard() {
                 />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: "rgba(200,225,255,0.7)" }}
-                  axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.7)" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: "rgba(200,225,255,0.6)" }}
-                  axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                  tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
+                  axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                   tickLine={false}
                   allowDecimals={false}
                 />
                 <Tooltip
-                  cursor={{ fill: "rgba(80,160,230,0.08)" }}
+                  cursor={{ fill: "rgba(255,255,255,0.15)" }}
                   contentStyle={{
                     background: "rgba(10,30,55,0.95)",
-                    border: "1px solid rgba(80,160,230,0.35)",
+                    border: "1px solid rgba(255,255,255,0.15)",
                     borderRadius: 6,
                     fontSize: 12,
                     color: "rgb(220,235,255)",
@@ -236,7 +236,7 @@ export function ClientCountMoMCard() {
                 />
                 <Bar
                   dataKey="count"
-                  fill="rgba(80,180,255,0.85)"
+                  fill="hsla(213,90%,70%,0.85)"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={80}
                 >
@@ -254,7 +254,7 @@ export function ClientCountMoMCard() {
                     position="top"
                     offset={18}
                     style={{
-                      fill: "rgba(160,210,255,0.75)",
+                      fill: "rgba(255,255,255,0.75)",
                       fontSize: 10,
                       fontWeight: 500,
                     }}
@@ -269,7 +269,7 @@ export function ClientCountMoMCard() {
               <thead>
                 <tr
                   className="text-[10px] uppercase tracking-wider"
-                  style={{ color: "rgba(160,210,255,0.6)" }}
+                  style={{ color: "rgba(255,255,255,0.6)" }}
                 >
                   <th className="text-left py-2 font-semibold">Month</th>
                   <th className="text-right py-2 font-semibold">Customer Count</th>
@@ -281,7 +281,7 @@ export function ClientCountMoMCard() {
                   const positive = (row.mom ?? 0) >= 0;
                   const momColor =
                     row.mom == null
-                      ? "rgba(200,225,255,0.55)"
+                      ? "rgba(255,255,255,0.55)"
                       : positive
                         ? "hsl(142 71% 55%)"
                         : "hsl(0 84% 65%)";
@@ -289,7 +289,7 @@ export function ClientCountMoMCard() {
                     <tr
                       key={row.key}
                       className="border-t"
-                      style={{ borderColor: "rgba(40,100,180,0.18)" }}
+                      style={{ borderColor: "rgba(255,255,255,0.08)" }}
                     >
                       <td className="py-2 text-foreground">{row.label}</td>
                       <td className="py-2 text-right text-foreground font-medium">

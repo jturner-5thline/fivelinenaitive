@@ -30,20 +30,20 @@ import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } 
 import { useTwelveWeekCashflowForecast } from '@/hooks/useTwelveWeekCashflowForecast';
 
 const setChartDefaults = () => {
-  ChartJS.defaults.color = 'rgba(120,180,240,0.5)';
-  ChartJS.defaults.borderColor = 'rgba(40,100,180,0.2)';
+  ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
+  ChartJS.defaults.borderColor = 'rgba(255,255,255,0.08)';
   ChartJS.defaults.font.size = 9;
   ChartJS.defaults.font.family = 'system-ui, sans-serif';
 };
 
-const gx: any = { ticks: { color: 'rgba(100,160,220,0.45)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
-const gy: any = { ticks: { color: 'rgba(100,160,220,0.35)', font: { size: 9 } }, grid: { color: 'rgba(20,80,160,0.25)' }, border: { display: false } };
+const gx: any = { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
+const gy: any = { ticks: { color: 'rgba(255,255,255,0.35)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
-const NA_COLOR = 'rgba(160,210,255,0.35)';
+const NA_COLOR = 'rgba(255,255,255,0.35)';
 
 const renderDelta = (current: number | null, prior: number | null, label: string) => {
   if (current === null || prior === null) {
-    return <span style={{ color: 'rgba(160,210,255,0.45)' }}>No prior {label} comparison</span>;
+    return <span style={{ color: 'rgba(255,255,255,0.45)' }}>No prior {label} comparison</span>;
   }
   const delta = current - prior;
   const pct = prior === 0 ? null : (delta / Math.abs(prior)) * 100;
@@ -164,26 +164,26 @@ const formatRangeLabel = (range: DateRange) => `${format(range.start, 'yyyy-MM-d
 function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
     <div className={`relative overflow-hidden rounded-[10px] ${className}`}
-      style={{ background: 'rgba(10,60,110,0.55)', border: '1px solid rgba(40,120,200,0.28)', ...style }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)' }} />
+      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', ...style }}>
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)' }} />
       {children}
     </div>
   );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'rgba(160,210,255,0.5)', marginBottom: 8 }}>{children}</div>;
+  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{children}</div>;
 }
 
 function Sep() {
-  return <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(40,140,220,0.3),transparent)', margin: '8px 0' }} />;
+  return <div style={{ height: 1, background: 'linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent)', margin: '8px 0' }} />;
 }
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(40,100,180,0.2)', fontSize: 11 }}>
-      <span style={{ color: 'rgba(160,210,255,0.55)' }}>{label}</span>
-      <span style={{ fontWeight: 500, color: '#d0eaff' }}>{children}</span>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 0', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 11 }}>
+      <span style={{ color: 'rgba(255,255,255,0.55)' }}>{label}</span>
+      <span style={{ fontWeight: 500, color: 'hsl(0,0%,100%)' }}>{children}</span>
     </div>
   );
 }
@@ -194,9 +194,9 @@ function NaPlaceholder({ height = 90, label = 'Data unavailable' }: { height?: n
       height,
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       borderRadius: 6,
-      background: 'rgba(20,60,120,0.25)',
-      border: '1px dashed rgba(80,150,220,0.25)',
-      color: 'rgba(160,210,255,0.5)', fontSize: 10, fontWeight: 600, letterSpacing: '0.6px',
+      background: 'rgba(255,255,255,0.03)',
+      border: '1px dashed rgba(255,255,255,0.10)',
+      color: 'rgba(255,255,255,0.5)', fontSize: 10, fontWeight: 600, letterSpacing: '0.6px',
       textAlign: 'center',
       padding: '0 12px',
     }}>{label}</div>
@@ -219,8 +219,8 @@ function CashflowForecastWidget() {
               {
                 label: 'Ending Cash',
                 data: weeks.map((w) => w.endingCash),
-                backgroundColor: 'rgba(80,180,255,0.55)',
-                borderColor: 'rgba(120,200,255,0.85)',
+                backgroundColor: 'hsla(213,90%,70%,0.55)',
+                borderColor: 'hsla(213,90%,70%,0.85)',
                 borderWidth: 1,
                 borderRadius: 4,
               },
@@ -269,7 +269,7 @@ function CashflowForecastWidget() {
       <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
         <canvas ref={canvasRef} />
       </div>
-      <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)', letterSpacing: '0.4px' }}>
+      <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', letterSpacing: '0.4px' }}>
         Source: Finance &gt; Cash Flow — ENDING CASH per week
       </div>
     </div>
@@ -293,15 +293,15 @@ function GridShell({
 }) {
   return (
     <div className="h-full w-full flex flex-col rounded-[10px] overflow-hidden relative"
-      style={{ background: 'rgba(10,60,110,0.55)', border: '1px solid rgba(40,120,200,0.28)' }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)' }} />
+      style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)' }} />
       <div
         className={`px-3 py-2 flex items-center justify-between ${dragHandleMode === 'header' && isEditMode ? 'widget-drag-handle cursor-grab active:cursor-grabbing' : ''}`}
-        style={{ borderBottom: '1px solid rgba(40,100,180,0.2)' }}
+        style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}
       >
         <div style={{
           fontSize: 9, fontWeight: 700, letterSpacing: '1.2px',
-          textTransform: 'uppercase', color: 'rgba(160,210,255,0.6)',
+          textTransform: 'uppercase', color: 'rgba(255,255,255,0.6)',
           flex: titleAlign === 'center' ? 1 : undefined,
           textAlign: titleAlign === 'center' ? 'center' : 'left',
         }}>
@@ -310,7 +310,7 @@ function GridShell({
         <div className="flex items-center gap-2">
           {headerExtra}
           {dragHandleMode === 'header' && isEditMode && (
-            <div style={{ fontSize: 9, color: 'rgba(160,210,255,0.45)' }}>⋮⋮ drag</div>
+            <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)' }}>⋮⋮ drag</div>
           )}
         </div>
       </div>
@@ -753,8 +753,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const arRef = useRef<HTMLCanvasElement>(null);
 
   const lastIdx = monthLabels.length - 1;
-  const bcol = monthLabels.map((_, i) => i === lastIdx ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
-  const bbrd = monthLabels.map((_, i) => i === lastIdx ? '#4db8ff' : 'rgba(40,120,200,0.5)');
+  const bcol = monthLabels.map((_, i) => i === lastIdx ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
+  const bbrd = monthLabels.map((_, i) => i === lastIdx ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
 
   useChart(
     rcRef,
@@ -793,13 +793,13 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   );
 
   const ttmLabels = ttmTrendSeries.map(p => p.month);
-  const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
-  const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? '#4db8ff' : 'rgba(40,120,200,0.5)');
+  const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
+  const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const monthlyTrendLabels = ttmSeries.map(p => p.month);
   const monthlyTrendValues = ttmSeries.map(p => p.revenue);
-  const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
-  const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? '#4db8ff' : 'rgba(40,120,200,0.5)');
+  const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsla(213,90%,70%,0.85)' : 'hsla(213,90%,70%,0.55)');
+  const monthlyBrd = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'hsl(213,90%,70%)' : 'rgba(255,255,255,0.08)');
   useChart(
     ncRef,
     qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
@@ -888,7 +888,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
     stageBreakdown.length > 0
       ? {
           type: 'bar',
-          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: 'rgba(29,148,255,0.7)', borderColor: '#4db8ff', borderWidth: 1, borderRadius: 4 }] },
+          data: { labels: stageBreakdown.map(s => s.stage), datasets: [{ data: stageBreakdown.map(s => s.value), backgroundColor: 'hsla(213,90%,70%,0.7)', borderColor: 'hsl(213,90%,70%)', borderWidth: 1, borderRadius: 4 }] },
           options: { ...def, indexAxis: 'y' as const, scales: { x: { ...gx, ticks: { ...gx.ticks, callback: (v: number) => fmtUSD(v) } }, y: { ...gy } } },
         }
       : null,
@@ -982,7 +982,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       l: 'Active Pipeline Value',
       live: isCurrentReportingPeriod,
       v: fmtUSD(activePipelineValue),
-      sub: <span style={{ color: 'rgba(160,210,255,0.55)' }}>{activeDealCount} active deal{activeDealCount === 1 ? '' : 's'}</span>,
+      sub: <span style={{ color: 'rgba(255,255,255,0.55)' }}>{activeDealCount} active deal{activeDealCount === 1 ? '' : 's'}</span>,
       emptyHint: pipelineUnavailableReason,
     },
     {
@@ -1099,17 +1099,17 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
             <span style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff' }}>
               5th<span style={{ color: '#29aaff' }}>Line</span> Financial
             </span>
-            <span style={{ fontSize: 10, color: 'rgba(160,210,255,0.5)' }}>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
               Reporting period {periodLabel}
             </span>
-            <span style={{ fontSize: 10, color: 'rgba(160,210,255,0.5)' }}>
+            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
               Last updated {format(lastUpdated, 'MMM d, yyyy h:mm a')}
             </span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, flexWrap: 'wrap' }}>
-            <span style={{ color: 'rgba(160,210,255,0.5)' }}>Period Rev</span>
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>Period Rev</span>
             <span style={{ fontWeight: 700, color: '#e8f6ff' }}>{fmtUSD(totalRevCurr, { unit: 'M' })}</span>
-            <span style={{ color: 'rgba(160,210,255,0.5)' }}>YTD</span>
+            <span style={{ color: 'rgba(255,255,255,0.5)' }}>YTD</span>
             <span style={{ fontWeight: 700, color: '#e8f6ff' }}>{fmtUSD(ytdRevenue, { unit: 'M' })}</span>
             <button
               onClick={handleRefresh}
@@ -1117,8 +1117,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               style={{
                 display: 'inline-flex', alignItems: 'center', gap: 6,
                 padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                background: 'rgba(40,120,200,0.25)', color: '#4db8ff',
-                border: '1px solid rgba(40,120,200,0.45)', cursor: 'pointer',
+                background: 'rgba(255,255,255,0.08)', color: 'hsl(213,90%,70%)',
+                border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer',
                 opacity: (refreshing || isLoading) ? 0.6 : 1,
               }}
             >
@@ -1133,7 +1133,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
       {isEditMode && (
         <div className="flex items-center gap-2 px-1">
-          <span className="text-xs uppercase tracking-wider" style={{ color: 'rgba(160,210,255,0.7)' }}>
+          <span className="text-xs uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.7)' }}>
             Layout edit mode — drag titles to move, drag corners to resize
           </span>
           <div className="ml-auto flex gap-2">
@@ -1253,7 +1253,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 : 'Quarterly Revenue Growth (YoY)'
             }
             headerExtra={
-              <div style={{ display: 'inline-flex', padding: 2, borderRadius: 999, background: 'rgba(10,40,80,0.6)', border: '1px solid rgba(40,120,200,0.35)' }}>
+              <div style={{ display: 'inline-flex', padding: 2, borderRadius: 999, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
                 {(['ttm', 'monthly', 'quarterly-yoy'] as const).map(m => (
                   <button
                     key={m}
@@ -1263,8 +1263,8 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                     style={{
                       fontSize: 9, fontWeight: 700, letterSpacing: '0.8px', textTransform: 'uppercase',
                       padding: '3px 9px', borderRadius: 999, border: 'none', cursor: 'pointer',
-                      color: trendMode === m ? '#0a2540' : 'rgba(200,225,255,0.75)',
-                      background: trendMode === m ? 'linear-gradient(180deg, #7ed0ff, #4db8ff)' : 'transparent',
+                      color: trendMode === m ? 'hsl(228,22%,14%)' : 'rgba(255,255,255,0.75)',
+                      background: trendMode === m ? 'linear-gradient(180deg, hsl(213,90%,75%), hsl(213,90%,70%))' : 'transparent',
                     }}
                   >
                     {m === 'ttm' ? 'TTM' : m === 'monthly' ? 'Monthly' : 'Quarterly Growth'}
@@ -1301,10 +1301,10 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               <span style={{ color: overdueAR && overdueAR > 0 ? '#ff6b7a' : '#3de89a' }}>{isCurrentReportingPeriod ? fmtUSD(overdueAR) : '—'}</span>
             </Row>
             <Row label="Open Invoices">
-              <span style={{ color: '#d0eaff' }}>{isCurrentReportingPeriod ? qbInvoices.filter(inv => Number(inv.balance || 0) > 0).length : '—'}</span>
+              <span style={{ color: 'hsl(0,0%,100%)' }}>{isCurrentReportingPeriod ? qbInvoices.filter(inv => Number(inv.balance || 0) > 0).length : '—'}</span>
             </Row>
             <Row label="Payments in Period">
-              <span style={{ color: '#d0eaff' }}>{qbConnected ? fmtUSD(periodPayments) : '—'}</span>
+              <span style={{ color: 'hsl(0,0%,100%)' }}>{qbConnected ? fmtUSD(periodPayments) : '—'}</span>
             </Row>
           </GridShell>
         </div>
@@ -1317,22 +1317,22 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid rgba(40,100,180,0.3)' }}>
-                      <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
-                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(160,210,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
+                    <tr style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                      <th style={{ textAlign: 'left', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Deal Name</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Total Fee Revenue</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Expected Close Month</th>
+                      <th style={{ textAlign: 'right', padding: '6px 8px', color: 'rgba(255,255,255,0.55)', fontWeight: 700, fontSize: 9, letterSpacing: '1px', textTransform: 'uppercase' }}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {activeDealsList.map((d: any) => {
                       const sd = statusDisplay(d.status);
                       return (
-                        <tr key={d.id} style={{ borderBottom: '1px solid rgba(40,100,180,0.15)' }}>
+                        <tr key={d.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                           <td style={{ padding: '6px 8px', color: '#e8f6ff', fontWeight: 500 }}>{d.company}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: '#d0eaff' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: '#d0eaff' }}>{formatCloseMonth(d.projected_close_date)}</td>
-                          <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(160,210,255,0.4)', fontWeight: 600 }}>{sd?.label ?? '—'}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{fmtUSD(Number(d.total_fee || 0))}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: 'hsl(0,0%,100%)' }}>{formatCloseMonth(d.projected_close_date)}</td>
+                          <td style={{ padding: '6px 8px', textAlign: 'right', color: sd?.color ?? 'rgba(255,255,255,0.4)', fontWeight: 600 }}>{sd?.label ?? '—'}</td>
                         </tr>
                       );
                     })}

@@ -201,20 +201,20 @@ export function FinServTopCustomersCard() {
     <div
       className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
-        background: "rgba(10,60,110,0.55)",
-        border: "1px solid rgba(40,120,200,0.28)",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+            "linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)",
         }}
       />
       <div
         className="px-3 py-2 flex items-center justify-between gap-3 flex-wrap"
-        style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
@@ -222,7 +222,7 @@ export function FinServTopCustomersCard() {
             fontWeight: 700,
             letterSpacing: "1.2px",
             textTransform: "uppercase",
-            color: "rgba(160,210,255,0.6)",
+            color: "rgba(255,255,255,0.6)",
           }}
         >
           FinServ Income · Top 10 Customers vs Prior Year
@@ -230,7 +230,7 @@ export function FinServTopCustomersCard() {
         <div className="flex items-center gap-2">
           <Select value={entityId} onValueChange={setEntityId}>
             <SelectTrigger
-              className="h-7 text-[11px] bg-transparent border-[rgba(80,160,230,0.25)] text-[rgba(200,225,255,0.85)] min-w-[220px]"
+              className="h-7 text-[11px] bg-transparent border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.85)] min-w-[220px]"
             >
               <SelectValue />
             </SelectTrigger>
@@ -244,7 +244,7 @@ export function FinServTopCustomersCard() {
           </Select>
           <span
             className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             QuickBooks ·{" "}
             {data?.lastSync
@@ -257,7 +257,7 @@ export function FinServTopCustomersCard() {
       <div className="p-4 space-y-3">
         <div
           className="text-[10px] tracking-wide"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           {periodLabel} {new Date().getFullYear()} vs {periodLabel}{" "}
           {new Date().getFullYear() - 1} · sum of invoice totals
@@ -268,7 +268,7 @@ export function FinServTopCustomersCard() {
         ) : rows.length === 0 ? (
           <div
             className="h-[300px] flex items-center justify-center text-sm"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             No invoice data for this entity in the selected period.
           </div>
@@ -287,16 +287,16 @@ export function FinServTopCustomersCard() {
                   />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 10, fill: "rgba(200,225,255,0.7)" }}
-                    axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.7)" }}
+                    axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                     tickLine={false}
                     interval={0}
                     angle={-30}
                     textAnchor="end"
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "rgba(200,225,255,0.6)" }}
-                    axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
+                    axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                     tickLine={false}
                     tickFormatter={(v) =>
                       v >= 1_000_000
@@ -307,10 +307,10 @@ export function FinServTopCustomersCard() {
                     }
                   />
                   <Tooltip
-                    cursor={{ fill: "rgba(80,160,230,0.08)" }}
+                    cursor={{ fill: "rgba(255,255,255,0.15)" }}
                     contentStyle={{
                       background: "rgba(10,30,55,0.95)",
-                      border: "1px solid rgba(80,160,230,0.35)",
+                      border: "1px solid rgba(255,255,255,0.15)",
                       borderRadius: 6,
                       fontSize: 12,
                       color: "rgb(220,235,255)",
@@ -324,7 +324,7 @@ export function FinServTopCustomersCard() {
                     ]}
                   />
                   <Legend
-                    wrapperStyle={{ fontSize: 11, color: "rgba(200,225,255,0.7)" }}
+                    wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
                     formatter={(v) =>
                       v === "current" ? "Current YTD" : "Prior YTD"
                     }
@@ -336,7 +336,7 @@ export function FinServTopCustomersCard() {
                   />
                   <Bar
                     dataKey="current"
-                    fill="rgba(80,180,255,0.85)"
+                    fill="hsla(213,90%,70%,0.85)"
                     radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
@@ -348,7 +348,7 @@ export function FinServTopCustomersCard() {
                 <thead>
                   <tr
                     className="text-[10px] uppercase tracking-wider"
-                    style={{ color: "rgba(160,210,255,0.6)" }}
+                    style={{ color: "rgba(255,255,255,0.6)" }}
                   >
                     <th
                       className="text-left py-2 font-semibold cursor-pointer select-none"
@@ -396,8 +396,8 @@ export function FinServTopCustomersCard() {
                     return (
                       <tr
                         key={r.customerId}
-                        className="border-t cursor-pointer hover:bg-[rgba(80,160,230,0.08)] transition-colors"
-                        style={{ borderColor: "rgba(40,100,180,0.18)" }}
+                        className="border-t cursor-pointer hover:bg-[rgba(255,255,255,0.15)] transition-colors"
+                        style={{ borderColor: "rgba(255,255,255,0.08)" }}
                         onClick={() =>
                           setDrill({ id: r.customerId, name: r.customer })
                         }
@@ -406,7 +406,7 @@ export function FinServTopCustomersCard() {
                         <td className="py-2 text-right text-foreground font-medium">
                           {fmtUSD(r.current)}
                         </td>
-                        <td className="py-2 text-right text-[rgba(200,225,255,0.7)]">
+                        <td className="py-2 text-right text-[rgba(255,255,255,0.7)]">
                           {fmtUSD(r.prior)}
                         </td>
                         <td

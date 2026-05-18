@@ -148,20 +148,20 @@ export function IncomeTop5CustomersMoMCard() {
     <div
       className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
-        background: "rgba(10,60,110,0.55)",
-        border: "1px solid rgba(40,120,200,0.28)",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+            "linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)",
         }}
       />
       <div
         className="px-3 py-2 flex items-center justify-between gap-3 flex-wrap"
-        style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
@@ -169,14 +169,14 @@ export function IncomeTop5CustomersMoMCard() {
             fontWeight: 700,
             letterSpacing: "1.2px",
             textTransform: "uppercase",
-            color: "rgba(160,210,255,0.6)",
+            color: "rgba(255,255,255,0.6)",
           }}
         >
           Income · Top 5 Customers MoM
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           QuickBooks ·{" "}
           {data?.lastSync
@@ -188,7 +188,7 @@ export function IncomeTop5CustomersMoMCard() {
       <div className="p-4 space-y-3">
         <div
           className="text-[10px] tracking-wide"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           {curLabel} vs {prevLabel} · top 5 customers by current-month income · 4 entities
         </div>
@@ -198,7 +198,7 @@ export function IncomeTop5CustomersMoMCard() {
         ) : !hasAny ? (
           <div
             className="h-[300px] flex items-center justify-center text-sm"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             No customer income in the current month.
           </div>
@@ -217,24 +217,24 @@ export function IncomeTop5CustomersMoMCard() {
                   />
                   <XAxis
                     dataKey="name"
-                    tick={{ fontSize: 10, fill: "rgba(200,225,255,0.7)" }}
-                    axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                    tick={{ fontSize: 10, fill: "rgba(255,255,255,0.7)" }}
+                    axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                     tickLine={false}
                     interval={0}
                     angle={-25}
                     textAnchor="end"
                   />
                   <YAxis
-                    tick={{ fontSize: 11, fill: "rgba(200,225,255,0.6)" }}
-                    axisLine={{ stroke: "rgba(80,160,230,0.25)" }}
+                    tick={{ fontSize: 11, fill: "rgba(255,255,255,0.6)" }}
+                    axisLine={{ stroke: "rgba(255,255,255,0.15)" }}
                     tickLine={false}
                     tickFormatter={fmtCompact}
                   />
                   <Tooltip
-                    cursor={{ fill: "rgba(80,160,230,0.08)" }}
+                    cursor={{ fill: "rgba(255,255,255,0.15)" }}
                     contentStyle={{
                       background: "rgba(10,30,55,0.95)",
-                      border: "1px solid rgba(80,160,230,0.35)",
+                      border: "1px solid rgba(255,255,255,0.15)",
                       borderRadius: 6,
                       fontSize: 12,
                       color: "rgb(220,235,255)",
@@ -248,7 +248,7 @@ export function IncomeTop5CustomersMoMCard() {
                     ]}
                   />
                   <Legend
-                    wrapperStyle={{ fontSize: 11, color: "rgba(200,225,255,0.7)" }}
+                    wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.7)" }}
                     formatter={(v) => (v === "current" ? curLabel : prevLabel)}
                   />
                   <Bar
@@ -258,7 +258,7 @@ export function IncomeTop5CustomersMoMCard() {
                   />
                   <Bar
                     dataKey="current"
-                    fill="rgba(80,180,255,0.85)"
+                    fill="hsla(213,90%,70%,0.85)"
                     radius={[3, 3, 0, 0]}
                   />
                 </BarChart>
@@ -270,7 +270,7 @@ export function IncomeTop5CustomersMoMCard() {
                 <thead>
                   <tr
                     className="text-[10px] uppercase tracking-wider"
-                    style={{ color: "rgba(160,210,255,0.6)" }}
+                    style={{ color: "rgba(255,255,255,0.6)" }}
                   >
                     <th className="text-left py-2 font-semibold">Customer</th>
                     <th className="text-right py-2 font-semibold">{curLabel}</th>
@@ -289,13 +289,13 @@ export function IncomeTop5CustomersMoMCard() {
                       <tr
                         key={r.customerId}
                         className="border-t"
-                        style={{ borderColor: "rgba(40,100,180,0.18)" }}
+                        style={{ borderColor: "rgba(255,255,255,0.08)" }}
                       >
                         <td className="py-2 text-foreground">{r.customer}</td>
                         <td className="py-2 text-right text-foreground font-medium">
                           {fmtUSD(r.current)}
                         </td>
-                        <td className="py-2 text-right text-[rgba(200,225,255,0.7)]">
+                        <td className="py-2 text-right text-[rgba(255,255,255,0.7)]">
                           {fmtUSD(r.prior)}
                         </td>
                         <td
