@@ -1,7 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { Virtuoso } from 'react-virtuoso';
 import { Building2, Loader2, ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-react';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
 import { MasterLender } from '@/hooks/useMasterLenders';
 
@@ -271,10 +270,20 @@ export function LenderSpreadsheetView({
 
   return (
     <div className="rounded-lg border border-white/10 bg-white/[0.02] overflow-hidden shadow-[0_1px_0_0_rgba(255,255,255,0.04)_inset]">
-      <ScrollArea className="w-full" style={{ height: 'calc(100vh - 280px)' }}>
-        <div style={{ minWidth: TOTAL_WIDTH }}>
+      {/*
+        Bug fix (scroll glitch): previously this view nested a Virtuoso
+        virtualized list inside a Radix `ScrollArea`. The outer ScrollArea
+        tried to scroll vertically at the same time Virtuoso did, which
+        produced flickering and row-jumping during scroll. We now use a
+        single horizontally-scrolling container and let Virtuoso own the
+        vertical scroll. `backdrop-blur` on sticky row cells is also
+        removed — recompositing the blur per scroll frame is a known
+        perf/flicker hazard.
+      */}
+      <div className="w-full overflow-x-auto" style={{ height: 'calc(100vh - 280px)' }}>
+        <div style={{ minWidth: TOTAL_WIDTH, height: '100%' }} className="flex flex-col">
           {/* Header Row */}
-          <div className="flex sticky top-0 z-10 bg-white/[0.04] backdrop-blur-sm border-b border-white/10">
+          <div className="flex sticky top-0 z-10 bg-[hsl(var(--background))] border-b border-white/10">
             {/* Checkbox header */}
             {onToggleSelect && (
               <div className="flex-shrink-0 w-[40px] px-2 py-2.5 border-r border-white/5 bg-white/[0.04] sticky left-0 z-20 flex items-center justify-center">
@@ -314,9 +323,10 @@ export function LenderSpreadsheetView({
 
           {/* Data Rows - Virtualized */}
           <Virtuoso
-            style={{ height: 'calc(100vh - 320px)' }}
+            style={{ flex: 1, minHeight: 0 }}
             totalCount={sortedLenders.length}
             endReached={onLoadMore}
+            computeItemKey={(index) => sortedLenders[index]?.id ?? index}
             itemContent={(index) => {
               const lender = sortedLenders[index];
               const isSelected = selectedIds?.has(lender.id) ?? false;
@@ -332,7 +342,7 @@ export function LenderSpreadsheetView({
                   {/* Checkbox */}
                   {onToggleSelect && (
                     <div 
-                      className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-white/[0.04] bg-background/40 backdrop-blur-sm sticky left-0 z-10 flex items-center justify-center"
+                      className="flex-shrink-0 w-[40px] px-2 py-2 border-r border-white/[0.04] bg-[hsl(var(--background))] sticky left-0 z-10 flex items-center justify-center"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <Checkbox
@@ -342,7 +352,7 @@ export function LenderSpreadsheetView({
                     </div>
                   )}
                   {/* Row number */}
-                  <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 border-r border-white/[0.04] bg-background/40 backdrop-blur-sm flex items-center ${onToggleSelect ? '' : 'sticky left-0'} z-10`} style={{ fontVariantNumeric: 'tabular-nums' }}>
+                  <div className={`flex-shrink-0 w-[50px] px-2 py-2 text-xs text-muted-foreground/60 border-r border-white/[0.04] bg-[hsl(var(--background))] flex items-center ${onToggleSelect ? '' : 'sticky left-0'} z-10`} style={{ fontVariantNumeric: 'tabular-nums' }}>
                     {index + 1}
                   </div>
                   {COLUMNS.map((col) => (
@@ -375,8 +385,7 @@ export function LenderSpreadsheetView({
             }}
           />
         </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+      </div>
     </div>
   );
 }
