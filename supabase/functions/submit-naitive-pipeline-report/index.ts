@@ -15,9 +15,41 @@ const RECIPIENTS = [
   "jmoffitt@5thline.co",
 ];
 
-function getAppOrigin(req: Request): string {
+/**
+ * Canonical app base URL for links embedded in outbound emails.
+ *
+ * We never want to link recipients back to:
+ *   - the Lovable editor (lovable.dev/projects/...)
+ *   - the preview sandbox (id-preview--*.lovable.app)
+ *
+ * Preference order:
+ *   1. APP_BASE_URL env var (lets ops point links at a custom domain).
+ *   2. The request's Origin header, only if it matches the production
+ *      Naitive domain or the deployed published lovable.app domain.
+ *   3. Hardcoded production fallback: https://naitive.co
+ */
+function getAppBaseUrl(req: Request): string {
+  const envOverride = Deno.env.get("APP_BASE_URL");
+  if (envOverride && /^https?:\/\//.test(envOverride)) {
+    return envOverride.replace(/\/$/, "");
+  }
+
+  const ALLOWED_HOSTS = new Set([
+    "naitive.co",
+    "www.naitive.co",
+    "fivelinenaitive.lovable.app",
+  ]);
+
   const origin = req.headers.get("origin");
-  if (origin && /^https?:\/\//.test(origin)) return origin.replace(/\/$/, "");
+  if (origin && /^https?:\/\//.test(origin)) {
+    try {
+      const host = new URL(origin).host.toLowerCase();
+      if (ALLOWED_HOSTS.has(host)) return origin.replace(/\/$/, "");
+    } catch {
+      /* fall through to production default */
+    }
+  }
+
   return "https://naitive.co";
 }
 
@@ -141,8 +173,8 @@ Deno.serve(async (req) => {
       );
     }
 
-    const origin = getAppOrigin(req);
-    const viewUrl = `${origin}/naitive-pipeline/reports/${inserted.id}`;
+    const appBaseUrl = getAppBaseUrl(req);
+    const viewUrl = `${appBaseUrl}/naitive-pipeline/reports/${inserted.id}`;
     const submittedAtPretty = formatTimestamp(inserted.created_at);
     const periodPretty = period_label ? `${period_label}` : "";
 
