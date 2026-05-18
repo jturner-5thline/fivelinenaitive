@@ -87,20 +87,20 @@ export function IncomeYTDCard() {
     <div
       className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
       style={{
-        background: "rgba(10,60,110,0.55)",
-        border: "1px solid rgba(40,120,200,0.28)",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
       }}
     >
       <div
         className="absolute top-0 left-0 right-0 h-px"
         style={{
           background:
-            "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+            "linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)",
         }}
       />
       <div
         className="px-3 py-2 flex items-center justify-between gap-3"
-        style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+        style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
       >
         <div
           style={{
@@ -108,14 +108,14 @@ export function IncomeYTDCard() {
             fontWeight: 700,
             letterSpacing: "1.2px",
             textTransform: "uppercase",
-            color: "rgba(160,210,255,0.6)",
+            color: "rgba(255,255,255,0.6)",
           }}
         >
           Income YTD
         </div>
         <span
           className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           QuickBooks ·{" "}
           {data?.lastSync
@@ -126,7 +126,7 @@ export function IncomeYTDCard() {
       <div className="p-4 flex flex-col gap-2">
         <div
           className="text-[10px] tracking-wide"
-          style={{ color: "rgba(160,210,255,0.55)" }}
+          style={{ color: "rgba(255,255,255,0.55)" }}
         >
           Jan 1 – {now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} · 4 entities · Actuals
         </div>
@@ -158,7 +158,7 @@ export function IncomeYTDCard() {
         {!isLoading && (
           <div
             className="text-[11px]"
-            style={{ color: "rgba(160,210,255,0.45)" }}
+            style={{ color: "rgba(255,255,255,0.45)" }}
           >
             Prior YTD ({prevStart.slice(0, 4)}): {formatUSDFull(prev)}
           </div>

@@ -215,8 +215,8 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
           bare
             ? undefined
             : {
-                background: "rgba(10,60,110,0.55)",
-                border: "1px solid rgba(40,120,200,0.28)",
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
               }
         }
       >
@@ -225,14 +225,14 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
             className="absolute top-0 left-0 right-0 h-px"
             style={{
               background:
-                "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+                "linear-gradient(90deg,transparent,hsla(213,90%,70%,0.4),transparent)",
             }}
           />
         )}
         {!bare && (
         <div
           className="px-3 py-2 flex items-center justify-between gap-3"
-          style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
+          style={{ borderBottom: "1px solid rgba(255,255,255,0.08)" }}
         >
           <div
             style={{
@@ -240,7 +240,7 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
               fontWeight: 700,
               letterSpacing: "1.2px",
               textTransform: "uppercase",
-              color: "rgba(160,210,255,0.6)",
+              color: "rgba(255,255,255,0.6)",
             }}
           >
             Quarterly Revenue Growth (YoY)
@@ -252,7 +252,7 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-6 px-2 gap-1 text-[10px] font-semibold uppercase tracking-wider bg-transparent border-[rgba(80,160,230,0.25)] text-[rgba(200,225,255,0.75)] hover:bg-[rgba(40,120,200,0.18)]"
+                    className="h-6 px-2 gap-1 text-[10px] font-semibold uppercase tracking-wider bg-transparent border-[rgba(255,255,255,0.15)] text-[rgba(255,255,255,0.75)] hover:bg-[rgba(255,255,255,0.08)]"
                   >
                     <Filter className="h-3 w-3" />
                     {filterLabel}
@@ -286,7 +286,7 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
             )}
             <span
               className="text-[10px] font-semibold uppercase tracking-wider whitespace-nowrap"
-              style={{ color: "rgba(160,210,255,0.55)" }}
+              style={{ color: "rgba(255,255,255,0.55)" }}
             >
               QuickBooks ·{" "}
               {data?.lastSync
@@ -301,7 +301,7 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
         <div className={bare ? "flex-1 flex flex-col min-h-0 overflow-hidden" : "p-3 overflow-hidden"}>
           <div
             className="mb-2 text-[10px] tracking-wide"
-            style={{ color: "rgba(160,210,255,0.55)" }}
+            style={{ color: "rgba(255,255,255,0.55)" }}
           >
             Rolling last 4 quarters · {filterLabel} ·{" "}
             <span className="inline-flex items-center gap-1">
