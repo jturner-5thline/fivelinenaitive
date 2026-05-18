@@ -808,7 +808,7 @@ export default function NaitivePipeline() {
         activeCount={naitiveFilters.activeCount}
         filteredDeals={filteredDeals}
         totalDeals={deals.length}
-        stageLabels={stageLabelById}
+        stageLabels={Object.fromEntries(stageLabelById)}
       />
 
       <NaitiveStageTransitionDialog
