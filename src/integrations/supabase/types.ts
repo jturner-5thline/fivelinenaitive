@@ -1595,6 +1595,63 @@ export type Database = {
           },
         ]
       }
+      blog_posts: {
+        Row: {
+          author_id: string | null
+          body_html: string
+          cover_image_alt: string | null
+          cover_image_url: string | null
+          created_at: string
+          disabled_at: string | null
+          excerpt: string | null
+          id: string
+          published_at: string | null
+          seo_description: string | null
+          seo_title: string | null
+          slug: string
+          status: Database["public"]["Enums"]["blog_post_status"]
+          tags: string[]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          author_id?: string | null
+          body_html?: string
+          cover_image_alt?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          disabled_at?: string | null
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug: string
+          status?: Database["public"]["Enums"]["blog_post_status"]
+          tags?: string[]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string | null
+          body_html?: string
+          cover_image_alt?: string | null
+          cover_image_url?: string | null
+          created_at?: string
+          disabled_at?: string | null
+          excerpt?: string | null
+          id?: string
+          published_at?: string | null
+          seo_description?: string | null
+          seo_title?: string | null
+          slug?: string
+          status?: Database["public"]["Enums"]["blog_post_status"]
+          tags?: string[]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       business_holidays: {
         Row: {
           created_at: string
@@ -22809,6 +22866,7 @@ export type Database = {
         | "competitive_win"
         | "other"
       app_role: "admin" | "moderator" | "user" | "support_admin"
+      blog_post_status: "draft" | "published" | "disabled"
       channel_type:
         | "Banks"
         | "M&A and Investment Bankers"
@@ -23056,6 +23114,7 @@ export const Constants = {
         "other",
       ],
       app_role: ["admin", "moderator", "user", "support_admin"],
+      blog_post_status: ["draft", "published", "disabled"],
       channel_type: [
         "Banks",
         "M&A and Investment Bankers",
