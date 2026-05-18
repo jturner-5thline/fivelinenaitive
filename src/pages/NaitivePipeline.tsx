@@ -801,6 +801,16 @@ export default function NaitivePipeline() {
         stages={stages}
       />
 
+      <SubmitReportDialog
+        open={isSubmitOpen}
+        onOpenChange={setIsSubmitOpen}
+        filters={naitiveFilters.filters}
+        activeCount={naitiveFilters.activeCount}
+        filteredDeals={filteredDeals}
+        totalDeals={deals.length}
+        stageLabels={stageLabelById}
+      />
+
       <NaitiveStageTransitionDialog
         transition={pendingTransition}
         onCancel={() => setPendingTransition(null)}
