@@ -40,6 +40,7 @@ import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
+import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -963,6 +964,17 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               if (!result?.options[selected] && !loadingTones[selected]) {
                 void generateTone(selected);
               }
+            }}
+          />
+
+          {/* Availability Check — auto-detects scheduling proposals in the
+              open thread, normalizes timezones, checks the user's calendar,
+              and surfaces one-click suggested replies. Never auto-sends. */}
+          <AvailabilityCheckCard
+            thread={thread}
+            onInsertDraft={(body) => {
+              setDraftOpen(true);
+              onInsertDraft(body);
             }}
           />
 
