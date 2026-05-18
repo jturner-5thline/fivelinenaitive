@@ -1189,6 +1189,42 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     setReadingPaneExpanded(prev => !prev);
   }, []);
 
+  // Build a per-row EmailThread (matches the shape EmailList renders for a
+  // single message) so right-click row actions can open the reading pane on
+  // the exact message that was right-clicked.
+  const buildRowThread = useCallback((email: MockEmail) => {
+    const conv = groupEmailsByThread(emails).find(
+      (t) => t.provider_thread_id === (email.provider_thread_id ?? null) || t.threadId === email.threadId,
+    );
+    return {
+      threadId: email.id,
+      provider_thread_id: email.provider_thread_id ?? null,
+      subject: email.subject || '(no subject)',
+      emails: conv?.emails ?? [email],
+      latestEmail: email,
+      participants: [],
+      hasUnread: !email.is_read,
+      isStarred: !!email.is_starred,
+      isLinked: !!email.is_linked_to_deal,
+      hasAttachments: !!email.has_attachments,
+      needsResponse: !!email.needs_response,
+      dealName: email.deal_name,
+      category: email.category,
+    } as EmailThread;
+  }, [emails]);
+
+  const handleRowReplyAction = useCallback(
+    (action: 'reply'|'replyAll'|'forward') => (email: MockEmail) => {
+      const t = buildRowThread(email);
+      setSelectedThread(t);
+      setComposeOpen(false);
+      // Defer slightly so EmailDetail mounts with the new thread before the
+      // pendingAction effect fires.
+      setTimeout(() => setPendingDetailAction(action), 0);
+    },
+    [buildRowThread],
+  );
+
   const isSectionOpen = (section: SidebarSection) => {
     if (collapsedSections[section.title] !== undefined) return !collapsedSections[section.title];
     return section.defaultOpen ?? false;
