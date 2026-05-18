@@ -7,6 +7,7 @@ import { toast as sonnerToast } from 'sonner';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
+import { InsightsReportingBar } from './InsightsReportingBar';
 import {
   QuarterlyReportPrintStyles,
   QuarterlyInsightsReportPage,
