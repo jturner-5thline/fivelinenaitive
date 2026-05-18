@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -594,7 +594,7 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
   );
 }
 
-function Header({ rightSlot }: { rightSlot?: React.ReactNode }) {
+function Header({ rightSlot }: { rightSlot?: ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <div className="flex items-center gap-1.5">
