@@ -96,14 +96,30 @@ export function SalesBdFunnelChart() {
   const { data: channelEntries = [] } = useChannelEntries();
 
   const { data: deals = [], isLoading } = useQuery({
-    queryKey: ['sales_bd_funnel_deals', company?.id],
+    queryKey: ['sales_bd_funnel_deals', company?.id, 'referral-active-indev'],
     enabled: !!company?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
+      // Restrict to the company's "Active Pipeline" (is_default) and the
+      // "In Development" pipeline, sourced via Referral only. Filtering
+      // happens at the query layer so percentages recalculate against
+      // the filtered baseline.
+      const { data: pipelines, error: pipeErr } = await supabase
+        .from('deal_pipelines')
+        .select('id, name, is_default')
+        .eq('company_id', company!.id);
+      if (pipeErr) throw pipeErr;
+      const allowedPipelineIds = (pipelines || [])
+        .filter(p => p.is_default || p.name === 'In Development')
+        .map(p => p.id);
+      if (allowedPipelineIds.length === 0) return [] as FunnelDeal[];
+
       const { data, error } = await supabase
         .from('deals')
         .select('id, company, value, stage, status, referred_by, sourced_via, crm_company_id, created_at')
         .eq('company_id', company!.id)
+        .eq('sourced_via', 'Referral')
+        .in('pipeline_id', allowedPipelineIds)
         .neq('status', 'archived');
       if (error) throw error;
       return (data || []) as FunnelDeal[];
