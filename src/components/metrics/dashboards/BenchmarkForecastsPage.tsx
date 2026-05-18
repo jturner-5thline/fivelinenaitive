@@ -312,7 +312,7 @@ export function BenchmarkForecastsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <PlanTable title="Reach Plan" pill="Best Case" pillVariant="r"
             rows={[
-              { label: 'Revenue', q1: '$1.18MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$1.05MM', total: '$3.80MM', totalColor: '#4de8a0' },
+              { label: 'Revenue', q1: '$1.18MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$1.05MM', total: '$3.80MM', totalColor: PLAN_COLORS.Reach },
               { label: 'Gross Profit', q1: '$1,059.5K', q2: '$609.1K', q3: '$656.4K', q4: '$854.1K', total: '$3.18MM' },
               { label: 'Gross %', q1: '90%', q2: '80%', q3: '81%', q4: '81%', total: '84%' },
               { label: 'Op. Profit', q1: '$748.7K', q2: '$113.8K', q3: '$129.6K', q4: '$221.0K', total: '$1.21MM' },
@@ -324,7 +324,7 @@ export function BenchmarkForecastsPage() {
           />
           <PlanTable title="Operating Plan" pill="Base Case" pillVariant="o"
             rows={[
-              { label: 'Revenue', q1: '$0.64MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$0.99MM', total: '$3.20MM', totalColor: 'hsl(213,90%,70%)' },
+              { label: 'Revenue', q1: '$0.64MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$0.99MM', total: '$3.20MM', totalColor: PLAN_COLORS.Operating },
               { label: 'Gross Profit', q1: '$536.4K', q2: '$620.0K', q3: '$672.9K', q4: '$816.7K', total: '$2.65MM' },
               { label: 'Gross %', q1: '84%', q2: '82%', q3: '83%', q4: '82%', total: '83%' },
               { label: 'Op. Profit', q1: '$225.6K', q2: '$173.8K', q3: '$186.0K', q4: '$223.7K', total: '$809.1K' },
@@ -336,7 +336,7 @@ export function BenchmarkForecastsPage() {
           />
           <PlanTable title="Conservative Plan" pill="Floor Case" pillVariant="c"
             rows={[
-              { label: 'Revenue', q1: '$0.35MM', q2: '$0.41MM', q3: '$0.81MM', q4: '$0.99MM', total: '$2.57MM', totalColor: '#c4a0f0' },
+              { label: 'Revenue', q1: '$0.35MM', q2: '$0.41MM', q3: '$0.81MM', q4: '$0.99MM', total: '$2.57MM', totalColor: PLAN_COLORS.Conservative },
               { label: 'Gross Profit', q1: '$262.8K', q2: '$317.3K', q3: '$705.5K', q4: '$867.9K', total: '$2.15MM' },
               { label: 'Gross %', q1: '76%', q2: '76%', q3: '87%', q4: '87%', total: '84%' },
               { label: 'Op. Profit', q1: '-$38.1K', q2: '$20.4K', q3: '$361.6K', q4: '$445.3K', total: '$789.2K', isNeg: [true, false, false, false] },
