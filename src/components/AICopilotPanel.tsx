@@ -269,10 +269,16 @@ const DEAL_SUGGESTIONS: Array<{ prompt: string; description: string }> = [
 function isDealDetailPath(pathname: string): boolean {
   // Matches /deal/:id and /deals/:id (both routes exist in the app).
   const parts = pathname.split('/').filter(Boolean);
-  if (parts.length < 2) return false;
-  if (parts[0] !== 'deal' && parts[0] !== 'deals') return false;
-  // For /deals, the index page has no second segment; only treat as detail when there is one.
-  return Boolean(parts[1]);
+  if (parts.length >= 2 && (parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) {
+    return true;
+  }
+  // Treat any page that has an `?deal=<id>` overlay open as deal-detail
+  // (NaitiveDealOverlay opens on top of /deals, /pipeline, /finserv, ...).
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('deal') && readScopePreference() !== 'pipeline') return true;
+  } catch { /* ignore */ }
+  return false;
 }
 
 function DealSuggestionChips({
