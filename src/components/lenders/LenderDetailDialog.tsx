@@ -1518,20 +1518,38 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       );
 
                     case 'additional-preferences':
-                      if (lender.preferences.length === 0) return null;
                       return (
                         <div key={sectionId}>
                           <section>
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
                               Additional Preferences
                             </h3>
-                            <div className="flex flex-wrap gap-2">
-                              {lender.preferences.map((pref, idx) => (
-                                <Badge key={idx} variant="secondary">
-                                  {pref}
-                                </Badge>
-                              ))}
-                            </div>
+                            {lender.preferences.length > 0 ? (
+                              <div className="flex flex-wrap gap-2">
+                                {lender.preferences.map((pref) => (
+                                  <Badge key={pref} variant="secondary">
+                                    {pref}
+                                  </Badge>
+                                ))}
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-between gap-3 rounded-md border border-dashed border-border/60 px-4 py-3">
+                                <p className="text-sm text-muted-foreground italic">
+                                  No additional preferences recorded
+                                </p>
+                                {onSave && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={handleEnterEditMode}
+                                    className="gap-1.5"
+                                  >
+                                    <Pencil className="h-3.5 w-3.5" />
+                                    Add preferences
+                                  </Button>
+                                )}
+                              </div>
+                            )}
                           </section>
                           {showSeparator && <Separator className="my-6" />}
                         </div>
