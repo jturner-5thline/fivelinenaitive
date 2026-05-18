@@ -1282,7 +1282,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                 </SectionLabel>
               )}
               {trendMode === 'quarterly-yoy' ? (
-                <div style={{ flex: 1, minHeight: 180 }}><QuarterlyRevenueGrowthCard /></div>
+                <div style={{ flex: 1, minHeight: 180, display: 'flex' }}><QuarterlyRevenueGrowthCard bare /></div>
               ) : qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
                 ? <div style={{ position: 'relative', flex: 1, minHeight: 180 }}><canvas ref={ncRef} /></div>
                 : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'Revenue unavailable — connect QuickBooks to populate finance data.'} />}
