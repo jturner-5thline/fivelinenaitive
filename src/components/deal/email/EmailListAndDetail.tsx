@@ -277,9 +277,19 @@ interface ThreadListItemProps {
   autoLabels?: EmailLabel[];
   priorityFlag?: DetectedSignal;
   userLabels?: EmailLabel[];
+  onRowReply?: (email: MockEmail) => void;
+  onRowReplyAll?: (email: MockEmail) => void;
+  onRowForward?: (email: MockEmail) => void;
+  onSaveToDeal?: (email: MockEmail) => void;
+  selectedCount?: number;
+  isInBulkSelection?: boolean;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
 }
 
-function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels, onRowReply, onRowReplyAll, onRowForward, onSaveToDeal, selectedCount, isInBulkSelection, onBulkMarkRead, onBulkMarkUnread, onBulkArchive, onBulkDelete }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const latest = thread.latestEmail;
