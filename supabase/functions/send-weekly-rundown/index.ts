@@ -8,11 +8,11 @@ const corsHeaders = {
 };
 
 const APP_URL = "https://naitive.co";
-// Link directly to the Insights workspace where the Weekly Rundown lives.
+// Deep-link to the Weekly Rundown view on the Insights workspace.
 // If the user is not authenticated (or lacks Insights access) the
-// ProtectedRoute / InsightsAccessGuard will bounce them to /login while
+// ProtectedRoute / InsightsAccessGuard bounces them to /login while
 // preserving this path via ?redirect=, so they land back here after sign-in.
-const INSIGHTS_URL = `${APP_URL}/insights`;
+const INSIGHTS_URL = `${APP_URL}/insights?view=weekly-rundown`;
 
 function buildHtml(name: string | null): string {
   // Light-theme layout mirroring the existing "Daily Briefing" email
@@ -95,6 +95,35 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
+    // Cron fires at 19:00 and 20:00 UTC every Monday so that exactly
+    // one of those fires aligns with 15:00 America/New_York year-round
+    // (15:00 EDT = 19:00 UTC, 15:00 EST = 20:00 UTC). Skip the other.
+    // Manual invocations (with a `testRecipient` body, or `force: true`)
+    // bypass the guard so the function remains testable on demand.
+    let body: any = {};
+    try { body = await req.json(); } catch { /* ignore */ }
+    const isManual = !!(body?.testRecipient || body?.force);
+    if (!isManual) {
+      const etHour = Number(
+        new Intl.DateTimeFormat('en-US', {
+          timeZone: 'America/New_York',
+          hour: 'numeric',
+          hour12: false,
+        }).format(new Date())
+      );
+      const etWeekday = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        weekday: 'short',
+      }).format(new Date());
+      if (etHour !== 15 || etWeekday !== 'Mon') {
+        console.log(`Skipping weekly rundown send (ET ${etWeekday} ${etHour}:00)`);
+        return new Response(JSON.stringify({ skipped: true, etWeekday, etHour }), {
+          status: 200,
+          headers: { "Content-Type": "application/json", ...corsHeaders },
+        });
+      }
+    }
+
     const resendKey = Deno.env.get("RESEND_API_KEY");
     if (!resendKey) throw new Error("RESEND_API_KEY not configured");
     const resend = new Resend(resendKey);
@@ -105,8 +134,6 @@ const handler = async (req: Request): Promise<Response> => {
     );
 
     // Optional one-off test override: { testRecipient: "x@y.com" }
-    let body: any = {};
-    try { body = await req.json(); } catch { /* ignore */ }
     let list: Array<{ email: string; name: string | null }>;
     if (body?.testRecipient && typeof body.testRecipient === "string") {
       list = [{ email: body.testRecipient, name: body.testName ?? null }];

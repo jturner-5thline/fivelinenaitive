@@ -1,5 +1,6 @@
 import { Helmet } from "react-helmet-async";
 import { useState, useRef, useMemo, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { type QuarterOption } from "@/hooks/useQBQuarterlyRevenue";
 import { format, subMonths, subDays, parseISO } from "date-fns";
 import {
@@ -1420,6 +1421,17 @@ function MetricsInner() {
   const [coverPreviewOpen, setCoverPreviewOpen] = useState(false);
   const assistantTriggerRef = useRef<HTMLButtonElement>(null);
   const undoStackRef = useRef<Array<{ type: 'card' | 'section'; id: string; label: string; undo: () => void }>>([]);
+
+  // Deep-link support for the Weekly Rundown email CTA.
+  // /insights?view=weekly-rundown opens the Weekly Rundown
+  // (management-snapshot) dashboard automatically.
+  const [searchParams] = useSearchParams();
+  useEffect(() => {
+    const view = searchParams.get('view');
+    if (view === 'weekly-rundown') {
+      setSelectedDashboard('management-snapshot');
+    }
+  }, [searchParams]);
 
   // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
   useEffect(() => {
