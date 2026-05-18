@@ -22,6 +22,13 @@ const NIKI_BRIEFING_ALLOWED_EMAILS = new Set<string>([
 ]);
 const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
 
+// Mirror of src/constants/moffittBriefing.ts — keep in sync.
+const MOFFITT_BRIEFING_ALLOWED_EMAILS = new Set<string>([
+  'jturner@5thline.co',
+  'jmoffitt@5thline.co',
+]);
+const MOFFITT_USER_ID = 'bb211b16-282f-4eb5-a461-4168d6459154';
+
 function isAuthorizedCaller(
   callerEmail: string | undefined,
   callerUserId: string,
@@ -31,10 +38,19 @@ function isAuthorizedCaller(
   const email = callerEmail.toLowerCase();
   // Self-view: caller is the target user (e.g., Niki viewing her own briefing).
   if (callerUserId === targetUserId) {
+    return (
+      NIKI_BRIEFING_ALLOWED_EMAILS.has(email) ||
+      MOFFITT_BRIEFING_ALLOWED_EMAILS.has(email)
+    );
+  }
+  // Delegated view: caller on the matching allow-list for the requested target.
+  if (targetUserId === NIKI_USER_ID) {
     return NIKI_BRIEFING_ALLOWED_EMAILS.has(email);
   }
-  // Delegated view: caller on allow-list AND target is Niki.
-  return NIKI_BRIEFING_ALLOWED_EMAILS.has(email) && targetUserId === NIKI_USER_ID;
+  if (targetUserId === MOFFITT_USER_ID) {
+    return MOFFITT_BRIEFING_ALLOWED_EMAILS.has(email);
+  }
+  return false;
 }
 
 function jsonResponse(body: unknown, status = 200) {
