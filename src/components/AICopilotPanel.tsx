@@ -1541,7 +1541,32 @@ export function AICopilotPanel() {
             }}
           >
             <span style={{ color: 'hsl(var(--muted-foreground))' }}>Context:</span>
-            <strong style={{ fontWeight: 600 }}>{effectiveContextLabel}</strong>
+            {isDealDetail && !contextOverride ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    writeScopePreference('pipeline');
+                    // Force re-resolution of the chip without leaving the page.
+                    setAutoContextLabel('Pipeline');
+                    toast.success('Switched to Pipeline scope for this session');
+                    logUsage({
+                      feature_type: 'AI_CHAT',
+                      feature_subtype: 'scope_switch_to_pipeline',
+                      deal_id: dealIdFromPath,
+                    });
+                  }}
+                  title="Switch to Pipeline (portfolio-wide search) for this session"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 0, fontWeight: 500 }}
+                >
+                  Pipeline
+                </button>
+                <ChevronRight size={11} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                <strong style={{ fontWeight: 600 }}>{effectiveContextLabel.replace(/^Deal — /, '')}</strong>
+              </span>
+            ) : (
+              <strong style={{ fontWeight: 600 }}>{effectiveContextLabel}</strong>
+            )}
             {contextOverride && (
               <button
                 onClick={() => setContextOverride(null)}
@@ -1554,8 +1579,27 @@ export function AICopilotPanel() {
           </div>
         ) : null}
         {!contextOverride && (
-          <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', marginLeft: 'auto' }}>
-            Type <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '0 4px', borderRadius: 3 }}>@</kbd> to switch deal
+          <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {readScopePreference() === 'pipeline' && (
+              <button
+                type="button"
+                onClick={() => {
+                  writeScopePreference('auto');
+                  // Re-resolve immediately if a deal overlay is open.
+                  const q = new URLSearchParams(window.location.search);
+                  if (q.get('deal')) {
+                    setAutoContextLabel('Deal');
+                  }
+                  toast.success('Auto-context restored');
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', textDecoration: 'underline', padding: 0, fontSize: 10 }}
+              >
+                Use active deal
+              </button>
+            )}
+            <span>
+              Type <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '0 4px', borderRadius: 3 }}>@</kbd> to switch deal
+            </span>
           </span>
         )}
       </div>
