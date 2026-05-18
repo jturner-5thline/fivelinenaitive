@@ -1093,42 +1093,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
-      <Card className="glass-module">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', flexWrap: 'wrap', gap: 8 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            {tabsSlot}
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-              Reporting period {periodLabel}
-            </span>
-            <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
-              Last updated {format(lastUpdated, 'MMM d, yyyy h:mm a')}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 11, flexWrap: 'wrap' }}>
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>Period Rev</span>
-            <span style={{ fontWeight: 700, color: '#e8f6ff' }}>{fmtUSD(totalRevCurr, { unit: 'M' })}</span>
-            <span style={{ color: 'rgba(255,255,255,0.5)' }}>YTD</span>
-            <span style={{ fontWeight: 700, color: '#e8f6ff' }}>{fmtUSD(ytdRevenue, { unit: 'M' })}</span>
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing || isLoading}
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 6,
-                padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600,
-                background: 'rgba(255,255,255,0.08)', color: 'hsl(213,90%,70%)',
-                border: '1px solid rgba(255,255,255,0.08)', cursor: 'pointer',
-                opacity: (refreshing || isLoading) ? 0.6 : 1,
-              }}
-            >
-              {refreshing || isLoading
-                ? <Loader2 size={12} className="animate-spin" />
-                : <RefreshCw size={12} />}
-              Refresh
-            </button>
-          </div>
-        </div>
-      </Card>
-
       {isEditMode && (
         <div className="flex items-center gap-2 px-1">
           <span className="text-xs uppercase tracking-wider" style={{ color: 'rgba(255,255,255,0.7)' }}>
