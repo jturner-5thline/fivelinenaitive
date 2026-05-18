@@ -2168,6 +2168,14 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onDelete={handleDeleteEmail}
                 isLoading={aiSearch.isSearching}
                 scrollParent={isInboxScope ? inboxScrollRef.current : null}
+                onRowReply={handleRowReplyAction('reply')}
+                onRowReplyAll={handleRowReplyAction('replyAll')}
+                onRowForward={handleRowReplyAction('forward')}
+                onSaveToDeal={handleToggleLink}
+                onBulkMarkRead={handleBulkMarkRead}
+                onBulkMarkUnread={handleBulkMarkUnread}
+                onBulkArchive={handleBulkArchive}
+                onBulkDelete={handleBulkDelete}
               />
               {/*
                 Screen-reader-only announcer for search progress + result counts.
