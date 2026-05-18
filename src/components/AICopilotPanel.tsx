@@ -210,6 +210,8 @@ function ShortcutsTooltip({ visible }: { visible: boolean }) {
 function getPageContext(): { page: string; entityType: string | null; entityId: string | null; activeTab: string | null; banners: string[] } {
   const path = window.location.pathname;
   const parts = path.split('/').filter(Boolean);
+  const query = new URLSearchParams(window.location.search);
+  const overlayDealId = query.get('deal');
 
   // Detect active tab from DOM (Radix Tabs uses data-state="active")
   let activeTab: string | null = null;
@@ -235,6 +237,13 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
   // Deal detail — both /deal/:id (current) and legacy /deals/:id
   if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) {
     return { page: 'deal-detail', entityType: 'deal', entityId: parts[1], activeTab, banners };
+  }
+  // Deal overlay opened on top of /deals, /pipeline, /finserv, etc. via
+  // the canonical `?deal=<id>` query param used by NaitiveDealOverlay.
+  // When a deal overlay is open, the "current view" is that deal, even
+  // though the underlying route is the pipeline/list.
+  if (overlayDealId && readScopePreference() !== 'pipeline') {
+    return { page: 'deal-detail', entityType: 'deal', entityId: overlayDealId, activeTab, banners };
   }
   if (parts[0] === 'deals') return { page: 'deals', entityType: null, entityId: null, activeTab, banners };
   if (parts[0] === 'tasks') return { page: 'tasks', entityType: null, entityId: null, activeTab, banners };
