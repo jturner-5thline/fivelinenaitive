@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, lazy, Suspense } from 'react';
 import { createPortal } from 'react-dom';
-import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, ListChecks, Newspaper, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Calendar, Mail, Inbox, ClipboardList, ListChecks, Newspaper, Sparkles, UserRound } from 'lucide-react';
 
 import { HeaderNotificationPreview } from '@/components/notifications/HeaderNotificationPreview';
 import { DemoModeBadge } from '@/components/DemoModeBadge';
@@ -55,6 +55,12 @@ import {
   NIKI_ASSIGNEE_NAME,
   NIKI_EMAIL,
 } from '@/constants/nikiBriefing';
+import {
+  canSeeMoffittBriefing,
+  MOFFITT_USER_ID,
+  MOFFITT_ASSIGNEE_NAME,
+  MOFFITT_EMAIL,
+} from '@/constants/moffittBriefing';
 
 export function DealsHeader() {
   const location = useLocation();
@@ -113,9 +119,12 @@ export function DealsHeader() {
   const [isDealRundownOpen, setIsDealRundownOpen] = useState(false);
   const [isBriefingOpen, setIsBriefingOpen] = useState(false);
   const [isNikiBriefingOpen, setIsNikiBriefingOpen] = useState(false);
+  const [isMoffittBriefingOpen, setIsMoffittBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
+  const canSeeMoffitt = canSeeMoffittBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
+  const isMoffittViewingHimself = user?.email?.toLowerCase() === MOFFITT_EMAIL;
   const briefingUserEmails = ['jturner@5thline.co', 'nheikali@5thline.co'];
   const canSeeBriefingHeaderItems = briefingUserEmails.includes(
     user?.email?.toLowerCase() ?? ''
@@ -186,7 +195,8 @@ export function DealsHeader() {
     isMailOpen ||
     isDealRundownOpen ||
     isBriefingOpen ||
-    isNikiBriefingOpen;
+    isNikiBriefingOpen ||
+    isMoffittBriefingOpen;
 
   // ─── Header pop-up swipe navigation ────────────────────────────────
   // Treat the header pop-ups as one ordered sequence so the user can
@@ -202,6 +212,7 @@ export function DealsHeader() {
     { label: 'Dashboard' as const, isOpen: isDashboardOpen, open: () => setIsDashboardOpen(true), close: () => setIsDashboardOpen(false), available: isFifthLine },
     { label: 'Daily Rundown' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
     { label: "Niki's Daily Rundown" as const, isOpen: isNikiBriefingOpen, open: () => setIsNikiBriefingOpen(true), close: () => setIsNikiBriefingOpen(false), available: canSeeBriefingHeaderItems },
+    { label: (isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown"), isOpen: isMoffittBriefingOpen, open: () => setIsMoffittBriefingOpen(true), close: () => setIsMoffittBriefingOpen(false), available: canSeeMoffitt },
   ].filter(o => o.available);
 
   const currentOverlay = overlayRegistry.find(o => o.isOpen) ?? null;
@@ -368,6 +379,8 @@ export function DealsHeader() {
                 'Dashboard': LayoutDashboard,
                 'Daily Rundown': Newspaper,
                 "Niki's Daily Rundown": Sparkles,
+                "Moffitt's Daily Rundown": UserRound,
+                'My Daily Rundown': UserRound,
               };
               const BADGES: Record<string, boolean> = {
                 'Daily Rundown': dailyRundownHasBadge,
@@ -479,6 +492,15 @@ export function DealsHeader() {
           targetUserId={NIKI_USER_ID}
           targetAssigneeName={NIKI_ASSIGNEE_NAME}
           excludeTabs={['financial']}
+        />
+      )}
+      {canSeeMoffitt && (
+        <DailyBriefingModal
+          open={isMoffittBriefingOpen}
+          onOpenChange={setIsMoffittBriefingOpen}
+          title={isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown"}
+          targetUserId={MOFFITT_USER_ID}
+          targetAssigneeName={MOFFITT_ASSIGNEE_NAME}
         />
       )}
       <Dialog open={isActionQueueOpen} onOpenChange={setIsActionQueueOpen}>
