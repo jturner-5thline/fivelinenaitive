@@ -37,7 +37,7 @@ const p2SignR = [33, 66, 99, 144], p2SignO = [33, 66, 99, 144], p2SignC = [0, 25
 // ── Card ──
 function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={`relative overflow-hidden rounded-xl ${className}`} style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', ...style }}>
+    <div className={`glass-module relative overflow-hidden rounded-xl ${className}`} style={{ ...style }}>
       <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.25),transparent)' }} />
       {children}
     </div>
@@ -91,7 +91,7 @@ function PlanTable({ title, pill, pillVariant, rows, ttmRows }: {
         </tbody>
       </table>
       {ttmRows && (
-        <div style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 10px', marginTop: 8 }}>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 10px', marginTop: 8 }}>
           <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.9px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.4)', marginBottom: 5 }}>TTM</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
             <thead>
@@ -248,7 +248,7 @@ export function BenchmarkForecastsPage() {
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
       {/* Header */}
-      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px', background: 'rgba(255,255,255,0.08)', borderColor: 'rgba(255,255,255,0.08)' }}>
+      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px' }}>
         <div>
           <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff', letterSpacing: '-.3px' }}>5th<span style={{ color: 'hsl(213,90%,70%)' }}>Line</span> Benchmark Forecasts</div>
           <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2, fontStyle: 'italic' }}>Last Updated: 12/1/2025 · By: JT · Actuals Thru: <span style={{ color: 'hsl(213,90%,70%)', fontWeight: 600 }}>Mar-26</span></div>
