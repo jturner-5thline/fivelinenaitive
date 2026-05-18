@@ -179,11 +179,13 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
       email: lender.email || '',
       phone: lender.contact_phone || '',
     },
-    preferences: [
-      ...(lender.loan_types || []),
-      ...(lender.industries || []),
-      lender.geo,
-    ].filter(Boolean) as string[],
+    // "preferences" is only used for the "Additional Preferences" section in
+    // the detail dialog. We intentionally exclude industries / loan_types /
+    // geo here because those are already rendered under "Lending Criteria" —
+    // duplicating them caused the same chip list to appear in both sections
+    // (Bug 2 sub-bug). When the lender record carries no extra preference
+    // fields the section renders its empty-state CTA instead.
+    preferences: [] as string[],
     website: lender.lender_one_pager_url || undefined,
     description: lender.company_requirements || undefined,
     lenderType: lender.lender_type || undefined,
@@ -1504,12 +1506,13 @@ export default function Lenders() {
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
                     endReached={() => loadMore()}
+                    computeItemKey={(index) => sortedLenders[index]?.id ?? index}
+                    increaseViewportBy={{ top: 600, bottom: 600 }}
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
-                        <div className="pb-3">
+                        <div className="pb-3" data-lender-row={lender.id}>
                           <LenderListCard
-                            key={lender.id}
                             lender={lender}
                             activeDealCount={activeDealCounts[lender.name] || 0}
                             summary={getLenderSummary(lender.name)}
@@ -1556,12 +1559,13 @@ export default function Lenders() {
                     style={{ height: 'calc(100vh - 280px)' }}
                     totalCount={sortedLenders.length}
                     endReached={() => loadMore()}
+                    computeItemKey={(index) => sortedLenders[index]?.id ?? index}
+                    increaseViewportBy={{ top: 600, bottom: 600 }}
                     listClassName="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3"
                     itemContent={(index) => {
                       const lender = sortedLenders[index];
                       return (
                         <LenderGridCard
-                          key={lender.id}
                           lender={lender}
                           activeDealCount={activeDealCounts[lender.name] || 0}
                           tileDisplaySettings={tileDisplaySettings}

@@ -323,9 +323,10 @@ export function LenderSpreadsheetView({
 
           {/* Data Rows - Virtualized */}
           <Virtuoso
-            style={{ flex: 1, minHeight: 0 }}
+            style={{ flex: 1, minHeight: 0, contain: 'strict', willChange: 'transform' }}
             totalCount={sortedLenders.length}
             endReached={onLoadMore}
+            increaseViewportBy={{ top: 600, bottom: 600 }}
             computeItemKey={(index) => sortedLenders[index]?.id ?? index}
             itemContent={(index) => {
               const lender = sortedLenders[index];
@@ -347,7 +348,7 @@ export function LenderSpreadsheetView({
                     >
                       <Checkbox
                         checked={isSelected}
-                        onCheckedChange={() => onToggleSelect(lender.id)}
+                        onCheckedChange={() => onToggleSelect!(lender.id)}
                       />
                     </div>
                   )}
