@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, ArrowUpDown, Building2, ChevronDown, Trash2, Users, Briefcase } from 'lucide-react';
+import { Search, MoreHorizontal, Building2, ChevronDown, Trash2, Users, Briefcase } from 'lucide-react';
 import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, useDeleteCrmCompany } from '@/hooks/useCrmCompanies';
 import { useContacts } from '@/hooks/useContacts';
 import { useLinkContactToCompany } from '@/hooks/useCrmLinks';
@@ -16,6 +16,8 @@ import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useTriStateSort } from '@/hooks/useTriStateSort';
+import { SortableHeader } from '@/components/ui/sortable-header';
 
 interface CrmCompaniesTableProps {
   companies: CrmCompany[];
@@ -44,8 +46,10 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
   const [lifecycleFilter, setLifecycleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState('created_at');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const { sortField, sortDir, handleSort } = useTriStateSort({
+    field: 'created_at',
+    direction: 'desc',
+  });
 
   // Modal states
   const [linkContactCompanyId, setLinkContactCompanyId] = useState<string | null>(null);
@@ -70,27 +74,31 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
     if (lifecycleFilter !== 'all') result = result.filter(c => c.lifecycle_stage === lifecycleFilter);
     if (statusFilter !== 'all') result = result.filter(c => c.status === statusFilter);
 
-    result.sort((a, b) => {
-      const aVal = (a as any)[sortField] ?? '';
-      const bVal = (b as any)[sortField] ?? '';
-      if (typeof aVal === 'number' && typeof bVal === 'number') return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
-      const cmp = String(aVal).localeCompare(String(bVal));
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
+    if (sortField && sortDir) {
+      result.sort((a, b) => {
+        const aVal = (a as any)[sortField] ?? '';
+        const bVal = (b as any)[sortField] ?? '';
+        if (typeof aVal === 'number' && typeof bVal === 'number') return sortDir === 'asc' ? aVal - bVal : bVal - aVal;
+        const cmp = String(aVal).localeCompare(String(bVal));
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
     return result;
   }, [companies, search, lifecycleFilter, statusFilter, sortField, sortDir]);
 
   const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map(c => c.id)));
   const toggleOne = (id: string) => { const next = new Set(selectedIds); next.has(id) ? next.delete(id) : next.add(id); setSelectedIds(next); };
-  const handleSort = (field: string) => {
-    if (sortField === field) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortField(field); setSortDir('asc'); }
-  };
 
   const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
-    <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort(field)}>
-      {children}<ArrowUpDown className="h-3 w-3 opacity-50" />
-    </button>
+    <SortableHeader
+      asButton
+      field={field}
+      activeField={sortField}
+      direction={sortDir}
+      onSort={handleSort}
+    >
+      {children}
+    </SortableHeader>
   );
 
   const formatCurrency = (v: number | null) => v != null ? `$${v.toLocaleString()}` : '—';
