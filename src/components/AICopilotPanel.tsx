@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, Trash2, Maximize2, Minimize2 } from 'lucide-react';
+import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, ChevronRight, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -29,8 +29,27 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
 import type { ConversationMutation } from '@/lib/copilot-utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { logUsage } from '@/lib/usageLogger';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
+
+/**
+ * Per-session preference for the global Ask naitive AI scope. When the
+ * user explicitly clicks "Switch to Pipeline" from the breadcrumb on a
+ * deal page, we remember that choice for the rest of the tab session so
+ * we don't keep snapping back to deal context as they navigate.
+ */
+const SCOPE_PREF_KEY = 'naitive.copilot.scope_preference';
+function readScopePreference(): 'auto' | 'pipeline' {
+  try {
+    return sessionStorage.getItem(SCOPE_PREF_KEY) === 'pipeline' ? 'pipeline' : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+function writeScopePreference(pref: 'auto' | 'pipeline') {
+  try { sessionStorage.setItem(SCOPE_PREF_KEY, pref); } catch { /* ignore */ }
+}
 
 /**
  * Demo-only deterministic responder for "What deals need attention?".
