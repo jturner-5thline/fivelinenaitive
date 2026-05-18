@@ -74,7 +74,6 @@ import { detectBareEmailsInDraft } from '@/lib/detectDraftEmails';
 import { detectThreadQAndA, buildQADedupKey, type ThreadMessageLite } from '@/lib/detectThreadQAndA';
 import { usePendingDealSuggestions } from '@/hooks/usePendingDealSuggestions';
 import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
-import { useAuth } from '@/contexts/AuthContext';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
