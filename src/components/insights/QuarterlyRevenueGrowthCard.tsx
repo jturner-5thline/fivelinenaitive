@@ -206,19 +206,30 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
   return (
     <>
       <div
-        className="w-full flex flex-col rounded-[10px] overflow-hidden relative"
-        style={{
-          background: "rgba(10,60,110,0.55)",
-          border: "1px solid rgba(40,120,200,0.28)",
-        }}
+        className={
+          bare
+            ? "w-full h-full flex flex-col"
+            : "w-full flex flex-col rounded-[10px] overflow-hidden relative"
+        }
+        style={
+          bare
+            ? undefined
+            : {
+                background: "rgba(10,60,110,0.55)",
+                border: "1px solid rgba(40,120,200,0.28)",
+              }
+        }
       >
-        <div
-          className="absolute top-0 left-0 right-0 h-px"
-          style={{
-            background:
-              "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
-          }}
-        />
+        {!bare && (
+          <div
+            className="absolute top-0 left-0 right-0 h-px"
+            style={{
+              background:
+                "linear-gradient(90deg,transparent,rgba(80,180,255,0.4),transparent)",
+            }}
+          />
+        )}
+        {!bare && (
         <div
           className="px-3 py-2 flex items-center justify-between gap-3"
           style={{ borderBottom: "1px solid rgba(40,100,180,0.2)" }}
