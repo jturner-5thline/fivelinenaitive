@@ -795,7 +795,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
   const ttmLabels = ttmTrendSeries.map(p => p.month);
   const ttmCol = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
   const ttmBrd = ttmTrendSeries.map((_p, i) => i === ttmTrendSeries.length - 1 ? '#4db8ff' : 'rgba(40,120,200,0.5)');
-  const [trendMode, setTrendMode] = useState<'ttm' | 'monthly'>('ttm');
+  const [trendMode, setTrendMode] = useState<'ttm' | 'monthly' | 'quarterly-yoy'>('ttm');
   const monthlyTrendLabels = ttmSeries.map(p => p.month);
   const monthlyTrendValues = ttmSeries.map(p => p.revenue);
   const monthlyCol = monthlyTrendLabels.map((_l, i) => i === monthlyTrendLabels.length - 1 ? 'rgba(29,148,255,0.85)' : 'rgba(20,90,170,0.55)');
