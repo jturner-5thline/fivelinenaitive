@@ -2,6 +2,13 @@ import { useEffect, useRef } from 'react';
 import ChartJS from 'chart.js/auto';
 import { SortableWidgetGrid, SortableItem } from './SortableWidgetGrid';
 import WhatWorkingSections from './WhatWorkingSections';
+import {
+  PLAN_COLORS,
+  PLAN_FILLS,
+  PlanToggleLegend,
+  usePlanVisibility,
+  type PlanVisibility,
+} from './planScenarios';
 
 // ── Chart defaults ──
 const setDefaults = () => {
@@ -12,9 +19,13 @@ const setDefaults = () => {
 };
 
 // ── Colors ──
-const CR = 'rgba(40,200,130,0.8)', CF = 'rgba(30,160,100,0.12)';
-const CO = 'rgba(80,155,210,0.8)', CA = 'rgba(220,175,45,0.9)';
-const CC = 'rgba(160,100,230,0.8)', CDN = 'rgba(220,70,85,0.75)';
+// Canonical scenario colors (shared with KeyMetricsPage via planScenarios).
+const CR = PLAN_COLORS.Reach;        // green
+const CO = PLAN_COLORS.Operating;    // blue
+const CC = PLAN_COLORS.Conservative; // orange
+const CA = PLAN_COLORS.Actuals;      // purple
+const CF = 'rgba(34,197,94,0.12)';   // Reach area-fill tint
+const CDN = 'rgba(220,70,85,0.75)';  // negative-actuals warning red
 const Q = ['Q1','Q2','Q3','Q4'];
 const gx: any = { ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
 const gy: any = { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
@@ -51,13 +62,16 @@ function Ct({ children }: { children: React.ReactNode }) {
 function Sep() { return <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />; }
 
 function Pill({ variant, children }: { variant: 'r' | 'o' | 'c' | 'a'; children: React.ReactNode }) {
-  const s: Record<string, React.CSSProperties> = {
-    r: { background: 'rgba(40,190,120,0.15)', color: '#4de8a0', border: '1px solid rgba(40,190,120,0.25)' },
-    o: { background: 'rgba(60,140,210,0.15)', color: '#7cc8f0', border: '1px solid rgba(60,150,220,0.25)' },
-    c: { background: 'rgba(140,90,210,0.15)', color: '#c4a0f0', border: '1px solid rgba(140,100,220,0.25)' },
-    a: { background: 'rgba(220,170,40,0.15)', color: '#f0c84a', border: '1px solid rgba(220,175,40,0.25)' },
-  };
-  return <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20, ...s[variant] }}>{children}</span>;
+  const map = { r: PLAN_COLORS.Reach, o: PLAN_COLORS.Operating, c: PLAN_COLORS.Conservative, a: PLAN_COLORS.Actuals } as const;
+  const fillMap = { r: PLAN_FILLS.Reach, o: PLAN_FILLS.Operating, c: PLAN_FILLS.Conservative, a: PLAN_FILLS.Actuals } as const;
+  const color = map[variant];
+  return (
+    <span style={{
+      display: 'inline-block', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+      background: fillMap[variant].replace('0.35)', '0.15)').replace('0.30)', '0.15)'),
+      color, border: `1px solid ${color}55`,
+    }}>{children}</span>
+  );
 }
 
 // Plan table component
@@ -118,13 +132,18 @@ function PlanTable({ title, pill, pillVariant, rows, ttmRows }: {
 }
 
 // Chart hook
-function useChart(ref: React.RefObject<HTMLCanvasElement | null>, builder: () => any) {
+function useChart(
+  ref: React.RefObject<HTMLCanvasElement | null>,
+  builder: () => any,
+  deps: React.DependencyList = [],
+) {
   useEffect(() => {
     if (!ref.current) return;
     setDefaults();
     const chart = new ChartJS(ref.current, builder());
     return () => chart.destroy();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 }
 
 // Chart card
@@ -182,6 +201,9 @@ function AttainmentTable() {
 }
 
 export function BenchmarkForecastsPage() {
+  const { visible, toggle } = usePlanVisibility();
+  const vR = visible.Reach, vO = visible.Operating, vC = visible.Conservative;
+
   // 10 chart refs
   const qrevRef = useRef<HTMLCanvasElement>(null);
   const ytdrevRef = useRef<HTMLCanvasElement>(null);
@@ -196,57 +218,80 @@ export function BenchmarkForecastsPage() {
   const p2fundRef = useRef<HTMLCanvasElement>(null);
   const p2signRef = useRef<HTMLCanvasElement>(null);
 
+  // Actuals dotted-line styling (purple) — used by every line chart.
+  const actualsLineDs = (data: number[]) => ({
+    label: 'Actuals',
+    data,
+    borderColor: CA,
+    backgroundColor: 'transparent',
+    fill: false,
+    borderWidth: 2,
+    borderDash: [2, 4],
+    tension: .35,
+    pointRadius: 3,
+    pointBackgroundColor: CA,
+    pointBorderColor: CA,
+  });
+
   const barsCfg = (r: number[], o: number[], a: number[], yCb?: (v: number) => string): any => ({
     type: 'bar', data: { labels: Q, datasets: [
-      { data: r, backgroundColor: 'rgba(30,160,100,0.35)', borderColor: CR, borderWidth: 1, borderRadius: 3 },
-      { data: o, backgroundColor: 'rgba(50,120,190,0.35)', borderColor: CO, borderWidth: 1, borderRadius: 3 },
-      { data: a, backgroundColor: a.map(v => v >= 0 ? 'rgba(200,145,30,0.45)' : 'rgba(210,60,75,0.4)'), borderColor: a.map(v => v >= 0 ? CA : CDN), borderWidth: 1, borderRadius: 3 },
+      { label: 'Reach',     data: r, backgroundColor: PLAN_FILLS.Reach,     borderColor: CR, borderWidth: 1, borderRadius: 3, hidden: !vR },
+      { label: 'Operating', data: o, backgroundColor: PLAN_FILLS.Operating, borderColor: CO, borderWidth: 1, borderRadius: 3, hidden: !vO },
+      { label: 'Actuals',   data: a,
+        backgroundColor: a.map(v => v >= 0 ? PLAN_FILLS.Actuals : 'rgba(210,60,75,0.35)'),
+        borderColor:     a.map(v => v >= 0 ? CA                  : CDN),
+        borderWidth: 1, borderRadius: 3 },
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: yCb || fmtM } } } }
   });
 
   const lineCfg = (d1: number[], d2: number[], d3: number[], yCb?: (v: number) => string): any => ({
     type: 'line', data: { labels: Q, datasets: [
-      { data: d1, borderColor: CR, backgroundColor: CF, fill: true, borderWidth: 2, tension: .35, pointRadius: 3 },
-      { data: d2, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, borderDash: [5, 3] },
-      { data: d3, borderColor: CA, backgroundColor: 'transparent', fill: false, borderWidth: 2.5, tension: .35, pointRadius: 4, pointBackgroundColor: CA },
+      { label: 'Reach',     data: d1, borderColor: CR, backgroundColor: CF, fill: vR, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vR },
+      { label: 'Operating', data: d2, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vO },
+      actualsLineDs(d3),
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: yCb || fmtM } } } }
   });
 
   const bars4Cfg = (d1: number[], d2: number[], d3: number[], d4: number[], yCb: (v: number) => string): any => ({
     type: 'bar', data: { labels: Q, datasets: [
-      { data: d1, backgroundColor: 'rgba(30,160,100,0.35)', borderColor: CR, borderWidth: 1, borderRadius: 3 },
-      { data: d2, backgroundColor: 'rgba(50,120,190,0.35)', borderColor: CO, borderWidth: 1, borderRadius: 3 },
-      { data: d3, backgroundColor: 'rgba(120,70,200,0.3)', borderColor: CC, borderWidth: 1, borderRadius: 3 },
-      { data: d4, backgroundColor: d4.map(v => v >= 0 ? 'rgba(200,145,30,0.45)' : 'rgba(210,60,75,0.4)'), borderColor: d4.map(v => v >= 0 ? CA : CDN), borderWidth: 1, borderRadius: 3 },
+      { label: 'Reach',        data: d1, backgroundColor: PLAN_FILLS.Reach,        borderColor: CR, borderWidth: 1, borderRadius: 3, hidden: !vR },
+      { label: 'Operating',    data: d2, backgroundColor: PLAN_FILLS.Operating,    borderColor: CO, borderWidth: 1, borderRadius: 3, hidden: !vO },
+      { label: 'Conservative', data: d3, backgroundColor: PLAN_FILLS.Conservative, borderColor: CC, borderWidth: 1, borderRadius: 3, hidden: !vC },
+      { label: 'Actuals',      data: d4,
+        backgroundColor: d4.map(v => v >= 0 ? PLAN_FILLS.Actuals : 'rgba(210,60,75,0.35)'),
+        borderColor:     d4.map(v => v >= 0 ? CA                  : CDN),
+        borderWidth: 1, borderRadius: 3 },
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: yCb } } } }
   });
 
-  useChart(qrevRef, () => barsCfg(rrev, oprev, arev));
-  useChart(ytdrevRef, () => lineCfg(ytdr, ytdo, ytda));
-  useChart(ttmrevRef, () => lineCfg(ttmr, ttmo, ttma));
-  useChart(ttmprofRef, () => lineCfg(ttmpr, ttmpo, ttmpa));
+  const deps = [vR, vO, vC];
+  useChart(qrevRef, () => barsCfg(rrev, oprev, arev), deps);
+  useChart(ytdrevRef, () => lineCfg(ytdr, ytdo, ytda), deps);
+  useChart(ttmrevRef, () => lineCfg(ttmr, ttmo, ttma), deps);
+  useChart(ttmprofRef, () => lineCfg(ttmpr, ttmpo, ttmpa), deps);
   useChart(gmRef, () => ({
     type: 'line', data: { labels: Q, datasets: [
-      { data: gmu, borderColor: CR, backgroundColor: 'rgba(30,160,100,0.08)', fill: '+1', borderWidth: 2, tension: .35, pointRadius: 3 },
-      { data: gml, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, borderDash: [4, 3] },
-      { data: gma, borderColor: CA, backgroundColor: 'transparent', fill: false, borderWidth: 2.5, tension: .35, pointRadius: 4, pointBackgroundColor: CA },
+      { label: 'Reach',     data: gmu, borderColor: CR, backgroundColor: 'rgba(34,197,94,0.08)', fill: vR && vO ? '+1' : vR, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vR },
+      { label: 'Operating', data: gml, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vO },
+      actualsLineDs(gma),
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, min: 0, max: 100, ticks: { ...gy.ticks, callback: (v: number) => v + '%' } } } }
-  }));
-  useChart(qprofRef, () => barsCfg(rprof, opprof, aprof, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'));
+  }), deps);
+  useChart(qprofRef, () => barsCfg(rprof, opprof, aprof, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'), deps);
   useChart(ytdprofRef, () => ({
     type: 'line', data: { labels: Q, datasets: [
-      { data: ytdop, borderColor: CO, backgroundColor: 'rgba(50,120,190,0.08)', fill: true, borderWidth: 2, tension: .35, pointRadius: 3, borderDash: [5, 3] },
-      { data: ytdap, borderColor: CA, backgroundColor: 'transparent', fill: false, borderWidth: 2.5, tension: .35, pointRadius: 4, pointBackgroundColor: CA },
+      { label: 'Operating', data: ytdop, borderColor: CO, backgroundColor: 'rgba(59,130,246,0.08)', fill: vO, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vO },
+      actualsLineDs(ytdap),
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v).toFixed(0) + 'K' } } } }
-  }));
-  useChart(ytdrevcumRef, () => lineCfg(ytdr, ytdo, ytda));
-  useChart(p2revRef, () => bars4Cfg(p2RevR, p2RevO, p2RevC, p2RevA, (v: number) => '$' + v.toFixed(1) + 'MM'));
-  useChart(p2liqRef, () => bars4Cfg(p2LiqR, p2LiqO, p2LiqC, p2LiqAct, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'));
-  useChart(p2fundRef, () => bars4Cfg(p2FundR, p2FundO, p2FundC, p2FundA, (v: number) => '$' + v + 'MM'));
-  useChart(p2signRef, () => bars4Cfg(p2SignR, p2SignO, p2SignC, p2SignA, (v: number) => '$' + v + 'MM'));
+  }), deps);
+  useChart(ytdrevcumRef, () => lineCfg(ytdr, ytdo, ytda), deps);
+  useChart(p2revRef, () => bars4Cfg(p2RevR, p2RevO, p2RevC, p2RevA, (v: number) => '$' + v.toFixed(1) + 'MM'), deps);
+  useChart(p2liqRef, () => bars4Cfg(p2LiqR, p2LiqO, p2LiqC, p2LiqAct, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'), deps);
+  useChart(p2fundRef, () => bars4Cfg(p2FundR, p2FundO, p2FundC, p2FundA, (v: number) => '$' + v + 'MM'), deps);
+  useChart(p2signRef, () => bars4Cfg(p2SignR, p2SignO, p2SignC, p2SignA, (v: number) => '$' + v + 'MM'), deps);
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
+      <PlanToggleLegend visible={visible} onToggle={toggle} />
       {/* Header */}
       <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px' }}>
         <div>
@@ -267,7 +312,7 @@ export function BenchmarkForecastsPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           <PlanTable title="Reach Plan" pill="Best Case" pillVariant="r"
             rows={[
-              { label: 'Revenue', q1: '$1.18MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$1.05MM', total: '$3.80MM', totalColor: '#4de8a0' },
+              { label: 'Revenue', q1: '$1.18MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$1.05MM', total: '$3.80MM', totalColor: PLAN_COLORS.Reach },
               { label: 'Gross Profit', q1: '$1,059.5K', q2: '$609.1K', q3: '$656.4K', q4: '$854.1K', total: '$3.18MM' },
               { label: 'Gross %', q1: '90%', q2: '80%', q3: '81%', q4: '81%', total: '84%' },
               { label: 'Op. Profit', q1: '$748.7K', q2: '$113.8K', q3: '$129.6K', q4: '$221.0K', total: '$1.21MM' },
@@ -279,7 +324,7 @@ export function BenchmarkForecastsPage() {
           />
           <PlanTable title="Operating Plan" pill="Base Case" pillVariant="o"
             rows={[
-              { label: 'Revenue', q1: '$0.64MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$0.99MM', total: '$3.20MM', totalColor: 'hsl(213,90%,70%)' },
+              { label: 'Revenue', q1: '$0.64MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$0.99MM', total: '$3.20MM', totalColor: PLAN_COLORS.Operating },
               { label: 'Gross Profit', q1: '$536.4K', q2: '$620.0K', q3: '$672.9K', q4: '$816.7K', total: '$2.65MM' },
               { label: 'Gross %', q1: '84%', q2: '82%', q3: '83%', q4: '82%', total: '83%' },
               { label: 'Op. Profit', q1: '$225.6K', q2: '$173.8K', q3: '$186.0K', q4: '$223.7K', total: '$809.1K' },
@@ -291,7 +336,7 @@ export function BenchmarkForecastsPage() {
           />
           <PlanTable title="Conservative Plan" pill="Floor Case" pillVariant="c"
             rows={[
-              { label: 'Revenue', q1: '$0.35MM', q2: '$0.41MM', q3: '$0.81MM', q4: '$0.99MM', total: '$2.57MM', totalColor: '#c4a0f0' },
+              { label: 'Revenue', q1: '$0.35MM', q2: '$0.41MM', q3: '$0.81MM', q4: '$0.99MM', total: '$2.57MM', totalColor: PLAN_COLORS.Conservative },
               { label: 'Gross Profit', q1: '$262.8K', q2: '$317.3K', q3: '$705.5K', q4: '$867.9K', total: '$2.15MM' },
               { label: 'Gross %', q1: '76%', q2: '76%', q3: '87%', q4: '87%', total: '84%' },
               { label: 'Op. Profit', q1: '-$38.1K', q2: '$20.4K', q3: '$361.6K', q4: '$445.3K', total: '$789.2K', isNeg: [true, false, false, false] },
@@ -305,10 +350,10 @@ export function BenchmarkForecastsPage() {
           {/* Actuals 2026 */}
           <PlanTable title="Actuals 2026" pill="Thru Mar-26" pillVariant="a"
             rows={[
-              { label: 'Revenue', q1: '$0.33MM', q2: '$0.19MM', q3: '$0.41MM', q4: '$0.96MM', total: '$1.88MM', totalColor: '#ffc53d' },
+              { label: 'Revenue', q1: '$0.33MM', q2: '$0.19MM', q3: '$0.41MM', q4: '$0.96MM', total: '$1.88MM', totalColor: PLAN_COLORS.Actuals },
               { label: 'Gross Profit', q1: '$210.4K', q2: '$102.6K', q3: '$303.4K', q4: '$836.0K', total: '$1.45MM' },
               { label: 'Gross %', q1: '65%', q2: '53%', q3: '75%', q4: '87%', total: '77%' },
-              { label: 'Op. Profit', q1: '-$40.5K', q2: '-$120.0K', q3: '$54.4K', q4: '$553.4K', total: '$447.3K', totalColor: '#3de89a', isNeg: [true, true, false, false] },
+              { label: 'Op. Profit', q1: '-$40.5K', q2: '-$120.0K', q3: '$54.4K', q4: '$553.4K', total: '$447.3K', totalColor: PLAN_COLORS.Reach, isNeg: [true, true, false, false] },
             ]}
             ttmRows={[
               { label: 'TTM Revenue', q1: '$1.69MM', q2: '$1.30MM', q3: '$1.34MM', q4: '$1.88MM' },
@@ -327,10 +372,10 @@ export function BenchmarkForecastsPage() {
               </thead>
               <tbody>
                 {[
-                  { label: 'YTD Revenue', vals: ['$0.33MM','$0.52MM','$0.93MM','$1.88MM','$1.88MM'], totalColor: '#ffc53d' },
+                  { label: 'YTD Revenue', vals: ['$0.33MM','$0.52MM','$0.93MM','$1.88MM','$1.88MM'], totalColor: PLAN_COLORS.Actuals },
                   { label: 'YTD Gross Profit', vals: ['$0.21MM','$0.31MM','$0.62MM','$1.45MM','$1.45MM'] },
                   { label: 'YTD GP%', vals: ['65%','62%','64%','71%','71%'] },
-                  { label: 'YTD Op. Profit', vals: ['-$40.5K','-$160.5K','-$106.2K','$447.3K','$447.3K'], totalColor: '#3de89a', neg: [true, true, true, false, false] },
+                  { label: 'YTD Op. Profit', vals: ['-$40.5K','-$160.5K','-$106.2K','$447.3K','$447.3K'], totalColor: PLAN_COLORS.Reach, neg: [true, true, true, false, false] },
                 ].map((r, i) => (
                   <tr key={i}>
                     <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
