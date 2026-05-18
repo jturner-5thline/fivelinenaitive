@@ -2,6 +2,13 @@ import { useEffect, useRef } from 'react';
 import ChartJS from 'chart.js/auto';
 import { SortableWidgetGrid, SortableItem } from './SortableWidgetGrid';
 import WhatWorkingSections from './WhatWorkingSections';
+import {
+  PLAN_COLORS,
+  PLAN_FILLS,
+  PlanToggleLegend,
+  usePlanVisibility,
+  type PlanVisibility,
+} from './planScenarios';
 
 // ── Chart defaults ──
 const setDefaults = () => {
@@ -12,9 +19,13 @@ const setDefaults = () => {
 };
 
 // ── Colors ──
-const CR = 'rgba(40,200,130,0.8)', CF = 'rgba(30,160,100,0.12)';
-const CO = 'rgba(80,155,210,0.8)', CA = 'rgba(220,175,45,0.9)';
-const CC = 'rgba(160,100,230,0.8)', CDN = 'rgba(220,70,85,0.75)';
+// Canonical scenario colors (shared with KeyMetricsPage via planScenarios).
+const CR = PLAN_COLORS.Reach;        // green
+const CO = PLAN_COLORS.Operating;    // blue
+const CC = PLAN_COLORS.Conservative; // orange
+const CA = PLAN_COLORS.Actuals;      // purple
+const CF = 'rgba(34,197,94,0.12)';   // Reach area-fill tint
+const CDN = 'rgba(220,70,85,0.75)';  // negative-actuals warning red
 const Q = ['Q1','Q2','Q3','Q4'];
 const gx: any = { ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
 const gy: any = { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
@@ -51,13 +62,16 @@ function Ct({ children }: { children: React.ReactNode }) {
 function Sep() { return <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />; }
 
 function Pill({ variant, children }: { variant: 'r' | 'o' | 'c' | 'a'; children: React.ReactNode }) {
-  const s: Record<string, React.CSSProperties> = {
-    r: { background: 'rgba(40,190,120,0.15)', color: '#4de8a0', border: '1px solid rgba(40,190,120,0.25)' },
-    o: { background: 'rgba(60,140,210,0.15)', color: '#7cc8f0', border: '1px solid rgba(60,150,220,0.25)' },
-    c: { background: 'rgba(140,90,210,0.15)', color: '#c4a0f0', border: '1px solid rgba(140,100,220,0.25)' },
-    a: { background: 'rgba(220,170,40,0.15)', color: '#f0c84a', border: '1px solid rgba(220,175,40,0.25)' },
-  };
-  return <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20, ...s[variant] }}>{children}</span>;
+  const map = { r: PLAN_COLORS.Reach, o: PLAN_COLORS.Operating, c: PLAN_COLORS.Conservative, a: PLAN_COLORS.Actuals } as const;
+  const fillMap = { r: PLAN_FILLS.Reach, o: PLAN_FILLS.Operating, c: PLAN_FILLS.Conservative, a: PLAN_FILLS.Actuals } as const;
+  const color = map[variant];
+  return (
+    <span style={{
+      display: 'inline-block', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20,
+      background: fillMap[variant].replace('0.35)', '0.15)').replace('0.30)', '0.15)'),
+      color, border: `1px solid ${color}55`,
+    }}>{children}</span>
+  );
 }
 
 // Plan table component
