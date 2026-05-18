@@ -587,6 +587,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   // ── Signature auto-append on first mount when body is empty ─────────────
   // Honors the long-standing rule of not splicing into in-progress drafts:
   // we only inject the signature when the editor opens with no body content.
+  const bodyHadInitialContentRef = useRef(Boolean(body && body.trim().length > 0));
   const signatureInjectedRef = useRef(false);
   const signatureRestoredRef = useRef(false);
   useEffect(() => {
@@ -610,6 +611,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   useEffect(() => {
     if (!signatureInjectedRef.current) return;
     if (signatureRestoredRef.current) return;
+    if (!bodyHadInitialContentRef.current) return;
     if (!hasSignatureContent) return;
     if (!body || !body.trim()) return;
     if (bodyContainsSignature(body, signature)) return;
@@ -1072,7 +1074,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           minHeight={bodyMinHeight}
           className="border-0 shadow-none"
           toolbarTrailing={
-            hasSignatureContent ? (
+            (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -1091,7 +1093,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                   Rewrite your draft in 5th Line voice — facts preserved
                 </TooltipContent>
               </Tooltip>
-            ) : null
+            )
           }
         />
         {shouldShowSignatureGhost(signaturePlainText, signatureToPlainText(body)) && (
