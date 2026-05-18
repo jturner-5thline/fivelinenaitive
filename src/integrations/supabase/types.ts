@@ -14324,6 +14324,57 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_pipeline_reports: {
+        Row: {
+          company_id: string
+          created_at: string
+          email_error: string | null
+          email_sent: boolean
+          filters: Json
+          id: string
+          period_key: string | null
+          period_label: string | null
+          period_type: string | null
+          recipients: string[]
+          snapshot: Json
+          submitted_by: string
+          submitter_email: string | null
+          submitter_name: string | null
+        }
+        Insert: {
+          company_id?: string
+          created_at?: string
+          email_error?: string | null
+          email_sent?: boolean
+          filters?: Json
+          id?: string
+          period_key?: string | null
+          period_label?: string | null
+          period_type?: string | null
+          recipients?: string[]
+          snapshot?: Json
+          submitted_by: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          email_error?: string | null
+          email_sent?: boolean
+          filters?: Json
+          id?: string
+          period_key?: string | null
+          period_label?: string | null
+          period_type?: string | null
+          recipients?: string[]
+          snapshot?: Json
+          submitted_by?: string
+          submitter_email?: string | null
+          submitter_name?: string | null
+        }
+        Relationships: []
+      }
       naitive_stage_milestones: {
         Row: {
           completed: boolean
