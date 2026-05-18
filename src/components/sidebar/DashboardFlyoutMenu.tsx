@@ -267,15 +267,13 @@ export function DashboardFlyoutMenu() {
             align="start"
             sideOffset={8}
             className={cn(
-              // Match the platform's glass surface treatment used by deal
-              // tiles, dashboard modules, and other updated panels: subtle
-              // translucent fill, soft border, blur + saturation, layered
-              // shadow with an inner top highlight, and a unified radius on
-              // all four corners (no top-only rounding).
-              'w-56 p-1.5 rounded-xl border text-popover-foreground',
-              'bg-[rgba(28,44,74,0.86)] border-[rgba(120,170,240,0.28)]',
-              'backdrop-blur-xl backdrop-saturate-150',
-              'shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06),0_1px_0_0_rgba(0,0,0,0.25),0_12px_28px_-12px_rgba(0,0,0,0.65)]',
+              // Use the platform's shared glass-module surface (same
+              // translucent navy fill, soft border, blur + diagonal sheen)
+              // used by Insights cards, Weekly Rundown modules, and other
+              // polished panels — so the flyout reads as part of the same
+              // design system rather than a one-off popover.
+              'w-56 p-1.5 text-popover-foreground glass-module',
+              'shadow-[0_12px_28px_-12px_rgba(0,0,0,0.65)]',
             )}
             onMouseEnter={() => clearTimers()}
             onMouseLeave={scheduleClose}
@@ -315,10 +313,13 @@ export function DashboardFlyoutMenu() {
                     onKeyDown={(e) => handleSubItemKeyDown(e, index)}
                     onMouseEnter={() => setFocusedIndex(index)}
                     className={cn(
-                      'flex w-full items-center rounded-lg px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
-                      'hover:bg-white/10 hover:text-popover-foreground',
-                      'focus:bg-white/10 focus:text-popover-foreground',
-                      isActive && 'bg-white/15 text-popover-foreground font-medium',
+                      // Mirror the hover/active language used by the platform's
+                      // standard dropdown items (DropdownMenuItem / PopoverContent
+                      // links): the accent token, not an ad-hoc white wash.
+                      'flex w-full items-center rounded-md px-2.5 py-1.5 text-sm text-popover-foreground/90 outline-none transition-colors',
+                      'hover:bg-accent hover:text-accent-foreground',
+                      'focus-visible:bg-accent focus-visible:text-accent-foreground',
+                      isActive && 'bg-accent text-accent-foreground font-medium',
                     )}
                   >
                     {w.label}
