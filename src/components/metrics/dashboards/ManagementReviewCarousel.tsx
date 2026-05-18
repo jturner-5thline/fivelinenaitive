@@ -278,7 +278,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   );
 
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
-    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} tabsSlot={tabsBar} /> },
+    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
     { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot key="qir-slot-JT" reportKey="report-1" defaultAuthor="James Turner"   persona="JT" onSaveReady={handleSaveReady} /> },
@@ -319,11 +319,10 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       onTouchStart={onTouchStart}
       onTouchEnd={onTouchEnd}
     >
-      {/* Pill tab navigation — direct jump to any section */}
-      {activeIndex !== 0 && (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, margin: '0 auto 20px', maxWidth: 1200, padding: '0 16px', flexWrap: 'wrap' }}>
-        {tabsBar}
-        {isReportTab && (
+      {/* Unified reporting bar with tabs on every Insights tab */}
+      <InsightsReportingBar tabsSlot={tabsBar} />
+      {isReportTab && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, margin: '0 auto 12px', maxWidth: 1200, padding: '0 16px', flexWrap: 'wrap' }}>
           <button
             type="button"
               onClick={() => { void handleSaveClick(); }}
@@ -353,8 +352,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
             {justSaved ? <Check size={12} /> : <SaveIcon size={12} />}
               {justSaved ? 'Saved' : reportSave.hasUnsavedChanges ? 'Save changes' : 'Save'}
           </button>
-        )}
-      </div>
+        </div>
       )}
       <div style={{ position: 'relative' }}>
         <QuarterlyReportPrintStyles />
