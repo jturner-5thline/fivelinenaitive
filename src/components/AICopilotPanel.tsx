@@ -779,6 +779,11 @@ export function AICopilotPanel() {
   const dealIdFromPath = (() => {
     const parts = location.pathname.split('/').filter(Boolean);
     if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) return parts[1];
+    try {
+      const q = new URLSearchParams(location.search);
+      const overlay = q.get('deal');
+      if (overlay && readScopePreference() !== 'pipeline') return overlay;
+    } catch { /* ignore */ }
     return null;
   })();
   const dealMemory = useDealCopilotMemory(dealIdFromPath);
