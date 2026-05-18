@@ -1245,10 +1245,16 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
         <div key="monthly-revenue" className="h-full">
           <GridShell
             isEditMode={isEditMode}
-            title={trendMode === 'ttm' ? `TTM Revenue Trend (${chartWindowLabel})` : 'Monthly Revenue Trend'}
+            title={
+              trendMode === 'ttm'
+                ? `TTM Revenue Trend (${chartWindowLabel})`
+                : trendMode === 'monthly'
+                ? 'Monthly Revenue Trend'
+                : 'Quarterly Revenue Growth (YoY)'
+            }
             headerExtra={
               <div style={{ display: 'inline-flex', padding: 2, borderRadius: 999, background: 'rgba(10,40,80,0.6)', border: '1px solid rgba(40,120,200,0.35)' }}>
-                {(['ttm', 'monthly'] as const).map(m => (
+                {(['ttm', 'monthly', 'quarterly-yoy'] as const).map(m => (
                   <button
                     key={m}
                     type="button"
@@ -1261,19 +1267,23 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
                       background: trendMode === m ? 'linear-gradient(180deg, #7ed0ff, #4db8ff)' : 'transparent',
                     }}
                   >
-                    {m === 'ttm' ? 'TTM' : 'Monthly'}
+                    {m === 'ttm' ? 'TTM' : m === 'monthly' ? 'Monthly' : 'Quarterly Growth'}
                   </button>
                 ))}
               </div>
             }
           >
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8, height: '100%' }}>
-              <SectionLabel>
-                {trendMode === 'ttm'
-                  ? 'TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined'
-                  : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities'}
-              </SectionLabel>
-              {qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
+              {trendMode !== 'quarterly-yoy' && (
+                <SectionLabel>
+                  {trendMode === 'ttm'
+                    ? 'TTM Revenue (rolling 12 months) — each point shows total revenue for the 12 months ending in that period; all QuickBooks entities combined'
+                    : 'Monthly Revenue — each bar shows total revenue for that calendar month across all QuickBooks entities'}
+                </SectionLabel>
+              )}
+              {trendMode === 'quarterly-yoy' ? (
+                <div style={{ flex: 1, minHeight: 180 }}><QuarterlyRevenueGrowthCard /></div>
+              ) : qbConnected && (trendMode === 'ttm' ? ttmLabels.length > 0 : monthlyTrendLabels.length > 0)
                 ? <div style={{ position: 'relative', flex: 1, minHeight: 180 }}><canvas ref={ncRef} /></div>
                 : <NaPlaceholder height={200} label={isLoading ? 'Loading…' : 'Revenue unavailable — connect QuickBooks to populate finance data.'} />}
             </div>
