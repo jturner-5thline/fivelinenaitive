@@ -15,6 +15,10 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal, DealStatus } from '@/types/deal';
 import { RecipientField } from '@/components/deal/email/RecipientField';
 import { useEmailContacts } from '@/hooks/useEmailContacts';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+
+/** Stage label (case-insensitive) at and after which deals are eligible for the report. */
+const MIN_INCLUDED_STAGE_LABEL = 'proposal issued';
 
 interface ShareReportDialogProps {
   open: boolean;
@@ -128,6 +132,28 @@ function MiniToolbar({ editor }: { editor: Editor | null }) {
 export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId, pipelineName }: ShareReportDialogProps) {
   const { updateDeal } = useDealsContext();
   const { search: searchContacts } = useEmailContacts();
+  const { pipelines } = usePipelineContext();
+
+  /**
+   * Set of stage IDs eligible for inclusion: the "Proposal Issued" stage and every
+   * later stage in the active pipeline's defined order. Uses the pipeline's stage
+   * ordering (sortOrder or array index) rather than ad-hoc string matching across deals.
+   * If the threshold stage isn't found, returns null and the stage filter is skipped
+   * (defensive fallback so the report still renders).
+   */
+  const includedStageIds = useMemo<Set<string> | null>(() => {
+    const pipeline = pipelines.find((p) => p.id === activePipelineId) ?? null;
+    const stages = pipeline?.stages ?? [];
+    if (stages.length === 0) return null;
+    const ordered = stages
+      .slice()
+      .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    const thresholdIdx = ordered.findIndex(
+      (s) => (s.label || '').trim().toLowerCase() === MIN_INCLUDED_STAGE_LABEL,
+    );
+    if (thresholdIdx === -1) return null;
+    return new Set(ordered.slice(thresholdIdx).map((s) => s.id));
+  }, [pipelines, activePipelineId]);
 
   const filteredDeals = useMemo(() => {
     return deals.filter((d) => {
@@ -135,9 +161,15 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
       if (isExcludedDealName(d.name)) return false;
       if (startsWithTestPrefix(d.name)) return false;
       if (activePipelineId && d.pipelineId && d.pipelineId !== activePipelineId) return false;
-      return STATUS_ORDER.some((s) => s.key === d.status);
+      if (!STATUS_ORDER.some((s) => s.key === d.status)) return false;
+      // Stage gate: only include deals at "Proposal Issued" or later in the active
+      // pipeline's stage ordering. Null/unmapped stages are excluded by default.
+      if (includedStageIds) {
+        if (!d.stage || !includedStageIds.has(d.stage)) return false;
+      }
+      return true;
     });
-  }, [deals, activePipelineId]);
+  }, [deals, activePipelineId, includedStageIds]);
 
   const grouped = useMemo(() => {
     return STATUS_ORDER.map((s) => ({
