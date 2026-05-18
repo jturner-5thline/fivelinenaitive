@@ -1069,7 +1069,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           minHeight={bodyMinHeight}
           className="border-0 shadow-none"
           toolbarTrailing={
-            canPolish ? (
+            hasSignatureContent ? (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -1091,13 +1091,13 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             ) : null
           }
         />
-        {shouldShowSignatureGhost(signatureToPlainText(signature), signatureToPlainText(body)) && (
+        {shouldShowSignatureGhost(signaturePlainText, signatureToPlainText(body)) && (
           <div
             className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none"
             aria-hidden
             data-testid="signature-ghost"
           >
-            {signatureToPlainText(signature)}
+            {signaturePlainText}
           </div>
         )}
         {/* Deal-link preview — mirrors what the outgoing message will reference.
@@ -1219,7 +1219,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="gap-1 h-7 text-xs text-foreground/60 hover:text-[hsl(180_72%_55%)] hover:bg-[hsl(180_72%_45%)]/10"
+                className="gap-1 h-7 text-xs text-foreground/60 hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
                 onClick={handlePolishInPlace}
                 onMouseEnter={() => { if (polishTooltipOpen) setPolishTooltipOpen(false); }}
                 disabled={polishPending}
@@ -1327,15 +1327,15 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           </label>
           {/* Signature indicator — shows the saved signature's first line, or a
               link to configure one if the user hasn't set one yet. */}
-          {hasSavedSignature === true && props.signature ? (
+          {hasSavedSignature === true && hasSignatureContent ? (
             <span
               className="inline-flex items-center gap-1 truncate max-w-[260px]"
-              title={signatureToPlainText(props.signature)}
+              title={signaturePlainText}
             >
               <Edit3 className="h-2.5 w-2.5 opacity-60" aria-hidden />
               <span className="opacity-70">Signature:</span>
               <span className="text-foreground/80 truncate">
-                {signatureFirstLine(props.signature)}
+                {signatureFirstLine(signature)}
               </span>
             </span>
           ) : hasSavedSignature === false ? (
