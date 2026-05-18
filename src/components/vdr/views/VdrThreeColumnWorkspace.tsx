@@ -280,6 +280,10 @@ export function VdrThreeColumnWorkspace({
       : (doc.folder_path || '/');
     const fp = (raw || '/').replace(/^\/+|\/+$/g, '');
     if (!fp) return UNCATEGORIZED;
+    // Folder names may contain '/' (e.g. "Cash / AR / AP Reports"), so prefer
+    // matching the full trimmed path against known folder names before
+    // falling back to the first path segment.
+    if (categoryNameSet.has(fp)) return fp;
     const top = fp.split('/')[0];
     return categoryNameSet.has(top) ? top : UNCATEGORIZED;
   }, [categoryNameSet]);
@@ -787,7 +791,11 @@ export function VdrThreeColumnWorkspace({
     if (!customFolderToDelete) return;
     // Reassign any docs in this folder to root before delete (so files aren't orphaned)
     const docsInFolder = documents.filter(
-      d => !d.is_folder && (d.folder_path || '').replace(/^\/+|\/+$/g, '').split('/')[0] === customFolderToDelete.name,
+      d => {
+        if (d.is_folder) return false;
+        const fp = (d.folder_path || '').replace(/^\/+|\/+$/g, '');
+        return fp === customFolderToDelete.name || fp.split('/')[0] === customFolderToDelete.name;
+      },
     );
     for (const d of docsInFolder) {
       await vdrDocs.moveDocument(d.id, '/');
