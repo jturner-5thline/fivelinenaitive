@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { DealSizeConfirmDialog } from '@/components/deals/DealSizeConfirmDialog';
 import { Helmet } from 'react-helmet-async';
-import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2 } from 'lucide-react';
+import { Download, FileText, ChevronDown, X, AlertTriangle, Flag, ArrowUpDown, Flame, LayoutGrid, List, ChevronRight, Kanban, Bell, Target, Settings2, Layers, ChartGantt, CopyCheck, Share2, RotateCcw } from 'lucide-react';
 import { useDealDuplicates, DuplicateCluster } from '@/hooks/useDealDuplicates';
 import { DuplicatesView } from '@/components/deals/duplicates/DuplicatesView';
 import { DealMergeDrawer } from '@/components/deals/duplicates/DealMergeDrawer';
@@ -63,6 +63,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { toast } from '@/hooks/use-toast';
 import { exportPipelineToCSV, exportPipelineToPDF, exportPipelineToWord } from '@/utils/dealExport';
@@ -148,7 +149,10 @@ export default function Dashboard() {
   }, [viewMode]);
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
-  
+
+  // Sanitize legacy sort fields (e.g. removed 'flexEngagement') from persisted views.
+  const sanitizeSortField = (field: any): any => (field === 'flexEngagement' ? 'updatedAt' : field);
+
   const {
     deals: allFilteredDeals,
     filters,
@@ -162,7 +166,7 @@ export default function Dashboard() {
     setSortDirection,
   } = useDeals(defaultView ? {
     initialFilters: defaultView.config.filters,
-    initialSortField: defaultView.config.sortField,
+    initialSortField: sanitizeSortField(defaultView.config.sortField),
     initialSortDirection: defaultView.config.sortDirection,
   } : undefined);
 
@@ -190,7 +194,7 @@ export default function Dashboard() {
     if (defaultView && !defaultViewAppliedRef.current) {
       defaultViewAppliedRef.current = true;
       setFilters(defaultView.config.filters);
-      setSortField(defaultView.config.sortField);
+      setSortField(sanitizeSortField(defaultView.config.sortField));
       setSortDirection(defaultView.config.sortDirection);
       setViewMode(defaultView.config.viewMode);
       setGroupBy(defaultView.config.groupBy);
@@ -221,7 +225,7 @@ export default function Dashboard() {
 
   const handleRestoreView = (view: typeof savedViews[0]) => {
     setFilters(view.config.filters);
-    setSortField(view.config.sortField);
+    setSortField(sanitizeSortField(view.config.sortField));
     setSortDirection(view.config.sortDirection);
     setViewMode(view.config.viewMode);
     setGroupBy(view.config.groupBy);
@@ -769,12 +773,31 @@ export default function Dashboard() {
                       className="relative h-9 w-9 shrink-0 rounded-md"
                     >
                       <ArrowUpDown className="h-3.5 w-3.5" />
-                      {sortField === 'flexEngagement' && (
-                        <Flame className="absolute -top-1 -right-1 h-3 w-3 text-orange-500" />
-                      )}
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
+                    {(() => {
+                      const isDefaultSort = sortField === 'updatedAt' && sortDirection === 'desc';
+                      return (
+                        <>
+                          <DropdownMenuItem
+                            onClick={() => {
+                              if (isDefaultSort) return;
+                              setSortField('updatedAt');
+                              setSortDirection('desc');
+                            }}
+                            disabled={isDefaultSort}
+                            className="gap-2"
+                            title={isDefaultSort ? 'No active sort to clear' : undefined}
+                            aria-disabled={isDefaultSort}
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            Clear sort
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </>
+                      );
+                    })()}
                     <DropdownMenuItem onClick={() => toggleSort('updatedAt')} className={sortField === 'updatedAt' ? 'bg-accent' : ''}>
                       Last Updated {sortField === 'updatedAt' && (sortDirection === 'desc' ? '↓' : '↑')}
                     </DropdownMenuItem>
@@ -792,10 +815,6 @@ export default function Dashboard() {
                     </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toggleSort('stage')} className={sortField === 'stage' ? 'bg-accent' : ''}>
                       Stage {sortField === 'stage' && (sortDirection === 'desc' ? '↓' : '↑')}
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => toggleSort('flexEngagement')} className={`gap-2 ${sortField === 'flexEngagement' ? 'bg-accent' : ''}`}>
-                      <Flame className="h-3.5 w-3.5 text-orange-500" />
-                      FLEx Engagement {sortField === 'flexEngagement' && (sortDirection === 'desc' ? '↓' : '↑')}
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
