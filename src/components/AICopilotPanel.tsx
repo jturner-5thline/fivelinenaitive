@@ -1053,6 +1053,26 @@ export function AICopilotPanel() {
     const currentMessages = useCopilotStore.getState().messages;
     const history = currentMessages.filter(m => m.content !== '__ERROR__').map((m) => ({ role: m.role, content: m.content }));
     const ctx = getPageContext();
+    // Telemetry: log every global Ask naitive AI invocation so we can
+    // monitor regressions (e.g. deal context not auto-detected, zero docs
+    // retrieved when a deal is open).
+    logUsage({
+      feature_type: 'AI_CHAT',
+      feature_subtype: 'ask_naitive_submit',
+      deal_id: contextOverride?.entityId || (ctx.entityType === 'deal' ? ctx.entityId : null) || dealIdFromPath,
+      metadata: {
+        resolved_context: contextOverride
+          ? `override:${contextOverride.entityName}`
+          : ctx.page === 'deal-detail' && ctx.entityId
+            ? `deal:${ctx.entityId}`
+            : ctx.page,
+        active_deal_id: dealIdFromPath,
+        page: ctx.page,
+        entity_type: ctx.entityType,
+        entity_id: ctx.entityId,
+        scope_preference: readScopePreference(),
+      },
+    });
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
     if (!accessToken) {
