@@ -73,11 +73,11 @@ export function PipelineSelector({ iconOnly = false }: PipelineSelectorProps = {
   return (
     <>
       <DropdownMenu modal={false}>
-        <DropdownMenuTrigger asChild>
-          {iconOnly ? (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
+        {iconOnly ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <DropdownMenuTrigger asChild>
                   <Button
                     variant="outline"
                     size="sm"
@@ -86,20 +86,22 @@ export function PipelineSelector({ iconOnly = false }: PipelineSelectorProps = {
                   >
                     <GitBranch className="h-4 w-4" />
                   </Button>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                  {activePipeline?.isDefault ? 'Active Pipeline' : activePipeline?.name || 'Pipeline'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          ) : (
+                </DropdownMenuTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {activePipeline?.isDefault ? 'Active Pipeline' : activePipeline?.name || 'Pipeline'}
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2 max-w-[200px]">
               <Layers className="h-4 w-4 shrink-0" />
               <span className="truncate">{activePipeline?.isDefault ? 'Active Pipeline' : activePipeline?.name || 'Active Pipeline'}</span>
               <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
             </Button>
-          )}
-        </DropdownMenuTrigger>
+          </DropdownMenuTrigger>
+        )}
         <DropdownMenuContent align="start" className="w-[200px]">
           {defaultPipeline && (
             <DropdownMenuItem
