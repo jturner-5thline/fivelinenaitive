@@ -983,6 +983,16 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
         evaluateAutoLabels={evaluateAutoLabels}
         priorityFlag={flagsByThread[thread.threadId]}
         userLabels={buildUserLabels(thread)}
+        onRowReply={onRowReply}
+        onRowReplyAll={onRowReplyAll}
+        onRowForward={onRowForward}
+        onSaveToDeal={onSaveToDeal}
+        selectedCount={selectedIds?.size ?? 0}
+        isInBulkSelection={!!selectedIds?.has(thread.threadId)}
+        onBulkMarkRead={onBulkMarkRead}
+        onBulkMarkUnread={onBulkMarkUnread}
+        onBulkArchive={onBulkArchive}
+        onBulkDelete={onBulkDelete}
       />
     ),
     [
@@ -999,6 +1009,14 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
       evaluateAutoLabels,
       flagsByThread,
       buildUserLabels,
+      onRowReply,
+      onRowReplyAll,
+      onRowForward,
+      onSaveToDeal,
+      onBulkMarkRead,
+      onBulkMarkUnread,
+      onBulkArchive,
+      onBulkDelete,
     ],
   );
 
