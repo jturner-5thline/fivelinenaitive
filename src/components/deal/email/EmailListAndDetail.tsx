@@ -277,9 +277,19 @@ interface ThreadListItemProps {
   autoLabels?: EmailLabel[];
   priorityFlag?: DetectedSignal;
   userLabels?: EmailLabel[];
+  onRowReply?: (email: MockEmail) => void;
+  onRowReplyAll?: (email: MockEmail) => void;
+  onRowForward?: (email: MockEmail) => void;
+  onSaveToDeal?: (email: MockEmail) => void;
+  selectedCount?: number;
+  isInBulkSelection?: boolean;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
 }
 
-function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels }: ThreadListItemProps) {
+function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onToggleStar, isChecked, onCheckChange, onMarkRead, onMarkUnread, onArchive, onDelete, autoLabels, priorityFlag, userLabels, onRowReply, onRowReplyAll, onRowForward, onSaveToDeal, selectedCount, isInBulkSelection, onBulkMarkRead, onBulkMarkUnread, onBulkArchive, onBulkDelete }: ThreadListItemProps) {
   const [hovered, setHovered] = useState(false);
   const [createTaskOpen, setCreateTaskOpen] = useState(false);
   const latest = thread.latestEmail;
@@ -678,6 +688,19 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       onArchive={() => onArchive?.(latest)}
       onDelete={() => onDelete?.(latest)}
       onCreateTask={() => setCreateTaskOpen(true)}
+      onReply={onRowReply ? () => onRowReply(latest) : undefined}
+      onReplyAll={onRowReplyAll ? () => onRowReplyAll(latest) : undefined}
+      onForward={onRowForward ? () => onRowForward(latest) : undefined}
+      onSaveToDeal={onSaveToDeal ? () => onSaveToDeal(latest) : undefined}
+      isLinkedToDeal={!!latest.is_linked_to_deal}
+      subject={latest.subject}
+      fromEmail={latest.from_email}
+      selectedCount={selectedCount}
+      isInBulkSelection={!!isInBulkSelection}
+      onBulkMarkRead={onBulkMarkRead}
+      onBulkMarkUnread={onBulkMarkUnread}
+      onBulkArchive={onBulkArchive}
+      onBulkDelete={onBulkDelete}
     >
       {rowContent}
     </EmailContextMenu>
@@ -829,9 +852,17 @@ interface EmailListProps {
    * IntersectionObservers continue to work unchanged.
    */
   scrollParent?: HTMLElement | null;
+  onRowReply?: (email: MockEmail) => void;
+  onRowReplyAll?: (email: MockEmail) => void;
+  onRowForward?: (email: MockEmail) => void;
+  onSaveToDeal?: (email: MockEmail) => void;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
 }
 
-export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete, scrollParent }: EmailListProps) {
+export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink, onToggleStar, isLoading, selectedIds, onSelectionChange, onMarkRead, onMarkUnread, onArchive, onDelete, scrollParent, onRowReply, onRowReplyAll, onRowForward, onSaveToDeal, onBulkMarkRead, onBulkMarkUnread, onBulkArchive, onBulkDelete }: EmailListProps) {
   const { evaluate: evaluateAutoLabels } = useAutoEmailLabelEvaluator();
   // Detect high-priority deal signals (e.g. "due diligence", "term sheet",
   // "wire", "signed") and dispatch in-app + Slack notifications. Returns a
@@ -952,6 +983,16 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
         evaluateAutoLabels={evaluateAutoLabels}
         priorityFlag={flagsByThread[thread.threadId]}
         userLabels={buildUserLabels(thread)}
+        onRowReply={onRowReply}
+        onRowReplyAll={onRowReplyAll}
+        onRowForward={onRowForward}
+        onSaveToDeal={onSaveToDeal}
+        selectedCount={selectedIds?.size ?? 0}
+        isInBulkSelection={!!selectedIds?.has(thread.threadId)}
+        onBulkMarkRead={onBulkMarkRead}
+        onBulkMarkUnread={onBulkMarkUnread}
+        onBulkArchive={onBulkArchive}
+        onBulkDelete={onBulkDelete}
       />
     ),
     [
@@ -968,6 +1009,14 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
       evaluateAutoLabels,
       flagsByThread,
       buildUserLabels,
+      onRowReply,
+      onRowReplyAll,
+      onRowForward,
+      onSaveToDeal,
+      onBulkMarkRead,
+      onBulkMarkUnread,
+      onBulkArchive,
+      onBulkDelete,
     ],
   );
 
@@ -1041,6 +1090,16 @@ interface ThreadListRowProps {
   evaluateAutoLabels: (email: MockEmail) => EmailLabel[];
   priorityFlag?: DetectedSignal;
   userLabels?: EmailLabel[];
+  onRowReply?: (email: MockEmail) => void;
+  onRowReplyAll?: (email: MockEmail) => void;
+  onRowForward?: (email: MockEmail) => void;
+  onSaveToDeal?: (email: MockEmail) => void;
+  selectedCount?: number;
+  isInBulkSelection?: boolean;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
 }
 
 const ThreadListRow = memo(function ThreadListRow({
@@ -1058,6 +1117,16 @@ const ThreadListRow = memo(function ThreadListRow({
   evaluateAutoLabels,
   priorityFlag,
   userLabels,
+  onRowReply,
+  onRowReplyAll,
+  onRowForward,
+  onSaveToDeal,
+  selectedCount,
+  isInBulkSelection,
+  onBulkMarkRead,
+  onBulkMarkUnread,
+  onBulkArchive,
+  onBulkDelete,
 }: ThreadListRowProps) {
   const onSelect = useCallback(() => onSelectThread(thread), [onSelectThread, thread]);
   const onCheckChange = useCallback(
@@ -1085,6 +1154,16 @@ const ThreadListRow = memo(function ThreadListRow({
       autoLabels={autoLabels}
       priorityFlag={priorityFlag}
       userLabels={userLabels}
+      onRowReply={onRowReply}
+      onRowReplyAll={onRowReplyAll}
+      onRowForward={onRowForward}
+      onSaveToDeal={onSaveToDeal}
+      selectedCount={selectedCount}
+      isInBulkSelection={isInBulkSelection}
+      onBulkMarkRead={onBulkMarkRead}
+      onBulkMarkUnread={onBulkMarkUnread}
+      onBulkArchive={onBulkArchive}
+      onBulkDelete={onBulkDelete}
     />
   );
 });
@@ -1500,7 +1579,7 @@ interface EmailDetailProps {
   deepLinkSignal?: string | null;
 }
 
-export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, deepLinkMessageId, deepLinkSignal }: EmailDetailProps) {
+export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, deepLinkMessageId, deepLinkSignal, pendingAction, onPendingActionConsumed }: EmailDetailProps & { pendingAction?: 'reply'|'replyAll'|'forward'|null; onPendingActionConsumed?: () => void }) {
   // Scroll-and-highlight the deep-linked message when present. Re-runs if
   // the user navigates between threads with consecutive priority signals.
   useEffect(() => {
@@ -1832,6 +1911,22 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, [popOutDraft, thread]);
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  // Consume a pending row-level action (Reply / Reply All / Forward triggered
+  // from a list-row right-click context menu). Runs once per (thread, action)
+  // change and clears via onPendingActionConsumed.
+  useEffect(() => {
+    if (!pendingAction) return;
+    const target = thread.latestEmail;
+    if (!target) return;
+    const t = setTimeout(() => {
+      if (pendingAction === 'reply') handleReplyToMessage(target);
+      else if (pendingAction === 'replyAll') handleReplyAllToMessage(target);
+      else if (pendingAction === 'forward') handleForwardMessage(target);
+      onPendingActionConsumed?.();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [pendingAction, thread.threadId, handleReplyToMessage, handleReplyAllToMessage, handleForwardMessage, onPendingActionConsumed]);
 
   const handleDelete = useCallback(async () => {
     if (!onDelete || actionLoading) return;
