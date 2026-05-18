@@ -26,6 +26,7 @@ import { DealsProvider } from "@/contexts/DealsContext";
 import { UndoSendProvider } from "@/contexts/UndoSendContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { InsightsAccessGuard } from "@/components/InsightsAccessGuard";
+import { InsightsAccessDebug } from "@/components/InsightsAccessDebug";
 import { WorkflowEmailModalListener } from "@/components/email/WorkflowEmailModalListener";
 import { NewTaskViaNaitiveModal } from "@/components/dashboard/chat/NewTaskViaNaitiveModal";
 import { CookieConsent } from "@/components/CookieConsent";
