@@ -2227,6 +2227,8 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 onBack={handleEmailDetailBack}
                 isExpanded={readingPaneExpanded}
                 onToggleExpand={handleEmailDetailToggleExpand}
+                pendingAction={pendingDetailAction}
+                onPendingActionConsumed={() => setPendingDetailAction(null)}
                 deepLinkMessageId={
                   deepLinkTarget && deepLinkTarget.threadId === currentThread.threadId
                     ? deepLinkTarget.messageId
