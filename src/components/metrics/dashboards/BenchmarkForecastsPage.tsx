@@ -367,7 +367,6 @@ export function BenchmarkForecastsPage() {
           ] as SortableItem[]}
         />
       </div>
-      <WhatWorkingSections reportKey="insights-tab:forecasts" />
     </div>
   );
 }

@@ -1374,8 +1374,6 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode, 
         </div>
       </DraggableGridLayout>
 
-      <WhatWorkingSections reportKey="insights-tab:dashboard" />
-
       <InsightsDrilldownDrawer
         open={!!drilldown}
         onClose={closeDrilldown}

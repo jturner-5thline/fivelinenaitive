@@ -195,7 +195,6 @@ export function KeyMetricsPage() {
         items={items}
         style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0,1fr))', gap: 10 }}
       />
-      <WhatWorkingSections reportKey="insights-tab:key-metrics" />
     </div>
   );
 }
