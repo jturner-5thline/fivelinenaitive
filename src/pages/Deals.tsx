@@ -149,7 +149,10 @@ export default function Dashboard() {
   }, [viewMode]);
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
-  
+
+  // Sanitize legacy sort fields (e.g. removed 'flexEngagement') from persisted views.
+  const sanitizeSortField = (field: any): any => (field === 'flexEngagement' ? 'updatedAt' : field);
+
   const {
     deals: allFilteredDeals,
     filters,
@@ -163,7 +166,7 @@ export default function Dashboard() {
     setSortDirection,
   } = useDeals(defaultView ? {
     initialFilters: defaultView.config.filters,
-    initialSortField: defaultView.config.sortField,
+    initialSortField: sanitizeSortField(defaultView.config.sortField),
     initialSortDirection: defaultView.config.sortDirection,
   } : undefined);
 
@@ -191,7 +194,7 @@ export default function Dashboard() {
     if (defaultView && !defaultViewAppliedRef.current) {
       defaultViewAppliedRef.current = true;
       setFilters(defaultView.config.filters);
-      setSortField(defaultView.config.sortField);
+      setSortField(sanitizeSortField(defaultView.config.sortField));
       setSortDirection(defaultView.config.sortDirection);
       setViewMode(defaultView.config.viewMode);
       setGroupBy(defaultView.config.groupBy);
@@ -222,7 +225,7 @@ export default function Dashboard() {
 
   const handleRestoreView = (view: typeof savedViews[0]) => {
     setFilters(view.config.filters);
-    setSortField(view.config.sortField);
+    setSortField(sanitizeSortField(view.config.sortField));
     setSortDirection(view.config.sortDirection);
     setViewMode(view.config.viewMode);
     setGroupBy(view.config.groupBy);
