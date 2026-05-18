@@ -588,6 +588,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   // Honors the long-standing rule of not splicing into in-progress drafts:
   // we only inject the signature when the editor opens with no body content.
   const signatureInjectedRef = useRef(false);
+  const signatureRestoredRef = useRef(false);
   useEffect(() => {
     if (signatureInjectedRef.current) return;
     if (!signature || !signature.trim()) return;
@@ -608,9 +609,11 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
 
   useEffect(() => {
     if (!signatureInjectedRef.current) return;
+    if (signatureRestoredRef.current) return;
     if (!hasSignatureContent) return;
     if (!body || !body.trim()) return;
     if (bodyContainsSignature(body, signature)) return;
+    signatureRestoredRef.current = true;
     onBodyChange(`${body}${signatureToHtml(signature)}`);
   }, [body, hasSignatureContent, onBodyChange, signature]);
 
