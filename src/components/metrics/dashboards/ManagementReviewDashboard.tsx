@@ -391,9 +391,10 @@ const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
 interface ManagementReviewDashboardProps {
   isEditMode?: boolean;
   onExitEditMode?: () => void;
+  tabsSlot?: React.ReactNode;
 }
 
-export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }: ManagementReviewDashboardProps = {}) {
+export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode, tabsSlot }: ManagementReviewDashboardProps = {}) {
   const queryClient = useQueryClient();
   const qb = useQuickBooksMetrics();
   const metrics = useMetricsData();
