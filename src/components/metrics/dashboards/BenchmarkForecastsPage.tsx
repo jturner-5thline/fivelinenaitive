@@ -132,13 +132,18 @@ function PlanTable({ title, pill, pillVariant, rows, ttmRows }: {
 }
 
 // Chart hook
-function useChart(ref: React.RefObject<HTMLCanvasElement | null>, builder: () => any) {
+function useChart(
+  ref: React.RefObject<HTMLCanvasElement | null>,
+  builder: () => any,
+  deps: React.DependencyList = [],
+) {
   useEffect(() => {
     if (!ref.current) return;
     setDefaults();
     const chart = new ChartJS(ref.current, builder());
     return () => chart.destroy();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
 }
 
 // Chart card
