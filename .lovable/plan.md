@@ -1,48 +1,63 @@
-# Blog Management CMS for Admin
+## Goal
+Make the Daily Rundown modal user-scoped so opening it for `jmoffitt@5thline.co` pulls John's calendar, Gmail, HubSpot, QBO, Asana, and naitive deals using **his** OAuth tokens — not the viewer's — across every tab (Agenda, Catch Up, Email, Financial, Deals, Operational, End of Day).
 
-Add a full blog CMS to the admin area with list/edit views, image uploads, rich text editing, and draft/published/disabled states.
+This is a large architectural change. Before I touch code, I need to confirm scope and a few decisions.
 
-## Database (Lovable Cloud)
+## Questions before I build
 
-New tables:
-- `blog_posts` — title, slug (unique), excerpt, body_html, cover_image_url, cover_image_alt, author_id, status (draft|published|disabled), seo_title, seo_description, published_at, disabled_at, tags (text[]), created_at, updated_at
-- `blog_categories` (optional initial seed)
+1. **Who can invoke this?** Spec says "admin role or explicit delegation". Today, is there already a `delegations` table, or should I gate purely on `app_role = 'admin'` for v1 and add delegation later?
 
-RLS:
-- SELECT: published posts public; drafts/disabled visible to admins only
-- INSERT/UPDATE/DELETE: admins only (via existing `has_role(auth.uid(), 'admin')`)
+2. **OAuth token storage.** For John's Gmail / Google Calendar — are his tokens already stored per-user in the DB (e.g. `nylas_grants`, `google_integrations`), or is the current Gmail/Calendar fetch always using the *signed-in viewer's* tokens via the connector gateway? This determines whether I need a new "act-as-user" edge function pattern or can reuse existing per-user token tables.
 
-Storage:
-- New public bucket `blog-media` with folders `covers/` and `inline/`
-- Policies: public read; admin write/update/delete
+3. **Scope of v1.** Building all 7 tabs as "act-as-John" simultaneously is ~2–3 days of work and touches every rundown subcomponent. Do you want:
+   - **(a) Full build** — refactor every tab + edge function to accept a `target_user_id` param, add permission gate, banner, confirmation modal on actions.
+   - **(b) Phased** — ship the user-scoping plumbing + Agenda + Email + End of Day first (the spec's main acceptance criteria), then Financial/Deals/Operational/Catch Up in a follow-up.
+   - **(c) Read-only first** — populate all tabs as John (view), but defer "act as John" write actions (Draft Reply/Create Task as him) to phase 2.
 
-## UI
+4. **How is "Daily Rundown" opened today?** Is there an existing route/modal trigger where I can add a `?user=jmoffitt@5thline.co` param, or do you want a new entry point (e.g. an admin page that lists users and lets you open any user's rundown)?
 
-New admin section `blog` added to Admin.tsx sidebar nav (icon: `Newspaper`). Section component `BlogManagementPanel` with three sub-tabs:
-1. **All Posts** — table (thumbnail, title, slug, status badge, author, updated, published) with search, status filter, and row actions: Edit, Duplicate, Publish/Unpublish, Disable/Enable, Delete (confirm).
-2. **New Post** — form view (also used for Edit via `?postId=...`).
-3. **Media Library** — simple grid of uploaded images from `blog-media` (basic; expandable later).
+## Proposed architecture (once questions are answered)
 
-### Post editor
+### Plumbing
+- Add `targetUserId` prop threaded through `DailyRundownModal` → every tab component.
+- New hook `useRundownTarget()` returns `{ targetUser, isViewingSelf, canViewTarget }`.
+- Permission check via `has_role(auth.uid(), 'admin')` OR `auth.uid() = targetUserId`.
+- Banner component when `!isViewingSelf` with "actions perform on John's behalf" + per-action confirmation.
 
-- Fields: title, slug (auto-generated from title, editable), excerpt, cover image upload + alt, tags input, author (defaults to current user), SEO title, SEO description, status, published date.
-- Body: rich text editor using **TipTap** (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-link`, `@tiptap/extension-image`, `@tiptap/extension-underline`, `@tiptap/extension-text-align`) with toolbar: bold, italic, underline, strike, H1/H2/H3, bullet/ordered list, blockquote, link, alignment, image insert (uploads to `blog-media/inline/`), undo/redo, code block.
-- Preview toggle renders the saved HTML inside a styled preview pane (sanitized via DOMPurify).
-- Save as Draft / Publish / Update / Disable buttons; toast feedback; validation for required title, slug, body.
+### Edge functions (refactor to accept `target_user_id`)
+- `gmail-sync` / `gmail-threads` → load tokens from `nylas_grants` (or equiv) for `target_user_id` instead of `auth.uid()`.
+- `google-calendar-events` → same.
+- `asana-tasks` → look up John's Asana PAT from per-user secrets table.
+- `hubspot-activity` → scope by `hubspot_owner_id` mapped from `target_user_id`.
+- `qbo-snapshot` → scope by entities in John's `qbo_user_access`.
+- All functions: verify `getClaims()`, then check `has_role(claims.sub, 'admin') OR claims.sub = target_user_id`, else 403.
 
-## Access control
+### Per-tab changes
+- **Agenda** — reuse existing `CalendarAgendaTab`, pass `targetUserId`; enrich attendees via HubSpot/naitive contact join; reuse existing availability ranker for conflict color-coding.
+- **Email** — reuse `EmailDigestTab`; add "Awaiting John's reply >24h" and "Sent by John, awaiting response >3d" priority sections via Gmail search queries.
+- **Catch Up** — aggregate from news provider + HubSpot activity + Asana updates scoped to John.
+- **Financial** — QBO snapshot scoped to John's accessible entities.
+- **Deals** — query `deals` where `deal_owner_id = john OR deal_manager_id = john OR john ∈ team_members`.
+- **Operational** — Asana tasks where John is assignee/follower + Tech Roadmap items.
+- **End of Day** — existing two-pane layout, swap data source to John's outstanding items; resolutions stored per-user in `rundown_clears`.
 
-Gate the Blog section in `Admin.tsx` behind existing admin role check (same as other admin panels).
+### Empty states
+Each tab checks `integrationsStatus[tab]`; if not connected for John, render `<ConnectIntegrationEmpty integration="gmail" userName="John" />` instead of failing.
 
-## Files
+### Caching
+React Query keys include `targetUserId`, 5-minute staleTime, 10-minute background refetchInterval while modal open. Header shows `Last refreshed Xm ago` + manual Refresh button.
 
-- New: `src/components/admin/BlogManagementPanel.tsx`, `BlogPostsTable.tsx`, `BlogPostEditor.tsx`, `BlogRichTextEditor.tsx`, `BlogMediaLibrary.tsx`
-- New hook: `src/hooks/useBlogPosts.ts`
-- Edited: `src/pages/Admin.tsx` (add nav item + section render)
-- Migration: create tables, RLS, storage bucket + policies
-- Dependencies: `@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-*`, `dompurify`, `slugify`
+### Files I expect to touch
+- `src/components/dashboard/DailyRundownModal.tsx` (add target prop + banner + permission gate)
+- `src/components/dashboard/CalendarAgendaTab.tsx`
+- `src/components/dashboard/EmailDigestTab.tsx` (or equivalent)
+- `src/components/dashboard/CatchUpTab.tsx`
+- `src/components/dashboard/FinancialTab.tsx`
+- `src/components/dashboard/DealsTab.tsx`
+- `src/components/dashboard/OperationalTab.tsx`
+- `src/components/dashboard/EndOfDayTab.tsx` (just retarget data source)
+- New: `src/hooks/useRundownTarget.ts`, `src/components/dashboard/ActingAsBanner.tsx`, `src/components/dashboard/ConnectIntegrationEmpty.tsx`
+- Edge functions: `gmail-*`, `google-calendar-*`, `asana-*`, `hubspot-*`, `qbo-*` — add `target_user_id` param + admin/self gate
 
-## Notes
-
-- Public blog rendering pages are out of scope for this task; the CMS produces data and a `/blog/:slug` consumer can be added later.
-- Categories table is scaffolded but the Categories sub-tab is marked "coming soon" to keep this PR focused.
+## What I need from you
+Please answer Q1–Q4 above so I scope the first PR correctly. My recommendation is **(b) phased + (c) read-only first** — ship Agenda/Email/End-of-Day as John in view-mode with the permission gate and banner, then layer in act-as-John write actions and the remaining tabs.
