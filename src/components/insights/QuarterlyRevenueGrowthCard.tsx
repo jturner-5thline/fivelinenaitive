@@ -297,7 +297,8 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
             </span>
           </div>
         </div>
-        <div className="p-3 overflow-hidden">
+        )}
+        <div className={bare ? "flex-1 flex flex-col min-h-0 overflow-hidden" : "p-3 overflow-hidden"}>
           <div
             className="mb-2 text-[10px] tracking-wide"
             style={{ color: "rgba(160,210,255,0.55)" }}
@@ -308,9 +309,9 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
             </span>
           </div>
           {isLoading ? (
-            <Skeleton className="h-[260px] w-full" />
+            <Skeleton className={bare ? "flex-1 w-full" : "h-[260px] w-full"} />
           ) : !hasConnections ? (
-            <div className="flex flex-col items-center justify-center h-[260px] gap-3 text-center">
+            <div className={`flex flex-col items-center justify-center gap-3 text-center ${bare ? "flex-1" : "h-[260px]"}`}>
               <p className="text-sm text-muted-foreground">
                 Connect QuickBooks to view revenue growth
               </p>
@@ -319,7 +320,7 @@ export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } 
               </Button>
             </div>
           ) : (
-            <div className="h-[260px] w-full cursor-pointer">
+            <div className={`w-full cursor-pointer ${bare ? "flex-1 min-h-0" : "h-[260px]"}`}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart
                   data={chartData}
