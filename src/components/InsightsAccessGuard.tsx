@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useCanAccessInsights } from '@/hooks/useCanAccessInsights';
+import { useCanAccessInsightsStatus } from '@/hooks/useCanAccessInsights';
 import { useAuth } from '@/contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -9,10 +9,11 @@ interface Props {
 
 export function InsightsAccessGuard({ children }: Props) {
   const { isLoading, user } = useAuth();
-  const allowed = useCanAccessInsights();
+  const { allowed, isLoading: allowlistLoading } = useCanAccessInsightsStatus();
   const location = useLocation();
 
-  if (isLoading) {
+  // Wait for both auth and (if user present) the allowlist query before deciding.
+  if (isLoading || (user && allowlistLoading)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
