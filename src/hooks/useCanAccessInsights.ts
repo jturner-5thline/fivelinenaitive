@@ -10,10 +10,14 @@ const PAGE_KEY = 'insights';
  * code change.
  */
 export function useCanAccessInsights(): boolean {
+  return useCanAccessInsightsStatus().allowed;
+}
+
+export function useCanAccessInsightsStatus(): { allowed: boolean; isLoading: boolean } {
   const { user } = useAuth();
   const email = user?.email?.toLowerCase() ?? null;
 
-  const { data } = useQuery({
+  const { data, isLoading, isFetching } = useQuery({
     queryKey: ['page-access-allowlist', PAGE_KEY, email],
     queryFn: async () => {
       if (!email) return false;
@@ -33,5 +37,8 @@ export function useCanAccessInsights(): boolean {
     staleTime: 5 * 60_000,
   });
 
-  return !!data;
+  return {
+    allowed: !!data,
+    isLoading: !!email && (isLoading || (data === undefined && isFetching)),
+  };
 }
