@@ -75,6 +75,7 @@ import { detectThreadQAndA, buildQADedupKey, type ThreadMessageLite } from '@/li
 import { usePendingDealSuggestions } from '@/hooks/usePendingDealSuggestions';
 import { useResolveDealForEmail } from '@/hooks/useResolveDealForEmail';
 import { useAuth } from '@/contexts/AuthContext';
+import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { isAutoDealNoteSuggestionEnabled } from '@/hooks/useAutoDealNoteSuggestionPref';
 import { usePendingDealResolutionsStore } from '@/stores/pendingDealResolutionsStore';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
@@ -1626,38 +1627,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread.threadId, dealId]);
 
-  // Prefer the user's saved email signature (Settings → Email → Signature). Fall
-  // back to a derived "Best,\n<name>" so the composer ghost-text always renders.
-  const { user } = useAuth();
-  const [savedSignature, setSavedSignature] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    if (!user?.id) {
-      setSavedSignature(null);
-      return;
-    }
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('email_signature')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (cancelled) return;
-      setSavedSignature(((data?.email_signature as string | null) ?? null));
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user?.id]);
-  const composerSignature = useMemo(() => {
-    if (savedSignature && savedSignature.trim()) return savedSignature;
-    const name =
-      (user?.user_metadata as any)?.full_name ||
-      (user?.user_metadata as any)?.name ||
-      (user?.email ? user.email.split('@')[0] : '');
-    if (!name) return undefined;
-    return `Best,\n${name}`;
-  }, [savedSignature, user?.email, user?.user_metadata]);
+  const composerSignature = useUserEmailSignature();
 
   // Hoist the latest message's full body load so the toolbar/dialog can see
   // its attachments (the per-message MessageBlock loads its own copy too —
