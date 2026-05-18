@@ -326,14 +326,14 @@ export function LenderSpreadsheetView({
             style={{ flex: 1, minHeight: 0, contain: 'strict', willChange: 'transform' }}
             totalCount={sortedLenders.length}
             endReached={onLoadMore}
-            increaseViewportBy={{ top: 600, bottom: 600 }}
+            increaseViewportBy={{ top: 1200, bottom: 1200 }}
             computeItemKey={(index) => sortedLenders[index]?.id ?? index}
             itemContent={(index) => {
               const lender = sortedLenders[index];
               const isSelected = selectedIds?.has(lender.id) ?? false;
               return (
                 <div
-                  className={`flex border-b border-white/[0.04] cursor-pointer transition-colors duration-150 ${
+                  className={`flex h-9 border-b border-white/[0.04] cursor-pointer transition-colors duration-150 ${
                     isSelected
                       ? 'bg-[hsl(272,100%,70%)]/[0.08] hover:bg-[hsl(272,100%,70%)]/[0.12]'
                       : 'hover:bg-white/[0.03]'
