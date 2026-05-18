@@ -219,8 +219,65 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     setActiveIndex(nextIndex);
   }, [reportSave.hasUnsavedChanges]);
 
+  const PAGE_META: { title: string; tabLabel: string }[] = [
+    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard'   },
+    { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts'   },
+    { title: 'Key Metrics',                          tabLabel: 'Key Metrics' },
+    { title: 'Quarterly Insights Report — JT',       tabLabel: 'JT'          },
+    { title: 'Quarterly Insights Report — JM',       tabLabel: 'JM'          },
+    { title: 'Quarterly Insights Report — SW',       tabLabel: 'SW'          },
+  ];
+
+  const tabsBar = (
+    <div
+      role="tablist"
+      aria-label="Insights sections"
+      style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 4,
+        padding: 4,
+        background: 'rgba(16,28,52,0.55)',
+        border: '0.5px solid rgba(80,140,255,0.18)',
+        borderRadius: 999,
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        boxShadow: '0 4px 18px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04)',
+      }}
+    >
+      {PAGE_META.map((p, i) => {
+        const active = i === activeIndex;
+        return (
+          <button
+            key={p.title}
+            role="tab"
+            aria-selected={active}
+            onClick={() => attemptSetActiveIndex(i)}
+            style={{
+              fontSize: 12,
+              fontWeight: active ? 700 : 600,
+              letterSpacing: '0.03em',
+              padding: '6px 14px',
+              borderRadius: 999,
+              border: 'none',
+              cursor: 'pointer',
+              color: active ? '#0a2540' : 'rgba(200,225,255,0.72)',
+              background: active
+                ? 'linear-gradient(180deg, #9bdcff, #4db8ff)'
+                : 'transparent',
+              boxShadow: active ? '0 2px 8px rgba(77,184,255,0.35)' : 'none',
+              transition: 'background .15s, color .15s',
+            }}
+          >
+            {p.tabLabel}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
-    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
+    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} tabsSlot={tabsBar} /> },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
     { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot key="qir-slot-JT" reportKey="report-1" defaultAuthor="James Turner"   persona="JT" onSaveReady={handleSaveReady} /> },
@@ -262,52 +319,9 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       onTouchEnd={onTouchEnd}
     >
       {/* Pill tab navigation — direct jump to any section */}
+      {activeIndex !== 0 && (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, margin: '0 auto 20px', maxWidth: 1200, padding: '0 16px', flexWrap: 'wrap' }}>
-        <div
-          role="tablist"
-          aria-label="Insights sections"
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 4,
-            padding: 5,
-            background: 'rgba(16,28,52,0.55)',
-            border: '0.5px solid rgba(80,140,255,0.18)',
-            borderRadius: 999,
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            boxShadow: '0 4px 18px rgba(0,0,0,0.25), inset 0 1px 0 rgba(255,255,255,0.04)',
-          }}
-        >
-          {PAGES.map((p, i) => {
-          const active = i === activeIndex;
-          return (
-            <button
-              key={p.title}
-              role="tab"
-              aria-selected={active}
-              onClick={() => attemptSetActiveIndex(i)}
-              style={{
-                fontSize: 12,
-                fontWeight: active ? 700 : 600,
-                letterSpacing: '0.03em',
-                padding: '7px 16px',
-                borderRadius: 999,
-                border: 'none',
-                cursor: 'pointer',
-                color: active ? '#0a2540' : 'rgba(200,225,255,0.72)',
-                background: active
-                  ? 'linear-gradient(180deg, #9bdcff, #4db8ff)'
-                  : 'transparent',
-                boxShadow: active ? '0 2px 8px rgba(77,184,255,0.35)' : 'none',
-                transition: 'background .15s, color .15s',
-              }}
-            >
-              {p.tabLabel}
-            </button>
-          );
-          })}
-        </div>
+        {tabsBar}
         {isReportTab && (
           <button
             type="button"
@@ -340,6 +354,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
           </button>
         )}
       </div>
+      )}
       <div style={{ position: 'relative' }}>
         <QuarterlyReportPrintStyles />
         {activePage.render()}

@@ -391,9 +391,10 @@ const INSIGHTS_LAYOUT_IDS = INSIGHTS_DEFAULT_LAYOUT.map(i => i.i);
 interface ManagementReviewDashboardProps {
   isEditMode?: boolean;
   onExitEditMode?: () => void;
+  tabsSlot?: React.ReactNode;
 }
 
-export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }: ManagementReviewDashboardProps = {}) {
+export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode, tabsSlot }: ManagementReviewDashboardProps = {}) {
   const queryClient = useQueryClient();
   const qb = useQuickBooksMetrics();
   const metrics = useMetricsData();
@@ -1096,9 +1097,7 @@ export function ManagementReviewDashboard({ isEditMode = false, onExitEditMode }
       <Card className="glass-module">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 16px', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff' }}>
-              5th<span style={{ color: '#29aaff' }}>Line</span> Financial
-            </span>
+            {tabsSlot}
             <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.5)' }}>
               Reporting period {periodLabel}
             </span>
