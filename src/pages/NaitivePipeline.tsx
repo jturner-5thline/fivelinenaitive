@@ -246,6 +246,7 @@ export default function NaitivePipeline() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   const [isEmailsOpen, setIsEmailsOpen] = useState(false);
+  const [isSubmitOpen, setIsSubmitOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -575,6 +576,27 @@ export default function NaitivePipeline() {
                 >
                   <Mail className="h-3.5 w-3.5" />
                   Emails
+                </Button>
+                <Link to="/naitive-pipeline/reports">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    aria-label="View submitted reports"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    History
+                  </Button>
+                </Link>
+                <Button
+                  variant="gradient"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setIsSubmitOpen(true)}
+                  aria-label="Submit naitive Pipeline Report"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Submit
                 </Button>
               </div>
             </div>
