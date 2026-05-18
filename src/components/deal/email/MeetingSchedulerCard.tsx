@@ -819,6 +819,18 @@ export function MeetingSchedulerCard({
         </button>
       </div>
 
+      {/* Availability Check — parses proposed times from the open thread,
+          cross-references the user's connected calendar, and surfaces
+          one-click "Propose this time" replies. Falls back to a "no times
+          detected" state when the thread contains no proposals, in which
+          case the candidate slots below act as the alternative. */}
+      {thread && (
+        <AvailabilityCheckCard
+          thread={thread}
+          onInsertDraft={(body) => onInsert(body)}
+        />
+      )}
+
       {/* Timezone selector — controls both slot wall-clock anchoring and
           the timezone written onto the Google Calendar event. Persists to
           localStorage so the choice carries across sessions. */}
