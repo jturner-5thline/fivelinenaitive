@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, ArrowUpDown, UserPlus, ChevronDown, Building2, Briefcase, Trash2 } from 'lucide-react';
+import { Search, MoreHorizontal, UserPlus, ChevronDown, Building2, Briefcase, Trash2 } from 'lucide-react';
 import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, useDeleteContact } from '@/hooks/useContacts';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { useLinkContactToCompany, useLinkContactToDeal, useAllDeals } from '@/hooks/useCrmLinks';
@@ -15,6 +15,8 @@ import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchMo
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { useTriStateSort } from '@/hooks/useTriStateSort';
+import { SortableHeader } from '@/components/ui/sortable-header';
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -50,8 +52,10 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const [lifecycleFilter, setLifecycleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sortField, setSortField] = useState<string>('created_at');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const { sortField, sortDir, handleSort } = useTriStateSort({
+    field: 'created_at',
+    direction: 'desc',
+  });
 
   // Link modals
   const [linkCompanyContactId, setLinkCompanyContactId] = useState<string | null>(null);
@@ -84,12 +88,14 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
       result = result.filter(c => c.status === statusFilter);
     }
 
-    result.sort((a, b) => {
-      const aVal = (a as any)[sortField] || '';
-      const bVal = (b as any)[sortField] || '';
-      const cmp = String(aVal).localeCompare(String(bVal));
-      return sortDir === 'asc' ? cmp : -cmp;
-    });
+    if (sortField && sortDir) {
+      result.sort((a, b) => {
+        const aVal = (a as any)[sortField] || '';
+        const bVal = (b as any)[sortField] || '';
+        const cmp = String(aVal).localeCompare(String(bVal));
+        return sortDir === 'asc' ? cmp : -cmp;
+      });
+    }
 
     return result;
   }, [contacts, search, lifecycleFilter, statusFilter, sortField, sortDir]);
@@ -108,20 +114,16 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
     setSelectedIds(next);
   };
 
-  const handleSort = (field: string) => {
-    if (sortField === field) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortField(field);
-      setSortDir('asc');
-    }
-  };
-
   const SortHeader = ({ field, children }: { field: string; children: React.ReactNode }) => (
-    <button className="flex items-center gap-1 hover:text-foreground" onClick={() => handleSort(field)}>
+    <SortableHeader
+      asButton
+      field={field}
+      activeField={sortField}
+      direction={sortDir}
+      onSort={handleSort}
+    >
       {children}
-      <ArrowUpDown className="h-3 w-3 opacity-50" />
-    </button>
+    </SortableHeader>
   );
 
   const companyOptions: EntityOption[] = companies.map(c => ({
