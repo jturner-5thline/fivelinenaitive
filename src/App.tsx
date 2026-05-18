@@ -160,6 +160,8 @@ const WfHub = lazy(lazyRetry(() => import("./pages/WfHub")));
 const WfDealDetail = lazy(lazyRetry(() => import("./pages/WfDealDetail")));
 const VirtualDataRoom = lazy(lazyRetry(() => import("./pages/VirtualDataRoom")));
 const NaitivePipeline = lazy(lazyRetry(() => import("./pages/NaitivePipeline")));
+const NaitivePipelineReports = lazy(lazyRetry(() => import("./pages/NaitivePipelineReports")));
+const NaitivePipelineReportView = lazy(lazyRetry(() => import("./pages/NaitivePipelineReportView")));
 const EmailIntelligencePage = lazy(lazyRetry(() => import("./pages/EmailIntelligencePage")));
 const FinServ = lazy(lazyRetry(() => import("./pages/FinServ")));
 
@@ -310,6 +312,8 @@ const App = () => (
                             <Route path="/field-layout-editor" element={<FieldLayoutEditorPage />} />
                             <Route path="/hr" element={<HR />} />
                             <Route path="/naitive-pipeline" element={<NaitivePipeline />} />
+                            <Route path="/naitive-pipeline/reports" element={<NaitivePipelineReports />} />
+                            <Route path="/naitive-pipeline/reports/:id" element={<NaitivePipelineReportView />} />
                             <Route path="/finserv" element={<FinServ />} />
                             <Route path="/email-intelligence" element={<EmailIntelligencePage />} />
                             <Route path="/operations" element={<Operations />} />

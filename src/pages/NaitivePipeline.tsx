@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond, Mail } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond, Mail, Send, History } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
@@ -38,6 +38,8 @@ import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUp
 import { NaitivePipelineFilterBar } from '@/components/naitive-pipeline/NaitivePipelineFilterBar';
 import { MilestoneConfigModal } from '@/components/naitive-pipeline/MilestoneConfigModal';
 import { EmailCadenceConfigModal } from '@/components/naitive-pipeline/EmailCadenceConfigModal';
+import { SubmitReportDialog } from '@/components/naitive-pipeline/SubmitReportDialog';
+import { Link } from 'react-router-dom';
 import { useNaitivePipelineFilters } from '@/hooks/useNaitivePipelineFilters';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import {
@@ -244,6 +246,7 @@ export default function NaitivePipeline() {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMilestonesOpen, setIsMilestonesOpen] = useState(false);
   const [isEmailsOpen, setIsEmailsOpen] = useState(false);
+  const [isSubmitOpen, setIsSubmitOpen] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -574,6 +577,27 @@ export default function NaitivePipeline() {
                   <Mail className="h-3.5 w-3.5" />
                   Emails
                 </Button>
+                <Link to="/naitive-pipeline/reports">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5"
+                    aria-label="View submitted reports"
+                  >
+                    <History className="h-3.5 w-3.5" />
+                    History
+                  </Button>
+                </Link>
+                <Button
+                  variant="gradient"
+                  size="sm"
+                  className="gap-1.5"
+                  onClick={() => setIsSubmitOpen(true)}
+                  aria-label="Submit naitive Pipeline Report"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Submit
+                </Button>
               </div>
             </div>
           }
@@ -775,6 +799,16 @@ export default function NaitivePipeline() {
         open={isEmailsOpen}
         onOpenChange={setIsEmailsOpen}
         stages={stages}
+      />
+
+      <SubmitReportDialog
+        open={isSubmitOpen}
+        onOpenChange={setIsSubmitOpen}
+        filters={naitiveFilters.filters}
+        activeCount={naitiveFilters.activeCount}
+        filteredDeals={filteredDeals}
+        totalDeals={deals.length}
+        stageLabels={Object.fromEntries(stageLabelById)}
       />
 
       <NaitiveStageTransitionDialog
