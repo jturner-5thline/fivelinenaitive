@@ -829,7 +829,7 @@ export function AICopilotPanel() {
     }
     resolve();
     return () => { cancelled = true; };
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   // Watch the input for an "@..." token at the cursor and run a deal search.
   useEffect(() => {
