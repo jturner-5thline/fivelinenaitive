@@ -688,6 +688,19 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       onArchive={() => onArchive?.(latest)}
       onDelete={() => onDelete?.(latest)}
       onCreateTask={() => setCreateTaskOpen(true)}
+      onReply={onRowReply ? () => onRowReply(latest) : undefined}
+      onReplyAll={onRowReplyAll ? () => onRowReplyAll(latest) : undefined}
+      onForward={onRowForward ? () => onRowForward(latest) : undefined}
+      onSaveToDeal={onSaveToDeal ? () => onSaveToDeal(latest) : undefined}
+      isLinkedToDeal={!!latest.is_linked_to_deal}
+      subject={latest.subject}
+      fromEmail={latest.from_email}
+      selectedCount={selectedCount}
+      isInBulkSelection={!!isInBulkSelection}
+      onBulkMarkRead={onBulkMarkRead}
+      onBulkMarkUnread={onBulkMarkUnread}
+      onBulkArchive={onBulkArchive}
+      onBulkDelete={onBulkDelete}
     >
       {rowContent}
     </EmailContextMenu>
