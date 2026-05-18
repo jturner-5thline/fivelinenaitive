@@ -153,7 +153,7 @@ export function KeyMetricsPage() {
       mkRow('Conservative', PLAN_COLORS.Conservative, ['0','2','27','36','36']),
       mkRow('Actuals', PLAN_COLORS.Actuals, ['3','5','8','10','10']),
     ])} /> },
-    { id: 'dollars-signed-ytd', gridColumn: '1 / -1', render: () => <MetricGrid title="Dollars Signed YTD" rows={filterRows([
+    { id: 'dollars-signed-ytd', render: () => <MetricGridShort title="Dollars Signed YTD" headers={['Plan','Q1','Q2','Q3','Q4','Total']} rows={filterRows([
       mkRow('Reach', PLAN_COLORS.Reach, ['$33MM','$66MM','$99MM','$144MM','$144MM']),
       mkRow('Operating', PLAN_COLORS.Operating, ['$33MM','$66MM','$99MM','$144MM','$144MM']),
       mkRow('Conservative', PLAN_COLORS.Conservative, ['$0MM','$25MM','$99MM','$144MM','$144MM']),
