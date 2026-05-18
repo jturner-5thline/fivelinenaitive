@@ -1,6 +1,12 @@
 import React from 'react';
 import { SortableWidgetGrid, SortableItem } from './SortableWidgetGrid';
 import WhatWorkingSections from './WhatWorkingSections';
+import {
+  PLAN_COLORS,
+  PlanToggleLegend,
+  usePlanVisibility,
+  type TogglePlanKey,
+} from './planScenarios';
 
 // ── Card ──
 function Card({ children, style }: { children: React.ReactNode; style?: React.CSSProperties }) {
@@ -11,24 +17,6 @@ function Card({ children, style }: { children: React.ReactNode; style?: React.CS
     </div>
   );
 }
-
-function Pill({ variant, children }: { variant: 'r' | 'o' | 'c' | 'a'; children: React.ReactNode }) {
-  const s: Record<string, React.CSSProperties> = {
-    r: { background: 'rgba(40,190,120,0.15)', color: '#4de8a0', border: '1px solid rgba(40,190,120,0.25)' },
-    o: { background: 'rgba(60,140,210,0.15)', color: '#7cc8f0', border: '1px solid rgba(60,150,220,0.25)' },
-    c: { background: 'rgba(140,90,210,0.15)', color: '#c4a0f0', border: '1px solid rgba(140,100,220,0.25)' },
-    a: { background: 'rgba(220,170,40,0.15)', color: '#f0c84a', border: '1px solid rgba(220,175,40,0.25)' },
-  };
-  return <span style={{ display: 'inline-block', fontSize: 9, fontWeight: 700, padding: '2px 8px', borderRadius: 20, ...s[variant] }}>{children}</span>;
-}
-
-// Legend dot colors
-const planColors = {
-  Reach: '#4de8a0',
-  Operating: '#7cc8f0',
-  Conservative: '#c4a0f0',
-  Actuals: '#f0c84a',
-};
 
 type PlanRow = { plan: string; color: string; q1: string; q2: string; q3: string; q4: string; total: string; totalColor?: string; negCells?: boolean[] };
 
