@@ -16,6 +16,20 @@ import {
 import { toast } from 'sonner';
 import type { EmailThread } from './mockEmailData';
 import { fetchFullEmailMessage } from './useFullEmailMessage';
+import { logUsage } from '@/lib/usageLogger';
+
+/** Hard cap for both the parse and calendar-read network calls. */
+const PARSE_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
 
 /**
  * AvailabilityCheckCard
