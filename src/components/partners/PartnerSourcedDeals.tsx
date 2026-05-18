@@ -4,9 +4,11 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { usePartners } from '@/hooks/usePartnersPipeline';
 
-import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp, ArrowUpDown } from 'lucide-react';
+import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useTriStateSort } from '@/hooks/useTriStateSort';
+import { SortableHeader } from '@/components/ui/sortable-header';
 import { format } from 'date-fns';
 import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 
@@ -26,8 +28,10 @@ export function PartnerSourcedDeals() {
   const { data: partners = [] } = usePartners();
   
   const [showDetails, setShowDetails] = useState(false);
-  const [sortCol, setSortCol] = useState<string>('created_at');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const { sortField: sortCol, sortDir, handleSort } = useTriStateSort({
+    field: 'created_at',
+    direction: 'desc',
+  });
 
   // Get all deal names that could match partners/referral sources
   const partnerNames = useMemo(
@@ -65,6 +69,7 @@ export function PartnerSourcedDeals() {
   const conversionRate = deals.length > 0 ? Math.round((matchedDeals.length / deals.length) * 100) : 0;
 
   const sorted = useMemo(() => {
+    if (!sortCol || !sortDir) return matchedDeals;
     return [...matchedDeals].sort((a, b) => {
       let av: any, bv: any;
       switch (sortCol) {
@@ -79,21 +84,15 @@ export function PartnerSourcedDeals() {
     });
   }, [matchedDeals, sortCol, sortDir]);
 
-  const handleSort = (col: string) => {
-    if (sortCol === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    else { setSortCol(col); setSortDir('asc'); }
-  };
-
   const SortHeader = ({ col, children }: { col: string; children: React.ReactNode }) => (
-    <TableHead
-      className="text-muted-foreground text-xs font-medium cursor-pointer hover:text-foreground select-none"
-      onClick={() => handleSort(col)}
+    <SortableHeader
+      field={col}
+      activeField={sortCol}
+      direction={sortDir}
+      onSort={handleSort}
     >
-      <div className="flex items-center gap-1">
-        {children}
-        <ArrowUpDown className="h-3 w-3" />
-      </div>
-    </TableHead>
+      {children}
+    </SortableHeader>
   );
 
   return (
