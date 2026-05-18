@@ -52,6 +52,14 @@ export interface StickyDashboardHeaderProps
    * specific page needs a different anchor.
    */
   topClassName?: string;
+  /**
+   * Visual surface treatment. `"bar"` (default) renders the classic
+   * edge-to-edge translucent bar with a bottom hairline. `"module"` renders
+   * the header as a first-class dashboard tile using the shared
+   * `.glass-module` surface so it visually belongs to the same family as
+   * the KPI / chart widgets below.
+   */
+  surface?: "bar" | "module";
 }
 
 export function StickyDashboardHeader({
@@ -59,10 +67,12 @@ export function StickyDashboardHeader({
   padding = "sm",
   paddingClassName,
   topClassName,
+  surface = "bar",
   children,
   ...rest
 }: StickyDashboardHeaderProps) {
-  const resolvedPadding = paddingClassName ?? PADDING_CLASSES[padding];
+  const resolvedPadding =
+    surface === "module" ? "" : (paddingClassName ?? PADDING_CLASSES[padding]);
   const stickyStyle: React.CSSProperties | undefined = topClassName
     ? undefined
     : { top: "var(--app-top-bar-height, 0px)" };
@@ -72,8 +82,13 @@ export function StickyDashboardHeader({
       data-sticky-dashboard-header=""
       style={{ ...stickyStyle, ...(rest.style || {}) }}
       className={cn(
-        "sticky z-40 py-3 border-b border-white/5",
-        "bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
+        "sticky z-40",
+        surface === "module"
+          ? "glass-module rounded-2xl px-5 py-4"
+          : cn(
+              "py-3 border-b border-white/5",
+              "bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/60",
+            ),
         topClassName,
         resolvedPadding,
         className,
