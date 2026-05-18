@@ -179,11 +179,13 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
       email: lender.email || '',
       phone: lender.contact_phone || '',
     },
-    preferences: [
-      ...(lender.loan_types || []),
-      ...(lender.industries || []),
-      lender.geo,
-    ].filter(Boolean) as string[],
+    // "preferences" is only used for the "Additional Preferences" section in
+    // the detail dialog. We intentionally exclude industries / loan_types /
+    // geo here because those are already rendered under "Lending Criteria" —
+    // duplicating them caused the same chip list to appear in both sections
+    // (Bug 2 sub-bug). When the lender record carries no extra preference
+    // fields the section renders its empty-state CTA instead.
+    preferences: [] as string[],
     website: lender.lender_one_pager_url || undefined,
     description: lender.company_requirements || undefined,
     lenderType: lender.lender_type || undefined,
