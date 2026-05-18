@@ -201,6 +201,9 @@ function AttainmentTable() {
 }
 
 export function BenchmarkForecastsPage() {
+  const { visible, toggle } = usePlanVisibility();
+  const vR = visible.Reach, vO = visible.Operating, vC = visible.Conservative;
+
   // 10 chart refs
   const qrevRef = useRef<HTMLCanvasElement>(null);
   const ytdrevRef = useRef<HTMLCanvasElement>(null);
@@ -215,54 +218,76 @@ export function BenchmarkForecastsPage() {
   const p2fundRef = useRef<HTMLCanvasElement>(null);
   const p2signRef = useRef<HTMLCanvasElement>(null);
 
+  // Actuals dotted-line styling (purple) — used by every line chart.
+  const actualsLineDs = (data: number[]) => ({
+    label: 'Actuals',
+    data,
+    borderColor: CA,
+    backgroundColor: 'transparent',
+    fill: false,
+    borderWidth: 2,
+    borderDash: [2, 4],
+    tension: .35,
+    pointRadius: 3,
+    pointBackgroundColor: CA,
+    pointBorderColor: CA,
+  });
+
   const barsCfg = (r: number[], o: number[], a: number[], yCb?: (v: number) => string): any => ({
     type: 'bar', data: { labels: Q, datasets: [
-      { data: r, backgroundColor: 'rgba(30,160,100,0.35)', borderColor: CR, borderWidth: 1, borderRadius: 3 },
-      { data: o, backgroundColor: 'rgba(50,120,190,0.35)', borderColor: CO, borderWidth: 1, borderRadius: 3 },
-      { data: a, backgroundColor: a.map(v => v >= 0 ? 'rgba(200,145,30,0.45)' : 'rgba(210,60,75,0.4)'), borderColor: a.map(v => v >= 0 ? CA : CDN), borderWidth: 1, borderRadius: 3 },
+      { label: 'Reach',     data: r, backgroundColor: PLAN_FILLS.Reach,     borderColor: CR, borderWidth: 1, borderRadius: 3, hidden: !vR },
+      { label: 'Operating', data: o, backgroundColor: PLAN_FILLS.Operating, borderColor: CO, borderWidth: 1, borderRadius: 3, hidden: !vO },
+      { label: 'Actuals',   data: a,
+        backgroundColor: a.map(v => v >= 0 ? PLAN_FILLS.Actuals : 'rgba(210,60,75,0.35)'),
+        borderColor:     a.map(v => v >= 0 ? CA                  : CDN),
+        borderWidth: 1, borderRadius: 3 },
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: yCb || fmtM } } } }
   });
 
   const lineCfg = (d1: number[], d2: number[], d3: number[], yCb?: (v: number) => string): any => ({
     type: 'line', data: { labels: Q, datasets: [
-      { data: d1, borderColor: CR, backgroundColor: CF, fill: true, borderWidth: 2, tension: .35, pointRadius: 3 },
-      { data: d2, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, borderDash: [5, 3] },
-      { data: d3, borderColor: CA, backgroundColor: 'transparent', fill: false, borderWidth: 2.5, tension: .35, pointRadius: 4, pointBackgroundColor: CA },
+      { label: 'Reach',     data: d1, borderColor: CR, backgroundColor: CF, fill: vR, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vR },
+      { label: 'Operating', data: d2, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vO },
+      actualsLineDs(d3),
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: yCb || fmtM } } } }
   });
 
   const bars4Cfg = (d1: number[], d2: number[], d3: number[], d4: number[], yCb: (v: number) => string): any => ({
     type: 'bar', data: { labels: Q, datasets: [
-      { data: d1, backgroundColor: 'rgba(30,160,100,0.35)', borderColor: CR, borderWidth: 1, borderRadius: 3 },
-      { data: d2, backgroundColor: 'rgba(50,120,190,0.35)', borderColor: CO, borderWidth: 1, borderRadius: 3 },
-      { data: d3, backgroundColor: 'rgba(120,70,200,0.3)', borderColor: CC, borderWidth: 1, borderRadius: 3 },
-      { data: d4, backgroundColor: d4.map(v => v >= 0 ? 'rgba(200,145,30,0.45)' : 'rgba(210,60,75,0.4)'), borderColor: d4.map(v => v >= 0 ? CA : CDN), borderWidth: 1, borderRadius: 3 },
+      { label: 'Reach',        data: d1, backgroundColor: PLAN_FILLS.Reach,        borderColor: CR, borderWidth: 1, borderRadius: 3, hidden: !vR },
+      { label: 'Operating',    data: d2, backgroundColor: PLAN_FILLS.Operating,    borderColor: CO, borderWidth: 1, borderRadius: 3, hidden: !vO },
+      { label: 'Conservative', data: d3, backgroundColor: PLAN_FILLS.Conservative, borderColor: CC, borderWidth: 1, borderRadius: 3, hidden: !vC },
+      { label: 'Actuals',      data: d4,
+        backgroundColor: d4.map(v => v >= 0 ? PLAN_FILLS.Actuals : 'rgba(210,60,75,0.35)'),
+        borderColor:     d4.map(v => v >= 0 ? CA                  : CDN),
+        borderWidth: 1, borderRadius: 3 },
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: yCb } } } }
   });
 
-  useChart(qrevRef, () => barsCfg(rrev, oprev, arev));
-  useChart(ytdrevRef, () => lineCfg(ytdr, ytdo, ytda));
-  useChart(ttmrevRef, () => lineCfg(ttmr, ttmo, ttma));
-  useChart(ttmprofRef, () => lineCfg(ttmpr, ttmpo, ttmpa));
+  const deps = [vR, vO, vC];
+  useChart(qrevRef, () => barsCfg(rrev, oprev, arev), deps);
+  useChart(ytdrevRef, () => lineCfg(ytdr, ytdo, ytda), deps);
+  useChart(ttmrevRef, () => lineCfg(ttmr, ttmo, ttma), deps);
+  useChart(ttmprofRef, () => lineCfg(ttmpr, ttmpo, ttmpa), deps);
   useChart(gmRef, () => ({
     type: 'line', data: { labels: Q, datasets: [
-      { data: gmu, borderColor: CR, backgroundColor: 'rgba(30,160,100,0.08)', fill: '+1', borderWidth: 2, tension: .35, pointRadius: 3 },
-      { data: gml, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, borderDash: [4, 3] },
-      { data: gma, borderColor: CA, backgroundColor: 'transparent', fill: false, borderWidth: 2.5, tension: .35, pointRadius: 4, pointBackgroundColor: CA },
+      { label: 'Reach',     data: gmu, borderColor: CR, backgroundColor: 'rgba(34,197,94,0.08)', fill: vR && vO ? '+1' : vR, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vR },
+      { label: 'Operating', data: gml, borderColor: CO, backgroundColor: 'transparent', fill: false, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vO },
+      actualsLineDs(gma),
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, min: 0, max: 100, ticks: { ...gy.ticks, callback: (v: number) => v + '%' } } } }
-  }));
-  useChart(qprofRef, () => barsCfg(rprof, opprof, aprof, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'));
+  }), deps);
+  useChart(qprofRef, () => barsCfg(rprof, opprof, aprof, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'), deps);
   useChart(ytdprofRef, () => ({
     type: 'line', data: { labels: Q, datasets: [
-      { data: ytdop, borderColor: CO, backgroundColor: 'rgba(50,120,190,0.08)', fill: true, borderWidth: 2, tension: .35, pointRadius: 3, borderDash: [5, 3] },
-      { data: ytdap, borderColor: CA, backgroundColor: 'transparent', fill: false, borderWidth: 2.5, tension: .35, pointRadius: 4, pointBackgroundColor: CA },
+      { label: 'Operating', data: ytdop, borderColor: CO, backgroundColor: 'rgba(59,130,246,0.08)', fill: vO, borderWidth: 2, tension: .35, pointRadius: 3, hidden: !vO },
+      actualsLineDs(ytdap),
     ] }, options: { ...def, scales: { x: gx, y: { ...gy, ticks: { ...gy.ticks, callback: (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v).toFixed(0) + 'K' } } } }
-  }));
-  useChart(ytdrevcumRef, () => lineCfg(ytdr, ytdo, ytda));
-  useChart(p2revRef, () => bars4Cfg(p2RevR, p2RevO, p2RevC, p2RevA, (v: number) => '$' + v.toFixed(1) + 'MM'));
-  useChart(p2liqRef, () => bars4Cfg(p2LiqR, p2LiqO, p2LiqC, p2LiqAct, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'));
-  useChart(p2fundRef, () => bars4Cfg(p2FundR, p2FundO, p2FundC, p2FundA, (v: number) => '$' + v + 'MM'));
-  useChart(p2signRef, () => bars4Cfg(p2SignR, p2SignO, p2SignC, p2SignA, (v: number) => '$' + v + 'MM'));
+  }), deps);
+  useChart(ytdrevcumRef, () => lineCfg(ytdr, ytdo, ytda), deps);
+  useChart(p2revRef, () => bars4Cfg(p2RevR, p2RevO, p2RevC, p2RevA, (v: number) => '$' + v.toFixed(1) + 'MM'), deps);
+  useChart(p2liqRef, () => bars4Cfg(p2LiqR, p2LiqO, p2LiqC, p2LiqAct, (v: number) => (v < 0 ? '-$' : '+$') + Math.abs(v) + 'K'), deps);
+  useChart(p2fundRef, () => bars4Cfg(p2FundR, p2FundO, p2FundC, p2FundA, (v: number) => '$' + v + 'MM'), deps);
+  useChart(p2signRef, () => bars4Cfg(p2SignR, p2SignO, p2SignC, p2SignA, (v: number) => '$' + v + 'MM'), deps);
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
