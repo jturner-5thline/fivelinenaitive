@@ -1064,6 +1064,16 @@ interface ThreadListRowProps {
   evaluateAutoLabels: (email: MockEmail) => EmailLabel[];
   priorityFlag?: DetectedSignal;
   userLabels?: EmailLabel[];
+  onRowReply?: (email: MockEmail) => void;
+  onRowReplyAll?: (email: MockEmail) => void;
+  onRowForward?: (email: MockEmail) => void;
+  onSaveToDeal?: (email: MockEmail) => void;
+  selectedCount?: number;
+  isInBulkSelection?: boolean;
+  onBulkMarkRead?: () => void;
+  onBulkMarkUnread?: () => void;
+  onBulkArchive?: () => void;
+  onBulkDelete?: () => void;
 }
 
 const ThreadListRow = memo(function ThreadListRow({
@@ -1081,6 +1091,16 @@ const ThreadListRow = memo(function ThreadListRow({
   evaluateAutoLabels,
   priorityFlag,
   userLabels,
+  onRowReply,
+  onRowReplyAll,
+  onRowForward,
+  onSaveToDeal,
+  selectedCount,
+  isInBulkSelection,
+  onBulkMarkRead,
+  onBulkMarkUnread,
+  onBulkArchive,
+  onBulkDelete,
 }: ThreadListRowProps) {
   const onSelect = useCallback(() => onSelectThread(thread), [onSelectThread, thread]);
   const onCheckChange = useCallback(
@@ -1108,6 +1128,16 @@ const ThreadListRow = memo(function ThreadListRow({
       autoLabels={autoLabels}
       priorityFlag={priorityFlag}
       userLabels={userLabels}
+      onRowReply={onRowReply}
+      onRowReplyAll={onRowReplyAll}
+      onRowForward={onRowForward}
+      onSaveToDeal={onSaveToDeal}
+      selectedCount={selectedCount}
+      isInBulkSelection={isInBulkSelection}
+      onBulkMarkRead={onBulkMarkRead}
+      onBulkMarkUnread={onBulkMarkUnread}
+      onBulkArchive={onBulkArchive}
+      onBulkDelete={onBulkDelete}
     />
   );
 });
