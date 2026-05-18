@@ -50,7 +50,12 @@ export function InsightsDrilldownDrawer<T = any>({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [open, onClose]);
 
   if (!open || !context) return null;
@@ -59,16 +64,24 @@ export function InsightsDrilldownDrawer<T = any>({
     <div
       onClick={onClose}
       role="dialog"
+      aria-modal="true"
       aria-label={`${context.sourceLabel} drilldown`}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 80 }}
+      style={{
+        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+        zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center',
+        padding: 24, backdropFilter: 'blur(2px)',
+      }}
       className="qir-no-print"
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'absolute', right: 0, top: 0, bottom: 0, width: 560, maxWidth: '100vw',
-          background: PANEL_BG, borderLeft: `1px solid ${BORDER}`,
+          position: 'relative', width: 880, maxWidth: '100%',
+          maxHeight: 'calc(100vh - 48px)',
+          background: PANEL_BG, border: `1px solid ${BORDER}`, borderRadius: 12,
+          boxShadow: '0 24px 80px -12px rgba(0,0,0,0.6)',
           display: 'flex', flexDirection: 'column', color: '#dde8f8',
+          overflow: 'hidden',
         }}
       >
         {/* Header */}
