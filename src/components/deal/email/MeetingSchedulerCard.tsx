@@ -18,6 +18,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { AvailabilityCheckCard } from './AvailabilityCheckCard';
+import type { EmailThread } from './mockEmailData';
 
 /**
  * MeetingSchedulerCard
@@ -71,6 +73,10 @@ interface Props {
   threadSubject?: string;
   /** Matched deal name, woven into the meeting title when available. */
   dealName?: string;
+  /** Full email thread — when provided, an Availability Check section is
+   *  rendered at the top to parse proposed times and cross-reference the
+   *  user's calendar. */
+  thread?: EmailThread;
   /** Inserts text into the composer body. */
   onInsert: (text: string) => void;
   /** Closes the scheduler back to the chip row. */
@@ -339,6 +345,7 @@ export function MeetingSchedulerCard({
   recipientName,
   threadSubject,
   dealName,
+  thread,
   onInsert,
   onClose,
 }: Props) {
