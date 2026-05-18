@@ -290,7 +290,8 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     const plain = /<[a-z][\s\S]*>/i.test(body || '') ? htmlToPlainText(body || '') : (body || '');
     return plain.replace(/\s+/g, ' ').trim().length;
   }, [body]);
-  const canPolish = plainBodyLength >= 60 && !aiInsertedAt && !aiPending;
+  const signaturePlainText = useMemo(() => signatureToPlainText(signature), [signature]);
+  const hasSignatureContent = signaturePlainText.trim().length > 0;
 
   // In-place polish: replaces the body with a polished version and exposes
   // a 10-second Undo affordance. We keep `polishOpen` for the legacy dialog
@@ -585,7 +586,9 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   // ── Signature auto-append on first mount when body is empty ─────────────
   // Honors the long-standing rule of not splicing into in-progress drafts:
   // we only inject the signature when the editor opens with no body content.
+  const bodyHadInitialContentRef = useRef(Boolean(body && body.trim().length > 0));
   const signatureInjectedRef = useRef(false);
+  const signatureRestoredRef = useRef(false);
   useEffect(() => {
     if (signatureInjectedRef.current) return;
     if (!signature || !signature.trim()) return;
@@ -603,6 +606,17 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     // is a one-shot prefill. Subsequent edits are owned by the user.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signature]);
+
+  useEffect(() => {
+    if (!signatureInjectedRef.current) return;
+    if (signatureRestoredRef.current) return;
+    if (!bodyHadInitialContentRef.current) return;
+    if (!hasSignatureContent) return;
+    if (!body || !body.trim()) return;
+    if (bodyContainsSignature(body, signature)) return;
+    signatureRestoredRef.current = true;
+    onBodyChange(`${body}${signatureToHtml(signature)}`);
+  }, [body, hasSignatureContent, onBodyChange, signature]);
 
   // ── Drag-to-resize on top edge ──────────────────────────────────────────
   const onResizeStart = (e: React.MouseEvent) => {
@@ -688,10 +702,10 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
             <Button
               onClick={() => void runSend()}
               disabled={!canSend}
+              variant="default"
               size="sm"
               className={cn(
-                'h-8 text-xs gap-1.5 rounded-r-none px-3.5 font-medium',
-                'bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50',
+                'h-8 text-xs gap-1.5 rounded-r-none px-3.5 font-medium disabled:opacity-50',
               )}
               aria-label={sendDisabledReason ? `Send disabled — ${sendDisabledReason}` : 'Send (⌘↵)'}
             >
@@ -709,10 +723,10 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         <DropdownMenuTrigger asChild>
           <Button
             disabled={isSending}
+            variant="default"
             size="sm"
             className={cn(
               'h-8 px-1.5 rounded-l-none border-l border-primary-foreground/20',
-              'bg-primary text-primary-foreground hover:bg-primary/90',
             )}
             aria-label="More send options"
           >
@@ -795,7 +809,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
   return (
     <div
       className={cn(
-        'relative flex flex-col bg-background border border-white/10 rounded-lg shadow-lg overflow-hidden',
+        'relative flex flex-col bg-card/40 border border-white/10 rounded-lg shadow-lg overflow-hidden',
         isInline && 'mx-3 my-3 flex-1 min-h-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-200',
         isDragOver && 'ring-2 ring-[hsl(var(--outlook-blue))] ring-offset-0',
         className,
@@ -1059,7 +1073,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           minHeight={bodyMinHeight}
           className="border-0 shadow-none"
           toolbarTrailing={
-            canPolish ? (
+            (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -1078,16 +1092,16 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                   Rewrite your draft in 5th Line voice — facts preserved
                 </TooltipContent>
               </Tooltip>
-            ) : null
+            )
           }
         />
-        {shouldShowSignatureGhost(signatureToPlainText(signature), signatureToPlainText(body)) && (
+        {shouldShowSignatureGhost(signaturePlainText, signatureToPlainText(body)) && (
           <div
             className="text-[11px] text-muted-foreground/60 whitespace-pre-wrap pt-2 border-t border-border/30 mt-2 select-none"
             aria-hidden
             data-testid="signature-ghost"
           >
-            {signatureToPlainText(signature)}
+            {signaturePlainText}
           </div>
         )}
         {/* Deal-link preview — mirrors what the outgoing message will reference.
@@ -1209,7 +1223,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                 type="button"
                 variant="ghost"
                 size="sm"
-                className="gap-1 h-7 text-xs text-foreground/60 hover:text-[hsl(180_72%_55%)] hover:bg-[hsl(180_72%_45%)]/10"
+                className="gap-1 h-7 text-xs text-foreground/60 hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
                 onClick={handlePolishInPlace}
                 onMouseEnter={() => { if (polishTooltipOpen) setPolishTooltipOpen(false); }}
                 disabled={polishPending}
@@ -1317,15 +1331,15 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           </label>
           {/* Signature indicator — shows the saved signature's first line, or a
               link to configure one if the user hasn't set one yet. */}
-          {hasSavedSignature === true && props.signature ? (
+          {hasSavedSignature === true && hasSignatureContent ? (
             <span
               className="inline-flex items-center gap-1 truncate max-w-[260px]"
-              title={signatureToPlainText(props.signature)}
+              title={signaturePlainText}
             >
               <Edit3 className="h-2.5 w-2.5 opacity-60" aria-hidden />
               <span className="opacity-70">Signature:</span>
               <span className="text-foreground/80 truncate">
-                {signatureFirstLine(props.signature)}
+                {signatureFirstLine(signature)}
               </span>
             </span>
           ) : hasSavedSignature === false ? (
