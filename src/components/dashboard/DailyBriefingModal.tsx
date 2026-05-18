@@ -1557,7 +1557,12 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
   const window = useBriefingWindow();
   const { user: currentUser } = useAuth();
   const END_OF_DAY_ALLOWLIST = useMemo(
-    () => new Set(['jmoffitt@5thline.co', 'swilliams@5thline.co']),
+    () => new Set([
+      'jmoffitt@5thline.co',
+      'swilliams@5thline.co',
+      'jturner@5thline.co',
+      'nheikali@5thline.co',
+    ]),
     [],
   );
   const canSeeEndOfDay = !!currentUser?.email && END_OF_DAY_ALLOWLIST.has(currentUser.email.toLowerCase());
