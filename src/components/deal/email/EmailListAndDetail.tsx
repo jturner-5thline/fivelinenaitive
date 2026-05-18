@@ -1912,6 +1912,22 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
+  // Consume a pending row-level action (Reply / Reply All / Forward triggered
+  // from a list-row right-click context menu). Runs once per (thread, action)
+  // change and clears via onPendingActionConsumed.
+  useEffect(() => {
+    if (!pendingAction) return;
+    const target = thread.latestEmail;
+    if (!target) return;
+    const t = setTimeout(() => {
+      if (pendingAction === 'reply') handleReplyToMessage(target);
+      else if (pendingAction === 'replyAll') handleReplyAllToMessage(target);
+      else if (pendingAction === 'forward') handleForwardMessage(target);
+      onPendingActionConsumed?.();
+    }, 0);
+    return () => clearTimeout(t);
+  }, [pendingAction, thread.threadId, handleReplyToMessage, handleReplyAllToMessage, handleForwardMessage, onPendingActionConsumed]);
+
   const handleDelete = useCallback(async () => {
     if (!onDelete || actionLoading) return;
     setActionLoading('delete');
