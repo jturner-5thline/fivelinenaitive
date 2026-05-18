@@ -520,6 +520,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [searchFiltersOpen, setSearchFiltersOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [pendingDetailAction, setPendingDetailAction] = useState<'reply'|'replyAll'|'forward'|null>(null);
   const [searchFilters, setSearchFilters] = useState<SearchFilters>({
     sender: '',
     dateRange: 'all',
