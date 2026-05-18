@@ -1,6 +1,6 @@
 import { Helmet } from 'react-helmet-async';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
-import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond, Mail } from 'lucide-react';
+import { Loader2, Plus, FileX, Maximize2, Minimize2, ChevronLeft, ChevronRight, Search, X, GripVertical, Diamond, Mail, Send, History } from 'lucide-react';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { useNaitivePipelineData } from '@/hooks/useNaitivePipelineData';
 import { useNaitivePipelineMetrics } from '@/hooks/useNaitivePipelineMetrics';
@@ -38,6 +38,8 @@ import { NaitiveCatchUpCard } from '@/components/naitive-pipeline/NaitiveCatchUp
 import { NaitivePipelineFilterBar } from '@/components/naitive-pipeline/NaitivePipelineFilterBar';
 import { MilestoneConfigModal } from '@/components/naitive-pipeline/MilestoneConfigModal';
 import { EmailCadenceConfigModal } from '@/components/naitive-pipeline/EmailCadenceConfigModal';
+import { SubmitReportDialog } from '@/components/naitive-pipeline/SubmitReportDialog';
+import { Link } from 'react-router-dom';
 import { useNaitivePipelineFilters } from '@/hooks/useNaitivePipelineFilters';
 import { usePipelineScrollPersistence } from '@/hooks/usePipelineScrollPersistence';
 import {
