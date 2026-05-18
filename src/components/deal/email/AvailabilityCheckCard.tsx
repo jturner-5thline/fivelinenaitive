@@ -487,6 +487,30 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
     );
   }
 
+  // Hard failure (parser never returned a result) — surface a clear error
+  // state with a Retry action so the panel never stays in a stuck skeleton.
+  if (error && !parseResult) {
+    return (
+      <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
+        <Header />
+        <div className="mt-2 flex items-start gap-1.5 text-[11.5px] text-rose-200">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span className="min-w-0">{error}</span>
+        </div>
+        <div className="mt-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1.5 text-[11px]"
+            onClick={runAnalysis}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // No scheduling intent found OR user invoked manual mode.
   if (!parseResult || !parseResult.detected) {
     return (
