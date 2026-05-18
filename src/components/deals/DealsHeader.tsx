@@ -212,7 +212,7 @@ export function DealsHeader() {
     { label: 'Dashboard' as const, isOpen: isDashboardOpen, open: () => setIsDashboardOpen(true), close: () => setIsDashboardOpen(false), available: isFifthLine },
     { label: 'Daily Rundown' as const, isOpen: isBriefingOpen, open: () => setIsBriefingOpen(true), close: () => setIsBriefingOpen(false), available: canSeeBriefingHeaderItems },
     { label: "Niki's Daily Rundown" as const, isOpen: isNikiBriefingOpen, open: () => setIsNikiBriefingOpen(true), close: () => setIsNikiBriefingOpen(false), available: canSeeBriefingHeaderItems },
-    { label: (isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown") as const, isOpen: isMoffittBriefingOpen, open: () => setIsMoffittBriefingOpen(true), close: () => setIsMoffittBriefingOpen(false), available: canSeeMoffitt },
+    { label: (isMoffittViewingHimself ? 'My Daily Rundown' : "Moffitt's Daily Rundown"), isOpen: isMoffittBriefingOpen, open: () => setIsMoffittBriefingOpen(true), close: () => setIsMoffittBriefingOpen(false), available: canSeeMoffitt },
   ].filter(o => o.available);
 
   const currentOverlay = overlayRegistry.find(o => o.isOpen) ?? null;
