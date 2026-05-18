@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, Trash2, Maximize2, Minimize2 } from 'lucide-react';
+import { X, ArrowUp, Plus, Clock, Copy, Check, ThumbsUp, ThumbsDown, HelpCircle, RefreshCw, WifiOff, Wand2, ChevronDown, ChevronRight, Trash2, Maximize2, Minimize2 } from 'lucide-react';
 import { AgentRunCard } from '@/components/copilot/AgentRunCard';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -29,8 +29,27 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
 import type { ConversationMutation } from '@/lib/copilot-utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { logUsage } from '@/lib/usageLogger';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
+
+/**
+ * Per-session preference for the global Ask naitive AI scope. When the
+ * user explicitly clicks "Switch to Pipeline" from the breadcrumb on a
+ * deal page, we remember that choice for the rest of the tab session so
+ * we don't keep snapping back to deal context as they navigate.
+ */
+const SCOPE_PREF_KEY = 'naitive.copilot.scope_preference';
+function readScopePreference(): 'auto' | 'pipeline' {
+  try {
+    return sessionStorage.getItem(SCOPE_PREF_KEY) === 'pipeline' ? 'pipeline' : 'auto';
+  } catch {
+    return 'auto';
+  }
+}
+function writeScopePreference(pref: 'auto' | 'pipeline') {
+  try { sessionStorage.setItem(SCOPE_PREF_KEY, pref); } catch { /* ignore */ }
+}
 
 /**
  * Demo-only deterministic responder for "What deals need attention?".
@@ -191,6 +210,8 @@ function ShortcutsTooltip({ visible }: { visible: boolean }) {
 function getPageContext(): { page: string; entityType: string | null; entityId: string | null; activeTab: string | null; banners: string[] } {
   const path = window.location.pathname;
   const parts = path.split('/').filter(Boolean);
+  const query = new URLSearchParams(window.location.search);
+  const overlayDealId = query.get('deal');
 
   // Detect active tab from DOM (Radix Tabs uses data-state="active")
   let activeTab: string | null = null;
@@ -217,6 +238,13 @@ function getPageContext(): { page: string; entityType: string | null; entityId: 
   if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) {
     return { page: 'deal-detail', entityType: 'deal', entityId: parts[1], activeTab, banners };
   }
+  // Deal overlay opened on top of /deals, /pipeline, /finserv, etc. via
+  // the canonical `?deal=<id>` query param used by NaitiveDealOverlay.
+  // When a deal overlay is open, the "current view" is that deal, even
+  // though the underlying route is the pipeline/list.
+  if (overlayDealId && readScopePreference() !== 'pipeline') {
+    return { page: 'deal-detail', entityType: 'deal', entityId: overlayDealId, activeTab, banners };
+  }
   if (parts[0] === 'deals') return { page: 'deals', entityType: null, entityId: null, activeTab, banners };
   if (parts[0] === 'tasks') return { page: 'tasks', entityType: null, entityId: null, activeTab, banners };
   // /lenders/:name/history → single lender; /lenders → directory
@@ -241,10 +269,16 @@ const DEAL_SUGGESTIONS: Array<{ prompt: string; description: string }> = [
 function isDealDetailPath(pathname: string): boolean {
   // Matches /deal/:id and /deals/:id (both routes exist in the app).
   const parts = pathname.split('/').filter(Boolean);
-  if (parts.length < 2) return false;
-  if (parts[0] !== 'deal' && parts[0] !== 'deals') return false;
-  // For /deals, the index page has no second segment; only treat as detail when there is one.
-  return Boolean(parts[1]);
+  if (parts.length >= 2 && (parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) {
+    return true;
+  }
+  // Treat any page that has an `?deal=<id>` overlay open as deal-detail
+  // (NaitiveDealOverlay opens on top of /deals, /pipeline, /finserv, ...).
+  try {
+    const q = new URLSearchParams(window.location.search);
+    if (q.get('deal') && readScopePreference() !== 'pipeline') return true;
+  } catch { /* ignore */ }
+  return false;
 }
 
 function DealSuggestionChips({
@@ -745,6 +779,11 @@ export function AICopilotPanel() {
   const dealIdFromPath = (() => {
     const parts = location.pathname.split('/').filter(Boolean);
     if ((parts[0] === 'deal' || parts[0] === 'deals') && parts[1]) return parts[1];
+    try {
+      const q = new URLSearchParams(location.search);
+      const overlay = q.get('deal');
+      if (overlay && readScopePreference() !== 'pipeline') return overlay;
+    } catch { /* ignore */ }
     return null;
   })();
   const dealMemory = useDealCopilotMemory(dealIdFromPath);
@@ -790,7 +829,7 @@ export function AICopilotPanel() {
     }
     resolve();
     return () => { cancelled = true; };
-  }, [location.pathname]);
+  }, [location.pathname, location.search]);
 
   // Watch the input for an "@..." token at the cursor and run a deal search.
   useEffect(() => {
@@ -1014,6 +1053,26 @@ export function AICopilotPanel() {
     const currentMessages = useCopilotStore.getState().messages;
     const history = currentMessages.filter(m => m.content !== '__ERROR__').map((m) => ({ role: m.role, content: m.content }));
     const ctx = getPageContext();
+    // Telemetry: log every global Ask naitive AI invocation so we can
+    // monitor regressions (e.g. deal context not auto-detected, zero docs
+    // retrieved when a deal is open).
+    logUsage({
+      feature_type: 'AI_CHAT',
+      feature_subtype: 'ask_naitive_submit',
+      deal_id: contextOverride?.entityId || (ctx.entityType === 'deal' ? ctx.entityId : null) || dealIdFromPath,
+      metadata: {
+        resolved_context: contextOverride
+          ? `override:${contextOverride.entityName}`
+          : ctx.page === 'deal-detail' && ctx.entityId
+            ? `deal:${ctx.entityId}`
+            : ctx.page,
+        active_deal_id: dealIdFromPath,
+        page: ctx.page,
+        entity_type: ctx.entityType,
+        entity_id: ctx.entityId,
+        scope_preference: readScopePreference(),
+      },
+    });
     const { data: sessionData } = await supabase.auth.getSession();
     const accessToken = sessionData?.session?.access_token;
     if (!accessToken) {
@@ -1502,7 +1561,32 @@ export function AICopilotPanel() {
             }}
           >
             <span style={{ color: 'hsl(var(--muted-foreground))' }}>Context:</span>
-            <strong style={{ fontWeight: 600 }}>{effectiveContextLabel}</strong>
+            {isDealDetail && !contextOverride ? (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    writeScopePreference('pipeline');
+                    // Force re-resolution of the chip without leaving the page.
+                    setAutoContextLabel('Pipeline');
+                    toast.success('Switched to Pipeline scope for this session');
+                    logUsage({
+                      feature_type: 'AI_CHAT',
+                      feature_subtype: 'scope_switch_to_pipeline',
+                      deal_id: dealIdFromPath,
+                    });
+                  }}
+                  title="Switch to Pipeline (portfolio-wide search) for this session"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: 0, fontWeight: 500 }}
+                >
+                  Pipeline
+                </button>
+                <ChevronRight size={11} style={{ color: 'hsl(var(--muted-foreground))' }} />
+                <strong style={{ fontWeight: 600 }}>{effectiveContextLabel.replace(/^Deal — /, '')}</strong>
+              </span>
+            ) : (
+              <strong style={{ fontWeight: 600 }}>{effectiveContextLabel}</strong>
+            )}
             {contextOverride && (
               <button
                 onClick={() => setContextOverride(null)}
@@ -1515,8 +1599,27 @@ export function AICopilotPanel() {
           </div>
         ) : null}
         {!contextOverride && (
-          <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', marginLeft: 'auto' }}>
-            Type <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '0 4px', borderRadius: 3 }}>@</kbd> to switch deal
+          <span style={{ fontSize: 10, color: 'hsl(var(--muted-foreground))', marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            {readScopePreference() === 'pipeline' && (
+              <button
+                type="button"
+                onClick={() => {
+                  writeScopePreference('auto');
+                  // Re-resolve immediately if a deal overlay is open.
+                  const q = new URLSearchParams(window.location.search);
+                  if (q.get('deal')) {
+                    setAutoContextLabel('Deal');
+                  }
+                  toast.success('Auto-context restored');
+                }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', textDecoration: 'underline', padding: 0, fontSize: 10 }}
+              >
+                Use active deal
+              </button>
+            )}
+            <span>
+              Type <kbd style={{ background: 'rgba(255,255,255,0.06)', padding: '0 4px', borderRadius: 3 }}>@</kbd> to switch deal
+            </span>
           </span>
         )}
       </div>
