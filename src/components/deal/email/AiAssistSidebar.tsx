@@ -40,7 +40,6 @@ import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
-import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -967,16 +966,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             }}
           />
 
-          {/* Availability Check — auto-detects scheduling proposals in the
-              open thread, normalizes timezones, checks the user's calendar,
-              and surfaces one-click suggested replies. Never auto-sends. */}
-          <AvailabilityCheckCard
-            thread={thread}
-            onInsertDraft={(body) => {
-              setDraftOpen(true);
-              onInsertDraft(body);
-            }}
-          />
+          {/* Availability Check moved into the Schedule Meeting flow. It now
+              renders at the top of MeetingSchedulerCard, which is launched
+              from the Schedule Meeting quick action. */}
 
           {/* Deal Context — collapsed by default; the chip row above is the
               primary at-a-glance summary. Still renders so the deal-context
@@ -1270,6 +1262,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               recipientName={thread.latestEmail?.from_name || undefined}
               threadSubject={thread.subject}
               dealName={dealName}
+              thread={thread}
               onInsert={(text) => onInsertDraft(text)}
               onClose={() => setSchedulerOpen(false)}
             />

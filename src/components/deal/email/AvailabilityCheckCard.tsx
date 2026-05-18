@@ -16,6 +16,20 @@ import {
 import { toast } from 'sonner';
 import type { EmailThread } from './mockEmailData';
 import { fetchFullEmailMessage } from './useFullEmailMessage';
+import { logUsage } from '@/lib/usageLogger';
+
+/** Hard cap for both the parse and calendar-read network calls. */
+const PARSE_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms / 1000}s`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
 
 /**
  * AvailabilityCheckCard
@@ -325,21 +339,24 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
     setError(null);
     setManualMode(false);
     setLoadingParse(true);
+    const startedAt = Date.now();
     try {
       const threadText = await buildThreadText();
-      const { data, error: invokeErr } = await supabase.functions.invoke(
-        'parse-email-scheduling-proposals',
-        {
+      const { data, error: invokeErr } = await withTimeout(
+        supabase.functions.invoke('parse-email-scheduling-proposals', {
           body: {
             thread_text: threadText,
             subject: thread.subject,
             user_timezone: BROWSER_TZ,
             now_iso: new Date().toISOString(),
           },
-        },
+        }),
+        PARSE_TIMEOUT_MS,
+        'Scheduling parser',
       );
       if (invokeErr) throw invokeErr;
       const result = data as ParseResult;
+      if (!result) throw new Error('Empty response from scheduling parser');
       setParseResult(result);
 
       if (result.detected && result.slots.length > 0) {
@@ -353,8 +370,8 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
         const timeMin = new Date(startMs - 4 * 3600_000).toISOString();
         const timeMax = new Date(endMs + 4 * 3600_000).toISOString();
         try {
-          const { data: calData, error: calErr } =
-            await supabase.functions.invoke('calendar-events', {
+          const { data: calData, error: calErr } = await withTimeout(
+            supabase.functions.invoke('calendar-events', {
               body: {
                 action: 'list',
                 time_min: timeMin,
@@ -362,7 +379,10 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
                 max_results: 200,
                 timezone: BROWSER_TZ,
               },
-            });
+            }),
+            PARSE_TIMEOUT_MS,
+            'Calendar read',
+          );
           if (calErr) throw calErr;
           const events: BusyEvent[] = (calData?.events || []).map((e: any) => ({
             start: e.start,
@@ -377,16 +397,43 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
           setError(
             'Could not read your calendar. Showing proposed slots without conflict data.',
           );
+          logUsage({
+            feature_type: 'AI_CHAT',
+            feature_subtype: 'availability_check_calendar_error',
+            metadata: {
+              thread_id: thread.threadId,
+              error: calErr?.message || String(calErr),
+            },
+          });
         } finally {
           setLoadingCalendar(false);
         }
       } else {
         setBusyEvents([]);
       }
+      logUsage({
+        feature_type: 'AI_CHAT',
+        feature_subtype: 'availability_check_success',
+        duration_ms: Date.now() - startedAt,
+        metadata: {
+          thread_id: thread.threadId,
+          detected: !!result?.detected,
+          slot_count: result?.slots?.length ?? 0,
+        },
+      });
     } catch (e: any) {
       console.error('[AvailabilityCheck] parse failed', e);
       setError(e?.message || 'Failed to analyze thread');
       setParseResult(null);
+      logUsage({
+        feature_type: 'AI_CHAT',
+        feature_subtype: 'availability_check_error',
+        duration_ms: Date.now() - startedAt,
+        metadata: {
+          thread_id: thread.threadId,
+          error: e?.message || String(e),
+        },
+      });
     } finally {
       setLoadingParse(false);
     }
@@ -435,6 +482,30 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
           <Skeleton className="h-3 w-2/3" />
           <Skeleton className="h-12 w-full" />
           <Skeleton className="h-12 w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  // Hard failure (parser never returned a result) — surface a clear error
+  // state with a Retry action so the panel never stays in a stuck skeleton.
+  if (error && !parseResult) {
+    return (
+      <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
+        <Header />
+        <div className="mt-2 flex items-start gap-1.5 text-[11.5px] text-rose-200">
+          <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span className="min-w-0">{error}</span>
+        </div>
+        <div className="mt-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 gap-1.5 text-[11px]"
+            onClick={runAnalysis}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
         </div>
       </div>
     );

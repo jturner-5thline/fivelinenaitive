@@ -234,6 +234,7 @@ export function EmailQuickActionsToolbar({
           recipientName={thread.latestEmail?.from_name || undefined}
           threadSubject={thread.subject}
           dealName={dealName || fallbackDealName || undefined}
+          thread={thread}
           onInsert={(text) => onInsertDraft(text)}
           onClose={() => setActive(null)}
         />
