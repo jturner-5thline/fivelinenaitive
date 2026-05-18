@@ -5,8 +5,8 @@ import WhatWorkingSections from './WhatWorkingSections';
 
 // ── Chart defaults ──
 const setDefaults = () => {
-  ChartJS.defaults.color = 'rgba(130,165,190,0.5)';
-  ChartJS.defaults.borderColor = 'rgba(255,255,255,0.04)';
+  ChartJS.defaults.color = 'rgba(255,255,255,0.5)';
+  ChartJS.defaults.borderColor = 'rgba(255,255,255,0.08)';
   ChartJS.defaults.font.size = 9;
   ChartJS.defaults.font.family = 'system-ui, sans-serif';
 };
@@ -16,8 +16,8 @@ const CR = 'rgba(40,200,130,0.8)', CF = 'rgba(30,160,100,0.12)';
 const CO = 'rgba(80,155,210,0.8)', CA = 'rgba(220,175,45,0.9)';
 const CC = 'rgba(160,100,230,0.8)', CDN = 'rgba(220,70,85,0.75)';
 const Q = ['Q1','Q2','Q3','Q4'];
-const gx: any = { ticks: { color: 'rgba(130,165,190,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
-const gy: any = { ticks: { color: 'rgba(130,165,190,0.4)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { display: false } };
+const gx: any = { ticks: { color: 'rgba(255,255,255,0.5)', font: { size: 9 } }, grid: { display: false }, border: { display: false } };
+const gy: any = { ticks: { color: 'rgba(255,255,255,0.45)', font: { size: 9 } }, grid: { color: 'rgba(255,255,255,0.08)' }, border: { display: false } };
 const def: any = { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } };
 const fmtM = (v: number) => '$' + v.toFixed(1) + 'MM';
 
@@ -37,18 +37,18 @@ const p2SignR = [33, 66, 99, 144], p2SignO = [33, 66, 99, 144], p2SignC = [0, 25
 // ── Card ──
 function Card({ children, className = '', style }: { children: React.ReactNode; className?: string; style?: React.CSSProperties }) {
   return (
-    <div className={`relative overflow-hidden rounded-xl ${className}`} style={{ background: '#182535', border: '1px solid rgba(255,255,255,0.07)', ...style }}>
-      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,rgba(120,190,255,0.15),transparent)' }} />
+    <div className={`glass-module relative overflow-hidden rounded-xl ${className}`} style={{ ...style }}>
+      <div className="absolute top-0 left-0 right-0 h-px" style={{ background: 'linear-gradient(90deg,transparent,hsla(213,90%,70%,0.25),transparent)' }} />
       {children}
     </div>
   );
 }
 
 function Ct({ children }: { children: React.ReactNode }) {
-  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'rgba(160,190,210,0.45)', marginBottom: 8 }}>{children}</div>;
+  return <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '1.2px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.5)', marginBottom: 8 }}>{children}</div>;
 }
 
-function Sep() { return <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />; }
+function Sep() { return <div style={{ height: 1, background: 'rgba(255,255,255,0.08)', margin: '8px 0' }} />; }
 
 function Pill({ variant, children }: { variant: 'r' | 'o' | 'c' | 'a'; children: React.ReactNode }) {
   const s: Record<string, React.CSSProperties> = {
@@ -75,38 +75,38 @@ function PlanTable({ title, pill, pillVariant, rows, ttmRows }: {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
         <thead>
           <tr>{['Metric','Q1','Q2','Q3','Q4','Total'].map(h => (
-            <th key={h} style={{ color: 'rgba(140,175,200,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
+            <th key={h} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
           ))}</tr>
         </thead>
         <tbody>
           {rows.map((r, i) => (
             <tr key={i}>
-              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(130,165,190,0.55)', fontSize: 10 }}>{r.label}</td>
+              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
               {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-                <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: r.isNeg?.[j] ? '#ff6b7a' : 'rgba(190,215,230,0.7)', fontSize: 11 }}>{v}</td>
+                <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: r.isNeg?.[j] ? '#ff6b7a' : 'rgba(255,255,255,0.7)', fontSize: 11 }}>{v}</td>
               ))}
-              <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontWeight: 700, color: r.totalColor || '#e8f4ff', fontSize: 11 }}>{r.total}</td>
+              <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontWeight: 700, color: r.totalColor || '#e8f6ff', fontSize: 11 }}>{r.total}</td>
             </tr>
           ))}
         </tbody>
       </table>
       {ttmRows && (
-        <div style={{ background: '#0f1923', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 8, padding: '7px 10px', marginTop: 8 }}>
-          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.9px', textTransform: 'uppercase' as const, color: 'rgba(120,160,190,0.38)', marginBottom: 5 }}>TTM</div>
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '7px 10px', marginTop: 8 }}>
+          <div style={{ fontSize: 8, fontWeight: 700, letterSpacing: '.9px', textTransform: 'uppercase' as const, color: 'rgba(255,255,255,0.4)', marginBottom: 5 }}>TTM</div>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 10 }}>
             <thead>
               <tr>{['','Q1','Q2','Q3','Q4',''].map((h, i) => (
-                <th key={i} style={{ color: 'rgba(140,175,200,0.45)', fontWeight: 700, textAlign: i === 0 ? 'left' : 'right', padding: '3px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 8 }}>{h}</th>
+                <th key={i} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: i === 0 ? 'left' : 'right', padding: '3px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 8 }}>{h}</th>
               ))}</tr>
             </thead>
             <tbody>
               {ttmRows.map((r, i) => (
                 <tr key={i}>
-                  <td style={{ textAlign: 'left', padding: '3px 6px', color: 'rgba(120,160,190,0.5)', fontSize: 9 }}>{r.label}</td>
+                  <td style={{ textAlign: 'left', padding: '3px 6px', color: 'rgba(255,255,255,0.5)', fontSize: 9 }}>{r.label}</td>
                   {[r.q1, r.q2, r.q3, r.q4].map((v, j) => (
-                    <td key={j} style={{ textAlign: 'right', padding: '3px 6px', color: 'rgba(170,205,225,0.65)', fontSize: 10 }}>{v}</td>
+                    <td key={j} style={{ textAlign: 'right', padding: '3px 6px', color: 'rgba(255,255,255,0.65)', fontSize: 10 }}>{v}</td>
                   ))}
-                  <td style={{ textAlign: 'right', padding: '3px 6px', fontWeight: 700, color: '#e8f4ff' }}>—</td>
+                  <td style={{ textAlign: 'right', padding: '3px 6px', fontWeight: 700, color: '#e8f6ff' }}>—</td>
                 </tr>
               ))}
             </tbody>
@@ -153,19 +153,19 @@ function AttainmentTable() {
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
         <thead>
           <tr>{['Metric','Q1','Q2','Q3','Q4','Full Yr'].map(h => (
-            <th key={h} style={{ color: 'rgba(140,175,200,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
+            <th key={h} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
           ))}</tr>
         </thead>
         <tbody>
           {data.map((r, i) => (
             <tr key={i}>
-              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(130,165,190,0.55)', fontSize: 10 }}>{r.label}</td>
+              <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
               {r.vals.map((v, j) => {
                 const isNeg = r.neg?.[j];
                 const isHl = r.highlight[j];
                 return (
                   <td key={j} style={{
-                    textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 10,
+                    textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 10,
                     color: isHl ? '#3de89a' : isNeg ? '#ff6b7a' : '#3de89a',
                     fontWeight: isHl ? 700 : 400,
                     background: isHl ? 'rgba(40,210,130,0.1)' : 'transparent',
@@ -246,12 +246,12 @@ export function BenchmarkForecastsPage() {
   useChart(p2signRef, () => bars4Cfg(p2SignR, p2SignO, p2SignC, p2SignA, (v: number) => '$' + v + 'MM'));
 
   return (
-    <div style={{ background: 'transparent', color: '#d0dce8', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
+    <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
       {/* Header */}
-      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px', background: '#1a2d42', borderColor: 'rgba(255,255,255,0.09)' }}>
+      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px' }}>
         <div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f4ff', letterSpacing: '-.3px' }}>5th<span style={{ color: '#5ba3d0' }}>Line</span> Benchmark Forecasts</div>
-          <div style={{ fontSize: 9, color: 'rgba(140,175,200,0.4)', marginTop: 2, fontStyle: 'italic' }}>Last Updated: 12/1/2025 · By: JT · Actuals Thru: <span style={{ color: '#5ba3d0', fontWeight: 600 }}>Mar-26</span></div>
+          <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff', letterSpacing: '-.3px' }}>5th<span style={{ color: 'hsl(213,90%,70%)' }}>Line</span> Benchmark Forecasts</div>
+          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2, fontStyle: 'italic' }}>Last Updated: 12/1/2025 · By: JT · Actuals Thru: <span style={{ color: 'hsl(213,90%,70%)', fontWeight: 600 }}>Mar-26</span></div>
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <Pill variant="r">Reach Plan</Pill>
@@ -279,7 +279,7 @@ export function BenchmarkForecastsPage() {
           />
           <PlanTable title="Operating Plan" pill="Base Case" pillVariant="o"
             rows={[
-              { label: 'Revenue', q1: '$0.64MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$0.99MM', total: '$3.20MM', totalColor: '#5ba3d0' },
+              { label: 'Revenue', q1: '$0.64MM', q2: '$0.76MM', q3: '$0.81MM', q4: '$0.99MM', total: '$3.20MM', totalColor: 'hsl(213,90%,70%)' },
               { label: 'Gross Profit', q1: '$536.4K', q2: '$620.0K', q3: '$672.9K', q4: '$816.7K', total: '$2.65MM' },
               { label: 'Gross %', q1: '84%', q2: '82%', q3: '83%', q4: '82%', total: '83%' },
               { label: 'Op. Profit', q1: '$225.6K', q2: '$173.8K', q3: '$186.0K', q4: '$223.7K', total: '$809.1K' },
@@ -322,7 +322,7 @@ export function BenchmarkForecastsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11 }}>
               <thead>
                 <tr>{['Metric','Q1','Q2','Q3','Q4','Total'].map(h => (
-                  <th key={h} style={{ color: 'rgba(140,175,200,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.06)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
+                  <th key={h} style={{ color: 'rgba(255,255,255,0.45)', fontWeight: 700, textAlign: h === 'Metric' ? 'left' : 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontSize: 9, letterSpacing: '.6px', textTransform: 'uppercase' }}>{h}</th>
                 ))}</tr>
               </thead>
               <tbody>
@@ -333,11 +333,11 @@ export function BenchmarkForecastsPage() {
                   { label: 'YTD Op. Profit', vals: ['-$40.5K','-$160.5K','-$106.2K','$447.3K','$447.3K'], totalColor: '#3de89a', neg: [true, true, true, false, false] },
                 ].map((r, i) => (
                   <tr key={i}>
-                    <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: 'rgba(130,165,190,0.55)', fontSize: 10 }}>{r.label}</td>
+                    <td style={{ textAlign: 'left', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: 'rgba(255,255,255,0.55)', fontSize: 10 }}>{r.label}</td>
                     {r.vals.slice(0, 4).map((v, j) => (
-                      <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', color: r.neg?.[j] ? '#ff6b7a' : 'rgba(190,215,230,0.7)', fontSize: 11 }}>{v}</td>
+                      <td key={j} style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', color: r.neg?.[j] ? '#ff6b7a' : 'rgba(255,255,255,0.7)', fontSize: 11 }}>{v}</td>
                     ))}
-                    <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontWeight: 700, color: r.totalColor || '#e8f4ff' }}>{r.vals[4]}</td>
+                    <td style={{ textAlign: 'right', padding: '4px 6px', borderBottom: '1px solid rgba(255,255,255,0.08)', fontWeight: 700, color: r.totalColor || '#e8f6ff' }}>{r.vals[4]}</td>
                   </tr>
                 ))}
               </tbody>
