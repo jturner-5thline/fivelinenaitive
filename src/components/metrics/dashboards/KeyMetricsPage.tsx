@@ -166,30 +166,6 @@ export function KeyMetricsPage() {
 
   return (
     <div style={{ background: 'transparent', color: '#c8e8ff', fontFamily: 'system-ui, sans-serif', padding: '14px 0' }}>
-      {/* Header */}
-      <Card style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, padding: '12px 14px' }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 700, color: '#e8f6ff', letterSpacing: '-.3px' }}>5th<span style={{ color: 'hsl(213,90%,70%)' }}>Line</span> Key Metrics</div>
-          <div style={{ fontSize: 9, color: 'rgba(255,255,255,0.45)', marginTop: 2, fontStyle: 'italic' }}>Parent Co. Total · Services · Debt Advisory · FinServ</div>
-        </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <Pill variant="r">Reach Plan</Pill>
-          <Pill variant="o">Operating Plan</Pill>
-          <Pill variant="c">Conservative</Pill>
-          <Pill variant="a">Actuals</Pill>
-        </div>
-      </Card>
-
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 14, marginBottom: 10, padding: '0 2px' }}>
-        {Object.entries(planColors).map(([label, color]) => (
-          <div key={label} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10, color: 'rgba(255,255,255,0.55)' }}>
-            <div style={{ width: 8, height: 8, borderRadius: '50%', background: color }} />
-            {label === 'Actuals' ? 'Actuals' : `${label} Plan`}
-          </div>
-        ))}
-      </div>
-
       <SortableWidgetGrid
         storageKey="insights.keyMetrics.widgetOrder.v1"
         items={items}
