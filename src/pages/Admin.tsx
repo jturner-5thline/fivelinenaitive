@@ -10,7 +10,7 @@ import {
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout,
   ChevronLeft, ChevronRight,
   ShieldCheck, Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
-  BarChart3, Plus, Activity
+  BarChart3, Plus, Activity, Newspaper, Image as ImageIcon
 } from "lucide-react";
 import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
@@ -48,6 +48,7 @@ import { UsageAnalyticsPanel } from "@/components/admin/usage-analytics/UsageAna
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
+import { BlogManagementPanel } from "@/components/admin/BlogManagementPanel";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -101,7 +102,13 @@ const usageAnalyticsSubPages = [
   { id: "usage-overview", label: "Company Overview", icon: BarChart3 },
 ];
 
-type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement" | "support" | "usage-analytics";
+const blogSubPages = [
+  { id: "blog-all", label: "All Posts", icon: Newspaper },
+  { id: "blog-new", label: "New Post", icon: Plus },
+  { id: "blog-media", label: "Media Library", icon: ImageIcon },
+];
+
+type TabCategory = "users" | "access" | "data-security" | "settings" | "product-enhancement" | "support" | "usage-analytics" | "blog";
 
 type SectionDef = {
   id: TabCategory;
@@ -118,6 +125,7 @@ const SECTIONS: SectionDef[] = [
   { id: "product-enhancement", label: "Product Enhancement", icon: Lightbulb,   subPages: productEnhancementSubPages },
   { id: "support",             label: "Support",             icon: MonitorPlay, subPages: supportSubPages },
   { id: "usage-analytics",     label: "Usage Analytics",     icon: BarChart3,   subPages: usageAnalyticsSubPages },
+  { id: "blog",                label: "Blog",                icon: Newspaper,   subPages: blogSubPages },
 ];
 
 const Admin = () => {
@@ -140,6 +148,7 @@ const Admin = () => {
     "product-enhancement": "ux-analytics",
     support: "client-viewer",
     "usage-analytics": "usage-overview",
+    blog: "blog-all",
   });
 
   // Apply ?tab= deep-link for the initial section
@@ -545,6 +554,12 @@ const Admin = () => {
         return <ClientAccountViewer />;
       case "usage-overview":
         return <UsageAnalyticsPanel />;
+      case "blog-all":
+        return <BlogManagementPanel subTab="all" />;
+      case "blog-new":
+        return <BlogManagementPanel subTab="new" />;
+      case "blog-media":
+        return <BlogManagementPanel subTab="media" />;
       default:
         return null;
     }
