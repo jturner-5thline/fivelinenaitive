@@ -103,7 +103,7 @@ interface ChartRow {
 
 /* =============================================================== */
 
-export function QuarterlyRevenueGrowthCard() {
+export function QuarterlyRevenueGrowthCard({ bare = false }: { bare?: boolean } = {}) {
   const { user } = useAuth();
   const [selectedRealms, setSelectedRealms] = useState<string[]>([]); // [] = all
   const [drillRow, setDrillRow] = useState<ChartRow | null>(null);
