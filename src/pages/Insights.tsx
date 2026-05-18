@@ -2108,7 +2108,10 @@ function MetricsInner() {
       <div className="bg-transparent">
         <div className="insights-glass-skin container mx-auto py-6 px-4 space-y-6">
           {/* Header (sticky to top of scrollable <main>) */}
-          <StickyDashboardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <StickyDashboardHeader
+            surface="module"
+            className="flex flex-col md:flex-row md:items-center md:justify-between gap-4"
+          >
             <div>
               <div className="flex items-center gap-3">
                 {/* Dashboard Selector Dropdown */}
