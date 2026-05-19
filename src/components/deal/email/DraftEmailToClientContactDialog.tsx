@@ -344,7 +344,7 @@ export function DraftEmailToClientContactDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          'popup-shell-surface p-0 gap-0 max-w-[860px] w-[92vw] h-[88vh] max-h-[88vh]',
+          'popup-shell-surface p-0 gap-0 max-w-[1040px] w-[94vw] h-[92vh] max-h-[92vh] sm:h-[92vh]',
           'border-transparent shadow-2xl shadow-black/20 overflow-hidden rounded-2xl flex flex-col',
         )}
       >
@@ -421,7 +421,7 @@ export function DraftEmailToClientContactDialog({
                     : `${filteredThreads.length} thread${filteredThreads.length === 1 ? '' : 's'}`}
                 </span>
               </div>
-              <ScrollArea className="max-h-[28vh]">
+              <ScrollArea className="max-h-[22vh]">
                 <div className="px-3 pb-3 space-y-1">
                   {isSearching && threads.length === 0 && (
                     <>
@@ -480,8 +480,8 @@ export function DraftEmailToClientContactDialog({
             </div>
           )}
 
-          {/* Composer */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
+          {/* Composer — fills remaining vertical space so the editor feels like a real drafting workspace */}
+          <div className="flex-1 min-h-0 flex flex-col">
             {mode === 'existing' && !selectedThreadId ? (
               <div className="h-full flex flex-col items-center justify-center text-center px-6 py-10 text-muted-foreground gap-2">
                 <MessageSquarePlus className="h-6 w-6 opacity-60" />
@@ -508,7 +508,7 @@ export function DraftEmailToClientContactDialog({
                 signature={signature}
                 variant="panel"
                 showSubject
-                className="rounded-none border-0 shadow-none mx-0 my-0 h-full"
+                className="rounded-none border-0 shadow-none mx-0 my-0 flex-1 min-h-0 pb-0"
               />
             )}
           </div>
