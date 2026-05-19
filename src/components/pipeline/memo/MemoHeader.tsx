@@ -4,6 +4,7 @@ import { formatDealType } from '@/utils/dealTypeLabels';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToClientContactButton';
+import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
 
 interface MemoHeaderProps {
   deal: Deal;
@@ -102,6 +103,12 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
             label="Email"
             className="h-7 px-2 shrink-0"
           />
+          {/* Create Task — launches the production CreateTaskButton flow
+              (useDealTasks.createTask) which writes the task to the deal
+              record and invalidates every task cache so the new task
+              appears instantly in the memo card's TasksMilestonesBand
+              and the deal detail Tasks panel without a refresh. */}
+          <CreateTaskButton dealId={deal.id} dealName={deal.company || deal.name} />
         </div>
       </div>
       {statusDisplay && (
