@@ -113,7 +113,7 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('tasks').insert({
+      const { data: created, error } = await supabase.from('tasks').insert({
         title: trimmed,
         description: description.trim() || null,
         assigned_to: assignee || user.id,
@@ -133,9 +133,20 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
             ? `${email.fromName || ''}${email.fromEmail ? ` <${email.fromEmail}>` : ''}`.trim()
             : null,
         source_email_received_at: email.receivedAt || null,
-      } as any);
+      } as any).select('id').single();
       if (error) throw error;
       toast.success('Task created from email');
+      // Central Asana sync (fire-and-forget; helper handles retry + status persistence)
+      if (created?.id) {
+        const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');
+        syncTaskAfterCreate({
+          taskId: created.id,
+          title: trimmed,
+          description: description.trim() || null,
+          dueDate: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
+          assignedTo: assignee || user.id,
+        }).catch((e) => console.warn('[CreateTaskFromEmail] asana sync error:', e));
+      }
       qc.invalidateQueries({ queryKey: ['tasks'] });
       onOpenChange(false);
     } catch (err: any) {
