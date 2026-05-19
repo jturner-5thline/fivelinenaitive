@@ -2065,7 +2065,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                             </span>
                           </div>
                           <button
-                            onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                            onClick={() => { clearAISearch(); setSearchInput(''); setSearchQuery(''); }}
                             className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0 transition-colors"
                             title="Return to inbox (Esc)"
                           >
