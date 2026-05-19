@@ -706,7 +706,11 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
    * the caller fans it out to every selected lender.
    */
   const buildDraftSubmissionPrompt = useCallback(
-    (personalize: boolean, profiles: Map<string, LenderProfileSnapshot>): string => {
+    (
+      personalize: boolean,
+      profiles: Map<string, LenderProfileSnapshot>,
+      base?: BaseSubmissionDraft | null,
+    ): string => {
       const personalizationBlock = personalize
         ? `
 
@@ -731,6 +735,10 @@ BROADCAST MODE (PERSONALIZATION OFF):
       }
       const lenderProfilesSection = profileBlocks.length
         ? `\n\nLENDER PROFILES (for personalizing each opening):\n\n${profileBlocks.join('\n\n')}`
+        : '';
+
+      const baseTemplateSection = base
+        ? `\n\nAPPROVED BASE TEMPLATE (the user already reviewed and edited this lender-agnostic submission email — preserve its wording, only personalize the salutation and opening line per lender, do not rewrite the rest):\n\nSUBJECT: ${base.subject}\n\nBODY:\n${htmlToPlainText(base.bodyHtml)}\n`
         : '';
 
       return `You are drafting lender submission emails for this deal.${personalize ? ' Generate ONE email PER ACTIVE LENDER on this deal.' : ''}
@@ -773,7 +781,7 @@ CRITICAL RULES:
 - DEAL AMOUNT/DEAL SIZE = use abbreviated currency: $6MM, $1.5MM, $500K, $2B (K=thousands, MM=millions, B=billions).
 - Do NOT include any (Source:...) citations or source references.
 - Use \\n\\n between paragraphs in the body for readability.
-- The "subject" field must NOT include a "Subject:" prefix — just the line itself.${personalizationBlock}${lenderProfilesSection}`;
+- The "subject" field must NOT include a "Subject:" prefix — just the line itself.${personalizationBlock}${lenderProfilesSection}${baseTemplateSection}`;
     },
     [],
   );
