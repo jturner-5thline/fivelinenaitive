@@ -8,6 +8,7 @@ import { usePreSendChecks } from './usePreSendChecks';
 import { PreSendAlertDialog } from './PreSendAlertDialog';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
+import { dispatchComposeBody } from './scheduleIntent';
 
 // Re-export the public draft contract so callers/PopOutComposer keep working.
 export interface ReplyDraft {
@@ -82,6 +83,12 @@ export function InlineReplyComposer({
     onDraftChange?.(getCurrentDraft());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipients, subject, body, attachments]);
+
+  // Feed the schedule-intent listener in AiAssistSidebar. Debounced inside
+  // the helper so we only fire 500ms after the user stops typing.
+  useEffect(() => {
+    dispatchComposeBody({ threadId: replyTo.threadId, body });
+  }, [body, replyTo.threadId]);
 
   const { alert: preSendAlert, runChecks, clearAlert: clearPreSendAlert } = usePreSendChecks();
 
