@@ -1517,7 +1517,43 @@ CRITICAL RULES:
           setIncludedLenderNames(names);
           // Defer one tick so the review dialog fully closes before the
           // drafts dialog mounts (avoids overlapping aria-modal layers).
-          setTimeout(() => generateDraftsForLenders(names, personalize), 50);
+          setTimeout(() => generateDraftsForLenders(names, personalize, baseDraft), 50);
+        }}
+      />
+
+      {/* Step 1 — lender-agnostic base submission email. The user edits
+          it, then Continue persists it to the deal's Notes and opens the
+          Review & Exclude lenders step. */}
+      <BaseSubmissionEmailDialog
+        open={isBaseOpen}
+        onOpenChange={setIsBaseOpen}
+        dealId={dealId}
+        dealName={dealMeta.company || null}
+        generate={async () => {
+          // Build an explicitly lender-agnostic prompt: reuse the broadcast
+          // path (single draft, no per-lender variants) and instruct the
+          // model to use a neutral salutation and zero lender-specific
+          // references — the lender-specific personalization happens later.
+          const base = buildDraftSubmissionPrompt(false, new Map(), null);
+          const constraint =
+            `\n\nBASE EMAIL MODE (LENDER-AGNOSTIC):\n` +
+            `- Produce EXACTLY ONE draft entry. Set lenderName to "Base submission email".\n` +
+            `- The salutation MUST be exactly: "Hi [Name],"\n` +
+            `- Do NOT mention any specific lender, institution name, or lender focus area.\n` +
+            `- The subject must read: "<COMPANY NAME> - New Deal <DEAL AMOUNT>" (no lender token, no pipe).\n` +
+            `- Keep the body as a reusable submission template for this deal.`;
+          const parsed = await callDraftAI(dealId, base + constraint);
+          const entry = (parsed.drafts || []).find((d) => d && (d.body || d.subject));
+          if (!entry) throw new Error('AI returned no base draft.');
+          return {
+            subject: (entry.subject || '').replace(/^subject:\s*/i, '').trim(),
+            bodyHtml: plainTextBodyToHtml(entry.body || ''),
+          };
+        }}
+        onContinue={(base) => {
+          setBaseDraft(base);
+          // Defer a tick so the base dialog fully closes before Review opens.
+          setTimeout(() => setIsReviewOpen(true), 50);
         }}
       />
 
