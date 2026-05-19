@@ -352,8 +352,15 @@ export function EndOfDayTab({
   const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
 
-  const { clear: clearResolved, restore: restoreResolved, isCleared: isResolved } = usePersistentClears('eod-agenda');
-  const { clear: clearDismissed, restore: restoreDismissed, isCleared: isDismissed } = usePersistentClears('eod-dismissed');
+  const { clear: clearResolved, restore: restoreResolved, isCleared: isResolvedRaw } = useDbPersistentClears('eod-agenda');
+  const { clear: clearDismissed, restore: restoreDismissed, isCleared: isDismissedRaw } = useDbPersistentClears('eod-dismissed');
+  const isResolved = useCallback((id: string) => isResolvedRaw(id), [isResolvedRaw]);
+  // For dismissals, also honor a per-user cutoff date so historical backfills
+  // don't require enumerating every event id.
+  const isDismissed = useCallback(
+    (id: string, itemDate?: Date | string | null) => isDismissedRaw(id, itemDate),
+    [isDismissedRaw],
+  );
   const { snooze, unsnooze, isSnoozed, snoozedUntil } = useSnooze(userId);
   const activity = useActivityLog(userId);
 
