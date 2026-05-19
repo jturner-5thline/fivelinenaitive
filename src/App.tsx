@@ -380,6 +380,7 @@ const App = () => (
                           <Route path="/unsubscribe" element={<Unsubscribe />} />
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
+                          <Route path="/blog/:slug" element={<BlogPost />} />
                           <Route path="/promo" element={<Promo />} />
                           <Route path="/vdr/:dealId" element={
                             <ProtectedRoute><VirtualDataRoom /></ProtectedRoute>
