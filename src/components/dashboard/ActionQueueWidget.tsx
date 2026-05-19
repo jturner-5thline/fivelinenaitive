@@ -3,6 +3,7 @@ import { Inbox as InboxIcon, ChevronRight } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 
 /**
@@ -12,8 +13,10 @@ import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
  */
 export function ActionQueueWidget() {
   const [open, setOpen] = useState(false);
-  const count = useAiActionQueueCount();
+  const aiCount = useAiActionQueueCount();
   const { data: items = [], refetch } = useAiActionQueue();
+  const { data: accessRequests = [] } = useDealAccessRequests();
+  const count = aiCount + accessRequests.length;
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
@@ -68,7 +71,7 @@ export function ActionQueueWidget() {
             </p>
             <p className="text-[11px] text-muted-foreground leading-tight truncate">
               {count > 0
-                ? `${count} AI suggestion${count === 1 ? '' : 's'} awaiting review`
+                ? `${count} item${count === 1 ? '' : 's'} awaiting review`
                 : 'No pending AI actions'}
             </p>
           </div>
