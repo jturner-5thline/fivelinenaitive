@@ -538,45 +538,85 @@ export function AgendaIntel() {
     );
   }
 
-  return (
-    <div className="flex flex-col h-full min-h-0">
-      {/* Filter bar */}
-      <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border/30">
-        <div className="inline-flex items-center bg-muted/40 rounded-lg p-0.5">
-          {(['today', '3d', '7d'] as RangeKey[]).map(r => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              className={cn(
-                'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
-                range === r
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {r === 'today' ? 'Today' : r === '3d' ? 'Next 3 days' : 'Next 7 days'}
-            </button>
-          ))}
-        </div>
-        <div className="inline-flex items-center bg-muted/40 rounded-lg p-0.5">
-          {(['all', 'external', 'internal'] as AudienceKey[]).map(a => (
-            <button
-              key={a}
-              onClick={() => setAudience(a)}
-              className={cn(
-                'px-2.5 py-1 rounded-md text-xs font-medium capitalize transition-colors',
-                audience === a
-                  ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground',
-              )}
-            >
-              {a === 'all' ? 'All' : a === 'external' ? 'External' : 'Internal'}
-            </button>
-          ))}
-        </div>
-      </div>
+  // Keep selection valid as the filter set changes — clear if the
+  // selected event is no longer visible. Auto-select the first item on
+  // desktop so the detail pane is never empty when there's content.
+  const selectedRecord = visible.find(v => v.event.id === selectedId) || null;
+  useEffect(() => {
+    if (selectedId && !visible.some(v => v.event.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [selectedId, visible]);
+  useEffect(() => {
+    if (!isNarrow && !selectedId && visible.length > 0) {
+      setSelectedId(visible[0].event.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNarrow, visible.length]);
 
-      <ScrollArea className="flex-1 min-h-0 -mx-1 px-1 pt-3">
+  // Group the visible list by calendar day for the left pane.
+  const groupedByDay = useMemo(() => {
+    const groups: { key: string; label: string; items: typeof visible }[] = [];
+    const byKey = new Map<string, typeof visible>();
+    for (const rec of visible) {
+      const d = parseISO(rec.event.start);
+      const key = format(d, 'yyyy-MM-dd');
+      if (!byKey.has(key)) byKey.set(key, [] as typeof visible);
+      byKey.get(key)!.push(rec);
+    }
+    for (const [key, items] of byKey) {
+      const d = parseISO(items[0].event.start);
+      const label = isSameDay(d, new Date())
+        ? `Today · ${format(d, 'EEE, MMM d')}`
+        : format(d, 'EEEE, MMM d');
+      groups.push({ key, label, items });
+    }
+    return groups;
+  }, [visible]);
+
+  const filterBar = (
+    <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border/30">
+      <div className="inline-flex items-center bg-muted/40 rounded-lg p-0.5">
+        {(['today', '3d', '7d'] as RangeKey[]).map(r => (
+          <button
+            key={r}
+            onClick={() => setRange(r)}
+            className={cn(
+              'px-2.5 py-1 rounded-md text-xs font-medium transition-colors',
+              range === r
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {r === 'today' ? 'Today' : r === '3d' ? 'Next 3 days' : 'Next 7 days'}
+          </button>
+        ))}
+      </div>
+      <div className="inline-flex items-center bg-muted/40 rounded-lg p-0.5">
+        {(['all', 'external', 'internal'] as AudienceKey[]).map(a => (
+          <button
+            key={a}
+            onClick={() => setAudience(a)}
+            className={cn(
+              'px-2.5 py-1 rounded-md text-xs font-medium capitalize transition-colors',
+              audience === a
+                ? 'bg-background text-foreground shadow-sm'
+                : 'text-muted-foreground hover:text-foreground',
+            )}
+          >
+            {a === 'all' ? 'All' : a === 'external' ? 'External' : 'Internal'}
+          </button>
+        ))}
+      </div>
+      <div className="ml-auto text-[10px] text-muted-foreground/70">
+        {visible.length} meeting{visible.length === 1 ? '' : 's'}
+      </div>
+    </div>
+  );
+
+  const masterPane = (
+    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
+      <ScrollArea className="flex-1 min-h-0 px-2 py-2">
         {loading && events.length === 0 ? (
           <div className="flex items-center justify-center py-10 text-sm text-muted-foreground gap-2">
             <Loader2 className="h-4 w-4 animate-spin" /> Loading agenda...
@@ -587,23 +627,92 @@ export function AgendaIntel() {
             <p className="text-sm">No meetings in this view.</p>
           </div>
         ) : (
-          <div className="space-y-2.5 pb-4">
-            {visible.map(({ event, deal, isInternalOnly, isPersonal }) => (
-              <MeetingCard
-                key={event.id}
-                event={event}
-                dealMatch={deal}
-                isPersonal={isPersonal}
-                isInternalOnly={isInternalOnly}
-                onLinkDeal={() => handleLinkDeal(event.id)}
-                prep={prepCache[event.id] || null}
-                prepLoading={!!prepLoading[event.id]}
-                onRegenerate={() => handleRegenerate(event.id)}
-              />
+          <div className="space-y-3 pb-2">
+            {groupedByDay.map(g => (
+              <div key={g.key}>
+                <div className="px-2 py-1 text-[10px] uppercase tracking-[0.14em] font-semibold text-muted-foreground/80">
+                  {g.label}
+                  <span className="text-muted-foreground/60"> · {g.items.length}</span>
+                </div>
+                <div className="space-y-1 mt-1">
+                  {g.items.map(({ event, deal, isInternalOnly, isPersonal }) => (
+                    <AgendaListItem
+                      key={event.id}
+                      event={event}
+                      deal={deal}
+                      isPersonal={isPersonal}
+                      isInternalOnly={isInternalOnly}
+                      active={selectedId === event.id}
+                      onClick={() => setSelectedId(event.id)}
+                    />
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         )}
       </ScrollArea>
+    </div>
+  );
+
+  const detailPane = (
+    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
+      {selectedRecord ? (
+        <>
+          {isNarrow && (
+            <div className="px-3 pt-3">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs text-white/80 hover:text-white"
+                onClick={() => setSelectedId(null)}
+              >
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Back to agenda
+              </Button>
+            </div>
+          )}
+          <ScrollArea className="flex-1 min-h-0 px-3 py-3">
+            <MeetingCard
+              event={selectedRecord.event}
+              dealMatch={selectedRecord.deal}
+              isPersonal={selectedRecord.isPersonal}
+              isInternalOnly={selectedRecord.isInternalOnly}
+              onLinkDeal={() => handleLinkDeal(selectedRecord.event.id)}
+              prep={prepCache[selectedRecord.event.id] || null}
+              prepLoading={!!prepLoading[selectedRecord.event.id]}
+              onRegenerate={() => handleRegenerate(selectedRecord.event.id)}
+            />
+          </ScrollArea>
+        </>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-16">
+          <div className="h-14 w-14 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mb-4">
+            <Inbox className="h-6 w-6 text-muted-foreground" />
+          </div>
+          <p className="text-sm font-medium text-white">Nothing selected</p>
+          <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
+            Select a meeting from the left to view notes, tasks, AI prep, and attendees.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="flex flex-col h-full min-h-0">
+      {filterBar}
+      <div className="flex gap-2 min-h-0 flex-1 pt-3 h-[calc(100vh-260px)] min-h-[520px]">
+        {isNarrow ? (
+          <div className="flex-1 min-w-0">
+            {selectedRecord ? detailPane : masterPane}
+          </div>
+        ) : (
+          <>
+            <div className="w-[340px] shrink-0 min-w-0">{masterPane}</div>
+            <div className="flex-1 min-w-0">{detailPane}</div>
+          </>
+        )}
+      </div>
       <CommandDialog
         open={!!linkPickerEventId}
         onOpenChange={(open) => {
