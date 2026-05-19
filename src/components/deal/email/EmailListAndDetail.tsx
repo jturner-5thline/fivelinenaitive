@@ -73,6 +73,7 @@ import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './th
 import { EmailContextMenu } from './EmailContextMenu';
 import { CreateTaskFromEmailDialog } from '@/components/tasks/CreateTaskFromEmailDialog';
 import { EmailBodyRenderer } from './EmailBodyRenderer';
+import { EmailSelectionActionMenu } from './EmailSelectionActionMenu';
 import { EmailAttachmentList } from './EmailAttachmentList';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from './EmailAttachmentsStrip';
 import { useFullEmailMessage } from './useFullEmailMessage';
@@ -1505,7 +1506,25 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
           {/* Body — HTML preferred, plain text fallback. Inline attachments
               are passed so signature logos / embedded images can resolve their
               `cid:` references. */}
-          <div className="min-w-0 max-w-full overflow-x-hidden">
+          {/* Contextual AI menu on text selection (right-click + floating
+              toolbar). Scoped to this message's body — selections in the
+              composer, AI Assist panel, or inputs elsewhere are ignored. */}
+          <EmailSelectionActionMenu
+            context={{
+              threadId,
+              messageId: email.id,
+              subject: threadSubject,
+              fromName: email.from_name,
+              fromEmail: email.from_email,
+              toEmails: (email as any).to_emails || (email.to_email ? [email.to_email] : []),
+              ccEmails: (email as any).cc_emails || [],
+              receivedAt: email.received_at,
+              dealId: dealId || null,
+              dealName: dealName || null,
+              page: typeof window !== 'undefined' ? window.location.pathname : undefined,
+            }}
+            className="min-w-0 max-w-full overflow-x-hidden"
+          >
             <EmailPaneErrorBoundary
               resetKey={`${email.id}-${resolvedHtml ? 'html' : 'text'}-${expanded ? 'open' : 'closed'}`}
               fallbackTitle="This message couldn’t be rendered"
@@ -1523,7 +1542,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                 <EmailBodyRenderer text={textMain} />
               )}
             </EmailPaneErrorBoundary>
-          </div>
+          </EmailSelectionActionMenu>
 
           {/* Quoted text (only meaningful for plain text bodies) */}
           {!resolvedHtml && textQuoted && (
