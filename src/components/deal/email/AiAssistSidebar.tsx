@@ -190,6 +190,13 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // full meeting scheduler workspace (calendar read → slot pick → invite).
   // This UPGRADES the existing chip without adding a new button anywhere.
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  // Schedule-intent prompt card state. Driven by the COMPOSE_BODY_EVENT
+  // fired (debounced 500ms) from InlineReplyComposer / PopOutComposer.
+  // Dismissals are per-thread + per-compose-session: once the user X's
+  // the card for this thread, we don't re-surface it again until the
+  // sidebar remounts (new thread opened).
+  const [scheduleHintActive, setScheduleHintActive] = useState(false);
+  const scheduleHintDismissedThreads = useRef<Set<string>>(new Set());
   // Collapsible section state for the redesigned layout. Draft reply is the
   // biggest space-hog so it stays collapsed by default; Suggested Tasks
   // collapses by default whenever a Suggested Update is also visible to
