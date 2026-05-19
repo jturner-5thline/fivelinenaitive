@@ -796,8 +796,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             </div>
           )}
         </DialogHeader>
+        </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-5">
           <div className="space-y-6">
             {/* Edit Mode: Description/Notes */}
             {isEditMode ? (
