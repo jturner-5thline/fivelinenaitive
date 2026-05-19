@@ -238,7 +238,9 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
         const loadRemaining = async () => {
           const remainingLenders: MasterLender[] = [];
-          const backgroundPageSize = 1000;
+          // Smaller background pages so the directory list grows visibly and
+          // the UI thread gets to flush rows/handlers between fetches.
+          const backgroundPageSize = 500;
           let offset = firstPage.length;
           let keepGoing = true;
 
@@ -265,9 +267,18 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
             const batch = (data as MasterLender[] | null) ?? [];
             if (batch.length > 0) {
-              remainingLenders.push(...batch.map((l) => withDemoLenderContact(l, isDemo)));
+              const mapped = batch.map((l) => withDemoLenderContact(l, isDemo));
+              remainingLenders.push(...mapped);
               offset += batch.length;
               keepGoing = batch.length === backgroundPageSize;
+              // Stream each batch into the visible list so users see rows
+              // appear progressively instead of one giant jump at the end.
+              setLenders((prev) => {
+                const merged = [...prev, ...mapped];
+                cachedLenders = merged;
+                cacheUserId = user.id;
+                return merged;
+              });
             } else {
               keepGoing = false;
             }
@@ -275,15 +286,6 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
 
           // Final check before updating state
           if (loadId !== backgroundLoadIdRef.current) return;
-
-          if (remainingLenders.length > 0) {
-            setLenders((prev) => {
-              const full = [...prev, ...remainingLenders];
-              cachedLenders = full;
-              cacheUserId = user.id;
-              return full;
-            });
-          }
 
           setLoadingMore(false);
           setHasMore(false);
