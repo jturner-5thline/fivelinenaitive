@@ -247,8 +247,37 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           <span className="text-xs capitalize" style={{ color: '#8b92a5' }}>{task.task_type}</span>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={handleManualAsanaSync} disabled={asanaSyncing} title={(task as any).asana_task_gid ? 'Sync to Asana' : 'Create in Asana'}>
-            <RefreshCw className={cn('h-3.5 w-3.5', asanaSyncing && 'animate-spin')} style={{ color: '#8b92a5' }} />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7 relative"
+            onClick={handleManualAsanaSync}
+            disabled={asanaSyncing}
+            title={
+              (task as any).asana_sync_status === 'failed'
+                ? `Asana sync failed — click to retry. ${(task as any).asana_sync_error || ''}`
+                : (task as any).asana_task_gid
+                  ? 'Sync to Asana'
+                  : 'Create in Asana'
+            }
+          >
+            <RefreshCw
+              className={cn('h-3.5 w-3.5', asanaSyncing && 'animate-spin')}
+              style={{
+                color:
+                  (task as any).asana_sync_status === 'failed'
+                    ? '#f87171'
+                    : (task as any).asana_task_gid
+                      ? '#22c55e'
+                      : '#8b92a5',
+              }}
+            />
+            {(task as any).asana_sync_status === 'failed' && (
+              <span
+                className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full"
+                style={{ background: '#f87171' }}
+              />
+            )}
           </Button>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => navigate(`/tasks/${task.id}`)} title="Open full page">
             <ExternalLink className="h-3.5 w-3.5" style={{ color: '#8b92a5' }} />
