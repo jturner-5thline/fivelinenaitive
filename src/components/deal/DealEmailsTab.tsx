@@ -521,6 +521,38 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [selectedLabelFilterId, setSelectedLabelFilterId] = useState<string | null>(null);
   const isInboxScope = !dealId; // true when rendered inside InboxDialog
   const [searchQuery, setSearchQuery] = useState('');
+  // Immediate text-input state. Typing only updates this; the heavy
+  // `searchQuery` (which fans out into filter memos, network search,
+  // and AI routing) is updated on a debounce so each keystroke does
+  // not re-run the full inbox pipeline and freeze the UI.
+  const [searchInput, setSearchInput] = useState('');
+  useEffect(() => {
+    const trimmed = searchInput;
+    // Clear immediately so the "clear" affordance feels instant; only
+    // debounce when there's actually text to search for.
+    if (!trimmed) {
+      if (searchQuery !== '') setSearchQuery('');
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      setSearchQuery(trimmed);
+    }, 250);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+  // Keep the visible input in sync when callers reset searchQuery
+  // programmatically (URL hydration, Esc/clear elsewhere).
+  useEffect(() => {
+    // Mirror programmatic resets/seeds of searchQuery into the input.
+    // Only acts when input is empty (hydration) or query was cleared,
+    // so it never fights the user's active typing.
+    if (searchQuery === '' && searchInput !== '') {
+      setSearchInput('');
+    } else if (searchQuery && searchInput === '') {
+      setSearchInput(searchQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -1634,15 +1666,18 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             )}
             <Input
               placeholder='Search mail with AI…'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
+                  // Flush debounce so AI search uses the latest text.
+                  if (searchInput !== searchQuery) setSearchQuery(searchInput);
                   runAISearch();
                 } else if (e.key === 'Escape' && aiSearchActive) {
                   e.preventDefault();
                   clearAISearch();
+                  setSearchInput('');
                   setSearchQuery('');
                 }
               }}
@@ -1651,10 +1686,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 aiSearchActive && 'border-primary/40 focus:border-primary/60'
               )}
             />
-            {(aiSearchActive || searchQuery) && (
+            {(aiSearchActive || searchInput) && (
               <button
                 type="button"
-                onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                onClick={() => { clearAISearch(); setSearchInput(''); setSearchQuery(''); }}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors px-1"
                 aria-label="Clear search"
                 title="Clear search (Esc)"
@@ -2030,7 +2065,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                             </span>
                           </div>
                           <button
-                            onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                            onClick={() => { clearAISearch(); setSearchInput(''); setSearchQuery(''); }}
                             className="inline-flex items-center gap-1 text-muted-foreground hover:text-foreground shrink-0 transition-colors"
                             title="Return to inbox (Esc)"
                           >
