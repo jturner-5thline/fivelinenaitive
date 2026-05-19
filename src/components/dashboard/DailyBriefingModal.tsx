@@ -1337,16 +1337,21 @@ export function PipelineTab({
   // assigned to them on that deal. This narrowing is intentionally local to
   // the Rundown surface — the main /deals pipeline and other pages are
   // unaffected.
-  const effectiveUserId = targetUserId ?? user?.id ?? null;
-  const effectiveOwnerName = (
-    targetDealOwnerName ??
-    profile?.display_name ??
-    [profile?.first_name, profile?.last_name].filter(Boolean).join(' ')
-  )?.toString().trim().toLowerCase() || '';
+  // IMPORTANT: only narrow when an explicit rundown target is passed in.
+  // Without this guard, mounting PipelineTab on /deals or the standalone
+  // Deals overlay (where no target is provided) would silently fall back to
+  // the current user's profile name and hide every deal they don't own —
+  // exactly the "No deals found" regression that surfaced after unifying
+  // the Deals modal/tab implementations.
+  const isRundownScope = !!(targetDealOwnerName || targetUserId);
+  const effectiveUserId = isRundownScope ? (targetUserId ?? user?.id ?? null) : null;
+  const effectiveOwnerName = isRundownScope
+    ? (targetDealOwnerName ?? '').toString().trim().toLowerCase()
+    : '';
 
   const { data: assignedTaskDealIds } = useQuery({
     queryKey: ['rundown-pipeline-task-deal-ids', effectiveUserId],
-    enabled: enabled && !!effectiveUserId,
+    enabled: enabled && isRundownScope && !!effectiveUserId,
     staleTime: 60_000,
     queryFn: async () => {
       const { data: rows } = await supabase
@@ -1362,13 +1367,29 @@ export function PipelineTab({
 
   const filteredDeals = useMemo(() => {
     const all = (scopedDeals as any[]) || [];
+    if (!isRundownScope) return all;
     const taskSet = assignedTaskDealIds || new Set<string>();
     if (!effectiveOwnerName && taskSet.size === 0) return all;
     return all.filter(d => {
       const owner = (d.dealOwner || d.deal_owner || '').toString().trim().toLowerCase();
       return (effectiveOwnerName && owner === effectiveOwnerName) || taskSet.has(d.id);
     });
-  }, [scopedDeals, effectiveOwnerName, assignedTaskDealIds]);
+  }, [scopedDeals, effectiveOwnerName, assignedTaskDealIds, isRundownScope]);
+
+  // Dev diagnostic: surface unexpected empty results for authenticated users.
+  useEffect(() => {
+    if (!enabled || isLoading) return;
+    if (filteredDeals.length === 0 && user?.id) {
+      // eslint-disable-next-line no-console
+      console.warn('[PipelineTab] empty deals result', {
+        user: user.email,
+        isRundownScope,
+        targetDealOwnerName,
+        targetUserId,
+        scopedDealsCount: (scopedDeals as any[])?.length ?? 0,
+      });
+    }
+  }, [enabled, isLoading, filteredDeals.length, user?.id, user?.email, isRundownScope, targetDealOwnerName, targetUserId, scopedDeals]);
 
   // All hooks above this line. Conditional early returns are safe below.
   if (isLoading && !data) return <TabSkeleton />;
