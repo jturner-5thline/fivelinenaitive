@@ -23,6 +23,9 @@ import {
   useFinancialData,
   usePipelineData,
   useOperationalData,
+  useActivePipelineId,
+  filterRundownEligibleDeals,
+  getDealsForUserName,
 } from '@/hooks/useDailyBriefingData';
 import { OperationalDashboard } from './operational/OperationalDashboard';
 import { useNavigate } from 'react-router-dom';
