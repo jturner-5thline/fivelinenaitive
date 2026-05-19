@@ -25,12 +25,15 @@ export interface FrequencyConfig {
    * of applying the recurring base + variance.
    */
   amount_overrides?: Record<string, number>;
+  /**
+   * Per-occurrence exclusions keyed by occurrence date (YYYY-MM-DD).
+   * Set when a user deletes a single occurrence via the drilldown.
+   * `generateOccurrences` skips any date listed here.
+   */
+  excluded_dates?: string[];
 }
 
 export interface ScheduledCashFlow {
-}
-
-// placeholder to anchor below
   id: string;
   company_id: string;
   account: string;
