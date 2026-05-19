@@ -659,6 +659,26 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
       if (invokeErr) throw invokeErr;
       const result = data as ParseResult;
       if (!result) throw new Error('Empty response from scheduling parser');
+
+      // ── chrono-node fallback ──────────────────────────────────────────
+      // If the server parser missed proposals, scan the latest inbound
+      // message text directly with chrono-node so explicit times like
+      // "Wednesday, May 20 at 3:30 PM ET" still surface.
+      if (!result.detected || !result.slots || result.slots.length === 0) {
+        const chronoSlots = extractSlotsWithChrono(threadText, BROWSER_TZ, new Date());
+        if (chronoSlots.length > 0) {
+          result.detected = true;
+          result.slots = chronoSlots;
+          result.user_timezone = result.user_timezone || BROWSER_TZ;
+          result.reply_suggestions = result.reply_suggestions || [];
+        } else {
+          console.log('[AvailabilityCheck] No datetime proposals extracted from thread', {
+            thread_id: thread.threadId,
+            subject: thread.subject,
+            text_length: threadText.length,
+          });
+        }
+      }
       setParseResult(result);
 
       if (result.detected && result.slots.length > 0) {
