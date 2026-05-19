@@ -237,7 +237,6 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         setLoadingMore(true);
 
         const loadRemaining = async () => {
-          const remainingLenders: MasterLender[] = [];
           // Smaller background pages so the directory list grows visibly and
           // the UI thread gets to flush rows/handlers between fetches.
           const backgroundPageSize = 500;
@@ -268,7 +267,6 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
             const batch = (data as MasterLender[] | null) ?? [];
             if (batch.length > 0) {
               const mapped = batch.map((l) => withDemoLenderContact(l, isDemo));
-              remainingLenders.push(...mapped);
               offset += batch.length;
               keepGoing = batch.length === backgroundPageSize;
               // Stream each batch into the visible list so users see rows
