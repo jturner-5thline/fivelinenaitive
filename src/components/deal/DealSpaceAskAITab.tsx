@@ -1497,7 +1497,12 @@ CRITICAL RULES:
           ));
           try {
             const profiles = await fetchLenderProfilesForDeal(dealId, [lenderName]);
-            const fresh = await generateOneDraftPersonalized(dealId, lenderName, profiles, buildDraftSubmissionPrompt);
+            const fresh = await generateOneDraftPersonalized(
+              dealId,
+              lenderName,
+              profiles,
+              (p, prof) => buildDraftSubmissionPrompt(p, prof, baseDraftRef.current),
+            );
             const [enriched] = await enrichDraftsWithLenderContacts([fresh]);
             setEmailDrafts((prev) => prev.map((d, i) => (i === index ? enriched : d)));
           } catch (e) {
