@@ -190,22 +190,55 @@ serve(async (req) => {
       case "create_task": {
         const resolvedToken = await resolveToken(token, integration_id);
         console.log("Creating Asana task with data:", JSON.stringify(params.task_data));
-        const data = await asanaFetch("/tasks", resolvedToken, {
+        const resp = await asanaFetchDetailed("/tasks", resolvedToken, {
           method: "POST",
           body: JSON.stringify({ data: params.task_data }),
         });
-        console.log("Asana task created:", JSON.stringify(data.data));
-        result = { success: true, task: data.data };
+        console.log(
+          `[asana-proxy] create_task status=${resp.status} ok=${resp.ok} body=${JSON.stringify(resp.body).slice(0, 800)}`
+        );
+        if (!resp.ok) {
+          result = {
+            success: false,
+            error: resp.body?.errors?.[0]?.message || `Asana API error [${resp.status}]`,
+            http_status: resp.status,
+            response_body: resp.body,
+          };
+          break;
+        }
+        result = {
+          success: true,
+          task: resp.body?.data,
+          http_status: resp.status,
+          response_body: resp.body,
+        };
         break;
       }
 
       case "update_task": {
         const resolvedToken = await resolveToken(token, integration_id);
-        const data = await asanaFetch(`/tasks/${params.task_gid}`, resolvedToken, {
+        const resp = await asanaFetchDetailed(`/tasks/${params.task_gid}`, resolvedToken, {
           method: "PUT",
           body: JSON.stringify({ data: params.data }),
         });
-        result = { success: true, task: data.data };
+        console.log(
+          `[asana-proxy] update_task gid=${params.task_gid} status=${resp.status} ok=${resp.ok}`
+        );
+        if (!resp.ok) {
+          result = {
+            success: false,
+            error: resp.body?.errors?.[0]?.message || `Asana API error [${resp.status}]`,
+            http_status: resp.status,
+            response_body: resp.body,
+          };
+          break;
+        }
+        result = {
+          success: true,
+          task: resp.body?.data,
+          http_status: resp.status,
+          response_body: resp.body,
+        };
         break;
       }
 
