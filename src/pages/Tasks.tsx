@@ -1066,20 +1066,30 @@ export default function Tasks() {
             )}
           </div>
         </div>
-
-        {/* Task Detail Sheet (slide-out drawer) */}
-        <Sheet open={!!selectedTask} onOpenChange={(open) => { if (!open) setSelectedTaskId(null); }}>
-          <SheetContent side="right" className="w-[480px] sm:max-w-[480px] p-0 border-l" style={{ backgroundColor: '#13181f', borderColor: '#2a2f3e' }}>
-            {selectedTask && (
-              <TaskDetailDrawer
-                task={selectedTask}
-                onClose={() => setSelectedTaskId(null)}
-                onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
-                onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
-              />
-            )}
-          </SheetContent>
-        </Sheet>
+        </div>
+        {/* Right column — inline task detail (35%). Always rendered so
+            the panel does not collapse when nothing is selected. */}
+        <div className="w-[35%] min-w-[320px] h-full flex flex-col overflow-hidden" style={{ backgroundColor: '#13181f' }}>
+          {selectedTask ? (
+            <TaskDetailDrawer
+              task={selectedTask}
+              onClose={() => setSelectedTaskId(null)}
+              onUpdate={(updates) => updateTask.mutate({ id: selectedTask.id, ...updates })}
+              onDelete={() => { deleteTask.mutate(selectedTask.id); setSelectedTaskId(null); }}
+            />
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-16">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                <ClipboardList className="h-6 w-6" style={{ color: '#8a93a6' }} />
+              </div>
+              <p className="text-sm font-medium" style={{ color: '#eef1f6' }}>No task selected</p>
+              <p className="text-xs mt-1.5 max-w-xs" style={{ color: '#8a93a6' }}>
+                Select a task from the list to view its status, priority, assignee, subtasks, and details.
+              </p>
+            </div>
+          )}
+        </div>
+        </div>
 
         {/* Save View Dialog */}
         <Dialog open={showSaveViewDialog} onOpenChange={setShowSaveViewDialog}>
