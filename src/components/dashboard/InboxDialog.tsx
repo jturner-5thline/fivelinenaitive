@@ -36,7 +36,7 @@ const AUTO_LOAD_DELAY_MS = 350;
 // malformed payload can't crash the inbox list mid-render.
 function mapGmailToMockEmails(
   gmailMessages: any[],
-  folderOverride: 'inbox' | 'sent' | 'drafts' = 'inbox',
+  folderOverride: 'inbox' | 'sent' | 'drafts' | 'junk' | 'trash' = 'inbox',
 ): MockEmail[] {
   if (!Array.isArray(gmailMessages)) return [];
   const out: MockEmail[] = [];
@@ -157,6 +157,12 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const [inboxMessages, setInboxMessages] = useState<any[]>(() => cacheSnapshot.inboxMessages);
   const [sentMessages, setSentMessages] = useState<any[]>(() => cacheSnapshot.sentMessages);
   const [cachedInboxEmails, setCachedInboxEmails] = useState<any[]>([]);
+  // Provider-backed system folders beyond inbox/sent. We fetch the first
+  // page of each on open so the sidebar tabs (Drafts / Junk / Trash) are
+  // wired to the actual mailbox state instead of an empty local bucket.
+  const [draftsMessages, setDraftsMessages] = useState<any[]>([]);
+  const [junkMessages, setJunkMessages] = useState<any[]>([]);
+  const [trashMessages, setTrashMessages] = useState<any[]>([]);
 
   // Pagination cursors — also seeded from the cache so "Load more" picks
   // up where the prefetch left off.
@@ -538,10 +544,57 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     const inboxSource = inboxMessages.length > 0 ? inboxMessages : cachedInboxEmails;
     const inboxEmails = mapGmailToMockEmails(inboxSource, 'inbox');
     const sentEmails = mapGmailToMockEmails(sentMessages, 'sent');
-    const seenIds = new Set(inboxEmails.map(e => e.id));
-    const uniqueSent = sentEmails.filter(e => !seenIds.has(e.id));
-    return [...inboxEmails, ...uniqueSent];
-  }, [inboxMessages, sentMessages, cachedInboxEmails]);
+    const draftsEmails = mapGmailToMockEmails(draftsMessages, 'drafts');
+    const junkEmails = mapGmailToMockEmails(junkMessages, 'junk');
+    const trashEmails = mapGmailToMockEmails(trashMessages, 'trash');
+    const seen = new Set<string>();
+    const out: MockEmail[] = [];
+    // Trash takes precedence so a deleted message moved to trash doesn't
+    // also linger in the inbox bucket due to a stale cached copy.
+    for (const e of trashEmails) { seen.add(e.id); out.push(e); }
+    for (const e of junkEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    for (const e of inboxEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    for (const e of sentEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    for (const e of draftsEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    return out;
+  }, [inboxMessages, sentMessages, cachedInboxEmails, draftsMessages, junkMessages, trashMessages]);
+
+  // Fetch first page of provider-backed system folders (Drafts / Junk /
+  // Trash). Called on open and on manual refresh, and re-called after a
+  // delete so the Trash tab immediately reflects the new state.
+  const refreshSystemFolders = useCallback(async () => {
+    const [drafts, junk, trash] = await Promise.all([
+      fetchPage({ labelIds: ['DRAFT'], maxResults: 50 }),
+      fetchPage({ labelIds: ['SPAM'], maxResults: 50 }),
+      fetchPage({ labelIds: ['TRASH'], maxResults: 100 }),
+    ]);
+    if (!isMountedRef.current) return;
+    if (drafts.messages.length || drafts.nextPageToken) setDraftsMessages(drafts.messages);
+    if (junk.messages.length || junk.nextPageToken) setJunkMessages(junk.messages);
+    setTrashMessages(trash.messages);
+  }, []);
+
+  // Re-fetch a single system folder. Used as the post-mutation refresh
+  // hook so deletes reliably surface in Trash.
+  const refreshTrash = useCallback(async () => {
+    const trash = await fetchPage({ labelIds: ['TRASH'], maxResults: 100 });
+    if (!isMountedRef.current) return;
+    setTrashMessages(trash.messages);
+  }, []);
+
+  // Kick off the system-folder fetch once on open, and again whenever the
+  // user reconnects. Cheap (single page per folder) and lets Junk / Trash
+  // tabs render real data without waiting for a manual refresh.
+  const systemFoldersLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!open || !status.connected) return;
+    if (systemFoldersLoadedRef.current) return;
+    systemFoldersLoadedRef.current = true;
+    void refreshSystemFolders();
+  }, [open, status.connected, refreshSystemFolders]);
+  useEffect(() => {
+    if (!open) systemFoldersLoadedRef.current = false;
+  }, [open]);
 
   // Refresh: reset state and re-fetch from page 1 (then auto-paginate again)
   const handleRefresh = useCallback(async () => {
@@ -549,6 +602,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     isPaginatingRef.current = false;
     setInboxMessages([]);
     setSentMessages([]);
+    setDraftsMessages([]);
+    setJunkMessages([]);
+    setTrashMessages([]);
     setInboxNextToken(null);
     setSentNextToken(null);
     setHasMoreInbox(true);
@@ -563,6 +619,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     setHasMoreInbox(!!firstInbox.nextPageToken);
     setIsInitialLoading(false);
     autoPaginate(firstInbox.nextPageToken);
+    void refreshSystemFolders();
   }, [status.connected, mergeUniqueById, autoPaginate]);
 
   // IMPORTANT: call every hook on every render BEFORE any conditional return,
@@ -638,6 +695,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
               isAutoPaginating={isPaginatingRef.current}
+              onAfterTrash={refreshTrash}
             />
           </EmailPaneErrorBoundary>
         </div>
