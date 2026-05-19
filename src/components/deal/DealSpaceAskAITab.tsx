@@ -1526,7 +1526,10 @@ CRITICAL RULES:
           setIncludedLenderNames(names);
           // Defer one tick so the review dialog fully closes before the
           // drafts dialog mounts (avoids overlapping aria-modal layers).
-          setTimeout(() => generateDraftsForLenders(names, personalize, baseDraft), 50);
+          setTimeout(
+            () => generateDraftsForLenders(names, personalize, baseDraftRef.current),
+            50,
+          );
         }}
       />
 
@@ -1560,6 +1563,7 @@ CRITICAL RULES:
           };
         }}
         onContinue={(base) => {
+          baseDraftRef.current = base;
           setBaseDraft(base);
           // Defer a tick so the base dialog fully closes before Review opens.
           setTimeout(() => setIsReviewOpen(true), 50);
