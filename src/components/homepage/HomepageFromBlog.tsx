@@ -80,21 +80,31 @@ export const HomepageFromBlog = () => {
   if (!posts || posts.length === 0) return null;
 
   return (
-    <section className="py-16 md:py-24 bg-transparent">
+    <section className="relative py-24 md:py-36">
+      {/* Distinct surface */}
+      <div
+        aria-hidden
+        className="absolute inset-x-0 inset-y-8 md:inset-y-12 bg-gradient-to-b from-[hsl(268,45%,12%,0.55)] via-[hsl(265,50%,8%,0.55)] to-[hsl(220,55%,10%,0.5)] border-y border-white/10 backdrop-blur-xl"
+      />
+      <div
+        aria-hidden
+        className="absolute inset-x-0 inset-y-8 md:inset-y-12 bg-[radial-gradient(ellipse_at_top,hsl(270,70%,40%,0.18),transparent_60%)] pointer-events-none"
+      />
+
       <div
         ref={ref}
-        className={`container mx-auto px-6 transition-all duration-700 ${
+        className={`relative container mx-auto px-6 transition-all duration-700 ${
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
-        <div className="max-w-3xl mb-10 md:mb-12">
-          <p className="text-sm font-medium uppercase tracking-[0.25em] text-[hsl(270,65%,75%)] mb-3">
+        <div className="max-w-3xl mb-12 md:mb-16">
+          <p className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(270,55%,65%,0.12)] border border-[hsl(270,55%,65%,0.3)] text-xs font-semibold uppercase tracking-[0.25em] text-[hsl(270,80%,85%)] mb-5">
             From the blog
           </p>
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.1] mb-4">
-            Insights for deal teams
+          <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-5 tracking-tight">
+            Insights for <span className="bg-gradient-to-r from-[hsl(270,75%,80%)] to-[hsl(220,75%,75%)] bg-clip-text text-transparent">deal teams</span>
           </h2>
-          <p className="text-base md:text-lg text-white/65 leading-relaxed">
+          <p className="text-lg md:text-xl text-white/70 leading-relaxed">
             The latest thinking on deal execution, lender management, diligence, and AI workflows.
           </p>
         </div>
@@ -116,7 +126,7 @@ export const HomepageFromBlog = () => {
           </CarouselContent>
 
           {posts.length > 1 && (
-            <div className="flex items-center justify-between mt-8 gap-4">
+            <div className="flex items-center justify-between mt-10 gap-4">
               <div className="flex items-center gap-2">
                 {scrollSnaps.map((_, i) => (
                   <button
@@ -132,9 +142,9 @@ export const HomepageFromBlog = () => {
                   />
                 ))}
               </div>
-              <div className="relative flex items-center gap-2">
-                <CarouselPrevious className="static translate-y-0 h-10 w-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08] hover:text-white" />
-                <CarouselNext className="static translate-y-0 h-10 w-10 border-white/15 bg-white/[0.04] text-white hover:bg-white/[0.08] hover:text-white" />
+              <div className="relative flex items-center gap-3">
+                <CarouselPrevious className="static translate-y-0 h-12 w-12 rounded-full border-[hsl(270,55%,65%,0.4)] bg-[hsl(270,55%,30%,0.25)] text-white hover:bg-[hsl(270,65%,45%,0.45)] hover:text-white hover:border-[hsl(270,75%,80%)] shadow-[0_8px_24px_-8px_hsl(270,80%,30%,0.6)]" />
+                <CarouselNext className="static translate-y-0 h-12 w-12 rounded-full border-[hsl(270,55%,65%,0.4)] bg-[hsl(270,55%,30%,0.25)] text-white hover:bg-[hsl(270,65%,45%,0.45)] hover:text-white hover:border-[hsl(270,75%,80%)] shadow-[0_8px_24px_-8px_hsl(270,80%,30%,0.6)]" />
               </div>
             </div>
           )}
@@ -149,7 +159,7 @@ function BlogCard({ post }: { post: BlogPostLite }) {
   return (
     <Link
       to={`/blog/${post.slug}`}
-      className="group relative h-full flex flex-col overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl transition-all duration-300 hover:border-[hsl(270,55%,65%,0.4)] hover:bg-white/[0.05] hover:-translate-y-1 hover:shadow-[0_20px_50px_-20px_hsl(265,60%,3%,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(270,75%,80%)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+      className="group relative h-full flex flex-col overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-xl shadow-[0_12px_32px_-16px_hsl(265,60%,3%,0.8)] transition-all duration-300 hover:border-[hsl(270,65%,72%,0.55)] hover:from-white/[0.09] hover:to-white/[0.04] hover:-translate-y-1.5 hover:shadow-[0_28px_60px_-20px_hsl(270,80%,20%,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(270,75%,80%)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
     >
       <div className="relative aspect-[16/10] overflow-hidden bg-[hsl(270,30%,12%)]">
         {post.cover_image_url ? (
