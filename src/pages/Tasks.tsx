@@ -1076,7 +1076,7 @@ export default function Tasks() {
         </div>
         {/* Right column — inline task detail (35%). Always rendered so
             the panel does not collapse when nothing is selected. */}
-        <div className="w-[35%] min-w-[320px] h-full flex flex-col overflow-hidden" style={{ backgroundColor: '#13181f' }}>
+        <div className="w-[35%] min-w-[320px] h-full flex flex-col overflow-hidden bg-transparent">
           {selectedTask ? (
             <TaskDetailDrawer
               task={selectedTask}
