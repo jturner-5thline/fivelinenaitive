@@ -278,7 +278,7 @@ const App = () => (
                         <NewTaskViaNaitiveModal />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
-                        <Route path="/" element={<RootRedirect />} />
+                        <Route path="/" element={<Homepage />} />
                           <Route path="/home" element={<Index />} />
                           <Route path="/login" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
                           <Route path="/auth" element={<RedirectIfAuthenticated><Auth /></RedirectIfAuthenticated>} />
