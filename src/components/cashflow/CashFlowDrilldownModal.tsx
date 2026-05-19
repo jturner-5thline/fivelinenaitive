@@ -1,5 +1,15 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, Pencil, Trash2, Check } from 'lucide-react';
@@ -121,6 +131,10 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
      *  whether the amount actually changed and trigger the scope prompt. */
     originalAmount: number;
   } | null>(null);
+  /** Pending delete prompt. Holds the row context for the two-path
+   *  destructive confirmation modal. */
+  const [deletePrompt, setDeletePrompt] = useState<DrilldownRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState<null | 'one' | 'future'>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   /** Pending scope decision when a user changes Amount on a recurring entry. */
   const [scopePrompt, setScopePrompt] = useState<{
@@ -309,10 +323,107 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
   };
   const handleDelete = async (entryId: string) => {
     if (!onDeleteEntry) return;
-    if (!window.confirm('Delete this entry? This will remove all of its occurrences from the table.')) return;
-    setBusyId(entryId);
-    await onDeleteEntry(entryId);
-    setBusyId(null);
+    // Legacy entry-point — kept for safety; routes through the new modal.
+    const row = rows.find((r) => r.entryId === entryId);
+    if (row) setDeletePrompt(row);
+  };
+
+  /** Count occurrences of the same series strictly AFTER the selected date,
+   *  scanning a wide forward window so the count is independent of the
+   *  drilldown's date-range filter. */
+  const futureCount = useMemo(() => {
+    if (!deletePrompt) return 0;
+    const entry = deletePrompt.entry;
+    if (entry.frequency_type === 'one_time') return 0;
+    const rangeStart = parseDate(deletePrompt.date);
+    rangeStart.setDate(rangeStart.getDate() + 1);
+    const rangeEnd = new Date(2035, 11, 31);
+    return generateOccurrences(entry, rangeStart, rangeEnd).length;
+  }, [deletePrompt]);
+
+  const priorCount = useMemo(() => {
+    if (!deletePrompt) return 0;
+    const entry = deletePrompt.entry;
+    if (entry.frequency_type === 'one_time') return 0;
+    const rangeStart = new Date(2000, 0, 1);
+    const rangeEnd = parseDate(deletePrompt.date);
+    rangeEnd.setDate(rangeEnd.getDate() - 1);
+    return generateOccurrences(entry, rangeStart, rangeEnd).length;
+  }, [deletePrompt]);
+
+  const closeDeletePrompt = () => {
+    if (deleteBusy) return;
+    setDeletePrompt(null);
+  };
+
+  const prevDayString = (s: string): string => {
+    const d = parseDate(s);
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const confirmDeleteOne = async () => {
+    if (!deletePrompt) return;
+    const row = deletePrompt;
+    setDeleteBusy('one');
+    try {
+      // One-time entries → fully delete; no exclusion concept.
+      if (row.entry.frequency_type === 'one_time') {
+        if (onDeleteEntry) await onDeleteEntry(row.entryId);
+      } else if (onUpdateEntry) {
+        const cfg = row.entry.frequency_config || {};
+        const existing = cfg.excluded_dates || [];
+        const next = existing.includes(row.date) ? existing : [...existing, row.date];
+        await onUpdateEntry(row.entryId, {
+          frequency_config: { ...cfg, excluded_dates: next },
+        });
+      }
+      toast.success('Deleted 1 instance');
+      setDeletePrompt(null);
+    } finally {
+      setDeleteBusy(null);
+    }
+  };
+
+  const confirmDeleteFuture = async () => {
+    if (!deletePrompt) return;
+    const row = deletePrompt;
+    setDeleteBusy('future');
+    try {
+      const removed = 1 + futureCount;
+      if (row.entry.frequency_type === 'one_time') {
+        if (onDeleteEntry) await onDeleteEntry(row.entryId);
+      } else if (priorCount === 0) {
+        // Nothing before the selected date — wipe the entire series.
+        if (onDeleteEntry) await onDeleteEntry(row.entryId);
+      } else if (onUpdateEntry) {
+        // Truncate the series the day before the selected occurrence, and
+        // also exclude the selected date itself in case it sits on the
+        // boundary of the recurring expansion.
+        const cfg = row.entry.frequency_config || {};
+        const existing = cfg.excluded_dates || [];
+        const next = existing.includes(row.date) ? existing : [...existing, row.date];
+        await onUpdateEntry(row.entryId, {
+          end_date: prevDayString(row.date),
+          frequency_config: { ...cfg, excluded_dates: next },
+        });
+      }
+      if (futureCount === 0) {
+        toast.success('Deleted 1 instance', {
+          description: 'No later instances existed in this series.',
+        });
+      } else {
+        toast.success(`Deleted this instance and ${futureCount} future ${futureCount === 1 ? 'instance' : 'instances'}`, {
+          description: `${removed} occurrences removed.`,
+        });
+      }
+      setDeletePrompt(null);
+    } finally {
+      setDeleteBusy(null);
+    }
   };
 
   const canMutate = !!onUpdateEntry || !!onDeleteEntry;
@@ -585,7 +696,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                onClick={() => handleDelete(r.entryId)}
+                                onClick={() => setDeletePrompt(r)}
                                 disabled={isBusy}
                                 title="Delete entry"
                               >
@@ -664,6 +775,68 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
             </div>
           </div>
         )}
+        <AlertDialog open={!!deletePrompt} onOpenChange={(o) => { if (!o) closeDeletePrompt(); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {deletePrompt && deletePrompt.entry.frequency_type === 'one_time'
+                  ? 'Delete entry?'
+                  : 'Delete recurring entry?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  <div>You're about to delete:</div>
+                  {deletePrompt && (
+                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+                      <div className="font-medium text-foreground">
+                        {formatNiceDate(deletePrompt.date)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {deletePrompt.entry.notes || deletePrompt.category}
+                      </div>
+                      <div className={`text-sm tabular-nums mt-1 ${
+                        deletePrompt.signedAmount > 0 ? 'text-emerald-500' : 'text-red-500'
+                      }`}>
+                        {fmt(deletePrompt.signedAmount)}
+                      </div>
+                    </div>
+                  )}
+                  {deletePrompt && deletePrompt.entry.frequency_type !== 'one_time' && (
+                    <div className="text-xs text-muted-foreground">
+                      {futureCount === 0
+                        ? 'No later instances exist in this series. Either option will only remove this single occurrence.'
+                        : `This series has ${futureCount} later ${futureCount === 1 ? 'instance' : 'instances'} after the selected date. Prior instances will never be deleted.`}
+                    </div>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <AlertDialogCancel disabled={!!deleteBusy} onClick={closeDeletePrompt}>
+                Cancel
+              </AlertDialogCancel>
+              <Button
+                variant="outline"
+                className="border-red-500/40 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                onClick={confirmDeleteOne}
+                disabled={!!deleteBusy}
+              >
+                {deleteBusy === 'one' ? 'Deleting…' : 'Delete only this instance'}
+              </Button>
+              {deletePrompt && deletePrompt.entry.frequency_type !== 'one_time' && (
+                <Button
+                  className="bg-red-600 text-white hover:bg-red-700 shadow-sm shadow-red-600/30"
+                  onClick={confirmDeleteFuture}
+                  disabled={!!deleteBusy}
+                >
+                  {deleteBusy === 'future'
+                    ? 'Deleting…'
+                    : `Delete this and ${futureCount} future ${futureCount === 1 ? 'instance' : 'instances'}`}
+                </Button>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );

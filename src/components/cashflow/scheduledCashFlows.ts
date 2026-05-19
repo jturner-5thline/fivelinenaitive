@@ -25,6 +25,12 @@ export interface FrequencyConfig {
    * of applying the recurring base + variance.
    */
   amount_overrides?: Record<string, number>;
+  /**
+   * Per-occurrence exclusions keyed by occurrence date (YYYY-MM-DD).
+   * Set when a user deletes a single occurrence via the drilldown.
+   * `generateOccurrences` skips any date listed here.
+   */
+  excluded_dates?: string[];
 }
 
 export interface ScheduledCashFlow {
@@ -339,11 +345,13 @@ export function generateOccurrences(
   if (effectiveStart > effectiveEnd) return dates;
 
   const cfg = entry.frequency_config || {};
+  const excluded = new Set(cfg.excluded_dates || []);
+  const push = (d: string) => { if (!excluded.has(d)) dates.push(d); };
 
   if (entry.frequency_type === 'one_time') {
     if (cfg.one_time_date) {
       const d = parseDate(cfg.one_time_date);
-      if (d >= rangeStart && d <= rangeEnd) dates.push(cfg.one_time_date);
+      if (d >= rangeStart && d <= rangeEnd) push(cfg.one_time_date);
     }
     return dates;
   }
@@ -356,7 +364,7 @@ export function generateOccurrences(
       cur.setDate(cur.getDate() + 1);
     }
     while (cur <= effectiveEnd) {
-      dates.push(fmtDate(cur));
+      push(fmtDate(cur));
       cur.setDate(cur.getDate() + 7);
     }
     return dates;
@@ -369,7 +377,7 @@ export function generateOccurrences(
       cur.setDate(cur.getDate() + 1);
     }
     while (cur <= effectiveEnd) {
-      dates.push(fmtDate(cur));
+      push(fmtDate(cur));
       cur.setDate(cur.getDate() + 14);
     }
     return dates;
@@ -390,7 +398,7 @@ export function generateOccurrences(
         while (target.getDay() !== dow) target.setDate(target.getDate() - 1);
       }
       if (target >= effectiveStart && target <= effectiveEnd) {
-        dates.push(fmtDate(target));
+        push(fmtDate(target));
       }
       cur.setMonth(cur.getMonth() + 1);
     }
@@ -407,7 +415,7 @@ export function generateOccurrences(
       const day = Math.min(dom, lastDay);
       const target = new Date(year, month, day);
       if (target >= effectiveStart && target <= effectiveEnd) {
-        dates.push(fmtDate(target));
+        push(fmtDate(target));
       }
       cur.setMonth(cur.getMonth() + 1);
     }
