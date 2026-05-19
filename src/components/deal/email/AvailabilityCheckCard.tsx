@@ -863,7 +863,8 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
         e.preventDefault();
         const slot = visible[focusedIdx]?.analysis.slot;
         if (slot && parseResult) {
-          const suggestion = parseResult.reply_suggestions[0];
+          const suggestion =
+            dynamicReplies[0] || parseResult.reply_suggestions[0];
           if (suggestion) {
             onInsertDraft(suggestion.body);
             toast.success('Draft inserted — review before sending');
@@ -873,7 +874,7 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [visible, focusedIdx, onInsertDraft, parseResult]);
+  }, [visible, focusedIdx, onInsertDraft, parseResult, dynamicReplies]);
 
   const toggleFilter = (key: FilterKey) => {
     setFilters((prev) => {
