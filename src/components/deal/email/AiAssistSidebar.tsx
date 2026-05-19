@@ -38,6 +38,7 @@ import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
+import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
 import {
@@ -47,6 +48,28 @@ import {
   inboundProposedTimes,
 } from './scheduleIntent';
 import { CalendarClock } from 'lucide-react';
+
+/**
+ * Cheap classifier for "this inbound is a calendar invite or an automated
+ * notification" — used to suppress the auto-surfaced AvailabilityCheckCard
+ * (we never want to ask James to "confirm a time" for a Google Calendar
+ * invite, an OOO bounce, or a noreply newsletter). Intentionally
+ * conservative; false negatives just mean the parser may run on
+ * marketing mail and self-hide via `hideWhenEmpty`.
+ */
+function isCalendarOrAutomatedNoise(thread: { latestEmail: any; subject?: string | null }): boolean {
+  const m = thread.latestEmail || {};
+  const from = String(m.from_email || '').toLowerCase();
+  const subject = String(thread.subject || m.subject || '').toLowerCase();
+  const body = String(m.body_text || m.body_preview || m.snippet || '').toLowerCase();
+  // Common automated / no-reply senders
+  if (/(no[-_.]?reply|noreply|donotreply|mailer-daemon|postmaster|notifications?@|calendar-(server|noreply)|invitation@|reply\+.*@reply\.github\.com)/i.test(from)) return true;
+  // Google / Outlook / iCal invite patterns
+  if (/calendar\.google\.com|outlook\.live\.com\/calendar|invite\.ics|begin:vcalendar/i.test(body)) return true;
+  if (/^(invitation|updated invitation|canceled event|accepted|declined|tentative): /i.test(subject)) return true;
+  if (Array.isArray(m.attachments) && m.attachments.some((a: any) => /\.ics$/i.test(String(a?.filename || a)))) return true;
+  return false;
+}
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
