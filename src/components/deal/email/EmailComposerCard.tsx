@@ -435,7 +435,17 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     const onReady = (ev: Event) => {
       const detail = (ev as CustomEvent<AiAssistDraftReadyDetail>).detail;
       if (!detail?.body) { setAiPending(false); return; }
-      onBodyChange(detail.body);
+      // Append the user's saved signature when the AI-drafted body
+      // doesn't already include it. The server no longer auto-appends
+      // signatures, so this is the single source of truth.
+      const draftBody = detail.body;
+      const needsSig =
+        !!signature && signature.trim() &&
+        !bodyContainsSignature(draftBody, signature);
+      const nextBody = needsSig
+        ? `${draftBody}${signatureToHtml(signature)}`
+        : draftBody;
+      onBodyChange(nextBody);
       setAiInsertedAt(Date.now());
       setAiPending(false);
       // Announce to screen readers
@@ -443,7 +453,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     };
     window.addEventListener(AI_ASSIST_READY_EVENT, onReady as EventListener);
     return () => window.removeEventListener(AI_ASSIST_READY_EVENT, onReady as EventListener);
-  }, [onBodyChange]);
+  }, [onBodyChange, signature]);
 
   const requestAiDraft = useCallback(() => {
     setAiPending(true);
@@ -811,6 +821,10 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       className={cn(
         'relative flex flex-col bg-card/40 border border-white/10 rounded-lg shadow-lg overflow-hidden',
         isInline && 'mx-3 my-3 flex-1 min-h-0 animate-in fade-in-0 slide-in-from-bottom-2 duration-200',
+        // Reserve room at the bottom so the Send button toolbar never sits
+        // under the floating "Ask naitive AI" bar (z-index ~max). The popout
+        // variant is a draggable floating window, so it doesn't need this.
+        variant !== 'popout' && 'pb-24',
         isDragOver && 'ring-2 ring-[hsl(var(--outlook-blue))] ring-offset-0',
         className,
       )}
