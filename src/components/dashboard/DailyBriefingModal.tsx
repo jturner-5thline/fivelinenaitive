@@ -14,7 +14,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
-  Check, Clock, ArrowUpRight, Sunset,
+  Check, Clock, ArrowUpRight, Sunset, EyeOff,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -28,6 +28,7 @@ import { OperationalDashboard } from './operational/OperationalDashboard';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
+import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 
 // Reused from the main Email widget pop-up so the AI Assist experience
 // (prompts, actions, summaries, suggested replies) is identical here.
@@ -953,6 +954,15 @@ function EmailTab({
   // before the next briefing data refetch lands. Behavior parity with the
   // main Email pop-up which optimistically removes the affected row.
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+  // Persistent, per-user "Hide from Rundown" dismissals. These DO NOT
+  // touch the underlying Gmail item — they only suppress the row from this
+  // surface. Reuses the same DB-backed clears table as End of Day so the
+  // pattern stays consistent across rundown tabs.
+  const rundownClears = useDbPersistentClears('daily_rundown_email');
+  // Stable identity for an email row: prefer provider IDs so the same
+  // message stays hidden across refreshes and re-fetches.
+  const rundownKey = (e: any): string =>
+    (e?.gmail_message_id || e?.thread_id || e?.id || '').toString();
   // Local read/star overrides so the row reflects the action instantly.
   const [overrides, setOverrides] = useState<Record<string, { is_read?: boolean; is_starred?: boolean }>>({});
   // Email-to-task creation modal state (one shared modal per tab).
@@ -1015,6 +1025,7 @@ function EmailTab({
   // so counts, groupings, and the rendered list all stay consistent.
   const withOverrides = emails
     .filter((e: any) => !hiddenIds.has(e.id))
+    .filter((e: any) => !rundownClears.isCleared(rundownKey(e)))
     .map((e: any) => {
       const ov = overrides[e.id];
       return ov ? { ...e, ...ov } : e;
@@ -1109,7 +1120,7 @@ function EmailTab({
                         receivedAt: e.received_at || null,
                       })}
                   >
-                    <div>
+                    <div className="relative group/rundown-email">
                     <BriefingRow
                       borderless
                       selected={!!isSelected}
@@ -1142,6 +1153,36 @@ function EmailTab({
                         </>
                       }
                     />
+                    <button
+                      type="button"
+                      aria-label="Hide from Rundown"
+                      title="Hide from Rundown (does not mark as read)"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        const key = rundownKey(e);
+                        if (!key) return;
+                        if (detail && (detail.id === e.id || detail.gmail_message_id === e.gmail_message_id)) {
+                          setDetail(null);
+                        }
+                        rundownClears.clear(key);
+                        toast.success('Hidden from Rundown', {
+                          description: 'Email is unchanged in your inbox.',
+                          action: {
+                            label: 'Undo',
+                            onClick: () => rundownClears.restore(key),
+                          },
+                        });
+                      }}
+                      onPointerDown={(ev) => ev.stopPropagation()}
+                      onMouseDown={(ev) => ev.stopPropagation()}
+                      className="absolute top-2 right-2 inline-flex items-center justify-center h-6 w-6 rounded-full
+                        border border-border/60 bg-background/70 text-muted-foreground opacity-0
+                        group-hover/rundown-email:opacity-100 focus-visible:opacity-100 transition-opacity
+                        hover:border-primary/50 hover:bg-primary/10 hover:text-primary
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                      <EyeOff className="h-3 w-3" />
+                    </button>
                     </div>
                   </EmailContextMenu>
                 );
