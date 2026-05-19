@@ -271,7 +271,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // Routes read-state writes through Nylas → Gmail/Outlook so the change
   // is reflected in the user's actual mailbox. We only call this for
   // real (externally hydrated) emails — never mock fixtures.
-  const { markRead: providerMarkRead } = useGmail();
+  const {
+    markRead: providerMarkRead,
+    toggleStar: providerToggleStar,
+    archiveMessage: providerArchiveMessage,
+    trashMessage: providerTrashMessage,
+    moveMessage: providerMoveMessage,
+  } = useGmail();
 
   // Tracks locally-mutated fields (is_read / is_starred / is_linked_to_deal /
   // needs_response) that have not yet been confirmed by the upstream provider
@@ -1058,8 +1064,19 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, []);
 
   const handleToggleStar = useCallback((email: MockEmail) => {
-    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_starred: !e.is_starred } : e));
-  }, []);
+    const nextStarred = !email.is_starred;
+    const prevSnapshot = emails;
+    applyLocalOverride(email.id, { is_starred: nextStarred });
+    setEmails(prev => prev.map(e => e.id === email.id ? { ...e, is_starred: nextStarred } : e));
+    void providerToggleStar(email.id, nextStarred).then((ok) => {
+      if (ok) return;
+      clearLocalOverride(email.id, ['is_starred']);
+      setEmails(prevSnapshot);
+      toast.error(`Couldn't ${nextStarred ? 'flag' : 'unflag'} email`, {
+        action: { label: 'Retry', onClick: () => handleToggleStar(email) },
+      });
+    });
+  }, [emails, applyLocalOverride, clearLocalOverride, providerToggleStar]);
 
   const handleRefresh = async () => {
     if (onRefresh) {
@@ -1150,14 +1167,30 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   }, [emails, syncReadStateToProvider, applyLocalOverride]);
 
   const handleArchiveEmail = useCallback((email: MockEmail) => {
+    const prevSnapshot = emails;
     setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Archived');
-  }, []);
+    void providerArchiveMessage(email.id).then((ok) => {
+      if (ok) return;
+      setEmails(prevSnapshot);
+      toast.error("Couldn't archive email", {
+        action: { label: 'Retry', onClick: () => handleArchiveEmail(email) },
+      });
+    });
+  }, [emails, providerArchiveMessage]);
 
   const handleDeleteEmail = useCallback((email: MockEmail) => {
+    const prevSnapshot = emails;
     setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Deleted');
-  }, []);
+    void providerTrashMessage(email.id).then((ok) => {
+      if (ok) return;
+      setEmails(prevSnapshot);
+      toast.error("Couldn't delete email", {
+        action: { label: 'Retry', onClick: () => handleDeleteEmail(email) },
+      });
+    });
+  }, [emails, providerTrashMessage]);
 
   const handleSelectThread = useCallback((thread: EmailThread) => {
     setSelectedThread(thread);
