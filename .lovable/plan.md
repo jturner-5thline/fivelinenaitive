@@ -1,63 +1,87 @@
-## Goal
-Make the Daily Rundown modal user-scoped so opening it for `jmoffitt@5thline.co` pulls John's calendar, Gmail, HubSpot, QBO, Asana, and naitive deals using **his** OAuth tokens — not the viewer's — across every tab (Agenda, Catch Up, Email, Financial, Deals, Operational, End of Day).
+# Asana Task Sync Hardening — Implementation Plan
 
-This is a large architectural change. Before I touch code, I need to confirm scope and a few decisions.
+## What's already in place (no rebuild needed)
+- `syncTaskToAsana`, `updateTaskInAsana`, `getAsanaSyncContext` (`src/hooks/useAsanaTaskSync.ts`)
+- `asana_sync_log` table (records every create/update attempt)
+- `tasks.asana_task_gid` column for bi-directional linkage
+- `asana-webhook` edge function — Asana → Naitive completion sync is already wired
+- Asana integration is connected, `sync_on_task_create=true`, project + section GIDs valid
+- Active sync log shows 100% success when invoked — the real problem is **some task-creation paths skip the sync entirely**
 
-## Questions before I build
+## The actual diagnosis
+Most recent task ("Review lenders for Vispero", 2026-05-18 21:53) was created by jturner on deal Vispero with company_id set, but has **no asana_task_gid and no asana_sync_log entry** — meaning the code path that created it never called `syncTaskToAsana`. There are ~10 task-creation entry points across the app and not all call the sync helper.
 
-1. **Who can invoke this?** Spec says "admin role or explicit delegation". Today, is there already a `delegations` table, or should I gate purely on `app_role = 'admin'` for v1 and add delegation later?
+## Changes
 
-2. **OAuth token storage.** For John's Gmail / Google Calendar — are his tokens already stored per-user in the DB (e.g. `nylas_grants`, `google_integrations`), or is the current Gmail/Calendar fetch always using the *signed-in viewer's* tokens via the connector gateway? This determines whether I need a new "act-as-user" edge function pattern or can reuse existing per-user token tables.
+### 1. Database migration
+Add to `tasks` table:
+- `asana_sync_status` text — `pending` | `synced` | `failed` | `disabled`
+- `asana_sync_error` text (nullable) — last error message
+- `asana_synced_at` timestamptz (nullable)
+- `asana_sync_attempts` int default 0
 
-3. **Scope of v1.** Building all 7 tabs as "act-as-John" simultaneously is ~2–3 days of work and touches every rundown subcomponent. Do you want:
-   - **(a) Full build** — refactor every tab + edge function to accept a `target_user_id` param, add permission gate, banner, confirmation modal on actions.
-   - **(b) Phased** — ship the user-scoping plumbing + Agenda + Email + End of Day first (the spec's main acceptance criteria), then Financial/Deals/Operational/Catch Up in a follow-up.
-   - **(c) Read-only first** — populate all tabs as John (view), but defer "act as John" write actions (Draft Reply/Create Task as him) to phase 2.
+Expand `asana_sync_log` to capture more detail:
+- `http_status` int (nullable)
+- `response_body` jsonb (nullable)
+- `attempt_number` int default 1
 
-4. **How is "Daily Rundown" opened today?** Is there an existing route/modal trigger where I can add a `?user=jmoffitt@5thline.co` param, or do you want a new entry point (e.g. an admin page that lists users and lets you open any user's rundown)?
+### 2. Centralize sync — `src/lib/asana/syncTaskAfterCreate.ts`
+One helper every task-creation path calls. It:
+- Resolves company_id, assignee email, sync context
+- Calls `syncTaskToAsana` with retry-with-backoff (3 attempts, exponential, only for 429/5xx)
+- Writes `asana_sync_status` + `asana_sync_error` + `asana_synced_at` back to `tasks` row
+- Returns `{ ok, gid, error }` so the caller can show inline feedback
+- Logs every attempt to `asana_sync_log` with http_status + response_body + attempt_number
 
-## Proposed architecture (once questions are answered)
+### 3. Audit & route every task-creation path through the helper
+Routes to update (replace inline `syncTaskToAsana` calls with helper):
+- `src/hooks/useDealTasks.ts` (deal-page task create)
+- `src/hooks/useTasks.ts` (general tasks page + subtask create + completion mirroring)
+- `src/hooks/useTaskTemplates.ts` (templates)
+- `src/hooks/useDealMemoApproval.ts` (memo approvals)
+- `src/components/tasks/TaskDetailDrawer.tsx`
+- `src/components/deals/CreateTaskForMentionDialog.tsx`
+- `src/components/deal/email/CreateTaskInlineCard.tsx`
+- `src/components/deal/email/SuggestedTaskCards.tsx`
+- `src/components/deal/email/SuggestedFollowupsCard.tsx`
+- `src/components/deal/email/EmailUnifiedAiAction.tsx`
+- `src/components/deal/DealSpaceNoteEditor.tsx`
+- `src/components/dashboard/chat/NaitiveTaskComposer.tsx`
+- `src/components/pipeline/memo/AddFollowupInlineForm.tsx`
+- `src/pages/SuggestedTaskPreview.tsx`
 
-### Plumbing
-- Add `targetUserId` prop threaded through `DailyRundownModal` → every tab component.
-- New hook `useRundownTarget()` returns `{ targetUser, isViewingSelf, canViewTarget }`.
-- Permission check via `has_role(auth.uid(), 'admin')` OR `auth.uid() = targetUserId`.
-- Banner component when `!isViewingSelf` with "actions perform on John's behalf" + per-action confirmation.
+Audit grep: any `INSERT INTO tasks` not followed by a helper call gets one added.
 
-### Edge functions (refactor to accept `target_user_id`)
-- `gmail-sync` / `gmail-threads` → load tokens from `nylas_grants` (or equiv) for `target_user_id` instead of `auth.uid()`.
-- `google-calendar-events` → same.
-- `asana-tasks` → look up John's Asana PAT from per-user secrets table.
-- `hubspot-activity` → scope by `hubspot_owner_id` mapped from `target_user_id`.
-- `qbo-snapshot` → scope by entities in John's `qbo_user_access`.
-- All functions: verify `getClaims()`, then check `has_role(claims.sub, 'admin') OR claims.sub = target_user_id`, else 403.
+### 4. Edge function `asana-proxy` — expand logging
+In the `create_task` and `update_task` cases:
+- Log to console: payload, response status, response body, error
+- Return `http_status` and `response_body` in the JSON response so the client can persist them
 
-### Per-tab changes
-- **Agenda** — reuse existing `CalendarAgendaTab`, pass `targetUserId`; enrich attendees via HubSpot/naitive contact join; reuse existing availability ranker for conflict color-coding.
-- **Email** — reuse `EmailDigestTab`; add "Awaiting John's reply >24h" and "Sent by John, awaiting response >3d" priority sections via Gmail search queries.
-- **Catch Up** — aggregate from news provider + HubSpot activity + Asana updates scoped to John.
-- **Financial** — QBO snapshot scoped to John's accessible entities.
-- **Deals** — query `deals` where `deal_owner_id = john OR deal_manager_id = john OR john ∈ team_members`.
-- **Operational** — Asana tasks where John is assignee/follower + Tech Roadmap items.
-- **End of Day** — existing two-pane layout, swap data source to John's outstanding items; resolutions stored per-user in `rundown_clears`.
+### 5. Transactional UX
+- Toast in helper: while sync is in-flight, show "Creating task…"; on success "Task created & synced to Asana"; on failure "Task created locally — Asana sync failed (will retry)" with a Retry action button
+- Task rows in lists get a small badge when `asana_sync_status='failed'` (red dot + tooltip with error)
+- Click badge → re-runs helper → updates row
 
-### Empty states
-Each tab checks `integrationsStatus[tab]`; if not connected for John, render `<ConnectIntegrationEmpty integration="gmail" userName="John" />` instead of failing.
+### 6. Dev-only debug panel
+Add `src/components/AsanaSyncDebug.tsx` — floating bottom-left panel (mirroring `InsightsAccessDebug`), gated on `import.meta.env.DEV`. Shows last 10 entries from `asana_sync_log` with status, error, timestamp. Mount in `App.tsx`.
 
-### Caching
-React Query keys include `targetUserId`, 5-minute staleTime, 10-minute background refetchInterval while modal open. Header shows `Last refreshed Xm ago` + manual Refresh button.
+### 7. Custom-field & assignee resilience (already partially handled)
+- Assignee: if email lookup fails, create unassigned instead of erroring (already the behavior — verified)
+- Custom fields: not currently sent in payload — no change needed. If/when added, validate GIDs against `asana_proxy` `/projects/:gid/custom_field_settings` first.
 
-### Files I expect to touch
-- `src/components/dashboard/DailyRundownModal.tsx` (add target prop + banner + permission gate)
-- `src/components/dashboard/CalendarAgendaTab.tsx`
-- `src/components/dashboard/EmailDigestTab.tsx` (or equivalent)
-- `src/components/dashboard/CatchUpTab.tsx`
-- `src/components/dashboard/FinancialTab.tsx`
-- `src/components/dashboard/DealsTab.tsx`
-- `src/components/dashboard/OperationalTab.tsx`
-- `src/components/dashboard/EndOfDayTab.tsx` (just retarget data source)
-- New: `src/hooks/useRundownTarget.ts`, `src/components/dashboard/ActingAsBanner.tsx`, `src/components/dashboard/ConnectIntegrationEmpty.tsx`
-- Edge functions: `gmail-*`, `google-calendar-*`, `asana-*`, `hubspot-*`, `qbo-*` — add `target_user_id` param + admin/self gate
+### 8. Bi-directional confirmation
+`asana-webhook` already mirrors completion Asana → Naitive. Verify webhook subscription exists for the Deal Management project; if missing, register via existing `register_webhook` action. Document in setup tab.
 
-## What I need from you
-Please answer Q1–Q4 above so I scope the first PR correctly. My recommendation is **(b) phased + (c) read-only first** — ship Agenda/Email/End-of-Day as John in view-mode with the permission gate and banner, then layer in act-as-John write actions and the remaining tabs.
+## Out of scope (deliberately)
+- Replacing the `asana_sync_log` table — already adequate
+- Rewriting `asana-webhook` — already functional
+- Background queue worker — retry-with-backoff in the client request covers it for now
+
+## Acceptance test (manual, after deploy)
+1. As jturner@5thline.co on /deals, create a task on any deal → verify Asana task appears in Deal Management → correct section, assignee, due date, deal name in title.
+2. Force a failure (temporarily set wrong section GID in config) → verify red badge on task + working "Retry" button + sync_status='failed' in DB.
+3. Mark Naitive task complete → Asana task flips complete.
+4. Mark Asana task complete → next webhook tick reflects in Naitive.
+
+## Estimated diff
+~1 migration, 1 new helper file, 1 new debug component, ~14 call-site edits, 1 edge function patch.
