@@ -159,7 +159,7 @@ export async function syncTaskToAsana(
     due_date?: string | null;
     assignee_email?: string | null;
   }
-): Promise<{ ok: boolean; gid: string | null; error: string | null }> {
+): Promise<string | null> {
   try {
     // Look up Asana user by email
     let assigneeGid: string | null = null;
@@ -256,7 +256,7 @@ export async function syncTaskToAsana(
           asana_sync_attempts: attempt,
         } as any)
         .eq('id', task.id);
-      return { ok: false, gid: null, error: lastError };
+      return null;
     }
 
     // Store the Asana GID back on the naitive task
@@ -271,7 +271,7 @@ export async function syncTaskToAsana(
       } as any)
       .eq('id', task.id);
 
-    return { ok: true, gid: asanaGid, error: null };
+    return asanaGid;
   } catch (e) {
     console.error('Asana task sync failed:', e);
     const msg = e instanceof Error ? e.message : String(e);
@@ -286,7 +286,7 @@ export async function syncTaskToAsana(
       .from('tasks')
       .update({ asana_sync_status: 'failed', asana_sync_error: msg } as any)
       .eq('id', task.id);
-    return { ok: false, gid: null, error: msg };
+    return null;
   }
 }
 
