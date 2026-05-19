@@ -13,6 +13,9 @@ async function logSyncAttempt(entry: {
   error_message?: string | null;
   payload?: unknown;
   company_id?: string | null;
+  http_status?: number | null;
+  response_body?: unknown;
+  attempt_number?: number;
 }): Promise<void> {
   try {
     const { data: { user } } = await supabase.auth.getUser();
@@ -25,6 +28,9 @@ async function logSyncAttempt(entry: {
       payload: entry.payload ? (entry.payload as any) : null,
       company_id: entry.company_id || null,
       triggered_by: user?.id || null,
+      http_status: entry.http_status ?? null,
+      response_body: entry.response_body ? (entry.response_body as any) : null,
+      attempt_number: entry.attempt_number ?? 1,
     } as any);
   } catch (e) {
     console.warn('[AsanaSync] Failed to write sync log:', e);
