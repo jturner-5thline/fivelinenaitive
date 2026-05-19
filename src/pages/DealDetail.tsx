@@ -36,6 +36,7 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { FlagNoteDialog } from '@/components/deals/FlagNoteDialog';
 import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES, UploadProgress } from '@/hooks/useDealAttachments';
 import { UploadProgressOverlay } from '@/components/deal/UploadProgressOverlay';
+import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToClientContactButton';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
