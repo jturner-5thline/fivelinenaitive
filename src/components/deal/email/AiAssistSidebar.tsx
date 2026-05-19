@@ -1296,6 +1296,40 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               when the "Request a meeting" intent chip in the Draft Reply
               card triggers it (legacy entry point) — keeps that flow
               working without re-introducing the standalone button. */}
+          {scheduleHintActive && !schedulerOpen && (
+            <div className="mx-3 mb-2 rounded-md border border-primary/30 bg-primary/[0.06] p-3 flex items-start gap-2.5">
+              <CalendarClock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-medium text-foreground leading-snug">
+                  Looks like you're trying to schedule — want me to pull your available times?
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] px-2.5"
+                    onClick={() => {
+                      setSchedulerOpen(true);
+                      setScheduleHintActive(false);
+                    }}
+                  >
+                    Generate Times
+                  </Button>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss"
+                onClick={() => {
+                  scheduleHintDismissedThreads.current.add(thread.threadId);
+                  setScheduleHintActive(false);
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           {schedulerOpen && (
             <MeetingSchedulerCard
               recipientEmail={thread.latestEmail?.from_email}
