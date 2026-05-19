@@ -33,6 +33,8 @@ interface GmailMessage {
   attachments?: Array<{ filename: string; content_type: string; size: number }>;
 }
 
+type MailFolderTarget = 'inbox' | 'archive' | 'spam' | 'trash' | 'drafts';
+
 interface GmailStatus {
   connected: boolean;
   expires_at?: string;
@@ -611,6 +613,63 @@ export function useGmail() {
     }
   }, [user]);
 
+  const archiveMessage = useCallback(async (messageId: string) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase.functions.invoke('gmail-messages', {
+        body: {
+          action: 'archive',
+          message_id: messageId,
+        },
+      });
+
+      if (error) throw error;
+
+      setMessages(prev => prev.map(m =>
+        m.id === messageId
+          ? { ...m, labels: (m.labels || []).filter((label) => label.toUpperCase() !== 'INBOX') }
+          : m,
+      ));
+      return true;
+    } catch (err: any) {
+      console.error('Gmail archive error:', err);
+      setError(err.message);
+      return false;
+    }
+  }, [user]);
+
+  const moveMessage = useCallback(async (messageId: string, folder: MailFolderTarget) => {
+    if (!user) return false;
+
+    try {
+      const { error } = await supabase.functions.invoke('gmail-messages', {
+        body: {
+          action: 'move',
+          message_id: messageId,
+          folder,
+        },
+      });
+
+      if (error) throw error;
+
+      setMessages(prev => prev.map(m => {
+        if (m.id !== messageId) return m;
+        const nextLabels = (m.labels || []).filter((label) => !['INBOX', 'SPAM', 'TRASH', 'DRAFTS'].includes(label.toUpperCase()));
+        if (folder === 'inbox') nextLabels.push('INBOX');
+        if (folder === 'spam') nextLabels.push('SPAM');
+        if (folder === 'trash') nextLabels.push('TRASH');
+        if (folder === 'drafts') nextLabels.push('DRAFTS');
+        return { ...m, labels: nextLabels };
+      }));
+      return true;
+    } catch (err: any) {
+      console.error('Gmail move error:', err);
+      setError(err.message);
+      return false;
+    }
+  }, [user]);
+
   // Check status on mount
   useEffect(() => {
     if (user) {
@@ -634,6 +693,8 @@ export function useGmail() {
     sendEmail,
     markRead,
     toggleStar,
+    archiveMessage,
+    moveMessage,
     trashMessage,
   };
 }
