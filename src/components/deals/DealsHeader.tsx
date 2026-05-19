@@ -17,6 +17,7 @@ import { Plus } from 'lucide-react';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { useNaitivePipelineAccess } from '@/hooks/useNaitivePipelineAccess';
 import { DailyBriefingModal } from '@/components/dashboard/DailyBriefingModal';
+import { DealsOverlay } from '@/components/deals/DealsOverlay';
 import { usePipelineData } from '@/hooks/useDailyBriefingData';
 import { useDailyDismissedIds } from '@/hooks/useDailyDismissals';
 import { OverlayLoadingShell } from '@/components/overlays/OverlayLoadingShell';
@@ -459,13 +460,7 @@ export function DealsHeader() {
         </Suspense>
       )}
       {isDealRundownOpen && (
-        <DailyBriefingModal
-          open={isDealRundownOpen}
-          onOpenChange={setIsDealRundownOpen}
-          title="Deal Rundown"
-          initialTab="pipeline"
-          briefingType="deal_rundown"
-        />
+        <DealsOverlay open={isDealRundownOpen} onOpenChange={setIsDealRundownOpen} />
       )}
       {isCalendarOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="calendar" onClose={() => setIsCalendarOpen(false)} />}>
