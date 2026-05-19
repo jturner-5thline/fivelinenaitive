@@ -779,12 +779,65 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
 
   const visible = useMemo(() => {
     if (!ranked) return null;
-    // Only surface clean, user-friendly options. Internal "tight" / "unavailable"
-    // (conflict) buckets are hidden from the scheduling UI entirely.
-    return ranked.filter(
+    // Surface every proposed time so the user can see Available vs Conflict
+    // at a glance with a colored badge. Sort: available first, then partial,
+    // then tight, then unavailable; within each, best fitScore wins.
+    const order: Record<SlotStatus, number> = {
+      available: 0,
+      partially_available: 1,
+      tight: 2,
+      unavailable: 3,
+    };
+    return [...ranked].sort((a, b) => {
+      const d = order[a.analysis.status] - order[b.analysis.status];
+      if (d !== 0) return d;
+      return b.analysis.fitScore - a.analysis.fitScore;
+    });
+  }, [ranked]);
+
+  // ── Dynamic suggested replies ───────────────────────────────────────────
+  // Confirmation for the best-fit Available slot, OR an alternatives reply
+  // pre-filled with 2–3 adjacent free slots if every proposal conflicts.
+  const dynamicReplies = useMemo<ReplySuggestion[]>(() => {
+    if (!ranked || ranked.length === 0) return [];
+    const out: ReplySuggestion[] = [];
+    const firstAvailable = ranked.find(
       (r) => r.analysis.status === 'available' || r.analysis.status === 'partially_available',
     );
-  }, [ranked]);
+    if (firstAvailable) {
+      const fmt = formatSlotDual(firstAvailable.analysis.slot, userTz);
+      out.push({
+        label: `Confirm ${fmt.day} at ${fmt.primary}`,
+        body: `That works — let's lock in ${fmt.day} at ${fmt.primary}. I'll send a calendar invite shortly.`,
+        slot_index: firstAvailable.originalIndex,
+      });
+    } else {
+      // All conflict — propose 2-3 adjacent open slots based on the top-ranked
+      // (least-bad) proposed time and the connected calendar.
+      const anchor = ranked[0]?.analysis.slot;
+      if (anchor) {
+        const alts = findAdjacentFreeSlots(anchor, busyEvents || [], userTz, 3);
+        if (alts.length > 0) {
+          const bullets = alts
+            .map((s) => {
+              const fmt = formatSlotDual(s, userTz);
+              return `• ${fmt.day} · ${fmt.primary}`;
+            })
+            .join('\n');
+          out.push({
+            label: 'Propose alternatives',
+            body: `Unfortunately the times you proposed conflict with existing meetings on my end. Would any of these work instead?\n\n${bullets}\n\nHappy to find another window if none of these land.`,
+          });
+        } else {
+          out.push({
+            label: 'Propose alternatives',
+            body: `Unfortunately the times you proposed conflict on my end. Could you share a couple of other windows that work for you? I'll confirm quickly.`,
+          });
+        }
+      }
+    }
+    return out;
+  }, [ranked, busyEvents, userTz]);
 
   // Keyboard nav
   useEffect(() => {
