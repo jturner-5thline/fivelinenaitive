@@ -99,9 +99,7 @@ export const HomepageFromBlog = () => {
 
       <div
         ref={ref}
-        className={`relative container mx-auto px-6 transition-all duration-700 ${
-          isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
-        }`}
+        className="relative z-10 container mx-auto px-6"
       >
         <p className="text-base md:text-lg font-bold uppercase tracking-[0.25em] text-white mb-10 md:mb-12">
           Latest insights
