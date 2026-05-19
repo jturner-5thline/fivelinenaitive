@@ -15,6 +15,7 @@ import {
   Building2,
   Save,
   Loader2,
+  KeyRound,
 } from 'lucide-react';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import {
@@ -28,6 +29,12 @@ import {
 } from '@/hooks/useAiActionQueue';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  useDealAccessRequests,
+  useApproveDealAccessRequest,
+  useDeclineDealAccessRequest,
+  type DealAccessRequest,
+} from '@/hooks/useDealAccessRequests';
 
 const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare; color: string }> = {
   create_task: { label: 'Create Task', icon: CheckSquare, color: 'text-sky-500' },
