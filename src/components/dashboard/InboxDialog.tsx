@@ -544,10 +544,57 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     const inboxSource = inboxMessages.length > 0 ? inboxMessages : cachedInboxEmails;
     const inboxEmails = mapGmailToMockEmails(inboxSource, 'inbox');
     const sentEmails = mapGmailToMockEmails(sentMessages, 'sent');
-    const seenIds = new Set(inboxEmails.map(e => e.id));
-    const uniqueSent = sentEmails.filter(e => !seenIds.has(e.id));
-    return [...inboxEmails, ...uniqueSent];
-  }, [inboxMessages, sentMessages, cachedInboxEmails]);
+    const draftsEmails = mapGmailToMockEmails(draftsMessages, 'drafts');
+    const junkEmails = mapGmailToMockEmails(junkMessages, 'junk');
+    const trashEmails = mapGmailToMockEmails(trashMessages, 'trash');
+    const seen = new Set<string>();
+    const out: MockEmail[] = [];
+    // Trash takes precedence so a deleted message moved to trash doesn't
+    // also linger in the inbox bucket due to a stale cached copy.
+    for (const e of trashEmails) { seen.add(e.id); out.push(e); }
+    for (const e of junkEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    for (const e of inboxEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    for (const e of sentEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    for (const e of draftsEmails) { if (!seen.has(e.id)) { seen.add(e.id); out.push(e); } }
+    return out;
+  }, [inboxMessages, sentMessages, cachedInboxEmails, draftsMessages, junkMessages, trashMessages]);
+
+  // Fetch first page of provider-backed system folders (Drafts / Junk /
+  // Trash). Called on open and on manual refresh, and re-called after a
+  // delete so the Trash tab immediately reflects the new state.
+  const refreshSystemFolders = useCallback(async () => {
+    const [drafts, junk, trash] = await Promise.all([
+      fetchPage({ labelIds: ['DRAFT'], maxResults: 50 }),
+      fetchPage({ labelIds: ['SPAM'], maxResults: 50 }),
+      fetchPage({ labelIds: ['TRASH'], maxResults: 100 }),
+    ]);
+    if (!isMountedRef.current) return;
+    if (drafts.messages.length || drafts.nextPageToken) setDraftsMessages(drafts.messages);
+    if (junk.messages.length || junk.nextPageToken) setJunkMessages(junk.messages);
+    setTrashMessages(trash.messages);
+  }, []);
+
+  // Re-fetch a single system folder. Used as the post-mutation refresh
+  // hook so deletes reliably surface in Trash.
+  const refreshTrash = useCallback(async () => {
+    const trash = await fetchPage({ labelIds: ['TRASH'], maxResults: 100 });
+    if (!isMountedRef.current) return;
+    setTrashMessages(trash.messages);
+  }, []);
+
+  // Kick off the system-folder fetch once on open, and again whenever the
+  // user reconnects. Cheap (single page per folder) and lets Junk / Trash
+  // tabs render real data without waiting for a manual refresh.
+  const systemFoldersLoadedRef = useRef(false);
+  useEffect(() => {
+    if (!open || !status.connected) return;
+    if (systemFoldersLoadedRef.current) return;
+    systemFoldersLoadedRef.current = true;
+    void refreshSystemFolders();
+  }, [open, status.connected, refreshSystemFolders]);
+  useEffect(() => {
+    if (!open) systemFoldersLoadedRef.current = false;
+  }, [open]);
 
   // Refresh: reset state and re-fetch from page 1 (then auto-paginate again)
   const handleRefresh = useCallback(async () => {
