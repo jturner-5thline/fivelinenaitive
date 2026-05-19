@@ -831,15 +831,24 @@ export function useSubtasks(parentTaskId: string | null) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !parentTaskId) throw new Error('Missing context');
       const { data: parent } = await supabase.from('tasks').select('company_id, project_id').eq('id', parentTaskId).single();
-      const { error } = await supabase.from('tasks').insert({
+      const { data: created, error } = await supabase.from('tasks').insert({
         title,
         parent_task_id: parentTaskId,
         assigned_to: user.id,
         assigned_by: user.id,
         company_id: parent?.company_id,
         project_id: parent?.project_id,
-      } as any);
+      } as any).select('id').single();
       if (error) throw error;
+      if (created?.id) {
+        const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');
+        syncTaskAfterCreate({
+          taskId: created.id,
+          title,
+          assignedTo: user.id,
+          companyId: parent?.company_id ?? null,
+        }).catch((e) => console.warn('[createSubtask] asana sync error:', e));
+      }
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
   });
