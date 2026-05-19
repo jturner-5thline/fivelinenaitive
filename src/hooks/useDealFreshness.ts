@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { isDealStaleByBusinessDays } from '@/lib/dealFreshness';
@@ -19,10 +19,42 @@ export interface DealFreshnessMap {
 }
 
 export function useDealFreshness(dealIds: string[]) {
+  const qc = useQueryClient();
   const idsKey = useMemo(
     () => dealIds.filter(Boolean).slice().sort().join(','),
     [dealIds],
   );
+
+  // Realtime: any new status_change / stage_change activity log invalidates
+  // the freshness cache so the left-column tile glow recomputes immediately
+  // regardless of where the edit happened.
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!idsKey) return;
+    const flush = () => {
+      timer.current = null;
+      qc.invalidateQueries({ queryKey: DEAL_FRESHNESS_QUERY_KEY });
+    };
+    const ch = supabase
+      .channel(`deal-freshness-${idsKey.slice(0, 24)}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'activity_logs' },
+        (payload) => {
+          const row = payload?.new as { activity_type?: string; deal_id?: string } | undefined;
+          if (!row) return;
+          if (row.activity_type !== 'status_change' && row.activity_type !== 'stage_change') return;
+          if (!row.deal_id || !idsKey.split(',').includes(row.deal_id)) return;
+          if (timer.current) clearTimeout(timer.current);
+          timer.current = setTimeout(flush, 150);
+        },
+      )
+      .subscribe();
+    return () => {
+      if (timer.current) clearTimeout(timer.current);
+      supabase.removeChannel(ch);
+    };
+  }, [idsKey, qc]);
 
   return useQuery({
     queryKey: [...DEAL_FRESHNESS_QUERY_KEY, idsKey],
