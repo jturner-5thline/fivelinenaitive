@@ -1640,13 +1640,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
-  // ─── Pre-send "link this reply to a deal?" prompt ───────────
-  // Shown automatically when the user clicks Send on a reply for which we
-  // can't resolve a deal (no explicit dealId, no per-thread link, no
-  // workflow likely-deal). The dialog offers a quick deal selector and a
-  // "Send without logging" escape hatch so we never block the send.
-  const [linkPromptOpen, setLinkPromptOpen] = useState(false);
-  const pendingSendRef = useRef<Omit<MockEmail, 'id' | 'threadId'> | null>(null);
+  // Pre-send link-to-deal prompt removed — replies send immediately and
+  // inherit any pre-resolved deal link silently. Manual linking remains
+  // available via the "Link Deal" toolbar action.
 
   // Lift workflow analysis here so the in-thread Attachments module can show the
   // "Add to Data Room" CTA whenever a likely-deal match exists (mirrors AI Assist).
@@ -2068,17 +2064,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const handleSendFromComposer = useCallback(
     (emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
       // If a deal is already resolvable (explicit prop, per-thread link, or
-      // workflow likely-match) — log automatically. Otherwise prompt the user
-      // to pick one before sending.
-      if (effectiveDealId) {
-        performSendWithLink(emailData, {
-          dealId: effectiveDealId,
-          dealName: effectiveDealName || null,
-        });
-        return;
-      }
-      pendingSendRef.current = emailData;
-      setLinkPromptOpen(true);
+      // workflow likely-match) — log automatically. Otherwise send without
+      // a deal link; the user can still link manually from the toolbar.
+      performSendWithLink(
+        emailData,
+        effectiveDealId
+          ? { dealId: effectiveDealId, dealName: effectiveDealName || null }
+          : { dealId: null, dealName: null },
+      );
     },
     [effectiveDealId, effectiveDealName, performSendWithLink],
   );
@@ -2976,31 +2969,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         />
       )}
 
-      {/* Pre-send link-to-deal prompt */}
-      <LinkReplyToDealDialog
-        open={linkPromptOpen}
-        onOpenChange={(v) => {
-          setLinkPromptOpen(v);
-          if (!v) pendingSendRef.current = null;
-        }}
-        defaultQuery={thread.dealName || thread.subject || ''}
-        onPick={(picked) => {
-          const pending = pendingSendRef.current;
-          pendingSendRef.current = null;
-          setLinkPromptOpen(false);
-          if (!pending) return;
-          setLinkedDealId(picked.id);
-          setLinkedDealName(picked.name);
-          performSendWithLink(pending, { dealId: picked.id, dealName: picked.name });
-        }}
-        onSendWithoutLogging={() => {
-          const pending = pendingSendRef.current;
-          pendingSendRef.current = null;
-          setLinkPromptOpen(false);
-          if (!pending) return;
-          performSendWithLink(pending, { dealId: null, dealName: null });
-        }}
-      />
     </>
 
   );
