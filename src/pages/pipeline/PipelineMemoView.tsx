@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
-import { DealStatusTag } from '@/components/deal/DealStatusTag';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 
 interface PipelineMemoViewProps {
