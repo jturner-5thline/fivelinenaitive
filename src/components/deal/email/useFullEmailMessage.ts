@@ -24,7 +24,59 @@ export interface FullThreadMessage extends FullMessage {
   received_at?: string;
 }
 
+/**
+ * Module-level cache for full message bodies. Keyed by Gmail message id.
+ *
+ * Populated by:
+ *   - `fetchFullEmailMessage` (cache-write on success)
+ *   - `prefetchFullEmailMessage` (hover / focus prefetch from list rows)
+ *
+ * Read by `useFullEmailMessage` so opening a previously-prefetched or
+ * previously-viewed message is instant (no spinner, no network roundtrip).
+ *
+ * In-flight fetches are de-duplicated via `inflight` so multiple concurrent
+ * subscribers (e.g. thread header + per-message block) share a single
+ * edge-function call.
+ */
+const messageCache = new Map<string, FullMessage>();
+const inflight = new Map<string, Promise<FullMessage>>();
+const MAX_CACHE = 200;
+
+function rememberMessage(id: string, msg: FullMessage) {
+  if (messageCache.has(id)) messageCache.delete(id);
+  messageCache.set(id, msg);
+  while (messageCache.size > MAX_CACHE) {
+    const oldest = messageCache.keys().next().value;
+    if (oldest === undefined) break;
+    messageCache.delete(oldest);
+  }
+}
+
+export function getCachedFullEmailMessage(messageId: string): FullMessage | null {
+  if (!messageId) return null;
+  return messageCache.get(messageId) || null;
+}
+
+/**
+ * Fire-and-forget prefetch for a message body. Safe to call on hover /
+ * focus / render — multiple calls for the same id share a single fetch and
+ * failures are swallowed silently.
+ */
+export function prefetchFullEmailMessage(messageId: string | undefined): void {
+  if (!messageId || messageId.startsWith('mock-')) return;
+  if (messageCache.has(messageId)) return;
+  if (inflight.has(messageId)) return;
+  const p = fetchFullEmailMessage(messageId).catch(() => null as any);
+  inflight.set(messageId, p as Promise<FullMessage>);
+  void p.finally(() => inflight.delete(messageId));
+}
+
 export async function fetchFullEmailMessage(messageId: string): Promise<FullMessage> {
+  // De-dupe concurrent fetches for the same id (e.g. hover-prefetch + click).
+  const existing = inflight.get(messageId);
+  if (existing) return existing;
+
+  const p = (async () => {
   const { data: resp, error: err } = await supabase.functions.invoke('gmail-messages', {
     body: { action: 'get', message_id: messageId },
   });
@@ -38,7 +90,7 @@ export async function fetchFullEmailMessage(messageId: string): Promise<FullMess
     throw new Error('No message returned');
   }
 
-  return {
+    const out: FullMessage = {
     id: m.id || messageId,
     thread_id: m.thread_id || undefined,
     body_html: m.body_html || undefined,
@@ -46,6 +98,15 @@ export async function fetchFullEmailMessage(messageId: string): Promise<FullMess
     attachments: Array.isArray(m.attachments) ? m.attachments : [],
     inline_attachments: Array.isArray(m.inline_attachments) ? m.inline_attachments : [],
   };
+    rememberMessage(messageId, out);
+    return out;
+  })();
+  inflight.set(messageId, p);
+  try {
+    return await p;
+  } finally {
+    inflight.delete(messageId);
+  }
 }
 
 export async function fetchFullEmailThread(threadId: string): Promise<FullThreadMessage[]> {
@@ -122,7 +183,10 @@ export function useFullEmailMessage(
   enabled: boolean,
   alreadyLoaded: boolean,
 ): { data: FullMessage | null; loading: boolean; error: string | null } {
-  const [data, setData] = useState<FullMessage | null>(null);
+  // Seed from the module cache so prefetched / previously-viewed messages
+  // render their body on the first paint without a spinner.
+  const cached = messageId ? getCachedFullEmailMessage(messageId) : null;
+  const [data, setData] = useState<FullMessage | null>(cached);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fetchedMessageRef = useRef<string | null>(null);
@@ -130,6 +194,17 @@ export function useFullEmailMessage(
   useEffect(() => {
     if (!enabled || alreadyLoaded) return;
     if (!messageId || messageId.startsWith('mock-')) return;
+
+    // Cache hit — surface immediately, skip refetch.
+    const hit = getCachedFullEmailMessage(messageId);
+    if (hit) {
+      fetchedMessageRef.current = messageId;
+      setData(hit);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     if (fetchedMessageRef.current === messageId) return;
 
     fetchedMessageRef.current = messageId;
