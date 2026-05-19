@@ -2748,6 +2748,9 @@ export default function DealDetail() {
             )}
 
             <div className="flex items-center gap-2 flex-wrap ml-auto">
+              {deal?.id && (
+                <FlexVisibilityBadge dealId={deal.id} stage={deal.stage} />
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
