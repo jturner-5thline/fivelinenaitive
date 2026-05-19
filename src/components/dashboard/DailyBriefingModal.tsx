@@ -14,7 +14,7 @@ import {
   Newspaper, Mail, DollarSign, GitBranch, ListChecks, CalendarDays,
   AlertCircle, ExternalLink, TrendingUp,
   FileText, X, ChevronRight, ChevronLeft, RefreshCw,
-  Check, Clock, ArrowUpRight, Sunset,
+  Check, Clock, ArrowUpRight, Sunset, EyeOff,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -28,6 +28,7 @@ import { OperationalDashboard } from './operational/OperationalDashboard';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
+import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 
 // Reused from the main Email widget pop-up so the AI Assist experience
 // (prompts, actions, summaries, suggested replies) is identical here.
