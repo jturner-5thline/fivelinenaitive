@@ -3,6 +3,7 @@ import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 import type { EmailAttachment } from './mockEmailData';
 import { fetchAttachmentDataUrl } from './useFullEmailMessage';
+import { BrandedEmailFrame, shouldRenderAsBranded } from './BrandedEmailFrame';
 
 interface Props {
   html?: string;
@@ -20,6 +21,12 @@ interface Props {
    * broken images.
    */
   attachments?: EmailAttachment[];
+  /** Sender email — used to auto-detect notification/marketing senders
+   *  (LinkedIn, HubSpot, newsletters, etc.) that should render with full
+   *  fidelity inside a sandboxed iframe instead of the simplified renderer. */
+  fromEmail?: string;
+  /** Force the iframe (branded) renderer regardless of heuristics. */
+  forceBranded?: boolean;
 }
 
 /**
@@ -55,7 +62,16 @@ export function EmailBodyRenderer({
   messageId,
   inlineAttachments,
   attachments,
+  fromEmail,
+  forceBranded,
 }: Props) {
+  // Branded/notification mode — render the original HTML inside a sandboxed
+  // iframe so the email's own CSS, tables, images, CTAs and layout survive
+  // (Outlook reading-pane style). If anything goes wrong we fall through to
+  // the simplified renderer below so the user never sees a blank message.
+  const [brandedFailed, setBrandedFailed] = useState(false);
+  const useBranded = !!html && !brandedFailed && (forceBranded || shouldRenderAsBranded(html, fromEmail));
+
   // Resolved CID -> data URL map, populated as inline attachments are fetched.
   const [cidUrls, setCidUrls] = useState<Record<string, string>>({});
 
@@ -183,6 +199,16 @@ export function EmailBodyRenderer({
 
     return clean;
   }, [html, cidUrls]);
+
+  if (useBranded && html) {
+    return (
+      <BrandedEmailFrame
+        html={html}
+        className={className}
+        onError={() => setBrandedFailed(true)}
+      />
+    );
+  }
 
   if (sanitized) {
     return (
