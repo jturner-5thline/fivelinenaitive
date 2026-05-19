@@ -2,7 +2,8 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import DealsPage from '@/pages/Deals';
+import { useNavigate } from 'react-router-dom';
+import { PipelineTab } from '@/components/dashboard/DailyBriefingModal';
 
 interface DealsOverlayProps {
   open: boolean;
@@ -55,8 +56,10 @@ class DealsErrorBoundary extends React.Component<
  * identical Deals view without navigating away.
  */
 export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
-  // Force the Deals page to remount each time the overlay opens so its
-  // contexts, queries, and viewMode initialization run from scratch.
+  const navigate = useNavigate();
+  // Force the shared Deals tab to remount each time the overlay opens so
+  // its queries and state initialize from scratch — identical behavior to
+  // the Daily Rundown Deals tab.
   const [mountKey, setMountKey] = React.useState(0);
   React.useEffect(() => {
     if (open) setMountKey((k) => k + 1);
@@ -109,7 +112,17 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
                 </div>
               }
             >
-              <DealsPage key={mountKey} />
+              {/* Render the EXACT same component used by the Daily Rundown
+                  Deals tab so both surfaces always stay in sync. No
+                  overlay-only filters, padding, or background overrides. */}
+              <PipelineTab
+                key={mountKey}
+                enabled={open}
+                onNavigate={(path) => {
+                  onOpenChange(false);
+                  navigate(path);
+                }}
+              />
             </React.Suspense>
           </DealsErrorBoundary>
         </div>
