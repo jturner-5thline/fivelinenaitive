@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
+import type { DealCashflowOverride } from './useDealCashflowOverrides';
 
 /**
  * Stage tokens (case-insensitive, separators normalized) that indicate the
@@ -41,7 +42,11 @@ function fmtDate(d: Date): string {
  * They use the same ScheduledCashFlow shape so the existing merge / drilldown
  * pipeline picks them up unchanged.
  */
-export function useDealProjectedCashFlows(companyId: string | undefined, enabled: boolean) {
+export function useDealProjectedCashFlows(
+  companyId: string | undefined,
+  enabled: boolean,
+  overrides?: Record<string, DealCashflowOverride>,
+) {
   const [items, setItems] = useState<ScheduledCashFlow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -146,11 +151,30 @@ export function useDealProjectedCashFlows(companyId: string | undefined, enabled
           });
         }
       }
-      setItems(out);
+      // Apply persisted per-row overrides (excluded dates + series truncation)
+      // captured from the cashflow drilldown grid.
+      const applied = overrides
+        ? out.map((entry) => {
+            const ov = overrides[entry.id];
+            if (!ov) return entry;
+            const cfg = entry.frequency_config || {};
+            const existing = cfg.excluded_dates || [];
+            const mergedExcluded = Array.from(new Set([...existing, ...(ov.excluded_dates || [])]));
+            const nextEnd = ov.end_date
+              ? (entry.end_date && entry.end_date < ov.end_date ? entry.end_date : ov.end_date)
+              : entry.end_date;
+            return {
+              ...entry,
+              end_date: nextEnd,
+              frequency_config: { ...cfg, excluded_dates: mergedExcluded },
+            };
+          })
+        : out;
+      setItems(applied);
       setIsLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [companyId, enabled]);
+  }, [companyId, enabled, overrides]);
 
   return { items, isLoading };
 }
