@@ -11,6 +11,7 @@ import {
   HomepageDataPrivacy,
   HomepageCTA,
   HomepageFooter,
+  HomepageFromBlog,
   PlatformPreviewDealPipeline,
   PlatformPreviewLenderKanban,
   PlatformPreviewDataRoom,
@@ -89,6 +90,11 @@ export default function Homepage() {
         {/* Data & Privacy */}
         <div className="scroll-reveal-soft">
           <HomepageDataPrivacy />
+        </div>
+
+        {/* From the Blog — hides itself when no published posts */}
+        <div className="scroll-reveal-soft">
+          <HomepageFromBlog />
         </div>
 
         {/* Final CTA */}
