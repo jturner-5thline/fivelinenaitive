@@ -1920,6 +1920,116 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       : { subject: thread.subject, to_email: latest.from_email, to_name: latest.from_name, threadId: thread.threadId };
   }, [thread]);
 
+  // Resolve the current user's email + simple aliases so Reply All can
+  // exclude the user from To/Cc. Loaded once per mount.
+  const [currentUserEmails, setCurrentUserEmails] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      const primary = data?.user?.email?.toLowerCase();
+      if (!cancelled && primary) setCurrentUserEmails([primary]);
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // ─── Reply All recipient resolution ─────────────────────────
+  // Pulls the real to/cc arrays for the given message from gmail_messages
+  // (so we don't rely on the truncated single-recipient MockEmail fields),
+  // then builds Gmail-style Reply All lists.
+  const buildReplyAllRecipients = useCallback(async (msg: MockEmail): Promise<{ to: string; cc: string }> => {
+    const me = new Set(currentUserEmails.map(e => e.toLowerCase()));
+    const isOutbound = msg.from_name === 'You' || (msg.from_email && me.has(msg.from_email.toLowerCase()));
+
+    // Try to hydrate from DB (real Gmail/Nylas messages only)
+    let dbTo: string[] = [];
+    let dbCc: string[] = [];
+    let dbFromEmail: string | null = null;
+    let dbFromName: string | null = null;
+    if (msg.id && !msg.id.startsWith('mock-')) {
+      try {
+        const { data } = await supabase
+          .from('gmail_messages')
+          .select('from_email, from_name, to_emails, cc_emails')
+          .eq('gmail_message_id', msg.id)
+          .maybeSingle();
+        if (data) {
+          dbTo = Array.isArray((data as any).to_emails) ? (data as any).to_emails : [];
+          dbCc = Array.isArray((data as any).cc_emails) ? (data as any).cc_emails : [];
+          dbFromEmail = (data as any).from_email || null;
+          dbFromName = (data as any).from_name || null;
+        }
+      } catch (err) {
+        console.warn('[reply-all] could not load message recipients', err);
+      }
+    }
+
+    // Helper: normalize an "addr" or "Name <addr>" into { email, display }
+    const parse = (raw: string): { email: string; display: string } | null => {
+      if (!raw) return null;
+      const trimmed = raw.trim();
+      if (!trimmed) return null;
+      const m = trimmed.match(/^(.*?)<\s*([^>]+)\s*>$/);
+      if (m) {
+        const name = m[1].trim().replace(/^"|"$/g, '');
+        const email = m[2].trim();
+        return { email, display: name ? `${name} <${email}>` : email };
+      }
+      return { email: trimmed, display: trimmed };
+    };
+
+    const dedupe = (entries: Array<{ email: string; display: string }>, exclude: Set<string>) => {
+      const seen = new Set<string>();
+      const out: string[] = [];
+      for (const e of entries) {
+        const k = e.email.toLowerCase();
+        if (!k || seen.has(k) || exclude.has(k)) continue;
+        seen.add(k);
+        out.push(e.display);
+      }
+      return out;
+    };
+
+    // Build To
+    const toEntries: Array<{ email: string; display: string }> = [];
+    if (!isOutbound) {
+      const fromEmail = dbFromEmail || msg.from_email;
+      const fromName = dbFromName || msg.from_name;
+      if (fromEmail) {
+        toEntries.push({
+          email: fromEmail,
+          display: fromName && fromName !== fromEmail ? `${fromName} <${fromEmail}>` : fromEmail,
+        });
+      }
+    }
+    // Original To recipients (preserve them, minus me)
+    const originalTo = dbTo.length > 0
+      ? dbTo
+      : (msg.to_email ? [msg.to_name && msg.to_name !== msg.to_email ? `${msg.to_name} <${msg.to_email}>` : msg.to_email] : []);
+    for (const raw of originalTo) {
+      const p = parse(raw);
+      if (p) toEntries.push(p);
+    }
+
+    const toExclude = new Set<string>(me);
+    const toList = dedupe(toEntries, toExclude);
+
+    // Build Cc — exclude me AND anyone already in To
+    const ccExclude = new Set<string>(me);
+    for (const display of toList) {
+      const p = parse(display);
+      if (p) ccExclude.add(p.email.toLowerCase());
+    }
+    const ccEntries: Array<{ email: string; display: string }> = [];
+    for (const raw of dbCc) {
+      const p = parse(raw);
+      if (p) ccEntries.push(p);
+    }
+    const ccList = dedupe(ccEntries, ccExclude);
+
+    return { to: toList.join(', '), cc: ccList.join(', ') };
+  }, [currentUserEmails]);
+
   const handleReply = useCallback(() => {
     if (popOutDraft) return;
     const saved = loadDraft();
@@ -1930,25 +2040,24 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setShowResumeBanner(false);
   }, [getReplyTarget, popOutDraft, loadDraft]);
 
-  const handleReplyAll = useCallback(() => {
+  const handleReplyAll = useCallback(async () => {
     if (popOutDraft) return;
     const latest = thread.latestEmail;
     const target = getReplyTarget();
-    // For Reply All, include CC from original email
-    const ccEmails = latest.from_name === 'You' ? '' : (latest.to_email !== target.to_email ? latest.to_email : '');
-    setReplyTo(target);
+    const { to, cc } = await buildReplyAllRecipients(latest);
+    setReplyTo({ ...target, to_email: to || target.to_email });
     setInlineDraft({
-      to: target.to_email,
+      to: to || target.to_email,
       toName: target.to_name,
       subject: thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`,
       body: '',
-      cc: ccEmails,
+      cc,
       bcc: '',
       attachments: [],
       threadId: thread.threadId,
     });
     setShowResumeBanner(false);
-  }, [getReplyTarget, popOutDraft, thread]);
+  }, [getReplyTarget, popOutDraft, thread, buildReplyAllRecipients]);
 
   const handleForward = useCallback(() => {
     if (popOutDraft) return;
@@ -1994,27 +2103,27 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     setShowResumeBanner(false);
   }, [popOutDraft, thread]);
 
-  const handleReplyAllToMessage = useCallback((msg: MockEmail) => {
+  const handleReplyAllToMessage = useCallback(async (msg: MockEmail) => {
     if (popOutDraft) return;
     const isOutbound = msg.from_name === 'You';
-    const target = isOutbound
+    const fallbackTarget = isOutbound
       ? { to_email: msg.to_email, to_name: msg.to_name }
       : { to_email: msg.from_email, to_name: msg.from_name };
-    const ccEmails = isOutbound ? '' : (msg.to_email && msg.to_email !== target.to_email ? msg.to_email : '');
     const subject = thread.subject.startsWith('Re:') ? thread.subject : `Re: ${thread.subject}`;
-    setReplyTo({ subject, to_email: target.to_email, to_name: target.to_name, threadId: thread.threadId });
+    const { to, cc } = await buildReplyAllRecipients(msg);
+    setReplyTo({ subject, to_email: to || fallbackTarget.to_email, to_name: fallbackTarget.to_name, threadId: thread.threadId });
     setInlineDraft({
-      to: target.to_email,
-      toName: target.to_name,
+      to: to || fallbackTarget.to_email,
+      toName: fallbackTarget.to_name,
       subject,
       body: '',
-      cc: ccEmails,
+      cc,
       bcc: '',
       attachments: [],
       threadId: thread.threadId,
     });
     setShowResumeBanner(false);
-  }, [popOutDraft, thread]);
+  }, [popOutDraft, thread, buildReplyAllRecipients]);
 
   const handleForwardMessage = useCallback((msg: MockEmail) => {
     if (popOutDraft) return;
