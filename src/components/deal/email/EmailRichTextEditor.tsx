@@ -233,13 +233,40 @@ function Toolbar({
 
   const setLink = () => {
     const range = savedRangeRef.current;
-    const chain = editor.chain().focus();
-    if (range) chain.setTextSelection(range);
-    if (linkUrl) {
-      const href = /^https?:\/\//i.test(linkUrl) ? linkUrl : `https://${linkUrl}`;
-      chain.extendMarkRange('link').setLink({ href, target: '_blank' } as any).run();
-    } else {
-      chain.extendMarkRange('link').unsetLink().run();
+    // Restore the user's pre-popover selection BEFORE applying the link, so
+    // the link mark wraps the highlighted text instead of an empty caret.
+    if (range) {
+      // Run as a single transaction: select → focus → (extend) → setLink.
+      if (linkUrl) {
+        const href = /^https?:\/\//i.test(linkUrl) ? linkUrl : `https://${linkUrl}`;
+        const hasSelection = range.to > range.from;
+        if (hasSelection) {
+          editor
+            .chain()
+            .setTextSelection(range)
+            .extendMarkRange('link')
+            .setLink({ href, target: '_blank' } as any)
+            .run();
+        } else {
+          // No selection — insert the URL as linked text at the caret.
+          editor
+            .chain()
+            .setTextSelection(range)
+            .insertContent({
+              type: 'text',
+              text: linkUrl,
+              marks: [{ type: 'link', attrs: { href, target: '_blank' } }],
+            })
+            .run();
+        }
+      } else {
+        editor
+          .chain()
+          .setTextSelection(range)
+          .extendMarkRange('link')
+          .unsetLink()
+          .run();
+      }
     }
     setLinkOpen(false);
     setLinkUrl('');
@@ -447,7 +474,19 @@ function Toolbar({
         }}
       >
         <PopoverTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Insert link">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            aria-label="Insert link"
+            // Capture the editor selection on pointerdown — before focus
+            // shifts to the popover input and ProseMirror can update its
+            // internal selection to a collapsed state.
+            onPointerDown={() => {
+              const { from, to } = editor.state.selection;
+              savedRangeRef.current = { from, to };
+            }}
+          >
             <LinkIcon className="h-3.5 w-3.5" />
           </Button>
         </PopoverTrigger>
