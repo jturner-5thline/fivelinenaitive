@@ -2795,12 +2795,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 >
                   {format(new Date(latest.received_at), 'EEEE, MMMM d, yyyy h:mm a')}
                 </div>
-                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5 break-words">
-                  To: <span className="text-[hsl(var(--email-text-secondary))]">me</span>
-                  {linkedDealName && (
-                    <span className="ml-2 text-[hsl(var(--outlook-blue))]">• Linked to: {linkedDealName}</span>
-                  )}
-                </div>
+                <ThreadParticipantsHeader
+                  threadId={thread.provider_thread_id || thread.threadId}
+                  threadEmails={thread.emails}
+                  latest={latest}
+                />
+                {linkedDealName && (
+                  <div className="text-xs text-[hsl(var(--outlook-blue))] mt-0.5">• Linked to: {linkedDealName}</div>
+                )}
               </div>
               {/* Thread count indicator */}
               {totalMessages > 1 && (
