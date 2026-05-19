@@ -21,6 +21,9 @@ import {
   useLenderPreflightChecks,
   type LenderPreflightWarningKind,
 } from '@/hooks/useLenderPreflightChecks';
+import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
+import { useCompany } from '@/hooks/useCompany';
+import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 
 /** Distilled status used for the review screen. */
 export type LenderReviewStatus = 'passed' | 'in-review' | 'no-response';
@@ -34,6 +37,10 @@ export interface LenderReviewRow {
   substage: string | null;
   passReason: string | null;
   lastContactAt: string | null;
+  /** Raw stage id from deal_lenders.stage. */
+  stage: string | null;
+  /** Resolved, user-facing stage label for this lender on this deal. */
+  stageLabel: string;
   /** True by default for `passed`; user can flip. */
   excluded: boolean;
   /**
@@ -56,11 +63,28 @@ interface Props {
   onConfirm: (includedLenderNames: string[], personalize: boolean) => void;
 }
 
-const STATUS_META: Record<LenderReviewStatus, { label: string; className: string }> = {
-  'passed':       { label: 'Passed',      className: 'bg-destructive/15 text-destructive border-destructive/25' },
-  'in-review':    { label: 'In Review',   className: 'bg-amber-500/15 text-amber-600 border-amber-500/25 dark:text-amber-400' },
-  'no-response':  { label: 'No Response', className: 'bg-muted text-muted-foreground border-border' },
-};
+/** Visual treatment for the per-row stage chip, derived from the resolved
+ *  stage label. Keeps Passed visually distinct from active stages so the
+ *  reviewer can scan exclusion candidates fast. */
+function stageBadgeClass(stageLabel: string, status: LenderReviewStatus): string {
+  if (status === 'passed') {
+    return 'bg-destructive/15 text-destructive border-destructive/25';
+  }
+  const n = stageLabel.toLowerCase();
+  if (n.includes('on deck') || n.includes('drl sent') || n.includes('data room')) {
+    return 'bg-blue-500/15 text-blue-600 dark:text-blue-300 border-blue-500/25';
+  }
+  if (n.includes('on hold') || n.includes('hold')) {
+    return 'bg-slate-500/15 text-slate-600 dark:text-slate-300 border-slate-500/25';
+  }
+  if (n.includes('term')) {
+    return 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300 border-emerald-500/25';
+  }
+  if (n.includes('review')) {
+    return 'bg-amber-500/15 text-amber-600 dark:text-amber-300 border-amber-500/25';
+  }
+  return 'bg-muted text-muted-foreground border-border';
+}
 
 function distillStatus(row: { tracking_status: string | null; substage: string | null; last_contact_at: string | null }): LenderReviewStatus {
   const ts = (row.tracking_status || '').toLowerCase();
@@ -79,6 +103,9 @@ function distillStatus(row: { tracking_status: string | null; substage: string |
  */
 export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealName, onConfirm }: Props) {
   const { user } = useAuth();
+  const { company } = useCompany();
+  const isFifthLine = company?.id === FIFTH_LINE_COMPANY_ID;
+  const { resolveStage } = useLenderLabelResolver();
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<LenderReviewRow[]>([]);
   const [confirming, setConfirming] = useState(false);
@@ -117,7 +144,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
       try {
         const { data, error } = await supabase
           .from('deal_lenders')
-          .select('id, name, tracking_status, substage, pass_reason, last_contact_at')
+          .select('id, name, stage, tracking_status, substage, pass_reason, last_contact_at')
           .eq('deal_id', dealId)
           .order('name', { ascending: true });
         if (error) throw error;
@@ -126,6 +153,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
           const status = distillStatus(r);
           const ts = (r.tracking_status || '').toLowerCase();
           const sub = (r.substage || '').toLowerCase();
+          const stageLabel = resolveStage(r.stage) || '';
           // Treat as non-actionable for default view: passed, disqualified,
           // or "not a fit"-style substages.
           const nonActionable =
@@ -143,6 +171,8 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             substage: r.substage ?? null,
             passReason: r.pass_reason ?? null,
             lastContactAt: r.last_contact_at ?? null,
+            stage: r.stage ?? null,
+            stageLabel,
             // Auto-exclude passed / non-actionable lenders by default.
             excluded: nonActionable,
             initiallyExcluded: nonActionable,
@@ -160,17 +190,39 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
       }
     })();
     return () => { cancelled = true; };
-  }, [open, dealId]);
+  }, [open, dealId, resolveStage]);
+
+  /**
+   * 5th Line-only business rule: this modal must surface ONLY lenders whose
+   * current stage on the deal is "On Hold" or "On Deck". We filter the
+   * underlying eligible list (not just the visual layer) so the AI tailoring,
+   * preflight checks, and submission set all stay consistent. The toggle
+   * "All lenders" still works within that filtered universe.
+   */
+  const eligibleRows = useMemo(() => {
+    if (!isFifthLine) return rows;
+    return rows.filter((r) => {
+      const label = (r.stageLabel || '').toLowerCase();
+      const ts = (r.trackingStatus || '').toLowerCase();
+      const stageId = (r.stage || '').toLowerCase();
+      const matches = (s: string) =>
+        label.includes(s) || stageId.includes(s.replace(' ', '-')) || stageId.includes(s);
+      return (
+        matches('on hold') || matches('on deck') ||
+        ts === 'on-hold' || ts === 'on-deck'
+      );
+    });
+  }, [rows, isFifthLine]);
 
   const visibleRows = useMemo(
-    () => (showAll ? rows : rows.filter((r) => !r.initiallyExcluded)),
-    [rows, showAll]
+    () => (showAll ? eligibleRows : eligibleRows.filter((r) => !r.initiallyExcluded)),
+    [eligibleRows, showAll]
   );
-  const hiddenCount = rows.length - visibleRows.length;
+  const hiddenCount = eligibleRows.length - visibleRows.length;
 
   const summary = useMemo(() => {
-    const included = rows.filter((r) => !r.excluded);
-    const excluded = rows.filter((r) => r.excluded);
+    const included = eligibleRows.filter((r) => !r.excluded);
+    const excluded = eligibleRows.filter((r) => r.excluded);
     const passedSkipped = excluded.filter((r) => r.status === 'passed').length;
     const inReviewSkipped = excluded.filter((r) => r.status === 'in-review').length;
     const otherSkipped = excluded.length - passedSkipped - inReviewSkipped;
@@ -181,12 +233,12 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
       inReviewSkipped,
       otherSkipped,
     };
-  }, [rows]);
+  }, [eligibleRows]);
 
   // ── Pre-flight risk checks against currently INCLUDED lenders ───────────
   const includedNames = useMemo(
-    () => rows.filter((r) => !r.excluded).map((r) => r.name),
-    [rows]
+    () => eligibleRows.filter((r) => !r.excluded).map((r) => r.name),
+    [eligibleRows]
   );
   const preflight = useLenderPreflightChecks({
     dealId,
@@ -284,8 +336,8 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
     setConfirming(true);
     try {
       // ── Audit: log who reviewed what for this resubmission round.
-      const includedRows = rows.filter((r) => !r.excluded);
-      const excludedRows = rows.filter((r) => r.excluded);
+      const includedRows = eligibleRows.filter((r) => !r.excluded);
+      const excludedRows = eligibleRows.filter((r) => r.excluded);
       const description =
         `Lender resubmission reviewed${dealName ? ` for ${dealName}` : ''} — ` +
         `submitting to ${includedRows.length}, skipping ${excludedRows.length}` +
@@ -345,15 +397,16 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col">
+      <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Mail className="h-4 w-4 text-primary" />
             Review &amp; Exclude Lenders
           </DialogTitle>
           <DialogDescription>
-            Confirm who to include in this round. Lenders who already passed are pre-excluded —
-            re-include them if you want to follow up.
+            {isFifthLine
+              ? 'Showing lenders currently in On Deck or On Hold for this deal. Confirm who to include in this round.'
+              : 'Confirm who to include in this round. Lenders who already passed are pre-excluded — re-include them if you want to follow up.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -362,10 +415,14 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             <Loader2 className="h-5 w-5 animate-spin mr-2" />
             Loading lenders…
           </div>
-        ) : rows.length === 0 ? (
+        ) : eligibleRows.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <AlertCircle className="h-5 w-5" />
-            <span className="text-sm">No lenders are attached to this deal yet.</span>
+            <span className="text-sm">
+              {isFifthLine
+                ? 'No lenders on this deal are currently in On Deck or On Hold.'
+                : 'No lenders are attached to this deal yet.'}
+            </span>
           </div>
         ) : (
           <ScrollArea className="flex-1 -mx-6 px-6">
@@ -383,7 +440,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
                 <span className="text-muted-foreground">
                   ·{' '}
                   {showAll
-                    ? `${rows.length} lender${rows.length === 1 ? '' : 's'}`
+                    ? `${eligibleRows.length} lender${eligibleRows.length === 1 ? '' : 's'}`
                     : `${visibleRows.length} eligible${
                         hiddenCount > 0 ? ` · ${hiddenCount} hidden` : ''
                       }`}
@@ -396,12 +453,15 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             </div>
             <ul className="divide-y divide-border/60">
               {visibleRows.map((r) => {
-                const meta = STATUS_META[r.status];
+                const chipClass = stageBadgeClass(r.stageLabel, r.status);
+                const chipLabel = r.status === 'passed'
+                  ? 'Passed'
+                  : (r.stageLabel && r.stageLabel.trim()) || 'No Stage';
                 return (
                   <li
                     key={r.id}
                     className={cn(
-                      'flex items-center gap-3 py-2.5',
+                      'flex items-center gap-3 py-2.5 px-2 -mx-2 rounded-md transition-colors hover:bg-muted/40',
                       r.excluded && 'opacity-60',
                     )}
                   >
@@ -425,8 +485,8 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
                         </div>
                       )}
                     </div>
-                    <Badge variant="outline" className={cn('text-[10px] font-medium', meta.className)}>
-                      {meta.label}
+                    <Badge variant="outline" className={cn('text-[10px] font-medium', chipClass)}>
+                      {chipLabel}
                     </Badge>
                     <span className="text-[10px] text-muted-foreground w-16 text-right shrink-0">
                       {r.excluded ? 'Skipping' : 'Included'}
@@ -439,7 +499,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
         )}
 
         <div className="rounded-md border border-border/60 bg-muted/40 px-3 py-2 text-xs text-foreground/90">
-          {rows.length === 0 ? (
+          {eligibleRows.length === 0 ? (
             <span className="text-muted-foreground">Nothing to submit.</span>
           ) : (
             <>
@@ -566,11 +626,11 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
+                  variant="liquid-glass"
                   onClick={proceedWithAllLenders}
-                  className="h-7 text-[11px] border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10"
+                  className="h-7 text-[11px] gap-1.5"
                 >
-                  <CheckCircle2 className="h-3 w-3 mr-1.5" />
+                  <CheckCircle2 className="h-3 w-3" />
                   Proceed with all lenders
                 </Button>
               </div>
@@ -621,6 +681,8 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             Cancel
           </Button>
           <Button
+            variant="liquid-glass"
+            className="gap-2"
             onClick={handleConfirm}
             disabled={loading || confirming || summary.includedCount === 0}
           >
