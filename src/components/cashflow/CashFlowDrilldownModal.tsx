@@ -598,7 +598,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                                 size="sm"
                                 variant="ghost"
                                 className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
-                                onClick={() => handleDelete(r.entryId)}
+                                onClick={() => setDeletePrompt(r)}
                                 disabled={isBusy}
                                 title="Delete entry"
                               >
