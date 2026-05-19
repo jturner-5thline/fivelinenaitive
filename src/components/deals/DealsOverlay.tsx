@@ -2,22 +2,66 @@ import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-
-const DealsPage = React.lazy(() => import('@/pages/Deals'));
+import DealsPage from '@/pages/Deals';
 
 interface DealsOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
+/** Error boundary so a thrown error inside the Deals tree renders a
+ *  readable fallback inside the popup instead of leaving it blank. */
+class DealsErrorBoundary extends React.Component<
+  { onReset: () => void; children: React.ReactNode },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: React.ErrorInfo) {
+    // eslint-disable-next-line no-console
+    console.error('[DealsOverlay] render error', error, info);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex h-full w-full flex-col items-center justify-center gap-3 p-8 text-center">
+          <p className="text-sm font-medium text-foreground">Couldn't load Deals</p>
+          <p className="max-w-md text-xs text-muted-foreground">
+            {this.state.error.message || 'An unexpected error occurred while rendering the Deals view.'}
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              this.setState({ error: null });
+              this.props.onReset();
+            }}
+          >
+            Retry
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 /**
- * Standalone modal that hosts the full /deals view inside an iframe.
- * Loaded with `?embedded=1` so AppLayout strips its chrome (sidebar,
- * header, banners) and the iframe renders only the Deals page surface.
- * Independent from the Daily Rundown briefing modal — this is purely a
- * shortcut to the Deals tab content without leaving the current route.
+ * Standalone modal that mounts the real `/deals` page component (same
+ * providers, hooks, contexts, and side effects) inside an overlay. Used as
+ * the "Deal Rundown" shortcut from Daily Rundown so the popup shows the
+ * identical Deals view without navigating away.
  */
 export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
+  // Force the Deals page to remount each time the overlay opens so its
+  // contexts, queries, and viewMode initialization run from scratch.
+  const [mountKey, setMountKey] = React.useState(0);
+  React.useEffect(() => {
+    if (open) setMountKey((k) => k + 1);
+  }, [open]);
+
   // Close on Escape.
   React.useEffect(() => {
     if (!open) return;
@@ -31,9 +75,6 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
   if (!open || typeof document === 'undefined') return null;
 
   const overlay = (
-    // Flex/grid centering only — no transform: translate(-50%, -50%).
-    // Opacity-only fade-in on the outer wrapper so no text-bearing
-    // container ever animates scale.
     <div
       role="dialog"
       aria-modal="true"
@@ -44,11 +85,6 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
-      {/*
-        Panel: no transform, no filter/backdrop-filter, no will-change,
-        no scale animation. Solid background so subpixel text rendering
-        stays crisp on every GPU.
-      */}
       <div
         className="relative z-10 w-[96vw] h-[94vh] rounded-2xl overflow-hidden border border-border bg-background shadow-2xl flex flex-col"
         style={{ transform: 'none', filter: 'none', backdropFilter: 'none', willChange: 'auto' }}
@@ -65,9 +101,17 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
           </Button>
         </div>
         <div className="flex-1 min-h-0 overflow-auto bg-background">
-          <React.Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading Deals…</div>}>
-            <DealsPage />
-          </React.Suspense>
+          <DealsErrorBoundary onReset={() => setMountKey((k) => k + 1)}>
+            <React.Suspense
+              fallback={
+                <div className="flex h-full w-full items-center justify-center p-8 text-sm text-muted-foreground">
+                  Loading Deals…
+                </div>
+              }
+            >
+              <DealsPage key={mountKey} />
+            </React.Suspense>
+          </DealsErrorBoundary>
         </div>
       </div>
     </div>
