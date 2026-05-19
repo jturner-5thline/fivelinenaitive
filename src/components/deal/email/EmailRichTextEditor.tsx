@@ -506,7 +506,11 @@ function Toolbar({
               variant="outline"
               className="h-6 text-xs"
               onClick={() => {
-                editor.chain().focus().unsetLink().run();
+                const range = savedRangeRef.current;
+                const chain = editor.chain();
+                if (range) chain.setTextSelection(range);
+                chain.extendMarkRange('link').unsetLink().run();
+                savedRangeRef.current = null;
                 setLinkOpen(false);
               }}
             >
