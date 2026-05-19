@@ -38,6 +38,7 @@ import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
+import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
 import {
@@ -47,6 +48,28 @@ import {
   inboundProposedTimes,
 } from './scheduleIntent';
 import { CalendarClock } from 'lucide-react';
+
+/**
+ * Cheap classifier for "this inbound is a calendar invite or an automated
+ * notification" — used to suppress the auto-surfaced AvailabilityCheckCard
+ * (we never want to ask James to "confirm a time" for a Google Calendar
+ * invite, an OOO bounce, or a noreply newsletter). Intentionally
+ * conservative; false negatives just mean the parser may run on
+ * marketing mail and self-hide via `hideWhenEmpty`.
+ */
+function isCalendarOrAutomatedNoise(thread: { latestEmail: any; subject?: string | null }): boolean {
+  const m = thread.latestEmail || {};
+  const from = String(m.from_email || '').toLowerCase();
+  const subject = String(thread.subject || m.subject || '').toLowerCase();
+  const body = String(m.body_text || m.body_preview || m.snippet || '').toLowerCase();
+  // Common automated / no-reply senders
+  if (/(no[-_.]?reply|noreply|donotreply|mailer-daemon|postmaster|notifications?@|calendar-(server|noreply)|invitation@|reply\+.*@reply\.github\.com)/i.test(from)) return true;
+  // Google / Outlook / iCal invite patterns
+  if (/calendar\.google\.com|outlook\.live\.com\/calendar|invite\.ics|begin:vcalendar/i.test(body)) return true;
+  if (/^(invitation|updated invitation|canceled event|accepted|declined|tentative): /i.test(subject)) return true;
+  if (Array.isArray(m.attachments) && m.attachments.some((a: any) => /\.ics$/i.test(String(a?.filename || a)))) return true;
+  return false;
+}
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -1089,6 +1112,37 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               onInsertIntoReply={onInsertDraft}
             />
           )}
+
+          {/* Auto-surface availability check — when an inbound email
+              proposes specific meeting times, parse them, cross-reference
+              James's calendar, and show selectable slot chips with
+              Available/Conflict status + one-click reply suggestions.
+              Skipped on outbound-only threads, calendar invites, and
+              automated notifications. The card self-hides via
+              `hideWhenEmpty` if the LLM parser ultimately finds no
+              concrete slots. We also suppress it while the full
+              MeetingSchedulerCard is open so we don't double-render the
+              same component. */}
+          {(() => {
+            const latest = thread.latestEmail;
+            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            if (fromMe) return null;
+            if (schedulerOpen) return null;
+            if (isCalendarOrAutomatedNoise(thread)) return null;
+            const inboundTexts = [
+              latest?.body_text,
+              latest?.body_preview,
+              latest?.snippet,
+            ];
+            if (!inboundProposedTimes(inboundTexts)) return null;
+            return (
+              <AvailabilityCheckCard
+                thread={thread}
+                onInsertDraft={onInsertDraft}
+                hideWhenEmpty
+              />
+            );
+          })()}
 
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
