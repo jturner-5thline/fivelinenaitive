@@ -77,6 +77,12 @@ export const HomepageFromBlog = () => {
     };
   }, [api]);
 
+  // Re-measure embla once posts arrive so slide widths apply
+  useEffect(() => {
+    if (!api || !posts) return;
+    requestAnimationFrame(() => api.reInit());
+  }, [api, posts]);
+
   if (!posts || posts.length === 0) return null;
 
   return (
