@@ -1264,6 +1264,105 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
   }
 
   if (!parseResult || !parseResult.detected) {
+    // Open-availability mode: render the calendar-grounded reply
+    // suggestions instead of the "no times detected" placeholder.
+    if (openIntentActive) {
+      return (
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+          <Header
+            rightSlot={
+              <button
+                type="button"
+                onClick={runAnalysis}
+                className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                aria-label="Re-analyze"
+              >
+                <RefreshCw className="h-3 w-3" /> Refresh
+              </button>
+            }
+          />
+          {loadingCalendar ? (
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Reading your calendar for open slots…
+            </div>
+          ) : openSlots && openSlots.length > 0 ? (
+            <div className="mt-2 flex items-center gap-1.5 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 py-1.5 text-[11.5px] text-emerald-200">
+              <CalendarRange className="h-3 w-3" />
+              <span>
+                Found {openSlots.length} open slot{openSlots.length === 1 ? '' : 's'} in
+                {' '}next {openHorizonDays === 7 ? '7 days' : '2 weeks'}
+                {openConstraints.timeOfDay ? ` · ${openConstraints.timeOfDay}` : ''}
+                {openConstraints.daysOfWeek && openConstraints.daysOfWeek.size > 0 && openConstraints.daysOfWeek.size < 7
+                  ? ` · ${Array.from(openConstraints.daysOfWeek).map((d) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join('/')}`
+                  : ''}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-1.5 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[11.5px] text-amber-200">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                <span className="min-w-0">
+                  No calendar slots found — check Google Calendar connection.
+                </span>
+              </div>
+              <Link
+                to="/integrations"
+                className="inline-flex items-center gap-1 text-[10px] text-amber-100 underline-offset-2 hover:underline"
+              >
+                <ExternalLink className="h-2.5 w-2.5" /> Open integration settings
+              </Link>
+            </div>
+          )}
+          {dynamicReplies.length > 0 && (
+            <div className="mt-3 border-t border-white/[0.05] pt-2">
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                Suggested replies (from your calendar)
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {dynamicReplies.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      onInsertDraft(s.body);
+                      toast.success('Draft inserted — review before sending');
+                    }}
+                    className="group rounded-md border border-white/[0.06] bg-white/[0.02] p-2 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <div className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                      {s.label.startsWith('Propose a scheduling link') && <Link2 className="h-3 w-3 text-primary" />}
+                      {s.label}
+                    </div>
+                    <div className="mt-0.5 line-clamp-3 whitespace-pre-line text-[10px] text-muted-foreground group-hover:text-foreground/80">
+                      {s.body}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {!bookingLink && (
+                <p className="mt-2 text-[10px] text-muted-foreground">
+                  Tip: save a booking link in your browser to enable a one-click scheduling-link reply.{' '}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      const url = window.prompt('Paste your scheduling link (e.g. Calendly URL):', '');
+                      if (url && /^https?:\/\//i.test(url)) {
+                        try { window.localStorage.setItem(BOOKING_LINK_STORAGE_KEY, url); } catch { /* ignore */ }
+                        setBookingLink(url);
+                        toast.success('Booking link saved.');
+                      }
+                    }}
+                  >
+                    Add link
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
     if (hideWhenEmpty) return null;
     return (
       <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
