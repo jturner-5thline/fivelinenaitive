@@ -40,6 +40,7 @@ import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } 
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { usePersistentClears } from '@/hooks/usePersistentClears';
+import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
