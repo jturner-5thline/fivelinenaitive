@@ -26,6 +26,26 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
   const [height, setHeight] = useState<number>(320);
   const frameId = useRef<string>(`bef-${Math.random().toString(36).slice(2)}`);
 
+  // Resolve themed surface colors from the parent document so the sandboxed
+  // iframe (which can't read our CSS vars) matches the Naitive email reader
+  // instead of painting a raw white background behind every branded email.
+  const theme = useMemo(() => {
+    try {
+      const cs = getComputedStyle(document.documentElement);
+      const hsl = (name: string, fallback: string) => {
+        const v = cs.getPropertyValue(name).trim();
+        return v ? `hsl(${v})` : fallback;
+      };
+      return {
+        bg: hsl('--email-reading-bg', '#1b1f2a'),
+        text: hsl('--email-text-primary', '#f5f5f5'),
+        link: hsl('--primary', '#7aa7ff'),
+      };
+    } catch {
+      return { bg: '#1b1f2a', text: '#f5f5f5', link: '#7aa7ff' };
+    }
+  }, [html]);
+
   const srcDoc = useMemo(() => {
     try {
       const clean = DOMPurify.sanitize(html, {
@@ -42,11 +62,14 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
       const fid = JSON.stringify(frameId.current);
       const closeScript = '<' + '/script>';
       return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>
-html,body{margin:0;padding:0;background:#ffffff;color:#1a1a1a;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+html,body{margin:0;padding:0;background:${theme.bg} !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 body{padding:24px;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;}
+/* Neutralize hardcoded white/light backgrounds the email author set on top-level wrappers so the message blends into the Naitive reading surface. */
+body > table, body > div, body > center { background:transparent !important; background-color:transparent !important; }
+body > center > table, body > table > tbody > tr > td { background-color:transparent !important; }
 img{max-width:100% !important;height:auto !important;border:0;}
 table{max-width:100% !important;}
-a{color:#0a66c2;}
+a{color:${theme.link};}
 a[role="button"],.cta,.button,.btn{display:inline-block;}
 </style></head><body>${clean}<script>(function(){
 var fid=${fid};
@@ -59,7 +82,7 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
       onError?.(err);
       return null;
     }
-  }, [html, onError]);
+  }, [html, onError, theme]);
 
   useEffect(() => {
     function onMessage(ev: MessageEvent) {
@@ -76,13 +99,19 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
   if (!srcDoc) return null;
 
   return (
-    <div className={cn('w-full min-w-0 overflow-hidden rounded-md border border-[hsl(var(--email-border))] bg-white', className)}>
+    <div
+      className={cn(
+        'w-full min-w-0 overflow-hidden rounded-md border border-[hsl(var(--email-border))]',
+        className,
+      )}
+      style={{ background: theme.bg }}
+    >
       <iframe
         ref={iframeRef}
         title="Email content"
         sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
         srcDoc={srcDoc}
-        style={{ width: '100%', height, border: 0, display: 'block', background: '#ffffff' }}
+        style={{ width: '100%', height, border: 0, display: 'block', background: theme.bg }}
         onError={(e) => onError?.(e)}
       />
     </div>
