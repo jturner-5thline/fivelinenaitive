@@ -954,6 +954,15 @@ function EmailTab({
   // before the next briefing data refetch lands. Behavior parity with the
   // main Email pop-up which optimistically removes the affected row.
   const [hiddenIds, setHiddenIds] = useState<Set<string>>(() => new Set());
+  // Persistent, per-user "Hide from Rundown" dismissals. These DO NOT
+  // touch the underlying Gmail item — they only suppress the row from this
+  // surface. Reuses the same DB-backed clears table as End of Day so the
+  // pattern stays consistent across rundown tabs.
+  const rundownClears = useDbPersistentClears('daily_rundown_email');
+  // Stable identity for an email row: prefer provider IDs so the same
+  // message stays hidden across refreshes and re-fetches.
+  const rundownKey = (e: any): string =>
+    (e?.gmail_message_id || e?.thread_id || e?.id || '').toString();
   // Local read/star overrides so the row reflects the action instantly.
   const [overrides, setOverrides] = useState<Record<string, { is_read?: boolean; is_starred?: boolean }>>({});
   // Email-to-task creation modal state (one shared modal per tab).
@@ -1016,6 +1025,7 @@ function EmailTab({
   // so counts, groupings, and the rendered list all stay consistent.
   const withOverrides = emails
     .filter((e: any) => !hiddenIds.has(e.id))
+    .filter((e: any) => !rundownClears.isCleared(rundownKey(e)))
     .map((e: any) => {
       const ov = overrides[e.id];
       return ov ? { ...e, ...ov } : e;
