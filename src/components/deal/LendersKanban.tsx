@@ -204,11 +204,8 @@ function DraggableLenderTile({
         <Badge
           variant="secondary"
           className={cn(
-            "text-[10px] font-medium px-2 py-0.5",
-            lender.trackingStatus === 'passed' && "bg-destructive/15 text-destructive border-destructive/20",
-            lender.trackingStatus === 'active' && "bg-green-500/15 text-green-400 border-green-500/20",
-            lender.trackingStatus === 'on-deck' && "bg-blue-500/15 text-blue-400 border-blue-500/20",
-            lender.trackingStatus === 'on-hold' && "bg-yellow-500/15 text-yellow-400 border-yellow-500/20"
+            "text-[10px] font-medium px-2 py-0.5 transition-colors",
+            getLenderStatusTheme(lender.trackingStatus).tag,
           )}
         >
           {stageLabel}
