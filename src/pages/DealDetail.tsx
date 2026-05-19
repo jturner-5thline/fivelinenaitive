@@ -37,6 +37,7 @@ import { FlagNoteDialog } from '@/components/deals/FlagNoteDialog';
 import { useDealAttachments, DealAttachmentCategory, DEAL_ATTACHMENT_CATEGORIES, UploadProgress } from '@/hooks/useDealAttachments';
 import { UploadProgressOverlay } from '@/components/deal/UploadProgressOverlay';
 import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToClientContactButton';
+import { FlexVisibilityBadge } from '@/components/deal/FlexVisibilityBadge';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -2747,6 +2748,9 @@ export default function DealDetail() {
             )}
 
             <div className="flex items-center gap-2 flex-wrap ml-auto">
+              {deal?.id && (
+                <FlexVisibilityBadge dealId={deal.id} stage={deal.stage} />
+              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button

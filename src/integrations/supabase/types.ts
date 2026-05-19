@@ -8807,6 +8807,7 @@ export type Database = {
           exclusivity: string | null
           fee_type: string | null
           flag_notes: string | null
+          flex_visibility_override: string | null
           hubspot_deal_id: string | null
           hubspot_last_synced_at: string | null
           hubspot_sync_error: string | null
@@ -8888,6 +8889,7 @@ export type Database = {
           exclusivity?: string | null
           fee_type?: string | null
           flag_notes?: string | null
+          flex_visibility_override?: string | null
           hubspot_deal_id?: string | null
           hubspot_last_synced_at?: string | null
           hubspot_sync_error?: string | null
@@ -8969,6 +8971,7 @@ export type Database = {
           exclusivity?: string | null
           fee_type?: string | null
           flag_notes?: string | null
+          flex_visibility_override?: string | null
           hubspot_deal_id?: string | null
           hubspot_last_synced_at?: string | null
           hubspot_sync_error?: string | null
@@ -22842,6 +22845,7 @@ export type Database = {
         Returns: boolean
       }
       is_fifth_line_internal_admin: { Args: never; Returns: boolean }
+      is_flex_hidden_stage: { Args: { p_stage: string }; Returns: boolean }
       is_same_company_as_user: {
         Args: { _current_user_id: string; _deal_owner_id: string }
         Returns: boolean

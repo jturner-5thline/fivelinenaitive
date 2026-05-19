@@ -7,6 +7,7 @@ import { addDays } from 'date-fns';
 import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naitivePipelineExclusion';
 import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage, isNdaNeedsListSentStage } from '@/utils/autoPopulateOutstandingItems';
 import { checkStageChangeWorkflows } from '@/lib/emailWorkflowTrigger';
+import { isFlexHiddenStage, prettyStageLabel } from '@/lib/flexVisibility';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -774,7 +775,35 @@ export function useDealsDatabase() {
         .eq('id', dealId);
 
       if (error) throw error;
-      
+
+      // Toast when a stage change pushes the deal out of the FLEx marketplace.
+      // The DB trigger already fires the unpublish — this just surfaces feedback.
+      if (
+        updates.stage !== undefined &&
+        previousDeal &&
+        updates.stage !== previousDeal.stage &&
+        isFlexHiddenStage(updates.stage) &&
+        !isFlexHiddenStage(previousDeal.stage)
+      ) {
+        try {
+          const { data: lastSuccess } = await supabase
+            .from('flex_sync_history')
+            .select('id')
+            .eq('deal_id', dealId)
+            .eq('status', 'success')
+            .limit(1)
+            .maybeSingle();
+          if (lastSuccess) {
+            toast({
+              title: 'Removed from FLEx',
+              description: `${previousDeal.company} has been removed from FLEx (stage: ${prettyStageLabel(updates.stage as string)}).`,
+            });
+          }
+        } catch (e) {
+          /* non-fatal */
+        }
+      }
+
       // Auto-populate Outstanding Items when deal moves to Active Pipeline
       if (updates.pipelineId && previousDeal && updates.pipelineId !== previousDeal.pipelineId) {
         try {
