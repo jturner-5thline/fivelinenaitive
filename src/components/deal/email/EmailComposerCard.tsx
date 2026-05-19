@@ -1231,22 +1231,6 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
       {/* Toolbar — Insert · AI · Send (formatting lives in the editor toolbar) */}
       <div className="flex items-center flex-wrap gap-y-1 px-4 py-2 border-t border-white/10 bg-white/[0.02]">
         <ToolbarZone>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 h-7 text-xs text-foreground/60 hover:text-foreground hover:bg-white/[0.06]"
-                onClick={triggerFilePicker}
-                aria-label="Attach file"
-              >
-                <Paperclip className="h-3 w-3" />Attach
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">
-              Attach a file (max {Math.round(maxAttachmentBytes / (1024 * 1024))}MB total)
-            </TooltipContent>
-          </Tooltip>
           {resolvedDataRoomUrl && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -1265,7 +1249,6 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
               </TooltipContent>
             </Tooltip>
           )}
-          <SnippetPicker onInsert={insertAtCursor} tokenContext={tokenContext} />
           <Tooltip open={polishTooltipOpen || undefined}>
             <TooltipTrigger asChild>
               <Button
@@ -1296,23 +1279,6 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         </ToolbarZone>
 
         <ToolbarDivider />
-
-        <ToolbarZone>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="gap-1 h-7 text-xs text-[hsl(180_72%_60%)] hover:text-[hsl(180_72%_70%)] hover:bg-[hsl(180_72%_45%)]/10"
-                onClick={requestAiDraft}
-                aria-label="Draft with AI (⌘J)"
-              >
-                <Sparkles className="h-3 w-3" />Draft with AI
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="top" className="text-xs">Draft with AI (⌘J)</TooltipContent>
-          </Tooltip>
-        </ToolbarZone>
 
         <div className="flex-1" />
 
