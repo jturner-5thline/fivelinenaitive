@@ -10,6 +10,7 @@ import { YourReplyComposer } from './YourReplyComposer';
 import { LinkToDealPopover } from './LinkToDealPopover';
 import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { Button } from '@/components/ui/button';
+import { useAssistEnabled } from '@/hooks/useAssistEnabled';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -1822,10 +1823,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
+  // Assist feature governance: when disabled for the resolved
+  // company/tenant context, every AI Assist email surface (sidebar,
+  // toggle, thread summary popover) is hidden — no dead controls.
+  const assistEnabled = useAssistEnabled();
   // AI Assist sidebar is always-on by default. On desktop it's persistently rendered;
   // on smaller widths it collapses into a toggleable drawer driven by this state.
   const AI_ASSIST_PREF_KEY = 'email.aiAssistOpen';
-  const [showAiAssist, setShowAiAssist] = useState<boolean>(() => {
+  const [showAiAssistPref, setShowAiAssist] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     try {
       const raw = window.localStorage.getItem(AI_ASSIST_PREF_KEY);
@@ -1834,6 +1839,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       return true;
     }
   });
+  // Effective visibility — user pref AND Assist feature is enabled for
+  // this account/company. Keeps downstream layout math (grid columns,
+  // resize observers) honest when Assist is gated off.
+  const showAiAssist = assistEnabled && showAiAssistPref;
   const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
   const messagePaneRef = useRef<HTMLDivElement | null>(null);
   const aiAssistPaneRef = useRef<HTMLDivElement | null>(null);
@@ -1849,11 +1858,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, []);
   useEffect(() => {
     try {
-      window.localStorage.setItem(AI_ASSIST_PREF_KEY, showAiAssist ? '1' : '0');
+      // Persist the user *preference*, not the gated effective state, so a
+      // user who turned Assist on doesn't lose their pref if an admin
+      // temporarily disables the Assist feature for the workspace.
+      window.localStorage.setItem(AI_ASSIST_PREF_KEY, showAiAssistPref ? '1' : '0');
     } catch {
       /* ignore */
     }
-  }, [showAiAssist]);
+  }, [showAiAssistPref]);
   useEffect(() => {
     if (typeof window === 'undefined' || !showAiAssist) return;
     const emailPaneEl = messagePaneRef.current;
@@ -2686,12 +2698,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
-        setShowAiAssist((v) => !v);
+        // Honor Assist gating — when disabled for this account/company,
+        // the keyboard shortcut is a no-op (no hidden affordance).
+        if (assistEnabled) setShowAiAssist((v) => !v);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [thread, onToggleLink, handleReply]);
+  }, [thread, onToggleLink, handleReply, assistEnabled]);
 
   const latest = thread.latestEmail;
   const senderName = latest.from_name === 'You' ? latest.to_name : latest.from_name;
@@ -2813,10 +2827,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
             </Tooltip>
 
-            <div className="w-px h-8 bg-border/50 mx-1" />
+            {assistEnabled && <div className="w-px h-8 bg-border/50 mx-1" />}
 
             {/* AI Assist toggle — sidebar is always-on by default on desktop;
-                on smaller widths this button expands the collapsed AI panel. */}
+                on smaller widths this button expands the collapsed AI panel.
+                Entire control is omitted (no dead/disabled affordance) when
+                Assist is gated off for this account/company. */}
+            {assistEnabled && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -2839,6 +2856,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 {showAiAssist ? 'Hide AI Assist (A)' : 'Show AI Assist (A)'}
               </TooltipContent>
             </Tooltip>
+            )}
 
             {hasUploadableAttachments && (
               <Tooltip>
@@ -3067,10 +3085,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                       {isFullyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                   </div>
-                  {/* Thread Summary trigger — opens a compact glass popover.
+                   {/* Thread Summary trigger — AI surface, only shown when
+                       Assist is enabled for the current company/tenant.
+                       Opens a compact glass popover.
                       Click-outside dismissal, Escape, and focus return are
                       handled by Radix Popover inside ThreadSummaryCard. */}
-                  <ThreadSummaryCard thread={thread} dealId={effectiveDealId} variant="inline-button" />
+                  {assistEnabled && (
+                    <ThreadSummaryCard thread={thread} dealId={effectiveDealId} variant="inline-button" />
+                  )}
                 </div>
               )}
             </div>
