@@ -27,6 +27,7 @@ import {
 import { STATUS_CONFIG, type DealStatus } from '@/types/deal';
 import { DealStatusTag } from './DealStatusTag';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useInvalidateDealFreshness } from '@/hooks/useDealFreshness';
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
@@ -47,6 +48,7 @@ export function EditableDealStatusTag({
   hideChevron,
 }: EditableDealStatusTagProps) {
   const { updateDealStatus } = useDealsContext();
+  const invalidateFreshness = useInvalidateDealFreshness();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -59,16 +61,22 @@ export function EditableDealStatusTag({
     const previous = current;
     try {
       await updateDealStatus(dealId, next);
+      // Recompute the left-column tile glow immediately — if the deal is
+      // now fresh, the stale ring drops off on the next render tick.
+      invalidateFreshness();
       toast.success(`Status updated to ${STATUS_CONFIG[next].label}`);
     } catch (err: any) {
       console.error('[EditableDealStatusTag] update failed', err);
       toast.error('Failed to update status', { description: err?.message });
       // Best-effort rollback so other consumers stay in sync.
-      try { await updateDealStatus(dealId, previous); } catch { /* swallow */ }
+      try {
+        await updateDealStatus(dealId, previous);
+        invalidateFreshness();
+      } catch { /* swallow */ }
     } finally {
       setPending(false);
     }
-  }, [current, dealId, updateDealStatus]);
+  }, [current, dealId, updateDealStatus, invalidateFreshness]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
