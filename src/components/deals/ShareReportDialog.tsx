@@ -387,6 +387,8 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
                             <span className="text-muted-foreground shrink-0">—</span>
                             <span className="text-foreground font-bold tabular-nums shrink-0">{formatAmount(d.value || 0)}</span>
                             <span className="text-muted-foreground shrink-0">—</span>
+                            <span className="text-foreground font-bold shrink-0">{stageTitleForDeal(d)}</span>
+                            <span className="text-muted-foreground shrink-0">—</span>
                             <div className="flex-1 min-w-0 flex flex-col gap-1">
                               <Input
                                 value={value}
