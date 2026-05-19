@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X, Pencil, Trash2, Check } from 'lucide-react';
+import { Search, X, Pencil, Trash2, Check, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   generateOccurrences,
@@ -705,9 +705,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                               </Button>
                             )}
                             {r.source !== 'manual' && (
-                              <span className="text-[10px] text-muted-foreground self-center pr-1">
-                                Auto
-                              </span>
+                              <SourceLockedAction row={r} />
                             )}
                           </div>
                         </td>
