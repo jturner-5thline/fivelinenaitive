@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Building2 } from 'lucide-react';
+import { Building2, Sparkles } from 'lucide-react';
 
 const FEATURE_FLAGS = [
   { key: 'workflows_enabled', label: 'Workflows', description: 'Enable the Workflows page in the sidebar' },
@@ -18,6 +18,25 @@ const FEATURE_FLAGS = [
 ] as const;
 
 type FeatureKey = typeof FEATURE_FLAGS[number]['key'];
+
+/**
+ * Assist is a tri-state flag (true / false / null) — null inherits the
+ * tenant default (5thline.co => on, all other tenants => off). It is
+ * surfaced separately from the simple boolean toggles so admins can see
+ * and choose inheritance explicitly.
+ */
+type AssistOverride = 'inherit' | 'on' | 'off';
+
+function assistValueToChoice(v: boolean | null | undefined): AssistOverride {
+  if (v === true) return 'on';
+  if (v === false) return 'off';
+  return 'inherit';
+}
+function assistChoiceToValue(c: AssistOverride): boolean | null {
+  if (c === 'on') return true;
+  if (c === 'off') return false;
+  return null;
+}
 
 export function CompanyFeaturesPanel() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -39,6 +58,19 @@ export function CompanyFeaturesPanel() {
       toast.success(`Feature ${value ? 'enabled' : 'disabled'}`);
     } catch (error: any) {
       toast.error(error.message || 'Failed to update feature');
+    }
+  };
+
+  const handleAssistChange = async (choice: AssistOverride) => {
+    try {
+      await updateFeatures.mutateAsync({ assist_enabled: assistChoiceToValue(choice) });
+      toast.success(
+        choice === 'inherit'
+          ? 'Assist reverted to account default'
+          : `Assist ${choice === 'on' ? 'enabled' : 'disabled'} for this company`,
+      );
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update Assist setting');
     }
   };
 
@@ -90,6 +122,45 @@ export function CompanyFeaturesPanel() {
                 />
               </div>
             ))
+          )}
+
+          {!featuresLoading && (
+            <div className="flex items-start justify-between rounded-lg border border-border p-4 gap-4">
+              <div className="space-y-1 min-w-0">
+                <Label className="text-sm font-medium inline-flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-[hsl(var(--outlook-blue))]" />
+                  Assist
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  AI Assist sidebar, thread summaries, and AI draft replies in email.
+                  Inherit follows the account default — on for 5th Line accounts, off for all others.
+                </p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  Current effective state:{' '}
+                  <span className="font-medium text-foreground">
+                    {assistValueToChoice(features?.assist_enabled) === 'inherit'
+                      ? 'Inherited from account default'
+                      : assistValueToChoice(features?.assist_enabled) === 'on'
+                      ? 'Explicitly enabled for this company'
+                      : 'Explicitly disabled for this company'}
+                  </span>
+                </p>
+              </div>
+              <Select
+                value={assistValueToChoice(features?.assist_enabled)}
+                onValueChange={(v) => handleAssistChange(v as AssistOverride)}
+                disabled={updateFeatures.isPending}
+              >
+                <SelectTrigger className="w-[180px] shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">Inherit (default)</SelectItem>
+                  <SelectItem value="on">Enabled</SelectItem>
+                  <SelectItem value="off">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           )}
         </div>
       )}
