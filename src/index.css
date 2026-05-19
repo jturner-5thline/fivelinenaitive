@@ -331,13 +331,15 @@
 
 [data-inbox-surface-scope="message"],
 [data-inbox-surface-scope="assistant"] {
-  background-color: hsl(var(--inbox-surface));
-  background-image: none;
+  /* Inherit the popup-shell-surface gradient from the dialog so every inbox
+     pane (list, message, AI Assist) matches the Deal pop-up exactly. */
+  background-color: transparent !important;
+  background-image: none !important;
 }
 
 [data-inbox-surface-scope="message"]:is([style]),
 [data-inbox-surface-scope="assistant"]:is([style]) {
-  background-color: hsl(var(--inbox-surface));
+  background-color: transparent !important;
 }
 
 [data-inbox-surface-scope="message"] :is(div, section, article, header, footer, aside, ul, li)[class*="bg-card/"],
