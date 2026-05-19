@@ -1803,6 +1803,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     }
   });
   const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
+  const messagePaneRef = useRef<HTMLDivElement | null>(null);
+  const aiAssistPaneRef = useRef<HTMLDivElement | null>(null);
   // The open-email command bar is portalled into the unified mail header
   // (#email-detail-toolbar-slot) so Close/Reply/Forward/Delete/Archive/Flag/
   // AI Assist/Link Deal/Expand share a single horizontal row with New +
@@ -1820,6 +1822,44 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       /* ignore */
     }
   }, [showAiAssist]);
+  useEffect(() => {
+    if (typeof window === 'undefined' || !showAiAssist) return;
+    const emailPaneEl = messagePaneRef.current;
+    const aiAssistPaneEl = aiAssistPaneRef.current;
+    if (!emailPaneEl || !aiAssistPaneEl) return;
+
+    const getPaintChain = (label: string, el: HTMLElement) => {
+      const rows: Array<Record<string, string>> = [];
+      let current: HTMLElement | null = el;
+      while (current && current !== document.body) {
+        const style = window.getComputedStyle(current);
+        const bg = style.backgroundColor;
+        const image = style.backgroundImage;
+        const filter = style.backdropFilter;
+        if (bg !== 'rgba(0, 0, 0, 0)' || image !== 'none' || filter !== 'none') {
+          rows.push({
+            panel: label,
+            element: current.tagName.toLowerCase(),
+            classList: current.className || '(none)',
+            backgroundColor: bg,
+            backgroundImage: image,
+            opacity: style.opacity,
+            backdropFilter: filter,
+          });
+        }
+        current = current.parentElement;
+      }
+      return rows;
+    };
+
+    const email = window.getComputedStyle(emailPaneEl).backgroundColor;
+    const ai = window.getComputedStyle(aiAssistPaneEl).backgroundColor;
+    console.table([
+      ...getPaintChain('email', emailPaneEl),
+      ...getPaintChain('ai', aiAssistPaneEl),
+    ]);
+    console.assert(email === ai, `MISMATCH: email=${email} ai=${ai}`);
+  }, [showAiAssist, thread.threadId]);
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
   const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
