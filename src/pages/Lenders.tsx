@@ -294,7 +294,10 @@ export default function Lenders() {
     // against deal activity (e.g., "Active Deals" filter).
     mode: 'all',
     eagerAll: true,
-    pageSize: 1000,
+    // First-page payload kept small so the directory becomes interactive almost
+    // immediately. The hook continues streaming the remainder in the background
+    // (eagerAll) without blocking the shell or initial rows.
+    pageSize: 100,
     orderBy: { column: 'name', ascending: true },
     // No server-side searchQuery — we filter on the client across many fields.
   });
