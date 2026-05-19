@@ -34,6 +34,24 @@ async function asanaFetch(path: string, token: string, options: RequestInit = {}
   return res.json();
 }
 
+// Fetch variant that returns rich diagnostics (status + parsed body) instead of
+// throwing — used by create_task / update_task so the client can persist the
+// exact failure reason on the naitive task row.
+async function asanaFetchDetailed(path: string, token: string, options: RequestInit = {}) {
+  const res = await fetch(`${ASANA_API}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const rawText = await res.text();
+  let parsed: unknown = null;
+  try { parsed = rawText ? JSON.parse(rawText) : null; } catch { parsed = { raw: rawText }; }
+  return { ok: res.ok, status: res.status, body: parsed as any };
+}
+
 function normalizeInitiativeStatus(raw: unknown): { key: string | null; label: string | null } {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
   if (!value) return { key: null, label: null };
