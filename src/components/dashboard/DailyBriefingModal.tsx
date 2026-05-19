@@ -68,6 +68,15 @@ const COLLAPSED_ACTIVITY_EMAILS = new Set<string>([
   'jmoffitt@5thline.co',
 ]);
 
+// Users for whom the Daily Rundown > Financial tab swaps the compact
+// weekly summary for an embedded, read-only render of the full Finance
+// Cashflow section (charts + table). Clicking the embed routes to the
+// full Finance > Cashflow page for editing.
+const CASHFLOW_EMBED_EMAILS = new Set<string>([
+  'jturner@5thline.co',
+  'jmoffitt@5thline.co',
+]);
+
 interface DailyBriefingModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
