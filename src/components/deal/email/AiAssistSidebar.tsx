@@ -219,6 +219,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       window.removeEventListener('naitive:ai-assist:popout-closed', onClose);
     };
   }, []);
+
+  // Listen for compose-body changes from either composer surface. When
+  // scheduling intent is detected — and the inbound thread isn't itself
+  // a proposal of times (Scenario 2) — surface the prompt card. Skips
+  // entirely if the user dismissed the card for this thread.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<ComposeBodyDetail>).detail;
+      if (!detail || detail.threadId !== thread.threadId) return;
+      if (scheduleHintDismissedThreads.current.has(detail.threadId)) return;
+      if (schedulerOpen) return; // scheduler already up — no prompt needed
+      const inboundTexts = (thread.emails || [])
+        .filter((m: any) => (m?.from_email || '').toLowerCase() !== 'jturner@5thline.co')
+        .map((m: any) => (m?.body_preview || m?.snippet || ''));
+      if (inboundProposedTimes(inboundTexts)) {
+        setScheduleHintActive(false);
+        return;
+      }
+      setScheduleHintActive(detectSchedulingIntent(detail.body));
+    };
+    window.addEventListener(COMPOSE_BODY_EVENT, handler as EventListener);
+    return () => window.removeEventListener(COMPOSE_BODY_EVENT, handler as EventListener);
+  }, [thread.threadId, thread.emails, schedulerOpen]);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
