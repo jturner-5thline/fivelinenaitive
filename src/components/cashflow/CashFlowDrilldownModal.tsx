@@ -738,7 +738,8 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            {onDeleteEntry && r.source === 'manual' && (
+                            {((onDeleteEntry && r.source === 'manual') ||
+                              (onUpdateEntry && r.source === 'deal')) && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -750,7 +751,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            {r.source !== 'manual' && (
+                            {r.source === 'quickbooks' && (
                               <SourceLockedAction row={r} />
                             )}
                           </div>
