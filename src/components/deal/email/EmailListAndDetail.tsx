@@ -2676,7 +2676,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
         <div
-          className="relative grid h-full min-w-0 w-full overflow-hidden bg-[hsl(var(--inbox-surface))] transition-[grid-template-columns] duration-200 ease-out"
+          className="relative grid h-full min-w-0 w-full overflow-hidden bg-transparent transition-[grid-template-columns] duration-200 ease-out"
         style={{
           gridTemplateColumns: showAiAssist
             ? 'minmax(0, 1fr) 360px'
@@ -2689,7 +2689,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         <div
           ref={messagePaneRef}
           data-inbox-surface-scope="message"
-          className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--inbox-surface))]"
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-transparent"
         >
           {/* Outlook-style command bar — portalled into the unified mail
               header (#email-detail-toolbar-slot) so the entire mail UI
@@ -3201,7 +3201,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           <div
             ref={aiAssistPaneRef}
             data-inbox-surface-scope="assistant"
-            className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-[hsl(var(--inbox-surface))]"
+            className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-transparent"
           >
             <EmailPaneErrorBoundary
               resetKey={`ai-assist-${thread.threadId}`}
