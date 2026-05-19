@@ -32,6 +32,8 @@ import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
+import { BaseSubmissionEmailDialog, type BaseSubmissionDraft } from './email/BaseSubmissionEmailDialog';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import { PostCallFollowupModal } from './PostCallFollowupModal';
 import { CheckInOutstandingItemsModal } from './CheckInOutstandingItemsModal';
 import { ClientCheckInDraftModal } from './ClientCheckInDraftModal';
@@ -588,6 +590,11 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   // (auto-skipping anyone already passed) before drafts are generated.
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [includedLenderNames, setIncludedLenderNames] = useState<string[] | null>(null);
+  // ── Step 1: lender-agnostic base submission email. Owns the editable
+  // draft until the user clicks Continue, at which point we persist it to
+  // deal_space_notes and hand off to the Review & Exclude step.
+  const [isBaseOpen, setIsBaseOpen] = useState(false);
+  const [baseDraft, setBaseDraft] = useState<BaseSubmissionDraft | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -642,10 +649,11 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   }, [handleSendQuestion]);
 
   const openDraftSubmissionModal = useCallback(() => {
-    // Always route through the Review & Exclude step so drafts are actually
-    // generated. Opening the drafts dialog directly would leave it empty
-    // (no AI call fires) and surface the "No drafts generated." empty state.
-    setIsReviewOpen(true);
+    // Step 1 of the new flow: generate a lender-agnostic base submission
+    // email. The user reviews / edits it, then Continue saves to Notes and
+    // opens the Review & Exclude step.
+    setBaseDraft(null);
+    setIsBaseOpen(true);
   }, []);
 
   const openStatusReportModal = useCallback(() => {
@@ -699,7 +707,11 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
    * the caller fans it out to every selected lender.
    */
   const buildDraftSubmissionPrompt = useCallback(
-    (personalize: boolean, profiles: Map<string, LenderProfileSnapshot>): string => {
+    (
+      personalize: boolean,
+      profiles: Map<string, LenderProfileSnapshot>,
+      base?: BaseSubmissionDraft | null,
+    ): string => {
       const personalizationBlock = personalize
         ? `
 
@@ -724,6 +736,10 @@ BROADCAST MODE (PERSONALIZATION OFF):
       }
       const lenderProfilesSection = profileBlocks.length
         ? `\n\nLENDER PROFILES (for personalizing each opening):\n\n${profileBlocks.join('\n\n')}`
+        : '';
+
+      const baseTemplateSection = base
+        ? `\n\nAPPROVED BASE TEMPLATE (the user already reviewed and edited this lender-agnostic submission email — preserve its wording, only personalize the salutation and opening line per lender, do not rewrite the rest):\n\nSUBJECT: ${base.subject}\n\nBODY:\n${htmlToPlainText(base.bodyHtml)}\n`
         : '';
 
       return `You are drafting lender submission emails for this deal.${personalize ? ' Generate ONE email PER ACTIVE LENDER on this deal.' : ''}
@@ -766,23 +782,28 @@ CRITICAL RULES:
 - DEAL AMOUNT/DEAL SIZE = use abbreviated currency: $6MM, $1.5MM, $500K, $2B (K=thousands, MM=millions, B=billions).
 - Do NOT include any (Source:...) citations or source references.
 - Use \\n\\n between paragraphs in the body for readability.
-- The "subject" field must NOT include a "Subject:" prefix — just the line itself.${personalizationBlock}${lenderProfilesSection}`;
+- The "subject" field must NOT include a "Subject:" prefix — just the line itself.${personalizationBlock}${lenderProfilesSection}${baseTemplateSection}`;
     },
     [],
   );
 
   // Entry point for the lender submission flow. We now ALWAYS open the
-  // Review & Exclude step first — drafts are only generated after the user
-  // confirms which lenders to include in this round.
+  // base-email step first; the user can edit that draft, then we save it
+  // to Notes and open Review & Exclude before per-lender drafts run.
   const handleDraftSubmission = useCallback(async () => {
-    setIsReviewOpen(true);
+    setBaseDraft(null);
+    setIsBaseOpen(true);
   }, []);
 
   // Silent background handler — invokes the AI directly via the edge function,
   // bypassing the chat hook entirely. The Ask AI panel is never touched.
   // `onlyLenders` (when provided) restricts which lenders the AI drafts for,
   // and `personalize` toggles per-lender opening customization.
-  const generateDraftsForLenders = useCallback(async (onlyLenders: string[], personalize: boolean) => {
+  const generateDraftsForLenders = useCallback(async (
+    onlyLenders: string[],
+    personalize: boolean,
+    base?: BaseSubmissionDraft | null,
+  ) => {
     setIsDraftingEmail(true);
     setEmailDrafts([]);
     setActiveDraftIndex(0);
@@ -807,7 +828,17 @@ CRITICAL RULES:
       let filteredDrafts: EmailDraft[];
 
       if (!personalize) {
-        const template = await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
+        // When the user already approved a lender-agnostic base draft we
+        // skip the AI entirely and fan that exact copy out (preserves edits).
+        const template: EmailDraft = base
+          ? {
+              lenderName: 'All selected lenders',
+              to: '', cc: '', bcc: '',
+              subject: base.subject,
+              bodyHtml: base.bodyHtml,
+              status: 'draft',
+            }
+          : await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
         filteredDrafts = onlyLenders.map((name) => ({
           ...template,
           lenderName: name,
@@ -834,7 +865,7 @@ CRITICAL RULES:
                 dealId,
                 name,
                 profiles,
-                buildDraftSubmissionPrompt,
+                (p, prof) => buildDraftSubmissionPrompt(p, prof, base ?? null),
               );
               collected[idx] = draft;
             } catch (e) {
@@ -1486,7 +1517,43 @@ CRITICAL RULES:
           setIncludedLenderNames(names);
           // Defer one tick so the review dialog fully closes before the
           // drafts dialog mounts (avoids overlapping aria-modal layers).
-          setTimeout(() => generateDraftsForLenders(names, personalize), 50);
+          setTimeout(() => generateDraftsForLenders(names, personalize, baseDraft), 50);
+        }}
+      />
+
+      {/* Step 1 — lender-agnostic base submission email. The user edits
+          it, then Continue persists it to the deal's Notes and opens the
+          Review & Exclude lenders step. */}
+      <BaseSubmissionEmailDialog
+        open={isBaseOpen}
+        onOpenChange={setIsBaseOpen}
+        dealId={dealId}
+        dealName={dealMeta.company || null}
+        generate={async () => {
+          // Build an explicitly lender-agnostic prompt: reuse the broadcast
+          // path (single draft, no per-lender variants) and instruct the
+          // model to use a neutral salutation and zero lender-specific
+          // references — the lender-specific personalization happens later.
+          const base = buildDraftSubmissionPrompt(false, new Map(), null);
+          const constraint =
+            `\n\nBASE EMAIL MODE (LENDER-AGNOSTIC):\n` +
+            `- Produce EXACTLY ONE draft entry. Set lenderName to "Base submission email".\n` +
+            `- The salutation MUST be exactly: "Hi [Name],"\n` +
+            `- Do NOT mention any specific lender, institution name, or lender focus area.\n` +
+            `- The subject must read: "<COMPANY NAME> - New Deal <DEAL AMOUNT>" (no lender token, no pipe).\n` +
+            `- Keep the body as a reusable submission template for this deal.`;
+          const parsed = await callDraftAI(dealId, base + constraint);
+          const entry = (parsed.drafts || []).find((d) => d && (d.body || d.subject));
+          if (!entry) throw new Error('AI returned no base draft.');
+          return {
+            subject: (entry.subject || '').replace(/^subject:\s*/i, '').trim(),
+            bodyHtml: plainTextBodyToHtml(entry.body || ''),
+          };
+        }}
+        onContinue={(base) => {
+          setBaseDraft(base);
+          // Defer a tick so the base dialog fully closes before Review opens.
+          setTimeout(() => setIsReviewOpen(true), 50);
         }}
       />
 
