@@ -96,6 +96,7 @@
 
     /* Email / Outlook tokens */
     --outlook-blue: 207 90% 42%;
+    --inbox-surface: 0 0% 100%;
     --email-panel-surface: 0 0% 100%;
     --email-sidebar-bg: 0 0% 96%;
     --email-list-bg: 0 0% 98%;
@@ -192,6 +193,7 @@
 
     /* Email / Outlook tokens — dark mode (tuned for readability) */
     --outlook-blue: 213 90% 72%;
+    --inbox-surface: 228 18% 14%;
     --email-panel-surface: 228 18% 14%;
     /* Lifted surfaces with clearer hierarchy: list < toolbar < reading < sidebar */
     --email-sidebar-bg: 228 22% 9%;
@@ -325,6 +327,38 @@
   transform: none !important;
   rotate: none !important;
   direction: ltr !important;
+}
+
+[data-inbox-surface-scope="message"],
+[data-inbox-surface-scope="assistant"] {
+  background-color: hsl(var(--inbox-surface));
+  background-image: none;
+}
+
+[data-inbox-surface-scope="message"]:is([style]),
+[data-inbox-surface-scope="assistant"]:is([style]) {
+  background-color: hsl(var(--inbox-surface));
+}
+
+[data-inbox-surface-scope="message"] :is(div, section, article, header, footer, aside, ul, li)[class*="bg-card/"],
+[data-inbox-surface-scope="message"] :is(div, section, article, header, footer, aside, ul, li)[class*="bg-background/"],
+[data-inbox-surface-scope="message"] :is(div, section, article, header, footer, aside, ul, li)[class*="bg-white/"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-primary/"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-background/"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-card/"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-muted/"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-white/"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-amber-"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-emerald-"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li, span)[class*="bg-sky-"] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li)[class*="backdrop-blur"],
+[data-inbox-surface-scope="assistant"] :is(div, section, article, header, footer, aside, ul, li)[class*="bg-gradient"] {
+  backdrop-filter: none !important;
+  background-image: none !important;
 }
 
 .email-html-body {
