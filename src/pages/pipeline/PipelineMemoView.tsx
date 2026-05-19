@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { DealStatusTag } from '@/components/deal/DealStatusTag';
+import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -315,9 +316,9 @@ function DealTile({
           {deal.company || deal.name}
         </h3>
         <div className="flex items-center gap-1 shrink-0">
-          {/* Deal status — reuses the shared DealStatusTag so this tile
-              stays in sync with the deal detail view's status surface. */}
-          <DealStatusTag status={deal.status} />
+          {/* Deal status — interactive tag so the user can change the
+              deal's canonical status without leaving the Deals tab. */}
+          <EditableDealStatusTag dealId={deal.id} status={deal.status} />
           <Badge variant="green" className="rounded-full shrink-0 text-[10px]">
             {amount}
           </Badge>
