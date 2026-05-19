@@ -676,6 +676,8 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
       // so they carry across deals / sessions / refetches. Falls back to the
       // local UI threadId when the provider id is unknown (mock data).
       threadId={thread.provider_thread_id || thread.threadId}
+      onOpen={onSelect}
+      onLinkToDeal={onSaveToDeal ? () => onSaveToDeal(latest) : undefined}
       onMarkRead={() => onMarkRead?.(latest)}
       onMarkUnread={() => onMarkUnread?.(latest)}
       onToggleStar={() => onToggleStar(latest)}
