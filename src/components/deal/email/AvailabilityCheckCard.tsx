@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import type { EmailThread } from './mockEmailData';
 import { fetchFullEmailMessage } from './useFullEmailMessage';
 import { logUsage } from '@/lib/usageLogger';
+import * as chrono from 'chrono-node';
 
 const PARSE_TIMEOUT_MS = 15_000;
 
@@ -172,6 +173,82 @@ function formatSlotDual(slot: ProposedSlot, userTz: string) {
 
 function dayKey(iso: string, tz: string) {
   return tzFormat(iso, tz, { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+
+// ── chrono-node fallback parser ────────────────────────────────────────────
+// Extracts explicit datetime proposals from inbound text when the server
+// parser misses them. Normalizes to user timezone; default duration 30min.
+function extractSlotsWithChrono(text: string, userTz: string, refDate: Date): ProposedSlot[] {
+  if (!text || !text.trim()) return [];
+  const results = chrono.parse(text, refDate, { forwardDate: true });
+  const slots: ProposedSlot[] = [];
+  for (const r of results) {
+    const start = r.start?.date();
+    if (!start) continue;
+    // Skip date-only references with no explicit time component.
+    const hasTime = r.start.isCertain('hour') || r.start.isCertain('minute');
+    if (!hasTime) continue;
+    const end = r.end?.date() || new Date(start.getTime() + 30 * 60_000);
+    if (end.getTime() <= start.getTime()) continue;
+    slots.push({
+      start_iso: start.toISOString(),
+      end_iso: end.toISOString(),
+      source_timezone: userTz,
+      label: r.text,
+      quote: r.text,
+    });
+  }
+  // Dedupe by start time
+  const seen = new Set<string>();
+  return slots.filter((s) => {
+    if (seen.has(s.start_iso)) return false;
+    seen.add(s.start_iso);
+    return true;
+  });
+}
+
+// Find up to N free 30-min slots adjacent to a proposed slot, within
+// working hours (9–17 in userTz), avoiding busy events.
+function findAdjacentFreeSlots(
+  proposed: ProposedSlot,
+  events: BusyEvent[],
+  userTz: string,
+  count = 3,
+): ProposedSlot[] {
+  const proposedStart = new Date(proposed.start_iso).getTime();
+  const duration = Math.max(30 * 60_000, new Date(proposed.end_iso).getTime() - proposedStart);
+  const stepMs = 30 * 60_000;
+  const searchRadiusMs = 8 * 3600_000;
+  const candidates: number[] = [];
+  for (let off = stepMs; off <= searchRadiusMs; off += stepMs) {
+    candidates.push(proposedStart - off, proposedStart + off);
+  }
+  const isFree = (startMs: number) => {
+    const endMs = startMs + duration;
+    const hr = getHourInTz(new Date(startMs).toISOString(), userTz);
+    if (hr < 9 || hr >= 17) return false;
+    for (const ev of events) {
+      if (ev.all_day) continue;
+      const evS = new Date(ev.start).getTime();
+      const evE = new Date(ev.end).getTime();
+      if (Number.isNaN(evS) || Number.isNaN(evE)) continue;
+      if (evS < endMs && evE > startMs) return false;
+    }
+    return true;
+  };
+  const out: ProposedSlot[] = [];
+  for (const ms of candidates) {
+    if (ms < Date.now()) continue;
+    if (!isFree(ms)) continue;
+    out.push({
+      start_iso: new Date(ms).toISOString(),
+      end_iso: new Date(ms + duration).toISOString(),
+      source_timezone: userTz,
+      label: 'Adjacent open slot',
+    });
+    if (out.length >= count) break;
+  }
+  return out;
 }
 
 // ── Scoring + classification ───────────────────────────────────────────────
@@ -582,6 +659,26 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
       if (invokeErr) throw invokeErr;
       const result = data as ParseResult;
       if (!result) throw new Error('Empty response from scheduling parser');
+
+      // ── chrono-node fallback ──────────────────────────────────────────
+      // If the server parser missed proposals, scan the latest inbound
+      // message text directly with chrono-node so explicit times like
+      // "Wednesday, May 20 at 3:30 PM ET" still surface.
+      if (!result.detected || !result.slots || result.slots.length === 0) {
+        const chronoSlots = extractSlotsWithChrono(threadText, BROWSER_TZ, new Date());
+        if (chronoSlots.length > 0) {
+          result.detected = true;
+          result.slots = chronoSlots;
+          result.user_timezone = result.user_timezone || BROWSER_TZ;
+          result.reply_suggestions = result.reply_suggestions || [];
+        } else {
+          console.log('[AvailabilityCheck] No datetime proposals extracted from thread', {
+            thread_id: thread.threadId,
+            subject: thread.subject,
+            text_length: threadText.length,
+          });
+        }
+      }
       setParseResult(result);
 
       if (result.detected && result.slots.length > 0) {
@@ -682,12 +779,65 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
 
   const visible = useMemo(() => {
     if (!ranked) return null;
-    // Only surface clean, user-friendly options. Internal "tight" / "unavailable"
-    // (conflict) buckets are hidden from the scheduling UI entirely.
-    return ranked.filter(
+    // Surface every proposed time so the user can see Available vs Conflict
+    // at a glance with a colored badge. Sort: available first, then partial,
+    // then tight, then unavailable; within each, best fitScore wins.
+    const order: Record<SlotStatus, number> = {
+      available: 0,
+      partially_available: 1,
+      tight: 2,
+      unavailable: 3,
+    };
+    return [...ranked].sort((a, b) => {
+      const d = order[a.analysis.status] - order[b.analysis.status];
+      if (d !== 0) return d;
+      return b.analysis.fitScore - a.analysis.fitScore;
+    });
+  }, [ranked]);
+
+  // ── Dynamic suggested replies ───────────────────────────────────────────
+  // Confirmation for the best-fit Available slot, OR an alternatives reply
+  // pre-filled with 2–3 adjacent free slots if every proposal conflicts.
+  const dynamicReplies = useMemo<ReplySuggestion[]>(() => {
+    if (!ranked || ranked.length === 0) return [];
+    const out: ReplySuggestion[] = [];
+    const firstAvailable = ranked.find(
       (r) => r.analysis.status === 'available' || r.analysis.status === 'partially_available',
     );
-  }, [ranked]);
+    if (firstAvailable) {
+      const fmt = formatSlotDual(firstAvailable.analysis.slot, userTz);
+      out.push({
+        label: `Confirm ${fmt.day} at ${fmt.primary}`,
+        body: `That works — let's lock in ${fmt.day} at ${fmt.primary}. I'll send a calendar invite shortly.`,
+        slot_index: firstAvailable.originalIndex,
+      });
+    } else {
+      // All conflict — propose 2-3 adjacent open slots based on the top-ranked
+      // (least-bad) proposed time and the connected calendar.
+      const anchor = ranked[0]?.analysis.slot;
+      if (anchor) {
+        const alts = findAdjacentFreeSlots(anchor, busyEvents || [], userTz, 3);
+        if (alts.length > 0) {
+          const bullets = alts
+            .map((s) => {
+              const fmt = formatSlotDual(s, userTz);
+              return `• ${fmt.day} · ${fmt.primary}`;
+            })
+            .join('\n');
+          out.push({
+            label: 'Propose alternatives',
+            body: `Unfortunately the times you proposed conflict with existing meetings on my end. Would any of these work instead?\n\n${bullets}\n\nHappy to find another window if none of these land.`,
+          });
+        } else {
+          out.push({
+            label: 'Propose alternatives',
+            body: `Unfortunately the times you proposed conflict on my end. Could you share a couple of other windows that work for you? I'll confirm quickly.`,
+          });
+        }
+      }
+    }
+    return out;
+  }, [ranked, busyEvents, userTz]);
 
   // Keyboard nav
   useEffect(() => {
@@ -713,7 +863,8 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
         e.preventDefault();
         const slot = visible[focusedIdx]?.analysis.slot;
         if (slot && parseResult) {
-          const suggestion = parseResult.reply_suggestions[0];
+          const suggestion =
+            dynamicReplies[0] || parseResult.reply_suggestions[0];
           if (suggestion) {
             onInsertDraft(suggestion.body);
             toast.success('Draft inserted — review before sending');
@@ -723,7 +874,7 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [visible, focusedIdx, onInsertDraft, parseResult]);
+  }, [visible, focusedIdx, onInsertDraft, parseResult, dynamicReplies]);
 
   const toggleFilter = (key: FilterKey) => {
     setFilters((prev) => {
@@ -865,7 +1016,7 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
       <ul className="mt-2 space-y-1.5">
         {(visible ?? []).length === 0 && (
           <li className="rounded-md border border-dashed border-white/[0.08] p-3 text-[11px] text-muted-foreground">
-            No slots match the current filters.
+            No specific times detected in this thread yet.
           </li>
         )}
         {(visible ?? []).map((entry, i) => {
@@ -972,11 +1123,15 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
         })}
       </ul>
 
-      {parseResult.reply_suggestions.length > 0 && (
+      {(() => {
+        const replies =
+          dynamicReplies.length > 0 ? dynamicReplies : parseResult.reply_suggestions;
+        if (replies.length === 0) return null;
+        return (
         <div className="mt-3 border-t border-white/[0.05] pt-2">
           <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Suggested replies</div>
           <div className="flex flex-col gap-1.5">
-            {parseResult.reply_suggestions.map((s, i) => (
+            {replies.map((s, i) => (
               <button
                 key={i}
                 type="button"
@@ -995,7 +1150,8 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
             Drafts insert into the reply composer. Nothing is sent until you confirm. Keyboard: Enter accept · →/← expand · J/K navigate.
           </p>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
