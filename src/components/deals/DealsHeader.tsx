@@ -460,13 +460,7 @@ export function DealsHeader() {
         </Suspense>
       )}
       {isDealRundownOpen && (
-        <DailyBriefingModal
-          open={isDealRundownOpen}
-          onOpenChange={setIsDealRundownOpen}
-          title="Deal Rundown"
-          initialTab="pipeline"
-          briefingType="deal_rundown"
-        />
+        <DealsOverlay open={isDealRundownOpen} onOpenChange={setIsDealRundownOpen} />
       )}
       {isCalendarOpen && (
         <Suspense fallback={<OverlayLoadingShell kind="calendar" onClose={() => setIsCalendarOpen(false)} />}>
