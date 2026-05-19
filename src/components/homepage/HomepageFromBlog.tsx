@@ -162,7 +162,7 @@ function BlogCard({ post }: { post: BlogPostLite }) {
   return (
     <Link
       to={`/blog/${post.slug}`}
-      className="group relative h-full flex flex-col overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-xl shadow-[0_12px_32px_-16px_hsl(265,60%,3%,0.8)] transition-all duration-300 hover:border-[hsl(270,65%,72%,0.55)] hover:from-white/[0.09] hover:to-white/[0.04] hover:-translate-y-1.5 hover:shadow-[0_28px_60px_-20px_hsl(270,80%,20%,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(270,75%,80%)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
+      className="group relative h-full flex flex-col overflow-hidden rounded-2xl border border-[hsl(220,15%,22%,0.9)] bg-gradient-to-b from-[hsl(268,40%,16%,0.55)] to-[hsl(262,38%,9%,0.6)] backdrop-blur-2xl shadow-[inset_0_1px_0_hsl(220,15%,40%,0.12),0_1px_0_hsl(220,15%,8%,0.6),0_8px_24px_-12px_hsl(220,30%,2%,0.6)] transition-all duration-300 hover:border-[hsl(270,55%,55%,0.5)] hover:-translate-y-1 hover:shadow-[inset_0_1px_0_hsl(220,15%,40%,0.18),0_1px_0_hsl(220,15%,8%,0.6),0_18px_40px_-16px_hsl(265,60%,4%,0.75)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(270,75%,80%)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
     >
       <div className="relative aspect-[16/9] lg:aspect-[3/2] overflow-hidden bg-[hsl(270,30%,12%)]">
         {post.cover_image_url ? (
