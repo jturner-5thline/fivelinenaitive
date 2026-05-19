@@ -1517,6 +1517,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                   messageId={email.id}
                   inlineAttachments={fullData?.inline_attachments}
                   attachments={fullData?.attachments}
+                  fromEmail={email.from_email}
                 />
               ) : (
                 <EmailBodyRenderer text={textMain} />
