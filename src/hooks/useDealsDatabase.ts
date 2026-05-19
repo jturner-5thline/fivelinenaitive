@@ -7,6 +7,7 @@ import { addDays } from 'date-fns';
 import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naitivePipelineExclusion';
 import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage, isNdaNeedsListSentStage } from '@/utils/autoPopulateOutstandingItems';
 import { checkStageChangeWorkflows } from '@/lib/emailWorkflowTrigger';
+import { isFlexHiddenStage, prettyStageLabel } from '@/lib/flexVisibility';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
