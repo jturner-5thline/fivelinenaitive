@@ -80,6 +80,7 @@ import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
+import { Users } from 'lucide-react';
 import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useEmailPrioritySignals } from '@/hooks/useEmailPrioritySignals';
 import type { DetectedSignal, EmailPrioritySignalType, PrioritySignalSeverity } from '@/lib/emailPrioritySignals';
@@ -1191,6 +1192,141 @@ function HeaderRow({ label, value }: { label: string; value: string }) {
     <div className="flex gap-2 text-xs text-[hsl(var(--email-text-muted))] leading-snug">
       <span className="w-14 shrink-0 font-medium text-[hsl(var(--email-text-secondary))]">{label}</span>
       <span className="min-w-0 break-words text-[hsl(var(--email-text-primary))]">{value}</span>
+    </div>
+  );
+}
+
+// ─── Thread-level recipient + participant header ─────────────────
+// Replaces the legacy "To: me" placeholder. Pulls cc/bcc per message
+// from gmail_messages so the user can see the real participant list.
+interface ThreadParticipantsHeaderProps {
+  threadId: string | undefined;
+  threadEmails: MockEmail[];
+  latest: MockEmail;
+}
+function ThreadParticipantsHeader({ threadId, threadEmails, latest }: ThreadParticipantsHeaderProps) {
+  const [rows, setRows] = useState<Array<{
+    gmail_message_id: string;
+    from_email: string | null;
+    from_name: string | null;
+    to_emails: string[] | null;
+    cc_emails: string[] | null;
+    bcc_emails: string[] | null;
+  }>>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!threadId) { setRows([]); return; }
+    (async () => {
+      const { data } = await supabase
+        .from('gmail_messages')
+        .select('gmail_message_id, from_email, from_name, to_emails, cc_emails, bcc_emails, received_at')
+        .eq('thread_id', threadId)
+        .order('received_at', { ascending: false });
+      if (!cancelled && Array.isArray(data)) setRows(data as any);
+    })();
+    return () => { cancelled = true; };
+  }, [threadId]);
+
+  // Resolve the latest message's row (for To/Cc display).
+  const latestRow = rows.find(r => r.gmail_message_id === latest.id) || rows[0];
+
+  const latestTo = toArray(latestRow?.to_emails);
+  const latestCc = toArray(latestRow?.cc_emails);
+  const latestBcc = toArray(latestRow?.bcc_emails);
+
+  // Fallback to the single-recipient field from MockEmail when DB rows haven't
+  // arrived yet (or for mock messages).
+  const toDisplay = latestTo.length > 0
+    ? latestTo
+    : (latest.to_email ? [latest.to_name && latest.to_name !== latest.to_email ? `${latest.to_name} <${latest.to_email}>` : latest.to_email] : []);
+
+  // Aggregate unique participants across the entire thread.
+  const participants = useMemo(() => {
+    const seen = new Set<string>();
+    const out: string[] = [];
+    const push = (raw: string | null | undefined) => {
+      if (!raw) return;
+      const v = String(raw).trim();
+      if (!v) return;
+      const key = v.toLowerCase();
+      if (seen.has(key)) return;
+      seen.add(key);
+      out.push(v);
+    };
+    // From DB rows
+    for (const r of rows) {
+      push(r.from_email);
+      (r.to_emails || []).forEach(push);
+      (r.cc_emails || []).forEach(push);
+      (r.bcc_emails || []).forEach(push);
+    }
+    // Fallback: hydrate from in-memory thread emails (covers mock + not-yet-loaded)
+    for (const e of threadEmails) {
+      push(e.from_email);
+      push(e.to_email);
+    }
+    return out;
+  }, [rows, threadEmails]);
+
+  const renderList = (items: string[], max = 3) => {
+    if (items.length === 0) return null;
+    const visible = items.slice(0, max);
+    const extra = items.length - visible.length;
+    return (
+      <>
+        <span className="text-[hsl(var(--email-text-secondary))]">{visible.join(', ')}</span>
+        {extra > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="ml-1.5 inline-flex items-center rounded-full bg-muted/50 hover:bg-muted px-1.5 py-0 text-[10px] text-[hsl(var(--email-text-secondary))] border border-[hsl(var(--email-border))] transition-colors"
+              >+{extra} more</button>
+            </PopoverTrigger>
+            <PopoverContent className="w-72 max-h-72 overflow-auto text-xs space-y-1 p-3">
+              {items.map(addr => <div key={addr} className="break-all">{addr}</div>)}
+            </PopoverContent>
+          </Popover>
+        )}
+      </>
+    );
+  };
+
+  return (
+    <div className="mt-0.5 space-y-0.5">
+      {toDisplay.length > 0 && (
+        <div className="text-xs text-[hsl(var(--email-text-muted))] break-words">
+          To: {renderList(toDisplay)}
+        </div>
+      )}
+      {latestCc.length > 0 && (
+        <div className="text-xs text-[hsl(var(--email-text-muted))] break-words">
+          Cc: {renderList(latestCc)}
+        </div>
+      )}
+      {latestBcc.length > 0 && latest.folder === 'sent' && (
+        <div className="text-xs text-[hsl(var(--email-text-muted))] break-words">
+          Bcc: {renderList(latestBcc)}
+        </div>
+      )}
+      {participants.length > 1 && (
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="mt-1 inline-flex items-center gap-1 rounded-full border border-[hsl(var(--email-border))] bg-muted/40 hover:bg-muted px-2 py-0.5 text-[10px] text-[hsl(var(--email-text-secondary))] transition-colors"
+            >
+              <Users className="h-3 w-3" />
+              {participants.length} participants
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-80 max-h-80 overflow-auto p-3 text-xs space-y-1">
+            <div className="font-medium mb-1 text-[hsl(var(--email-text-primary))]">All participants</div>
+            {participants.map(p => <div key={p} className="break-all text-[hsl(var(--email-text-secondary))]">{p}</div>)}
+          </PopoverContent>
+        </Popover>
+      )}
     </div>
   );
 }
@@ -2659,12 +2795,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 >
                   {format(new Date(latest.received_at), 'EEEE, MMMM d, yyyy h:mm a')}
                 </div>
-                <div className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5 break-words">
-                  To: <span className="text-[hsl(var(--email-text-secondary))]">me</span>
-                  {linkedDealName && (
-                    <span className="ml-2 text-[hsl(var(--outlook-blue))]">• Linked to: {linkedDealName}</span>
-                  )}
-                </div>
+                <ThreadParticipantsHeader
+                  threadId={thread.provider_thread_id || thread.threadId}
+                  threadEmails={thread.emails}
+                  latest={latest}
+                />
+                {linkedDealName && (
+                  <div className="text-xs text-[hsl(var(--outlook-blue))] mt-0.5">• Linked to: {linkedDealName}</div>
+                )}
               </div>
               {/* Thread count indicator */}
               {totalMessages > 1 && (
