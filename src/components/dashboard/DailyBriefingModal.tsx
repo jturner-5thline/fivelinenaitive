@@ -51,6 +51,7 @@ const PipelineMemoView = lazy(() =>
   import('@/pages/pipeline/PipelineMemoView').then(m => ({ default: m.PipelineMemoView })),
 );
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { useMorningFollowups, useFollowupActions, type FollowupDealGroup, type FollowupItem } from '@/hooks/useMorningFollowups';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useProfile } from '@/hooks/useProfile';
