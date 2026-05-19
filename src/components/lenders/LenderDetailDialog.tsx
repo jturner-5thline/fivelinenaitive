@@ -650,8 +650,8 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       onOpenChange(newOpen);
     }}>
       <DialogContent
-        overlayClassName="bg-slate-900/40"
-        className="w-[min(1100px,calc(100vw-2rem))] max-w-[min(1100px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] min-h-0 overflow-hidden !flex !flex-col gap-0 p-0 z-[60]"
+        overlayClassName="bg-slate-900/25"
+        className="w-[min(1100px,calc(100vw-2rem))] max-w-[min(1100px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] min-h-0 overflow-hidden !flex !flex-col gap-0 p-0 z-[60] !bg-[hsl(228_16%_24%)] !border-white/10 text-foreground"
       >
         <div className="shrink-0 px-6 pt-5 pb-4 border-b border-border/60">
         <DialogHeader className="flex flex-col gap-1 pr-8 min-w-0">
