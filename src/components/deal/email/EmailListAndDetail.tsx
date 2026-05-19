@@ -3079,10 +3079,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                       {isFullyExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                     </button>
                   </div>
-                  {/* Thread Summary trigger — opens a compact glass popover.
+                   {/* Thread Summary trigger — AI surface, only shown when
+                       Assist is enabled for the current company/tenant.
+                       Opens a compact glass popover.
                       Click-outside dismissal, Escape, and focus return are
                       handled by Radix Popover inside ThreadSummaryCard. */}
-                  <ThreadSummaryCard thread={thread} dealId={effectiveDealId} variant="inline-button" />
+                  {assistEnabled && (
+                    <ThreadSummaryCard thread={thread} dealId={effectiveDealId} variant="inline-button" />
+                  )}
                 </div>
               )}
             </div>
