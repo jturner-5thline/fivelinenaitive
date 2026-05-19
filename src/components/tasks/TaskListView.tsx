@@ -102,7 +102,7 @@ const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
   low: { label: 'Low', bg: '#7a8194' },
 };
 
-export type GroupBy = 'status' | 'time' | 'priority' | 'focus';
+export type GroupBy = 'status' | 'time' | 'priority' | 'focus' | 'none';
 
 interface TaskListViewProps {
   tasks: Task[];
