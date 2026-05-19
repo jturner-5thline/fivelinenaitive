@@ -649,7 +649,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       }
       onOpenChange(newOpen);
     }}>
-      <DialogContent className="max-w-[80vw] w-full max-h-[90vh] min-h-0 overflow-hidden !flex !flex-col z-[60]">
+      <DialogContent
+        overlayClassName="bg-slate-900/40 backdrop-blur-[2px]"
+        className="w-[min(1100px,calc(100vw-2rem))] max-w-[min(1100px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] min-h-0 overflow-hidden !flex !flex-col gap-0 p-0 z-[60]"
+      >
+        <div className="shrink-0 px-6 pt-5 pb-4 border-b border-border/60">
         <DialogHeader className="flex flex-col gap-1 pr-8 min-w-0">
           <div className="flex flex-row items-center justify-between gap-2 min-w-0">
             <DialogTitle className="flex items-center gap-2 text-xl text-foreground min-w-0 flex-1">
@@ -792,8 +796,9 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
             </div>
           )}
         </DialogHeader>
+        </div>
 
-        <div className="flex-1 min-h-0 overflow-y-auto pr-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-6 py-5">
           <div className="space-y-6">
             {/* Edit Mode: Description/Notes */}
             {isEditMode ? (
