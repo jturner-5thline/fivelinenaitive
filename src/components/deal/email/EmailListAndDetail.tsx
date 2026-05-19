@@ -1823,10 +1823,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
   const [showSmartPanel, setShowSmartPanel] = useState(false);
   const [smartPopoverOpen, setSmartPopoverOpen] = useState(false);
+  // Assist feature governance: when disabled for the resolved
+  // company/tenant context, every AI Assist email surface (sidebar,
+  // toggle, thread summary popover) is hidden — no dead controls.
+  const assistEnabled = useAssistEnabled();
   // AI Assist sidebar is always-on by default. On desktop it's persistently rendered;
   // on smaller widths it collapses into a toggleable drawer driven by this state.
   const AI_ASSIST_PREF_KEY = 'email.aiAssistOpen';
-  const [showAiAssist, setShowAiAssist] = useState<boolean>(() => {
+  const [showAiAssistPref, setShowAiAssist] = useState<boolean>(() => {
     if (typeof window === 'undefined') return true;
     try {
       const raw = window.localStorage.getItem(AI_ASSIST_PREF_KEY);
@@ -1835,6 +1839,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       return true;
     }
   });
+  // Effective visibility — user pref AND Assist feature is enabled for
+  // this account/company. Keeps downstream layout math (grid columns,
+  // resize observers) honest when Assist is gated off.
+  const showAiAssist = assistEnabled && showAiAssistPref;
   const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
   const messagePaneRef = useRef<HTMLDivElement | null>(null);
   const aiAssistPaneRef = useRef<HTMLDivElement | null>(null);
