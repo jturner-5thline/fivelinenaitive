@@ -1352,16 +1352,55 @@ function EmailHeaderDetails({ email, fullData }: { email: MockEmail; fullData: a
   const replyToList = toArray(fullData?.reply_to ?? fullData?.reply_to_emails);
 
   const dateLabel = email.received_at ? format(new Date(email.received_at), 'EEE, MMM d, yyyy h:mm a') : '';
+  const shortDate = email.received_at ? format(new Date(email.received_at), 'MMM d, h:mm a') : '';
+
+  const [open, setOpen] = useState(false);
+
+  // Compact recipient summary: first 2 names + "+N more"
+  const toSummary = (() => {
+    if (toList.length === 0) return '';
+    const visible = toList.slice(0, 2).join(', ');
+    const extra = toList.length - 2;
+    return extra > 0 ? `${visible}, +${extra} more` : visible;
+  })();
 
   return (
-    <div className="mb-3 space-y-1 rounded-md border border-[hsl(var(--email-border))]/60 bg-[hsl(var(--foreground)/0.02)] px-3 py-2">
-      {fromCombined && <HeaderRow label="From" value={fromCombined} />}
-      {toList.length > 0 && <HeaderRow label="To" value={toList.join(', ')} />}
-      {ccList.length > 0 && <HeaderRow label="Cc" value={ccList.join(', ')} />}
-      {bccList.length > 0 && <HeaderRow label="Bcc" value={bccList.join(', ')} />}
-      {replyToList.length > 0 && <HeaderRow label="Reply-To" value={replyToList.join(', ')} />}
-      {dateLabel && <HeaderRow label="Date" value={dateLabel} />}
-      {email.subject && <HeaderRow label="Subject" value={email.subject} />}
+    <div className="mb-2 text-xs leading-snug">
+      {/* Compact single-row summary (default) */}
+      <div className="flex items-center gap-2 flex-wrap text-[hsl(var(--email-text-muted))]">
+        {toSummary && (
+          <span className="min-w-0 truncate">
+            <span className="text-[hsl(var(--email-text-muted))]">to </span>
+            <span className="text-[hsl(var(--email-text-secondary))]">{toSummary}</span>
+          </span>
+        )}
+        {shortDate && (
+          <>
+            <span className="text-[hsl(var(--email-text-muted))]/60">·</span>
+            <span>{shortDate}</span>
+          </>
+        )}
+        <button
+          type="button"
+          onClick={() => setOpen(v => !v)}
+          className="ml-auto inline-flex items-center gap-0.5 text-[11px] text-[hsl(var(--email-text-muted))] hover:text-[hsl(var(--email-text-primary))] transition-colors"
+        >
+          {open ? 'hide details' : 'details'}
+          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        </button>
+      </div>
+
+      {open && (
+        <div className="mt-1.5 space-y-0.5 border-l border-[hsl(var(--email-border))] pl-2.5">
+          {fromCombined && <HeaderRow label="From" value={fromCombined} />}
+          {toList.length > 0 && <HeaderRow label="To" value={toList.join(', ')} />}
+          {ccList.length > 0 && <HeaderRow label="Cc" value={ccList.join(', ')} />}
+          {bccList.length > 0 && <HeaderRow label="Bcc" value={bccList.join(', ')} />}
+          {replyToList.length > 0 && <HeaderRow label="Reply-To" value={replyToList.join(', ')} />}
+          {dateLabel && <HeaderRow label="Date" value={dateLabel} />}
+          {email.subject && <HeaderRow label="Subject" value={email.subject} />}
+        </div>
+      )}
     </div>
   );
 }
