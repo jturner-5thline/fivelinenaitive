@@ -157,6 +157,12 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const [inboxMessages, setInboxMessages] = useState<any[]>(() => cacheSnapshot.inboxMessages);
   const [sentMessages, setSentMessages] = useState<any[]>(() => cacheSnapshot.sentMessages);
   const [cachedInboxEmails, setCachedInboxEmails] = useState<any[]>([]);
+  // Provider-backed system folders beyond inbox/sent. We fetch the first
+  // page of each on open so the sidebar tabs (Drafts / Junk / Trash) are
+  // wired to the actual mailbox state instead of an empty local bucket.
+  const [draftsMessages, setDraftsMessages] = useState<any[]>([]);
+  const [junkMessages, setJunkMessages] = useState<any[]>([]);
+  const [trashMessages, setTrashMessages] = useState<any[]>([]);
 
   // Pagination cursors — also seeded from the cache so "Load more" picks
   // up where the prefetch left off.
@@ -549,6 +555,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     isPaginatingRef.current = false;
     setInboxMessages([]);
     setSentMessages([]);
+    setDraftsMessages([]);
+    setJunkMessages([]);
+    setTrashMessages([]);
     setInboxNextToken(null);
     setSentNextToken(null);
     setHasMoreInbox(true);
@@ -563,6 +572,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     setHasMoreInbox(!!firstInbox.nextPageToken);
     setIsInitialLoading(false);
     autoPaginate(firstInbox.nextPageToken);
+    void refreshSystemFolders();
   }, [status.connected, mergeUniqueById, autoPaginate]);
 
   // IMPORTANT: call every hook on every render BEFORE any conditional return,
