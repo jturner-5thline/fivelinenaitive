@@ -1409,43 +1409,7 @@ export function PipelineTab({
       {/* RIGHT: capped sidebar on desktop, stacks under deals below lg */}
       <div className="min-w-0 w-full max-w-full min-h-0 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 pt-3 lg:pt-0 lg:pl-3 mt-3 lg:mt-0">
         {useCollapsedActivityLayout ? (
-          <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pr-1">
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full justify-between border-white/15 bg-white/5 hover:bg-white/10 text-white/90"
-                >
-                  <span className="flex items-center gap-2">
-                    <GitBranch className="h-4 w-4" />
-                    Recent Pipeline Activity
-                  </span>
-                  {recentActivity.length > 0 && (
-                    <Badge variant="secondary" className="ml-2">
-                      {recentActivity.length}
-                    </Badge>
-                  )}
-                </Button>
-              </SheetTrigger>
-              <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Recent Pipeline Activity</SheetTitle>
-                </SheetHeader>
-                <div className="mt-4">
-                  {recentActivity.length > 0 ? (
-                    <RecentPipelineActivitySection
-                      recentActivity={recentActivity}
-                      onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
-                      onNavigate={onNavigate}
-                    />
-                  ) : (
-                    <EmptySection message="No pipeline activity since 5 PM ET yesterday" />
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-          </div>
+          null
         ) : (
           <>
             <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pr-1 border-l-2 border-l-purple-500 pl-2">
@@ -1465,19 +1429,6 @@ export function PipelineTab({
                   <EmptySection message="No follow-ups for today" />
                 )}
               </Section>
-            </div>
-            <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pr-1 border-t border-white/10 pt-3 mt-3">
-              {recentActivity.length > 0 ? (
-                <RecentPipelineActivitySection
-                  recentActivity={recentActivity}
-                  onRowClick={(a) => a?.deal_id && onNavigate(`/deal/${a.deal_id}`)}
-                  onNavigate={onNavigate}
-                />
-              ) : (
-                <Section title="Recent Pipeline Activity">
-                  <EmptySection message="No pipeline activity since 5 PM ET yesterday" />
-                </Section>
-              )}
             </div>
           </>
         )}
