@@ -1308,6 +1308,7 @@ export function PipelineTab({
   // data, now grouped by deal and surfaced in-app for every user.
   const { user } = useAuth();
   const { profile } = useProfile();
+  const { isAdmin } = useCompany();
   // Only show the current user's own follow-ups (not the delegated view).
   const showOwnFollowups = enabled && !targetDealOwnerName;
   const { data: followupGroups = [] } = useMorningFollowups(showOwnFollowups);
@@ -1343,7 +1344,14 @@ export function PipelineTab({
   // the current user's profile name and hide every deal they don't own —
   // exactly the "No deals found" regression that surfaced after unifying
   // the Deals modal/tab implementations.
-  const isRundownScope = !!(targetDealOwnerName || targetUserId);
+  // Admin bypass: on the main deals surfaces (/deals page + standalone Deals
+  // overlay) no rundown target is passed, so admins must always receive the
+  // full org-scoped active-deal set without owner narrowing. This guard makes
+  // that explicit and decouples admin visibility from
+  // targetDealOwnerName/targetUserId. Daily Rundown still narrows when an
+  // explicit target is passed (intentional rundown scoping), even for admins.
+  const hasRundownTarget = !!(targetDealOwnerName || targetUserId);
+  const isRundownScope = hasRundownTarget;
   const effectiveUserId = isRundownScope ? (targetUserId ?? user?.id ?? null) : null;
   const effectiveOwnerName = isRundownScope
     ? (targetDealOwnerName ?? '').toString().trim().toLowerCase()
@@ -1367,6 +1375,8 @@ export function PipelineTab({
 
   const filteredDeals = useMemo(() => {
     const all = (scopedDeals as any[]) || [];
+    // Admins on non-rundown surfaces always see the full active-deal set.
+    if (isAdmin && !hasRundownTarget) return all;
     if (!isRundownScope) return all;
     const taskSet = assignedTaskDealIds || new Set<string>();
     if (!effectiveOwnerName && taskSet.size === 0) return all;
@@ -1374,7 +1384,7 @@ export function PipelineTab({
       const owner = (d.dealOwner || d.deal_owner || '').toString().trim().toLowerCase();
       return (effectiveOwnerName && owner === effectiveOwnerName) || taskSet.has(d.id);
     });
-  }, [scopedDeals, effectiveOwnerName, assignedTaskDealIds, isRundownScope]);
+  }, [scopedDeals, effectiveOwnerName, assignedTaskDealIds, isRundownScope, isAdmin, hasRundownTarget]);
 
   // Dev diagnostic: surface unexpected empty results for authenticated users.
   useEffect(() => {
@@ -1383,13 +1393,14 @@ export function PipelineTab({
       // eslint-disable-next-line no-console
       console.warn('[PipelineTab] empty deals result', {
         user: user.email,
+        isAdmin,
         isRundownScope,
         targetDealOwnerName,
         targetUserId,
         scopedDealsCount: (scopedDeals as any[])?.length ?? 0,
       });
     }
-  }, [enabled, isLoading, filteredDeals.length, user?.id, user?.email, isRundownScope, targetDealOwnerName, targetUserId, scopedDeals]);
+  }, [enabled, isLoading, filteredDeals.length, user?.id, user?.email, isAdmin, isRundownScope, targetDealOwnerName, targetUserId, scopedDeals]);
 
   // All hooks above this line. Conditional early returns are safe below.
   if (isLoading && !data) return <TabSkeleton />;
