@@ -32,12 +32,12 @@ export function TasksOverlay({ open, onOpenChange }: Props) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="popup-shell-surface p-0 gap-0 max-w-none w-[calc(100vw-32px)] h-[calc(100vh-32px)] sm:w-[calc(100vw-48px)] sm:h-[calc(100vh-48px)] rounded-2xl overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20"
+        className="popup-shell-surface p-0 gap-0 max-w-[95vw] w-[min(95vw,1600px)] h-[min(92dvh,1000px)] max-h-[92dvh] rounded-2xl overflow-hidden border-transparent glass-border-soft shadow-2xl shadow-black/20"
       >
         <VisuallyHidden>
           <DialogTitle>Tasks</DialogTitle>
         </VisuallyHidden>
-        <div className="h-full w-full overflow-auto">
+        <div className="h-full w-full overflow-hidden">
           <TasksErrorBoundary onFallback={() => onOpenChange(false)}>
             <Suspense
               fallback={
