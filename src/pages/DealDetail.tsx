@@ -4036,6 +4036,8 @@ export default function DealDetail() {
                                 const stage = configuredStages.find(s => s.id === l.stage);
                                 return stage?.group === id;
                               }).length || 0;
+                              const theme = getLenderStatusTheme(id);
+                              const isActive = lenderGroupFilters.has(id as StageGroup);
                               return (
                                 <ToggleGroupItem
                                   key={id}
@@ -4043,15 +4045,23 @@ export default function DealDetail() {
                                   size="sm"
                                   variant="outline"
                                   aria-label={`Filter by ${label}`}
-                                  className="h-8 px-2 text-xs whitespace-nowrap shrink-0 rounded-md border-white/10 bg-background/40 backdrop-blur-sm hover:bg-muted/40 hover:border-white/20 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:border-primary"
-                                >
-                                  {(id === 'passed' || group?.color) && (
-                                    <span
-                                      className={`h-1.5 w-1.5 rounded-full mr-1 ${id === 'passed' ? 'bg-destructive' : group!.color}`}
-                                    />
+                                  className={cn(
+                                    'h-7 px-2.5 text-xs whitespace-nowrap shrink-0 rounded-md border transition-colors duration-150 inline-flex items-center gap-1.5',
+                                    isActive ? theme.tabActive : cn(theme.tabIdle, theme.tabHover),
                                   )}
-                                  {label}
-                                  {count > 0 && <span className="ml-1 text-[10px] opacity-70 tabular-nums">{count}</span>}
+                                >
+                                  <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', theme.dot)} />
+                                  <span>{label}</span>
+                                  {count > 0 && (
+                                    <span
+                                      className={cn(
+                                        'ml-0.5 inline-flex items-center justify-center min-w-[1.1rem] h-[1.05rem] px-1 rounded-full text-[10px] font-medium tabular-nums leading-none transition-colors',
+                                        isActive ? theme.countActive : theme.countIdle,
+                                      )}
+                                    >
+                                      {count}
+                                    </span>
+                                  )}
                                 </ToggleGroupItem>
                               );
                             });
