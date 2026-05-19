@@ -222,15 +222,23 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
             className="flex-1 min-h-0 px-3 py-3"
             style={{ overscrollBehavior: 'contain' }}
           >
-            <PipelineMemoCard
-              deal={selectedDeal}
-              digest={digestMap.get(selectedDeal.id)}
-              rawDigest={rawByDeal.get(selectedDeal.id)}
-              tasks={tasksByDeal?.get(selectedDeal.id) || []}
-              isDigestLoading={digestsLoading}
-              showLiveDot
-              onOpenDeal={onOpenDeal}
-            />
+            {/* Force the memo card to stretch to the full available pane
+                height. The Card itself is content-sized (min-h only), so we
+                wrap it in a min-h-full flex column and use a child selector
+                to make the Card grow to fill the pane. Internal sections
+                still flow naturally and the ScrollArea handles overflow
+                when content exceeds the pane. */}
+            <div className="min-h-full flex flex-col [&>*]:flex-1 [&>*]:h-full">
+              <PipelineMemoCard
+                deal={selectedDeal}
+                digest={digestMap.get(selectedDeal.id)}
+                rawDigest={rawByDeal.get(selectedDeal.id)}
+                tasks={tasksByDeal?.get(selectedDeal.id) || []}
+                isDigestLoading={digestsLoading}
+                showLiveDot
+                onOpenDeal={onOpenDeal}
+              />
+            </div>
           </ScrollArea>
         </>
       ) : (
