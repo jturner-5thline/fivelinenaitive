@@ -3554,7 +3554,7 @@ export default function DealDetail() {
                                       </TooltipProvider>
                                       <DraftEmailToClientContactButton
                                         dealId={deal.id}
-                                        dealName={deal.dealName}
+                                        dealName={deal.name || deal.company}
                                         contactName={deal.contact}
                                         contactInfo={deal.contactInfo}
                                         companyDomain={deal.companyUrl}
