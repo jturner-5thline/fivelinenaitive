@@ -123,6 +123,8 @@ export interface EmailComposerCardProps {
   className?: string;
   /** Enable drag-to-resize on the top edge (inline only). */
   resizable?: boolean;
+  /** Thread ID for per-draft schedule-chip dismissal persistence. */
+  threadId?: string;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
