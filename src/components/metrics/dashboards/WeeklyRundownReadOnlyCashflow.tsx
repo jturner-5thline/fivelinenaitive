@@ -18,6 +18,20 @@ export function WeeklyRundownReadOnlyCashflow() {
         .weekly-rundown-readonly-cashflow {
           position: relative;
         }
+        /* ───────── Force the two primary cashflow charts to remain side
+           by side inside the Daily Rundown Financial tab. The default
+           cashflow stylesheet collapses to a single column below 900px,
+           but the embedded Rundown surface is often narrower than that
+           and both charts must remain visible together. Stack only on
+           genuinely small screens. */
+        .weekly-rundown-readonly-cashflow .cf-charts-row {
+          grid-template-columns: 1fr 1fr !important;
+        }
+        @media (max-width: 600px) {
+          .weekly-rundown-readonly-cashflow .cf-charts-row {
+            grid-template-columns: 1fr !important;
+          }
+        }
         /* ───────── HARD-REMOVE all editing affordances inside the cashflow grid ─────────
            The grid must be VIEW-ONLY in the Weekly Rundown carousel — values come
            solely from QuickBooks. Hide (not just disable) every control that lets
