@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+const DealsPage = React.lazy(() => import('@/pages/Deals'));
+
 interface DealsOverlayProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,9 +41,7 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
-      <div
-        className="relative z-10 w-[96vw] h-[94vh] rounded-2xl overflow-hidden border border-border bg-background shadow-2xl flex flex-col"
-      >
+      <div className="relative z-10 w-[96vw] h-[94vh] rounded-2xl overflow-hidden border border-border bg-background shadow-2xl flex flex-col">
         <div className="absolute top-2 right-2 z-20">
           <Button
             variant="ghost"
@@ -53,11 +53,11 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
             <X className="h-4 w-4" />
           </Button>
         </div>
-        <iframe
-          src="/deals?embedded=1"
-          title="Deals"
-          className="flex-1 w-full h-full border-0 bg-background"
-        />
+        <div className="flex-1 min-h-0 overflow-auto bg-background">
+          <React.Suspense fallback={<div className="p-6 text-sm text-muted-foreground">Loading Deals…</div>}>
+            <DealsPage />
+          </React.Suspense>
+        </div>
       </div>
     </div>
   );
