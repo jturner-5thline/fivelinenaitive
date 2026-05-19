@@ -660,8 +660,8 @@ export default function Tasks() {
           or the Claap routing badge. Tabs may shrink/scroll before they
           ever reach into this reserved gutter.
         */}
-        <div className="flex items-center justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap">
-          <div className="min-w-0 flex-shrink">
+        <div className="flex items-center justify-between px-6 pt-5 pb-3 min-w-0 gap-4 flex-nowrap pr-14">
+          <div className="min-w-0 flex-1">
             <h1 className="text-[22px] font-semibold tracking-tight leading-none" style={{ color: '#eef1f6' }}>
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
@@ -674,6 +674,28 @@ export default function Tasks() {
                 </>
               )}
             </p>
+          </div>
+          <div className="shrink-0 flex items-center">
+            <HintTooltip
+              hint="Click here to create a new task."
+              visible={isHintVisible('tasks-add')}
+              onDismiss={() => dismissHint('tasks-add')}
+              side="bottom"
+            >
+              <Button
+                type="button"
+                variant="liquid-glass"
+                size="sm"
+                className="gap-2"
+                onClick={(e) => {
+                  quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
+                  setShowQuickCreate(true);
+                }}
+              >
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Task</span>
+              </Button>
+            </HintTooltip>
           </div>
         </div>
 
@@ -990,27 +1012,6 @@ export default function Tasks() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <HintTooltip
-            hint="Click here to create a new task."
-            visible={isHintVisible('tasks-add')}
-            onDismiss={() => dismissHint('tasks-add')}
-            side="bottom"
-          >
-            <Button
-              type="button"
-              variant="liquid-glass"
-              size="sm"
-              className="gap-2"
-              onClick={(e) => {
-                quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
-                setShowQuickCreate(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Add Task
-            </Button>
-          </HintTooltip>
         </div>
 
         {/* Main content */}
