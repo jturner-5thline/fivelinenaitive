@@ -79,38 +79,34 @@ function SourceLockedAction({ row }: { row: DrilldownRow }) {
     ? (row.entryId.split(':')[1] || '').trim()
     : '';
   const where = isDeal
-    ? 'This row is generated from the linked naitive deal record. Edit or remove the retainer / closing fee on the deal to change this entry.'
+    ? 'Generated from the linked naitive deal. To remove or edit this retainer / closing fee, update the deal record — changes flow back here automatically.'
     : isQb
-      ? 'This row is imported from QuickBooks. Adjust or void the underlying transaction in QuickBooks — it will sync back here on the next refresh.'
+      ? 'Imported from QuickBooks. Void or adjust the underlying transaction in QuickBooks — it will sync back here on the next refresh.'
       : 'This row is generated automatically and cannot be edited here.';
+  const label = isDeal ? 'Manage on deal' : isQb ? 'Open in QuickBooks' : 'Source-managed';
+  const content = (
+    <span className="inline-flex items-center gap-1 rounded-md border border-border bg-muted/40 px-2 py-1 text-[10px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+      {label}
+      {(isDeal || isQb) && <ExternalLink className="h-3 w-3" />}
+    </span>
+  );
   return (
     <TooltipProvider delayDuration={150}>
-      <div className="flex items-center gap-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <span
-              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/60 cursor-not-allowed"
-              aria-disabled
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </span>
-          </TooltipTrigger>
-          <TooltipContent side="left" className="max-w-[260px] text-xs leading-snug">
-            <div className="font-medium mb-1">
-              {isDeal ? 'Managed by naitive deal' : isQb ? 'Managed by QuickBooks' : 'System-generated'}
-            </div>
-            <div className="text-muted-foreground">{where}</div>
-            {isDeal && dealId && (
-              <Link
-                to={`/deal/${dealId}`}
-                className="mt-2 inline-flex items-center gap-1 text-primary hover:underline"
-              >
-                Open deal <ExternalLink className="h-3 w-3" />
-              </Link>
-            )}
-          </TooltipContent>
-        </Tooltip>
-      </div>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {isDeal && dealId ? (
+            <Link to={`/deal/${dealId}`}>{content}</Link>
+          ) : (
+            <span aria-disabled={!isQb}>{content}</span>
+          )}
+        </TooltipTrigger>
+        <TooltipContent side="left" className="max-w-[280px] text-xs leading-snug">
+          <div className="font-medium mb-1">
+            {isDeal ? 'Managed by naitive deal' : isQb ? 'Managed by QuickBooks' : 'System-generated'}
+          </div>
+          <div className="text-muted-foreground">{where}</div>
+        </TooltipContent>
+      </Tooltip>
     </TooltipProvider>
   );
 }
