@@ -1336,6 +1336,24 @@ export function PipelineTab({
     newDeals: [], riskDeals: [], stageChanges: [], recentActivity: [], scopedDeals: [],
   };
 
+  // Perf: derive tile-rendering deals synchronously from the in-memory
+  // DealsContext so the memo list paints immediately on first open without
+  // waiting on the activity_logs round-trip inside usePipelineData. Once the
+  // query resolves, we prefer its scopedDeals (which match exactly).
+  const { deals: allDealsCtx } = useDealsContext();
+  const activePipelineIdSync = useActivePipelineId();
+  const syncScopedDeals = useMemo(() => {
+    if (!activePipelineIdSync) return [] as any[];
+    const base = targetDealOwnerName
+      ? getDealsForUserName(allDealsCtx as any[], targetDealOwnerName)
+      : (allDealsCtx as any[]);
+    const eligible = filterRundownEligibleDeals(base as any[], activePipelineIdSync, isAdmin);
+    if (isAdmin) return eligible;
+    const suppressed = ['archived', 'closed-lost', 'closed_lost', 'closedlost'];
+    return eligible.filter((d: any) => !suppressed.includes((d.status || '').toLowerCase()));
+  }, [allDealsCtx, activePipelineIdSync, targetDealOwnerName, isAdmin]);
+  const effectiveScopedDeals = (scopedDeals as any[])?.length ? (scopedDeals as any[]) : syncScopedDeals;
+
   // ── Rundown-only "owner or has-active-task" filter ──
   // The Deals tab inside Daily/Niki Rundown surfaces should ONLY show deals
   // where the target user is the deal owner OR has at least one open task
@@ -1378,7 +1396,7 @@ export function PipelineTab({
   });
 
   const filteredDeals = useMemo(() => {
-    const all = (scopedDeals as any[]) || [];
+    const all = (effectiveScopedDeals as any[]) || [];
     // Admins on non-rundown surfaces always see the full active-deal set.
     if (isAdmin && !hasRundownTarget) return all;
     if (!isRundownScope) return all;
@@ -1388,7 +1406,7 @@ export function PipelineTab({
       const owner = (d.dealOwner || d.deal_owner || '').toString().trim().toLowerCase();
       return (effectiveOwnerName && owner === effectiveOwnerName) || taskSet.has(d.id);
     });
-  }, [scopedDeals, effectiveOwnerName, assignedTaskDealIds, isRundownScope, isAdmin, hasRundownTarget]);
+  }, [effectiveScopedDeals, effectiveOwnerName, assignedTaskDealIds, isRundownScope, isAdmin, hasRundownTarget]);
 
   // Dev diagnostic: surface unexpected empty results for authenticated users.
   useEffect(() => {
@@ -1407,7 +1425,10 @@ export function PipelineTab({
   }, [enabled, isLoading, filteredDeals.length, user?.id, user?.email, isAdmin, isRundownScope, targetDealOwnerName, targetUserId, scopedDeals]);
 
   // All hooks above this line. Conditional early returns are safe below.
-  if (isLoading && !data) return <TabSkeleton />;
+  // Only show the full skeleton if we genuinely have nothing to render —
+  // i.e., the query is still loading AND we have no synchronous deals
+  // (cold start before DealsContext hydrates).
+  if (isLoading && !data && syncScopedDeals.length === 0) return <TabSkeleton />;
 
   // Empty state for delegated view with no owned/managed deals.
   const isDelegated = !!targetDealOwnerName;
