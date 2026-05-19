@@ -11,6 +11,13 @@ export interface CompanyFeatures {
   agreement_icon_visible: boolean;
   deal_memo_enabled: boolean;
   sample_deal_on_signup: boolean;
+  /**
+   * Per-company override for AI Assist email surfaces.
+   *  - `true`  = force-enable for this company
+   *  - `false` = force-disable for this company
+   *  - `null`  = inherit tenant default (5thline.co => on, all others => off)
+   */
+  assist_enabled: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -21,6 +28,7 @@ const DEFAULT_FEATURES: Omit<CompanyFeatures, 'id' | 'company_id' | 'created_at'
   agreement_icon_visible: false,
   deal_memo_enabled: false,
   sample_deal_on_signup: true,
+  assist_enabled: null,
 };
 
 export function useCompanyFeatures() {
@@ -74,6 +82,10 @@ export function useCompanyFeatures() {
         agreement_icon_visible: true,
         deal_memo_enabled: true,
         sample_deal_on_signup: true,
+        // Assist: 5th Line default is ON, but a company-level override
+        // (true/false) still wins so admins can disable it for a specific
+        // 5th Line workspace.
+        assist_enabled: data?.assist_enabled ?? true,
       },
       isLoading: false,
     };
@@ -86,6 +98,10 @@ export function useCompanyFeatures() {
       agreement_icon_visible: data?.agreement_icon_visible ?? DEFAULT_FEATURES.agreement_icon_visible,
       deal_memo_enabled: data?.deal_memo_enabled ?? DEFAULT_FEATURES.deal_memo_enabled,
       sample_deal_on_signup: data?.sample_deal_on_signup ?? DEFAULT_FEATURES.sample_deal_on_signup,
+      // Assist: non-5th-Line tenants default to OFF. A company-level override
+      // (true) can enable it; (false) keeps it off; (null) inherits the
+      // tenant default below.
+      assist_enabled: data?.assist_enabled ?? false,
     },
     isLoading,
   };
@@ -115,7 +131,7 @@ export function useAdminCompanyFeatures(companyId: string | null) {
   });
 
   const updateFeatures = useMutation({
-    mutationFn: async (updates: Partial<Pick<CompanyFeatures, 'workflows_enabled' | 'timeline_view_enabled' | 'agreement_icon_visible' | 'deal_memo_enabled' | 'sample_deal_on_signup'>>) => {
+    mutationFn: async (updates: Partial<Pick<CompanyFeatures, 'workflows_enabled' | 'timeline_view_enabled' | 'agreement_icon_visible' | 'deal_memo_enabled' | 'sample_deal_on_signup' | 'assist_enabled'>>) => {
       if (!companyId) throw new Error('No company selected');
 
       // Upsert: insert if not exists, update if exists
