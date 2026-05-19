@@ -31,7 +31,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import {
-  X, Calendar, Flag, User, MessageSquare, Activity, Plus,
+  X, Calendar, User, MessageSquare, Activity, Plus,
   CheckSquare, Trash2, Clock, Sun, Sunrise, ArrowRight,
   Link2, Paperclip, Download, FileText, Users,
   Repeat, ExternalLink, AlertTriangle, Pause, Play, Square, RefreshCw,
