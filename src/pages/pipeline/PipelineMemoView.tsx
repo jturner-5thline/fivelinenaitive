@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { useDealFreshness } from '@/hooks/useDealFreshness';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -142,6 +143,9 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
   const { dismiss, isDismissed } = useDailyDismissals(dismissalScope);
 
+  // Soft attention glow: ≥2 business days since the last status / stage change.
+  const { data: freshness } = useDealFreshness(dealIds);
+
   const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
 
   // Master/detail selection — mirrors the Agenda and End of Day tabs.
@@ -188,6 +192,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
               key={deal.id}
               deal={deal}
               active={selectedId === deal.id}
+              isStale={freshness?.isStale.get(deal.id) ?? false}
               onClick={() => setSelectedId(deal.id)}
               onDismiss={() => dismiss(deal.id)}
             />
@@ -273,11 +278,13 @@ function titleCase(s: string): string {
 function DealTile({
   deal,
   active,
+  isStale = false,
   onClick,
   onDismiss,
 }: {
   deal: Deal;
   active: boolean;
+  isStale?: boolean;
   onClick: () => void;
   onDismiss: () => void;
 }) {
@@ -310,6 +317,9 @@ function DealTile({
         active
           ? 'border-white/25 bg-white/[0.06]'
           : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
+        // Soft attention cue when the deal hasn't had a status or stage
+        // update in ≥2 business days. Faint amber ring + glow — never red.
+        isStale && 'deal-tile-stale-glow',
       )}
     >
       <div className="flex items-start justify-between gap-2 min-w-0">
