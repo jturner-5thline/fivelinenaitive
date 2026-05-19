@@ -25,6 +25,8 @@ interface DraftEmailToClientContactButtonProps {
   className?: string;
   size?: 'sm' | 'default';
   variant?: 'outline' | 'ghost' | 'secondary';
+  /** Visible button label. Defaults to "Draft Email to Client Contact". */
+  label?: string;
 }
 
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/i;
@@ -38,6 +40,7 @@ export function DraftEmailToClientContactButton({
   className,
   size = 'sm',
   variant = 'outline',
+  label = 'Draft Email to Client Contact',
 }: DraftEmailToClientContactButtonProps) {
   const [open, setOpen] = useState(false);
   const contactEmail = contactInfo?.match(EMAIL_RE)?.[0]
@@ -57,7 +60,7 @@ export function DraftEmailToClientContactButton({
         title={disabled ? 'Add a contact email to enable drafting' : 'Draft an email to this contact'}
       >
         <Mail className="h-3.5 w-3.5" />
-        Draft Email to Client Contact
+        {label}
       </Button>
       {open && (
         <Suspense fallback={null}>

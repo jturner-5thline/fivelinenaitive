@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { formatDealType } from '@/utils/dealTypeLabels';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToClientContactButton';
 
 interface MemoHeaderProps {
   deal: Deal;
@@ -76,11 +77,31 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
             <Badge variant="gray" className="rounded-full">{assetClass}</Badge>
           )}
         </div>
-        <div className="flex items-center gap-1.5 shrink-0">
+        <div
+          className="flex flex-wrap items-center justify-end gap-1.5 shrink-0"
+          onClick={(e) => e.stopPropagation()}
+          onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+        >
           {/* Editable status tag — reuses the shared status surface and
               writes back to deal.status so every other consumer updates. */}
           <EditableDealStatusTag dealId={deal.id} status={deal.status} />
           <Badge variant="green" className="rounded-full">{amountLabel}</Badge>
+          {/* Email — launches the existing thread-aware Draft Email to
+              Client Contact dialog. Reuses the same composer + thread
+              picker shipped on the deal detail page. */}
+          <DraftEmailToClientContactButton
+            dealId={deal.id}
+            dealName={deal.name || deal.company}
+            contactName={deal.contact}
+            contactInfo={deal.contactInfo}
+            companyDomain={deal.companyUrl}
+            size="sm"
+            variant="outline"
+            label="Email"
+            className="h-7 px-2 shrink-0"
+          />
         </div>
       </div>
       {statusDisplay && (
