@@ -682,9 +682,12 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
 
   const visible = useMemo(() => {
     if (!ranked) return null;
-    if (filters.has('all') || filters.size === 0) return ranked;
-    return ranked.filter((r) => filters.has(r.analysis.status as FilterKey));
-  }, [ranked, filters]);
+    // Only surface clean, user-friendly options. Internal "tight" / "unavailable"
+    // (conflict) buckets are hidden from the scheduling UI entirely.
+    return ranked.filter(
+      (r) => r.analysis.status === 'available' || r.analysis.status === 'partially_available',
+    );
+  }, [ranked]);
 
   // Keyboard nav
   useEffect(() => {
@@ -833,22 +836,6 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
         <span className="inline-flex items-center gap-1 rounded-md border border-white/[0.08] bg-white/[0.03] px-1.5 py-0.5 text-[10px] text-foreground">
           Best fit <ChevronDown className="h-2.5 w-2.5" />
         </span>
-        <span className="mx-1 h-3 w-px bg-white/[0.08]" />
-        {(['all', 'available', 'partially_available', 'tight', 'unavailable'] as FilterKey[]).map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => toggleFilter(k)}
-            className={cn(
-              'rounded-full border px-1.5 py-0.5 text-[10px] transition',
-              filters.has(k)
-                ? 'border-primary/40 bg-primary/10 text-primary'
-                : 'border-white/[0.08] bg-white/[0.02] text-muted-foreground hover:text-foreground',
-            )}
-          >
-            {FILTER_LABEL[k]}
-          </button>
-        ))}
         <span className="mx-1 h-3 w-px bg-white/[0.08]" />
         <select
           value={rangeDays}
