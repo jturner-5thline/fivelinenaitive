@@ -73,6 +73,7 @@ function assembleEmailHtml(opts: {
   outroHtml: string;
   grouped: { status: typeof STATUS_ORDER[number]; deals: Deal[] }[];
   statusTexts: Record<string, string>;
+  stageTitles: Record<string, string>;
 }): string {
   const parts: string[] = [];
   parts.push(opts.introHtml || '');
@@ -85,8 +86,9 @@ function assembleEmailHtml(opts: {
     const items = g.deals
       .map((d) => {
         const txt = (opts.statusTexts[d.id] ?? originalStatusText(d, g.status.label)).trim() || g.status.label;
+        const stage = (opts.stageTitles[d.id] || '').trim() || 'No Stage';
         total += 1;
-        return `<li><strong>${escapeHtml(d.name)}</strong> — <strong>${escapeHtml(formatAmount(d.value || 0))}</strong> — ${escapeHtml(txt)}</li>`;
+        return `<li><strong>${escapeHtml(d.name)}</strong> — <strong>${escapeHtml(formatAmount(d.value || 0))}</strong> — <strong>${escapeHtml(stage)}</strong> — ${escapeHtml(txt)}</li>`;
       })
       .join('');
     parts.push(`<ul>${items}</ul>`);
@@ -154,6 +156,26 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     if (thresholdIdx === -1) return null;
     return new Set(ordered.slice(thresholdIdx).map((s) => s.id));
   }, [pipelines, activePipelineId]);
+
+  /**
+   * Map of stage ID → human-readable stage label for the active pipeline.
+   * Used to render the bolded stage title inline on each deal row.
+   * Sourced from the pipeline definition (not the report status bucket)
+   * so the displayed label reflects the deal's actual pipeline stage.
+   */
+  const stageLabelById = useMemo<Record<string, string>>(() => {
+    const pipeline = pipelines.find((p) => p.id === activePipelineId) ?? null;
+    const out: Record<string, string> = {};
+    for (const s of pipeline?.stages ?? []) {
+      if (s?.id) out[s.id] = (s.label || '').trim();
+    }
+    return out;
+  }, [pipelines, activePipelineId]);
+
+  const stageTitleForDeal = (d: Deal): string => {
+    const raw = (d.stage && stageLabelById[d.stage]) || '';
+    return raw.trim() || 'No Stage';
+  };
 
   const filteredDeals = useMemo(() => {
     return deals.filter((d) => {
@@ -277,7 +299,9 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
     try {
       const introHtml = introEditor?.getHTML() || '';
       const outroHtml = outroEditor?.getHTML() || '';
-      const html = assembleEmailHtml({ introHtml, outroHtml, grouped, statusTexts });
+      const stageTitles: Record<string, string> = {};
+      for (const g of grouped) for (const d of g.deals) stageTitles[d.id] = stageTitleForDeal(d);
+      const html = assembleEmailHtml({ introHtml, outroHtml, grouped, statusTexts, stageTitles });
       const text = stripHtml(html);
       const { data, error } = await supabase.functions.invoke('share-pipeline-report', {
         body: { to: toList, cc: ccList, subject: subject.trim(), body: text, bodyHtml: html },
@@ -362,6 +386,8 @@ export function ShareReportDialog({ open, onOpenChange, deals, activePipelineId,
                             <span className="text-foreground font-bold shrink-0">{d.name}</span>
                             <span className="text-muted-foreground shrink-0">—</span>
                             <span className="text-foreground font-bold tabular-nums shrink-0">{formatAmount(d.value || 0)}</span>
+                            <span className="text-muted-foreground shrink-0">—</span>
+                            <span className="text-foreground font-bold shrink-0">{stageTitleForDeal(d)}</span>
                             <span className="text-muted-foreground shrink-0">—</span>
                             <div className="flex-1 min-w-0 flex flex-col gap-1">
                               <Input
