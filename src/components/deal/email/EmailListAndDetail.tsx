@@ -2825,10 +2825,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               <TooltipContent side="bottom" className="text-xs">Flag</TooltipContent>
             </Tooltip>
 
-            <div className="w-px h-8 bg-border/50 mx-1" />
+            {assistEnabled && <div className="w-px h-8 bg-border/50 mx-1" />}
 
             {/* AI Assist toggle — sidebar is always-on by default on desktop;
-                on smaller widths this button expands the collapsed AI panel. */}
+                on smaller widths this button expands the collapsed AI panel.
+                Entire control is omitted (no dead/disabled affordance) when
+                Assist is gated off for this account/company. */}
+            {assistEnabled && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
@@ -2851,6 +2854,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 {showAiAssist ? 'Hide AI Assist (A)' : 'Show AI Assist (A)'}
               </TooltipContent>
             </Tooltip>
+            )}
 
             {hasUploadableAttachments && (
               <Tooltip>
