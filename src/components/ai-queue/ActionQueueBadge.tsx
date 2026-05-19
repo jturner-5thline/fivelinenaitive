@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAiActionQueue, useAiActionQueueCount } from '@/hooks/useAiActionQueue';
+import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { ActionQueuePanel } from './ActionQueuePanel';
 
 /**
@@ -11,8 +12,10 @@ import { ActionQueuePanel } from './ActionQueuePanel';
  * and opens the inline review panel.
  */
 export function ActionQueueBadge() {
-  const count = useAiActionQueueCount();
+  const aiCount = useAiActionQueueCount();
   const { data = [], refetch } = useAiActionQueue();
+  const { data: accessRequests = [] } = useDealAccessRequests();
+  const count = aiCount + accessRequests.length;
   const [open, setOpen] = useState(false);
 
   const label = useMemo(
