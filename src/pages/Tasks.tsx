@@ -637,8 +637,6 @@ export default function Tasks() {
   const viewTabs = [
     { key: 'list', label: 'List', icon: ListTodo, disabled: false },
     { key: 'board', label: 'Board', icon: LayoutGrid, disabled: false },
-    { key: 'calendar', label: 'Calendar', icon: Calendar, disabled: true },
-    { key: 'reporting', label: 'Reports', icon: BarChart3, disabled: true },
   ] as const;
 
   return (
