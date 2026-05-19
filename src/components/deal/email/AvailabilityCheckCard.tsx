@@ -899,15 +899,6 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
                       <span>{fmt.day}</span>
                       <span className="text-muted-foreground">·</span>
                       <span>{fmt.primary}</span>
-                      <span
-                        className={cn(
-                          'inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[10px]',
-                          meta.chip,
-                        )}
-                      >
-                        <span className={cn('h-1.5 w-1.5 rounded-full', meta.dot)} />
-                        {meta.label}
-                      </span>
                       <span className="inline-flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.02] px-1.5 py-0.5 text-[10px] text-muted-foreground">
                         Score {a.fitScore}
                       </span>
@@ -926,24 +917,6 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
 
               {/* Mini timeline */}
               <MiniTimeline slot={a.slot} events={busyEvents || []} bufferConflict={a.bufferConflict} />
-
-              {/* Conflict summary */}
-              <div className="mt-1 text-[10.5px] text-muted-foreground">
-                {a.primaryConflict ? (
-                  <span>
-                    <span className="text-foreground">{a.primaryConflict.title || 'Busy'}</span>
-                    {' · '}
-                    {a.primaryConflict.organizer ? 'organizer' : a.primaryConflict.responseStatus === 'tentative' ? 'tentative' : a.primaryConflict.responseStatus === 'needsAction' ? 'optional' : 'required'}
-                    {a.primaryConflict.recurring ? ' · recurring' : ''}
-                  </span>
-                ) : a.bufferConflict ? (
-                  <span>
-                    Only {Math.round(a.bufferConflict.gapMin)} min buffer {a.bufferConflict.side} {a.bufferConflict.event.title || 'a meeting'}
-                  </span>
-                ) : (
-                  <span>No calendar conflicts in the proposed window.</span>
-                )}
-              </div>
 
               {/* Attendee row */}
               <div className="mt-1.5 flex items-center gap-1">
