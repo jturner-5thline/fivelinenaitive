@@ -743,7 +743,7 @@ BROADCAST MODE (PERSONALIZATION OFF):
         : '';
 
       const baseTemplateSection = base
-        ? `\n\nAPPROVED BASE TEMPLATE (the user already reviewed and edited this lender-agnostic submission email — preserve its wording, only personalize the salutation and opening line per lender, do not rewrite the rest):\n\nSUBJECT: ${base.subject}\n\nBODY:\n${htmlToPlainText(base.bodyHtml)}\n`
+        ? `\n\nAPPROVED BASE TEMPLATE — AUTHORITATIVE SOURCE (the user already reviewed and EDITED this lender-agnostic submission email). You MUST use it verbatim as the email body for every lender. IGNORE the EMAIL BODY TEMPLATE section above and DO NOT rewrite, reorder, shorten, or paraphrase any sentence. The ONLY allowed changes are:\n  1. Replace the salutation line with "Hi <LENDER FIRST NAME>," (or the institution name if no contact first name is known).\n  2. Optionally personalize ONE short opening sentence to connect the deal to the lender's focus area when profile data is provided. Everything else (paragraph order, wording, attachments line, sign-off) must match the approved base exactly.\nFor the subject line, use the same wording as the approved base subject but insert the lender institution into the pipe slot if the base subject does not already include one (format: "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>").\n\nAPPROVED BASE SUBJECT:\n${base.subject}\n\nAPPROVED BASE BODY (use verbatim, only swap the salutation / optional opening line):\n${htmlToPlainText(base.bodyHtml)}\n`
         : '';
 
       return `You are drafting lender submission emails for this deal.${personalize ? ' Generate ONE email PER ACTIVE LENDER on this deal.' : ''}
