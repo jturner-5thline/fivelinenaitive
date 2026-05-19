@@ -11,6 +11,7 @@ export { HomepageSecurity } from "./HomepageSecurity";
 export { HomepageDataPrivacy } from "./HomepageDataPrivacy";
 export { HomepageCTA } from "./HomepageCTA";
 export { HomepageFooter } from "./HomepageFooter";
+export { HomepageFromBlog } from "./HomepageFromBlog";
 export { 
   PlatformPreviewDealPipeline, 
   PlatformPreviewLenderKanban, 
