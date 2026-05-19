@@ -40,6 +40,13 @@ import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
+import {
+  COMPOSE_BODY_EVENT,
+  type ComposeBodyDetail,
+  detectSchedulingIntent,
+  inboundProposedTimes,
+} from './scheduleIntent';
+import { CalendarClock } from 'lucide-react';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
