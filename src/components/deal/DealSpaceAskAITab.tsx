@@ -795,6 +795,7 @@ CRITICAL RULES:
   // base-email step first; the user can edit that draft, then we save it
   // to Notes and open Review & Exclude before per-lender drafts run.
   const handleDraftSubmission = useCallback(async () => {
+    baseDraftRef.current = null;
     setBaseDraft(null);
     setIsBaseOpen(true);
   }, []);
