@@ -57,6 +57,7 @@ import type { Deal } from '@/types/deal';
 import { RecentPipelineActivitySection } from './briefingPrimitives';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { WeeklyRundownReadOnlyCashflow } from '@/components/metrics/dashboards/WeeklyRundownReadOnlyCashflow';
 
 // Users for whom the Daily Rundown hides "Today's Follow-Ups" entirely and
 // collapses "Recent Pipeline Activity" behind a button that opens a side
@@ -65,6 +66,15 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 const COLLAPSED_ACTIVITY_EMAILS = new Set<string>([
   'jturner@5thline.co',
   'nheikali@5thline.co',
+  'jmoffitt@5thline.co',
+]);
+
+// Users for whom the Daily Rundown > Financial tab swaps the compact
+// weekly summary for an embedded, read-only render of the full Finance
+// Cashflow section (charts + table). Clicking the embed routes to the
+// full Finance > Cashflow page for editing.
+const CASHFLOW_EMBED_EMAILS = new Set<string>([
+  'jturner@5thline.co',
   'jmoffitt@5thline.co',
 ]);
 
@@ -1167,6 +1177,24 @@ function EmailTab({
 
 // ── Tab: Financial ─────────────────────────────────────────────
 function FinancialTab({ enabled, onNavigate }: { enabled: boolean; onNavigate: (path: string) => void }) {
+  const { user } = useAuth();
+  const useCashflowEmbed = CASHFLOW_EMBED_EMAILS.has((user?.email || '').toLowerCase());
+
+  if (useCashflowEmbed) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => onNavigate('/finance#dashboards')}
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') onNavigate('/finance#dashboards'); }}
+        className="cursor-pointer rounded-lg ring-1 ring-transparent hover:ring-primary/30 transition"
+        title="Open full Finance · Cashflow"
+      >
+        <WeeklyRundownReadOnlyCashflow />
+      </div>
+    );
+  }
+
   const { data, isLoading } = useFinancialData(enabled);
   const [detail, setDetail] = useState<any>(null);
 
