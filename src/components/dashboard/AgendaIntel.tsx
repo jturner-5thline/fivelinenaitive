@@ -345,6 +345,17 @@ export function AgendaIntel() {
   );
   const [prepLoading, setPrepLoading] = useState<Record<string, boolean>>({});
   const inflightRef = useRef<Set<string>>(new Set());
+  // Master/detail selection — mirrors the End of Day tab's interaction
+  // model: a left list of compact items and a right detail/actions panel.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const update = () => setIsNarrow(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
 
   // Fetch deals once
   useEffect(() => {
