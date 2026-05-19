@@ -300,11 +300,13 @@ function DealTile({
   const amount = formatAmount(deal.value);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className={cn(
-        'group/tile relative w-full text-left rounded-lg border transition-colors px-3 py-2.5',
+        'group/tile relative w-full text-left rounded-lg border transition-colors px-3 py-2.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active
           ? 'border-white/25 bg-white/[0.06]'
           : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
