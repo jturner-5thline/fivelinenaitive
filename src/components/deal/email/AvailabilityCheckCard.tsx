@@ -794,6 +794,20 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
   const [focusedIdx, setFocusedIdx] = useState<number>(0);
   const [filters, setFilters] = useState<Set<FilterKey>>(() => new Set(['available', 'partially_available']));
   const [rangeDays, setRangeDays] = useState<number>(14);
+  // ── Open-availability mode (Scenario 3) ──────────────────────────────
+  // Populated when the sender asks open-ended ("when are you free?")
+  // without proposing specific times. We then ground reply drafts in
+  // the real calendar instead of letting the LLM hallucinate slots.
+  const [openSlots, setOpenSlots] = useState<ProposedSlot[] | null>(null);
+  const [openHorizonDays, setOpenHorizonDays] = useState<number>(14);
+  const [openIntentActive, setOpenIntentActive] = useState<boolean>(false);
+  const [openConstraints, setOpenConstraints] = useState<OpenConstraints>({});
+  const [calendarUnavailable, setCalendarUnavailable] = useState<boolean>(false);
+  const [bookingLink, setBookingLink] = useState<string | null>(() => {
+    try {
+      return typeof window !== 'undefined' ? window.localStorage.getItem(BOOKING_LINK_STORAGE_KEY) : null;
+    } catch { return null; }
+  });
   const lastThreadIdRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -923,6 +937,79 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
       } else {
         setBusyEvents([]);
       }
+
+      // ── Scenario 3: open-availability handling ──────────────────────
+      // If no specific times were proposed by the sender, look for
+      // open-availability intent ("when are you free?", "let me know
+      // what works", etc.) and ground reply drafts in the real
+      // calendar.
+      if (!result.detected || (result.slots?.length ?? 0) === 0) {
+        const latest = thread.latestEmail;
+        const inboundTexts = [
+          latest?.body_text,
+          latest?.body_preview,
+          latest?.snippet,
+          thread.subject,
+        ];
+        const openReq = detectOpenAvailabilityRequest(inboundTexts);
+        if (openReq) {
+          setOpenIntentActive(true);
+          const inboundText = [
+            latest?.body_text,
+            latest?.body_preview,
+            latest?.snippet,
+            thread.subject,
+          ].filter(Boolean).join(' ');
+          const constraints = parseOpenConstraints(inboundText, new Date());
+          setOpenConstraints(constraints);
+          setLoadingCalendar(true);
+          try {
+            const now = new Date();
+            const horizon = constraints.endBound
+              ? new Date(Math.max(constraints.endBound.getTime(), now.getTime() + 14 * 86_400_000))
+              : new Date(now.getTime() + 21 * 86_400_000);
+            const { data: calData, error: calErr } = await withTimeout(
+              supabase.functions.invoke('calendar-events', {
+                body: {
+                  action: 'list',
+                  time_min: now.toISOString(),
+                  time_max: horizon.toISOString(),
+                  max_results: 300,
+                  timezone: BROWSER_TZ,
+                },
+              }),
+              PARSE_TIMEOUT_MS,
+              'Calendar read',
+            );
+            if (calErr) throw calErr;
+            const events: BusyEvent[] = (calData?.events || []).map((e: any) => ({
+              start: e.start,
+              end: e.end,
+              all_day: !!e.all_day,
+              title: e.title || e.summary || e.subject || null,
+            }));
+            // First try: requested window (or default 14 days). If none
+            // match, expand to next 7 days WITHOUT constraints to find
+            // anything bookable.
+            let slots = findOpenSlotsFromCalendar(events, BROWSER_TZ, constraints, 14);
+            let horizonUsed = 14;
+            if (slots.length === 0) {
+              slots = findOpenSlotsFromCalendar(events, BROWSER_TZ, {}, 7);
+              horizonUsed = 7;
+            }
+            setOpenSlots(slots);
+            setOpenHorizonDays(horizonUsed);
+            setCalendarUnavailable(false);
+          } catch (calErr: any) {
+            console.warn('[AvailabilityCheck] open-availability calendar read failed', calErr);
+            setOpenSlots([]);
+            setCalendarUnavailable(true);
+          } finally {
+            setLoadingCalendar(false);
+          }
+        }
+      }
+
       logUsage({
         feature_type: 'AI_CHAT',
         feature_subtype: 'availability_check_success',
