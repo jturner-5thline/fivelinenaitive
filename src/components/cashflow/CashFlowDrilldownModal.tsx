@@ -1,5 +1,15 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, X, Pencil, Trash2, Check } from 'lucide-react';
@@ -121,6 +131,10 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
      *  whether the amount actually changed and trigger the scope prompt. */
     originalAmount: number;
   } | null>(null);
+  /** Pending delete prompt. Holds the row context for the two-path
+   *  destructive confirmation modal. */
+  const [deletePrompt, setDeletePrompt] = useState<DrilldownRow | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState<null | 'one' | 'future'>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   /** Pending scope decision when a user changes Amount on a recurring entry. */
   const [scopePrompt, setScopePrompt] = useState<{
@@ -309,10 +323,9 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
   };
   const handleDelete = async (entryId: string) => {
     if (!onDeleteEntry) return;
-    if (!window.confirm('Delete this entry? This will remove all of its occurrences from the table.')) return;
-    setBusyId(entryId);
-    await onDeleteEntry(entryId);
-    setBusyId(null);
+    // Legacy entry-point — kept for safety; routes through the new modal.
+    const row = rows.find((r) => r.entryId === entryId);
+    if (row) setDeletePrompt(row);
   };
 
   const canMutate = !!onUpdateEntry || !!onDeleteEntry;
