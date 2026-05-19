@@ -9,6 +9,12 @@ export interface AiRecommendation {
   rationale: string;
   components: { type: number; size: number; industry: number; recency: number };
   tier?: string | null;
+  loanTypes?: string[];
+  industries?: string[];
+  minDeal?: number | null;
+  maxDeal?: number | null;
+  active?: boolean;
+  recentActivity?: boolean;
 }
 
 export interface AiRecommendationResponse {

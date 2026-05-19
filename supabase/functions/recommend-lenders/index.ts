@@ -277,7 +277,7 @@ No prose, no markdown, no code fences.`;
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 3000,
-        temperature: 0.2,
+        temperature: 0,
         system,
         messages: [{ role: "user", content: userMsg }],
       }),
@@ -313,6 +313,7 @@ No prose, no markdown, no code fences.`;
       .map((r) => {
         const found = (r.lenderId && lenderById.get(r.lenderId)) ||
           lenderByName.get(String(r.lenderName || "").toLowerCase());
+        const nameKey = String(found?.name ?? r.lenderName ?? "").trim().toLowerCase();
         return {
           lenderId: found?.id ?? r.lenderId ?? null,
           lenderName: found?.name ?? r.lenderName,
@@ -325,6 +326,12 @@ No prose, no markdown, no code fences.`;
             recency: Math.round(Number(r.components?.recency) || 0),
           },
           tier: found?.tier ?? null,
+          loanTypes: Array.isArray(found?.loan_types) ? found!.loan_types : [],
+          industries: Array.isArray(found?.industries) ? found!.industries : [],
+          minDeal: typeof found?.min_deal === "number" ? found!.min_deal : null,
+          maxDeal: typeof found?.max_deal === "number" ? found!.max_deal : null,
+          active: found?.active !== false,
+          recentActivity: recentSet.has(nameKey),
         };
       })
       .filter((r) => r.lenderName && r.matchScore >= 50 && !excludeSet.has(String(r.lenderName).toLowerCase()))

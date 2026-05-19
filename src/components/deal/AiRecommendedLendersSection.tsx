@@ -1,9 +1,12 @@
 import { useMemo, useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, RefreshCw, Plus, X, Sparkles, RotateCcw, Info } from 'lucide-react';
+import { ChevronDown, ChevronRight, RefreshCw, Plus, X, Sparkles, RotateCcw, Info, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
 import {
   Popover,
   PopoverContent,
@@ -47,6 +50,27 @@ function initials(name: string) {
 }
 
 const COLLAPSE_KEY = (dealId: string) => `ai-rec-lenders-collapsed:${dealId}`;
+const FILTERS_KEY = (dealId: string) => `ai-rec-lenders-filters:${dealId}`;
+
+interface RecFilters {
+  loanType: string; // 'any' or specific
+  industry: string; // 'any' or substring match
+  status: 'any' | 'active';
+  minMatch: number; // 0-100
+  recency: 'any' | '30' | '90' | '180'; // days
+  sizeMinM: string; // millions, string for input
+  sizeMaxM: string; // millions
+}
+
+const DEFAULT_FILTERS: RecFilters = {
+  loanType: 'any',
+  industry: '',
+  status: 'any',
+  minMatch: 0,
+  recency: 'any',
+  sizeMinM: '',
+  sizeMaxM: '',
+};
 
 export function AiRecommendedLendersSection({
   dealId,
@@ -64,6 +88,22 @@ export function AiRecommendedLendersSection({
       return false;
     }
   });
+
+  const [filters, setFilters] = useState<RecFilters>(() => {
+    if (!dealId) return DEFAULT_FILTERS;
+    try {
+      const raw = localStorage.getItem(FILTERS_KEY(dealId));
+      if (raw) return { ...DEFAULT_FILTERS, ...JSON.parse(raw) };
+    } catch {/* noop */}
+    return DEFAULT_FILTERS;
+  });
+
+  useEffect(() => {
+    if (!dealId) return;
+    try {
+      localStorage.setItem(FILTERS_KEY(dealId), JSON.stringify(filters));
+    } catch {/* noop */}
+  }, [filters, dealId]);
 
   useEffect(() => {
     if (!dealId) return;
@@ -111,12 +151,53 @@ export function AiRecommendedLendersSection({
 
   const visibleRecs = useMemo(() => {
     const recs = data?.recommendations ?? [];
-    return recs.filter(
-      (r) =>
-        !skippedNames.has(r.lenderName.toLowerCase()) &&
-        !existingLowercase.has(r.lenderName.toLowerCase()),
-    );
-  }, [data, skippedNames, existingLowercase]);
+    const sizeMin = filters.sizeMinM ? Number(filters.sizeMinM) * 1_000_000 : null;
+    const sizeMax = filters.sizeMaxM ? Number(filters.sizeMaxM) * 1_000_000 : null;
+    const loanLc = filters.loanType.toLowerCase();
+    const industryLc = filters.industry.trim().toLowerCase();
+    return recs.filter((r) => {
+      if (skippedNames.has(r.lenderName.toLowerCase())) return false;
+      if (existingLowercase.has(r.lenderName.toLowerCase())) return false;
+      if (r.matchScore < filters.minMatch) return false;
+      if (filters.status === 'active' && r.active === false) return false;
+      if (filters.recency !== 'any' && !r.recentActivity) {
+        // recentActivity is computed in backend over last 90d; for tighter windows
+        // we conservatively require recentActivity to be true. 180d treats as any-recent.
+        if (filters.recency === '30' || filters.recency === '90' || filters.recency === '180') return false;
+      }
+      if (loanLc !== 'any' && loanLc) {
+        const lts = (r.loanTypes ?? []).map((s) => String(s).toLowerCase());
+        if (!lts.some((t) => t.includes(loanLc))) return false;
+      }
+      if (industryLc) {
+        const inds = (r.industries ?? []).map((s) => String(s).toLowerCase());
+        if (!inds.some((t) => t.includes(industryLc))) return false;
+      }
+      // Deal-size band overlap: lender's [minDeal,maxDeal] must overlap [sizeMin,sizeMax]
+      if (sizeMin != null || sizeMax != null) {
+        const lMin = r.minDeal ?? 0;
+        const lMax = r.maxDeal ?? Number.POSITIVE_INFINITY;
+        if (sizeMin != null && lMax < sizeMin) return false;
+        if (sizeMax != null && lMin > sizeMax) return false;
+      }
+      return true;
+    });
+  }, [data, skippedNames, existingLowercase, filters]);
+
+  const loanTypeOptions = useMemo(() => {
+    const set = new Set<string>();
+    (data?.recommendations ?? []).forEach((r) => (r.loanTypes ?? []).forEach((t) => t && set.add(String(t))));
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [data]);
+
+  const filtersActive =
+    filters.loanType !== 'any' ||
+    !!filters.industry ||
+    filters.status !== 'any' ||
+    filters.minMatch > 0 ||
+    filters.recency !== 'any' ||
+    !!filters.sizeMinM ||
+    !!filters.sizeMaxM;
 
   const preferredDefault = useMemo(() => {
     const byLabel = configuredStages.find((s) =>
@@ -155,6 +236,135 @@ export function AiRecommendedLendersSection({
           </button>
           <div className="ml-auto flex items-center gap-1.5">
             <TooltipProvider>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-xs"
+                  >
+                    <Filter className="h-3.5 w-3.5" />
+                    Filters
+                    {filtersActive && (
+                      <Badge variant="secondary" className="h-4 px-1 text-[9px]">on</Badge>
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-80 p-3 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="text-xs font-semibold">Filter recommendations</div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px]"
+                      onClick={() => setFilters(DEFAULT_FILTERS)}
+                      disabled={!filtersActive}
+                    >
+                      Reset
+                    </Button>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px]">Loan type</Label>
+                    <Select
+                      value={filters.loanType}
+                      onValueChange={(v) => setFilters((f) => ({ ...f, loanType: v }))}
+                    >
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any" className="text-xs">Any</SelectItem>
+                        {loanTypeOptions.map((t) => (
+                          <SelectItem key={t} value={t.toLowerCase()} className="text-xs">{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px]">Deal size (USD millions)</Label>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Min"
+                        className="h-8 text-xs"
+                        value={filters.sizeMinM}
+                        onChange={(e) => setFilters((f) => ({ ...f, sizeMinM: e.target.value }))}
+                      />
+                      <span className="text-muted-foreground text-xs">–</span>
+                      <Input
+                        type="number"
+                        min={0}
+                        placeholder="Max"
+                        className="h-8 text-xs"
+                        value={filters.sizeMaxM}
+                        onChange={(e) => setFilters((f) => ({ ...f, sizeMaxM: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px]">Industry</Label>
+                    <Input
+                      placeholder="e.g. SaaS, Healthcare"
+                      className="h-8 text-xs"
+                      value={filters.industry}
+                      onChange={(e) => setFilters((f) => ({ ...f, industry: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px]">Status</Label>
+                      <Select
+                        value={filters.status}
+                        onValueChange={(v: 'any' | 'active') => setFilters((f) => ({ ...f, status: v }))}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any" className="text-xs">Any</SelectItem>
+                          <SelectItem value="active" className="text-xs">Active</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px]">Recent activity</Label>
+                      <Select
+                        value={filters.recency}
+                        onValueChange={(v: RecFilters['recency']) => setFilters((f) => ({ ...f, recency: v }))}
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="any" className="text-xs">Any time</SelectItem>
+                          <SelectItem value="30" className="text-xs">Last 30 days</SelectItem>
+                          <SelectItem value="90" className="text-xs">Last 90 days</SelectItem>
+                          <SelectItem value="180" className="text-xs">Last 180 days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[11px]">Minimum match score</Label>
+                      <span className="text-[11px] tabular-nums text-muted-foreground">{filters.minMatch}%</span>
+                    </div>
+                    <Slider
+                      value={[filters.minMatch]}
+                      min={0}
+                      max={100}
+                      step={5}
+                      onValueChange={([v]) => setFilters((f) => ({ ...f, minMatch: v }))}
+                    />
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
