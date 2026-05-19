@@ -12,7 +12,7 @@ import {
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search, X, Pencil, Trash2, Check } from 'lucide-react';
+import { Search, X, Pencil, Trash2, Check, ExternalLink } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   generateOccurrences,
@@ -26,6 +26,8 @@ import {
   type FlowType,
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Link } from 'react-router-dom';
 
 // Grid-row keys for Debt Advisory sub-rows. These must match the row keys
 // used by WeeklyReportTab AND the keys produced by resolveCategoryToGridRow,
@@ -63,6 +65,54 @@ function parseDate(s: string): Date {
 function formatNiceDate(s: string): string {
   const d = parseDate(s);
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+/** Render a disabled delete action with a tooltip explaining where the
+ *  source record lives. Used for rows that originate outside the cash-flow
+ *  Configure surface (naitive deal projections, QuickBooks imports) so the
+ *  user is never left with an unexplained "Auto" tag. */
+function SourceLockedAction({ row }: { row: DrilldownRow }) {
+  const isDeal = row.source === 'deal';
+  const isQb = row.source === 'quickbooks';
+  // entryId for deal rows looks like "deal:<uuid>:retainer". Extract the uuid.
+  const dealId = isDeal
+    ? (row.entryId.split(':')[1] || '').trim()
+    : '';
+  const where = isDeal
+    ? 'This row is generated from the linked naitive deal record. Edit or remove the retainer / closing fee on the deal to change this entry.'
+    : isQb
+      ? 'This row is imported from QuickBooks. Adjust or void the underlying transaction in QuickBooks — it will sync back here on the next refresh.'
+      : 'This row is generated automatically and cannot be edited here.';
+  return (
+    <TooltipProvider delayDuration={150}>
+      <div className="flex items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className="inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground/60 cursor-not-allowed"
+              aria-disabled
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="max-w-[260px] text-xs leading-snug">
+            <div className="font-medium mb-1">
+              {isDeal ? 'Managed by naitive deal' : isQb ? 'Managed by QuickBooks' : 'System-generated'}
+            </div>
+            <div className="text-muted-foreground">{where}</div>
+            {isDeal && dealId && (
+              <Link
+                to={`/deal/${dealId}`}
+                className="mt-2 inline-flex items-center gap-1 text-primary hover:underline"
+              >
+                Open deal <ExternalLink className="h-3 w-3" />
+              </Link>
+            )}
+          </TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
+  );
 }
 
 /** Resolve which categories should be matched for a given row key. */
@@ -705,9 +755,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                               </Button>
                             )}
                             {r.source !== 'manual' && (
-                              <span className="text-[10px] text-muted-foreground self-center pr-1">
-                                Auto
-                              </span>
+                              <SourceLockedAction row={r} />
                             )}
                           </div>
                         </td>
