@@ -850,8 +850,130 @@ export function AgendaIntel() {
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+      <QuickCreateTaskDialog
+        open={!!taskDialogEvent}
+        onClose={() => setTaskDialogEvent(null)}
+        teamMembers={teamMembers}
+        currentUserId={user?.id || ''}
+        initialTitle={taskDialogEvent ? `Follow up: ${taskDialogEvent.summary || '(no title)'}` : ''}
+        initialDealId={taskDialogEvent ? (matchDeal(taskDialogEvent)?.id ?? null) : null}
+        initialDueDate={taskDialogEvent ? parseISO(taskDialogEvent.start) : null}
+        onCreate={async (input) => {
+          await createTask.mutateAsync({
+            title: input.title,
+            priority: input.priority,
+            due_date: input.due_date || undefined,
+            status: input.status,
+            assigned_to: input.assigned_to,
+            recurrence_rule: input.recurrence_rule,
+            recurrence_end_date: input.recurrence_end_date,
+            deal_id: input.deal_id || undefined,
+          });
+          toast.success(`Task created: "${input.title}"`);
+          setTaskDialogEvent(null);
+        }}
+      />
+      <FollowUpEmailDialog
+        open={!!emailDialogEvent}
+        onClose={() => setEmailDialogEvent(null)}
+        defaults={emailDefaults}
+        signature={signature}
+        sendEmail={sendEmail}
+      />
     </div>
   );
 }
 
 export default AgendaIntel;
+
+// ── Follow-up email dialog ──────────────────────────────────
+// Compact compose modal anchored to a selected meeting. Pre-fills recipients
+// from the meeting attendees and a sensible subject, but everything remains
+// editable before the user sends.
+function FollowUpEmailDialog({
+  open,
+  onClose,
+  defaults,
+  signature,
+  sendEmail,
+}: {
+  open: boolean;
+  onClose: () => void;
+  defaults: { to: string[]; subject: string; label: string } | null;
+  signature: string;
+  sendEmail: ReturnType<typeof useGmail>['sendEmail'];
+}) {
+  const [recipients, setRecipients] = useState<ComposerRecipients>({ to: [], cc: [], bcc: [] });
+  const [subject, setSubject] = useState('');
+  const [body, setBody] = useState('');
+  const [attachments, setAttachments] = useState<string[]>([]);
+  const [files, setFiles] = useState<File[]>([]);
+
+  useEffect(() => {
+    if (open && defaults) {
+      setRecipients({ to: defaults.to, cc: [], bcc: [] });
+      setSubject(defaults.subject);
+      setBody('');
+      setAttachments([]);
+      setFiles([]);
+    }
+  }, [open, defaults]);
+
+  const handleSend = useCallback(async (_o: ComposerSendOptions) => {
+    if (recipients.to.length === 0) { toast.error('Add at least one recipient'); return; }
+    if (!subject.trim()) { toast.error('Subject is required'); return; }
+    try {
+      const result = await sendEmail({
+        to: recipients.to,
+        cc: recipients.cc,
+        bcc: recipients.bcc,
+        subject: subject.trim(),
+        bodyHtml: body,
+        body: body.replace(/<[^>]+>/g, ''),
+        attachments: files.length > 0 ? files : undefined,
+      });
+      if (!result) throw new Error('Send failed');
+      toast.success(`Follow-up sent to ${defaults?.label || 'attendees'}`);
+      onClose();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to send email';
+      toast.error(msg);
+    }
+  }, [recipients, subject, body, files, sendEmail, onClose, defaults]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        className="sm:max-w-[640px] p-0 border"
+        style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        <DialogHeader className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <DialogTitle className="text-[15px] font-semibold tracking-tight text-white">
+            Send follow-up
+          </DialogTitle>
+        </DialogHeader>
+        <div className="p-3">
+          <EmailComposerCard
+            replyToName={defaults?.label || ''}
+            hideReplyAnchor
+            recipients={recipients}
+            onRecipientsChange={setRecipients}
+            subject={subject}
+            onSubjectChange={setSubject}
+            body={body}
+            onBodyChange={setBody}
+            attachments={attachments}
+            onAttachmentsChange={setAttachments}
+            onFilesChange={setFiles}
+            onSend={handleSend}
+            onDiscard={() => { onClose(); toast.info('Draft discarded'); }}
+            signature={signature}
+            variant="inline"
+            showSubject
+            className="rounded-lg border border-white/10 shadow-none mx-0 my-0"
+          />
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
