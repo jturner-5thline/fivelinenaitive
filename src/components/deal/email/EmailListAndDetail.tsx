@@ -1369,6 +1369,15 @@ function EmailHeaderDetails({ email, fullData }: { email: MockEmail; fullData: a
     return extra > 0 ? `${visible}, +${extra} more` : visible;
   })();
 
+  // Compact CC summary mirrors the To formatting so recipients are not hidden
+  // behind the "details" toggle when a message has Cc'd participants.
+  const ccSummary = (() => {
+    if (ccList.length === 0) return '';
+    const visible = ccList.slice(0, 2).join(', ');
+    const extra = ccList.length - 2;
+    return extra > 0 ? `${visible}, +${extra} more` : visible;
+  })();
+
   return (
     <div className="mb-2 text-xs leading-snug">
       {/* Compact single-row summary (default) */}
@@ -1377,6 +1386,12 @@ function EmailHeaderDetails({ email, fullData }: { email: MockEmail; fullData: a
           <span className="min-w-0 truncate">
             <span className="text-[hsl(var(--email-text-muted))]">to </span>
             <span className="text-[hsl(var(--email-text-secondary))]">{toSummary}</span>
+          </span>
+        )}
+        {ccSummary && (
+          <span className="min-w-0 truncate">
+            <span className="text-[hsl(var(--email-text-muted))]">cc </span>
+            <span className="text-[hsl(var(--email-text-secondary))]">{ccSummary}</span>
           </span>
         )}
         {shortDate && (
