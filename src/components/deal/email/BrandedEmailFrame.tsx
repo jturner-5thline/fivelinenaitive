@@ -62,8 +62,8 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
       const fid = JSON.stringify(frameId.current);
       const closeScript = '<' + '/script>';
       return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>
-html,body{margin:0;padding:0;background:${theme.bg} !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
-body{padding:24px;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;}
+html,body{margin:0;padding:0;background:transparent !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+body{padding:8px 0;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;background:transparent !important;}
 /* Neutralize hardcoded white/light backgrounds the email author set on top-level wrappers so the message blends into the Naitive reading surface. */
 body > table, body > div, body > center { background:transparent !important; background-color:transparent !important; }
 body > center > table, body > table > tbody > tr > td { background-color:transparent !important; }
@@ -100,18 +100,15 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
 
   return (
     <div
-      className={cn(
-        'w-full min-w-0 overflow-hidden rounded-md border border-[hsl(var(--email-border))]',
-        className,
-      )}
-      style={{ background: theme.bg }}
+      className={cn('w-full min-w-0 overflow-hidden bg-transparent', className)}
     >
       <iframe
         ref={iframeRef}
         title="Email content"
         sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
         srcDoc={srcDoc}
-        style={{ width: '100%', height, border: 0, display: 'block', background: theme.bg }}
+        style={{ width: '100%', height, border: 0, display: 'block', background: 'transparent' }}
+        allowTransparency
         onError={(e) => onError?.(e)}
       />
     </div>
