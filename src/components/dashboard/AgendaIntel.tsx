@@ -420,6 +420,25 @@ export function AgendaIntel() {
   // model: a left list of compact items and a right detail/actions panel.
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isNarrow, setIsNarrow] = useState(false);
+  // Quick-action modals anchored to the selected meeting.
+  const [taskDialogEvent, setTaskDialogEvent] = useState<CalendarEvent | null>(null);
+  const [emailDialogEvent, setEmailDialogEvent] = useState<CalendarEvent | null>(null);
+  const { user } = useAuth();
+  const { data: teamMembers = [] } = useTeamMembers();
+  const { createTask } = useMyTasks();
+  const signature = useUserEmailSignature();
+  const { sendEmail } = useGmail();
+  const emailDefaults = useMemo(() => {
+    if (!emailDialogEvent) return null;
+    const toList = (emailDialogEvent.attendees || [])
+      .filter(a => !a.self && a.email && a.email.trim())
+      .map(a => a.email);
+    return {
+      to: Array.from(new Set(toList)),
+      subject: `Re: ${emailDialogEvent.summary || '(no title)'}`,
+      label: toList.length === 1 ? toList[0] : `${toList.length} attendee${toList.length === 1 ? '' : 's'}`,
+    };
+  }, [emailDialogEvent]);
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 900px)');
     const update = () => setIsNarrow(mq.matches);
