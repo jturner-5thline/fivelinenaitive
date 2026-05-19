@@ -543,8 +543,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   // Keep the visible input in sync when callers reset searchQuery
   // programmatically (URL hydration, Esc/clear elsewhere).
   useEffect(() => {
-    if (searchQuery !== searchInput && searchQuery === '') {
+    // Mirror programmatic resets/seeds of searchQuery into the input.
+    // Only acts when input is empty (hydration) or query was cleared,
+    // so it never fights the user's active typing.
+    if (searchQuery === '' && searchInput !== '') {
       setSearchInput('');
+    } else if (searchQuery && searchInput === '') {
+      setSearchInput(searchQuery);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchQuery]);
