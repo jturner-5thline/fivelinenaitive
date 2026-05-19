@@ -24,6 +24,7 @@ import { toast } from 'sonner';
 import type { EmailThread } from './mockEmailData';
 import { fetchFullEmailMessage } from './useFullEmailMessage';
 import { logUsage } from '@/lib/usageLogger';
+import * as chrono from 'chrono-node';
 
 const PARSE_TIMEOUT_MS = 15_000;
 
