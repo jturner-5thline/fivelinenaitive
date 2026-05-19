@@ -328,6 +328,104 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     if (row) setDeletePrompt(row);
   };
 
+  /** Count occurrences of the same series strictly AFTER the selected date,
+   *  scanning a wide forward window so the count is independent of the
+   *  drilldown's date-range filter. */
+  const futureCount = useMemo(() => {
+    if (!deletePrompt) return 0;
+    const entry = deletePrompt.entry;
+    if (entry.frequency_type === 'one_time') return 0;
+    const rangeStart = parseDate(deletePrompt.date);
+    rangeStart.setDate(rangeStart.getDate() + 1);
+    const rangeEnd = new Date(2035, 11, 31);
+    return generateOccurrences(entry, rangeStart, rangeEnd).length;
+  }, [deletePrompt]);
+
+  const priorCount = useMemo(() => {
+    if (!deletePrompt) return 0;
+    const entry = deletePrompt.entry;
+    if (entry.frequency_type === 'one_time') return 0;
+    const rangeStart = new Date(2000, 0, 1);
+    const rangeEnd = parseDate(deletePrompt.date);
+    rangeEnd.setDate(rangeEnd.getDate() - 1);
+    return generateOccurrences(entry, rangeStart, rangeEnd).length;
+  }, [deletePrompt]);
+
+  const closeDeletePrompt = () => {
+    if (deleteBusy) return;
+    setDeletePrompt(null);
+  };
+
+  const prevDayString = (s: string): string => {
+    const d = parseDate(s);
+    d.setDate(d.getDate() - 1);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  };
+
+  const confirmDeleteOne = async () => {
+    if (!deletePrompt) return;
+    const row = deletePrompt;
+    setDeleteBusy('one');
+    try {
+      // One-time entries → fully delete; no exclusion concept.
+      if (row.entry.frequency_type === 'one_time') {
+        if (onDeleteEntry) await onDeleteEntry(row.entryId);
+      } else if (onUpdateEntry) {
+        const cfg = row.entry.frequency_config || {};
+        const existing = cfg.excluded_dates || [];
+        const next = existing.includes(row.date) ? existing : [...existing, row.date];
+        await onUpdateEntry(row.entryId, {
+          frequency_config: { ...cfg, excluded_dates: next },
+        });
+      }
+      toast.success('Deleted 1 instance');
+      setDeletePrompt(null);
+    } finally {
+      setDeleteBusy(null);
+    }
+  };
+
+  const confirmDeleteFuture = async () => {
+    if (!deletePrompt) return;
+    const row = deletePrompt;
+    setDeleteBusy('future');
+    try {
+      const removed = 1 + futureCount;
+      if (row.entry.frequency_type === 'one_time') {
+        if (onDeleteEntry) await onDeleteEntry(row.entryId);
+      } else if (priorCount === 0) {
+        // Nothing before the selected date — wipe the entire series.
+        if (onDeleteEntry) await onDeleteEntry(row.entryId);
+      } else if (onUpdateEntry) {
+        // Truncate the series the day before the selected occurrence, and
+        // also exclude the selected date itself in case it sits on the
+        // boundary of the recurring expansion.
+        const cfg = row.entry.frequency_config || {};
+        const existing = cfg.excluded_dates || [];
+        const next = existing.includes(row.date) ? existing : [...existing, row.date];
+        await onUpdateEntry(row.entryId, {
+          end_date: prevDayString(row.date),
+          frequency_config: { ...cfg, excluded_dates: next },
+        });
+      }
+      if (futureCount === 0) {
+        toast.success('Deleted 1 instance', {
+          description: 'No later instances existed in this series.',
+        });
+      } else {
+        toast.success(`Deleted this instance and ${futureCount} future ${futureCount === 1 ? 'instance' : 'instances'}`, {
+          description: `${removed} occurrences removed.`,
+        });
+      }
+      setDeletePrompt(null);
+    } finally {
+      setDeleteBusy(null);
+    }
+  };
+
   const canMutate = !!onUpdateEntry || !!onDeleteEntry;
 
   const toggleCategory = (cat: string) => {
