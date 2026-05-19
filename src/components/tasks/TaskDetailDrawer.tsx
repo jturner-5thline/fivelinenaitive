@@ -352,26 +352,6 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               </div>
             )}
 
-            {/* Priority */}
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
-                <Flag className="h-3 w-3" /> Priority
-              </div>
-              <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
-                <SelectTrigger className="h-7 w-[120px] text-xs border-none bg-transparent px-0">
-                  <span className="px-3 py-1 rounded-full text-[10px] font-medium" style={{ backgroundColor: priorityConf.bg, color: 'white' }}>
-                    {priorityConf.label}
-                  </span>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="low" className="text-xs">Low</SelectItem>
-                  <SelectItem value="medium" className="text-xs">Medium</SelectItem>
-                  <SelectItem value="high" className="text-xs">High</SelectItem>
-                  <SelectItem value="urgent" className="text-xs">Urgent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Assignee */}
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0" style={{ color: '#8b92a5' }}>
