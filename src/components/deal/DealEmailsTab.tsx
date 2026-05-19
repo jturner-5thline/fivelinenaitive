@@ -521,6 +521,33 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const [selectedLabelFilterId, setSelectedLabelFilterId] = useState<string | null>(null);
   const isInboxScope = !dealId; // true when rendered inside InboxDialog
   const [searchQuery, setSearchQuery] = useState('');
+  // Immediate text-input state. Typing only updates this; the heavy
+  // `searchQuery` (which fans out into filter memos, network search,
+  // and AI routing) is updated on a debounce so each keystroke does
+  // not re-run the full inbox pipeline and freeze the UI.
+  const [searchInput, setSearchInput] = useState('');
+  useEffect(() => {
+    const trimmed = searchInput;
+    // Clear immediately so the "clear" affordance feels instant; only
+    // debounce when there's actually text to search for.
+    if (!trimmed) {
+      if (searchQuery !== '') setSearchQuery('');
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      setSearchQuery(trimmed);
+    }, 250);
+    return () => window.clearTimeout(handle);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchInput]);
+  // Keep the visible input in sync when callers reset searchQuery
+  // programmatically (URL hydration, Esc/clear elsewhere).
+  useEffect(() => {
+    if (searchQuery !== searchInput && searchQuery === '') {
+      setSearchInput('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [intelligenceOpen, setIntelligenceOpen] = useState(false);
   const [composeOpen, setComposeOpen] = useState(false);
