@@ -309,7 +309,7 @@ export function useThreadWorkflowAnalysis({
             ) {
               const lender = result.recommended_update.lender_name || 'lender';
               const stage = result.recommended_update.new_stage || 'updated';
-              result.recommended_update.title = `Update ${lender} status on ${canonical.name} → ${stage}`;
+              result.recommended_update.title = `Update ${lender} stage on ${canonical.name} → ${stage}`;
             }
           }
         }
