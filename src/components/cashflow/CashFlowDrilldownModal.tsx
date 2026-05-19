@@ -381,7 +381,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
           frequency_config: { ...cfg, excluded_dates: next },
         });
       }
-      toast.success('Deleted 1 instance');
+      toast.success('Deleted 1 entry');
       setDeletePrompt(null);
     } finally {
       setDeleteBusy(null);
@@ -412,13 +412,14 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
         });
       }
       if (futureCount === 0) {
-        toast.success('Deleted 1 instance', {
-          description: 'No later instances existed in this series.',
+        toast.success('Deleted 1 entry', {
+          description: 'No later entries existed.',
         });
       } else {
-        toast.success(`Deleted this instance and ${futureCount} future ${futureCount === 1 ? 'instance' : 'instances'}`, {
-          description: `${removed} occurrences removed.`,
-        });
+        toast.success(
+          `Deleted this entry and ${futureCount} future ${futureCount === 1 ? 'entry' : 'entries'}`,
+          { description: `${removed} entries removed.` },
+        );
       }
       setDeletePrompt(null);
     } finally {
@@ -741,12 +742,12 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
           <div className="mt-3 rounded-md border border-border bg-muted/40 p-3 space-y-2">
             <div className="text-sm font-medium">Apply amount change to…</div>
             <div className="text-xs text-muted-foreground">
-              This is a recurring entry. Pick whether the new amount of{' '}
+              Choose whether the new amount of{' '}
               <span className="tabular-nums font-medium text-foreground">
                 {fmt(scopePrompt.newAmount)}
               </span>{' '}
-              should override only the {formatNiceDate(scopePrompt.occurrenceDate)} occurrence
-              or update the recurring base going forward.
+              should override only the {formatNiceDate(scopePrompt.occurrenceDate)} entry
+              or update this entry and all future entries.
             </div>
             <div className="flex flex-wrap gap-2 pt-1">
               <Button
@@ -778,11 +779,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
         <AlertDialog open={!!deletePrompt} onOpenChange={(o) => { if (!o) closeDeletePrompt(); }}>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>
-                {deletePrompt && deletePrompt.entry.frequency_type === 'one_time'
-                  ? 'Delete entry?'
-                  : 'Delete recurring entry?'}
-              </AlertDialogTitle>
+              <AlertDialogTitle>Delete entry?</AlertDialogTitle>
               <AlertDialogDescription asChild>
                 <div className="space-y-2 text-sm">
                   <div>You're about to delete:</div>
@@ -804,8 +801,8 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                   {deletePrompt && deletePrompt.entry.frequency_type !== 'one_time' && (
                     <div className="text-xs text-muted-foreground">
                       {futureCount === 0
-                        ? 'No later instances exist in this series. Either option will only remove this single occurrence.'
-                        : `This series has ${futureCount} later ${futureCount === 1 ? 'instance' : 'instances'} after the selected date. Prior instances will never be deleted.`}
+                        ? 'No later entries exist after the selected date. Either option will only remove this single entry.'
+                        : `${futureCount} later ${futureCount === 1 ? 'entry' : 'entries'} exist after the selected date. Earlier entries will never be deleted.`}
                     </div>
                   )}
                 </div>
@@ -821,7 +818,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                 onClick={confirmDeleteOne}
                 disabled={!!deleteBusy}
               >
-                {deleteBusy === 'one' ? 'Deleting…' : 'Delete only this instance'}
+                {deleteBusy === 'one' ? 'Deleting…' : 'Delete only this entry'}
               </Button>
               {deletePrompt && deletePrompt.entry.frequency_type !== 'one_time' && (
                 <Button
@@ -831,7 +828,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                 >
                   {deleteBusy === 'future'
                     ? 'Deleting…'
-                    : `Delete this and ${futureCount} future ${futureCount === 1 ? 'instance' : 'instances'}`}
+                    : 'Delete this entry and future entries'}
                 </Button>
               )}
             </AlertDialogFooter>
