@@ -489,6 +489,13 @@ function SourceLabel({ analysis }: { analysis: SlotAnalysis }) {
 interface Props {
   thread: EmailThread;
   onInsertDraft: (body: string) => void;
+  /**
+   * When true, the card renders nothing if the parser determines the
+   * thread contains no specific proposed times. Used by AiAssistSidebar's
+   * auto-surface placement so we don't render a "no times detected"
+   * placeholder for every inbound email.
+   */
+  hideWhenEmpty?: boolean;
 }
 
 type FilterKey = 'all' | 'available' | 'partially_available' | 'tight' | 'unavailable';
@@ -501,7 +508,7 @@ const FILTER_LABEL: Record<FilterKey, string> = {
   unavailable: 'Unavailable',
 };
 
-export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
+export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = false }: Props) {
   const [loadingParse, setLoadingParse] = useState(false);
   const [loadingCalendar, setLoadingCalendar] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -768,6 +775,7 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
   }
 
   if (error && !parseResult) {
+    if (hideWhenEmpty) return null;
     return (
       <div className="rounded-lg border border-rose-500/30 bg-rose-500/5 p-3">
         <Header />
@@ -785,6 +793,7 @@ export function AvailabilityCheckCard({ thread, onInsertDraft }: Props) {
   }
 
   if (!parseResult || !parseResult.detected) {
+    if (hideWhenEmpty) return null;
     return (
       <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
         <Header />
