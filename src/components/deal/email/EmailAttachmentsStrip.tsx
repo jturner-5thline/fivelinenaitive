@@ -627,8 +627,8 @@ export function EmailAttachmentsStrip({
             </div>
           )
         ) : (
-          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
-            {aggregated.map((item) => renderChip(item))}
+          <div className="flex flex-wrap items-center gap-1.5 flex-1 min-w-0">
+            {aggregated.map((item) => renderChip(item, { compact: true }))}
           </div>
         )}
       </div>
