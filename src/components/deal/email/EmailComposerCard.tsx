@@ -1084,6 +1084,13 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         }}
         onBlur={onFieldBlur}
       >
+        {threadId && (
+          <ComposerScheduleChip
+            threadId={threadId}
+            body={body}
+            onInsert={(html) => onBodyChange((body || '') + html)}
+          />
+        )}
         <EmailRichTextEditor
           content={body}
           onChange={onBodyChange}
