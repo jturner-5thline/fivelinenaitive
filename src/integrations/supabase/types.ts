@@ -1885,6 +1885,39 @@ export type Database = {
           },
         ]
       }
+      cashflow_deal_overrides: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string | null
+          deal_entry_id: string
+          end_date: string | null
+          excluded_dates: string[]
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          deal_entry_id: string
+          end_date?: string | null
+          excluded_dates?: string[]
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          deal_entry_id?: string
+          end_date?: string | null
+          excluded_dates?: string[]
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cashflow_sidebar_data: {
         Row: {
           cash_in_items: Json

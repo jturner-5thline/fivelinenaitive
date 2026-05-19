@@ -294,7 +294,10 @@ export default function Lenders() {
     // against deal activity (e.g., "Active Deals" filter).
     mode: 'all',
     eagerAll: true,
-    pageSize: 1000,
+    // First-page payload kept small so the directory becomes interactive almost
+    // immediately. The hook continues streaming the remainder in the background
+    // (eagerAll) without blocking the shell or initial rows.
+    pageSize: 100,
     orderBy: { column: 'name', ascending: true },
     // No server-side searchQuery — we filter on the client across many fields.
   });
@@ -1628,16 +1631,23 @@ export default function Lenders() {
                   contrast components as the Deals page "No deals found" view
                   (muted-circle icon + heading + muted subtext).
                 */}
+                {/*
+                  When the first page is in and a search/filter currently hides
+                  every matching lender BUT the background loader is still
+                  streaming the remainder, don't show a blocking "Loading
+                  lenders" hero — keep the shell quiet and render skeletons
+                  inside the table area instead. A tiny inline progress chip
+                  signals the background work.
+                */}
                 {!isLoading && loadingMore && sortedLenders.length === 0 && masterLenders.length > 0 && (
-                  <div className="flex flex-col items-center justify-center py-16 text-center">
-                    <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
-                      <Loader2 className="h-8 w-8 text-muted-foreground animate-spin" />
+                  <>
+                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/60 bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      Loading more lenders in the background
+                      {totalCount ? ` (${masterLenders.length.toLocaleString()} / ${totalCount.toLocaleString()})` : ''}
                     </div>
-                    <h3 className="text-lg font-medium text-foreground">Loading lenders</h3>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      Fetching your lender directory…
-                    </p>
-                  </div>
+                    <LendersListSkeleton viewMode={viewMode === 'spreadsheet' ? 'list' : viewMode} />
+                  </>
                 )}
                 {!isLoading && !loadingMore && sortedLenders.length === 0 && masterLenders.length > 0 && (
                   <div className="flex flex-col items-center justify-center py-16 text-center">
