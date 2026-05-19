@@ -32,6 +32,7 @@ import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
+import { BaseSubmissionEmailDialog, type BaseSubmissionDraft } from './email/BaseSubmissionEmailDialog';
 import { PostCallFollowupModal } from './PostCallFollowupModal';
 import { CheckInOutstandingItemsModal } from './CheckInOutstandingItemsModal';
 import { ClientCheckInDraftModal } from './ClientCheckInDraftModal';
@@ -588,6 +589,11 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   // (auto-skipping anyone already passed) before drafts are generated.
   const [isReviewOpen, setIsReviewOpen] = useState(false);
   const [includedLenderNames, setIncludedLenderNames] = useState<string[] | null>(null);
+  // ── Step 1: lender-agnostic base submission email. Owns the editable
+  // draft until the user clicks Continue, at which point we persist it to
+  // deal_space_notes and hand off to the Review & Exclude step.
+  const [isBaseOpen, setIsBaseOpen] = useState(false);
+  const [baseDraft, setBaseDraft] = useState<BaseSubmissionDraft | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -642,10 +648,11 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   }, [handleSendQuestion]);
 
   const openDraftSubmissionModal = useCallback(() => {
-    // Always route through the Review & Exclude step so drafts are actually
-    // generated. Opening the drafts dialog directly would leave it empty
-    // (no AI call fires) and surface the "No drafts generated." empty state.
-    setIsReviewOpen(true);
+    // Step 1 of the new flow: generate a lender-agnostic base submission
+    // email. The user reviews / edits it, then Continue saves to Notes and
+    // opens the Review & Exclude step.
+    setBaseDraft(null);
+    setIsBaseOpen(true);
   }, []);
 
   const openStatusReportModal = useCallback(() => {
@@ -772,17 +779,22 @@ CRITICAL RULES:
   );
 
   // Entry point for the lender submission flow. We now ALWAYS open the
-  // Review & Exclude step first — drafts are only generated after the user
-  // confirms which lenders to include in this round.
+  // base-email step first; the user can edit that draft, then we save it
+  // to Notes and open Review & Exclude before per-lender drafts run.
   const handleDraftSubmission = useCallback(async () => {
-    setIsReviewOpen(true);
+    setBaseDraft(null);
+    setIsBaseOpen(true);
   }, []);
 
   // Silent background handler — invokes the AI directly via the edge function,
   // bypassing the chat hook entirely. The Ask AI panel is never touched.
   // `onlyLenders` (when provided) restricts which lenders the AI drafts for,
   // and `personalize` toggles per-lender opening customization.
-  const generateDraftsForLenders = useCallback(async (onlyLenders: string[], personalize: boolean) => {
+  const generateDraftsForLenders = useCallback(async (
+    onlyLenders: string[],
+    personalize: boolean,
+    base?: BaseSubmissionDraft | null,
+  ) => {
     setIsDraftingEmail(true);
     setEmailDrafts([]);
     setActiveDraftIndex(0);
@@ -807,7 +819,17 @@ CRITICAL RULES:
       let filteredDrafts: EmailDraft[];
 
       if (!personalize) {
-        const template = await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
+        // When the user already approved a lender-agnostic base draft we
+        // skip the AI entirely and fan that exact copy out (preserves edits).
+        const template: EmailDraft = base
+          ? {
+              lenderName: 'All selected lenders',
+              to: '', cc: '', bcc: '',
+              subject: base.subject,
+              bodyHtml: base.bodyHtml,
+              status: 'draft',
+            }
+          : await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
         filteredDrafts = onlyLenders.map((name) => ({
           ...template,
           lenderName: name,
@@ -834,7 +856,7 @@ CRITICAL RULES:
                 dealId,
                 name,
                 profiles,
-                buildDraftSubmissionPrompt,
+                (p, prof) => buildDraftSubmissionPrompt(p, prof, base ?? null),
               );
               collected[idx] = draft;
             } catch (e) {
