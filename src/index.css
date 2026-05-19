@@ -96,6 +96,7 @@
 
     /* Email / Outlook tokens */
     --outlook-blue: 207 90% 42%;
+    --email-panel-surface: 0 0% 100%;
     --email-sidebar-bg: 0 0% 96%;
     --email-list-bg: 0 0% 98%;
     --email-reading-bg: 0 0% 100%;
@@ -191,6 +192,7 @@
 
     /* Email / Outlook tokens — dark mode (tuned for readability) */
     --outlook-blue: 213 90% 72%;
+    --email-panel-surface: 228 18% 14%;
     /* Lifted surfaces with clearer hierarchy: list < toolbar < reading < sidebar */
     --email-sidebar-bg: 228 22% 9%;
     --email-list-bg: 228 20% 11%;

@@ -2594,8 +2594,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           transition so toggling Assist feels fluid. Below 1100px the grid
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
-      <div
-        className="relative grid h-full min-w-0 w-full overflow-hidden transition-[grid-template-columns] duration-200 ease-out"
+        <div
+          className="relative grid h-full min-w-0 w-full overflow-hidden bg-[hsl(var(--email-panel-surface))] transition-[grid-template-columns] duration-200 ease-out"
         style={{
           gridTemplateColumns: showAiAssist
             ? 'minmax(0, 1fr) 360px'

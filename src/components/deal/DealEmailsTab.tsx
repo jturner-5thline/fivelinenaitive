@@ -2209,7 +2209,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
           {/* ─── Right: Reading pane / Compose ─── */}
           <div className={cn(
             'flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden',
-            (currentThread || composeOpen) ? 'bg-[hsl(var(--email-reading-bg))]' : '',
+            (currentThread || composeOpen) ? 'bg-[hsl(var(--email-panel-surface))]' : '',
             !currentThread && !composeOpen ? 'hidden md:flex' : 'flex'
           )}>
             {composeOpen ? (
