@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar } from "lucide-react";
+import { ArrowRight, Calendar, MoveHorizontal } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import {
@@ -104,21 +104,27 @@ export const HomepageFromBlog = () => {
           <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-5 tracking-tight">
             Insights for <span className="bg-gradient-to-r from-[hsl(270,75%,80%)] to-[hsl(220,75%,75%)] bg-clip-text text-transparent">deal teams</span>
           </h2>
-          <p className="text-lg md:text-xl text-white/70 leading-relaxed">
+          <p className="text-lg md:text-xl text-white/70 leading-relaxed mb-4">
             The latest thinking on deal execution, lender management, diligence, and AI workflows.
           </p>
+          {posts.length > 3 && (
+            <p className="inline-flex items-center gap-2 text-xs md:text-sm text-white/55">
+              <MoveHorizontal className="w-4 h-4" />
+              Swipe or use the arrows to explore more posts
+            </p>
+          )}
         </div>
 
         <Carousel
           setApi={setApi}
-          opts={{ align: "start", loop: false }}
+          opts={{ align: "start", loop: false, slidesToScroll: 1, containScroll: "trimSnaps" }}
           className="w-full"
         >
-          <CarouselContent className="-ml-4">
+          <CarouselContent className="-ml-6 md:-ml-8">
             {posts.map((post) => (
               <CarouselItem
                 key={post.id}
-                className="pl-4 basis-full md:basis-1/2 lg:basis-1/3"
+                className="pl-6 md:pl-8 basis-full md:basis-1/2 lg:basis-1/3"
               >
                 <BlogCard post={post} />
               </CarouselItem>
@@ -127,24 +133,30 @@ export const HomepageFromBlog = () => {
 
           {posts.length > 1 && (
             <div className="flex items-center justify-between mt-10 gap-4">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 {scrollSnaps.map((_, i) => (
                   <button
                     key={i}
                     type="button"
                     aria-label={`Go to slide ${i + 1}`}
                     onClick={() => api?.scrollTo(i)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                    className={`h-1 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(270,75%,80%)] ${
                       i === selectedIndex
-                        ? "w-8 bg-[hsl(270,75%,80%)]"
-                        : "w-1.5 bg-white/25 hover:bg-white/40"
+                        ? "w-6 bg-white/55"
+                        : "w-1 bg-white/15 hover:bg-white/30"
                     }`}
                   />
                 ))}
               </div>
               <div className="relative flex items-center gap-3">
-                <CarouselPrevious className="static translate-y-0 h-12 w-12 rounded-full border-[hsl(270,55%,65%,0.4)] bg-[hsl(270,55%,30%,0.25)] text-white hover:bg-[hsl(270,65%,45%,0.45)] hover:text-white hover:border-[hsl(270,75%,80%)] shadow-[0_8px_24px_-8px_hsl(270,80%,30%,0.6)]" />
-                <CarouselNext className="static translate-y-0 h-12 w-12 rounded-full border-[hsl(270,55%,65%,0.4)] bg-[hsl(270,55%,30%,0.25)] text-white hover:bg-[hsl(270,65%,45%,0.45)] hover:text-white hover:border-[hsl(270,75%,80%)] shadow-[0_8px_24px_-8px_hsl(270,80%,30%,0.6)]" />
+                <CarouselPrevious
+                  aria-label="Previous post"
+                  className="static translate-y-0 h-14 w-14 rounded-full border-2 border-[hsl(270,75%,80%,0.6)] bg-gradient-to-br from-[hsl(270,65%,45%,0.55)] to-[hsl(220,70%,40%,0.45)] text-white hover:from-[hsl(270,75%,55%,0.75)] hover:to-[hsl(220,80%,50%,0.65)] hover:border-[hsl(270,85%,88%)] hover:text-white hover:scale-105 active:scale-95 shadow-[0_12px_32px_-8px_hsl(270,90%,35%,0.7)] transition-all [&_svg]:h-5 [&_svg]:w-5 disabled:opacity-30"
+                />
+                <CarouselNext
+                  aria-label="Next post"
+                  className="static translate-y-0 h-14 w-14 rounded-full border-2 border-[hsl(270,75%,80%,0.6)] bg-gradient-to-br from-[hsl(270,65%,45%,0.55)] to-[hsl(220,70%,40%,0.45)] text-white hover:from-[hsl(270,75%,55%,0.75)] hover:to-[hsl(220,80%,50%,0.65)] hover:border-[hsl(270,85%,88%)] hover:text-white hover:scale-105 active:scale-95 shadow-[0_12px_32px_-8px_hsl(270,90%,35%,0.7)] transition-all [&_svg]:h-5 [&_svg]:w-5 disabled:opacity-30"
+                />
               </div>
             </div>
           )}
@@ -187,15 +199,13 @@ function BlogCard({ post }: { post: BlogPostLite }) {
             </span>
           )}
         </div>
-        <h3 className="text-lg md:text-xl font-bold text-white leading-snug mb-2 group-hover:text-[hsl(270,75%,85%)] transition-colors line-clamp-2">
+        <h3 className="text-lg md:text-xl font-bold text-white leading-snug mb-3 group-hover:text-[hsl(270,75%,85%)] transition-colors line-clamp-2 min-h-[3.25rem]">
           {post.title}
         </h3>
-        {post.excerpt && (
-          <p className="text-sm text-white/60 leading-relaxed mb-5 line-clamp-3">
-            {post.excerpt}
-          </p>
-        )}
-        <span className="mt-auto inline-flex items-center gap-2 text-xs font-semibold text-[hsl(270,75%,80%)]">
+        <p className="text-sm text-white/60 leading-relaxed mb-5 line-clamp-3 min-h-[3.75rem]">
+          {post.excerpt || ""}
+        </p>
+        <span className="mt-auto inline-flex items-center gap-2 text-xs font-semibold text-[hsl(270,75%,80%)] pt-3 border-t border-white/5 group-hover:border-white/10 transition-colors">
           Read article
           <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
         </span>
