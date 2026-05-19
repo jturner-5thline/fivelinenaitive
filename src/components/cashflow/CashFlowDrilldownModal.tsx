@@ -775,6 +775,68 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
             </div>
           </div>
         )}
+        <AlertDialog open={!!deletePrompt} onOpenChange={(o) => { if (!o) closeDeletePrompt(); }}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                {deletePrompt && deletePrompt.entry.frequency_type === 'one_time'
+                  ? 'Delete entry?'
+                  : 'Delete recurring entry?'}
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div className="space-y-2 text-sm">
+                  <div>You're about to delete:</div>
+                  {deletePrompt && (
+                    <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
+                      <div className="font-medium text-foreground">
+                        {formatNiceDate(deletePrompt.date)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {deletePrompt.entry.notes || deletePrompt.category}
+                      </div>
+                      <div className={`text-sm tabular-nums mt-1 ${
+                        deletePrompt.signedAmount > 0 ? 'text-emerald-500' : 'text-red-500'
+                      }`}>
+                        {fmt(deletePrompt.signedAmount)}
+                      </div>
+                    </div>
+                  )}
+                  {deletePrompt && deletePrompt.entry.frequency_type !== 'one_time' && (
+                    <div className="text-xs text-muted-foreground">
+                      {futureCount === 0
+                        ? 'No later instances exist in this series. Either option will only remove this single occurrence.'
+                        : `This series has ${futureCount} later ${futureCount === 1 ? 'instance' : 'instances'} after the selected date. Prior instances will never be deleted.`}
+                    </div>
+                  )}
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col-reverse sm:flex-row sm:justify-end gap-2">
+              <AlertDialogCancel disabled={!!deleteBusy} onClick={closeDeletePrompt}>
+                Cancel
+              </AlertDialogCancel>
+              <Button
+                variant="outline"
+                className="border-red-500/40 text-red-500 hover:bg-red-500/10 hover:text-red-600"
+                onClick={confirmDeleteOne}
+                disabled={!!deleteBusy}
+              >
+                {deleteBusy === 'one' ? 'Deleting…' : 'Delete only this instance'}
+              </Button>
+              {deletePrompt && deletePrompt.entry.frequency_type !== 'one_time' && (
+                <Button
+                  className="bg-red-600 text-white hover:bg-red-700 shadow-sm shadow-red-600/30"
+                  onClick={confirmDeleteFuture}
+                  disabled={!!deleteBusy}
+                >
+                  {deleteBusy === 'future'
+                    ? 'Deleting…'
+                    : `Delete this and ${futureCount} future ${futureCount === 1 ? 'instance' : 'instances'}`}
+                </Button>
+              )}
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </DialogContent>
     </Dialog>
   );
