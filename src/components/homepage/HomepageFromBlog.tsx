@@ -106,14 +106,14 @@ export const HomepageFromBlog = () => {
         </p>
         <Carousel
           setApi={setApi}
-          opts={{ align: "start", loop: false, slidesToScroll: 1, containScroll: "trimSnaps" }}
+          opts={{ align: "start" }}
           className="w-full"
         >
-          <CarouselContent className="-ml-4 md:-ml-5">
+          <CarouselContent className="-ml-4">
             {posts.map((post) => (
               <CarouselItem
                 key={post.id}
-                className="pl-4 md:pl-5 !basis-full sm:!basis-1/2 min-[720px]:!basis-1/3 !min-w-0 !shrink-0 !grow-0"
+                className="pl-4 basis-full md:basis-1/2 lg:basis-1/3"
               >
                 <BlogCard post={post} />
               </CarouselItem>
