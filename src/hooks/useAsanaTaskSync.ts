@@ -159,7 +159,7 @@ export async function syncTaskToAsana(
     due_date?: string | null;
     assignee_email?: string | null;
   }
-): Promise<string | null> {
+): Promise<{ ok: boolean; gid: string | null; error: string | null }> {
   try {
     // Look up Asana user by email
     let assigneeGid: string | null = null;
@@ -198,55 +198,95 @@ export async function syncTaskToAsana(
 
     console.log('[AsanaSync] Creating Asana task with payload:', JSON.stringify(taskData));
 
-    const { data } = await supabase.functions.invoke('asana-proxy', {
-      body: {
-        action: 'create_task',
-        integration_id: ctx.integrationId,
-        task_data: taskData,
-      },
-    });
+    // Retry with exponential backoff for transient errors (429 / 5xx)
+    let attempt = 0;
+    let lastError: string | null = null;
+    let lastStatus: number | null = null;
+    let lastBody: unknown = null;
+    let asanaGid: string | null = null;
+    const MAX_ATTEMPTS = 3;
 
-    if (!data?.success || !data.task?.gid) {
-      console.error('Asana task creation failed:', data);
+    while (attempt < MAX_ATTEMPTS) {
+      attempt += 1;
+      const { data, error: invokeError } = await supabase.functions.invoke('asana-proxy', {
+        body: { action: 'create_task', integration_id: ctx.integrationId, task_data: taskData },
+      });
+      lastStatus = (data as any)?.http_status ?? null;
+      lastBody = (data as any)?.response_body ?? null;
+      if (data?.success && data.task?.gid) {
+        asanaGid = data.task.gid as string;
+        await logSyncAttempt({
+          task_id: task.id,
+          asana_task_gid: asanaGid,
+          action: 'create_task',
+          success: true,
+          payload: taskData,
+          company_id: ctx.companyId || null,
+          http_status: lastStatus,
+          response_body: lastBody,
+          attempt_number: attempt,
+        });
+        break;
+      }
+      lastError = (data as any)?.error || invokeError?.message || 'Asana proxy returned no task gid';
+      console.error(`[AsanaSync] create_task attempt ${attempt} failed status=${lastStatus} err=${lastError}`);
       await logSyncAttempt({
         task_id: task.id,
         action: 'create_task',
         success: false,
-        error_message: data?.error || 'Asana proxy returned no task gid',
+        error_message: lastError,
         payload: taskData,
         company_id: ctx.companyId || null,
+        http_status: lastStatus,
+        response_body: lastBody,
+        attempt_number: attempt,
       });
-      return null;
+      // Retry only on transient errors
+      const transient = lastStatus === 429 || (lastStatus !== null && lastStatus >= 500);
+      if (!transient || attempt >= MAX_ATTEMPTS) break;
+      await new Promise((r) => setTimeout(r, 500 * Math.pow(2, attempt - 1)));
     }
 
-    const asanaGid = data.task.gid as string;
+    if (!asanaGid) {
+      await supabase
+        .from('tasks')
+        .update({
+          asana_sync_status: 'failed',
+          asana_sync_error: lastError,
+          asana_sync_attempts: attempt,
+        } as any)
+        .eq('id', task.id);
+      return { ok: false, gid: null, error: lastError };
+    }
 
     // Store the Asana GID back on the naitive task
     await supabase
       .from('tasks')
-      .update({ asana_task_gid: asanaGid } as any)
+      .update({
+        asana_task_gid: asanaGid,
+        asana_sync_status: 'synced',
+        asana_sync_error: null,
+        asana_synced_at: new Date().toISOString(),
+        asana_sync_attempts: attempt,
+      } as any)
       .eq('id', task.id);
 
-    await logSyncAttempt({
-      task_id: task.id,
-      asana_task_gid: asanaGid,
-      action: 'create_task',
-      success: true,
-      payload: taskData,
-      company_id: ctx.companyId || null,
-    });
-
-    return asanaGid;
+    return { ok: true, gid: asanaGid, error: null };
   } catch (e) {
     console.error('Asana task sync failed:', e);
+    const msg = e instanceof Error ? e.message : String(e);
     await logSyncAttempt({
       task_id: task.id,
       action: 'create_task',
       success: false,
-      error_message: e instanceof Error ? e.message : String(e),
+      error_message: msg,
       company_id: ctx.companyId || null,
     });
-    return null;
+    await supabase
+      .from('tasks')
+      .update({ asana_sync_status: 'failed', asana_sync_error: msg } as any)
+      .eq('id', task.id);
+    return { ok: false, gid: null, error: msg };
   }
 }
 
