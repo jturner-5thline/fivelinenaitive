@@ -318,6 +318,9 @@ function DealTile({
         active
           ? 'border-white/25 bg-white/[0.06]'
           : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
+        // Soft attention cue when the deal hasn't had a status or stage
+        // update in ≥2 business days. Faint amber ring + glow — never red.
+        isStale && 'deal-tile-stale-glow',
       )}
     >
       <div className="flex items-start justify-between gap-2 min-w-0">
