@@ -595,6 +595,10 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   // deal_space_notes and hand off to the Review & Exclude step.
   const [isBaseOpen, setIsBaseOpen] = useState(false);
   const [baseDraft, setBaseDraft] = useState<BaseSubmissionDraft | null>(null);
+  // Mirror of the latest approved base draft so async callbacks (review
+  // confirm timeout, per-lender retry from the drafts modal) always see the
+  // user-edited copy instead of a stale render-time closure.
+  const baseDraftRef = useRef<BaseSubmissionDraft | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
