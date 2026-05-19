@@ -25,6 +25,205 @@ import type { EmailThread } from './mockEmailData';
 import { fetchFullEmailMessage } from './useFullEmailMessage';
 import { logUsage } from '@/lib/usageLogger';
 import * as chrono from 'chrono-node';
+import { Link } from 'react-router-dom';
+import { detectOpenAvailabilityRequest } from './scheduleIntent';
+import { CalendarRange, Link2 } from 'lucide-react';
+
+// ── Open-availability constraint parser ────────────────────────────────────
+// Best-effort extraction of structured filters from the inbound text
+// ("Tuesday through Thursday afternoons next week", "30 minutes",
+// "mornings only"). Used to narrow the calendar slot search before we
+// hand drafts back to the user.
+interface OpenConstraints {
+  daysOfWeek?: Set<number>; // 0=Sun..6=Sat
+  timeOfDay?: 'morning' | 'afternoon' | 'evening';
+  durationMin?: number;
+  startBound?: Date;
+  endBound?: Date;
+}
+
+const DOW_MAP: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, weds: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+function parseOpenConstraints(text: string, now: Date): OpenConstraints {
+  const out: OpenConstraints = {};
+  if (!text) return out;
+  const t = text.toLowerCase();
+
+  // Time of day
+  if (/\b(morning|mornings|am)\b/.test(t) && !/\bafternoon|evening|pm\b/.test(t)) {
+    out.timeOfDay = 'morning';
+  } else if (/\b(afternoon|afternoons|pm)\b/.test(t) && !/\bmorning|evening\b/.test(t)) {
+    out.timeOfDay = 'afternoon';
+  } else if (/\b(evening|evenings|tonight)\b/.test(t)) {
+    out.timeOfDay = 'evening';
+  }
+
+  // Duration: "30 minutes", "30-min", "half hour", "1 hour", "an hour"
+  const durMatch = t.match(/\b(\d{1,3})\s*(?:-?\s*)?(min|mins|minutes?|hour|hours?|hr|hrs)\b/);
+  if (durMatch) {
+    const n = parseInt(durMatch[1], 10);
+    out.durationMin = /hour|hr/.test(durMatch[2]) ? n * 60 : n;
+  } else if (/\bhalf[- ]hour\b/.test(t)) {
+    out.durationMin = 30;
+  } else if (/\ban hour\b/.test(t)) {
+    out.durationMin = 60;
+  }
+
+  // Day-of-week range: "Tuesday through Thursday", "Mon-Wed", "Tue to Thu"
+  const range = t.match(
+    /\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\s*(?:-|–|—|through|thru|to)\s*(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/,
+  );
+  if (range) {
+    const a = DOW_MAP[range[1]];
+    const b = DOW_MAP[range[2]];
+    if (a !== undefined && b !== undefined) {
+      const days = new Set<number>();
+      let i = a;
+      // walk forward up to 7 hops to avoid infinite loop on weird ranges
+      for (let n = 0; n < 7; n += 1) {
+        days.add(i);
+        if (i === b) break;
+        i = (i + 1) % 7;
+      }
+      out.daysOfWeek = days;
+    }
+  } else {
+    // Single-day mentions: collect any explicit weekday names.
+    const singles = new Set<number>();
+    const re = /\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(t)) !== null) {
+      const d = DOW_MAP[m[1]];
+      if (d !== undefined) singles.add(d);
+    }
+    if (singles.size > 0 && singles.size < 7) {
+      out.daysOfWeek = singles;
+    }
+  }
+
+  // "Next week" → bound search window
+  if (/\bnext week\b/.test(t)) {
+    const day = now.getDay();
+    const daysUntilMon = ((1 - day + 7) % 7) || 7;
+    const start = new Date(now);
+    start.setDate(now.getDate() + daysUntilMon);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    out.startBound = start;
+    out.endBound = end;
+  } else if (/\bthis week\b/.test(t)) {
+    const start = new Date(now);
+    const end = new Date(now);
+    end.setDate(now.getDate() + (6 - now.getDay()));
+    end.setHours(23, 59, 59, 999);
+    out.startBound = start;
+    out.endBound = end;
+  }
+
+  return out;
+}
+
+// Compute free 30-min (or constraint-derived) windows from calendar busy
+// events, restricted to working hours (8–18) in the user's timezone.
+function findOpenSlotsFromCalendar(
+  events: BusyEvent[],
+  userTz: string,
+  constraints: OpenConstraints,
+  horizonDays: number,
+): ProposedSlot[] {
+  const duration = (constraints.durationMin && constraints.durationMin >= 15 ? constraints.durationMin : 30) * 60_000;
+  const stepMs = 30 * 60_000;
+  const now = Date.now();
+  const winStart = constraints.startBound ? Math.max(now, constraints.startBound.getTime()) : now;
+  const winEnd = constraints.endBound
+    ? constraints.endBound.getTime()
+    : winStart + horizonDays * 86_400_000;
+
+  // Time-of-day window in user TZ
+  let hourStart = 8;
+  let hourEnd = 18;
+  if (constraints.timeOfDay === 'morning') { hourStart = 8; hourEnd = 12; }
+  else if (constraints.timeOfDay === 'afternoon') { hourStart = 12; hourEnd = 17; }
+  else if (constraints.timeOfDay === 'evening') { hourStart = 17; hourEnd = 20; }
+
+  const isFree = (startMs: number) => {
+    const endMs = startMs + duration;
+    for (const ev of events) {
+      if (ev.all_day) continue;
+      const evS = new Date(ev.start).getTime();
+      const evE = new Date(ev.end).getTime();
+      if (Number.isNaN(evS) || Number.isNaN(evE)) continue;
+      if (evS < endMs && evE > startMs) return false;
+    }
+    return true;
+  };
+
+  const out: ProposedSlot[] = [];
+  // Walk forward in 30-min steps anchored to half-hour boundaries in user TZ.
+  // Cheap approach: iterate UTC ms steps, filter by user-TZ hour + DOW.
+  // Snap to next half-hour boundary.
+  const snap = winStart + (stepMs - (winStart % stepMs)) % stepMs;
+  for (let ms = snap; ms < winEnd && out.length < 40; ms += stepMs) {
+    const hour = getHourInTz(new Date(ms).toISOString(), userTz);
+    if (hour < hourStart || hour >= hourEnd) continue;
+    const dow = new Date(
+      new Date(ms).toLocaleString('en-US', { timeZone: userTz }),
+    ).getDay();
+    if (dow === 0 || dow === 6) continue; // skip weekends by default
+    if (constraints.daysOfWeek && !constraints.daysOfWeek.has(dow)) continue;
+    if (!isFree(ms)) continue;
+    out.push({
+      start_iso: new Date(ms).toISOString(),
+      end_iso: new Date(ms + duration).toISOString(),
+      source_timezone: userTz,
+      label: 'Open calendar slot',
+    });
+  }
+  return out;
+}
+
+// Spread picker: prefer one per day, then fill.
+function spreadPick(slots: ProposedSlot[], userTz: string, max: number): ProposedSlot[] {
+  if (slots.length <= max) return slots;
+  const byDay = new Map<string, ProposedSlot[]>();
+  for (const s of slots) {
+    const k = tzFormat(s.start_iso, userTz, { year: 'numeric', month: '2-digit', day: '2-digit' });
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k)!.push(s);
+  }
+  const picked: ProposedSlot[] = [];
+  for (const list of byDay.values()) {
+    if (picked.length >= max) break;
+    picked.push(list[0]);
+  }
+  for (const list of byDay.values()) {
+    if (picked.length >= max) break;
+    for (const s of list.slice(1)) {
+      if (picked.length >= max) break;
+      picked.push(s);
+    }
+  }
+  return picked.slice(0, max);
+}
+
+function formatSlotBullet(slot: ProposedSlot, userTz: string): string {
+  const day = tzFormat(slot.start_iso, userTz, { weekday: 'short', month: 'short', day: 'numeric' });
+  const start = tzFormat(slot.start_iso, userTz, { hour: 'numeric', minute: '2-digit' });
+  const end = tzFormat(slot.end_iso, userTz, { hour: 'numeric', minute: '2-digit' });
+  const tz = tzAbbrev(userTz, slot.start_iso);
+  return `• ${day} · ${start}–${end} ${tz}`;
+}
+
+const BOOKING_LINK_STORAGE_KEY = 'naitive:booking_link';
 
 const PARSE_TIMEOUT_MS = 15_000;
 
