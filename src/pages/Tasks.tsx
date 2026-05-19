@@ -635,10 +635,10 @@ export default function Tasks() {
   }
 
   const viewTabs = [
-    { key: 'list', label: 'List', icon: ListTodo },
-    { key: 'board', label: 'Board', icon: LayoutGrid },
-    { key: 'calendar', label: 'Calendar', icon: Calendar },
-    { key: 'reporting', label: 'Reports', icon: BarChart3 },
+    { key: 'list', label: 'List', icon: ListTodo, disabled: false },
+    { key: 'board', label: 'Board', icon: LayoutGrid, disabled: false },
+    { key: 'calendar', label: 'Calendar', icon: Calendar, disabled: true },
+    { key: 'reporting', label: 'Reports', icon: BarChart3, disabled: true },
   ] as const;
 
   return (
@@ -703,14 +703,22 @@ export default function Tasks() {
             {viewTabs.map(tab => {
               const Icon = tab.icon;
               const isActive = viewMode === tab.key;
+              const isDisabled = tab.disabled;
               return (
                 <button
                   key={tab.key}
-                  onClick={() => setViewMode(tab.key as ViewMode)}
-                  className="flex items-center gap-1.5 px-3 h-[26px] text-[12px] font-medium rounded-md transition-all"
+                  onClick={() => { if (!isDisabled) setViewMode(tab.key as ViewMode); }}
+                  disabled={isDisabled}
+                  aria-disabled={isDisabled}
+                  tabIndex={isDisabled ? -1 : 0}
+                  title={isDisabled ? 'Coming soon' : undefined}
+                  className={cn(
+                    'flex items-center gap-1.5 px-3 h-[26px] text-[12px] font-medium rounded-md transition-all',
+                    isDisabled && 'cursor-not-allowed opacity-40 pointer-events-none',
+                  )}
                   style={{
-                    backgroundColor: isActive ? 'rgba(255,255,255,0.07)' : 'transparent',
-                    color: isActive ? '#eef1f6' : '#8a93a6',
+                    backgroundColor: isActive && !isDisabled ? 'rgba(255,255,255,0.07)' : 'transparent',
+                    color: isActive && !isDisabled ? '#eef1f6' : '#8a93a6',
                   }}
                 >
                   <Icon className="h-3.5 w-3.5" />
@@ -1027,7 +1035,7 @@ export default function Tasks() {
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 onDeleteTask={id => handleDeleteWithUndo(id)}
                 selectedTaskId={selectedTaskId}
-                groupBy={viewMode === 'focus' ? 'focus' : groupBy}
+                groupBy={viewMode === 'focus' ? 'focus' : 'none'}
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelect={handleToggleSelect}
                 onSelectAll={handleSelectAll}
