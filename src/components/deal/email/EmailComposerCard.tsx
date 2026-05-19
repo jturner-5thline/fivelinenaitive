@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { shouldShowSignatureGhost } from './signatureGhost';
 import { EmailRichTextEditor } from './EmailRichTextEditor';
+import { ComposerScheduleChip } from './ComposerScheduleChip';
 import {
   signatureToHtml,
   signatureToPlainText,
