@@ -3,14 +3,6 @@ import { Link } from "react-router-dom";
 import { ArrowRight, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-  CarouselNext,
-  CarouselPrevious,
-  type CarouselApi,
-} from "@/components/ui/carousel";
 
 interface BlogPostLite {
   id: string;
@@ -39,9 +31,6 @@ function formatDate(iso: string | null) {
 export const HomepageFromBlog = () => {
   const { ref, isVisible } = useScrollReveal();
   const [posts, setPosts] = useState<BlogPostLite[] | null>(null);
-  const [api, setApi] = useState<CarouselApi>();
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [scrollSnaps, setScrollSnaps] = useState<number[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -51,7 +40,7 @@ export const HomepageFromBlog = () => {
         .select("id, title, slug, excerpt, cover_image_url, cover_image_alt, tags, published_at")
         .eq("status", "published")
         .order("published_at", { ascending: false })
-        .limit(12);
+        .limit(6);
       if (!cancelled) {
         if (error) setPosts([]);
         else setPosts(((data ?? []) as unknown) as BlogPostLite[]);
@@ -61,27 +50,6 @@ export const HomepageFromBlog = () => {
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (!api) return;
-    setScrollSnaps(api.scrollSnapList());
-    setSelectedIndex(api.selectedScrollSnap());
-    const onSelect = () => setSelectedIndex(api.selectedScrollSnap());
-    api.on("select", onSelect);
-    api.on("reInit", () => {
-      setScrollSnaps(api.scrollSnapList());
-      setSelectedIndex(api.selectedScrollSnap());
-    });
-    return () => {
-      api.off("select", onSelect);
-    };
-  }, [api]);
-
-  // Re-measure embla once posts arrive so slide widths apply
-  useEffect(() => {
-    if (!api || !posts) return;
-    requestAnimationFrame(() => api.reInit());
-  }, [api, posts]);
 
   if (!posts || posts.length === 0) return null;
 
@@ -104,52 +72,11 @@ export const HomepageFromBlog = () => {
         <p className="text-base md:text-lg font-bold uppercase tracking-[0.25em] text-white mb-10 md:mb-12">
           Latest insights
         </p>
-        <Carousel
-          setApi={setApi}
-          opts={{ align: "start" }}
-          className="w-full"
-        >
-          <CarouselContent className="-ml-4">
-            {posts.map((post) => (
-              <CarouselItem
-                key={post.id}
-                className="pl-4 basis-full md:basis-1/2 lg:basis-1/3"
-              >
-                <BlogCard post={post} />
-              </CarouselItem>
-            ))}
-          </CarouselContent>
-
-          {posts.length > 1 && (
-            <div className="flex items-center justify-between mt-10 gap-4">
-              <div className="flex items-center gap-1.5">
-                {scrollSnaps.map((_, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    aria-label={`Go to slide ${i + 1}`}
-                    onClick={() => api?.scrollTo(i)}
-                    className={`h-1 rounded-full transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(270,75%,80%)] ${
-                      i === selectedIndex
-                        ? "w-6 bg-white/55"
-                        : "w-1 bg-white/15 hover:bg-white/30"
-                    }`}
-                  />
-                ))}
-              </div>
-              <div className="relative flex items-center gap-3">
-                <CarouselPrevious
-                  aria-label="Previous post"
-                  className="static translate-y-0 h-14 w-14 rounded-full border-2 border-[hsl(270,75%,80%,0.6)] bg-gradient-to-br from-[hsl(270,65%,45%,0.55)] to-[hsl(220,70%,40%,0.45)] text-white hover:from-[hsl(270,75%,55%,0.75)] hover:to-[hsl(220,80%,50%,0.65)] hover:border-[hsl(270,85%,88%)] hover:text-white hover:scale-105 active:scale-95 shadow-[0_12px_32px_-8px_hsl(270,90%,35%,0.7)] transition-all [&_svg]:h-5 [&_svg]:w-5 disabled:opacity-30"
-                />
-                <CarouselNext
-                  aria-label="Next post"
-                  className="static translate-y-0 h-14 w-14 rounded-full border-2 border-[hsl(270,75%,80%,0.6)] bg-gradient-to-br from-[hsl(270,65%,45%,0.55)] to-[hsl(220,70%,40%,0.45)] text-white hover:from-[hsl(270,75%,55%,0.75)] hover:to-[hsl(220,80%,50%,0.65)] hover:border-[hsl(270,85%,88%)] hover:text-white hover:scale-105 active:scale-95 shadow-[0_12px_32px_-8px_hsl(270,90%,35%,0.7)] transition-all [&_svg]:h-5 [&_svg]:w-5 disabled:opacity-30"
-                />
-              </div>
-            </div>
-          )}
-        </Carousel>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {posts.slice(0, 6).map((post) => (
+            <BlogCard key={post.id} post={post} />
+          ))}
+        </div>
       </div>
     </section>
   );
