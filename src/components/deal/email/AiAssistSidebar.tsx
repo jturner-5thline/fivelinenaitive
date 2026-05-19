@@ -1113,6 +1113,37 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             />
           )}
 
+          {/* Auto-surface availability check — when an inbound email
+              proposes specific meeting times, parse them, cross-reference
+              James's calendar, and show selectable slot chips with
+              Available/Conflict status + one-click reply suggestions.
+              Skipped on outbound-only threads, calendar invites, and
+              automated notifications. The card self-hides via
+              `hideWhenEmpty` if the LLM parser ultimately finds no
+              concrete slots. We also suppress it while the full
+              MeetingSchedulerCard is open so we don't double-render the
+              same component. */}
+          {(() => {
+            const latest = thread.latestEmail;
+            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            if (fromMe) return null;
+            if (schedulerOpen) return null;
+            if (isCalendarOrAutomatedNoise(thread)) return null;
+            const inboundTexts = [
+              latest?.body_text,
+              latest?.body_preview,
+              latest?.snippet,
+            ];
+            if (!inboundProposedTimes(inboundTexts)) return null;
+            return (
+              <AvailabilityCheckCard
+                thread={thread}
+                onInsertDraft={onInsertDraft}
+                hideWhenEmpty
+              />
+            );
+          })()}
+
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
