@@ -103,7 +103,7 @@ export const HomepageFromBlog = () => {
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[hsl(270,75%,80%)] mb-5">
+        <p className="text-base md:text-lg font-bold uppercase tracking-[0.25em] text-white mb-10 md:mb-12">
           Latest insights
         </p>
         <Carousel
