@@ -87,14 +87,14 @@ export default function Homepage() {
           <HomepageTestimonials />
         </div>
 
-        {/* Data & Privacy */}
-        <div className="scroll-reveal-soft">
-          <HomepageDataPrivacy />
-        </div>
-
         {/* From the Blog — hides itself when no published posts */}
         <div className="scroll-reveal-soft">
           <HomepageFromBlog />
+        </div>
+
+        {/* Data & Privacy */}
+        <div className="scroll-reveal-soft">
+          <HomepageDataPrivacy />
         </div>
 
         {/* Final CTA */}
