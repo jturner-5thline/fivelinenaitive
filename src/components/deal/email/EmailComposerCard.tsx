@@ -242,6 +242,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     hideReplyAnchor = false,
     className,
     resizable = false,
+    threadId,
   } = props;
 
   const { search } = useEmailContacts();
