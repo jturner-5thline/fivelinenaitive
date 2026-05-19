@@ -1150,10 +1150,26 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     allThreadsLocal.forEach(t => {
       if (selectedIds.has(t.threadId)) t.emails.forEach(e => idsToDelete.add(e.id));
     });
+    const prevSnapshot = emails;
     setEmails(prev => prev.filter(e => !idsToDelete.has(e.id)));
     toast.success(`${selectedIds.size} deleted`);
     setSelectedIds(new Set());
-  }, [selectedIds, emails]);
+    // Propagate the delete to the user's real mailbox by trashing each
+    // provider-backed message. Mock fixtures (mock-…) stay local only.
+    const providerIds = Array.from(idsToDelete).filter(isProviderMessageId);
+    if (providerIds.length === 0) return;
+    void Promise.all(
+      providerIds.map((id) => providerTrashMessage(id).catch(() => false)),
+    ).then((results) => {
+      const anyFailed = results.some((ok) => !ok);
+      if (anyFailed) {
+        setEmails(prevSnapshot);
+        toast.error("Couldn't delete one or more emails");
+      } else {
+        onAfterTrash?.();
+      }
+    });
+  }, [selectedIds, emails, providerTrashMessage, onAfterTrash]);
 
   const handleMarkRead = useCallback((email: MockEmail) => {
     const prevSnapshot = emails;
@@ -1187,13 +1203,13 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     setEmails(prev => prev.filter(e => e.id !== email.id));
     toast.success('Deleted');
     void providerTrashMessage(email.id).then((ok) => {
-      if (ok) return;
+      if (ok) { onAfterTrash?.(); return; }
       setEmails(prevSnapshot);
       toast.error("Couldn't delete email", {
         action: { label: 'Retry', onClick: () => handleDeleteEmail(email) },
       });
     });
-  }, [emails, providerTrashMessage]);
+  }, [emails, providerTrashMessage, onAfterTrash]);
 
   const handleSelectThread = useCallback((thread: EmailThread) => {
     setSelectedThread(thread);
