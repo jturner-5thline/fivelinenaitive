@@ -28,6 +28,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import {
   CommandDialog,
   CommandEmpty,
@@ -42,6 +43,13 @@ import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import ReactMarkdown from 'react-markdown';
+import { QuickCreateTaskDialog } from '@/components/tasks/QuickCreateTaskDialog';
+import { EmailComposerCard, type ComposerRecipients, type ComposerSendOptions } from '@/components/deal/email/EmailComposerCard';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useMyTasks } from '@/hooks/useTasks';
+import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
+import { useGmail } from '@/hooks/useGmail';
+import { useAuth } from '@/contexts/AuthContext';
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
