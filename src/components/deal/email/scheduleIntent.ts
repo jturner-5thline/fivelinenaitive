@@ -25,6 +25,10 @@ const PHRASE_PATTERNS: RegExp[] = [
   /\bi (?:wanted|want|was hoping) to schedule\b/i,
   /\bi'?d like to (?:find a time|schedule|set up a (?:call|meeting))\b/i,
   /\bfind (?:a )?time to (?:chat|talk|connect|meet)\b/i,
+  /\bgrab\s+\d+\s*(?:min|mins?|minutes?)\b/i,
+  /\bfind a time\b/i,
+  /\bavailable to (?:chat|talk|connect|meet|jump)\b/i,
+  /\bschedule a (?:call|meeting|chat|time)\b/i,
 ];
 
 /**
