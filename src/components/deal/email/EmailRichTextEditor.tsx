@@ -179,6 +179,7 @@ function Toolbar({
 }: { editor: any; dataRoomUrl?: string | null; enableImages?: boolean; uploadBucket?: string; trailing?: React.ReactNode }) {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkOpen, setLinkOpen] = useState(false);
+  const savedRangeRef = useRef<{ from: number; to: number } | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [imageOpen, setImageOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -231,14 +232,18 @@ function Toolbar({
   };
 
   const setLink = () => {
+    const range = savedRangeRef.current;
+    const chain = editor.chain().focus();
+    if (range) chain.setTextSelection(range);
     if (linkUrl) {
       const href = /^https?:\/\//i.test(linkUrl) ? linkUrl : `https://${linkUrl}`;
-      editor.chain().focus().extendMarkRange('link').setLink({ href }).run();
+      chain.extendMarkRange('link').setLink({ href, target: '_blank' } as any).run();
     } else {
-      editor.chain().focus().unsetLink().run();
+      chain.extendMarkRange('link').unsetLink().run();
     }
     setLinkOpen(false);
     setLinkUrl('');
+    savedRangeRef.current = null;
   };
 
   const insertDataRoomLink = () => {
@@ -427,7 +432,20 @@ function Toolbar({
 
       <Separator orientation="vertical" className="h-5 mx-0.5" />
 
-      <Popover open={linkOpen} onOpenChange={setLinkOpen}>
+      <Popover
+        open={linkOpen}
+        onOpenChange={(open) => {
+          if (open) {
+            const { from, to } = editor.state.selection;
+            savedRangeRef.current = { from, to };
+            const existing = editor.getAttributes('link')?.href as string | undefined;
+            setLinkUrl(existing || '');
+          } else {
+            savedRangeRef.current = null;
+          }
+          setLinkOpen(open);
+        }}
+      >
         <PopoverTrigger asChild>
           <Button variant="ghost" size="icon" className="h-7 w-7" aria-label="Insert link">
             <LinkIcon className="h-3.5 w-3.5" />
