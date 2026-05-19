@@ -15,14 +15,6 @@ import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { formatDistanceToNow, format } from 'date-fns';
 import {
@@ -1640,13 +1632,9 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
-  // ─── Pre-send "link this reply to a deal?" prompt ───────────
-  // Shown automatically when the user clicks Send on a reply for which we
-  // can't resolve a deal (no explicit dealId, no per-thread link, no
-  // workflow likely-deal). The dialog offers a quick deal selector and a
-  // "Send without logging" escape hatch so we never block the send.
-  const [linkPromptOpen, setLinkPromptOpen] = useState(false);
-  const pendingSendRef = useRef<Omit<MockEmail, 'id' | 'threadId'> | null>(null);
+  // Pre-send link-to-deal prompt removed — replies send immediately and
+  // inherit any pre-resolved deal link silently. Manual linking remains
+  // available via the "Link Deal" toolbar action.
 
   // Lift workflow analysis here so the in-thread Attachments module can show the
   // "Add to Data Room" CTA whenever a likely-deal match exists (mirrors AI Assist).
@@ -2068,17 +2056,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const handleSendFromComposer = useCallback(
     (emailData: Omit<MockEmail, 'id' | 'threadId'>) => {
       // If a deal is already resolvable (explicit prop, per-thread link, or
-      // workflow likely-match) — log automatically. Otherwise prompt the user
-      // to pick one before sending.
-      if (effectiveDealId) {
-        performSendWithLink(emailData, {
-          dealId: effectiveDealId,
-          dealName: effectiveDealName || null,
-        });
-        return;
-      }
-      pendingSendRef.current = emailData;
-      setLinkPromptOpen(true);
+      // workflow likely-match) — log automatically. Otherwise send without
+      // a deal link; the user can still link manually from the toolbar.
+      performSendWithLink(
+        emailData,
+        effectiveDealId
+          ? { dealId: effectiveDealId, dealName: effectiveDealName || null }
+          : { dealId: null, dealName: null },
+      );
     },
     [effectiveDealId, effectiveDealName, performSendWithLink],
   );
@@ -2976,267 +2961,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         />
       )}
 
-      {/* Pre-send link-to-deal prompt */}
-      <LinkReplyToDealDialog
-        open={linkPromptOpen}
-        onOpenChange={(v) => {
-          setLinkPromptOpen(v);
-          if (!v) pendingSendRef.current = null;
-        }}
-        defaultQuery={thread.dealName || thread.subject || ''}
-        onPick={(picked) => {
-          const pending = pendingSendRef.current;
-          pendingSendRef.current = null;
-          setLinkPromptOpen(false);
-          if (!pending) return;
-          setLinkedDealId(picked.id);
-          setLinkedDealName(picked.name);
-          performSendWithLink(pending, { dealId: picked.id, dealName: picked.name });
-        }}
-        onSendWithoutLogging={() => {
-          const pending = pendingSendRef.current;
-          pendingSendRef.current = null;
-          setLinkPromptOpen(false);
-          if (!pending) return;
-          performSendWithLink(pending, { dealId: null, dealName: null });
-        }}
-      />
     </>
 
   );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Pre-send "Link this reply to a deal?" dialog
-// Lightweight searchable list backed by the user's deals table. Render only
-// when triggered, so the query runs lazily on open.
-// ─────────────────────────────────────────────────────────────────────────────
-const LINK_REPLY_RECENT_KEY = 'naitive.linkReplyDialog.recent';
-const LINK_REPLY_RECENT_MAX = 5;
-
-function loadRecentPickedDeals(): Array<{ id: string; name: string }> {
-  try {
-    const raw = localStorage.getItem(LINK_REPLY_RECENT_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed
-      .filter((d) => d && typeof d.id === 'string' && typeof d.name === 'string')
-      .slice(0, LINK_REPLY_RECENT_MAX);
-  } catch {
-    return [];
-  }
-}
-
-function pushRecentPickedDeal(deal: { id: string; name: string }) {
-  try {
-    const prev = loadRecentPickedDeals().filter((d) => d.id !== deal.id);
-    const next = [deal, ...prev].slice(0, LINK_REPLY_RECENT_MAX);
-    localStorage.setItem(LINK_REPLY_RECENT_KEY, JSON.stringify(next));
-  } catch {
-    /* storage disabled — recents simply won't persist */
-  }
-}
-
-/**
- * Lightweight fuzzy scorer used by the link-to-deal picker. Returns a number
- * in roughly [0,1] (higher = better). 0 means "no subsequence match at all".
- * Heuristics:
- *  - prefix match on the name → big boost
- *  - word-boundary matches (e.g. typing "ac" hits "Acme Corp") → boost
- *  - tighter clusters of matched chars score higher than scattered ones
- */
-function fuzzyScore(name: string, query: string): number {
-  if (!query) return 0;
-  const n = name.toLowerCase();
-  const q = query.toLowerCase().trim();
-  if (!q) return 0;
-  if (n === q) return 1;
-  if (n.startsWith(q)) return 0.95;
-  if (n.includes(q)) return 0.85;
-
-  // Subsequence walk
-  let qi = 0;
-  let score = 0;
-  let lastIdx = -2;
-  let prevIsBoundary = true;
-  for (let i = 0; i < n.length && qi < q.length; i++) {
-    const c = n[i];
-    const isBoundary = prevIsBoundary || /[\s\-_./]/.test(n[i - 1] || '');
-    if (c === q[qi]) {
-      let bonus = 0.1;
-      if (i === lastIdx + 1) bonus += 0.15; // adjacency
-      if (isBoundary) bonus += 0.2;          // word start
-      score += bonus;
-      lastIdx = i;
-      qi++;
-    }
-    prevIsBoundary = /[\s\-_./]/.test(c);
-  }
-  if (qi < q.length) return 0; // not all chars matched
-  // Normalize roughly by query length so longer queries don't always win.
-  return Math.min(0.8, score / (q.length * 0.45));
-}
-
-function LinkReplyToDealDialog({
-  open,
-  onOpenChange,
-  defaultQuery,
-  onPick,
-  onSendWithoutLogging,
-}: {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
-  defaultQuery?: string;
-  onPick: (deal: { id: string; name: string }) => void;
-  onSendWithoutLogging: () => void;
-}) {
-  const [query, setQuery] = useState(defaultQuery || '');
-  const [deals, setDeals] = useState<Array<{ id: string; name: string }>>([]);
-  const [loading, setLoading] = useState(false);
-  const [recents, setRecents] = useState<Array<{ id: string; name: string }>>([]);
-
-  useEffect(() => {
-    if (!open) return;
-    setQuery(defaultQuery || '');
-    setRecents(loadRecentPickedDeals());
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      try {
-        const { data } = await supabase
-          .from('deals')
-          .select('id, company')
-          .order('updated_at', { ascending: false })
-          .limit(200);
-        if (cancelled) return;
-        setDeals((data || []).map((d: any) => ({ id: d.id, name: d.company || 'Untitled deal' })));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, defaultQuery]);
-
-  // When there's no query, show "Recent" first then most-recently-updated
-  // deals beneath it (deduped). When the user types, run the fuzzy scorer
-  // across BOTH recents and deals so a recent pick still ranks at the top
-  // when its name matches the query well.
-  const { recentMatches, dealMatches, hasQuery } = useMemo(() => {
-    const q = query.trim();
-    const recentIds = new Set(recents.map((d) => d.id));
-    const dealsExcludingRecents = deals.filter((d) => !recentIds.has(d.id));
-
-    if (!q) {
-      return {
-        hasQuery: false,
-        recentMatches: recents,
-        dealMatches: dealsExcludingRecents.slice(0, 20),
-      };
-    }
-
-    const scoreAndSort = (list: Array<{ id: string; name: string }>) =>
-      list
-        .map((d) => ({ d, s: fuzzyScore(d.name, q) }))
-        .filter((x) => x.s > 0)
-        .sort((a, b) => b.s - a.s)
-        .map((x) => x.d);
-
-    return {
-      hasQuery: true,
-      recentMatches: scoreAndSort(recents),
-      dealMatches: scoreAndSort(dealsExcludingRecents).slice(0, 20),
-    };
-  }, [deals, recents, query]);
-
-  const handlePick = (deal: { id: string; name: string }) => {
-    pushRecentPickedDeal(deal);
-    onPick(deal);
-  };
-
-  const isEmpty = !loading && recentMatches.length === 0 && dealMatches.length === 0;
-
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Link this reply to a deal before sending?</DialogTitle>
-          <DialogDescription>
-            Linking lets us log the reply to that deal&rsquo;s activity timeline and
-            update the matched lender&rsquo;s last-contact date.
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-2">
-          <Input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search deals…"
-            autoFocus
-          />
-          <div className="max-h-64 overflow-y-auto rounded-md border border-border/50">
-            {loading ? (
-              <div className="p-3 text-xs text-muted-foreground inline-flex items-center gap-2">
-                <Loader2 className="h-3 w-3 animate-spin" /> Loading deals…
-              </div>
-            ) : isEmpty ? (
-              <div className="p-3 text-xs text-muted-foreground">No matching deals.</div>
-            ) : (
-              <>
-                {recentMatches.length > 0 && (
-                  <div>
-                    <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Recent
-                    </div>
-                    <div className="divide-y divide-border/40">
-                      {recentMatches.map((d) => (
-                        <button
-                          key={`recent-${d.id}`}
-                          type="button"
-                          onClick={() => handlePick(d)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
-                        >
-                          {d.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-                {dealMatches.length > 0 && (
-                  <div>
-                    {recentMatches.length > 0 && (
-                      <div className="px-3 pt-2 pb-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-t border-border/40">
-                        {hasQuery ? 'Other matches' : 'All deals'}
-                      </div>
-                    )}
-                    <div className="divide-y divide-border/40">
-                      {dealMatches.map((d) => (
-                        <button
-                          key={d.id}
-                          type="button"
-                          onClick={() => handlePick(d)}
-                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted/40 transition-colors"
-                        >
-                          {d.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="ghost" onClick={onSendWithoutLogging}>
-            Send without logging
-          </Button>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
