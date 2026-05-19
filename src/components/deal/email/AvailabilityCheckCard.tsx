@@ -1040,6 +1040,10 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
     setError(null);
     setExpandedIdx(null);
     setFocusedIdx(0);
+    setOpenSlots(null);
+    setOpenIntentActive(false);
+    setOpenConstraints({});
+    setCalendarUnavailable(false);
     void runAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread.threadId]);
@@ -1085,6 +1089,33 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
   // Confirmation for the best-fit Available slot, OR an alternatives reply
   // pre-filled with 2–3 adjacent free slots if every proposal conflicts.
   const dynamicReplies = useMemo<ReplySuggestion[]>(() => {
+    // ── Open-availability replies (Scenario 3) — calendar-grounded ──
+    if (openIntentActive && openSlots && openSlots.length > 0) {
+      const out: ReplySuggestion[] = [];
+      const top3 = spreadPick(openSlots, userTz, 3);
+      const top5 = spreadPick(openSlots, userTz, 5);
+      const tz = tzAbbrev(userTz, top3[0]?.start_iso || new Date().toISOString());
+      const intro = openConstraints.timeOfDay
+        ? `Happy to find a time. Here are a few ${openConstraints.timeOfDay} options that are open on my calendar:`
+        : `Happy to find a time. Here are a few options that are open on my calendar:`;
+      out.push({
+        label: `Offer 2–3 specific times (${tz})`,
+        body: `${intro}\n\n${top3.map((s) => formatSlotBullet(s, userTz)).join('\n')}\n\nLet me know which works and I'll send an invite.`,
+      });
+      if (top5.length > top3.length) {
+        out.push({
+          label: `Offer a longer list (${top5.length} options)`,
+          body: `Happy to find a time — here's a wider range of openings on my calendar:\n\n${top5.map((s) => formatSlotBullet(s, userTz)).join('\n')}\n\nAny of these work? Happy to suggest more if not.`,
+        });
+      }
+      if (bookingLink) {
+        out.push({
+          label: 'Propose a scheduling link',
+          body: `Easiest path is probably to grab a time directly from my calendar: ${bookingLink}\n\nHappy to hold a specific slot if you'd prefer — just let me know.`,
+        });
+      }
+      return out;
+    }
     if (!ranked || ranked.length === 0) return [];
     const out: ReplySuggestion[] = [];
     const firstAvailable = ranked.find(
