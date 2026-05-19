@@ -14,7 +14,6 @@ import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
-import { isDealStaleByBusinessDays } from '@/lib/dealFreshness';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
