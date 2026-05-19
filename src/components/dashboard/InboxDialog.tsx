@@ -36,7 +36,7 @@ const AUTO_LOAD_DELAY_MS = 350;
 // malformed payload can't crash the inbox list mid-render.
 function mapGmailToMockEmails(
   gmailMessages: any[],
-  folderOverride: 'inbox' | 'sent' | 'drafts' = 'inbox',
+  folderOverride: 'inbox' | 'sent' | 'drafts' | 'junk' | 'trash' = 'inbox',
 ): MockEmail[] {
   if (!Array.isArray(gmailMessages)) return [];
   const out: MockEmail[] = [];
