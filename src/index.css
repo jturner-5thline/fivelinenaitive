@@ -1405,31 +1405,15 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
 }
 
 /* ---------------------------------------------------------------- */
-/* Pipeline left-column tile — soft "stale" attention cue.            */
+/* Pipeline left-column tile — subtle "stale" attention cue.          */
 /* Triggered when a deal has had no status or stage update in ≥2     */
-/* business days. Designed as a faint amber ring + outer glow, never */
-/* red, so it reads as an attention hint instead of an error alert.  */
+/* business days. Polished treatment: 1.5px warm orange border as    */
+/* the primary signal, plus a very faint warm halo. No animation,    */
+/* no fuzzy glow — reads as intentional, not loud.                   */
 /* ---------------------------------------------------------------- */
-@keyframes deal-tile-stale-pulse {
-  0%, 100% {
-    box-shadow:
-      0 0 0 1px hsl(38 92% 60% / 0.32),
-      0 0 14px -2px hsl(38 92% 60% / 0.28);
-  }
-  50% {
-    box-shadow:
-      0 0 0 1px hsl(38 92% 60% / 0.45),
-      0 0 20px -2px hsl(38 92% 60% / 0.45);
-  }
-}
 .deal-tile-stale-glow {
-  animation: deal-tile-stale-pulse 3.6s ease-in-out infinite;
-}
-@media (prefers-reduced-motion: reduce) {
-  .deal-tile-stale-glow {
-    animation: none;
-    box-shadow:
-      0 0 0 1px hsl(38 92% 60% / 0.35),
-      0 0 14px -2px hsl(38 92% 60% / 0.3);
-  }
+  border-color: hsl(28 92% 58% / 0.65) !important;
+  box-shadow:
+    inset 0 0 0 0.5px hsl(28 92% 58% / 0.35),
+    0 0 0 1px hsl(28 92% 58% / 0.18);
 }
