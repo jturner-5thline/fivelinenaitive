@@ -1012,27 +1012,6 @@ export default function Tasks() {
               )}
             </DropdownMenuContent>
           </DropdownMenu>
-
-          <HintTooltip
-            hint="Click here to create a new task."
-            visible={isHintVisible('tasks-add')}
-            onDismiss={() => dismissHint('tasks-add')}
-            side="bottom"
-          >
-            <Button
-              type="button"
-              variant="liquid-glass"
-              size="sm"
-              className="gap-2"
-              onClick={(e) => {
-                quickCreateTriggerRef.current = e.currentTarget as HTMLElement;
-                setShowQuickCreate(true);
-              }}
-            >
-              <Plus className="h-4 w-4" />
-              Add Task
-            </Button>
-          </HintTooltip>
         </div>
 
         {/* Main content */}
