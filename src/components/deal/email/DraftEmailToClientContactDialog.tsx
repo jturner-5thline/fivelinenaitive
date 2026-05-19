@@ -343,8 +343,9 @@ export function DraftEmailToClientContactDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        overlayClassName="z-[2400]"
         className={cn(
-          'popup-shell-surface p-0 gap-0 max-w-[1040px] w-[94vw] h-[92vh] max-h-[92vh] sm:h-[92vh]',
+          'z-[2410] popup-shell-surface p-0 gap-0 max-w-[1040px] w-[94vw] h-[92vh] max-h-[92vh] sm:h-[92vh]',
           'border-transparent shadow-2xl shadow-black/20 overflow-hidden rounded-2xl flex flex-col',
         )}
       >

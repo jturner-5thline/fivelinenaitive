@@ -88,7 +88,7 @@ export function CreateTaskButton({ dealId, dealName }: CreateTaskButtonProps) {
       </Tooltip>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent overlayClassName="z-[2400]" className="z-[2410] sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Create Task</DialogTitle>
           </DialogHeader>
