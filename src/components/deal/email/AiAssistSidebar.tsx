@@ -39,6 +39,7 @@ import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
+import { OpenAvailabilityCard } from './OpenAvailabilityCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
 import {
@@ -46,6 +47,7 @@ import {
   type ComposeBodyDetail,
   detectSchedulingIntent,
   inboundProposedTimes,
+  detectOpenAvailabilityRequest,
 } from './scheduleIntent';
 import { CalendarClock } from 'lucide-react';
 
@@ -220,6 +222,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // sidebar remounts (new thread opened).
   const [scheduleHintActive, setScheduleHintActive] = useState(false);
   const scheduleHintDismissedThreads = useRef<Set<string>>(new Set());
+  // Per-thread dismissals for the auto-surfaced open-availability card
+  // (Scenario 3). Once James X's it for a thread, we keep it down.
+  const [openAvailDismissed, setOpenAvailDismissed] = useState<Set<string>>(new Set());
   // Collapsible section state for the redesigned layout. Draft reply is the
   // biggest space-hog so it stays collapsed by default; Suggested Tasks
   // collapses by default whenever a Suggested Update is also visible to
@@ -1140,6 +1145,42 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 thread={thread}
                 onInsertDraft={onInsertDraft}
                 hideWhenEmpty
+              />
+            );
+          })()}
+
+          {/* Auto-surface open-ended availability prompt (Scenario 3) —
+              the inbound asks "are you free this week?" / "let me know
+              what works" without proposing specific times. We propose
+              open slots from James's calendar and draft a casual reply.
+              Mutually exclusive with AvailabilityCheckCard above via
+              inboundProposedTimes() gating inside detectOpenAvailability. */}
+          {(() => {
+            const latest = thread.latestEmail;
+            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            if (fromMe) return null;
+            if (schedulerOpen) return null;
+            if (isCalendarOrAutomatedNoise(thread)) return null;
+            if (openAvailDismissed.has(thread.threadId)) return null;
+            const inboundTexts = [
+              latest?.body_text,
+              latest?.body_preview,
+              latest?.snippet,
+              thread.subject,
+            ];
+            const request = detectOpenAvailabilityRequest(inboundTexts);
+            if (!request) return null;
+            return (
+              <OpenAvailabilityCard
+                request={request}
+                onInsertDraft={onInsertDraft}
+                onDismiss={() => {
+                  setOpenAvailDismissed((prev) => {
+                    const next = new Set(prev);
+                    next.add(thread.threadId);
+                    return next;
+                  });
+                }}
               />
             );
           })()}
