@@ -1387,9 +1387,11 @@ export function PipelineTab({
   }
 
   return (
-    <div className="relative h-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_clamp(260px,28vw,360px)] gap-3 min-h-0 max-w-full overflow-hidden">
-      {/* LEFT: Deals (primary focus) — fluid on desktop, full width below lg */}
-      <div className="min-w-0 max-w-full min-h-0 overflow-y-auto overflow-x-hidden">
+    <div className="relative h-full min-h-0 max-w-full overflow-hidden">
+      {/* Deals tab: single-region layout — right Follow-Ups column removed
+          so the master/detail split inside PipelineMemoView fills the
+          full width of the briefing modal. */}
+      <div className="h-full min-w-0 max-w-full min-h-0 overflow-y-auto overflow-x-hidden">
         <Suspense
           fallback={
             <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
@@ -1404,34 +1406,6 @@ export function PipelineTab({
             onOpenDeal={id => onNavigate(`/deal/${id}`)}
           />
         </Suspense>
-      </div>
-
-      {/* RIGHT: capped sidebar on desktop, stacks under deals below lg */}
-      <div className="min-w-0 w-full max-w-full min-h-0 flex flex-col border-t lg:border-t-0 lg:border-l border-white/10 pt-3 lg:pt-0 lg:pl-3 mt-3 lg:mt-0">
-        {useCollapsedActivityLayout ? (
-          null
-        ) : (
-          <>
-            <div className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden pr-1 border-l-2 border-l-purple-500 pl-2">
-              <Section title="Today's Follow-Ups">
-                {showFollowups ? (
-                  <FollowupTiles
-                    groups={followupGroups}
-                    onNavigate={onNavigate}
-                    briefingType={briefingType}
-                    assigneeName={
-                      (user?.user_metadata as any)?.full_name ||
-                      user?.email?.split('@')[0] ||
-                      'You'
-                    }
-                  />
-                ) : (
-                  <EmptySection message="No follow-ups for today" />
-                )}
-              </Section>
-            </div>
-          </>
-        )}
       </div>
     </div>
   );
