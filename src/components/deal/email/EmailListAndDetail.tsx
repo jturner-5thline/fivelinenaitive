@@ -1858,11 +1858,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, []);
   useEffect(() => {
     try {
-      window.localStorage.setItem(AI_ASSIST_PREF_KEY, showAiAssist ? '1' : '0');
+      // Persist the user *preference*, not the gated effective state, so a
+      // user who turned Assist on doesn't lose their pref if an admin
+      // temporarily disables the Assist feature for the workspace.
+      window.localStorage.setItem(AI_ASSIST_PREF_KEY, showAiAssistPref ? '1' : '0');
     } catch {
       /* ignore */
     }
-  }, [showAiAssist]);
+  }, [showAiAssistPref]);
   useEffect(() => {
     if (typeof window === 'undefined' || !showAiAssist) return;
     const emailPaneEl = messagePaneRef.current;
