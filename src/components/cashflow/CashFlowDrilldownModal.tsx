@@ -26,6 +26,8 @@ import {
   type FlowType,
 } from './scheduledCashFlows';
 import { fmt } from './formatters';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Link } from 'react-router-dom';
 
 // Grid-row keys for Debt Advisory sub-rows. These must match the row keys
 // used by WeeklyReportTab AND the keys produced by resolveCategoryToGridRow,
