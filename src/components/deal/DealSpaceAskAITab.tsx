@@ -33,6 +33,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import { BaseSubmissionEmailDialog, type BaseSubmissionDraft } from './email/BaseSubmissionEmailDialog';
+import { htmlToPlainText } from '@/lib/htmlToPlainText';
 import { PostCallFollowupModal } from './PostCallFollowupModal';
 import { CheckInOutstandingItemsModal } from './CheckInOutstandingItemsModal';
 import { ClientCheckInDraftModal } from './ClientCheckInDraftModal';
