@@ -103,12 +103,25 @@ Rules:
 - If a standalone time is given ("11am"), produce a 60-minute slot ending at the next hour boundary.
 - If a range is given ("11am-1pm PT"), produce a single slot covering the whole range; downstream code will split it into 60-minute candidate windows.
 - If multiple options appear in one sentence or bullet ("Thursday 11am or 1pm-3pm"), emit a slot per option.
+- NATURAL-LANGUAGE TIME WINDOWS: Phrases like "Wednesday afternoon", "Tuesday morning", "Thursday evening", "later this week", "early next week", or "sometime Friday" ARE valid scheduling proposals. Never set detected=false just because the sender gave a soft window instead of an exact time. Treat the window as a search range and emit 3 concrete 30-minute candidate slots spaced ~30–60 minutes apart inside it. Use these defaults (in the sender_timezone, or user_timezone if no tz is given):
+    • morning   = 09:00–12:00
+    • afternoon = 12:00–18:00
+    • evening   = 18:00–21:00
+    • "end of day" / "late afternoon" = 15:00–18:00
+    • "early"  before a day part shifts to the first 90 min of that part
+    • bare day with no part ("Wednesday") = 10:00, 13:30, 15:30 candidates
+  For each candidate emit its own ProposedSlot (30 minutes long) with label like "Wed May 20, 4:30 PM EDT" and a quote of the original phrase. This lets downstream calendar logic verify each slot individually and surface only the ones that are actually free.
 - Always convert to UTC for start_iso/end_iso. Preserve the original timezone in source_timezone (default to America/Los_Angeles for PT/PDT/PST, America/New_York for ET/EDT/EST, America/Chicago for CT, America/Denver for MT, Europe/London for GMT/BST).
 - Reply suggestions should sound like the user (5th Line capital markets, warm + concise). Do NOT include greetings like "Hi <name>" or sign-offs — those are added by the user. Just the body.
 - Always include at least these three suggestion shapes when slots were detected:
   1) Accept the single best slot ("I'm available on <day> at <time> <tz>.")
   2) Compare two slots ("<day1> works, but <day2> <time> is better.")
   3) Decline and propose alternatives ("None of these windows work; could we try <alt1> or <alt2>?")
+- When the sender gave a soft window (morning/afternoon/etc.) rather than specific times, REPLACE suggestion #1 with an "Offer 2–3 specific times" reply that lists the candidate slots as Markdown bullets, one per line, in this exact format:
+    - <Weekday>, <Month> <D> at <h:MM> <AM/PM> <TZ abbrev>
+  Example body:
+    "A few times that work on my side — let me know which is easiest:\n\n- Wednesday, May 20 at 4:30 PM EDT\n- Wednesday, May 20 at 5:00 PM EDT\n- Wednesday, May 20 at 5:30 PM EDT"
+  Never return an empty reply_suggestions array when slots were emitted.
 - If no clear scheduling proposal exists, set detected=false and slots=[] and explain why in notes.`;
 
     const userMsg = `User timezone: ${userTimezone}
