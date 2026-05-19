@@ -695,6 +695,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
               isAutoPaginating={isPaginatingRef.current}
+              onAfterTrash={refreshTrash}
             />
           </EmailPaneErrorBoundary>
         </div>
