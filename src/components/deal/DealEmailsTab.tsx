@@ -576,8 +576,14 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     if (wordCount >= 4) return true;
     return false;
   }, []);
-  // Hydrate query from ?q=
+  // Hydrate query from ?q= — DEAL scope only.
+  //
+  // In INBOX scope (dashboard popup) we intentionally do NOT seed the
+  // search input from the URL so closing and reopening the popup always
+  // starts with an empty search field. Persisting `?q=` across reopens was
+  // the source of the "previous search sticks" bug.
   useEffect(() => {
+    if (isInboxScope) return;
     const q = searchParams.get('q');
     if (q && q !== searchQuery) setSearchQuery(q);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -611,8 +617,9 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
     window.addEventListener('naitive:select-inbox-deal', handler);
     return () => window.removeEventListener('naitive:select-inbox-deal', handler);
   }, [isInboxScope]);
-  // Persist q to URL (debounced via the same debounce that runs search).
+  // Persist q to URL — DEAL scope only. See note above on the inbox popup.
   useEffect(() => {
+    if (isInboxScope) return;
     const next = new URLSearchParams(searchParams);
     const trimmed = searchQuery.trim();
     if (trimmed) next.set('q', trimmed); else next.delete('q');
