@@ -175,6 +175,82 @@ function dayKey(iso: string, tz: string) {
   return tzFormat(iso, tz, { year: 'numeric', month: '2-digit', day: '2-digit' });
 }
 
+// ── chrono-node fallback parser ────────────────────────────────────────────
+// Extracts explicit datetime proposals from inbound text when the server
+// parser misses them. Normalizes to user timezone; default duration 30min.
+function extractSlotsWithChrono(text: string, userTz: string, refDate: Date): ProposedSlot[] {
+  if (!text || !text.trim()) return [];
+  const results = chrono.parse(text, refDate, { forwardDate: true });
+  const slots: ProposedSlot[] = [];
+  for (const r of results) {
+    const start = r.start?.date();
+    if (!start) continue;
+    // Skip date-only references with no explicit time component.
+    const hasTime = r.start.isCertain('hour') || r.start.isCertain('minute');
+    if (!hasTime) continue;
+    const end = r.end?.date() || new Date(start.getTime() + 30 * 60_000);
+    if (end.getTime() <= start.getTime()) continue;
+    slots.push({
+      start_iso: start.toISOString(),
+      end_iso: end.toISOString(),
+      source_timezone: userTz,
+      label: r.text,
+      quote: r.text,
+    });
+  }
+  // Dedupe by start time
+  const seen = new Set<string>();
+  return slots.filter((s) => {
+    if (seen.has(s.start_iso)) return false;
+    seen.add(s.start_iso);
+    return true;
+  });
+}
+
+// Find up to N free 30-min slots adjacent to a proposed slot, within
+// working hours (9–17 in userTz), avoiding busy events.
+function findAdjacentFreeSlots(
+  proposed: ProposedSlot,
+  events: BusyEvent[],
+  userTz: string,
+  count = 3,
+): ProposedSlot[] {
+  const proposedStart = new Date(proposed.start_iso).getTime();
+  const duration = Math.max(30 * 60_000, new Date(proposed.end_iso).getTime() - proposedStart);
+  const stepMs = 30 * 60_000;
+  const searchRadiusMs = 8 * 3600_000;
+  const candidates: number[] = [];
+  for (let off = stepMs; off <= searchRadiusMs; off += stepMs) {
+    candidates.push(proposedStart - off, proposedStart + off);
+  }
+  const isFree = (startMs: number) => {
+    const endMs = startMs + duration;
+    const hr = getHourInTz(new Date(startMs).toISOString(), userTz);
+    if (hr < 9 || hr >= 17) return false;
+    for (const ev of events) {
+      if (ev.all_day) continue;
+      const evS = new Date(ev.start).getTime();
+      const evE = new Date(ev.end).getTime();
+      if (Number.isNaN(evS) || Number.isNaN(evE)) continue;
+      if (evS < endMs && evE > startMs) return false;
+    }
+    return true;
+  };
+  const out: ProposedSlot[] = [];
+  for (const ms of candidates) {
+    if (ms < Date.now()) continue;
+    if (!isFree(ms)) continue;
+    out.push({
+      start_iso: new Date(ms).toISOString(),
+      end_iso: new Date(ms + duration).toISOString(),
+      source_timezone: userTz,
+      label: 'Adjacent open slot',
+    });
+    if (out.length >= count) break;
+  }
+  return out;
+}
+
 // ── Scoring + classification ───────────────────────────────────────────────
 function analyzeSlot(
   slot: ProposedSlot,
