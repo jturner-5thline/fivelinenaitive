@@ -25,6 +25,205 @@ import type { EmailThread } from './mockEmailData';
 import { fetchFullEmailMessage } from './useFullEmailMessage';
 import { logUsage } from '@/lib/usageLogger';
 import * as chrono from 'chrono-node';
+import { Link } from 'react-router-dom';
+import { detectOpenAvailabilityRequest } from './scheduleIntent';
+import { CalendarRange, Link2 } from 'lucide-react';
+
+// ── Open-availability constraint parser ────────────────────────────────────
+// Best-effort extraction of structured filters from the inbound text
+// ("Tuesday through Thursday afternoons next week", "30 minutes",
+// "mornings only"). Used to narrow the calendar slot search before we
+// hand drafts back to the user.
+interface OpenConstraints {
+  daysOfWeek?: Set<number>; // 0=Sun..6=Sat
+  timeOfDay?: 'morning' | 'afternoon' | 'evening';
+  durationMin?: number;
+  startBound?: Date;
+  endBound?: Date;
+}
+
+const DOW_MAP: Record<string, number> = {
+  sun: 0, sunday: 0,
+  mon: 1, monday: 1,
+  tue: 2, tues: 2, tuesday: 2,
+  wed: 3, weds: 3, wednesday: 3,
+  thu: 4, thur: 4, thurs: 4, thursday: 4,
+  fri: 5, friday: 5,
+  sat: 6, saturday: 6,
+};
+
+function parseOpenConstraints(text: string, now: Date): OpenConstraints {
+  const out: OpenConstraints = {};
+  if (!text) return out;
+  const t = text.toLowerCase();
+
+  // Time of day
+  if (/\b(morning|mornings|am)\b/.test(t) && !/\bafternoon|evening|pm\b/.test(t)) {
+    out.timeOfDay = 'morning';
+  } else if (/\b(afternoon|afternoons|pm)\b/.test(t) && !/\bmorning|evening\b/.test(t)) {
+    out.timeOfDay = 'afternoon';
+  } else if (/\b(evening|evenings|tonight)\b/.test(t)) {
+    out.timeOfDay = 'evening';
+  }
+
+  // Duration: "30 minutes", "30-min", "half hour", "1 hour", "an hour"
+  const durMatch = t.match(/\b(\d{1,3})\s*(?:-?\s*)?(min|mins|minutes?|hour|hours?|hr|hrs)\b/);
+  if (durMatch) {
+    const n = parseInt(durMatch[1], 10);
+    out.durationMin = /hour|hr/.test(durMatch[2]) ? n * 60 : n;
+  } else if (/\bhalf[- ]hour\b/.test(t)) {
+    out.durationMin = 30;
+  } else if (/\ban hour\b/.test(t)) {
+    out.durationMin = 60;
+  }
+
+  // Day-of-week range: "Tuesday through Thursday", "Mon-Wed", "Tue to Thu"
+  const range = t.match(
+    /\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\s*(?:-|–|—|through|thru|to)\s*(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/,
+  );
+  if (range) {
+    const a = DOW_MAP[range[1]];
+    const b = DOW_MAP[range[2]];
+    if (a !== undefined && b !== undefined) {
+      const days = new Set<number>();
+      let i = a;
+      // walk forward up to 7 hops to avoid infinite loop on weird ranges
+      for (let n = 0; n < 7; n += 1) {
+        days.add(i);
+        if (i === b) break;
+        i = (i + 1) % 7;
+      }
+      out.daysOfWeek = days;
+    }
+  } else {
+    // Single-day mentions: collect any explicit weekday names.
+    const singles = new Set<number>();
+    const re = /\b(mon(?:day)?|tue(?:s|sday)?|wed(?:s|nesday)?|thu(?:r|rs|rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(t)) !== null) {
+      const d = DOW_MAP[m[1]];
+      if (d !== undefined) singles.add(d);
+    }
+    if (singles.size > 0 && singles.size < 7) {
+      out.daysOfWeek = singles;
+    }
+  }
+
+  // "Next week" → bound search window
+  if (/\bnext week\b/.test(t)) {
+    const day = now.getDay();
+    const daysUntilMon = ((1 - day + 7) % 7) || 7;
+    const start = new Date(now);
+    start.setDate(now.getDate() + daysUntilMon);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 7);
+    out.startBound = start;
+    out.endBound = end;
+  } else if (/\bthis week\b/.test(t)) {
+    const start = new Date(now);
+    const end = new Date(now);
+    end.setDate(now.getDate() + (6 - now.getDay()));
+    end.setHours(23, 59, 59, 999);
+    out.startBound = start;
+    out.endBound = end;
+  }
+
+  return out;
+}
+
+// Compute free 30-min (or constraint-derived) windows from calendar busy
+// events, restricted to working hours (8–18) in the user's timezone.
+function findOpenSlotsFromCalendar(
+  events: BusyEvent[],
+  userTz: string,
+  constraints: OpenConstraints,
+  horizonDays: number,
+): ProposedSlot[] {
+  const duration = (constraints.durationMin && constraints.durationMin >= 15 ? constraints.durationMin : 30) * 60_000;
+  const stepMs = 30 * 60_000;
+  const now = Date.now();
+  const winStart = constraints.startBound ? Math.max(now, constraints.startBound.getTime()) : now;
+  const winEnd = constraints.endBound
+    ? constraints.endBound.getTime()
+    : winStart + horizonDays * 86_400_000;
+
+  // Time-of-day window in user TZ
+  let hourStart = 8;
+  let hourEnd = 18;
+  if (constraints.timeOfDay === 'morning') { hourStart = 8; hourEnd = 12; }
+  else if (constraints.timeOfDay === 'afternoon') { hourStart = 12; hourEnd = 17; }
+  else if (constraints.timeOfDay === 'evening') { hourStart = 17; hourEnd = 20; }
+
+  const isFree = (startMs: number) => {
+    const endMs = startMs + duration;
+    for (const ev of events) {
+      if (ev.all_day) continue;
+      const evS = new Date(ev.start).getTime();
+      const evE = new Date(ev.end).getTime();
+      if (Number.isNaN(evS) || Number.isNaN(evE)) continue;
+      if (evS < endMs && evE > startMs) return false;
+    }
+    return true;
+  };
+
+  const out: ProposedSlot[] = [];
+  // Walk forward in 30-min steps anchored to half-hour boundaries in user TZ.
+  // Cheap approach: iterate UTC ms steps, filter by user-TZ hour + DOW.
+  // Snap to next half-hour boundary.
+  const snap = winStart + (stepMs - (winStart % stepMs)) % stepMs;
+  for (let ms = snap; ms < winEnd && out.length < 40; ms += stepMs) {
+    const hour = getHourInTz(new Date(ms).toISOString(), userTz);
+    if (hour < hourStart || hour >= hourEnd) continue;
+    const dow = new Date(
+      new Date(ms).toLocaleString('en-US', { timeZone: userTz }),
+    ).getDay();
+    if (dow === 0 || dow === 6) continue; // skip weekends by default
+    if (constraints.daysOfWeek && !constraints.daysOfWeek.has(dow)) continue;
+    if (!isFree(ms)) continue;
+    out.push({
+      start_iso: new Date(ms).toISOString(),
+      end_iso: new Date(ms + duration).toISOString(),
+      source_timezone: userTz,
+      label: 'Open calendar slot',
+    });
+  }
+  return out;
+}
+
+// Spread picker: prefer one per day, then fill.
+function spreadPick(slots: ProposedSlot[], userTz: string, max: number): ProposedSlot[] {
+  if (slots.length <= max) return slots;
+  const byDay = new Map<string, ProposedSlot[]>();
+  for (const s of slots) {
+    const k = tzFormat(s.start_iso, userTz, { year: 'numeric', month: '2-digit', day: '2-digit' });
+    if (!byDay.has(k)) byDay.set(k, []);
+    byDay.get(k)!.push(s);
+  }
+  const picked: ProposedSlot[] = [];
+  for (const list of byDay.values()) {
+    if (picked.length >= max) break;
+    picked.push(list[0]);
+  }
+  for (const list of byDay.values()) {
+    if (picked.length >= max) break;
+    for (const s of list.slice(1)) {
+      if (picked.length >= max) break;
+      picked.push(s);
+    }
+  }
+  return picked.slice(0, max);
+}
+
+function formatSlotBullet(slot: ProposedSlot, userTz: string): string {
+  const day = tzFormat(slot.start_iso, userTz, { weekday: 'short', month: 'short', day: 'numeric' });
+  const start = tzFormat(slot.start_iso, userTz, { hour: 'numeric', minute: '2-digit' });
+  const end = tzFormat(slot.end_iso, userTz, { hour: 'numeric', minute: '2-digit' });
+  const tz = tzAbbrev(userTz, slot.start_iso);
+  return `• ${day} · ${start}–${end} ${tz}`;
+}
+
+const BOOKING_LINK_STORAGE_KEY = 'naitive:booking_link';
 
 const PARSE_TIMEOUT_MS = 15_000;
 
@@ -595,6 +794,20 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
   const [focusedIdx, setFocusedIdx] = useState<number>(0);
   const [filters, setFilters] = useState<Set<FilterKey>>(() => new Set(['available', 'partially_available']));
   const [rangeDays, setRangeDays] = useState<number>(14);
+  // ── Open-availability mode (Scenario 3) ──────────────────────────────
+  // Populated when the sender asks open-ended ("when are you free?")
+  // without proposing specific times. We then ground reply drafts in
+  // the real calendar instead of letting the LLM hallucinate slots.
+  const [openSlots, setOpenSlots] = useState<ProposedSlot[] | null>(null);
+  const [openHorizonDays, setOpenHorizonDays] = useState<number>(14);
+  const [openIntentActive, setOpenIntentActive] = useState<boolean>(false);
+  const [openConstraints, setOpenConstraints] = useState<OpenConstraints>({});
+  const [calendarUnavailable, setCalendarUnavailable] = useState<boolean>(false);
+  const [bookingLink, setBookingLink] = useState<string | null>(() => {
+    try {
+      return typeof window !== 'undefined' ? window.localStorage.getItem(BOOKING_LINK_STORAGE_KEY) : null;
+    } catch { return null; }
+  });
   const lastThreadIdRef = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -724,6 +937,79 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
       } else {
         setBusyEvents([]);
       }
+
+      // ── Scenario 3: open-availability handling ──────────────────────
+      // If no specific times were proposed by the sender, look for
+      // open-availability intent ("when are you free?", "let me know
+      // what works", etc.) and ground reply drafts in the real
+      // calendar.
+      if (!result.detected || (result.slots?.length ?? 0) === 0) {
+        const latest = thread.latestEmail;
+        const inboundTexts = [
+          latest?.body_text,
+          latest?.body_preview,
+          latest?.snippet,
+          thread.subject,
+        ];
+        const openReq = detectOpenAvailabilityRequest(inboundTexts);
+        if (openReq) {
+          setOpenIntentActive(true);
+          const inboundText = [
+            latest?.body_text,
+            latest?.body_preview,
+            latest?.snippet,
+            thread.subject,
+          ].filter(Boolean).join(' ');
+          const constraints = parseOpenConstraints(inboundText, new Date());
+          setOpenConstraints(constraints);
+          setLoadingCalendar(true);
+          try {
+            const now = new Date();
+            const horizon = constraints.endBound
+              ? new Date(Math.max(constraints.endBound.getTime(), now.getTime() + 14 * 86_400_000))
+              : new Date(now.getTime() + 21 * 86_400_000);
+            const { data: calData, error: calErr } = await withTimeout(
+              supabase.functions.invoke('calendar-events', {
+                body: {
+                  action: 'list',
+                  time_min: now.toISOString(),
+                  time_max: horizon.toISOString(),
+                  max_results: 300,
+                  timezone: BROWSER_TZ,
+                },
+              }),
+              PARSE_TIMEOUT_MS,
+              'Calendar read',
+            );
+            if (calErr) throw calErr;
+            const events: BusyEvent[] = (calData?.events || []).map((e: any) => ({
+              start: e.start,
+              end: e.end,
+              all_day: !!e.all_day,
+              title: e.title || e.summary || e.subject || null,
+            }));
+            // First try: requested window (or default 14 days). If none
+            // match, expand to next 7 days WITHOUT constraints to find
+            // anything bookable.
+            let slots = findOpenSlotsFromCalendar(events, BROWSER_TZ, constraints, 14);
+            let horizonUsed = 14;
+            if (slots.length === 0) {
+              slots = findOpenSlotsFromCalendar(events, BROWSER_TZ, {}, 7);
+              horizonUsed = 7;
+            }
+            setOpenSlots(slots);
+            setOpenHorizonDays(horizonUsed);
+            setCalendarUnavailable(false);
+          } catch (calErr: any) {
+            console.warn('[AvailabilityCheck] open-availability calendar read failed', calErr);
+            setOpenSlots([]);
+            setCalendarUnavailable(true);
+          } finally {
+            setLoadingCalendar(false);
+          }
+        }
+      }
+
       logUsage({
         feature_type: 'AI_CHAT',
         feature_subtype: 'availability_check_success',
@@ -754,6 +1040,10 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
     setError(null);
     setExpandedIdx(null);
     setFocusedIdx(0);
+    setOpenSlots(null);
+    setOpenIntentActive(false);
+    setOpenConstraints({});
+    setCalendarUnavailable(false);
     void runAnalysis();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [thread.threadId]);
@@ -799,6 +1089,33 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
   // Confirmation for the best-fit Available slot, OR an alternatives reply
   // pre-filled with 2–3 adjacent free slots if every proposal conflicts.
   const dynamicReplies = useMemo<ReplySuggestion[]>(() => {
+    // ── Open-availability replies (Scenario 3) — calendar-grounded ──
+    if (openIntentActive && openSlots && openSlots.length > 0) {
+      const out: ReplySuggestion[] = [];
+      const top3 = spreadPick(openSlots, userTz, 3);
+      const top5 = spreadPick(openSlots, userTz, 5);
+      const tz = tzAbbrev(userTz, top3[0]?.start_iso || new Date().toISOString());
+      const intro = openConstraints.timeOfDay
+        ? `Happy to find a time. Here are a few ${openConstraints.timeOfDay} options that are open on my calendar:`
+        : `Happy to find a time. Here are a few options that are open on my calendar:`;
+      out.push({
+        label: `Offer 2–3 specific times (${tz})`,
+        body: `${intro}\n\n${top3.map((s) => formatSlotBullet(s, userTz)).join('\n')}\n\nLet me know which works and I'll send an invite.`,
+      });
+      if (top5.length > top3.length) {
+        out.push({
+          label: `Offer a longer list (${top5.length} options)`,
+          body: `Happy to find a time — here's a wider range of openings on my calendar:\n\n${top5.map((s) => formatSlotBullet(s, userTz)).join('\n')}\n\nAny of these work? Happy to suggest more if not.`,
+        });
+      }
+      if (bookingLink) {
+        out.push({
+          label: 'Propose a scheduling link',
+          body: `Easiest path is probably to grab a time directly from my calendar: ${bookingLink}\n\nHappy to hold a specific slot if you'd prefer — just let me know.`,
+        });
+      }
+      return out;
+    }
     if (!ranked || ranked.length === 0) return [];
     const out: ReplySuggestion[] = [];
     const firstAvailable = ranked.find(
@@ -947,6 +1264,105 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
   }
 
   if (!parseResult || !parseResult.detected) {
+    // Open-availability mode: render the calendar-grounded reply
+    // suggestions instead of the "no times detected" placeholder.
+    if (openIntentActive) {
+      return (
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+          <Header
+            rightSlot={
+              <button
+                type="button"
+                onClick={runAnalysis}
+                className="inline-flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground"
+                aria-label="Re-analyze"
+              >
+                <RefreshCw className="h-3 w-3" /> Refresh
+              </button>
+            }
+          />
+          {loadingCalendar ? (
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <Loader2 className="h-3 w-3 animate-spin" /> Reading your calendar for open slots…
+            </div>
+          ) : openSlots && openSlots.length > 0 ? (
+            <div className="mt-2 flex items-center gap-1.5 rounded border border-emerald-500/25 bg-emerald-500/5 px-2 py-1.5 text-[11.5px] text-emerald-200">
+              <CalendarRange className="h-3 w-3" />
+              <span>
+                Found {openSlots.length} open slot{openSlots.length === 1 ? '' : 's'} in
+                {' '}next {openHorizonDays === 7 ? '7 days' : '2 weeks'}
+                {openConstraints.timeOfDay ? ` · ${openConstraints.timeOfDay}` : ''}
+                {openConstraints.daysOfWeek && openConstraints.daysOfWeek.size > 0 && openConstraints.daysOfWeek.size < 7
+                  ? ` · ${Array.from(openConstraints.daysOfWeek).map((d) => ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]).join('/')}`
+                  : ''}
+              </span>
+            </div>
+          ) : (
+            <div className="mt-2 space-y-1.5 rounded border border-amber-500/30 bg-amber-500/10 p-2 text-[11.5px] text-amber-200">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="mt-0.5 h-3 w-3 shrink-0" />
+                <span className="min-w-0">
+                  No calendar slots found — check Google Calendar connection.
+                </span>
+              </div>
+              <Link
+                to="/integrations"
+                className="inline-flex items-center gap-1 text-[10px] text-amber-100 underline-offset-2 hover:underline"
+              >
+                <ExternalLink className="h-2.5 w-2.5" /> Open integration settings
+              </Link>
+            </div>
+          )}
+          {dynamicReplies.length > 0 && (
+            <div className="mt-3 border-t border-white/[0.05] pt-2">
+              <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                Suggested replies (from your calendar)
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {dynamicReplies.map((s, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      onInsertDraft(s.body);
+                      toast.success('Draft inserted — review before sending');
+                    }}
+                    className="group rounded-md border border-white/[0.06] bg-white/[0.02] p-2 text-left transition hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <div className="flex items-center gap-1 text-[11px] font-medium text-foreground">
+                      {s.label.startsWith('Propose a scheduling link') && <Link2 className="h-3 w-3 text-primary" />}
+                      {s.label}
+                    </div>
+                    <div className="mt-0.5 line-clamp-3 whitespace-pre-line text-[10px] text-muted-foreground group-hover:text-foreground/80">
+                      {s.body}
+                    </div>
+                  </button>
+                ))}
+              </div>
+              {!bookingLink && (
+                <p className="mt-2 text-[10px] text-muted-foreground">
+                  Tip: save a booking link in your browser to enable a one-click scheduling-link reply.{' '}
+                  <button
+                    type="button"
+                    className="text-primary hover:underline"
+                    onClick={() => {
+                      const url = window.prompt('Paste your scheduling link (e.g. Calendly URL):', '');
+                      if (url && /^https?:\/\//i.test(url)) {
+                        try { window.localStorage.setItem(BOOKING_LINK_STORAGE_KEY, url); } catch { /* ignore */ }
+                        setBookingLink(url);
+                        toast.success('Booking link saved.');
+                      }
+                    }}
+                  >
+                    Add link
+                  </button>
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      );
+    }
     if (hideWhenEmpty) return null;
     return (
       <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
