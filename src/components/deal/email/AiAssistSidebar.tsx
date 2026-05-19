@@ -893,19 +893,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
                 className="flex flex-nowrap items-center gap-1.5 -mt-1 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 {dealChip && (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] text-primary max-w-[180px]">
+                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-primary max-w-[180px] transition-colors hover:border-white/20">
                     <Briefcase className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Deal: {dealChip}</span>
                   </span>
                 )}
                 {contactChip && (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-sky-500/30 bg-sky-500/10 px-2 py-0.5 text-[11px] text-sky-300 max-w-[180px]">
+                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-sky-300 max-w-[180px] transition-colors hover:border-white/20">
                     <UserIcon className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Contact: {contactChip}</span>
                   </span>
                 )}
                 {lenderChip && (
-                  <span className="inline-flex shrink-0 items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[11px] text-emerald-300 max-w-[180px]">
+                  <span className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[11px] text-emerald-300 max-w-[180px] transition-colors hover:border-white/20">
                     <Building2 className="h-2.5 w-2.5 shrink-0" />
                     <span className="truncate">Lender: {lenderChip}</span>
                   </span>
