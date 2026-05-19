@@ -1297,31 +1297,34 @@ function ThreadParticipantsHeader({ threadId, threadEmails, latest }: ThreadPart
   };
 
   return (
-    <div className="mt-0.5 space-y-0.5">
+    <div className="mt-0.5 flex items-center gap-x-2 gap-y-0.5 flex-wrap text-xs text-[hsl(var(--email-text-muted))] min-w-0">
       {toDisplay.length > 0 && (
-        <div className="text-xs text-[hsl(var(--email-text-muted))] break-words">
-          To: {renderList(toDisplay)}
-        </div>
+        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+          <span className="shrink-0">To:</span>
+          <span className="truncate">{renderList(toDisplay)}</span>
+        </span>
       )}
       {latestCc.length > 0 && (
-        <div className="text-xs text-[hsl(var(--email-text-muted))] break-words">
-          Cc: {renderList(latestCc)}
-        </div>
+        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+          <span className="shrink-0">Cc:</span>
+          <span className="truncate">{renderList(latestCc)}</span>
+        </span>
       )}
       {latestBcc.length > 0 && latest.folder === 'sent' && (
-        <div className="text-xs text-[hsl(var(--email-text-muted))] break-words">
-          Bcc: {renderList(latestBcc)}
-        </div>
+        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+          <span className="shrink-0">Bcc:</span>
+          <span className="truncate">{renderList(latestBcc)}</span>
+        </span>
       )}
       {participants.length > 1 && (
         <Popover>
           <PopoverTrigger asChild>
             <button
               type="button"
-              className="mt-1 inline-flex items-center gap-1 rounded-full border border-[hsl(var(--email-border))] bg-muted/40 hover:bg-muted px-2 py-0.5 text-[10px] text-[hsl(var(--email-text-secondary))] transition-colors"
+              className="inline-flex items-center gap-1 rounded-full border border-[hsl(var(--email-border))] bg-muted/40 hover:bg-muted px-1.5 py-0 text-[10px] text-[hsl(var(--email-text-secondary))] transition-colors leading-none"
             >
               <Users className="h-3 w-3" />
-              {participants.length} participants
+              {participants.length}
             </button>
           </PopoverTrigger>
           <PopoverContent className="w-80 max-h-80 overflow-auto p-3 text-xs space-y-1">
@@ -2964,10 +2967,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          <div className="px-6 pt-5 pb-4 border-b border-[hsl(var(--email-border))] min-w-0 bg-transparent">
-            {/* Large subject heading */}
+          <div className="px-6 pt-2.5 pb-2 border-b border-[hsl(var(--email-border))] min-w-0 bg-transparent">
+            {/* Compact subject heading */}
             <h2
-              className="text-xl font-semibold text-[hsl(var(--email-text-primary))] leading-snug mb-3 break-words"
+              className="text-base font-semibold text-[hsl(var(--email-text-primary))] leading-snug mb-1 break-words"
               style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
             >
               {thread.subject}
@@ -2986,7 +2989,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               const label = def?.label ?? deepLinkSignal.replace(/_/g, ' ');
               return (
                 <div
-                  className="inline-flex items-center gap-1.5 px-2 py-0.5 mb-3 rounded-full text-[11px] font-medium border border-[hsl(var(--outlook-blue)/0.35)] bg-[hsl(var(--outlook-blue)/0.08)] text-[hsl(var(--outlook-blue))]"
+                  className="inline-flex items-center gap-1.5 px-2 py-0.5 mb-1.5 rounded-full text-[11px] font-medium border border-[hsl(var(--outlook-blue)/0.35)] bg-[hsl(var(--outlook-blue)/0.08)] text-[hsl(var(--outlook-blue))]"
                   title={def?.description ?? 'Signal that triggered this notification'}
                 >
                   <Sparkles className="h-3 w-3" />
@@ -2996,39 +2999,40 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             })()}
 
             {/* Sender info block */}
-            <div className="flex items-start gap-3 min-w-0">
-              <EmailAvatar name={senderName} email={senderEmail} size="md" />
+            <div className="flex items-center gap-2 min-w-0">
+              <EmailAvatar name={senderName} email={senderEmail} size="sm" />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap min-w-0">
-                  <span className="text-sm font-semibold text-[hsl(var(--email-text-primary))] break-words">{senderName}</span>
+                <div className="flex items-center gap-1.5 min-w-0 text-xs leading-tight">
+                  <span className="text-[13px] font-semibold text-[hsl(var(--email-text-primary))] truncate">{senderName}</span>
                   <span
-                    className="text-xs text-[hsl(var(--email-text-muted))] min-w-0"
-                    style={{ wordBreak: 'normal', overflowWrap: 'anywhere' }}
+                    className="text-[hsl(var(--email-text-muted))] truncate min-w-0"
+                    title={senderEmail}
                   >
                     &lt;{senderEmail}&gt;
                   </span>
-                </div>
-                <div
-                  className="text-xs text-[hsl(var(--email-text-muted))] mt-0.5 break-words"
-                  style={{ wordBreak: 'normal', overflowWrap: 'break-word', whiteSpace: 'normal' }}
-                >
-                  {format(new Date(latest.received_at), 'EEEE, MMMM d, yyyy h:mm a')}
+                  <span className="text-[hsl(var(--email-text-muted))]/60 shrink-0">·</span>
+                  <span className="text-[hsl(var(--email-text-muted))] shrink-0 whitespace-nowrap">
+                    {format(new Date(latest.received_at), 'MMM d, h:mm a')}
+                  </span>
+                  {linkedDealName && (
+                    <>
+                      <span className="text-[hsl(var(--email-text-muted))]/60 shrink-0">·</span>
+                      <span className="text-[hsl(var(--outlook-blue))] truncate">Linked: {linkedDealName}</span>
+                    </>
+                  )}
                 </div>
                 <ThreadParticipantsHeader
                   threadId={thread.provider_thread_id || thread.threadId}
                   threadEmails={thread.emails}
                   latest={latest}
                 />
-                {linkedDealName && (
-                  <div className="text-xs text-[hsl(var(--outlook-blue))] mt-0.5">• Linked to: {linkedDealName}</div>
-                )}
               </div>
               {/* Thread count indicator */}
               {totalMessages > 1 && (
-                <div className="flex flex-col items-end gap-1 shrink-0">
-                  <div className="flex items-center gap-1 text-xs text-[hsl(var(--email-text-secondary))]">
+                <div className="flex flex-col items-end gap-0.5 shrink-0">
+                  <div className="flex items-center gap-1 text-[11px] text-[hsl(var(--email-text-secondary))]">
                     <MessageSquare className="h-3.5 w-3.5" />
-                    <span>{totalMessages} messages</span>
+                    <span>{totalMessages}</span>
                     <button
                       onClick={isFullyExpanded ? handleCollapseAll : handleExpandAll}
                       className="ml-1 hover:text-[hsl(var(--email-text-primary))] transition-colors"
@@ -3046,7 +3050,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           </div>
 
           {shouldRenderAttachmentsRow && (
-            <div className="px-6 py-3 border-b border-[hsl(var(--email-border))]">
+            <div className="px-6 py-1 border-b border-[hsl(var(--email-border))]">
               <EmailAttachmentsStrip
                 thread={thread}
                 forceVisible
