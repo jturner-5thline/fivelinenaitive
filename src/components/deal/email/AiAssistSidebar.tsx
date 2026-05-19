@@ -39,6 +39,7 @@ import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
+import { OpenAvailabilityCard } from './OpenAvailabilityCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
 import {
@@ -46,6 +47,7 @@ import {
   type ComposeBodyDetail,
   detectSchedulingIntent,
   inboundProposedTimes,
+  detectOpenAvailabilityRequest,
 } from './scheduleIntent';
 import { CalendarClock } from 'lucide-react';
 
@@ -220,6 +222,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // sidebar remounts (new thread opened).
   const [scheduleHintActive, setScheduleHintActive] = useState(false);
   const scheduleHintDismissedThreads = useRef<Set<string>>(new Set());
+  // Per-thread dismissals for the auto-surfaced open-availability card
+  // (Scenario 3). Once James X's it for a thread, we keep it down.
+  const [openAvailDismissed, setOpenAvailDismissed] = useState<Set<string>>(new Set());
   // Collapsible section state for the redesigned layout. Draft reply is the
   // biggest space-hog so it stays collapsed by default; Suggested Tasks
   // collapses by default whenever a Suggested Update is also visible to
