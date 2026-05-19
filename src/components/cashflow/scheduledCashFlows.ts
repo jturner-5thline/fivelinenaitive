@@ -28,6 +28,9 @@ export interface FrequencyConfig {
 }
 
 export interface ScheduledCashFlow {
+}
+
+// placeholder to anchor below
   id: string;
   company_id: string;
   account: string;
