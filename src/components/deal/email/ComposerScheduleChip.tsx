@@ -203,7 +203,7 @@ export function ComposerScheduleChip({ threadId, body, onInsert }: Props) {
   if (!visible || localDismissed) return null;
 
   return (
-    <div className="mx-4 mt-2 flex items-center justify-between gap-2 rounded-md border border-[hsl(var(--outlook-blue))]/30 bg-[hsl(var(--outlook-blue))]/10 px-3 py-1.5 text-xs">
+    <div className="mb-2 flex items-center justify-between gap-2 rounded-md border border-[hsl(var(--outlook-blue))]/30 bg-[hsl(var(--outlook-blue))]/10 px-3 py-1.5 text-xs">
       <div className="flex items-center gap-2 min-w-0">
         <CalendarClock className="h-3.5 w-3.5 text-[hsl(var(--outlook-blue))] flex-shrink-0" />
         <span className="truncate">📅 Suggest times from your calendar</span>
