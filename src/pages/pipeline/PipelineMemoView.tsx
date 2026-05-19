@@ -366,6 +366,6 @@ function DealTile({
       >
         <Check className="h-3 w-3" strokeWidth={2.5} />
       </span>
-    </button>
+    </div>
   );
 }
