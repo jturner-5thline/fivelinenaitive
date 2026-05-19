@@ -458,7 +458,7 @@ export function EndOfDayTab({
         return s >= ws && s <= we;
       })
       .filter(ev => (ev.attendees || []).some(a => !a.self))
-      .filter(ev => !isResolved(ev.id) && !isDismissed(ev.id) && !isSnoozed(ev.id))
+      .filter(ev => !isResolved(ev.id) && !isDismissed(ev.id, safeParse(ev.start)) && !isSnoozed(ev.id))
       .map(ev => {
         const s = safeParse(ev.start);
         const ageDays = s ? differenceInCalendarDays(ref, startOfDay(s)) : 0;
