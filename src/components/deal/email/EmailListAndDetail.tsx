@@ -2674,7 +2674,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
         <div
-          className="relative grid h-full min-w-0 w-full overflow-hidden bg-[hsl(var(--email-panel-surface))] transition-[grid-template-columns] duration-200 ease-out"
+          className="relative grid h-full min-w-0 w-full overflow-hidden bg-[hsl(var(--inbox-surface))] transition-[grid-template-columns] duration-200 ease-out"
         style={{
           gridTemplateColumns: showAiAssist
             ? 'minmax(0, 1fr) 360px'
@@ -2684,7 +2684,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         {/* Email message column — transparent so the unified popup-shell
             surface shows through. Separation from the AI Assist column is
             handled by a thin border on the sibling, not a different fill. */}
-        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-transparent">
+        <div
+          ref={messagePaneRef}
+          data-inbox-surface-scope="message"
+          className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--inbox-surface))]"
+        >
           {/* Outlook-style command bar — portalled into the unified mail
               header (#email-detail-toolbar-slot) so the entire mail UI
               shares one horizontal toolbar row. Falls back to inline
@@ -2958,7 +2962,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             />
           )}
 
-          <div className="px-6 pt-5 pb-4 border-b border-[hsl(var(--email-border))] min-w-0">
+          <div className="px-6 pt-5 pb-4 border-b border-[hsl(var(--email-border))] min-w-0 bg-transparent">
             {/* Large subject heading */}
             <h2
               className="text-xl font-semibold text-[hsl(var(--email-text-primary))] leading-snug mb-3 break-words"
@@ -3192,7 +3196,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             the full width. Below 1100px we collapse to slide-over to keep the
             detail column wide enough for body wrapping. */}
         {showAiAssist && (
-          <div className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-transparent">
+          <div
+            ref={aiAssistPaneRef}
+            data-inbox-surface-scope="assistant"
+            className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-[hsl(var(--inbox-surface))]"
+          >
             <EmailPaneErrorBoundary
               resetKey={`ai-assist-${thread.threadId}`}
               fallbackTitle="AI Assist is temporarily unavailable"
