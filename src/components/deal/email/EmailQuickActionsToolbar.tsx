@@ -31,7 +31,7 @@ interface ActionDef {
 
 const ALL_ACTIONS: ActionDef[] = [
   { key: 'save_dr', label: 'Save to Data Room', icon: <FolderUp className="h-4 w-4" />, iconClass: 'text-amber-300' },
-  { key: 'lender', label: 'Update Lender Status', icon: <Building2 className="h-4 w-4" />, iconClass: 'text-emerald-300' },
+  { key: 'lender', label: 'Update Lender Stage', icon: <Building2 className="h-4 w-4" />, iconClass: 'text-emerald-300' },
   { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-4 w-4" />, iconClass: 'text-primary' },
   { key: 'task', label: 'Create Task', icon: <ListPlus className="h-4 w-4" />, iconClass: 'text-sky-300' },
   { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-4 w-4" />, iconClass: 'text-violet-300' },
