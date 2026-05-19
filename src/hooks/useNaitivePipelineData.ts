@@ -227,6 +227,31 @@ export function useNaitivePipelineData(): NaitivePipelineData {
     }
   }, [pipelineId, fetchDeals]);
 
+  // Realtime: when any deal in the naitive pipeline is updated/inserted/deleted
+  // (e.g. stage change made from the deal detail panel), refetch so the kanban
+  // board reflects the new column placement immediately.
+  useEffect(() => {
+    if (!pipelineId) return;
+    const channel = supabase
+      .channel(`naitive-pipeline-deals-${pipelineId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deals' },
+        (payload) => {
+          const newRow: any = (payload as any).new || {};
+          const oldRow: any = (payload as any).old || {};
+          // Only refetch if the change concerns this pipeline (either now or before)
+          if (newRow.pipeline_id === pipelineId || oldRow.pipeline_id === pipelineId) {
+            fetchDeals(pipelineId);
+          }
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pipelineId, fetchDeals]);
+
   const saveStages = useCallback(
     async (next: DealStageOption[]): Promise<boolean> => {
       if (!pipelineId) return false;
