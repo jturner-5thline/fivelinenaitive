@@ -54,10 +54,11 @@ async function forwardNylasError(resp: Response, fallbackMessage: string): Promi
 }
 
 interface MessageRequest {
-  action: "list" | "get" | "get_thread" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "trash" | "delete" | "sync_state" | "get_attachment";
+  action: "list" | "get" | "get_thread" | "send" | "mark_read" | "mark_unread" | "star" | "unstar" | "archive" | "move" | "trash" | "delete" | "sync_state" | "get_attachment";
   message_id?: string;
   thread_id?: string;
   message_ids?: string[];
+  folder?: "inbox" | "archive" | "spam" | "trash" | "drafts";
   attachment_id?: string;
   to?: string[];
   cc?: string[];
