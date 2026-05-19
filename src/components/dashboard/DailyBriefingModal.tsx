@@ -1448,7 +1448,7 @@ export function PipelineTab({
       {/* Deals tab: single-region layout — right Follow-Ups column removed
           so the master/detail split inside PipelineMemoView fills the
           full width of the briefing modal. */}
-      <div className="h-full min-w-0 max-w-full min-h-0 overflow-y-auto overflow-x-hidden">
+      <div className="h-full min-w-0 max-w-full min-h-0 overflow-hidden">
         <Suspense
           fallback={
             <div className="pipeline-memo-page rounded-xl py-12 px-4 text-center">
