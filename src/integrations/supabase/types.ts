@@ -6283,6 +6283,62 @@ export type Database = {
           },
         ]
       }
+      deal_access_requests: {
+        Row: {
+          created_at: string
+          deal_id: string
+          decided_at: string | null
+          decided_by: string | null
+          decision_note: string | null
+          id: string
+          message: string | null
+          requested_at: string
+          requester_email: string
+          requester_name: string | null
+          requester_user_id: string | null
+          status: Database["public"]["Enums"]["deal_access_request_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          message?: string | null
+          requested_at?: string
+          requester_email: string
+          requester_name?: string | null
+          requester_user_id?: string | null
+          status?: Database["public"]["Enums"]["deal_access_request_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          decision_note?: string | null
+          id?: string
+          message?: string | null
+          requested_at?: string
+          requester_email?: string
+          requester_name?: string | null
+          requester_user_id?: string | null
+          status?: Database["public"]["Enums"]["deal_access_request_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_access_requests_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_advance_reasons: {
         Row: {
           created_at: string
@@ -23012,6 +23068,7 @@ export type Database = {
         | "domain_knowledge"
       copilot_preference_source: "manual" | "thumbs_down" | "chat_command"
       data_access_scope: "all" | "team" | "own" | "none"
+      deal_access_request_status: "pending" | "approved" | "declined"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
       financial_column_type: "actual" | "projection"
       financial_period_type: "monthly" | "quarterly" | "annual"
@@ -23265,6 +23322,7 @@ export const Constants = {
       ],
       copilot_preference_source: ["manual", "thumbs_down", "chat_command"],
       data_access_scope: ["all", "team", "own", "none"],
+      deal_access_request_status: ["pending", "approved", "declined"],
       feature_status: ["disabled", "staging", "deployed", "james_only"],
       financial_column_type: ["actual", "projection"],
       financial_period_type: ["monthly", "quarterly", "annual"],
