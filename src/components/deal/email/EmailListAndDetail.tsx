@@ -407,7 +407,19 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
         !isSelected && 'hover:bg-[hsl(var(--foreground)/0.04)]',
       )}
       onClick={onSelect}
-      onMouseEnter={() => setHovered(true)}
+      onMouseEnter={() => {
+        setHovered(true);
+        // Prefetch the latest message body so clicking opens with no spinner.
+        // Also warm the newest-in-thread message (often the same id, but can
+        // differ when the user just sent a reply).
+        prefetchFullEmailMessage(latest?.id);
+        if (newestInThread?.id && newestInThread.id !== latest?.id) {
+          prefetchFullEmailMessage(newestInThread.id);
+        }
+      }}
+      onFocus={() => {
+        prefetchFullEmailMessage(latest?.id);
+      }}
       onMouseLeave={() => setHovered(false)}
     >
       {/* Selected accent bar */}
