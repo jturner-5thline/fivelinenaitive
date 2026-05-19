@@ -186,6 +186,8 @@ function MeetingCard({
   prep,
   prepLoading,
   onRegenerate,
+  onCreateTask,
+  onEmail,
 }: {
   event: CalendarEvent;
   dealMatch: DealRow | null;
@@ -195,6 +197,8 @@ function MeetingCard({
   prep: PrepCacheEntry | null;
   prepLoading: boolean;
   onRegenerate: () => void;
+  onCreateTask: () => void;
+  onEmail: () => void;
 }) {
   const navigate = useNavigate();
   const start = parseISO(event.start);
@@ -209,21 +213,8 @@ function MeetingCard({
     if (!dealMatch) return;
     window.open(`/deals?deal=${dealMatch.id}&action=add-note`, '_blank', 'noopener,noreferrer');
   };
-  const handleCreateTask = () => {
-    const params = new URLSearchParams({ new: '1' });
-    if (dealMatch) params.set('dealId', dealMatch.id);
-    params.set('title', `Follow up: ${event.summary}`);
-    navigate(`/tasks?${params.toString()}`);
-  };
-  const handleEmail = () => {
-    const recipients = (event.attendees || [])
-      .filter(a => !a.self && a.email)
-      .map(a => a.email)
-      .join(',');
-    if (!recipients) return;
-    const subject = encodeURIComponent(`Re: ${event.summary}`);
-    window.open(`mailto:${recipients}?subject=${subject}`, '_blank');
-  };
+  const handleCreateTask = () => onCreateTask();
+  const handleEmail = () => onEmail();
 
   return (
     <div className="rounded-xl border border-border/40 bg-white/[0.025] hover:bg-white/[0.04] transition-colors p-4 space-y-3">
