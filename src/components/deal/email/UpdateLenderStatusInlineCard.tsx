@@ -10,7 +10,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useDealsContext } from '@/contexts/DealsContext';
-import { LENDER_TRACKING_STATUS_CONFIG, type DealLender } from '@/types/deal';
+import { type DealLender } from '@/types/deal';
+import { useLenderStages } from '@/contexts/LenderStagesContext';
 import { toast } from 'sonner';
 
 interface Props {
@@ -19,16 +20,15 @@ interface Props {
   onClose: () => void;
 }
 
-const STATUS_ORDER = ['active', 'on-deck', 'on-hold', 'passed'] as const;
-
 /**
- * Inline card to update a deal lender's tracking status + append a note.
+ * Inline card to update a deal lender's pipeline **stage** + append a note.
  * Pre-selects the lender that the AI matched in the email when available.
  * Single Confirm button writes the change via the shared `updateLender`
  * action so the deal kanban / pipeline updates in real time.
  */
 export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onClose }: Props) {
   const { deals, updateLender, addLenderToDeal } = useDealsContext();
+  const { stages: stageOptions } = useLenderStages();
   const deal = useMemo(() => deals.find((d) => d.id === dealId), [deals, dealId]);
   const lenders: DealLender[] = deal?.lenders || [];
 
@@ -53,10 +53,11 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   }, [initialLenderId]);
 
   const lender = useMemo(() => lenders.find((l) => l.id === lenderId), [lenders, lenderId]);
-  const [status, setStatus] = useState<string>(lender?.trackingStatus || 'active');
+  const defaultStageId = stageOptions[0]?.id || 'on-deck';
+  const [stage, setStage] = useState<string>(lender?.stage || defaultStageId);
   useEffect(() => {
-    if (lender?.trackingStatus) setStatus(lender.trackingStatus);
-  }, [lender?.trackingStatus]);
+    if (lender?.stage) setStage(lender.stage);
+  }, [lender?.stage]);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
@@ -76,7 +77,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   if (!dealId || !deal) {
     return (
       <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 text-[11px] text-muted-foreground">
-        Link this email to a deal to update lender status.
+        Link this email to a deal to update lender stage.
       </div>
     );
   }
@@ -103,7 +104,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
     return (
       <div className="rounded-md border border-white/[0.08] bg-card/60 p-3 space-y-2.5">
         <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-          <Building2 className="h-3 w-3 text-emerald-400" /> Update Lender Status
+          <Building2 className="h-3 w-3 text-emerald-400" /> Update Lender Stage
         </div>
         <p className="text-[12px] text-foreground/85">
           <span className="font-medium">{proposedLenderName}</span> is not yet tracked on{' '}
@@ -135,7 +136,15 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
     setSaving(true);
     try {
       const trimmedNote = note.trim();
-      const updates: Partial<DealLender> = { trackingStatus: status };
+      const selectedStage = stageOptions.find((s) => s.id === stage);
+      const updates: Partial<DealLender> = {
+        stage: stage as DealLender['stage'],
+        // Keep tracking status group aligned with the selected stage so
+        // kanban/grouping stays consistent.
+        ...(selectedStage?.group
+          ? { trackingStatus: selectedStage.group as DealLender['trackingStatus'] }
+          : {}),
+      };
       if (trimmedNote) {
         const stamp = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
         const prev = (lender.notes || '').trim();
@@ -145,10 +154,10 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
       }
       await updateLender(lender.id, updates);
       setDone(true);
-      toast.success(`${lender.name} → ${LENDER_TRACKING_STATUS_CONFIG[status]?.label || status}`);
+      toast.success(`${lender.name} → ${selectedStage?.label || stage}`);
       setTimeout(onClose, 900);
     } catch (err: any) {
-      console.error('[UpdateLenderStatus] failed', err);
+      console.error('[UpdateLenderStage] failed', err);
       toast.error(err?.message || 'Failed to update lender');
     } finally {
       setSaving(false);
@@ -167,7 +176,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   return (
     <div className="rounded-md border border-white/[0.08] bg-card/60 p-3 space-y-2.5">
       <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
-        <Building2 className="h-3 w-3 text-emerald-400" /> Update Lender Status
+        <Building2 className="h-3 w-3 text-emerald-400" /> Update Lender Stage
       </div>
 
       <div className="space-y-1">
@@ -187,15 +196,15 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Status</label>
-        <Select value={status} onValueChange={setStatus}>
+        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Stage</label>
+        <Select value={stage} onValueChange={setStage}>
           <SelectTrigger className="h-8 text-[12px]">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            {STATUS_ORDER.map((s) => (
-              <SelectItem key={s} value={s} className="text-[12px]">
-                {LENDER_TRACKING_STATUS_CONFIG[s]?.label || s}
+            {stageOptions.map((s) => (
+              <SelectItem key={s.id} value={s.id} className="text-[12px]">
+                {s.label}
               </SelectItem>
             ))}
           </SelectContent>
