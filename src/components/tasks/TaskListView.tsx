@@ -748,6 +748,16 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       )}
       style={style}
       onClick={onSelect}
+      // Capture-phase selection: many inline cells call e.stopPropagation()
+      // on the bubble phase so popovers/inputs don't accidentally trigger
+      // selection. Capture runs first, so selecting here guarantees the
+      // row always populates the right-panel details — except when the
+      // user is interacting with a real text input.
+      onClickCapture={(e) => {
+        const t = e.target as HTMLElement;
+        if (t.closest('input, textarea, [contenteditable="true"]')) return;
+        onSelect();
+      }}
     >
       {/* Drag handle */}
       <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
