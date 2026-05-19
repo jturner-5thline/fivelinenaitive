@@ -1149,6 +1149,42 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             );
           })()}
 
+          {/* Auto-surface open-ended availability prompt (Scenario 3) —
+              the inbound asks "are you free this week?" / "let me know
+              what works" without proposing specific times. We propose
+              open slots from James's calendar and draft a casual reply.
+              Mutually exclusive with AvailabilityCheckCard above via
+              inboundProposedTimes() gating inside detectOpenAvailability. */}
+          {(() => {
+            const latest = thread.latestEmail;
+            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            if (fromMe) return null;
+            if (schedulerOpen) return null;
+            if (isCalendarOrAutomatedNoise(thread)) return null;
+            if (openAvailDismissed.has(thread.threadId)) return null;
+            const inboundTexts = [
+              latest?.body_text,
+              latest?.body_preview,
+              latest?.snippet,
+              thread.subject,
+            ];
+            const request = detectOpenAvailabilityRequest(inboundTexts);
+            if (!request) return null;
+            return (
+              <OpenAvailabilityCard
+                request={request}
+                onInsertDraft={onInsertDraft}
+                onDismiss={() => {
+                  setOpenAvailDismissed((prev) => {
+                    const next = new Set(prev);
+                    next.add(thread.threadId);
+                    return next;
+                  });
+                }}
+              />
+            );
+          })()}
+
           {/* Error (non-blocking — shell still renders below) */}
           {error && (
             <div className="rounded-md border border-destructive/30 bg-destructive/5 p-3 text-center space-y-2">
