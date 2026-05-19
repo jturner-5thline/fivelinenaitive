@@ -680,14 +680,21 @@ export default function Tasks() {
         </div>
 
         {/*
-          Unified header rail: tab navigation (ending with Meeting Tasks) flows
-          directly into the task controls. `pr-16` reserves a guaranteed clear
-          zone on the right edge so the modal/page close X can never sit on
-          top of the last control (Add Task) or the rightmost tab. The rail
-          uses flex-wrap (not horizontal scroll) so controls reflow on narrow
-          widths instead of disappearing behind a scroll affordance.
+          Two-column body — mirrors the Deal Rundown popup structure:
+          left 65% = full task list (tabs, filters, presets, grouped
+          sections); right 35% = inline detail panel for the selected
+          task. The right panel always renders so a clean empty state
+          shows when nothing is selected, instead of collapsing.
         */}
-        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap pr-16" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
+        <div className="flex flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col w-[65%] min-w-0 h-full border-r" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+        {/*
+          Unified header rail: tab navigation (ending with Meeting Tasks) flows
+          directly into the task controls. The rail uses flex-wrap (not
+          horizontal scroll) so controls reflow on narrow widths instead of
+          disappearing behind a scroll affordance.
+        */}
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
           {/* Primary navigation tabs — List / Board / Calendar / Reports */}
           <div
             className="flex items-center rounded-lg p-[3px] border flex-nowrap shrink-0"
