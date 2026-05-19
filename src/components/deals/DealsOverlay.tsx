@@ -31,17 +31,28 @@ export function DealsOverlay({ open, onOpenChange }: DealsOverlayProps) {
   if (!open || typeof document === 'undefined') return null;
 
   const overlay = (
+    // Flex/grid centering only — no transform: translate(-50%, -50%).
+    // Opacity-only fade-in on the outer wrapper so no text-bearing
+    // container ever animates scale.
     <div
       role="dialog"
       aria-modal="true"
       aria-label="Deals"
-      className="fixed inset-0 z-[2000] flex items-center justify-center"
+      className="fixed inset-0 z-[2000] flex items-center justify-center animate-in fade-in duration-150"
     >
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={() => onOpenChange(false)}
       />
-      <div className="relative z-10 w-[96vw] h-[94vh] rounded-2xl overflow-hidden border border-border bg-background shadow-2xl flex flex-col">
+      {/*
+        Panel: no transform, no filter/backdrop-filter, no will-change,
+        no scale animation. Solid background so subpixel text rendering
+        stays crisp on every GPU.
+      */}
+      <div
+        className="relative z-10 w-[96vw] h-[94vh] rounded-2xl overflow-hidden border border-border bg-background shadow-2xl flex flex-col"
+        style={{ transform: 'none', filter: 'none', backdropFilter: 'none', willChange: 'auto' }}
+      >
         <div className="absolute top-2 right-2 z-20">
           <Button
             variant="ghost"
