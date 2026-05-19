@@ -184,7 +184,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   }
 
   const masterPane = (
-    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
+    <div className="popup-shell-surface flex flex-col h-full min-h-0 min-w-0 rounded-xl overflow-hidden">
       <ScrollArea className="flex-1 min-h-0 px-3 py-2">
         <div className="space-y-1.5 pb-2 pr-0.5">
           {visible.map((deal) => (
@@ -203,7 +203,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   );
 
   const detailPane = (
-    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
+    <div className="popup-shell-surface flex flex-1 flex-col h-full min-h-0 min-w-0 rounded-xl overflow-hidden">
       {selectedDeal ? (
         <>
           {isNarrow && (
@@ -248,15 +248,15 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   );
 
   return (
-    <div className="flex gap-2 min-h-0 h-full">
+    <div className="flex gap-2 min-h-0 h-full flex-1">
       {isNarrow ? (
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 min-h-0 h-full">
           {selectedDeal ? detailPane : masterPane}
         </div>
       ) : (
         <>
-          <div className="w-[368px] shrink-0 min-w-0 h-full">{masterPane}</div>
-          <div className="flex-1 min-w-0 h-full">{detailPane}</div>
+          <div className="w-[368px] shrink-0 min-w-0 min-h-0 h-full flex">{masterPane}</div>
+          <div className="flex-1 min-w-0 min-h-0 h-full flex">{detailPane}</div>
         </>
       )}
     </div>
