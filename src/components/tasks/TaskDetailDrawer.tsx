@@ -235,12 +235,11 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
   const availableDeps = allTasks.filter(t => t.id !== task.id && !blockedBy.some(d => d.depends_on_task_id === t.id));
 
   const statusConf = STATUS_COLORS[task.status] || STATUS_COLORS.not_started;
-  const priorityConf = PRIORITY_PILL[task.priority] || PRIORITY_PILL.medium;
 
   return (
-    <div className={cn('flex flex-col h-full shrink-0', fullPage ? 'w-full' : 'w-full')}>
+    <div className={cn('flex flex-col h-full shrink-0 bg-transparent', fullPage ? 'w-full' : 'w-full')}>
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid #2a2f3e' }}>
+      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
         <div className="flex items-center gap-2">
           <Checkbox checked={isComplete} onCheckedChange={handleToggleComplete}
             className={cn('h-4 w-4 rounded-full', isComplete && 'bg-[#22c55e] border-[#22c55e]')} />
