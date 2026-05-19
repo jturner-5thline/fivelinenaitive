@@ -71,6 +71,77 @@ export function inboundProposedTimes(texts: Array<string | null | undefined>): b
   return false;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Open-ended availability requests (Scenario 3)
+//
+// The counterpart is asking "when are you free?" without proposing any
+// specific time. We surface a proactive card in the AI panel that pulls
+// open slots from James's calendar and drafts a conversational reply.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type OpenAvailabilityScope = 'today' | 'tomorrow' | 'this_week' | 'soon' | 'default';
+export type OpenAvailabilityFormality = 'casual' | 'formal';
+
+export interface OpenAvailabilityRequest {
+  scope: OpenAvailabilityScope;
+  formality: OpenAvailabilityFormality;
+}
+
+/** Phrases that indicate an *open* availability ask (no specific time given). */
+const OPEN_PHRASE_PATTERNS: RegExp[] = [
+  /\bare you (?:free|available|around)\b/i,
+  /\bwhen are you (?:free|available|around)\b/i,
+  /\bwhat(?:'s| is) your availability\b/i,
+  /\blet me know (?:what works|when (?:you'?re|you are) (?:free|available)|your availability)\b/i,
+  /\bdo you have (?:any )?time (?:to (?:connect|chat|talk|jump|meet|catch up)|this (?:week|afternoon|month))\b/i,
+  /\bwould love to (?:find a time|connect|catch up|jump on (?:a )?call|grab (?:some )?time)\b/i,
+  /\bhappy to (?:jump on|hop on|set up) (?:a )?call\b/i,
+  /\bwhat (?:works|time works) (?:for you|best)\b/i,
+  /\bwhen works (?:for|best for) you\b/i,
+  /\b(?:can|could) we (?:find a time|set (?:up|aside) (?:some )?time|grab (?:a )?(?:quick )?(?:call|chat))\b/i,
+  /\b(?:got|have) (?:some|any) time (?:this|next) (?:week|month|afternoon)\b/i,
+];
+
+function inferScope(text: string): OpenAvailabilityScope {
+  const t = text.toLowerCase();
+  // Order matters — more specific wins.
+  if (/\b(this afternoon|later today|today)\b/.test(t)) return 'today';
+  if (/\btomorrow\b/.test(t)) return 'tomorrow';
+  if (/\b(this week or next|early next week|sometime soon|whenever you'?re free|soon|in the (?:next )?(?:few|coming) (?:days|weeks))\b/.test(t)) return 'soon';
+  if (/\bthis week\b/.test(t)) return 'this_week';
+  return 'default';
+}
+
+function inferFormality(text: string): OpenAvailabilityFormality {
+  // Loose heuristic: capitalized salutations + longer sentences + absence of
+  // contractions/emojis lean formal; lowercase + contractions lean casual.
+  const t = text.trim();
+  const casualHits = (t.match(/\b(hey|hi|yo|cool|awesome|btw|gonna|wanna|let'?s|lmk)\b/gi) || []).length;
+  const formalHits = (t.match(/\b(dear|kind regards|best regards|sincerely|please advise|at your earliest convenience|would be delighted|kindly)\b/gi) || []).length;
+  if (formalHits > casualHits) return 'formal';
+  // Contractions push casual; sentences > 25 words push formal.
+  const avgWords = t.split(/[.!?]+/).filter(Boolean).reduce((acc, s) => acc + s.split(/\s+/).length, 0) / Math.max(1, t.split(/[.!?]+/).filter(Boolean).length);
+  if (avgWords > 22) return 'formal';
+  return 'casual';
+}
+
+export function detectOpenAvailabilityRequest(
+  texts: Array<string | null | undefined>,
+): OpenAvailabilityRequest | null {
+  // Skip if the sender has already proposed specific times — that's
+  // handled by AvailabilityCheckCard (Scenario 2).
+  if (inboundProposedTimes(texts)) return null;
+  for (const raw of texts) {
+    if (!raw) continue;
+    const text = String(raw).replace(/<[^>]+>/g, ' ');
+    if (text.trim().length < 6) continue;
+    if (OPEN_PHRASE_PATTERNS.some((re) => re.test(text))) {
+      return { scope: inferScope(text), formality: inferFormality(text) };
+    }
+  }
+  return null;
+}
+
 /**
  * Debounced (500ms) dispatcher. Caller invokes on every keystroke; we
  * only fire once the user stops typing for half a second to avoid
