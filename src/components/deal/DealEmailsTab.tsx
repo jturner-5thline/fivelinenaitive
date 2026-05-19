@@ -1666,15 +1666,18 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
             )}
             <Input
               placeholder='Search mail with AI…'
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
+                  // Flush debounce so AI search uses the latest text.
+                  if (searchInput !== searchQuery) setSearchQuery(searchInput);
                   runAISearch();
                 } else if (e.key === 'Escape' && aiSearchActive) {
                   e.preventDefault();
                   clearAISearch();
+                  setSearchInput('');
                   setSearchQuery('');
                 }
               }}
@@ -1683,10 +1686,10 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
                 aiSearchActive && 'border-primary/40 focus:border-primary/60'
               )}
             />
-            {(aiSearchActive || searchQuery) && (
+            {(aiSearchActive || searchInput) && (
               <button
                 type="button"
-                onClick={() => { clearAISearch(); setSearchQuery(''); }}
+                onClick={() => { clearAISearch(); setSearchInput(''); setSearchQuery(''); }}
                 className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors px-1"
                 aria-label="Clear search"
                 title="Clear search (Esc)"
