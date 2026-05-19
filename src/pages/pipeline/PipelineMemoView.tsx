@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import type { Deal } from '@/types/deal';
@@ -6,7 +6,12 @@ import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
-import { Check } from 'lucide-react';
+import { Check, Inbox, ChevronLeft } from 'lucide-react';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
+import { cn } from '@/lib/utils';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -138,6 +143,31 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
 
+  // Master/detail selection — mirrors the Agenda and End of Day tabs.
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [isNarrow, setIsNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 900px)');
+    const update = () => setIsNarrow(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
+  // Keep selection valid; auto-select first visible deal on desktop.
+  useEffect(() => {
+    if (selectedId && !visible.some((d) => d.id === selectedId)) {
+      setSelectedId(null);
+    }
+  }, [selectedId, visible]);
+  useEffect(() => {
+    if (!isNarrow && !selectedId && visible.length > 0) {
+      setSelectedId(visible[0].id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isNarrow, visible.length]);
+
+  const selectedDeal = visible.find((d) => d.id === selectedId) || null;
+
   if (visible.length === 0) {
     return (
       <div className="rounded-xl py-12 px-4 text-center">
@@ -148,51 +178,186 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     );
   }
 
-  return (
-    <div
-      className="-mx-1 px-3 py-2 overflow-y-auto max-h-[78vh]"
-      style={{ overscrollBehavior: 'contain' }}
-    >
-      <div className="max-w-[1100px] mx-auto flex flex-col gap-4">
-        {visible.map((deal, index) => (
-          <div key={deal.id} className="relative group/dismiss">
-            <div className="absolute top-2 right-2 z-10 flex items-center gap-1 opacity-60 group-hover/dismiss:opacity-100 focus-within:opacity-100 transition-opacity">
-              <button
-                type="button"
-                aria-label="Clear for today"
-                title="Clear for today (returns at 5 AM ET)"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  dismiss(deal.id);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-                onMouseDown={(e) => e.stopPropagation()}
-                className="
-                  inline-flex items-center justify-center h-7 w-7 rounded-full
-                  border border-border/60 bg-background/60 text-muted-foreground
-                  shadow-sm transition-all duration-150
-                  hover:h-8 hover:w-8 hover:border-emerald-500/60 hover:bg-emerald-500/15
-                  hover:text-emerald-400 hover:shadow-[0_4px_14px_-4px_rgba(16,185,129,0.45)]
-                  active:scale-95 active:bg-emerald-500/25
-                  focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60
-                  focus-visible:ring-offset-2 focus-visible:ring-offset-background
-                "
-              >
-                <Check className="h-4 w-4" strokeWidth={2.5} />
-              </button>
-            </div>
-            <PipelineMemoCard
+  const masterPane = (
+    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
+      <ScrollArea className="flex-1 min-h-0 px-2 py-2">
+        <div className="space-y-1 pb-2">
+          {visible.map((deal) => (
+            <DealTile
+              key={deal.id}
               deal={deal}
-              digest={digestMap.get(deal.id)}
-              rawDigest={rawByDeal.get(deal.id)}
-              tasks={tasksByDeal?.get(deal.id) || []}
+              active={selectedId === deal.id}
+              onClick={() => setSelectedId(deal.id)}
+              onDismiss={() => dismiss(deal.id)}
+            />
+          ))}
+        </div>
+      </ScrollArea>
+    </div>
+  );
+
+  const detailPane = (
+    <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
+      {selectedDeal ? (
+        <>
+          {isNarrow && (
+            <div className="px-3 pt-3">
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-xs text-white/80 hover:text-white"
+                onClick={() => setSelectedId(null)}
+              >
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Back to deals
+              </Button>
+            </div>
+          )}
+          <ScrollArea
+            className="flex-1 min-h-0 px-3 py-3"
+            style={{ overscrollBehavior: 'contain' }}
+          >
+            <PipelineMemoCard
+              deal={selectedDeal}
+              digest={digestMap.get(selectedDeal.id)}
+              rawDigest={rawByDeal.get(selectedDeal.id)}
+              tasks={tasksByDeal?.get(selectedDeal.id) || []}
               isDigestLoading={digestsLoading}
-              showLiveDot={index === 0}
+              showLiveDot
               onOpenDeal={onOpenDeal}
             />
+          </ScrollArea>
+        </>
+      ) : (
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-16">
+          <div className="h-14 w-14 rounded-full bg-white/[0.04] border border-white/10 flex items-center justify-center mb-4">
+            <Inbox className="h-6 w-6 text-muted-foreground" />
           </div>
-        ))}
-      </div>
+          <p className="text-sm font-medium text-white">Nothing selected</p>
+          <p className="text-xs text-muted-foreground mt-1.5 max-w-xs">
+            Select a deal from the left to view tasks, milestones, outstanding items, lender activity, and emails.
+          </p>
+        </div>
+      )}
     </div>
+  );
+
+  return (
+    <div className="flex gap-2 min-h-0 h-[calc(100vh-260px)] min-h-[520px]">
+      {isNarrow ? (
+        <div className="flex-1 min-w-0">
+          {selectedDeal ? detailPane : masterPane}
+        </div>
+      ) : (
+        <>
+          <div className="w-[320px] shrink-0 min-w-0">{masterPane}</div>
+          <div className="flex-1 min-w-0">{detailPane}</div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ── Compact left-pane deal tile ───────────────────────────────
+function formatAmount(value: number | undefined | null): string {
+  if (!value || value <= 0) return '—';
+  if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+  if (value >= 1_000) return `$${Math.round(value / 1_000)}K`;
+  return `$${value.toLocaleString()}`;
+}
+
+function titleCase(s: string): string {
+  return s.replace(/[-_]/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function DealTile({
+  deal,
+  active,
+  onClick,
+  onDismiss,
+}: {
+  deal: Deal;
+  active: boolean;
+  onClick: () => void;
+  onDismiss: () => void;
+}) {
+  const { getStageConfigForDeal } = usePipelineStageConfig();
+  const rawStage = (deal.stage as string | undefined) || '';
+  const stageLabel =
+    (rawStage ? getStageConfigForDeal(rawStage, deal.pipelineId)?.label : null) ||
+    (rawStage ? titleCase(rawStage) : null);
+  const engagement = deal.engagementType ? titleCase(deal.engagementType) : null;
+  const statusText = (() => {
+    const raw = (deal.notes || '').toString();
+    if (!raw.trim()) return null;
+    const stripped = raw
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return stripped || null;
+  })();
+  const amount = formatAmount(deal.value);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group/tile relative w-full text-left rounded-lg border transition-colors px-3 py-2.5',
+        active
+          ? 'border-white/25 bg-white/[0.06]'
+          : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
+      )}
+    >
+      <div className="flex items-start justify-between gap-2 min-w-0">
+        <h3 className="text-[13px] font-semibold leading-tight text-white truncate min-w-0 flex-1">
+          {deal.company || deal.name}
+        </h3>
+        <Badge variant="green" className="rounded-full shrink-0 text-[10px]">
+          {amount}
+        </Badge>
+      </div>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1">
+        {engagement && (
+          <Badge variant="gray" className="rounded-full text-[9px] px-1.5 py-0">
+            {engagement}
+          </Badge>
+        )}
+        {stageLabel && (
+          <Badge variant="outline" className="rounded-full text-[9px] px-1.5 py-0 border-white/15 text-white/80">
+            {stageLabel}
+          </Badge>
+        )}
+      </div>
+      {statusText && (
+        <p className="mt-1.5 text-[11px] text-white/60 line-clamp-2">{statusText}</p>
+      )}
+      <span
+        role="button"
+        tabIndex={0}
+        aria-label="Clear for today"
+        title="Clear for today (returns at 5 AM ET)"
+        onClick={(e) => {
+          e.stopPropagation();
+          onDismiss();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            e.stopPropagation();
+            onDismiss();
+          }
+        }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        className="absolute top-1.5 right-1.5 inline-flex items-center justify-center h-5 w-5 rounded-full
+          border border-border/60 bg-background/60 text-muted-foreground opacity-0
+          group-hover/tile:opacity-100 focus-visible:opacity-100 transition-opacity
+          hover:border-emerald-500/60 hover:bg-emerald-500/15 hover:text-emerald-400
+          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500/60"
+      >
+        <Check className="h-3 w-3" strokeWidth={2.5} />
+      </span>
+    </button>
   );
 }
