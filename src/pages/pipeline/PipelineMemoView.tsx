@@ -13,6 +13,8 @@ import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
+import { useDealFreshness } from '@/hooks/useDealFreshness';
+import { isDealStaleByBusinessDays } from '@/lib/dealFreshness';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -142,6 +144,9 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   const { data: tasksByDeal } = usePipelineDealTasks(dealIds, dealIds.length > 0);
   const { dismiss, isDismissed } = useDailyDismissals(dismissalScope);
 
+  // Soft attention glow: ≥2 business days since the last status / stage change.
+  const { data: freshness } = useDealFreshness(dealIds);
+
   const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
 
   // Master/detail selection — mirrors the Agenda and End of Day tabs.
@@ -188,6 +193,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
               key={deal.id}
               deal={deal}
               active={selectedId === deal.id}
+              isStale={freshness?.isStale.get(deal.id) ?? false}
               onClick={() => setSelectedId(deal.id)}
               onDismiss={() => dismiss(deal.id)}
             />
