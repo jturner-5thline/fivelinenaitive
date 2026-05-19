@@ -103,6 +103,9 @@ export const HomepageFromBlog = () => {
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.25em] text-[hsl(270,75%,80%)] mb-5">
+          Latest insights
+        </p>
         <Carousel
           setApi={setApi}
           opts={{ align: "start", loop: false, slidesToScroll: 1, containScroll: "trimSnaps" }}
