@@ -1015,7 +1015,7 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
       <ul className="mt-2 space-y-1.5">
         {(visible ?? []).length === 0 && (
           <li className="rounded-md border border-dashed border-white/[0.08] p-3 text-[11px] text-muted-foreground">
-            No slots match the current filters.
+            No specific times detected in this thread yet.
           </li>
         )}
         {(visible ?? []).map((entry, i) => {
@@ -1122,11 +1122,15 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
         })}
       </ul>
 
-      {parseResult.reply_suggestions.length > 0 && (
+      {(() => {
+        const replies =
+          dynamicReplies.length > 0 ? dynamicReplies : parseResult.reply_suggestions;
+        if (replies.length === 0) return null;
+        return (
         <div className="mt-3 border-t border-white/[0.05] pt-2">
           <div className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">Suggested replies</div>
           <div className="flex flex-col gap-1.5">
-            {parseResult.reply_suggestions.map((s, i) => (
+            {replies.map((s, i) => (
               <button
                 key={i}
                 type="button"
@@ -1145,7 +1149,8 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
             Drafts insert into the reply composer. Nothing is sent until you confirm. Keyboard: Enter accept · →/← expand · J/K navigate.
           </p>
         </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
