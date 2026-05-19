@@ -120,11 +120,11 @@ export const HomepageFromBlog = () => {
           opts={{ align: "start", loop: false, slidesToScroll: 1, containScroll: "trimSnaps" }}
           className="w-full"
         >
-          <CarouselContent className="-ml-6 md:-ml-8">
+          <CarouselContent className="-ml-4 md:-ml-5">
             {posts.map((post) => (
               <CarouselItem
                 key={post.id}
-                className="pl-6 md:pl-8 basis-full md:basis-1/2 lg:basis-1/3"
+                className="pl-4 md:pl-5 basis-full sm:basis-1/2 md:basis-1/3"
               >
                 <BlogCard post={post} />
               </CarouselItem>
