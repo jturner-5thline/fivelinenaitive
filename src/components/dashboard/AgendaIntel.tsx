@@ -97,6 +97,78 @@ function eventSignature(ev: CalendarEvent): string {
 }
 
 // ── Card ──────────────────────────────────────────────────────
+// Compact left-pane list item — title, time, lightweight context only.
+// All actions and rich detail live in the right-side detail pane.
+function AgendaListItem({
+  event,
+  deal,
+  isPersonal,
+  isInternalOnly,
+  active,
+  onClick,
+}: {
+  event: CalendarEvent;
+  deal: DealRow | null;
+  isPersonal: boolean;
+  isInternalOnly: boolean;
+  active: boolean;
+  onClick: () => void;
+}) {
+  const start = parseISO(event.start);
+  const end = parseISO(event.end);
+  const duration = Math.max(0, differenceInMinutes(end, start));
+  const attendeeCount = (event.attendees || []).filter(a => !a.self).length;
+  const hasVideo = !!event.hangout_link
+    || !!(event.location && /^https?:\/\//.test(event.location));
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'w-full text-left rounded-lg border px-2.5 py-2 transition-colors',
+        active
+          ? 'border-primary/40 bg-primary/[0.08]'
+          : 'border-white/10 bg-white/[0.025] hover:bg-white/[0.05]',
+      )}
+    >
+      <div className="flex items-center justify-between gap-2 text-[10px] text-white/70">
+        <span>{format(start, 'h:mm a')} · {duration}m</span>
+        <div className="flex items-center gap-1.5 text-white/60">
+          {hasVideo && <Video className="h-3 w-3" />}
+          {attendeeCount > 0 && (
+            <span className="inline-flex items-center gap-0.5">
+              <Users className="h-3 w-3" />{attendeeCount}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="mt-0.5 text-xs font-medium text-white truncate">
+        {event.summary || '(no title)'}
+      </div>
+      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+        {deal && (
+          <Badge
+            variant="outline"
+            className="text-[9px] font-normal border-primary/30 bg-primary/10 text-primary px-1.5 py-0"
+          >
+            <Briefcase className="h-2.5 w-2.5 mr-0.5" />{deal.name}
+          </Badge>
+        )}
+        {isPersonal && (
+          <Badge variant="outline" className="text-[9px] font-normal border-white/15 text-white/60 px-1.5 py-0">
+            Personal
+          </Badge>
+        )}
+        {isInternalOnly && (
+          <Badge variant="outline" className="text-[9px] font-normal border-white/15 text-white/60 px-1.5 py-0">
+            Internal
+          </Badge>
+        )}
+      </div>
+    </button>
+  );
+}
+
 function MeetingCard({
   event,
   dealMatch,
