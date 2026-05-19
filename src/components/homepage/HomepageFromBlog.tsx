@@ -106,7 +106,8 @@ export const HomepageFromBlog = () => {
             {posts.map((post) => (
               <CarouselItem
                 key={post.id}
-                className="pl-4 md:pl-5 basis-full sm:basis-1/2 md:basis-1/3"
+                className="pl-4 md:pl-5 !basis-full sm:!basis-1/2 md:!basis-1/3 !min-w-0"
+                style={{ flex: "0 0 var(--blog-slide-basis, 100%)" }}
               >
                 <BlogCard post={post} />
               </CarouselItem>
