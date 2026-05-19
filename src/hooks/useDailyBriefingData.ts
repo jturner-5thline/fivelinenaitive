@@ -501,7 +501,15 @@ export function usePipelineData(enabled: boolean, targetDealOwnerName?: string) 
   return useQuery({
     queryKey: ['briefing-pipeline', window.startISO, user?.id, isDelegated ? `for:${effectiveName}` : 'self'],
     enabled: enabled && !!user?.id && scopeReady && !!activePipelineId,
-    staleTime: 60_000,
+    // Perf: shared by /deals overlay + Daily Rundown Deals tab. A long
+    // staleTime + persistent gcTime makes re-opens instant and dedupes
+    // concurrent fetches across surfaces. Activity_logs change rarely
+    // within a session; mutations explicitly invalidate this key.
+    staleTime: 5 * 60_000,
+    gcTime: 30 * 60_000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    placeholderData: (prev) => prev,
     queryFn: async () => {
       const { startISO, endISO } = window;
       const [activityRes, stageChangeRes] = await Promise.all([
