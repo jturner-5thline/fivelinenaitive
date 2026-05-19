@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { ArrowRight, Calendar, MoveHorizontal } from "lucide-react";
+import { ArrowRight, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useScrollReveal } from "@/hooks/useScrollReveal";
 import {
@@ -80,15 +80,15 @@ export const HomepageFromBlog = () => {
   if (!posts || posts.length === 0) return null;
 
   return (
-    <section className="relative py-24 md:py-36">
+    <section className="relative py-10 md:py-14">
       {/* Distinct surface */}
       <div
         aria-hidden
-        className="absolute inset-x-0 inset-y-8 md:inset-y-12 bg-gradient-to-b from-[hsl(268,45%,12%,0.55)] via-[hsl(265,50%,8%,0.55)] to-[hsl(220,55%,10%,0.5)] border-y border-white/10 backdrop-blur-xl"
+        className="absolute inset-x-0 inset-y-3 md:inset-y-4 bg-gradient-to-b from-[hsl(268,45%,12%,0.55)] via-[hsl(265,50%,8%,0.55)] to-[hsl(220,55%,10%,0.5)] border-y border-white/10 backdrop-blur-xl"
       />
       <div
         aria-hidden
-        className="absolute inset-x-0 inset-y-8 md:inset-y-12 bg-[radial-gradient(ellipse_at_top,hsl(270,70%,40%,0.18),transparent_60%)] pointer-events-none"
+        className="absolute inset-x-0 inset-y-3 md:inset-y-4 bg-[radial-gradient(ellipse_at_top,hsl(270,70%,40%,0.18),transparent_60%)] pointer-events-none"
       />
 
       <div
@@ -97,24 +97,6 @@ export const HomepageFromBlog = () => {
           isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
         }`}
       >
-        <div className="max-w-3xl mb-12 md:mb-16">
-          <p className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[hsl(270,55%,65%,0.12)] border border-[hsl(270,55%,65%,0.3)] text-xs font-semibold uppercase tracking-[0.25em] text-[hsl(270,80%,85%)] mb-5">
-            From the blog
-          </p>
-          <h2 className="text-4xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.05] mb-5 tracking-tight">
-            Insights for <span className="bg-gradient-to-r from-[hsl(270,75%,80%)] to-[hsl(220,75%,75%)] bg-clip-text text-transparent">deal teams</span>
-          </h2>
-          <p className="text-lg md:text-xl text-white/70 leading-relaxed mb-4">
-            The latest thinking on deal execution, lender management, diligence, and AI workflows.
-          </p>
-          {posts.length > 3 && (
-            <p className="inline-flex items-center gap-2 text-xs md:text-sm text-white/55">
-              <MoveHorizontal className="w-4 h-4" />
-              Swipe or use the arrows to explore more posts
-            </p>
-          )}
-        </div>
-
         <Carousel
           setApi={setApi}
           opts={{ align: "start", loop: false, slidesToScroll: 1, containScroll: "trimSnaps" }}
