@@ -34,6 +34,24 @@ async function asanaFetch(path: string, token: string, options: RequestInit = {}
   return res.json();
 }
 
+// Fetch variant that returns rich diagnostics (status + parsed body) instead of
+// throwing — used by create_task / update_task so the client can persist the
+// exact failure reason on the naitive task row.
+async function asanaFetchDetailed(path: string, token: string, options: RequestInit = {}) {
+  const res = await fetch(`${ASANA_API}${path}`, {
+    ...options,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(options.headers || {}),
+    },
+  });
+  const rawText = await res.text();
+  let parsed: unknown = null;
+  try { parsed = rawText ? JSON.parse(rawText) : null; } catch { parsed = { raw: rawText }; }
+  return { ok: res.ok, status: res.status, body: parsed as any };
+}
+
 function normalizeInitiativeStatus(raw: unknown): { key: string | null; label: string | null } {
   const value = typeof raw === "string" ? raw.trim().toLowerCase() : "";
   if (!value) return { key: null, label: null };
@@ -172,22 +190,55 @@ serve(async (req) => {
       case "create_task": {
         const resolvedToken = await resolveToken(token, integration_id);
         console.log("Creating Asana task with data:", JSON.stringify(params.task_data));
-        const data = await asanaFetch("/tasks", resolvedToken, {
+        const resp = await asanaFetchDetailed("/tasks", resolvedToken, {
           method: "POST",
           body: JSON.stringify({ data: params.task_data }),
         });
-        console.log("Asana task created:", JSON.stringify(data.data));
-        result = { success: true, task: data.data };
+        console.log(
+          `[asana-proxy] create_task status=${resp.status} ok=${resp.ok} body=${JSON.stringify(resp.body).slice(0, 800)}`
+        );
+        if (!resp.ok) {
+          result = {
+            success: false,
+            error: resp.body?.errors?.[0]?.message || `Asana API error [${resp.status}]`,
+            http_status: resp.status,
+            response_body: resp.body,
+          };
+          break;
+        }
+        result = {
+          success: true,
+          task: resp.body?.data,
+          http_status: resp.status,
+          response_body: resp.body,
+        };
         break;
       }
 
       case "update_task": {
         const resolvedToken = await resolveToken(token, integration_id);
-        const data = await asanaFetch(`/tasks/${params.task_gid}`, resolvedToken, {
+        const resp = await asanaFetchDetailed(`/tasks/${params.task_gid}`, resolvedToken, {
           method: "PUT",
           body: JSON.stringify({ data: params.data }),
         });
-        result = { success: true, task: data.data };
+        console.log(
+          `[asana-proxy] update_task gid=${params.task_gid} status=${resp.status} ok=${resp.ok}`
+        );
+        if (!resp.ok) {
+          result = {
+            success: false,
+            error: resp.body?.errors?.[0]?.message || `Asana API error [${resp.status}]`,
+            http_status: resp.status,
+            response_body: resp.body,
+          };
+          break;
+        }
+        result = {
+          success: true,
+          task: resp.body?.data,
+          http_status: resp.status,
+          response_body: resp.body,
+        };
         break;
       }
 

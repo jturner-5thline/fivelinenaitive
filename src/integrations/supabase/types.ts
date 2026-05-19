@@ -1516,11 +1516,14 @@ export type Database = {
         Row: {
           action: string
           asana_task_gid: string | null
+          attempt_number: number
           company_id: string | null
           created_at: string
           error_message: string | null
+          http_status: number | null
           id: string
           payload: Json | null
+          response_body: Json | null
           success: boolean
           task_id: string | null
           triggered_by: string | null
@@ -1528,11 +1531,14 @@ export type Database = {
         Insert: {
           action: string
           asana_task_gid?: string | null
+          attempt_number?: number
           company_id?: string | null
           created_at?: string
           error_message?: string | null
+          http_status?: number | null
           id?: string
           payload?: Json | null
+          response_body?: Json | null
           success: boolean
           task_id?: string | null
           triggered_by?: string | null
@@ -1540,11 +1546,14 @@ export type Database = {
         Update: {
           action?: string
           asana_task_gid?: string | null
+          attempt_number?: number
           company_id?: string | null
           created_at?: string
           error_message?: string | null
+          http_status?: number | null
           id?: string
           payload?: Json | null
+          response_body?: Json | null
           success?: boolean
           task_id?: string | null
           triggered_by?: string | null
@@ -19247,6 +19256,10 @@ export type Database = {
       tasks: {
         Row: {
           archived_at: string | null
+          asana_sync_attempts: number
+          asana_sync_error: string | null
+          asana_sync_status: string | null
+          asana_synced_at: string | null
           asana_task_gid: string | null
           assigned_by: string
           assigned_to: string
@@ -19289,6 +19302,10 @@ export type Database = {
         }
         Insert: {
           archived_at?: string | null
+          asana_sync_attempts?: number
+          asana_sync_error?: string | null
+          asana_sync_status?: string | null
+          asana_synced_at?: string | null
           asana_task_gid?: string | null
           assigned_by: string
           assigned_to: string
@@ -19331,6 +19348,10 @@ export type Database = {
         }
         Update: {
           archived_at?: string | null
+          asana_sync_attempts?: number
+          asana_sync_error?: string | null
+          asana_sync_status?: string | null
+          asana_synced_at?: string | null
           asana_task_gid?: string | null
           assigned_by?: string
           assigned_to?: string
