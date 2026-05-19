@@ -248,7 +248,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   );
 
   return (
-    <div className="flex gap-2 min-h-0 h-[calc(100vh-260px)] min-h-[520px]">
+    <div className="flex gap-2 min-h-0 h-full">
       {isNarrow ? (
         <div className="flex-1 min-w-0">
           {selectedDeal ? detailPane : masterPane}
