@@ -296,10 +296,10 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           {editingTitle ? (
             <Input value={titleValue} onChange={e => setTitleValue(e.target.value)} onBlur={handleSaveTitle}
               onKeyDown={e => { if (e.key === 'Enter') handleSaveTitle(); if (e.key === 'Escape') { setTitleValue(task.title); setEditingTitle(false); } }}
-              className="text-lg font-semibold bg-[#0d1117] text-white border-[#2a2f3e]" autoFocus />
+              className="text-lg font-semibold bg-[rgba(255,255,255,0.025)] text-white border-[rgba(255,255,255,0.06)]" autoFocus />
           ) : (
             <h2
-              className={cn('text-lg font-semibold cursor-text hover:bg-[#1e2433] rounded px-1 -mx-1 py-0.5 transition-colors', isComplete && 'line-through')}
+              className={cn('text-lg font-semibold cursor-text hover:bg-[rgba(255,255,255,0.05)] rounded px-1 -mx-1 py-0.5 transition-colors', isComplete && 'line-through')}
               style={{ color: isComplete ? '#8b92a5' : 'white' }}
               onClick={() => { setTitleValue(task.title); setEditingTitle(true); }}
             >
@@ -342,7 +342,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                     onBlur={handleSaveBlockerNote}
                     onKeyDown={e => { if (e.key === 'Enter') handleSaveBlockerNote(); }}
                     placeholder="What's blocking this task?..."
-                    className="h-7 text-xs bg-[#0d1117] text-white"
+                    className="h-7 text-xs bg-[rgba(255,255,255,0.025)] text-white"
                     style={{ borderColor: '#ff4d4d' }}
                   />
                   {task.status === 'blocked' && !blockerNote.trim() && (
@@ -393,7 +393,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <div className="flex-1">
                 <div className="flex items-center gap-1 flex-wrap">
                   {collaborators.map(c => (
-                    <div key={c.user_id} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full group/collab" style={{ backgroundColor: '#1a1f2e', border: '1px solid #2a2f3e' }}>
+                    <div key={c.user_id} className="flex items-center gap-1 px-1.5 py-0.5 rounded-full group/collab" style={{ backgroundColor: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
                       <Avatar className="h-4 w-4">
                         <AvatarImage src={c.profile?.avatar_url || undefined} />
                         <AvatarFallback className="text-[7px]" style={{ backgroundColor: '#3b7eff', color: 'white' }}>
@@ -408,7 +408,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                   ))}
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" style={{ border: '1px dashed #2a2f3e' }}>
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" style={{ border: '1px dashed rgba(255,255,255,0.06)' }}>
                         <Plus className="h-3 w-3" style={{ color: '#8b92a5' }} />
                       </Button>
                     </PopoverTrigger>
@@ -443,11 +443,11 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               </div>
               <div className="flex items-center gap-1 flex-wrap">
                 <Input type="date" value={task.due_date || ''} onChange={e => onUpdate({ due_date: e.target.value || null } as any)}
-                  className="h-7 text-xs w-[130px] bg-[#0d1117] text-white border-[#2a2f3e]" />
+                  className="h-7 text-xs w-[130px] bg-[rgba(255,255,255,0.025)] text-white border-[rgba(255,255,255,0.06)]" />
                 <div className="flex gap-1">
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: today } as any)}>Today</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: tomorrow } as any)}>Tomorrow</Button>
-                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: today } as any)}>Today</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: tomorrow } as any)}>Tomorrow</Button>
+                  <Button variant="outline" size="sm" className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)]" style={{ color: '#8b92a5' }} onClick={() => onUpdate({ due_date: format(addDays(new Date(), 7), 'yyyy-MM-dd') } as any)}>+1 Week</Button>
                 </div>
               </div>
             </div>
@@ -488,7 +488,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
+                          className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)] gap-1"
                           style={{ color: '#f59e0b' }}
                           onClick={() => {
                             const prevEnd = (task as any).recurrence_end_date ?? null;
@@ -512,7 +512,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
+                          className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)] gap-1"
                           style={{ color: '#22c55e' }}
                           onClick={() => {
                             onUpdate({ recurrence_end_date: null } as any);
@@ -526,7 +526,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                       <Button
                         variant="outline"
                         size="sm"
-                        className="h-6 text-[10px] px-2 rounded-full border-[#2a2f3e] gap-1"
+                        className="h-6 text-[10px] px-2 rounded-full border-[rgba(255,255,255,0.06)] gap-1"
                         style={{ color: '#ff4d4d' }}
                         onClick={() => setStopRecurrenceOpen(true)}
                         title="Permanently stop the recurring series"
@@ -569,7 +569,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
           </div>
 
 
-          <Separator style={{ backgroundColor: '#2a2f3e' }} />
+          <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
           {/* Description */}
           <div>
@@ -580,12 +580,12 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             </div>
           </div>
 
-          <Separator style={{ backgroundColor: '#2a2f3e' }} />
+          <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
           {/* Duplicate-detection panel — human-in-the-loop review */}
           <TaskDuplicatePanel taskId={task.id} />
 
-          <Separator style={{ backgroundColor: '#2a2f3e' }} />
+          <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
           {/* Subtasks */}
           <div>
@@ -599,7 +599,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               </Button>
             </div>
             {subtasks.length > 0 && (
-              <div className="h-1 rounded-full mb-2 overflow-hidden" style={{ backgroundColor: '#2a2f3e' }}>
+              <div className="h-1 rounded-full mb-2 overflow-hidden" style={{ backgroundColor: 'rgba(255,255,255,0.06)' }}>
                 <div className="h-full rounded-full transition-all" style={{ width: `${(subtasks.filter(s => s.status === 'complete').length / subtasks.length) * 100}%`, backgroundColor: '#22c55e' }} />
               </div>
             )}
@@ -624,13 +624,13 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               <div className="flex items-center gap-1.5 mt-1">
                 <Input value={newSubtaskTitle} onChange={e => setNewSubtaskTitle(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter') handleAddSubtask(); if (e.key === 'Escape') { setShowSubtaskInput(false); setNewSubtaskTitle(''); } }}
-                  placeholder="Subtask name..." className="h-7 text-xs flex-1 bg-[#0d1117] text-white border-[#2a2f3e]" autoFocus />
+                  placeholder="Subtask name..." className="h-7 text-xs flex-1 bg-[rgba(255,255,255,0.025)] text-white border-[rgba(255,255,255,0.06)]" autoFocus />
               </div>
             )}
             {subtasks.length === 0 && !showSubtaskInput && <p className="text-[11px]" style={{ color: '#8b92a5' }}>No subtasks</p>}
           </div>
 
-          <Separator style={{ backgroundColor: '#2a2f3e' }} />
+          <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
           {/* Attachments */}
           <div className="flex items-center gap-2">
@@ -652,7 +652,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                 <div
                   key={a.id}
                   className="flex items-center gap-1.5 px-2 py-0.5 rounded-md group text-xs max-w-full"
-                  style={{ backgroundColor: '#1a1f2e' }}
+                  style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}
                 >
                   <FileText className="h-3 w-3 shrink-0" style={{ color: '#8b92a5' }} />
                   <span className="truncate max-w-[140px]" style={{ color: 'white' }}>{a.file_name}</span>
@@ -677,7 +677,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             </div>
           </div>
 
-          <Separator style={{ backgroundColor: '#2a2f3e' }} />
+          <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
           {/* Dependencies */}
           <div>
@@ -703,11 +703,11 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
             {blockedBy.length === 0 && blocking.length === 0 && <p className="text-[11px]" style={{ color: '#8b92a5' }}>No dependencies</p>}
           </div>
 
-          <Separator style={{ backgroundColor: '#2a2f3e' }} />
+          <Separator style={{ backgroundColor: 'rgba(255,255,255,0.06)' }} />
 
           {/* Comments & Activity */}
           <Tabs defaultValue="comments">
-            <TabsList className="h-8 w-full" style={{ backgroundColor: '#1a1f2e' }}>
+            <TabsList className="h-8 w-full" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
               <TabsTrigger value="comments" className="text-xs gap-1 flex-1">
                 <MessageSquare className="h-3 w-3" /> Comments ({comments.length})
               </TabsTrigger>
@@ -746,7 +746,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
               {activity.length === 0 && <p className="text-xs text-center py-4" style={{ color: '#8b92a5' }}>No activity yet</p>}
               {activity.map(a => (
                 <div key={a.id} className="flex items-start gap-2 py-1">
-                  <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: '#1a1f2e' }}>
+                  <div className="h-5 w-5 rounded-full flex items-center justify-center shrink-0 mt-0.5" style={{ backgroundColor: 'rgba(255,255,255,0.04)' }}>
                     <Clock className="h-2.5 w-2.5" style={{ color: '#8b92a5' }} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -824,7 +824,7 @@ function DealLinkField({ dealId }: { dealId: string }) {
       <div className="flex items-center gap-1.5 w-[90px] text-xs shrink-0 mt-1" style={{ color: '#8b92a5' }}>
         <Link2 className="h-3 w-3" /> Deal
       </div>
-      <div className="rounded-lg p-2.5 flex-1" style={{ backgroundColor: '#0d1117', border: '1px solid #2a2f3e' }}>
+      <div className="rounded-lg p-2.5 flex-1" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
         <Link to={`/deal/${deal.id}`} className="text-xs font-medium hover:underline" style={{ color: '#3b7eff' }}>
           {deal.company}
         </Link>
