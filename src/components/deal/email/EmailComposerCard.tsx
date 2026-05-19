@@ -1088,24 +1088,59 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
           className="border-0 shadow-none"
           toolbarTrailing={
             (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
-                    onClick={() => setPolishOpen(true)}
-                    aria-label="Polish with AI"
-                  >
-                    <Sparkles className="h-3 w-3" />
-                    Polish with AI
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="text-xs">
-                  Rewrite your draft in 5th Line voice — facts preserved
-                </TooltipContent>
-              </Tooltip>
+              <>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-[hsl(var(--outlook-blue))] hover:bg-[hsl(var(--outlook-blue))]/10"
+                      onClick={() => setPolishOpen(true)}
+                      aria-label="Polish with AI"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Polish with AI
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    Rewrite your draft in 5th Line voice — facts preserved
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground hover:bg-white/[0.06]"
+                      onClick={triggerFilePicker}
+                      aria-label="Attach file"
+                    >
+                      <Paperclip className="h-3 w-3" />Attach
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">
+                    Attach a file (max {Math.round(maxAttachmentBytes / (1024 * 1024))}MB total)
+                  </TooltipContent>
+                </Tooltip>
+                <SnippetPicker onInsert={insertAtCursor} tokenContext={tokenContext} />
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2 gap-1 text-xs text-[hsl(180_72%_60%)] hover:text-[hsl(180_72%_70%)] hover:bg-[hsl(180_72%_45%)]/10"
+                      onClick={requestAiDraft}
+                      aria-label="Draft with AI (⌘J)"
+                    >
+                      <Sparkles className="h-3 w-3" />Draft with AI
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="text-xs">Draft with AI (⌘J)</TooltipContent>
+                </Tooltip>
+              </>
             )
           }
         />
