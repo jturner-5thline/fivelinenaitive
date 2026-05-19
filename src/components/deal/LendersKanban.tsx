@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { SaveIndicator } from '@/components/ui/save-indicator';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
+import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 
 
 interface LenderMetrics {
