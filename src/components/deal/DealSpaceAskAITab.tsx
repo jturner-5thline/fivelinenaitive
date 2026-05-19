@@ -595,6 +595,10 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   // deal_space_notes and hand off to the Review & Exclude step.
   const [isBaseOpen, setIsBaseOpen] = useState(false);
   const [baseDraft, setBaseDraft] = useState<BaseSubmissionDraft | null>(null);
+  // Mirror of the latest approved base draft so async callbacks (review
+  // confirm timeout, per-lender retry from the drafts modal) always see the
+  // user-edited copy instead of a stale render-time closure.
+  const baseDraftRef = useRef<BaseSubmissionDraft | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
 
@@ -739,7 +743,7 @@ BROADCAST MODE (PERSONALIZATION OFF):
         : '';
 
       const baseTemplateSection = base
-        ? `\n\nAPPROVED BASE TEMPLATE (the user already reviewed and edited this lender-agnostic submission email — preserve its wording, only personalize the salutation and opening line per lender, do not rewrite the rest):\n\nSUBJECT: ${base.subject}\n\nBODY:\n${htmlToPlainText(base.bodyHtml)}\n`
+        ? `\n\nAPPROVED BASE TEMPLATE — AUTHORITATIVE SOURCE (the user already reviewed and EDITED this lender-agnostic submission email). You MUST use it verbatim as the email body for every lender. IGNORE the EMAIL BODY TEMPLATE section above and DO NOT rewrite, reorder, shorten, or paraphrase any sentence. The ONLY allowed changes are:\n  1. Replace the salutation line with "Hi <LENDER FIRST NAME>," (or the institution name if no contact first name is known).\n  2. Optionally personalize ONE short opening sentence to connect the deal to the lender's focus area when profile data is provided. Everything else (paragraph order, wording, attachments line, sign-off) must match the approved base exactly.\nFor the subject line, use the same wording as the approved base subject but insert the lender institution into the pipe slot if the base subject does not already include one (format: "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>").\n\nAPPROVED BASE SUBJECT:\n${base.subject}\n\nAPPROVED BASE BODY (use verbatim, only swap the salutation / optional opening line):\n${htmlToPlainText(base.bodyHtml)}\n`
         : '';
 
       return `You are drafting lender submission emails for this deal.${personalize ? ' Generate ONE email PER ACTIVE LENDER on this deal.' : ''}
@@ -791,6 +795,7 @@ CRITICAL RULES:
   // base-email step first; the user can edit that draft, then we save it
   // to Notes and open Review & Exclude before per-lender drafts run.
   const handleDraftSubmission = useCallback(async () => {
+    baseDraftRef.current = null;
     setBaseDraft(null);
     setIsBaseOpen(true);
   }, []);
@@ -1493,7 +1498,12 @@ CRITICAL RULES:
           ));
           try {
             const profiles = await fetchLenderProfilesForDeal(dealId, [lenderName]);
-            const fresh = await generateOneDraftPersonalized(dealId, lenderName, profiles, buildDraftSubmissionPrompt);
+            const fresh = await generateOneDraftPersonalized(
+              dealId,
+              lenderName,
+              profiles,
+              (p, prof) => buildDraftSubmissionPrompt(p, prof, baseDraftRef.current),
+            );
             const [enriched] = await enrichDraftsWithLenderContacts([fresh]);
             setEmailDrafts((prev) => prev.map((d, i) => (i === index ? enriched : d)));
           } catch (e) {
@@ -1517,7 +1527,10 @@ CRITICAL RULES:
           setIncludedLenderNames(names);
           // Defer one tick so the review dialog fully closes before the
           // drafts dialog mounts (avoids overlapping aria-modal layers).
-          setTimeout(() => generateDraftsForLenders(names, personalize, baseDraft), 50);
+          setTimeout(
+            () => generateDraftsForLenders(names, personalize, baseDraftRef.current),
+            50,
+          );
         }}
       />
 
@@ -1551,6 +1564,7 @@ CRITICAL RULES:
           };
         }}
         onContinue={(base) => {
+          baseDraftRef.current = base;
           setBaseDraft(base);
           // Defer a tick so the base dialog fully closes before Review opens.
           setTimeout(() => setIsReviewOpen(true), 50);
