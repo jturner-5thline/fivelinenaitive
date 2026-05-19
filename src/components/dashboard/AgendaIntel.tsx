@@ -774,6 +774,17 @@ export function AgendaIntel() {
               prep={prepCache[selectedRecord.event.id] || null}
               prepLoading={!!prepLoading[selectedRecord.event.id]}
               onRegenerate={() => handleRegenerate(selectedRecord.event.id)}
+              onCreateTask={() => setTaskDialogEvent(selectedRecord.event)}
+              onEmail={() => {
+                const hasRecipients = (selectedRecord.event.attendees || []).some(
+                  a => !a.self && a.email && a.email.trim(),
+                );
+                if (!hasRecipients) {
+                  toast.error('No attendee email addresses available.');
+                  return;
+                }
+                setEmailDialogEvent(selectedRecord.event);
+              }}
             />
           </ScrollArea>
         </>
