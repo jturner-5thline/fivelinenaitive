@@ -3260,6 +3260,7 @@ export type Database = {
       company_features: {
         Row: {
           agreement_icon_visible: boolean
+          assist_enabled: boolean | null
           company_id: string
           created_at: string
           deal_memo_enabled: boolean
@@ -3271,6 +3272,7 @@ export type Database = {
         }
         Insert: {
           agreement_icon_visible?: boolean
+          assist_enabled?: boolean | null
           company_id: string
           created_at?: string
           deal_memo_enabled?: boolean
@@ -3282,6 +3284,7 @@ export type Database = {
         }
         Update: {
           agreement_icon_visible?: boolean
+          assist_enabled?: boolean | null
           company_id?: string
           created_at?: string
           deal_memo_enabled?: boolean
