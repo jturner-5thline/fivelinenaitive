@@ -12,6 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
+import { DealStatusTag } from '@/components/deal/DealStatusTag';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -313,9 +314,14 @@ function DealTile({
         <h3 className="text-[13px] font-semibold leading-tight text-white truncate min-w-0 flex-1">
           {deal.company || deal.name}
         </h3>
-        <Badge variant="green" className="rounded-full shrink-0 text-[10px]">
-          {amount}
-        </Badge>
+        <div className="flex items-center gap-1 shrink-0">
+          {/* Deal status — reuses the shared DealStatusTag so this tile
+              stays in sync with the deal detail view's status surface. */}
+          <DealStatusTag status={deal.status} />
+          <Badge variant="green" className="rounded-full shrink-0 text-[10px]">
+            {amount}
+          </Badge>
+        </div>
       </div>
       <div className="mt-1.5 flex flex-wrap items-center gap-1">
         {engagement && (
