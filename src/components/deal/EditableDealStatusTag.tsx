@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/popover';
 import { STATUS_CONFIG, type DealStatus } from '@/types/deal';
 import { DealStatusTag } from './DealStatusTag';
-import { useDeals } from '@/contexts/DealsContext';
+import { useDealsContext } from '@/contexts/DealsContext';
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
 
@@ -46,7 +46,7 @@ export function EditableDealStatusTag({
   hideDot,
   hideChevron,
 }: EditableDealStatusTagProps) {
-  const { updateDealStatus } = useDeals();
+  const { updateDealStatus } = useDealsContext();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
