@@ -424,7 +424,7 @@ export function AgendaIntel() {
   const [taskDialogEvent, setTaskDialogEvent] = useState<CalendarEvent | null>(null);
   const [emailDialogEvent, setEmailDialogEvent] = useState<CalendarEvent | null>(null);
   const { user } = useAuth();
-  const { data: teamMembers = [] } = useTeamMembers();
+  const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
   const signature = useUserEmailSignature();
   const { sendEmail } = useGmail();
