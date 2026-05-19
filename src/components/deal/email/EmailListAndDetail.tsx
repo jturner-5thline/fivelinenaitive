@@ -1428,7 +1428,9 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   return (
     <div ref={messageRef} className={cn(
       'border-b border-[hsl(var(--email-border))] transition-all duration-100 min-w-0',
-      expanded ? 'bg-card/50' : 'hover:bg-[hsl(var(--foreground)/0.03)]'
+      // Unified popup surface: no separate fill on expanded messages — keep a
+      // subtle hover tint so collapsed rows remain clickable-feeling.
+      expanded ? 'bg-transparent' : 'hover:bg-[hsl(var(--foreground)/0.03)]'
     )}>
       <button
         onClick={toggleExpand}
@@ -2580,7 +2582,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             : 'minmax(0, 1fr)',
         }}
       >
-        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-[hsl(var(--email-reading-bg))]">
+        {/* Email message column — transparent so the unified popup-shell
+            surface shows through. Separation from the AI Assist column is
+            handled by a thin border on the sibling, not a different fill. */}
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-transparent">
           {/* Outlook-style command bar — portalled into the unified mail
               header (#email-detail-toolbar-slot) so the entire mail UI
               shares one horizontal toolbar row. Falls back to inline
@@ -2936,7 +2941,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           </div>
 
           {shouldRenderAttachmentsRow && (
-            <div className="px-6 py-3 border-b border-[hsl(var(--email-border))] bg-card/30">
+            <div className="px-6 py-3 border-b border-[hsl(var(--email-border))]">
               <EmailAttachmentsStrip
                 thread={thread}
                 forceVisible
@@ -3088,7 +3093,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             the full width. Below 1100px we collapse to slide-over to keep the
             detail column wide enough for body wrapping. */}
         {showAiAssist && (
-          <div className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-card/40">
+          <div className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-transparent">
             <EmailPaneErrorBoundary
               resetKey={`ai-assist-${thread.threadId}`}
               fallbackTitle="AI Assist is temporarily unavailable"

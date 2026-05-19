@@ -807,7 +807,10 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       // every scroll/repaint of underlying content, causing the dominant scroll
       // jank in this pop-up. The opaque-ish bg-card surface reads identically
       // over the dialog backdrop.
-      className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-card/40 min-[1100px]:w-[300px] min-[1100px]:min-w-[300px] min-[1100px]:max-w-[420px] min-[1280px]:w-[340px] min-[1536px]:w-[380px]"
+      // Transparent — inherits the unified popup-shell surface. Separation
+      // from the message column is handled by a thin left border on the
+      // parent wrapper in EmailListAndDetail.
+      className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent min-[1100px]:w-[300px] min-[1100px]:min-w-[300px] min-[1100px]:max-w-[420px] min-[1280px]:w-[340px] min-[1536px]:w-[380px]"
       style={{ contain: 'layout paint style' }}
       aria-label="AI Assist"
     >
@@ -1278,7 +1281,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       </ScrollArea>
 
       {/* Footer actions */}
-      <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 bg-card/60 min-w-0 w-full">
+      <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 min-w-0 w-full">
         <div className="flex-1 min-w-0" />
         {/* Save to Deal — popover wrapping the SaveToDealCard so users can
             route attachments, body, or highlighted text to Data Room or Deal
