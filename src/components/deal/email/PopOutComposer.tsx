@@ -492,6 +492,7 @@ export function PopOutComposer({
 
         <EmailComposerCard
           replyToName={initialDraft.toName}
+          threadId={initialDraft.threadId}
           recipients={recipients}
           onRecipientsChange={setRecipients}
           subject={subject}

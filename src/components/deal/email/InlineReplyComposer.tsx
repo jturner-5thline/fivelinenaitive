@@ -161,6 +161,7 @@ export function InlineReplyComposer({
     <>
       <EmailComposerCard
         replyToName={replyTo.to_name}
+        threadId={replyTo.threadId}
         recipients={recipients}
         onRecipientsChange={setRecipients}
         subject={subject}

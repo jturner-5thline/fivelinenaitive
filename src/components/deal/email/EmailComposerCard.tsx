@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { shouldShowSignatureGhost } from './signatureGhost';
 import { EmailRichTextEditor } from './EmailRichTextEditor';
+import { ComposerScheduleChip } from './ComposerScheduleChip';
 import {
   signatureToHtml,
   signatureToPlainText,
@@ -122,6 +123,8 @@ export interface EmailComposerCardProps {
   className?: string;
   /** Enable drag-to-resize on the top edge (inline only). */
   resizable?: boolean;
+  /** Thread ID for per-draft schedule-chip dismissal persistence. */
+  threadId?: string;
 }
 
 // ────────────────────────────────────────────────────────────────────────────
@@ -239,6 +242,7 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
     hideReplyAnchor = false,
     className,
     resizable = false,
+    threadId,
   } = props;
 
   const { search } = useEmailContacts();
@@ -1080,6 +1084,13 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
         }}
         onBlur={onFieldBlur}
       >
+        {threadId && (
+          <ComposerScheduleChip
+            threadId={threadId}
+            body={body}
+            onInsert={(html) => onBodyChange((body || '') + html)}
+          />
+        )}
         <EmailRichTextEditor
           content={body}
           onChange={onBodyChange}
