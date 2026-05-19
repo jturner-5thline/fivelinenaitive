@@ -1035,7 +1035,7 @@ export default function Tasks() {
                 onUpdateTask={(id, updates) => updateTask.mutate({ id, ...updates })}
                 onDeleteTask={id => handleDeleteWithUndo(id)}
                 selectedTaskId={selectedTaskId}
-                groupBy={viewMode === 'focus' ? 'focus' : groupBy}
+                groupBy={viewMode === 'focus' ? 'focus' : 'none'}
                 selectedTaskIds={selectedTaskIds}
                 onToggleSelect={handleToggleSelect}
                 onSelectAll={handleSelectAll}
