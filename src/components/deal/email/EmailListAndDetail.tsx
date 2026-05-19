@@ -2698,12 +2698,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
       if (e.key === 'l' || e.key === 'L') { e.preventDefault(); onToggleLink(thread.latestEmail); }
       if (e.key === 'a' || e.key === 'A') {
         e.preventDefault();
-        setShowAiAssist((v) => !v);
+        // Honor Assist gating — when disabled for this account/company,
+        // the keyboard shortcut is a no-op (no hidden affordance).
+        if (assistEnabled) setShowAiAssist((v) => !v);
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [thread, onToggleLink, handleReply]);
+  }, [thread, onToggleLink, handleReply, assistEnabled]);
 
   const latest = thread.latestEmail;
   const senderName = latest.from_name === 'You' ? latest.to_name : latest.from_name;
