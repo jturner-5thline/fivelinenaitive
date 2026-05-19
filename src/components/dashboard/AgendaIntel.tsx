@@ -601,15 +601,6 @@ export function AgendaIntel() {
   };
 
   // ── Render ─────────────────────────────────────────────────
-  if (!status?.connected) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-        <CalendarIcon className="h-8 w-8 mb-2 opacity-40" />
-        <p className="text-sm">Connect Google Calendar to see your agenda.</p>
-      </div>
-    );
-  }
-
   // Keep selection valid as the filter set changes — clear if the
   // selected event is no longer visible. Auto-select the first item on
   // desktop so the detail pane is never empty when there's content.
@@ -645,6 +636,18 @@ export function AgendaIntel() {
     }
     return groups;
   }, [visible]);
+
+  // Early return AFTER all hooks above so React sees the same hook
+  // count/order on every render (fixes "Rendered more hooks than during
+  // the previous render" when Google Calendar connection state flips).
+  if (!status?.connected) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+        <CalendarIcon className="h-8 w-8 mb-2 opacity-40" />
+        <p className="text-sm">Connect Google Calendar to see your agenda.</p>
+      </div>
+    );
+  }
 
   const filterBar = (
     <div className="flex flex-wrap items-center gap-2 pb-3 border-b border-border/30">
