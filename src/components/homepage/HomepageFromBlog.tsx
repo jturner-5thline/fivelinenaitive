@@ -173,7 +173,7 @@ function BlogCard({ post }: { post: BlogPostLite }) {
       to={`/blog/${post.slug}`}
       className="group relative h-full flex flex-col overflow-hidden rounded-2xl border border-white/15 bg-gradient-to-b from-white/[0.06] to-white/[0.02] backdrop-blur-xl shadow-[0_12px_32px_-16px_hsl(265,60%,3%,0.8)] transition-all duration-300 hover:border-[hsl(270,65%,72%,0.55)] hover:from-white/[0.09] hover:to-white/[0.04] hover:-translate-y-1.5 hover:shadow-[0_28px_60px_-20px_hsl(270,80%,20%,0.7)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(270,75%,80%)] focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
     >
-      <div className="relative aspect-[16/10] overflow-hidden bg-[hsl(270,30%,12%)]">
+      <div className="relative aspect-[16/9] lg:aspect-[3/2] overflow-hidden bg-[hsl(270,30%,12%)]">
         {post.cover_image_url ? (
           <img
             src={post.cover_image_url}
@@ -185,29 +185,29 @@ function BlogCard({ post }: { post: BlogPostLite }) {
           <div className="w-full h-full bg-gradient-to-br from-[hsl(270,40%,20%)] via-[hsl(265,50%,12%)] to-[hsl(220,60%,15%)]" />
         )}
       </div>
-      <div className="p-6 md:p-7 flex-1 flex flex-col">
-        <div className="flex items-center gap-3 text-xs text-white/55 mb-3">
+      <div className="p-5 lg:p-4 flex-1 flex flex-col">
+        <div className="flex items-center gap-2 text-[11px] text-white/55 mb-2">
           {category && (
-            <span className="px-2.5 py-1 rounded-full bg-[hsl(270,55%,65%,0.12)] text-[hsl(270,75%,80%)] font-medium uppercase tracking-wider text-[10px]">
+            <span className="px-2 py-0.5 rounded-full bg-[hsl(270,55%,65%,0.12)] text-[hsl(270,75%,80%)] font-medium uppercase tracking-wider text-[9px]">
               {category}
             </span>
           )}
           {post.published_at && (
-            <span className="inline-flex items-center gap-1.5">
-              <Calendar className="w-3 h-3" />
+            <span className="inline-flex items-center gap-1">
+              <Calendar className="w-2.5 h-2.5" />
               {formatDate(post.published_at)}
             </span>
           )}
         </div>
-        <h3 className="text-lg md:text-xl font-bold text-white leading-snug mb-3 group-hover:text-[hsl(270,75%,85%)] transition-colors line-clamp-2 min-h-[3.25rem]">
+        <h3 className="text-base lg:text-[15px] font-bold text-white leading-snug mb-2 group-hover:text-[hsl(270,75%,85%)] transition-colors line-clamp-2 min-h-[2.6rem]">
           {post.title}
         </h3>
-        <p className="text-sm text-white/60 leading-relaxed mb-5 line-clamp-3 min-h-[3.75rem]">
+        <p className="text-[13px] text-white/60 leading-relaxed mb-3 line-clamp-2 lg:line-clamp-2 min-h-[2.4rem]">
           {post.excerpt || ""}
         </p>
-        <span className="mt-auto inline-flex items-center gap-2 text-xs font-semibold text-[hsl(270,75%,80%)] pt-3 border-t border-white/5 group-hover:border-white/10 transition-colors">
+        <span className="mt-auto inline-flex items-center gap-1.5 text-[11px] font-semibold text-[hsl(270,75%,80%)] pt-2 border-t border-white/5 group-hover:border-white/10 transition-colors">
           Read article
-          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-1" />
+          <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
         </span>
       </div>
     </Link>
