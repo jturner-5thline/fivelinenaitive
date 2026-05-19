@@ -77,6 +77,12 @@ export const HomepageFromBlog = () => {
     };
   }, [api]);
 
+  // Re-measure embla once posts arrive so slide widths apply
+  useEffect(() => {
+    if (!api || !posts) return;
+    requestAnimationFrame(() => api.reInit());
+  }, [api, posts]);
+
   if (!posts || posts.length === 0) return null;
 
   return (
@@ -106,7 +112,7 @@ export const HomepageFromBlog = () => {
             {posts.map((post) => (
               <CarouselItem
                 key={post.id}
-                className="pl-4 md:pl-5 basis-full sm:basis-1/2 md:basis-1/3"
+                className="pl-4 md:pl-5 !basis-full sm:!basis-1/2 md:!basis-1/3 !min-w-0 !shrink-0 !grow-0"
               >
                 <BlogCard post={post} />
               </CarouselItem>
