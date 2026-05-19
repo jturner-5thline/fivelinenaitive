@@ -218,17 +218,17 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
               </Button>
             </div>
           )}
-          <ScrollArea
-            className="flex-1 min-h-0 px-3 py-3"
+          {/* Use a plain overflow-y-auto container instead of Radix
+              ScrollArea here: Radix's Viewport wraps children in a
+              `display: table` div which breaks h-full propagation, so the
+              memo Card could never stretch to fill the pane. With a plain
+              flex container the Card honours `flex-1 h-full` and its
+              rounded frame extends all the way to the pane bottom. */}
+          <div
+            className="flex-1 min-h-0 px-3 py-3 overflow-y-auto flex flex-col"
             style={{ overscrollBehavior: 'contain' }}
           >
-            {/* Force the memo card to stretch to the full available pane
-                height. The Card itself is content-sized (min-h only), so we
-                wrap it in a min-h-full flex column and use a child selector
-                to make the Card grow to fill the pane. Internal sections
-                still flow naturally and the ScrollArea handles overflow
-                when content exceeds the pane. */}
-            <div className="min-h-full flex flex-col [&>*]:flex-1 [&>*]:h-full">
+            <div className="flex-1 min-h-0 flex flex-col [&>*]:flex-1 [&>*]:min-h-0 [&>*]:h-full">
               <PipelineMemoCard
                 deal={selectedDeal}
                 digest={digestMap.get(selectedDeal.id)}
@@ -239,7 +239,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
                 onOpenDeal={onOpenDeal}
               />
             </div>
-          </ScrollArea>
+          </div>
         </>
       ) : (
         <div className="flex-1 flex flex-col items-center justify-center text-center px-8 py-16">
