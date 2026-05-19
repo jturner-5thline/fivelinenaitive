@@ -72,6 +72,7 @@ import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
 import { useLenderAttachmentsSummary } from '@/hooks/useLenderAttachmentsSummary';
 const LendersKanban = lazy(() => import('@/components/deal/LendersKanban').then(m => ({ default: m.LendersKanban })));
+import { getLenderStatusTheme } from '@/components/deal/lenderStatusTheme';
 import { LenderSuggestionsPanel } from '@/components/deal/LenderSuggestionsPanel';
 import { AiRecommendedLendersSection } from '@/components/deal/AiRecommendedLendersSection';
 import { AddLenderSlideOver } from '@/components/deal/AddLenderSlideOver';
