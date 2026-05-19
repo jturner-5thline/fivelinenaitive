@@ -269,6 +269,7 @@ const App = () => (
                       <Sonner />
                       <WorkflowEmailModalListener />
                       <InsightsAccessDebug />
+                      <AsanaSyncDebug />
                       
                       <BrowserRouter>
                         <ScrollToTop />
