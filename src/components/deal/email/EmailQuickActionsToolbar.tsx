@@ -30,13 +30,13 @@ interface ActionDef {
 }
 
 const ALL_ACTIONS: ActionDef[] = [
-  { key: 'save_dr', label: 'Save to Data Room', icon: <FolderUp className="h-3 w-3" />, iconClass: 'text-amber-300' },
-  { key: 'lender', label: 'Update Lender Status', icon: <Building2 className="h-3 w-3" />, iconClass: 'text-emerald-300' },
-  { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-3 w-3" />, iconClass: 'text-primary' },
-  { key: 'task', label: 'Create Task', icon: <ListPlus className="h-3 w-3" />, iconClass: 'text-sky-300' },
-  { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-3 w-3" />, iconClass: 'text-violet-300' },
-  { key: 'outstanding', label: 'Add to Outstanding Items', icon: <ListChecks className="h-3 w-3" />, iconClass: 'text-fuchsia-300' },
-  { key: 'summarize', label: 'Summarize this thread', icon: <AlignLeft className="h-3 w-3" />, iconClass: 'text-cyan-300' },
+  { key: 'save_dr', label: 'Save to Data Room', icon: <FolderUp className="h-4 w-4" />, iconClass: 'text-amber-300' },
+  { key: 'lender', label: 'Update Lender Status', icon: <Building2 className="h-4 w-4" />, iconClass: 'text-emerald-300' },
+  { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-4 w-4" />, iconClass: 'text-primary' },
+  { key: 'task', label: 'Create Task', icon: <ListPlus className="h-4 w-4" />, iconClass: 'text-sky-300' },
+  { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-4 w-4" />, iconClass: 'text-violet-300' },
+  { key: 'outstanding', label: 'Add to Outstanding Items', icon: <ListChecks className="h-4 w-4" />, iconClass: 'text-fuchsia-300' },
+  { key: 'summarize', label: 'Summarize thread', icon: <AlignLeft className="h-4 w-4" />, iconClass: 'text-cyan-300' },
 ];
 
 interface Props {
@@ -164,35 +164,26 @@ export function EmailQuickActionsToolbar({
 
   return (
     <div className="space-y-2">
-      {/* Pill row — single horizontally scrollable line. Pills never wrap;
-          edge-fade masks hint at additional pills when overflowing. */}
+      {/* 2-column quick-action grid. Cohesive cards — subtle elevated
+          surface, 1px hairline border, accent-colored icon at 70%, label
+          at 90% foreground. Single AIAssistActionButton component drives
+          every cell so spacing, height, radius, and states stay uniform. */}
       <div
-        className="grid grid-cols-2 gap-1.5"
+        className="grid grid-cols-2 gap-2"
         role="toolbar"
         aria-label="Email quick actions"
       >
         {actions.map((a) => {
           const isActive = active === a.key;
           return (
-            <button
+            <AIAssistActionButton
               key={a.key}
-              type="button"
+              label={a.label}
+              icon={a.icon}
+              iconClass={a.iconClass}
+              isActive={isActive}
               onClick={() => handleClick(a.key)}
-              title={a.label}
-              aria-pressed={isActive}
-              className={cn(
-                'inline-flex w-full items-center justify-start gap-1.5 min-h-[32px] px-3 py-1 rounded-lg text-left',
-                'text-[11px] font-medium leading-tight',
-                'border border-white/10 bg-white/5 backdrop-blur-sm',
-                'text-foreground/80 transition-colors',
-                'shadow-[inset_0_1px_0_0_hsl(0_0%_100%/0.06)]',
-                'hover:bg-white/[0.09] hover:text-foreground hover:border-white/15',
-                isActive && 'bg-primary/15 border-primary/30 text-primary',
-              )}
-            >
-              <span className={cn('shrink-0', !isActive && a.iconClass)}>{a.icon}</span>
-              <span className="truncate">{a.label}</span>
-            </button>
+            />
           );
         })}
       </div>
@@ -293,5 +284,69 @@ export function EmailQuickActionsToolbar({
         </div>
       )}
     </div>
+  );
+}
+
+// ─── AIAssistActionButton ──────────────────────────────────────────────
+// Single source of truth for every Quick Action card in the AI Assist
+// sidebar. Same height / radius / padding / typography as the "Save Email
+// to Deal" pill family elsewhere on the panel so the whole right rail
+// reads as one design system.
+interface AIAssistActionButtonProps {
+  label: string;
+  icon: ReactNode;
+  iconClass?: string;
+  isActive?: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}
+
+function AIAssistActionButton({
+  label,
+  icon,
+  iconClass,
+  isActive = false,
+  disabled = false,
+  onClick,
+}: AIAssistActionButtonProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      title={label}
+      aria-pressed={isActive}
+      className={cn(
+        // Layout — equal-height 2-col grid cell, icon + label left-aligned
+        'group inline-flex w-full items-center gap-2 h-10 px-3 py-2 rounded-lg text-left',
+        // Typography
+        'text-sm font-medium leading-none',
+        // Default surface — subtle elevation over the inbox surface
+        'border border-white/10 bg-white/[0.03]',
+        'text-foreground/90 transition-colors duration-150',
+        // Hover
+        'hover:bg-white/[0.06] hover:border-white/20 hover:text-foreground',
+        // Active / pressed — dim background, no layout shift
+        'active:bg-white/[0.02]',
+        // Focus ring — keyboard accessibility, offset against panel bg
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/70 focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--inbox-surface))]',
+        // Toggle state (when its inline panel is open)
+        isActive && 'bg-primary/10 border-primary/40 text-primary hover:bg-primary/15 hover:border-primary/50 hover:text-primary',
+        // Disabled
+        disabled && 'opacity-40 cursor-not-allowed pointer-events-none',
+      )}
+    >
+      <span
+        className={cn(
+          'shrink-0 transition-opacity duration-150',
+          isActive
+            ? 'text-primary opacity-100'
+            : cn(iconClass || 'text-primary', 'opacity-70 group-hover:opacity-100'),
+        )}
+      >
+        {icon}
+      </span>
+      <span className="truncate flex-1 min-w-0">{label}</span>
+    </button>
   );
 }
