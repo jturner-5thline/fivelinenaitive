@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
-import { DealStatusTag } from '@/components/deal/DealStatusTag';
+import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -300,11 +300,13 @@ function DealTile({
   const amount = formatAmount(deal.value);
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(); } }}
       className={cn(
-        'group/tile relative w-full text-left rounded-lg border transition-colors px-3 py-2.5',
+        'group/tile relative w-full text-left rounded-lg border transition-colors px-3 py-2.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         active
           ? 'border-white/25 bg-white/[0.06]'
           : 'border-white/10 bg-white/[0.02] hover:bg-white/[0.04]',
@@ -315,9 +317,9 @@ function DealTile({
           {deal.company || deal.name}
         </h3>
         <div className="flex items-center gap-1 shrink-0">
-          {/* Deal status — reuses the shared DealStatusTag so this tile
-              stays in sync with the deal detail view's status surface. */}
-          <DealStatusTag status={deal.status} />
+          {/* Deal status — interactive tag so the user can change the
+              deal's canonical status without leaving the Deals tab. */}
+          <EditableDealStatusTag dealId={deal.id} status={deal.status} />
           <Badge variant="green" className="rounded-full shrink-0 text-[10px]">
             {amount}
           </Badge>
@@ -364,6 +366,6 @@ function DealTile({
       >
         <Check className="h-3 w-3" strokeWidth={2.5} />
       </span>
-    </button>
+    </div>
   );
 }
