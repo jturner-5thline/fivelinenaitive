@@ -132,6 +132,9 @@ interface DealEmailsTabProps {
   isLoadingMore?: boolean;
   /** True while background auto-pagination is still draining the mailbox */
   isAutoPaginating?: boolean;
+  /** Invoked after a successful provider-side trash so the parent can
+   *  refetch the Trash folder and reflect the new state immediately. */
+  onAfterTrash?: () => void;
 }
 
 type ViewFilter = 'all' | 'unread' | 'needs_response';
@@ -261,7 +264,7 @@ function PaginationFooter({
   return null;
 }
 
-export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating }: DealEmailsTabProps) {
+export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingExternal, onGmailSend, onLoadMore, hasMore, isLoadingMore, isAutoPaginating, onAfterTrash }: DealEmailsTabProps) {
   const { user } = useAuth();
   const { company } = useCompany();
   // Saved signature from Settings → Email signature. Auto-injected into the
