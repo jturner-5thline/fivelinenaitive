@@ -1661,6 +1661,32 @@ export function CashFlowManager() {
             return ok;
           }}
           onUpdateScheduledEntry={async (id, patch) => {
+            // Deal-projected rows (id prefix `deal:`) aren't stored in
+            // scheduled_cash_flows; their per-occurrence excludes / series
+            // truncation are persisted as deal cashflow overrides.
+            if (id.startsWith('deal:')) {
+              const cfg = patch.frequency_config as any;
+              const excluded: string[] = Array.isArray(cfg?.excluded_dates) ? cfg.excluded_dates : [];
+              const end_date = (patch as any).end_date as string | null | undefined;
+              if (end_date && excluded.length > 0) {
+                // Truncate from the boundary date forward; the date itself is excluded too.
+                // Pick the latest excluded date as the cutoff (delete future flow).
+                const cutoff = excluded[excluded.length - 1];
+                const ok = await truncateDealSeries(id, cutoff);
+                if (ok) logAction(`Deleted deal projection and future entries: ${id}`);
+                return ok;
+              }
+              if (excluded.length > 0) {
+                let ok = true;
+                for (const d of excluded) {
+                  // eslint-disable-next-line no-await-in-loop
+                  ok = (await excludeDealOccurrence(id, d)) && ok;
+                }
+                if (ok) logAction(`Excluded deal projection occurrence: ${id}`);
+                return ok;
+              }
+              return false;
+            }
             const existing = (scheduledItems || []).find((e) => e.id === id);
             if (!existing) return false;
             pushUndo(`Edit entry: ${existing.category}`);
@@ -1673,6 +1699,10 @@ export function CashFlowManager() {
             return ok;
           }}
           onDeleteScheduledEntry={async (id) => {
+            // Deal-projected rows can't be hard-deleted (they're derived).
+            // The drilldown will route delete actions through onUpdateScheduledEntry
+            // with excluded_dates / end_date so we never reach here for them.
+            if (id.startsWith('deal:')) return false;
             const existing = (scheduledItems || []).find((e) => e.id === id);
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);
