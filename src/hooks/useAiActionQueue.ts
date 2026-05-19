@@ -291,7 +291,7 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
     switch (item.action_type) {
       case 'create_task': {
         const p = item.payload || {};
-        const { error } = await supabase.from('tasks').insert({
+        const { data: created, error } = await supabase.from('tasks').insert({
           title: p.title || item.title,
           description: p.description ?? item.description ?? null,
           due_date: p.due_date ?? null,
@@ -299,8 +299,18 @@ async function executeQueuedAction(item: QueuedAiAction, userId: string): Promis
           deal_id: item.deal_id,
           assigned_to: p.assigned_to ?? userId,
           assigned_by: userId,
-        } as any);
+        } as any).select('id').single();
         if (error) return { ok: false, error: error.message };
+        if (created?.id) {
+          const { syncTaskAfterCreate } = await import('@/lib/asana/syncTaskAfterCreate');
+          syncTaskAfterCreate({
+            taskId: created.id,
+            title: p.title || item.title,
+            description: p.description ?? item.description ?? null,
+            dueDate: p.due_date ?? null,
+            assignedTo: p.assigned_to ?? userId,
+          }).catch((e) => console.warn('[useAiActionQueue] asana sync error:', e));
+        }
         break;
       }
       case 'log_note': {
