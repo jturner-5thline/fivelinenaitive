@@ -76,7 +76,7 @@ import { EmailBodyRenderer } from './EmailBodyRenderer';
 import { EmailSelectionActionMenu } from './EmailSelectionActionMenu';
 import { EmailAttachmentList } from './EmailAttachmentList';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from './EmailAttachmentsStrip';
-import { useFullEmailMessage } from './useFullEmailMessage';
+import { useFullEmailMessage, prefetchFullEmailMessage } from './useFullEmailMessage';
 import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
