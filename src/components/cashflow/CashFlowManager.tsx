@@ -21,6 +21,7 @@ import { useCashInItems } from './useCashInItems';
 import { useScheduledCashFlows } from './useScheduledCashFlows';
 import { useQuickbooksDerivedCashFlows } from './useQuickbooksDerivedCashFlows';
 import { useDealProjectedCashFlows } from './useDealProjectedCashFlows';
+import { useDealCashflowOverrides } from './useDealCashflowOverrides';
 import { useCustomCashFlowRows } from './useCustomCashFlowRows';
 import { mergeScheduledIntoWeekly, ACCOUNT_OPTIONS, resolveCategoryToGridRow, DEBT_ADVISORY_DEFAULT_SUBCATEGORY, generateOccurrences, applyVariance, gridRowToCanonicalCategory, type ScheduledCashFlow } from './scheduledCashFlows';
 import { WEEKLY_HISTORICAL_SEED, LAST_HISTORICAL_WEEK_ENDING } from './weeklyHistoricalSeed';
@@ -166,7 +167,16 @@ export function CashFlowManager() {
   const { items: scheduledItems, saveAll: saveScheduledItems, addItem: addScheduledItem, fetchItems: refreshScheduledItems } = useScheduledCashFlows(company?.id);
   // Auto-populated entries — read-only, stacked on top of manual Configure rows.
   const { items: qbDerivedItems } = useQuickbooksDerivedCashFlows(!!company?.id);
-  const { items: dealProjectedItems } = useDealProjectedCashFlows(company?.id, !!company?.id);
+  const {
+    overrides: dealOverrides,
+    excludeOccurrence: excludeDealOccurrence,
+    truncateSeries: truncateDealSeries,
+  } = useDealCashflowOverrides(company?.id);
+  const { items: dealProjectedItems } = useDealProjectedCashFlows(
+    company?.id,
+    !!company?.id,
+    dealOverrides,
+  );
   // Wrap saved deal cash-in DB rows (cashflow_cash_in_items) as one-time
   // ScheduledCashFlow entries so they get routed by category through
   // mergeScheduledIntoWeekly into the visible Retainers / Milestones /
@@ -1651,6 +1661,32 @@ export function CashFlowManager() {
             return ok;
           }}
           onUpdateScheduledEntry={async (id, patch) => {
+            // Deal-projected rows (id prefix `deal:`) aren't stored in
+            // scheduled_cash_flows; their per-occurrence excludes / series
+            // truncation are persisted as deal cashflow overrides.
+            if (id.startsWith('deal:')) {
+              const cfg = patch.frequency_config as any;
+              const excluded: string[] = Array.isArray(cfg?.excluded_dates) ? cfg.excluded_dates : [];
+              const end_date = (patch as any).end_date as string | null | undefined;
+              if (end_date && excluded.length > 0) {
+                // Truncate from the boundary date forward; the date itself is excluded too.
+                // Pick the latest excluded date as the cutoff (delete future flow).
+                const cutoff = excluded[excluded.length - 1];
+                const ok = await truncateDealSeries(id, cutoff);
+                if (ok) logAction(`Deleted deal projection and future entries: ${id}`);
+                return ok;
+              }
+              if (excluded.length > 0) {
+                let ok = true;
+                for (const d of excluded) {
+                  // eslint-disable-next-line no-await-in-loop
+                  ok = (await excludeDealOccurrence(id, d)) && ok;
+                }
+                if (ok) logAction(`Excluded deal projection occurrence: ${id}`);
+                return ok;
+              }
+              return false;
+            }
             const existing = (scheduledItems || []).find((e) => e.id === id);
             if (!existing) return false;
             pushUndo(`Edit entry: ${existing.category}`);
@@ -1663,6 +1699,10 @@ export function CashFlowManager() {
             return ok;
           }}
           onDeleteScheduledEntry={async (id) => {
+            // Deal-projected rows can't be hard-deleted (they're derived).
+            // The drilldown will route delete actions through onUpdateScheduledEntry
+            // with excluded_dates / end_date so we never reach here for them.
+            if (id.startsWith('deal:')) return false;
             const existing = (scheduledItems || []).find((e) => e.id === id);
             pushUndo(`Delete entry: ${existing?.category || id}`);
             const ok = await saveScheduledItems([], [id]);

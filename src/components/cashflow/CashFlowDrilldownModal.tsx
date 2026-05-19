@@ -416,8 +416,11 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     const row = deletePrompt;
     setDeleteBusy('one');
     try {
-      // One-time entries → fully delete; no exclusion concept.
-      if (row.entry.frequency_type === 'one_time') {
+      const isDeal = row.source === 'deal';
+      // One-time entries → fully delete; no exclusion concept (except deal
+      // projections, which can't be hard-deleted — exclude the occurrence
+      // instead so the override persists).
+      if (row.entry.frequency_type === 'one_time' && !isDeal) {
         if (onDeleteEntry) await onDeleteEntry(row.entryId);
       } else if (onUpdateEntry) {
         const cfg = row.entry.frequency_config || {};
@@ -440,15 +443,18 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
     setDeleteBusy('future');
     try {
       const removed = 1 + futureCount;
-      if (row.entry.frequency_type === 'one_time') {
+      const isDeal = row.source === 'deal';
+      if (row.entry.frequency_type === 'one_time' && !isDeal) {
         if (onDeleteEntry) await onDeleteEntry(row.entryId);
-      } else if (priorCount === 0) {
+      } else if (priorCount === 0 && !isDeal) {
         // Nothing before the selected date — wipe the entire series.
         if (onDeleteEntry) await onDeleteEntry(row.entryId);
       } else if (onUpdateEntry) {
         // Truncate the series the day before the selected occurrence, and
         // also exclude the selected date itself in case it sits on the
-        // boundary of the recurring expansion.
+        // boundary of the recurring expansion. For deal-projected rows the
+        // parent handler turns this into a persisted override (the deal
+        // record itself is not modified).
         const cfg = row.entry.frequency_config || {};
         const existing = cfg.excluded_dates || [];
         const next = existing.includes(row.date) ? existing : [...existing, row.date];
@@ -738,7 +744,8 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                                 <Pencil className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            {onDeleteEntry && r.source === 'manual' && (
+                            {((onDeleteEntry && r.source === 'manual') ||
+                              (onUpdateEntry && r.source === 'deal')) && (
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -750,7 +757,7 @@ export function CashFlowDrilldownModal({ open, onClose, context, items, onUpdate
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
-                            {r.source !== 'manual' && (
+                            {r.source === 'quickbooks' && (
                               <SourceLockedAction row={r} />
                             )}
                           </div>
