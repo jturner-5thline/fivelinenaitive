@@ -270,9 +270,12 @@ export function TaskListView({
   const overdueTasks = tasks.filter(t => isOverdueFn(t.due_date, t.status, boundaries));
   const overdueTaskIds = new Set(overdueTasks.map(task => task.id));
 
-  // Build groups based on groupBy mode
+  // Build groups based on groupBy mode. `none` renders a single flat list
+  // with no section header, no count chip, no collapse toggle, and no
+  // pinned Overdue strip — all tasks flow as one continuous list.
   let groups: { key: string; label: string; tasks: Task[] }[];
-  if (groupBy === 'focus') groups = getFocusGroups(tasks, boundaries);
+  if (groupBy === 'none') groups = [{ key: '__flat__', label: '', tasks }];
+  else if (groupBy === 'focus') groups = getFocusGroups(tasks, boundaries);
   else if (groupBy === 'time') groups = getTimeGroups(tasks, boundaries);
   else if (groupBy === 'priority') groups = getPriorityGroups(tasks);
   else groups = statusGroups.map(g => ({
@@ -357,11 +360,13 @@ export function TaskListView({
             const isCollapsed = collapsedSections.has(group.key);
             const statusConf = STATUS_COLORS[group.key];
             const accentColor = statusConf?.dot || '#8b92a5';
+            const isFlat = group.key === '__flat__';
 
             return (
               <div key={group.key}>
                 {/* Section header — chevron and dot align with the data-row
                     chevron/checkbox columns by reusing the row grid template. */}
+                {!isFlat && (
                 <button
                   onClick={() => toggleSection(group.key)}
                   className={cn(
@@ -408,8 +413,9 @@ export function TaskListView({
                   {cols.map(c => <div key={c.id} aria-hidden />)}
                   <div aria-hidden />
                 </button>
+                )}
 
-                {!isCollapsed && (
+                {(isFlat || !isCollapsed) && (
                   <div className="pt-1.5 pb-1 space-y-1 px-2">
                     {group.tasks.map(task => {
                       const globalIndex = tasks.indexOf(task);
