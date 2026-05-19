@@ -40,6 +40,13 @@ import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
 import { CadenceInsightCard } from './CadenceInsightCard';
+import {
+  COMPOSE_BODY_EVENT,
+  type ComposeBodyDetail,
+  detectSchedulingIntent,
+  inboundProposedTimes,
+} from './scheduleIntent';
+import { CalendarClock } from 'lucide-react';
 import type { DealContextSummary } from '@/hooks/useDealContextSummary';
 import { toast } from 'sonner';
 import type { DealAttachmentCategory } from '@/hooks/useDealAttachments';
@@ -183,6 +190,13 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // full meeting scheduler workspace (calendar read → slot pick → invite).
   // This UPGRADES the existing chip without adding a new button anywhere.
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  // Schedule-intent prompt card state. Driven by the COMPOSE_BODY_EVENT
+  // fired (debounced 500ms) from InlineReplyComposer / PopOutComposer.
+  // Dismissals are per-thread + per-compose-session: once the user X's
+  // the card for this thread, we don't re-surface it again until the
+  // sidebar remounts (new thread opened).
+  const [scheduleHintActive, setScheduleHintActive] = useState(false);
+  const scheduleHintDismissedThreads = useRef<Set<string>>(new Set());
   // Collapsible section state for the redesigned layout. Draft reply is the
   // biggest space-hog so it stays collapsed by default; Suggested Tasks
   // collapses by default whenever a Suggested Update is also visible to
@@ -205,6 +219,29 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       window.removeEventListener('naitive:ai-assist:popout-closed', onClose);
     };
   }, []);
+
+  // Listen for compose-body changes from either composer surface. When
+  // scheduling intent is detected — and the inbound thread isn't itself
+  // a proposal of times (Scenario 2) — surface the prompt card. Skips
+  // entirely if the user dismissed the card for this thread.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<ComposeBodyDetail>).detail;
+      if (!detail || detail.threadId !== thread.threadId) return;
+      if (scheduleHintDismissedThreads.current.has(detail.threadId)) return;
+      if (schedulerOpen) return; // scheduler already up — no prompt needed
+      const inboundTexts = (thread.emails || [])
+        .filter((m: any) => (m?.from_email || '').toLowerCase() !== 'jturner@5thline.co')
+        .map((m: any) => (m?.body_preview || m?.snippet || ''));
+      if (inboundProposedTimes(inboundTexts)) {
+        setScheduleHintActive(false);
+        return;
+      }
+      setScheduleHintActive(detectSchedulingIntent(detail.body));
+    };
+    window.addEventListener(COMPOSE_BODY_EVENT, handler as EventListener);
+    return () => window.removeEventListener(COMPOSE_BODY_EVENT, handler as EventListener);
+  }, [thread.threadId, thread.emails, schedulerOpen]);
   // Snapshot of the slim deal-context summary surfaced in the sidebar header
   // card. Forwarded to the edge function so the draft tone reflects whether
   // the deal is At Risk, Off Track, On Hold, etc.
@@ -1259,6 +1296,40 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               when the "Request a meeting" intent chip in the Draft Reply
               card triggers it (legacy entry point) — keeps that flow
               working without re-introducing the standalone button. */}
+          {scheduleHintActive && !schedulerOpen && (
+            <div className="mx-3 mb-2 rounded-md border border-primary/30 bg-primary/[0.06] p-3 flex items-start gap-2.5">
+              <CalendarClock className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-[12px] font-medium text-foreground leading-snug">
+                  Looks like you're trying to schedule — want me to pull your available times?
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Button
+                    size="sm"
+                    className="h-7 text-[11px] px-2.5"
+                    onClick={() => {
+                      setSchedulerOpen(true);
+                      setScheduleHintActive(false);
+                    }}
+                  >
+                    Generate Times
+                  </Button>
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 shrink-0 text-muted-foreground hover:text-foreground"
+                aria-label="Dismiss"
+                onClick={() => {
+                  scheduleHintDismissedThreads.current.add(thread.threadId);
+                  setScheduleHintActive(false);
+                }}
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          )}
           {schedulerOpen && (
             <MeetingSchedulerCard
               recipientEmail={thread.latestEmail?.from_email}

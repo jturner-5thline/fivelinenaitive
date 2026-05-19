@@ -32,6 +32,7 @@ import {
   DRAFT_INTENT_OPTIONS,
   type AiAssistToneKey,
 } from './AiAssistSidebar';
+import { dispatchComposeBody } from './scheduleIntent';
 
 function DraftStatusIndicator({ status }: { status: DraftSaveStatus }) {
   if (status === 'idle') return null;
@@ -137,6 +138,12 @@ export function PopOutComposer({
       }));
     } catch {}
   }, []);
+
+  // Feed the schedule-intent listener in AiAssistSidebar so the prompt
+  // card surfaces while the user is typing in the floating composer too.
+  useEffect(() => {
+    dispatchComposeBody({ threadId: initialDraft.threadId, body });
+  }, [body, initialDraft.threadId]);
 
   // Floating window state — positioned ABSOLUTELY within the nearest
   // positioned ancestor (the email modal/container), so it stays fully
