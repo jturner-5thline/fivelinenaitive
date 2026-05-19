@@ -279,11 +279,13 @@ function titleCase(s: string): string {
 function DealTile({
   deal,
   active,
+  isStale = false,
   onClick,
   onDismiss,
 }: {
   deal: Deal;
   active: boolean;
+  isStale?: boolean;
   onClick: () => void;
   onDismiss: () => void;
 }) {
