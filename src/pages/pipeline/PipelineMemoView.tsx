@@ -249,7 +249,7 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
         </div>
       ) : (
         <>
-          <div className="w-[320px] shrink-0 min-w-0">{masterPane}</div>
+          <div className="w-[368px] shrink-0 min-w-0">{masterPane}</div>
           <div className="flex-1 min-w-0">{detailPane}</div>
         </>
       )}
