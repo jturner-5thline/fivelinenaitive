@@ -3508,13 +3508,13 @@ export default function DealDetail() {
                                 return (
                                   <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
                                     <span className="text-muted-foreground text-sm">Client Contact</span>
-                                    <div className="min-w-0">
+                                    <div className="min-w-0 flex items-center gap-2">
                                       <TooltipProvider>
                                         <Tooltip>
                                           <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
                                             <TooltipTrigger asChild>
                                               <PopoverTrigger asChild>
-                                                <Button variant="outline" className="w-full justify-start h-8 px-3 font-normal text-sm overflow-hidden">
+                                                <Button variant="outline" className="flex-1 min-w-0 justify-start h-8 px-3 font-normal text-sm overflow-hidden">
                                                   <span className="truncate">
                                                     {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
                                                   </span>
@@ -3552,6 +3552,16 @@ export default function DealDetail() {
                                           </Popover>
                                         </Tooltip>
                                       </TooltipProvider>
+                                      <DraftEmailToClientContactButton
+                                        dealId={deal.id}
+                                        dealName={deal.dealName}
+                                        contactName={deal.contact}
+                                        contactInfo={deal.contactInfo}
+                                        companyDomain={deal.companyUrl}
+                                        size="sm"
+                                        variant="outline"
+                                        className="shrink-0"
+                                      />
                                     </div>
                                   </div>
                                 );
