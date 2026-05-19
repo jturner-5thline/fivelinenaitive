@@ -81,7 +81,6 @@ import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
 import { FolderPlus } from 'lucide-react';
 import { Users } from 'lucide-react';
-import { supabase as _supabaseForParticipants } from '@/integrations/supabase/client';
 import { useThreadWorkflowAnalysis } from '@/hooks/useThreadWorkflowAnalysis';
 import { useEmailPrioritySignals } from '@/hooks/useEmailPrioritySignals';
 import type { DetectedSignal, EmailPrioritySignalType, PrioritySignalSeverity } from '@/lib/emailPrioritySignals';
