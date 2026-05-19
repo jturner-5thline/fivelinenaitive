@@ -185,8 +185,8 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
 
   const masterPane = (
     <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
-      <ScrollArea className="flex-1 min-h-0 px-2 py-2">
-        <div className="space-y-1 pb-2">
+      <ScrollArea className="flex-1 min-h-0 px-3 py-2">
+        <div className="space-y-1.5 pb-2 pr-0.5">
           {visible.map((deal) => (
             <DealTile
               key={deal.id}
@@ -255,8 +255,8 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
         </div>
       ) : (
         <>
-          <div className="w-[368px] shrink-0 min-w-0">{masterPane}</div>
-          <div className="flex-1 min-w-0">{detailPane}</div>
+          <div className="w-[368px] shrink-0 min-w-0 h-full">{masterPane}</div>
+          <div className="flex-1 min-w-0 h-full">{detailPane}</div>
         </>
       )}
     </div>
