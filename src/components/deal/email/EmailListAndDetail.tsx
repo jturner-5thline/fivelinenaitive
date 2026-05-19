@@ -3093,8 +3093,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             the full width. Below 1100px we collapse to slide-over to keep the
             detail column wide enough for body wrapping. */}
         {showAiAssist && (
-          {/* AI Assist column — transparent; only a thin left border separates
-              it from the message column. Shares the popup-shell surface. */}
           <div className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-transparent">
             <EmailPaneErrorBoundary
               resetKey={`ai-assist-${thread.threadId}`}
