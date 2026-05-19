@@ -1120,7 +1120,7 @@ function EmailTab({
                         receivedAt: e.received_at || null,
                       })}
                   >
-                    <div>
+                    <div className="relative group/rundown-email">
                     <BriefingRow
                       borderless
                       selected={!!isSelected}
@@ -1153,6 +1153,36 @@ function EmailTab({
                         </>
                       }
                     />
+                    <button
+                      type="button"
+                      aria-label="Hide from Rundown"
+                      title="Hide from Rundown (does not mark as read)"
+                      onClick={(ev) => {
+                        ev.stopPropagation();
+                        const key = rundownKey(e);
+                        if (!key) return;
+                        if (detail && (detail.id === e.id || detail.gmail_message_id === e.gmail_message_id)) {
+                          setDetail(null);
+                        }
+                        rundownClears.clear(key);
+                        toast.success('Hidden from Rundown', {
+                          description: 'Email is unchanged in your inbox.',
+                          action: {
+                            label: 'Undo',
+                            onClick: () => rundownClears.restore(key),
+                          },
+                        });
+                      }}
+                      onPointerDown={(ev) => ev.stopPropagation()}
+                      onMouseDown={(ev) => ev.stopPropagation()}
+                      className="absolute top-2 right-2 inline-flex items-center justify-center h-6 w-6 rounded-full
+                        border border-border/60 bg-background/70 text-muted-foreground opacity-0
+                        group-hover/rundown-email:opacity-100 focus-visible:opacity-100 transition-opacity
+                        hover:border-primary/50 hover:bg-primary/10 hover:text-primary
+                        focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+                    >
+                      <EyeOff className="h-3 w-3" />
+                    </button>
                     </div>
                   </EmailContextMenu>
                 );
