@@ -789,16 +789,31 @@ export function useThreadWorkflowAnalysis({
 
       const lenderName = rec.lender_name || analysis.likely_lender_firm.name || '';
       const senderEmail = latestInbound?.from_email || null;
-      const company = await resolveLenderCompany(lenderName, senderEmail);
-      debugContext = { ...debugContext, companyId: company?.id || null, companyName: company?.name || null };
-      if (!company?.id) {
-        throw new Error(`Could not resolve lender company for "${lenderName || 'Unknown lender'}"`);
-      }
+      // Fast path: try matching directly against deal_lenders on this deal
+      // by name. This avoids requiring a CRM company record for lenders
+      // that already exist on the deal (the most common case for the
+      // Confirm flow).
+      let targetRow = await resolveDealLenderRow(canonicalDealId, lenderName, '');
+      let company: { id: string; name: string } | null = targetRow
+        ? { id: targetRow.id, name: targetRow.name }
+        : null;
 
-      const targetRow = await resolveDealLenderRow(canonicalDealId, company.name, company.id);
+      if (!targetRow?.id) {
+        // Fall back to CRM company resolution + retry.
+        const resolvedCompany = await resolveLenderCompany(lenderName, senderEmail);
+        debugContext = {
+          ...debugContext,
+          companyId: resolvedCompany?.id || null,
+          companyName: resolvedCompany?.name || null,
+        };
+        if (resolvedCompany?.id) {
+          company = resolvedCompany;
+          targetRow = await resolveDealLenderRow(canonicalDealId, resolvedCompany.name, resolvedCompany.id);
+        }
+      }
       debugContext = { ...debugContext, dealLenderId: targetRow?.id || null };
       if (!targetRow?.id) {
-        throw new Error(`Lender not on this deal: ${company.name}`);
+        throw new Error(`Lender "${lenderName || 'Unknown'}" is not on this deal yet. Add it from the Lenders tab and try again.`);
       }
 
       const finalDetailLabels: string[] = (overrides?.confirmedDetailLabels && overrides.confirmedDetailLabels.length > 0)
