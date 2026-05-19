@@ -2,6 +2,7 @@ import type { Deal } from '@/types/deal';
 import { Badge } from '@/components/ui/badge';
 import { formatDealType } from '@/utils/dealTypeLabels';
 import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
+import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 
 interface MemoHeaderProps {
   deal: Deal;
@@ -75,7 +76,12 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
             <Badge variant="gray" className="rounded-full">{assetClass}</Badge>
           )}
         </div>
-        <Badge variant="green" className="rounded-full shrink-0">{amountLabel}</Badge>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Editable status tag — reuses the shared status surface and
+              writes back to deal.status so every other consumer updates. */}
+          <EditableDealStatusTag dealId={deal.id} status={deal.status} />
+          <Badge variant="green" className="rounded-full">{amountLabel}</Badge>
+        </div>
       </div>
       {statusDisplay && (
         <p
