@@ -123,6 +123,7 @@ const Unsubscribe = lazy(lazyRetry(() => import("./pages/Unsubscribe")));
 const PendingApproval = lazy(lazyRetry(() => import("./pages/PendingApproval")));
 const PendingCompanyApproval = lazy(lazyRetry(() => import("./pages/PendingCompanyApproval")));
 const Homepage = lazy(lazyRetry(() => import("./pages/Homepage")));
+const BlogPost = lazy(lazyRetry(() => import("./pages/BlogPost")));
 const Promo = lazy(lazyRetry(() => import("./pages/Promo")));
 const FieldLayoutEditorPage = lazy(lazyRetry(() => import("./pages/FieldLayoutEditorPage")));
 const HubspotSyncHealth = lazy(lazyRetry(() => import("./pages/HubspotSyncHealth")));
