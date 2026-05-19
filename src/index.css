@@ -1403,3 +1403,33 @@ html[data-deal-carousel-dir='left'] .deal-carousel-viewport {
     animation: none !important;
   }
 }
+
+/* ---------------------------------------------------------------- */
+/* Pipeline left-column tile — soft "stale" attention cue.            */
+/* Triggered when a deal has had no status or stage update in ≥2     */
+/* business days. Designed as a faint amber ring + outer glow, never */
+/* red, so it reads as an attention hint instead of an error alert.  */
+/* ---------------------------------------------------------------- */
+@keyframes deal-tile-stale-pulse {
+  0%, 100% {
+    box-shadow:
+      0 0 0 1px hsl(38 92% 60% / 0.32),
+      0 0 14px -2px hsl(38 92% 60% / 0.28);
+  }
+  50% {
+    box-shadow:
+      0 0 0 1px hsl(38 92% 60% / 0.45),
+      0 0 20px -2px hsl(38 92% 60% / 0.45);
+  }
+}
+.deal-tile-stale-glow {
+  animation: deal-tile-stale-pulse 3.6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .deal-tile-stale-glow {
+    animation: none;
+    box-shadow:
+      0 0 0 1px hsl(38 92% 60% / 0.35),
+      0 0 14px -2px hsl(38 92% 60% / 0.3);
+  }
+}
