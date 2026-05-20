@@ -89,6 +89,7 @@ const Lenders = lazy(lazyRetry(() => import("./pages/Lenders")));
 const LenderDatabaseConfig = lazy(lazyRetry(() => import("./pages/LenderDatabaseConfig")));
 const LenderSyncHistory = lazy(lazyRetry(() => import("./pages/LenderSyncHistory")));
 const LenderDealHistory = lazy(lazyRetry(() => import("./pages/LenderDealHistory")));
+const LenderMatchingQA = lazy(lazyRetry(() => import("./pages/LenderMatchingQA")));
 const Preferences = lazy(lazyRetry(() => import("./pages/Preferences")));
 const Analytics = lazy(lazyRetry(() => import("./pages/Analytics")));
 const Reports = lazy(lazyRetry(() => import("./pages/Reports")));
@@ -330,6 +331,7 @@ const App = () => (
                             <Route path="/lenders/config" element={<LenderDatabaseConfig />} />
                             <Route path="/lenders/sync-history" element={<LenderSyncHistory />} />
                             <Route path="/lenders/:lenderName/history" element={<LenderDealHistory />} />
+                            <Route path="/lenders/qa" element={<LenderMatchingQA />} />
                             <Route path="/preferences" element={<Preferences />} />
                             <Route path="/database" element={<Database />} />
                             <Route path="/workflows" element={<Workflows />} />
