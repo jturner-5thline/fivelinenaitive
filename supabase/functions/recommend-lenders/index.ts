@@ -1135,10 +1135,12 @@ serve(async (req) => {
       });
     }
 
-    // Sort by deterministic score. In QA mode keep ALL scored candidates so the
-    // harness can audit the full ranked list; otherwise cap to top 25 for AI re-rank.
+    // Sort by deterministic score. AI re-rank is always capped to the top 25
+    // for cost/latency; QA mode still receives the full scored set as
+    // recommendations (the rest just have no AI adjustment).
     candidates.sort((a, b) => b.detScore - a.detScore);
-    const topForAI = qa ? candidates : candidates.slice(0, 25);
+    const topForAI = candidates.slice(0, 25);
+    const allScored = qa ? candidates : topForAI;
 
     // ── AI narrative re-rank (Lovable AI Gateway / Claude / fallback) ────────
     let aiAdjustments = new Map<string, { adj: number; rationale: string }>();
