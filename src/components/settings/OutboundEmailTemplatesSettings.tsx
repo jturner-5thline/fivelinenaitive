@@ -756,6 +756,73 @@ function TemplateEditor({
         />
       </div>
 
+      {/* Automation metadata */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Trigger Deal Stage</Label>
+          <Input
+            value={formData.trigger_stage}
+            onChange={e => updateField('trigger_stage', e.target.value)}
+            placeholder="e.g. Submitted to Lenders"
+            disabled={disabled}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Cadence</Label>
+          <Input
+            value={formData.cadence}
+            onChange={e => updateField('cadence', e.target.value)}
+            placeholder="e.g. One Off, Biweekly"
+            disabled={disabled}
+            className="h-8 text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Recipient</Label>
+          <Select
+            value={formData.recipient || 'unset'}
+            onValueChange={v => updateField('recipient', v === 'unset' ? '' : v)}
+            disabled={disabled}
+          >
+            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select recipient" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unset">—</SelectItem>
+              <SelectItem value="Client">Client</SelectItem>
+              <SelectItem value="Lender">Lender</SelectItem>
+              <SelectItem value="Internal">Internal</SelectItem>
+              <SelectItem value="Referral Partner">Referral Partner</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Category</Label>
+          <Input
+            value={formData.category}
+            onChange={e => updateField('category', e.target.value)}
+            placeholder="e.g. Payment, From FLEx"
+            disabled={disabled}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Approval Required</Label>
+          <div className="flex items-center gap-2 h-8">
+            <Switch
+              checked={formData.approval_required}
+              onCheckedChange={v => updateField('approval_required', v)}
+              disabled={disabled}
+            />
+            <span className="text-sm text-muted-foreground">
+              {formData.approval_required ? 'Manager approval required' : 'Auto-send allowed'}
+            </span>
+          </div>
+        </div>
+      </div>
+
       {/* Rich text editor */}
       <div className="space-y-1.5">
         <Label className="text-xs">Email Body</Label>
