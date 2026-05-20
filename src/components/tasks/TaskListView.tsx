@@ -1,4 +1,4 @@
-import { KeyboardEvent, RefObject, useState, useCallback, useMemo } from 'react';
+import { KeyboardEvent, RefObject, useState, useMemo } from 'react';
 import { TaskAssociationChips } from '@/components/tasks/TaskAssociationChips';
 import { Link } from 'react-router-dom';
 import { type Task } from '@/hooks/useTasks';
@@ -20,7 +20,6 @@ import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
   Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3, Mail,
 } from 'lucide-react';
-import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
 import { buildSourceEmailUrl } from '@/lib/sourceEmailLink';
 import { SourceEmailLink } from '@/components/tasks/SourceEmailLink';
