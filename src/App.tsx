@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useEffect } from "react";
 import ScrollToTop from "@/components/ScrollToTop";
 import CanonicalTag from "@/components/CanonicalTag";
 import { Toaster } from "@/components/ui/toaster";
@@ -38,6 +38,7 @@ import { AppLayout } from "@/components/AppLayout";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { Loader2 } from "lucide-react";
 import { lazyRetry } from "@/lib/lazyRetry";
+import { prefetchCommonRoutes } from "@/lib/routePrefetch";
 import { useAuth } from "@/contexts/AuthContext";
 
 /**
