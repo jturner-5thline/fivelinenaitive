@@ -583,7 +583,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             </colgroup>
             <thead>
               <tr>
-                <th style={thStyle}>Lender</th>
+                <th style={thStyle}>Funding Source</th>
                 <th style={thStyle}>Key Feedback</th>
               </tr>
             </thead>
@@ -725,7 +725,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
                 </colgroup>
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-400 uppercase tracking-wider text-[10px]">
-                    <th className="text-left px-3 py-2 font-semibold">Lender</th>
+                    <th className="text-left px-3 py-2 font-semibold">Funding Source</th>
                     <th className="text-left px-3 py-2 font-semibold">Key Feedback</th>
                   </tr>
                 </thead>

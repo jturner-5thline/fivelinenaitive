@@ -56,7 +56,7 @@ const TONE_INSTRUCTIONS: Record<ToneMode, string> = {
 const SOURCE_LABELS: Record<string, string> = {
   deal_metadata: 'Deal Info',
   deal_writeup: 'Writeup',
-  deal_lenders: 'Lenders',
+  deal_lenders: 'Funding Sources',
   milestones: 'Milestones',
   recent_activity: 'Recent Activity',
   deal_notes: 'Deal Notes',

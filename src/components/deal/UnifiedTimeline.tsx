@@ -25,7 +25,7 @@ interface UnifiedTimelineProps {
 }
 
 const typeConfig: Record<string, { icon: typeof Users; color: string; label: string }> = {
-  lender_update: { icon: Users, color: 'text-blue-500 bg-blue-500/10', label: 'Lender' },
+  lender_update: { icon: Users, color: 'text-blue-500 bg-blue-500/10', label: 'Funding Source' },
   stage_change: { icon: TrendingUp, color: 'text-purple-500 bg-purple-500/10', label: 'Stage' },
   document: { icon: Upload, color: 'text-green-500 bg-green-500/10', label: 'Document' },
   milestone: { icon: CheckSquare, color: 'text-amber-500 bg-amber-500/10', label: 'Milestone' },

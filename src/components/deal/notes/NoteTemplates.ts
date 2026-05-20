@@ -146,7 +146,7 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
 <p><strong>Target Close:</strong> </p>
 <hr>
 <table>
-<tr><th>Lender</th><th>Contact</th><th>Date Sent</th><th>Response</th><th>Status</th></tr>
+<tr><th>Funding Source</th><th>Contact</th><th>Date Sent</th><th>Response</th><th>Status</th></tr>
 <tr><td></td><td></td><td></td><td></td><td></td></tr>
 </table>
 <h3>Notes</h3>

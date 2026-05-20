@@ -425,7 +425,7 @@ export function DealSpaceNoteEditor({
       case 'manager': text = dealData.manager || ''; break;
       case 'lender_list': {
         const rows = lenders.map(l => `<tr><td>${l.name}</td><td>${l.stage}</td><td>${l.quote_amount ? '$' + Number(l.quote_amount).toLocaleString() : ''}</td><td>${l.quote_rate ? l.quote_rate + '%' : ''}</td></tr>`).join('');
-        const table = `<table><tr><th>Lender</th><th>Stage</th><th>Amount</th><th>Rate</th></tr>${rows}</table>`;
+        const table = `<table><tr><th>Funding Source</th><th>Stage</th><th>Amount</th><th>Rate</th></tr>${rows}</table>`;
         editor.chain().focus().insertContent(table).run();
         return;
       }

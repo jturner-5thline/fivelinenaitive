@@ -90,7 +90,7 @@ const CONFIDENCE_COLORS: Record<string, string> = {
 const SOURCE_LABELS: Record<string, string> = {
   deal_metadata: 'Deal Info',
   deal_writeup: 'Writeup',
-  deal_lenders: 'Lenders',
+  deal_lenders: 'Funding Sources',
   milestones: 'Milestones',
   recent_activity: 'Activity',
   deal_notes: 'Notes',

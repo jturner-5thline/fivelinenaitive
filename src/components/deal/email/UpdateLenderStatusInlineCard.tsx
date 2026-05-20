@@ -180,7 +180,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
       </div>
 
       <div className="space-y-1">
-        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Lender</label>
+        <label className="text-[10px] uppercase tracking-wider text-muted-foreground/80">Funding Source</label>
         <Select value={lenderId} onValueChange={setLenderId}>
           <SelectTrigger className="h-8 text-[12px]">
             <SelectValue />
