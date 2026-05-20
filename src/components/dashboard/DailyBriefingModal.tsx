@@ -63,6 +63,7 @@ import { RecentPipelineActivitySection } from './briefingPrimitives';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { WeeklyRundownReadOnlyCashflow } from '@/components/metrics/dashboards/WeeklyRundownReadOnlyCashflow';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 
 // Users for whom the Daily Rundown hides "Today's Follow-Ups" entirely and
 // collapses "Recent Pipeline Activity" behind a button that opens a side
@@ -1313,6 +1314,10 @@ export function PipelineTab({
   const { user } = useAuth();
   const { profile } = useProfile();
   const { isAdmin } = useCompany();
+  // Demo account: treat every deal as assigned to the current user so the
+  // Deal Rundown surfaces the full demo dataset instead of just owned
+  // deals. Scoped strictly to the demo tenant — production unaffected.
+  const isDemoAccount = useIsDemoAccount();
   // Only show the current user's own follow-ups (not the delegated view).
   const showOwnFollowups = enabled && !targetDealOwnerName;
   const { data: followupGroups = [] } = useMorningFollowups(showOwnFollowups);
@@ -1399,6 +1404,7 @@ export function PipelineTab({
     const all = (effectiveScopedDeals as any[]) || [];
     // Admins on non-rundown surfaces always see the full active-deal set.
     if (isAdmin && !hasRundownTarget) return all;
+    if (isDemoAccount) return all;
     if (!isRundownScope) return all;
     const taskSet = assignedTaskDealIds || new Set<string>();
     if (!effectiveOwnerName && taskSet.size === 0) return all;
@@ -1406,7 +1412,7 @@ export function PipelineTab({
       const owner = (d.dealOwner || d.deal_owner || '').toString().trim().toLowerCase();
       return (effectiveOwnerName && owner === effectiveOwnerName) || taskSet.has(d.id);
     });
-  }, [effectiveScopedDeals, effectiveOwnerName, assignedTaskDealIds, isRundownScope, isAdmin, hasRundownTarget]);
+  }, [effectiveScopedDeals, effectiveOwnerName, assignedTaskDealIds, isRundownScope, isAdmin, hasRundownTarget, isDemoAccount]);
 
   // Dev diagnostic: surface unexpected empty results for authenticated users.
   useEffect(() => {
