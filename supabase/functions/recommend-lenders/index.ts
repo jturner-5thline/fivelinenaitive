@@ -527,6 +527,16 @@ serve(async (req) => {
       patternsByLender.set(k, list);
     });
 
+    // ── AI-extracted lender fit attributes (reusable, embedding-backed) ──────
+    const { data: fitRows } = lenderIds.length
+      ? await supabase
+          .from("lender_fit_attributes")
+          .select("master_lender_id, lender_name, summary, positive_signals, negative_signals, exclusions, nuanced_preferences, embedding")
+          .in("master_lender_id", lenderIds)
+      : { data: [] as any[] };
+    const fitById = new Map<string, any>();
+    (fitRows ?? []).forEach((f: any) => fitById.set(f.master_lender_id, f));
+
     // Build deal evaluation context
     const overrideIndustry = (criteriaOverride?.industry && String(criteriaOverride.industry).trim()) || null;
     const overrideGeo = (criteriaOverride?.geo && String(criteriaOverride.geo).trim()) || null;
