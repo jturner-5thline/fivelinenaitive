@@ -302,40 +302,9 @@ const Auth = () => {
     }
   };
 
-  const handleGateSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('validate-gate', {
-        body: { password: gatePassword }
-      });
-      
-      if (error) throw error;
-      
-      if (data?.valid) {
-        sessionStorage.setItem(GATE_SESSION_KEY, "true");
-        sessionStorage.setItem(GATE_TOKEN_KEY, data.token);
-        setMode("login");
-        setGatePassword("");
-      } else {
-        toast.error("Incorrect password");
-      }
-    } catch (error: any) {
-      console.error('Gate validation error:', error);
-      toast.error("Unable to validate access. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle "Already have an account?" click - skip gate if already verified
+  // Login CTA now opens the standard login form directly (no pre-login gate).
   const handleLoginClick = () => {
-    if (hasPassedGate) {
-      setMode("login");
-    } else {
-      setMode("gate");
-    }
+    setMode("login");
   };
 
   const getTitle = () => {
@@ -344,7 +313,6 @@ const Auth = () => {
       case "reset": return "Set New Password";
       case "signup": return "Sign Up";
       case "mfa": return "Two-Factor Authentication";
-      case "gate": return "Access Required";
       default: return "Login";
     }
   };
@@ -355,7 +323,6 @@ const Auth = () => {
       case "reset": return "Enter your new password";
       case "signup": return "Create your account";
       case "mfa": return "Enter the code from your authenticator app";
-      case "gate": return "Enter the password to access login";
       default: return "Welcome back";
     }
   };
