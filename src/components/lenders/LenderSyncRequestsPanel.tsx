@@ -536,9 +536,9 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                 </TabsTrigger>
                 <TabsTrigger value="duplicates" className="gap-1.5">
                   Potential Duplicates
-                  {duplicateRequests.length > 0 && (
+                  {duplicateCount > 0 && (
                     <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                      {duplicateRequests.length}
+                      {duplicateCount}
                     </Badge>
                   )}
                 </TabsTrigger>
