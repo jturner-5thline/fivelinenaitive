@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useContact, useUpdateContact, useContactActivities, useCreateContactActivity, useContactDeals, useDeleteContact, LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES } from '@/hooks/useContacts';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
+import { EditableField } from '@/components/crm/EditableField';
 import { useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany, useLinkContactToDeal, useUnlinkContactFromDeal, useAllDeals } from '@/hooks/useCrmLinks';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
@@ -183,29 +184,17 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                 <CardTitle className="text-sm flex items-center gap-1.5"><User className="h-4 w-4" /> Contact Info</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <InfoRow label="Email" value={contact.email} />
-                <InfoRow label="Work Phone" value={contact.phone_work} />
-                <InfoRow label="Mobile" value={contact.phone_mobile} />
-                {contact.website_url ? (
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase">Website / Domain</p>
-                    <a href={contact.website_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs flex items-center gap-1 hover:underline">
-                      {contact.website_url.replace(/^https?:\/\//, '').replace(/\/$/, '')} <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                ) : (
-                  <InfoRow label="Website / Domain" value={null} />
-                )}
-                {contact.linkedin_url && (
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase">LinkedIn</p>
-                    <a href={contact.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs flex items-center gap-1 hover:underline">
-                      Profile <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
-                )}
-                <InfoRow label="Timezone" value={contact.timezone} />
-                <InfoRow label="Preferred Channel" value={contact.preferred_channel} />
+                <EditableField label="First Name" type="text" value={contact.first_name} onSave={(v) => handleQuickUpdate('first_name', v)} />
+                <EditableField label="Last Name" type="text" value={contact.last_name} onSave={(v) => handleQuickUpdate('last_name', v)} />
+                <EditableField label="Job Title" type="text" value={contact.job_title} onSave={(v) => handleQuickUpdate('job_title', v)} />
+                <EditableField label="Department" type="text" value={contact.department} onSave={(v) => handleQuickUpdate('department', v)} />
+                <EditableField label="Email" type="email" asLink value={contact.email} onSave={(v) => handleQuickUpdate('email', v)} />
+                <EditableField label="Work Phone" type="tel" value={contact.phone_work} onSave={(v) => handleQuickUpdate('phone_work', v)} />
+                <EditableField label="Mobile" type="tel" value={contact.phone_mobile} onSave={(v) => handleQuickUpdate('phone_mobile', v)} />
+                <EditableField label="Website / Domain" type="url" asLink value={contact.website_url} onSave={(v) => handleQuickUpdate('website_url', v)} />
+                <EditableField label="LinkedIn URL" type="url" asLink value={contact.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
+                <EditableField label="Timezone" type="text" value={contact.timezone} onSave={(v) => handleQuickUpdate('timezone', v)} />
+                <EditableField label="Preferred Channel" type="text" value={contact.preferred_channel} onSave={(v) => handleQuickUpdate('preferred_channel', v)} />
               </CardContent>
             </Card>
 
@@ -243,8 +232,8 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     triggerClassName="h-8 text-xs"
                   />
                 </div>
-                <InfoRow label="Lead Source" value={contact.lead_source} />
-                <InfoRow label="Source System" value={contact.source_system} />
+                <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
+                <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
               </CardContent>
             </Card>
 
@@ -387,17 +376,31 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Custom Fields</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  {Object.entries(contact.custom_fields).map(([key, value]) => <InfoRow key={key} label={key} value={String(value)} />)}
+                  {Object.entries(contact.custom_fields).map(([key, value]) => (
+                    <EditableField
+                      key={key}
+                      label={key}
+                      type="text"
+                      value={value == null ? '' : String(value)}
+                      onSave={(v) => handleQuickUpdate('custom_fields', { ...(contact.custom_fields || {}), [key]: v })}
+                    />
+                  ))}
                 </CardContent>
               </Card>
             )}
 
-            {contact.description && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Notes</CardTitle></CardHeader>
-                <CardContent><p className="text-xs text-muted-foreground whitespace-pre-wrap">{contact.description}</p></CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Notes</CardTitle></CardHeader>
+              <CardContent>
+                <EditableField
+                  label="Notes"
+                  type="textarea"
+                  value={contact.description}
+                  placeholder="Add notes about this contact…"
+                  onSave={(v) => handleQuickUpdate('description', v)}
+                />
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
