@@ -81,7 +81,7 @@ export function useLenderLabelResolver() {
         );
         const fromLabel = resolveLenderActivity(from, 'stage', resolvedLenderId);
         const toLabel = resolveLenderActivity(to, 'stage', resolvedLenderId);
-        const subject = entityName?.trim() || 'Lender';
+        const subject = entityName?.trim() || 'Funding Source';
         return `${subject} stage changed from ${fromLabel} to ${toLabel}`;
       }
 
@@ -93,7 +93,7 @@ export function useLenderLabelResolver() {
         );
         const fromLabel = resolveLenderActivity(to === from ? from : from, 'milestone', resolvedLenderId);
         const toLabel = resolveLenderActivity(to, 'milestone', resolvedLenderId);
-        const subject = entityName?.trim() || 'Lender';
+        const subject = entityName?.trim() || 'Funding Source';
         return `${subject} milestone changed from ${fromLabel} to ${toLabel}`;
       }
 
