@@ -322,15 +322,18 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
     try {
       if (task.kind === 'task') {
         const { data: { user: u } } = await supabase.auth.getUser();
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('tasks')
           .update({
             status: TASK_STATUS_COMPLETE,
             completed_at: new Date().toISOString(),
             completed_by: u?.id ?? null,
           })
-          .eq('id', task.id);
+          .eq('id', task.id)
+          .select('id');
         if (error) throw error;
+        if (!data || data.length === 0) throw new Error('Complete blocked by permissions');
+        console.log('[TasksMilestonesBand] task completed', { taskId: task.id });
       } else {
         // outstanding: id is prefixed with "o-"
         const realId = task.id.startsWith('o-') ? task.id.slice(2) : task.id;
