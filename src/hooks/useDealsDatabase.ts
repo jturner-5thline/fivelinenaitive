@@ -8,6 +8,7 @@ import { getNaitivePipelineId, excludeNaitivePipelineDeals } from '@/utils/naiti
 import { autoPopulateOutstandingItems, isActivePipeline, isFinalCreditItemsStage, isNdaNeedsListSentStage } from '@/utils/autoPopulateOutstandingItems';
 import { checkStageChangeWorkflows } from '@/lib/emailWorkflowTrigger';
 import { isFlexHiddenStage, prettyStageLabel } from '@/lib/flexVisibility';
+import { syncFinServValuePatch, warnIfFinServValueMismatch } from '@/lib/finservValue';
 
 type MilestoneTimingType = 'from_creation' | 'after_previous';
 type WebhookEventType = 'INSERT' | 'UPDATE' | 'DELETE';
@@ -653,7 +654,41 @@ export function useDealsDatabase() {
   const updateDeal = useCallback(async (dealId: string, updates: Partial<Deal>) => {
     // Store previous state for rollback
     const previousDeals = deals;
-    const previousDeal = deals.find(d => d.id === dealId);
+    let previousDeal = deals.find(d => d.id === dealId);
+
+    if (!previousDeal) {
+      const { data: dbDeal, error: previousDealError } = await supabase
+        .from('deals')
+        .select('id, company, deal_class, mrr, one_time_revenue, value, stage, status, pipeline_id')
+        .eq('id', dealId)
+        .maybeSingle();
+
+      if (previousDealError) {
+        throw previousDealError;
+      }
+
+      if (dbDeal) {
+        previousDeal = {
+          id: dbDeal.id,
+          name: dbDeal.company || '',
+          company: dbDeal.company || '',
+          lender: '',
+          contact: '',
+          value: Number((dbDeal as any).value || 0),
+          totalFee: 0,
+          stage: ((dbDeal as any).stage || '') as DealStage,
+          status: ((dbDeal as any).status || 'on-track') as DealStatus,
+          engagementType: 'guided',
+          manager: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          pipelineId: ((dbDeal as any).pipeline_id as string | null) || undefined,
+          dealClass: (((dbDeal as any).deal_class || 'standard') as Deal['dealClass']) || 'standard',
+          mrr: (dbDeal as any).mrr ?? null,
+          oneTimeRevenue: (dbDeal as any).one_time_revenue ?? null,
+        } as Deal;
+      }
+    }
     
     // Auto-move to In Development pipeline when stage is set to 'unresponsive'
     if (updates.stage === 'unresponsive' && previousDeal?.stage !== 'unresponsive') {
@@ -691,14 +726,7 @@ export function useDealsDatabase() {
     // we mirror their sum into `value` so every aggregate stays consistent
     // with what the user just typed in the detail modal. Without this the
     // card and dashboard show stale dollars even after a refetch.
-    const isFinServ = previousDeal?.dealClass === 'finserv';
-    const mrrChanged = (updates as any).mrr !== undefined;
-    const oneTimeChanged = (updates as any).oneTimeRevenue !== undefined;
-    if (isFinServ && (mrrChanged || oneTimeChanged) && updates.value === undefined) {
-      const nextMrr = Number(mrrChanged ? (updates as any).mrr : (previousDeal as any)?.mrr) || 0;
-      const nextOneTime = Number(oneTimeChanged ? (updates as any).oneTimeRevenue : (previousDeal as any)?.oneTimeRevenue) || 0;
-      updates = { ...updates, value: nextMrr + nextOneTime };
-    }
+    updates = syncFinServValuePatch(updates, previousDeal);
 
     // Optimistically update UI immediately
     setDeals(prev =>
