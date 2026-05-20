@@ -486,7 +486,7 @@ export default function Dashboard() {
 
       {/*
         Page surface — routed through the shared `<WorkspacePage>` primitive
-        so this page and the Lender Directory can never drift apart on
+        so this page and the Directory can never drift apart on
         canvas tone, header chrome, or padding rhythm. Banners are passed as
         `beforeContent` so they keep their original sibling position
         OUTSIDE the `space-y-*` rhythm of the main page sections.

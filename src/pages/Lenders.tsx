@@ -1082,7 +1082,7 @@ export default function Lenders() {
     <>
       <Helmet>
         <title>Lenders - naitive</title>
-        <meta name="description" content="Manage your lender directory" />
+        <meta name="description" content="Manage your funding source directory" />
       </Helmet>
 
       {/* Hidden file input for quick uploads */}
@@ -1095,7 +1095,7 @@ export default function Lenders() {
 
       {/*
         Page surface — routed through the shared `<WorkspacePage>` primitive
-        so Lender Directory and Deals can never drift apart on canvas tone,
+        so Directory and Deals can never drift apart on canvas tone,
         header chrome, or padding rhythm.
       */}
       <WorkspacePage contentClassName="space-y-6">
@@ -1103,10 +1103,10 @@ export default function Lenders() {
               <div>
                 <h1 className="text-base font-semibold flex items-center gap-2 text-foreground tracking-tight">
                   <Building2 className="h-4 w-4 text-foreground/80" />
-                  Lender Directory
+                  Directory
                   <BetaBadge featureKey="page_lenders" />
                 </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Manage your lender directory</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Manage your funding source directory</p>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 {/* Import dropdown */}
