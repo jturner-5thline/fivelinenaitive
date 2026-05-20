@@ -843,7 +843,11 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                       onOpenAutoFocus={(e) => e.preventDefault()}
                       onCloseAutoFocus={(e) => e.preventDefault()}
                     >
-                      <div className="space-y-1 max-h-60 overflow-y-auto">
+                      <div
+                        className="space-y-1 max-h-[300px] overflow-y-auto overscroll-contain pr-1"
+                        onWheel={(e) => e.stopPropagation()}
+                        onTouchMove={(e) => e.stopPropagation()}
+                      >
                         {LENDER_TYPE_OPTIONS.map((type) => {
                           const current = editForm.lenderType ? editForm.lenderType.split(',').map(t => t.trim()).filter(Boolean) : [];
                           const isSelected = current.includes(type);
