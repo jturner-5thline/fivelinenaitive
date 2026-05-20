@@ -208,7 +208,6 @@ export function TaskListView({
     [visibleSet],
   );
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
-  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
   const collaboratorsMap = useTaskCollaboratorsBatch(taskIds);
@@ -226,14 +225,6 @@ export function TaskListView({
       return next;
     });
   };
-
-  const toggleExpanded = useCallback((taskId: string) => {
-    setExpandedTaskIds(prev => {
-      const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
-      return next;
-    });
-  }, []);
 
   const handleDragStart = (event: DragStartEvent) => setDragActiveId(event.active.id as string);
   const handleDragEnd = (event: DragEndEvent) => {
