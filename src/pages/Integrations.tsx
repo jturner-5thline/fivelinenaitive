@@ -301,7 +301,7 @@ export default function Integrations() {
     });
   }
 
-  if (is5thLine && isGmailConnected) {
+  if (isGmailConnected) {
     connectedIntegrations.push({
       key: "gmail",
       render: () => (
@@ -355,7 +355,7 @@ export default function Integrations() {
     });
   }
 
-  if (is5thLine && isMicrosoftConnected) {
+  if (isMicrosoftConnected) {
     connectedIntegrations.push({
       key: "microsoft",
       render: () => (
@@ -421,7 +421,7 @@ export default function Integrations() {
     });
   }
 
-  if (is5thLine && isClaapConnected) {
+  if (isClaapConnected) {
     connectedIntegrations.push({
       key: "claap",
       render: () => <ClaapSummaryCard />,
@@ -493,7 +493,7 @@ export default function Integrations() {
     });
   }
 
-  if (is5thLine && !isGmailConnected) {
+  if (!isGmailConnected) {
     availableIntegrations.push({
       key: "gmail",
       render: () => (
@@ -525,7 +525,7 @@ export default function Integrations() {
     });
   }
 
-  if (is5thLine && !isMicrosoftConnected) {
+  if (!isMicrosoftConnected) {
     availableIntegrations.push({
       key: "microsoft",
       render: () => (
@@ -541,7 +541,7 @@ export default function Integrations() {
     });
   }
 
-  if (is5thLine && !isClaapConnected) {
+  if (!isClaapConnected) {
     availableIntegrations.push({
       key: "claap",
       render: () => <ClaapSummaryCard />,
@@ -620,13 +620,13 @@ export default function Integrations() {
         )}
 
         {/* 3 — Automation & Sync Configuration */}
-        {(is5thLine || canSeeFlexSync) && (
+        {(true || canSeeFlexSync) && (
           <section className="space-y-3">
             <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Automation & Sync
             </h2>
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {is5thLine && <ZapierSummaryCard />}
+              <ZapierSummaryCard />
               {canSeeFlexSync && (
                 <FlexAutomationCard companyId={company?.id ?? null} canEdit={!!isCompanyAdmin} />
               )}
