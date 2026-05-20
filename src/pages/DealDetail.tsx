@@ -213,6 +213,7 @@ import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
 import { Label } from '@/components/ui/label';
 import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
+import { syncFinServValuePatch, warnIfFinServValueMismatch } from '@/lib/finservValue';
 
 // Editable deal tile for lender "About" tab - extracted to avoid hooks-in-map
 function EditableLenderDealTile({ 
@@ -791,6 +792,7 @@ export default function DealDetail() {
           whyNotMovingForward: (dbDeal as any).why_not_moving_forward || undefined,
         };
 
+        warnIfFinServValueMismatch(mapped, 'DealDetail.fallback-load');
         if (!cancelled) setDeal(mapped);
       } catch (err) {
         console.error('Failed to fetch naitive pipeline deal:', err);
@@ -2471,7 +2473,8 @@ export default function DealDetail() {
       if (!prev) return prev;
       // Save current state to history before updating
       setEditHistory(history => [...history, { deal: prev, field, timestamp: new Date() }]);
-      const updated = { ...prev, [field]: value, updatedAt: new Date().toISOString() };
+      const syncedPatch = syncFinServValuePatch({ [field]: value } as Partial<Deal>, prev);
+      const updated = { ...prev, ...syncedPatch, updatedAt: new Date().toISOString() };
 
       // Total Fee is a Postgres generated column:
       //   total_fee = retainer_fee + milestone_fee + value * success_fee_percent / 100
@@ -2490,12 +2493,6 @@ export default function DealDetail() {
       // the modal, card, and dashboard all reflect the edit instantly —
       // the same mirror is applied in useDealsDatabase.updateDeal so the
       // database row stays in sync.
-      if ((field === 'mrr' || field === 'oneTimeRevenue') && prev.dealClass === 'finserv') {
-        const nextMrr = Number(field === 'mrr' ? (value as number | null) : (prev as any).mrr) || 0;
-        const nextOneTime = Number(field === 'oneTimeRevenue' ? (value as number | null) : (prev as any).oneTimeRevenue) || 0;
-        updated.value = nextMrr + nextOneTime;
-      }
-      
       // Log activity only for significant changes (not every keystroke for text fields)
       const oldValue = prev[field];
       if (ACTIVITY_LOG_FIELDS.includes(field) && oldValue !== value) {
@@ -2564,7 +2561,7 @@ export default function DealDetail() {
       
       // Persist to database with loading indicator
       withSavingAsync(`deal-${field}`, async () => {
-        const patch: Partial<Deal> = { [field]: value } as Partial<Deal>;
+        const patch: Partial<Deal> = syncFinServValuePatch({ [field]: value } as Partial<Deal>, prev);
         await updateDealInDb(prev.id, patch);
       });
       
