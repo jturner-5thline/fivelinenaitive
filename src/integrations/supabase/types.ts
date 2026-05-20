@@ -8787,6 +8787,10 @@ export type Database = {
           last_year_revenue: string | null
           linkedin_url: string | null
           location: string | null
+          narrative_embedded_at: string | null
+          narrative_embedding: string | null
+          narrative_source_hash: string | null
+          narrative_summary: string | null
           profitability: string | null
           publish_as_anonymous: boolean | null
           revenue_type: string | null
@@ -8834,6 +8838,10 @@ export type Database = {
           last_year_revenue?: string | null
           linkedin_url?: string | null
           location?: string | null
+          narrative_embedded_at?: string | null
+          narrative_embedding?: string | null
+          narrative_source_hash?: string | null
+          narrative_summary?: string | null
           profitability?: string | null
           publish_as_anonymous?: boolean | null
           revenue_type?: string | null
@@ -8881,6 +8889,10 @@ export type Database = {
           last_year_revenue?: string | null
           linkedin_url?: string | null
           location?: string | null
+          narrative_embedded_at?: string | null
+          narrative_embedding?: string | null
+          narrative_source_hash?: string | null
+          narrative_summary?: string | null
           profitability?: string | null
           publish_as_anonymous?: boolean | null
           revenue_type?: string | null
@@ -13397,6 +13409,75 @@ export type Database = {
           },
           {
             foreignKeyName: "lender_disqualifications_master_lender_id_fkey"
+            columns: ["master_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_fit_attributes: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          embedding: string | null
+          exclusions: Json
+          extracted_at: string
+          id: string
+          lender_name: string
+          master_lender_id: string | null
+          model_version: string | null
+          negative_signals: Json
+          nuanced_preferences: Json
+          positive_signals: Json
+          source_hash: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          embedding?: string | null
+          exclusions?: Json
+          extracted_at?: string
+          id?: string
+          lender_name: string
+          master_lender_id?: string | null
+          model_version?: string | null
+          negative_signals?: Json
+          nuanced_preferences?: Json
+          positive_signals?: Json
+          source_hash?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          embedding?: string | null
+          exclusions?: Json
+          extracted_at?: string
+          id?: string
+          lender_name?: string
+          master_lender_id?: string | null
+          model_version?: string | null
+          negative_signals?: Json
+          nuanced_preferences?: Json
+          positive_signals?: Json
+          source_hash?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_fit_attributes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_fit_attributes_master_lender_id_fkey"
             columns: ["master_lender_id"]
             isOneToOne: false
             referencedRelation: "master_lenders"
@@ -22997,6 +23078,18 @@ export type Database = {
           _user_id: string
         }
         Returns: undefined
+      }
+      match_lenders_by_narrative: {
+        Args: {
+          caller_company_id?: string
+          match_count?: number
+          query_embedding: string
+        }
+        Returns: {
+          lender_name: string
+          master_lender_id: string
+          similarity: number
+        }[]
       }
       move_to_dlq: {
         Args: {

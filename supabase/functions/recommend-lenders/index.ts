@@ -22,6 +22,7 @@ interface ComponentScores {
   structure: number;  // 0-100 — sponsorship / cash burn / collateral / b2b
   recency: number;    // 0-100 — recent activity & momentum
   evidence: number;   // 0-100 — qualitative notes/tags evidence (100=neutral, lower=negative, higher=positive)
+  semantic: number;   // 0-100 — cosine similarity vs lender fit profile embedding
 }
 
 interface Recommendation {
@@ -39,6 +40,10 @@ interface Recommendation {
   maxDeal?: number | null;
   active?: boolean;
   recentActivity?: boolean;
+  positiveFitSignals?: string[];
+  negativeFitSignals?: string[];
+  matchedExclusion?: string | null;
+  fitSummary?: string | null;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -55,6 +60,62 @@ const splitList = (v: unknown): string[] =>
     .split(/[,;|\n]/)
     .map((s) => s.trim())
     .filter(Boolean);
+
+async function sha256Hex(input: string): Promise<string> {
+  const buf = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+const EMBEDDING_DIM = 1536;
+
+async function embedText(text: string): Promise<number[] | null> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY || !text.trim()) return null;
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
+      body: JSON.stringify({
+        model: EMBEDDING_MODEL,
+        input: text.slice(0, 8000),
+        dimensions: EMBEDDING_DIM,
+      }),
+    });
+    if (!res.ok) {
+      console.error("embed error", res.status, await res.text());
+      return null;
+    }
+    const j = await res.json();
+    const v = j?.data?.[0]?.embedding;
+    return Array.isArray(v) ? v : null;
+  } catch (e) {
+    console.error("embed throw", e);
+    return null;
+  }
+}
+
+function cosineSim(a: number[] | null | undefined, b: number[] | null | undefined): number {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  if (!na || !nb) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+// Parse pgvector embedding string ("[0.1,0.2,...]") into a number[].
+function parseEmbedding(v: unknown): number[] | null {
+  if (!v) return null;
+  if (Array.isArray(v)) return v.map(Number);
+  if (typeof v === "string") {
+    try {
+      const t = v.trim();
+      if (t.startsWith("[")) return JSON.parse(t);
+    } catch { /* noop */ }
+  }
+  return null;
+}
 
 function tokenOverlap(a: string[], b: string[]): number {
   if (!a.length || !b.length) return 0;
@@ -358,7 +419,7 @@ serve(async (req) => {
     const { data: writeup } = await supabase
       .from("deal_writeups")
       .select(
-        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, year_founded, headcount, total_equity_raised, financial_comments",
+        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, year_founded, headcount, total_equity_raised, financial_comments, narrative_summary, narrative_embedding, narrative_source_hash",
       )
       .eq("deal_id", dealId)
       .maybeSingle();
@@ -466,6 +527,16 @@ serve(async (req) => {
       patternsByLender.set(k, list);
     });
 
+    // ── AI-extracted lender fit attributes (reusable, embedding-backed) ──────
+    const { data: fitRows } = lenderIds.length
+      ? await supabase
+          .from("lender_fit_attributes")
+          .select("master_lender_id, lender_name, summary, positive_signals, negative_signals, exclusions, nuanced_preferences, embedding")
+          .in("master_lender_id", lenderIds)
+      : { data: [] as any[] };
+    const fitById = new Map<string, any>();
+    (fitRows ?? []).forEach((f: any) => fitById.set(f.master_lender_id, f));
+
     // Build deal evaluation context
     const overrideIndustry = (criteriaOverride?.industry && String(criteriaOverride.industry).trim()) || null;
     const overrideGeo = (criteriaOverride?.geo && String(criteriaOverride.geo).trim()) || null;
@@ -494,6 +565,33 @@ serve(async (req) => {
       .join("\n").slice(0, 3000);
 
     const dealEvidenceText = [dealNarrative, dealNoteText, dealLenderFeedback].join("\n");
+
+    // ── Embed the deal narrative (cached on deal_writeups via source hash) ───
+    const narrativeBundle = [
+      `Company: ${deal.company ?? ""}`,
+      `Industry: ${writeup?.industry ?? deal.business_model ?? ""}`,
+      `Deal types: ${sufficiency.dealTypes.join(", ")}`,
+      `Capital ask: ${overriddenValue ?? ""}`,
+      `Sponsorship: ${writeup?.sponsorship ?? ""}`,
+      `B2B/B2C: ${writeup?.b2b_b2c ?? ""}`,
+      `Collateral: ${writeup?.collateral_available ?? ""}`,
+      `Use of funds: ${writeup?.use_of_funds ?? ""}`,
+      dealNarrative,
+      dealNoteText,
+    ].filter(Boolean).join("\n\n").slice(0, 8000);
+    const narrativeHash = await sha256Hex(narrativeBundle);
+    let dealEmbedding: number[] | null = parseEmbedding((writeup as any)?.narrative_embedding);
+    if (!dealEmbedding || (writeup as any)?.narrative_source_hash !== narrativeHash) {
+      dealEmbedding = await embedText(narrativeBundle);
+      if (dealEmbedding) {
+        await supabase.from("deal_writeups").update({
+          narrative_embedding: dealEmbedding as any,
+          narrative_source_hash: narrativeHash,
+          narrative_embedded_at: new Date().toISOString(),
+        }).eq("deal_id", dealId);
+      }
+    }
+    const dealNarrativeLc = lc(dealEvidenceText + " " + (writeup?.industry ?? "") + " " + (deal.business_model ?? "") + " " + (writeup?.sponsorship ?? "") + " " + (writeup?.profitability ?? ""));
 
     const dealCtx = {
       name: deal.company ?? null,
@@ -531,8 +629,8 @@ serve(async (req) => {
 
     // ── Deterministic scoring + hard filters ─────────────────────────────────
     const WEIGHTS = {
-      type: 0.22, size: 0.18, industry: 0.18,
-      geography: 0.08, structure: 0.14, recency: 0.08, evidence: 0.12,
+      type: 0.20, size: 0.16, industry: 0.16,
+      geography: 0.07, structure: 0.12, recency: 0.07, evidence: 0.10, semantic: 0.12,
     };
 
     type Scored = {
@@ -560,6 +658,14 @@ serve(async (req) => {
       const hasFlag = noteRecords.some((n) => n.flag);
       const passReasons = passReasonsByLender.get(lc(lender.name)) ?? [];
       const patterns = patternsByLender.get(lender.id) ?? patternsByLender.get(lc(lender.name)) ?? [];
+      const fit = fitById.get(lender.id);
+      const fitPositive: { signal: string; confidence: number }[] = Array.isArray(fit?.positive_signals) ? fit.positive_signals : [];
+      const fitNegative: { signal: string; confidence: number }[] = Array.isArray(fit?.negative_signals) ? fit.negative_signals : [];
+      const fitExclusions: { pattern: string; confidence: number }[] = Array.isArray(fit?.exclusions) ? fit.exclusions : [];
+      const fitEmbedding = parseEmbedding(fit?.embedding);
+
+      // AI-extracted hard exclusion match against the deal narrative/industry
+      const matchedExclusion = fitExclusions.find((ex) => ex.confidence >= 0.7 && ex.pattern && dealNarrativeLc.includes(lc(ex.pattern)));
 
       const type = scoreLoanType(dealCtx, lender);
       const size = scoreSize(dealCtx, lender);
@@ -569,9 +675,23 @@ serve(async (req) => {
       const recency = scoreRecency(lender, recentSet, passReasons);
       const evidence = scoreEvidence(lender, [lenderNoteText], lenderTags, "");
 
+      // Semantic similarity: cosine vs lender fit embedding → 0..100
+      let semantic = 50;
+      if (dealEmbedding && fitEmbedding) {
+        const sim = cosineSim(dealEmbedding, fitEmbedding); // -1..1, typically 0..0.6
+        semantic = Math.round(Math.max(0, Math.min(1, (sim + 0.1) / 0.7)) * 100);
+      }
+
+      // Positive/negative signal nudges (string-contains against deal narrative)
+      const posHits = fitPositive.filter((s) => s.signal && dealNarrativeLc.includes(lc(s.signal.split(" ").slice(0, 4).join(" "))));
+      const negHits = fitNegative.filter((s) => s.signal && dealNarrativeLc.includes(lc(s.signal.split(" ").slice(0, 4).join(" "))));
+      const evidenceAdj = posHits.reduce((a, s) => a + 8 * s.confidence, 0) - negHits.reduce((a, s) => a + 12 * s.confidence, 0);
+      const evidenceScore = Math.max(0, Math.min(100, evidence.score + evidenceAdj));
+
       // HARD FILTERS
       if (industry.hardOut) { filteredOut.push({ name: lender.name, reason: industry.reason }); continue; }
       if (evidence.hardOut) { filteredOut.push({ name: lender.name, reason: evidence.reason }); continue; }
+      if (matchedExclusion) { filteredOut.push({ name: lender.name, reason: `AI exclusion: ${matchedExclusion.pattern}` }); continue; }
       if (type.score <= 10 && (arr(lender.loan_types).length > 0)) {
         filteredOut.push({ name: lender.name, reason: type.reason });
         continue;
@@ -588,7 +708,7 @@ serve(async (req) => {
       const components: ComponentScores = {
         type: type.score, size: size.score, industry: industry.score,
         geography: geography.score, structure: structure.score,
-        recency: recency.score, evidence: evidence.score,
+        recency: recency.score, evidence: evidenceScore, semantic,
       };
       const detScore =
         components.type * WEIGHTS.type +
@@ -597,12 +717,13 @@ serve(async (req) => {
         components.geography * WEIGHTS.geography +
         components.structure * WEIGHTS.structure +
         components.recency * WEIGHTS.recency +
-        components.evidence * WEIGHTS.evidence;
+        components.evidence * WEIGHTS.evidence +
+        components.semantic * WEIGHTS.semantic;
 
       const reasons = [type.reason, size.reason, industry.reason, geography.reason, structure.reason, recency.reason, evidence.reason]
         .filter((r) => r && r.length);
 
-      candidates.push({ lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags });
+      (candidates as any).push({ lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags, fit, posHits, negHits });
     }
 
     // Sort by deterministic score and take top 25 to AI for narrative re-rank
@@ -705,6 +826,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
 
     // ── Build final recommendations ──────────────────────────────────────────
     const recommendations: Recommendation[] = topForAI.map((c) => {
+      const cAny = c as any;
       const adjEntry = aiAdjustments.get(lc(c.lender.name));
       const adj = adjEntry?.adj ?? 0;
       const finalScore = Math.max(0, Math.min(100, Math.round(c.detScore + adj)));
@@ -743,6 +865,10 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
         maxDeal: toNum(c.lender.max_deal),
         active: c.lender.active !== false,
         recentActivity: recentSet.has(lc(c.lender.name)),
+        positiveFitSignals: (cAny.posHits ?? []).map((h: any) => h.signal).slice(0, 5),
+        negativeFitSignals: (cAny.negHits ?? []).map((h: any) => h.signal).slice(0, 5),
+        matchedExclusion: null,
+        fitSummary: cAny.fit?.summary ?? null,
       };
     });
 
@@ -752,6 +878,22 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
     const final = recommendations
       .filter((r) => r.matchScore >= 40 && !excludeSet.has(lc(r.lenderName)))
       .slice(0, 12);
+
+    // Fire-and-forget: extract fit attributes for top candidates missing them,
+    // so the next recommendation pass benefits from richer signal.
+    const missingFitIds = topForAI
+      .filter((c: any) => !fitById.get(c.lender.id))
+      .map((c) => c.lender.id)
+      .filter(Boolean)
+      .slice(0, 15);
+    if (missingFitIds.length && Deno.env.get("LOVABLE_API_KEY")) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/extract-lender-fit`;
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader! },
+        body: JSON.stringify({ lenderIds: missingFitIds }),
+      }).catch((e) => console.error("background extract-lender-fit failed", e));
+    }
 
     return new Response(
       JSON.stringify({
@@ -765,6 +907,9 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
           hardFilteredSample: filteredOut.slice(0, 10),
           modelUsed: ANTHROPIC_API_KEY ? "claude-sonnet-4" : (LOVABLE_API_KEY ? "gemini-2.5-pro" : "deterministic-only"),
           weights: WEIGHTS,
+          fitAttributesLoaded: fitById.size,
+          backgroundExtractionQueued: missingFitIds.length,
+          dealEmbedded: !!dealEmbedding,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
