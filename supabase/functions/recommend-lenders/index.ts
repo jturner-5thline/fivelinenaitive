@@ -1104,6 +1104,21 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
         negativeFitSignals: (cAny.negHits ?? []).map((h: any) => h.signal).slice(0, 5),
         matchedExclusion: null,
         fitSummary: cAny.fit?.summary ?? null,
+        explanation: buildExplanation({
+          lender: c.lender,
+          dealCtx,
+          components: c.components,
+          aiAdj: adj,
+          aiRationale: adjEntry?.rationale ?? '',
+          posHits: cAny.posHits ?? [],
+          negHits: cAny.negHits ?? [],
+          lenderTags: c.lenderTags ?? [],
+          passReasons: c.passReasons ?? [],
+          patterns: patternsByLender.get(c.lender.id) ?? patternsByLender.get(lc(c.lender.name)) ?? [],
+          fit: cAny.fit,
+          recentActivity: recentSet.has(lc(c.lender.name)),
+          reasons: c.reasons ?? [],
+        }),
       };
     });
 
