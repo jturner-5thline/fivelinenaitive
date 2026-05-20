@@ -1556,6 +1556,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
       }
     }
     const final = picked;
+    logRun(final); // persist run log + per-item snapshots (fire-and-forget)
 
     // Fire-and-forget: extract fit attributes for top candidates missing them,
     // so the next recommendation pass benefits from richer signal.
