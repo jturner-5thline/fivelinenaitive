@@ -319,6 +319,40 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     : 'all';
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
+  // Conflict resolution side panel state
+  const [conflictPanelOpen, setConflictPanelOpen] = useState(false);
+  const [conflictIndex, setConflictIndex] = useState(0);
+  const openConflict = (id: string) => {
+    const idx = conflictRequests.findIndex(r => r.id === id);
+    if (idx >= 0) {
+      setConflictIndex(idx);
+      setConflictPanelOpen(true);
+    }
+  };
+
+  // High-confidence exact duplicates: merge conflicts whose changes_diff is empty
+  // (i.e. Flex sent us a record that is byte-for-byte identical to the existing one).
+  const exactDuplicateConflicts = conflictRequests.filter(
+    r => !r.changes_diff || Object.keys(r.changes_diff).length === 0,
+  );
+
+  const handleBatchKeepExisting = async () => {
+    if (exactDuplicateConflicts.length === 0) return;
+    setIsBulkProcessing(true);
+    let ok = 0;
+    let fail = 0;
+    for (const r of exactDuplicateConflicts) {
+      const success = await rejectRequest(r.id, 'Batch: kept existing (exact duplicate)');
+      if (success) ok++; else fail++;
+    }
+    setIsBulkProcessing(false);
+    if (fail === 0) {
+      toast({ title: 'Batch complete', description: `Kept existing for ${ok} exact duplicate${ok === 1 ? '' : 's'}.` });
+    } else {
+      toast({ title: 'Partial success', description: `Resolved ${ok}, failed ${fail}.`, variant: 'destructive' });
+    }
+  };
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
