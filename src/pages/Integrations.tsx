@@ -620,8 +620,7 @@ export default function Integrations() {
         )}
 
         {/* 3 — Automation & Sync Configuration */}
-        {(
-          <section className="space-y-3">
+        <section className="space-y-3">
             <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Automation & Sync
             </h2>
@@ -631,8 +630,7 @@ export default function Integrations() {
                 <FlexAutomationCard companyId={company?.id ?? null} canEdit={!!isCompanyAdmin} />
               )}
             </div>
-          </section>
-        )}
+        </section>
 
         {/* 4 — Coming Soon */}
         <section className="space-y-3">
