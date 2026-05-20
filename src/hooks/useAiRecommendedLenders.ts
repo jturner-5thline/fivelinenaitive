@@ -30,6 +30,29 @@ export interface AiRecommendation {
   negativeFitSignals?: string[];
   matchedExclusion?: string | null;
   fitSummary?: string | null;
+  explanation?: WhyExplanation;
+}
+
+export interface WhyFieldRow {
+  label: string;
+  deal: string;
+  lender: string;
+  verdict: 'match' | 'mismatch' | 'partial' | 'unknown';
+}
+
+export interface WhyExplanation {
+  fitReasons: string[];
+  risks: string[];
+  matchedFields: WhyFieldRow[];
+  unmatchedFields: WhyFieldRow[];
+  noteInsights: { positive: string[]; negative: string[]; tags: string[] };
+  priorTeamKnowledge: {
+    recentActivity: boolean;
+    passReasons: string[];
+    repeatPatterns: { reason: string; occurrences: number; confidence: number }[];
+  };
+  dominantDriver: 'structured' | 'notes' | 'history' | 'balanced';
+  driverBreakdown: { structured: number; notes: number; history: number };
 }
 
 export interface AiRecommendationResponse {
