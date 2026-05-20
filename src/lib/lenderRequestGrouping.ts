@@ -1,5 +1,37 @@
 import type { LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
 
+export type RequestConfidence = 'exact-duplicate' | 'likely-duplicate' | 'possible-conflict' | 'needs-review' | 'none';
+
+export interface ConfidenceMeta {
+  level: RequestConfidence;
+  label: string;
+  className: string;
+}
+
+/**
+ * Classify a single sync request for the confidence-badge UI.
+ * - Exact duplicate: merge conflict with no actual field differences
+ * - Likely duplicate: merge conflict with ≤2 differing fields
+ * - Possible conflict: merge conflict with >2 differing fields
+ * - Needs review: new_lender whose name matched an existing directory entry
+ */
+export function getRequestConfidence(req: LenderSyncRequest): ConfidenceMeta {
+  if (req.request_type === 'merge_conflict') {
+    const diffCount = req.changes_diff ? Object.keys(req.changes_diff).length : 0;
+    if (diffCount === 0) {
+      return { level: 'exact-duplicate', label: 'Exact duplicate', className: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30' };
+    }
+    if (diffCount <= 2) {
+      return { level: 'likely-duplicate', label: 'Likely duplicate', className: 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40' };
+    }
+    return { level: 'possible-conflict', label: 'Possible conflict', className: 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/40' };
+  }
+  if (req.request_type === 'new_lender' && req.existing_lender_name) {
+    return { level: 'needs-review', label: 'Needs review', className: 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/40' };
+  }
+  return { level: 'none', label: '', className: '' };
+}
+
 // Strip common legal suffixes/filler so "Flexent LLC" and "Flexent, L.L.C." collapse.
 const LEGAL_SUFFIXES =
   /\b(llc|l\s?l\s?c|inc|incorporated|corp|corporation|co|company|ltd|limited|llp|lp|gp|group|holdings|capital|partners|fund|funding|management|advisors|investments|investment|the)\b/g;
