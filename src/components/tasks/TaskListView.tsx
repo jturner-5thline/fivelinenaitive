@@ -338,8 +338,6 @@ export function TaskListView({
             onToggleComplete={handleCompleteWithCelebration}
             onToggleSelect={onToggleSelect}
             onToggleStar={onToggleStar}
-            expandedTaskIds={expandedTaskIds}
-            onToggleExpanded={toggleExpanded}
             gridStyle={gridStyle}
             cols={cols}
           />
