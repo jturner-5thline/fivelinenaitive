@@ -957,6 +957,8 @@ serve(async (req) => {
     };
     const candidates: Scored[] = [];
     const filteredOut: { name: string; reason: string }[] = [];
+    // QA mode: also keep full per-check trace + lender meta for filtered lenders
+    const qaHardFiltered: any[] = [];
 
     for (const lender of activeLenders) {
       const noteRecords = [
@@ -1016,7 +1018,31 @@ serve(async (req) => {
         { name: "Repeat-pass patterns", passed: blockingPatterns.length < 2, reason: blockingPatterns.length >= 2 ? `${blockingPatterns.length} high-confidence repeat passes` : undefined },
       ];
       const failedHard = hardChecks.find((c) => !c.passed);
-      if (failedHard) { filteredOut.push({ name: lender.name, reason: `${failedHard.name}: ${failedHard.reason ?? "blocked"}` }); continue; }
+      if (failedHard) {
+        filteredOut.push({ name: lender.name, reason: `${failedHard.name}: ${failedHard.reason ?? "blocked"}` });
+        if (qa) {
+          qaHardFiltered.push({
+            lenderId: lender.id ?? null,
+            lenderName: lender.name,
+            tier: lender.tier ?? null,
+            loanTypes: arr(lender.loan_types),
+            industries: arr(lender.industries),
+            minDeal: toNum(lender.min_deal),
+            maxDeal: toNum(lender.max_deal),
+            active: lender.active !== false,
+            hardFiltered: true,
+            failedCheck: failedHard.name,
+            failedReason: failedHard.reason ?? "blocked",
+            hardFilterChecks: hardChecks,
+            components: {
+              type: type.score, size: size.score, industry: industry.score,
+              geography: geography.score, structure: structure.score,
+              recency: recency.score, evidence: evidenceScore, semantic,
+            },
+          });
+        }
+        continue;
+      }
 
       const components: ComponentScores = {
         type: type.score, size: size.score, industry: industry.score,
@@ -1109,9 +1135,10 @@ serve(async (req) => {
       });
     }
 
-    // Sort by deterministic score and take top 25 to AI for narrative re-rank
+    // Sort by deterministic score. In QA mode keep ALL scored candidates so the
+    // harness can audit the full ranked list; otherwise cap to top 25 for AI re-rank.
     candidates.sort((a, b) => b.detScore - a.detScore);
-    const topForAI = candidates.slice(0, 25);
+    const topForAI = qa ? candidates : candidates.slice(0, 25);
 
     // ── AI narrative re-rank (Lovable AI Gateway / Claude / fallback) ────────
     let aiAdjustments = new Map<string, { adj: number; rationale: string }>();
