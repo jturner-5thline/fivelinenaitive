@@ -2823,16 +2823,16 @@ export default function DealDetail() {
           <Card className="w-full mt-4 mb-6 border-[hsl(272,100%,80%,0.45)] shadow-[0_0_16px_hsl(272,100%,70%,0.12),0_8px_32px_hsl(0,0%,0%,0.5)]">
             <CardHeader className="pb-4">
               <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
                   <InlineEditField
                     value={deal.company}
                     onSave={(value) => updateDeal('company', value)}
-                    // NOTE: use md:text-5xl (not sm:text-5xl) so it wins over
-                    // the shadcn Input default `md:text-sm` at md+ via
-                    // tailwind-merge (same breakpoint, later class wins).
-                    displayClassName="text-3xl md:text-5xl font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                    // Responsive fluid typography via clamp() so long deal
+                    // names scale down gracefully and wrap rather than
+                    // truncating aggressively across desktop/laptop widths.
+                    displayClassName="font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white break-words"
+                    displayStyle={{ fontSize: 'clamp(1.5rem, 3.2vw, 3rem)' }}
                   />
-                  {!isDemoAccount && <BetaBadge featureKey="page_deal_detail" />}
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -2869,8 +2869,9 @@ export default function DealDetail() {
                     // Right-align the Deal Size in the header. `sm:ml-auto`
                     // pushes the field flush right on sm+; `text-right`
                     // right-aligns the value within its inline input.
-                    className="sm:ml-auto sm:justify-end"
-                    displayClassName="text-right text-3xl md:text-5xl font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                    className="sm:ml-auto sm:justify-end shrink-0"
+                    displayClassName="text-right font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white whitespace-nowrap"
+                    displayStyle={{ fontSize: 'clamp(1.5rem, 3.2vw, 3rem)' }}
                   />
                 )}
               </div>
