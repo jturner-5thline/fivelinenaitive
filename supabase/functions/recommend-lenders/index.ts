@@ -45,6 +45,7 @@ interface Recommendation {
   matchedExclusion?: string | null;
   fitSummary?: string | null;
   explanation?: WhyExplanation;
+  pipelineTrace?: PipelineTrace;
 }
 
 // Transparent per-lender explanation surfaced to the UI.
@@ -62,6 +63,32 @@ interface WhyExplanation {
   };
   dominantDriver: 'structured' | 'notes' | 'history' | 'balanced';
   driverBreakdown: { structured: number; notes: number; history: number };
+}
+
+// Layered pipeline diagnostics surfaced to admins/5th Line users.
+interface PipelineTrace {
+  // Layer 1 — hard filters
+  hardFilters: { passed: boolean; checks: { name: string; passed: boolean; reason?: string }[] };
+  // Layer 2 — structured scoring
+  structured: { score: number; components: { name: string; score: number; weight: number; reason: string }[] };
+  // Layer 3 — unstructured AI / notes / embeddings
+  unstructured: { score: number; components: { name: string; score: number; weight: number; reason: string }[] };
+  // Layer 4 — penalties applied (negative history, exclusion tags, stale notes, mandate conflicts)
+  penalties: { name: string; delta: number; reason: string }[];
+  // Layer 5 — boosts from positive historical outcomes
+  boosts: { name: string; delta: number; reason: string }[];
+  // Layer 6 — final
+  final: {
+    deterministic: number;
+    aiAdjustment: number;
+    penaltyTotal: number;
+    boostTotal: number;
+    diversityDelta: number;
+    matchScore: number;
+    confidence: number;
+  };
+  weights: Record<string, number>;
+  diversification?: { reason: string; demoted: boolean };
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
