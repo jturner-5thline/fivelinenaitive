@@ -646,6 +646,9 @@ function SortableMilestoneItem({
                     onUpdate(milestone.id, { dueDate: d ? d.toISOString() : undefined });
                     if (d) setIsReadDateOpen(false);
                   }}
+                  fixedWeeks
+                  showOutsideDays
+                  defaultMonth={milestone.dueDate ? new Date(milestone.dueDate) : undefined}
                   className={cn("p-3 pointer-events-auto")}
                 />
                 {milestone.dueDate && (
