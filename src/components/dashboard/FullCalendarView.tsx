@@ -1211,6 +1211,8 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     listCalendars,
     checkStatus,
   } = useGoogleCalendar();
+  const { user } = useAuth();
+  const is5thLineUser = !!user?.email && user.email.toLowerCase().endsWith('@5thline.co');
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
