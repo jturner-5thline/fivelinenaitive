@@ -2866,7 +2866,11 @@ export default function DealDetail() {
                   <InlineEditField
                     value={formatValue(deal.value)}
                     onSave={(value) => updateDeal('value', parseValue(value))}
-                    displayClassName="text-3xl md:text-5xl font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                    // Right-align the Deal Size in the header. `sm:ml-auto`
+                    // pushes the field flush right on sm+; `text-right`
+                    // right-aligns the value within its inline input.
+                    className="sm:ml-auto sm:justify-end"
+                    displayClassName="text-right text-3xl md:text-5xl font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
                 )}
               </div>
