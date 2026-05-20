@@ -51,7 +51,26 @@ function TabSkeleton() {
 function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
   useEffect(() => {
-    setTarget(document.getElementById('finance-header-actions'));
+    let cancelled = false;
+    const find = () => {
+      const el = document.getElementById('finance-header-actions');
+      if (el) {
+        if (!cancelled) setTarget(el);
+        return true;
+      }
+      return false;
+    };
+    if (find()) return;
+    // Header may mount slightly after this child; poll briefly.
+    const interval = window.setInterval(() => {
+      if (find()) window.clearInterval(interval);
+    }, 50);
+    const timeout = window.setTimeout(() => window.clearInterval(interval), 3000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.clearTimeout(timeout);
+    };
   }, []);
   if (!target) return null;
   return createPortal(<>{children}</>, target);
