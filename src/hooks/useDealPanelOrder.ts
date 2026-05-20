@@ -110,11 +110,17 @@ export function useDealPanelOrder() {
 
           if (!error && data?.deal_panel_layout) {
             const layout = data.deal_panel_layout as unknown as DealPanelLayout;
-            if (layout.order && Array.isArray(layout.order) && layout.order.length === DEFAULT_PANEL_ORDER.length) {
-              const hasAll = DEFAULT_PANEL_ORDER.every(id => layout.order.includes(id));
-              if (hasAll) {
-                setPanelOrder(layout.order);
-              }
+            if (layout.order && Array.isArray(layout.order)) {
+              // Sanitize: drop retired panel IDs, then append any surviving
+              // default panels missing from the saved order.
+              const sanitized = layout.order.filter(
+                (id): id is DealPanelId => !RETIRED_PANELS.has(id) && DEFAULT_PANEL_ORDER.includes(id)
+              );
+              const merged = [
+                ...sanitized,
+                ...DEFAULT_PANEL_ORDER.filter(id => !sanitized.includes(id)),
+              ];
+              setPanelOrder(merged);
             }
             if (layout.visibility) {
               setPanelVisibility({
@@ -137,9 +143,15 @@ export function useDealPanelOrder() {
         const savedOrder = localStorage.getItem(ORDER_STORAGE_KEY);
         if (savedOrder) {
           const parsed = JSON.parse(savedOrder);
-          if (Array.isArray(parsed) && parsed.length === DEFAULT_PANEL_ORDER.length) {
-            const hasAll = DEFAULT_PANEL_ORDER.every(id => parsed.includes(id));
-            if (hasAll) setPanelOrder(parsed);
+          if (Array.isArray(parsed)) {
+            const sanitized = parsed.filter(
+              (id: DealPanelId) => !RETIRED_PANELS.has(id) && DEFAULT_PANEL_ORDER.includes(id)
+            );
+            const merged = [
+              ...sanitized,
+              ...DEFAULT_PANEL_ORDER.filter(id => !sanitized.includes(id)),
+            ];
+            setPanelOrder(merged);
           }
         }
 
