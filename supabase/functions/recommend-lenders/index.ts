@@ -22,6 +22,7 @@ interface ComponentScores {
   structure: number;  // 0-100 — sponsorship / cash burn / collateral / b2b
   recency: number;    // 0-100 — recent activity & momentum
   evidence: number;   // 0-100 — qualitative notes/tags evidence (100=neutral, lower=negative, higher=positive)
+  semantic: number;   // 0-100 — cosine similarity vs lender fit profile embedding
 }
 
 interface Recommendation {
@@ -39,6 +40,10 @@ interface Recommendation {
   maxDeal?: number | null;
   active?: boolean;
   recentActivity?: boolean;
+  positiveFitSignals?: string[];
+  negativeFitSignals?: string[];
+  matchedExclusion?: string | null;
+  fitSummary?: string | null;
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
