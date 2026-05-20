@@ -1183,6 +1183,24 @@ serve(async (req) => {
         boosts.push({ name: "Positive note signals", delta: Math.min(10, posHits.length * 4), reason: posHits.map((h) => h.signal).slice(0, 2).join("; ") });
       }
 
+      // Outcome-based boosts — explicit positive team feedback / closed wins
+      const positiveOutcomes = explicitOutcomes.filter((o: any) =>
+        ["closed_won", "terms_issued", "diligence", "engaged"].includes(String(o.status)) || (typeof o.fit_quality === "number" && o.fit_quality >= 4),
+      );
+      if (positiveOutcomes.length) {
+        boosts.push({
+          name: "Positive recommendation outcomes",
+          delta: Math.min(12, 3 + positiveOutcomes.length * 3),
+          reason: `${positiveOutcomes.length} prior positive team feedback / closed outcome(s)`,
+        });
+      }
+      // Admin boost rule
+      for (const r of rulesForLender) {
+        if (r.rule_type === "boost" && ruleApplies(r) && typeof r.delta === "number") {
+          boosts.push({ name: "Admin boost rule", delta: Math.max(0, Math.min(25, r.delta)), reason: r.reason });
+        }
+      }
+
       const reasons = [type.reason, size.reason, industry.reason, geography.reason, structure.reason, recency.reason, evidence.reason]
         .filter((r) => r && r.length);
 
