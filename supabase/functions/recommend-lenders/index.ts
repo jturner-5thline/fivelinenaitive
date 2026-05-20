@@ -1415,9 +1415,75 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
 
     recommendations.sort((a, b) => b.matchScore - a.matchScore);
 
+    // ── Persist a run log + per-item snapshots (fire-and-forget) ────────────
+    const logRun = async (finalList: Recommendation[]) => {
+      try {
+        const { data: runRow, error: runErr } = await supabase
+          .from("lender_recommendation_runs")
+          .insert({
+            deal_id: dealId,
+            triggered_by: userData.user.id,
+            qa_mode: qa,
+            criteria_override: criteriaOverride ?? null,
+            evaluated_count: activeLenders.length,
+            scored_count: candidates.length,
+            hard_filtered_count: filteredOut.length,
+            model_used: ANTHROPIC_API_KEY ? "claude-sonnet-4" : (LOVABLE_API_KEY ? "gemini-2.5-pro" : "deterministic-only"),
+            weights: WEIGHTS,
+            meta: {
+              fitAttributesLoaded: fitById.size,
+              dealEmbedded: !!dealEmbedding,
+              simulated: !!(narrativeAppend || notesAppend),
+              outcomesLoaded: outcomeRows?.length ?? 0,
+              matchRulesLoaded: matchRules?.length ?? 0,
+            },
+          })
+          .select("id")
+          .single();
+        if (runErr || !runRow?.id) return;
+
+        const items: any[] = [];
+        finalList.slice(0, 60).forEach((r, idx) => {
+          const t = r.pipelineTrace;
+          items.push({
+            run_id: runRow.id,
+            lender_id: r.lenderId,
+            lender_name: r.lenderName,
+            hard_filtered: false,
+            match_score: r.matchScore,
+            confidence: r.confidence,
+            structured_score: t?.structured.score ?? null,
+            unstructured_score: t?.unstructured.score ?? null,
+            penalty_total: t?.final.penaltyTotal ?? null,
+            boost_total: t?.final.boostTotal ?? null,
+            ai_adjustment: t?.final.aiAdjustment ?? null,
+            dominant_driver: r.explanation?.dominantDriver ?? null,
+            rationale: r.rationale,
+            components: r.components as any,
+            rank_position: idx + 1,
+          });
+        });
+        qaHardFiltered.slice(0, 40).forEach((h: any) => {
+          items.push({
+            run_id: runRow.id,
+            lender_id: h.lenderId,
+            lender_name: h.lenderName,
+            hard_filtered: true,
+            failed_check: h.failedCheck,
+            failed_reason: h.failedReason,
+            components: h.components ?? null,
+          });
+        });
+        if (items.length) await supabase.from("lender_recommendation_run_items").insert(items);
+      } catch (e) {
+        console.error("logRun failed", e);
+      }
+    };
+
     // In QA mode skip diversification & the 40-floor — the harness needs to see
     // every scored lender with its raw final score and full trace.
     if (qa) {
+      logRun(recommendations); // fire-and-forget; no await to keep latency low
       return new Response(
         JSON.stringify({
           recommendations,
