@@ -305,7 +305,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const defaultTab =
     conflictRequests.length > 0 ? 'conflicts'
     : newLenderRequests.length > 0 ? 'new'
-    : duplicateRequests.length > 0 ? 'duplicates'
+    : duplicateCount > 0 ? 'duplicates'
     : 'all';
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
