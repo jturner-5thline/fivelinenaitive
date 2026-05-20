@@ -169,7 +169,13 @@ export function AddFollowupInlineForm({ deal, defaultTitle, onClose, onCreated }
               {format(dueDate, 'EEE, MMM d')}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 z-[80] pointer-events-auto" align="start">
+          <PopoverContent
+            className="w-auto p-0 z-[1400] pointer-events-auto"
+            align="start"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <Calendar
               mode="single"
               selected={dueDate}
@@ -188,7 +194,13 @@ export function AddFollowupInlineForm({ deal, defaultTitle, onClose, onCreated }
               <ChevronDown className="h-3 w-3 opacity-60" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[240px] p-0 z-[80] pointer-events-auto" align="start">
+          <PopoverContent
+            className="w-[240px] p-0 z-[1400] pointer-events-auto"
+            align="start"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
             <Command>
               <CommandInput placeholder="Search teammates..." className="h-8 text-[12px]" />
               <CommandList>
