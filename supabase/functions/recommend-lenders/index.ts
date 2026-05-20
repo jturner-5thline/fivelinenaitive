@@ -629,8 +629,8 @@ serve(async (req) => {
 
     // ── Deterministic scoring + hard filters ─────────────────────────────────
     const WEIGHTS = {
-      type: 0.22, size: 0.18, industry: 0.18,
-      geography: 0.08, structure: 0.14, recency: 0.08, evidence: 0.12,
+      type: 0.20, size: 0.16, industry: 0.16,
+      geography: 0.07, structure: 0.12, recency: 0.07, evidence: 0.10, semantic: 0.12,
     };
 
     type Scored = {
