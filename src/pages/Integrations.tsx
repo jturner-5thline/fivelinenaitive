@@ -620,7 +620,7 @@ export default function Integrations() {
         )}
 
         {/* 3 — Automation & Sync Configuration */}
-        {(true || canSeeFlexSync) && (
+        {(
           <section className="space-y-3">
             <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
               Automation & Sync
