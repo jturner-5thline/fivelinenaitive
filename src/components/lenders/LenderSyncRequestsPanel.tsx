@@ -569,15 +569,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {pendingRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No pending requests.</p>
                     )}
-                    {pendingRequests.map(request => (
-                      <SyncRequestCard
-                        key={request.id}
-                        request={request}
-                        isSelected={selectedIds.has(request.id)}
-                        onToggleSelect={toggleSelect}
+                    {allGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
                         onApprove={handleApprove}
                         onReject={rejectRequest}
                         onMerge={handleMerge}
+                        renderMember={renderMember}
                       />
                     ))}
                   </div>
@@ -590,15 +589,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {newLenderRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No new lender approvals waiting.</p>
                     )}
-                    {newLenderRequests.map(request => (
-                      <SyncRequestCard
-                        key={request.id}
-                        request={request}
-                        isSelected={selectedIds.has(request.id)}
-                        onToggleSelect={toggleSelect}
+                    {newLenderGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
                         onApprove={handleApprove}
                         onReject={rejectRequest}
                         onMerge={handleMerge}
+                        renderMember={renderMember}
                       />
                     ))}
                   </div>
