@@ -869,7 +869,7 @@ serve(async (req) => {
       .map((dl: any) => `${dl.name}: ${dl.pass_reason || ""} ${dl.notes || ""}`.trim().slice(0, 300))
       .join("\n").slice(0, 3000);
 
-    const dealEvidenceText = [dealNarrative, dealNoteText, dealLenderFeedback].join("\n");
+    const dealEvidenceText = [simulatedNarrative, simulatedNoteText, dealLenderFeedback].join("\n");
 
     // ── Embed the deal narrative (cached on deal_writeups via source hash) ───
     const narrativeBundle = [
@@ -881,8 +881,8 @@ serve(async (req) => {
       `B2B/B2C: ${writeup?.b2b_b2c ?? ""}`,
       `Collateral: ${writeup?.collateral_available ?? ""}`,
       `Use of funds: ${writeup?.use_of_funds ?? ""}`,
-      dealNarrative,
-      dealNoteText,
+      simulatedNarrative,
+      simulatedNoteText,
     ].filter(Boolean).join("\n\n").slice(0, 8000);
     const narrativeHash = await sha256Hex(narrativeBundle);
     let dealEmbedding: number[] | null = parseEmbedding((writeup as any)?.narrative_embedding);
