@@ -44,6 +44,24 @@ interface Recommendation {
   negativeFitSignals?: string[];
   matchedExclusion?: string | null;
   fitSummary?: string | null;
+  explanation?: WhyExplanation;
+}
+
+// Transparent per-lender explanation surfaced to the UI.
+interface FieldRow { label: string; deal: string; lender: string; verdict: 'match' | 'mismatch' | 'partial' | 'unknown'; }
+interface WhyExplanation {
+  fitReasons: string[];        // top 3 concrete fit reasons
+  risks: string[];             // top 1-2 risks/caveats
+  matchedFields: FieldRow[];
+  unmatchedFields: FieldRow[];
+  noteInsights: { positive: string[]; negative: string[]; tags: string[] };
+  priorTeamKnowledge: {
+    recentActivity: boolean;
+    passReasons: string[];
+    repeatPatterns: { reason: string; occurrences: number; confidence: number }[];
+  };
+  dominantDriver: 'structured' | 'notes' | 'history' | 'balanced';
+  driverBreakdown: { structured: number; notes: number; history: number };
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
