@@ -437,8 +437,8 @@ export function TaskListView({
                               className={cn('grid', TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}
                               style={gridStyle}
                             >
-                              {/* 5 leading utility columns */}
-                              <div /><div /><div /><div /><div />
+                              {/* 4 leading utility columns */}
+                              <div /><div /><div /><div />
                               {/* Title input occupies the task-name column */}
                               <Input
                                 ref={newTaskRef as any}
