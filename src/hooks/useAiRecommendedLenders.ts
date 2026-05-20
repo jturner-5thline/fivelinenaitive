@@ -94,6 +94,10 @@ export interface AiRecommenderCriteriaOverride {
   dealTypes?: string[];
   industry?: string;
   geo?: string;
+  /** QA/simulation only — appended to the deal narrative before scoring. */
+  narrativeAppend?: string;
+  /** QA/simulation only — appended to the deal notes before scoring. */
+  notesAppend?: string;
 }
 
 export function useAiRecommendedLenders(
