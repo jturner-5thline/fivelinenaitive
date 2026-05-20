@@ -276,6 +276,48 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const approvableRequests = pendingRequests.filter(r => r.request_type !== 'merge_conflict');
   const selectedApprovable = approvableRequests.filter(r => selectedIds.has(r.id));
 
+  // Categorize pending requests for tabs
+  const newLenderRequests = pendingRequests.filter(r => r.request_type === 'new_lender');
+  const conflictRequests = pendingRequests.filter(r => r.request_type === 'merge_conflict');
+
+  // Potential duplicates: pending requests that share a normalized lender name
+  // with at least one other pending request, OR new_lender requests whose name
+  // closely matches an existing lender flagged by the sync layer.
+  const normalizeName = (n: string) =>
+    (n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const nameCounts = new Map<string, number>();
+  for (const r of pendingRequests) {
+    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
+    if (!n) continue;
+    nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
+  }
+  const duplicateRequests = pendingRequests.filter(r => {
+    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
+    const dupByName = n ? (nameCounts.get(n) || 0) > 1 : false;
+    const dupByExisting = r.request_type === 'new_lender' && !!r.existing_lender_name;
+    return dupByName || dupByExisting;
+  });
+
+  // Group duplicates by normalized name for the Potential Duplicates view
+  const duplicateGroups = (() => {
+    const groups = new Map<string, LenderSyncRequest[]>();
+    for (const r of duplicateRequests) {
+      const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string) || r.id;
+      const arr = groups.get(n) || [];
+      arr.push(r);
+      groups.set(n, arr);
+    }
+    return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
+  })();
+
+  // Default to the most actionable tab. Conflicts win, then new lenders, else all.
+  const defaultTab =
+    conflictRequests.length > 0 ? 'conflicts'
+    : newLenderRequests.length > 0 ? 'new'
+    : duplicateRequests.length > 0 ? 'duplicates'
+    : 'all';
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
