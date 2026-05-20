@@ -217,7 +217,10 @@ export function InlineEditField({
           value={draft}
           onChange={(e) => handleChange(e.target.value)}
           className={cn(
-            'w-full min-w-0 border-transparent bg-transparent px-1 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+            // h-auto + leading-tight override the shadcn Input default
+            // (h-10) which was clipping large title typography (e.g.
+            // text-5xl) in the deal header card.
+            'w-full min-w-0 h-auto leading-tight border-transparent bg-transparent px-1 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
             !isFocused && 'hover:bg-muted/40',
             displayClassName,
             inputClassName,
