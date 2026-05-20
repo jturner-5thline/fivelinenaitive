@@ -264,6 +264,7 @@ const WEEK_COL_MIN_WIDTH = 130;
 
 export const WeeklyReportTab = memo(function WeeklyReportTab({
   weeklyData, weeklyOverrides, onCashOverride,
+  overrideHistoryByCell,
   sidebarData, sidebarDbItems, theme, isAdmin, companyId,
   planSnapshots, activePlanId, onActivePlanChange, onSavePlan,
   onExport, onConfigureScheduled, scheduledItems, onSidebarEditItem, onSidebarRemoveItem, onSidebarAddItem, onSidebarRemoveDbItem,
