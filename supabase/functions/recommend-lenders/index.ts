@@ -886,9 +886,10 @@ serve(async (req) => {
     ].filter(Boolean).join("\n\n").slice(0, 8000);
     const narrativeHash = await sha256Hex(narrativeBundle);
     let dealEmbedding: number[] | null = parseEmbedding((writeup as any)?.narrative_embedding);
+    const isSimulated = !!(narrativeAppend || notesAppend);
     if (!dealEmbedding || (writeup as any)?.narrative_source_hash !== narrativeHash) {
       dealEmbedding = await embedText(narrativeBundle);
-      if (dealEmbedding) {
+      if (dealEmbedding && !isSimulated) {
         await supabase.from("deal_writeups").update({
           narrative_embedding: dealEmbedding as any,
           narrative_source_hash: narrativeHash,
