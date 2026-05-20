@@ -46,6 +46,10 @@ export interface MasterLender {
   active?: boolean | null;
   flex_lender_id?: string | null;
   last_synced_from_flex?: string | null;
+  website?: string | null;
+  linkedin_url?: string | null;
+  address?: string | null;
+  phone?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -86,6 +90,10 @@ export interface MasterLenderInsert {
   external_last_modified?: string | null;
   tier?: string | null;
   active?: boolean | null;
+  website?: string | null;
+  linkedin_url?: string | null;
+  address?: string | null;
+  phone?: string | null;
 }
 
 export type MasterLendersMode = 'all' | 'paged';
@@ -162,7 +170,7 @@ export function useMasterLenders(options: UseMasterLendersOptions = {}) {
         let builder = supabase
           .from('master_lenders')
           .select('*', withCount ? { count: 'exact' } : { count: 'exact' })
-          .or(`name.ilike.${pattern},contact_name.ilike.${pattern},email.ilike.${pattern},lender_type.ilike.${pattern},geo.ilike.${pattern},tier.ilike.${pattern},relationship_owners.ilike.${pattern}`)
+          .or(`name.ilike.${pattern},contact_name.ilike.${pattern},email.ilike.${pattern},lender_type.ilike.${pattern},geo.ilike.${pattern},tier.ilike.${pattern},relationship_owners.ilike.${pattern},website.ilike.${pattern},linkedin_url.ilike.${pattern},phone.ilike.${pattern},address.ilike.${pattern}`)
           .order(orderColumn, { ascending: orderAscending })
           .range(from, to);
 
