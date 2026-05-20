@@ -423,8 +423,6 @@ export function TaskListView({
                           onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
                           showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
                           collaborators={collaboratorsMap.get(task.id)}
-                          isExpanded={expandedTaskIds.has(task.id)}
-                          onToggleExpanded={() => toggleExpanded(task.id)}
                           onOpenFullDetail={() => onSelectTask(task.id)}
                           gridStyle={gridStyle}
                           cols={cols}
