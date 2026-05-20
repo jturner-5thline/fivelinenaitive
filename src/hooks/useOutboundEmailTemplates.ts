@@ -22,6 +22,11 @@ export interface OutboundEmailTemplate {
   sequence_group_id: string | null;
   sequence_step_key: string | null;
   sequence_step_order: number | null;
+  trigger_stage: string | null;
+  cadence: string | null;
+  recipient: string | null;
+  approval_required: boolean;
+  category: string | null;
 }
 
 export interface SequenceGroup {
