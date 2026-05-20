@@ -14,6 +14,9 @@ import type { CellComment } from './cellComments/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { CashFlowDrilldownModal, type DrilldownContext } from './CashFlowDrilldownModal';
 import type { ScheduledCashFlow } from './scheduledCashFlows';
+import type { OverrideHistoryEntry } from './useCellOverrideHistory';
+import { cellHistoryKey } from './useCellOverrideHistory';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /**
  * Editable Beginning/Ending Cash cell with a local draft state.
@@ -41,6 +44,7 @@ const EditableCashCell = memo(function EditableCashCell({
     weekKey: string,
     field: 'beginningCash' | 'endingCash' | 'addlLiquidity',
     value: number | null,
+    previousValue?: number | null,
   ) => void;
 }) {
   const formatted = fmtAbbrev(displayVal);
@@ -56,7 +60,7 @@ const EditableCashCell = memo(function EditableCashCell({
   const commit = useCallback(() => {
     const raw = draft.trim();
     if (raw === '') {
-      onCommit(weekKey, field, null);
+      onCommit(weekKey, field, null, value);
       return;
     }
     // Strip thousands separators, currency markers; keep sign + decimal.
@@ -70,7 +74,7 @@ const EditableCashCell = memo(function EditableCashCell({
       setDraft(formatted);
       return;
     }
-    onCommit(weekKey, field, parsed);
+    onCommit(weekKey, field, parsed, value);
   }, [draft, formatted, value, isOverridden, onCommit, weekKey, field]);
 
   return (
