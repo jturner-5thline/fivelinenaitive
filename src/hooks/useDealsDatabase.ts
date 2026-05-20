@@ -450,9 +450,10 @@ export function useDealsDatabase() {
           .order('created_at', { ascending: false });
         
         // Map deals immediately for faster initial render
-        const initialMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => 
+      const initialMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) =>
           mapDbDealToDeal(dbDeal, dbLenders, {})
         );
+        initialMappedDeals.forEach((deal) => warnIfFinServValueMismatch(deal, 'useDealsDatabase.fetchDeals.initial'));
         setDeals(initialMappedDeals);
         setIsLoading(false);
         
@@ -471,18 +472,20 @@ export function useDealsDatabase() {
           });
           
           // Update with complete data including notes history
-          const fullMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => 
+          const fullMappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) =>
             mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap)
           );
+          fullMappedDeals.forEach((deal) => warnIfFinServValueMismatch(deal, 'useDealsDatabase.fetchDeals.full'));
           setDeals(fullMappedDeals);
         }
         return;
       }
 
       // No lenders - just map deals
-      const mappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) => 
+      const mappedDeals: Deal[] = dbDeals.map((dbDeal: DbDeal) =>
         mapDbDealToDeal(dbDeal, dbLenders, notesHistoryMap)
       );
+      mappedDeals.forEach((deal) => warnIfFinServValueMismatch(deal, 'useDealsDatabase.fetchDeals'));
       setDeals(mappedDeals);
     } catch (err) {
       console.error('Error fetching deals:', err);
