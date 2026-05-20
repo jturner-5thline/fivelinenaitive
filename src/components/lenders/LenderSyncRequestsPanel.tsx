@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Bell, Check, X, GitMerge, ChevronDown, ChevronRight, AlertTriangle, UserPlus, RefreshCw, CheckCheck, Loader2 } from 'lucide-react';
+import { Bell, Check, X, GitMerge, ChevronDown, ChevronRight, AlertTriangle, UserPlus, RefreshCw, CheckCheck, Loader2, Search, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -8,12 +8,20 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
-import { groupSyncRequests, normalizeLenderName } from '@/lib/lenderRequestGrouping';
+import { groupSyncRequests, normalizeLenderName, getRequestConfidence } from '@/lib/lenderRequestGrouping';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FieldChangeProps {
