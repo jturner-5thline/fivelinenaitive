@@ -63,6 +63,7 @@ import { RecentPipelineActivitySection } from './briefingPrimitives';
 import { formatSlug } from '@/utils/dealTypeLabels';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { WeeklyRundownReadOnlyCashflow } from '@/components/metrics/dashboards/WeeklyRundownReadOnlyCashflow';
+import { useIsDemoAccount } from '@/hooks/useIsDemoAccount';
 
 // Users for whom the Daily Rundown hides "Today's Follow-Ups" entirely and
 // collapses "Recent Pipeline Activity" behind a button that opens a side
