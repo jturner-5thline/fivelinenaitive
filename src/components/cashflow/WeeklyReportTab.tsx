@@ -122,7 +122,13 @@ interface WeeklyReportTabProps {
     weekKey: string,
     field: 'beginningCash' | 'endingCash' | 'addlLiquidity',
     value: number | null,
+    previousValue?: number | null,
   ) => void;
+  /**
+   * Audit trail entries keyed by `${weekKey}::${field}`. Newest-first.
+   * Rendered as a hover popover on overridden cells.
+   */
+  overrideHistoryByCell?: Record<string, OverrideHistoryEntry[]>;
   sidebarData: SidebarData;
   sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
