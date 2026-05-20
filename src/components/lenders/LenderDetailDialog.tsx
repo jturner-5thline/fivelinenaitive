@@ -91,6 +91,10 @@ interface LenderInfo {
   lenderNotes?: string | null;
   tier?: string | null;
   relationshipOwners?: string | null;
+  websiteUrl?: string | null;
+  linkedinUrl?: string | null;
+  address?: string | null;
+  phoneMain?: string | null;
 }
 
 export interface LenderEditData {
@@ -111,6 +115,10 @@ export interface LenderEditData {
   lenderNotes: string;
   tier: string;
   relationshipOwners: string;
+  websiteUrl: string;
+  linkedinUrl: string;
+  address: string;
+  phoneMain: string;
 }
 
 interface LenderDetailDialogProps {
