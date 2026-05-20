@@ -1142,6 +1142,26 @@ serve(async (req) => {
         penalties.push({ name: "Exclusion tags", delta: -10, reason: exclusionTags.join(", ") });
       }
 
+      // Outcome-based penalties — explicit team feedback from prior recommendations
+      const explicitOutcomes = outcomesByLender.get(lender.id) ?? outcomesByLender.get(lc(lender.name)) ?? [];
+      const negativeOutcomes = explicitOutcomes.filter((o: any) =>
+        ["declined", "closed_lost", "dismissed"].includes(String(o.status)) || (typeof o.fit_quality === "number" && o.fit_quality <= 2),
+      );
+      if (negativeOutcomes.length) {
+        const sample = negativeOutcomes[0];
+        penalties.push({
+          name: "Negative recommendation outcomes",
+          delta: -Math.min(15, negativeOutcomes.length * 5),
+          reason: `${negativeOutcomes.length} prior negative outcome(s) — e.g. ${sample.status}${sample.decline_reason ? `: "${String(sample.decline_reason).slice(0, 80)}"` : ""}`,
+        });
+      }
+      // Admin penalize rule
+      for (const r of rulesForLender) {
+        if (r.rule_type === "penalize" && ruleApplies(r) && typeof r.delta === "number") {
+          penalties.push({ name: "Admin penalize rule", delta: Math.max(-25, Math.min(0, r.delta)), reason: r.reason });
+        }
+      }
+
       // ─── LAYER 5 — BOOSTS (positive historical outcomes) ──────────────────
       const boosts: { name: string; delta: number; reason: string }[] = [];
       const historicalWins = positiveByLender.get(lc(lender.name)) ?? [];
