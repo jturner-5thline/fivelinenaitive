@@ -292,7 +292,6 @@ export function TaskListView({
           style={gridStyle}
         >
           <div aria-hidden />
-          <div aria-hidden />
           <div
             className="cursor-pointer flex items-center justify-center"
             onClick={onSelectAll}
