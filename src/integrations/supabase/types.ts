@@ -15460,13 +15460,17 @@ export type Database = {
       }
       outbound_email_templates: {
         Row: {
+          approval_required: boolean
           body_plain_text: string | null
           body_rich_text: string
+          cadence: string | null
+          category: string | null
           company_id: string
           created_at: string
           created_by: string | null
           id: string
           is_active: boolean
+          recipient: string | null
           sequence_group_id: string | null
           sequence_name: string | null
           sequence_step_key: string | null
@@ -15476,17 +15480,22 @@ export type Database = {
           template_number: number
           template_type: string
           title: string
+          trigger_stage: string | null
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          approval_required?: boolean
           body_plain_text?: string | null
           body_rich_text?: string
+          cadence?: string | null
+          category?: string | null
           company_id: string
           created_at?: string
           created_by?: string | null
           id?: string
           is_active?: boolean
+          recipient?: string | null
           sequence_group_id?: string | null
           sequence_name?: string | null
           sequence_step_key?: string | null
@@ -15496,17 +15505,22 @@ export type Database = {
           template_number: number
           template_type?: string
           title: string
+          trigger_stage?: string | null
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          approval_required?: boolean
           body_plain_text?: string | null
           body_rich_text?: string
+          cadence?: string | null
+          category?: string | null
           company_id?: string
           created_at?: string
           created_by?: string | null
           id?: string
           is_active?: boolean
+          recipient?: string | null
           sequence_group_id?: string | null
           sequence_name?: string | null
           sequence_step_key?: string | null
@@ -15516,6 +15530,7 @@ export type Database = {
           template_number?: number
           template_type?: string
           title?: string
+          trigger_stage?: string | null
           updated_at?: string
           updated_by?: string | null
         }
