@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { activateDealDraft, clearDealDraft } from '@/lib/dealDraftRegistry';
 
 export interface UseDebouncedFieldValueOptions<T> {
   /** Debounce window before `commit` fires while the user is still typing. */
@@ -10,6 +11,10 @@ export interface UseDebouncedFieldValueOptions<T> {
    * remote updates are accepted even while focused. Defaults to `Object.is`.
    */
   equals?: (a: T, b: T) => boolean;
+  draftKey?: {
+    dealId?: string;
+    fieldName?: string;
+  };
 }
 
 export interface UseDebouncedFieldValueResult<T> {
@@ -45,7 +50,7 @@ export interface UseDebouncedFieldValueResult<T> {
  */
 export function useDebouncedFieldValue<T>(
   remoteValue: T,
-  { debounceMs = 500, commit, equals = Object.is }: UseDebouncedFieldValueOptions<T>,
+  { debounceMs = 500, commit, equals = Object.is, draftKey }: UseDebouncedFieldValueOptions<T>,
 ): UseDebouncedFieldValueResult<T> {
   const [value, setLocal] = useState<T>(remoteValue);
 
@@ -56,6 +61,18 @@ export function useDebouncedFieldValue<T>(
   const remoteRef = useRef<T>(remoteValue);
   const commitRef = useRef(commit);
   const equalsRef = useRef(equals);
+
+  const registerDraft = useCallback(() => {
+    if (draftKey?.dealId && draftKey.fieldName) {
+      activateDealDraft(draftKey.dealId, draftKey.fieldName);
+    }
+  }, [draftKey?.dealId, draftKey?.fieldName]);
+
+  const unregisterDraft = useCallback(() => {
+    if (draftKey?.dealId && draftKey.fieldName) {
+      clearDealDraft(draftKey.dealId, draftKey.fieldName);
+    }
+  }, [draftKey?.dealId, draftKey?.fieldName]);
 
   // Keep latest callbacks without re-running effects.
   useEffect(() => { commitRef.current = commit; }, [commit]);
@@ -69,7 +86,8 @@ export function useDebouncedFieldValue<T>(
       draftRef.current = remoteValue;
       setLocal(remoteValue);
     }
-  }, [remoteValue]);
+    unregisterDraft();
+  }, [remoteValue, unregisterDraft]);
 
   const clearTimer = () => {
     if (timerRef.current != null) {
@@ -93,24 +111,36 @@ export function useDebouncedFieldValue<T>(
     setLocal(next);
     hasPendingRef.current = !equalsRef.current(next, remoteRef.current);
     clearTimer();
+    if (hasPendingRef.current) {
+      registerDraft();
+    } else if (!isFocusedRef.current) {
+      unregisterDraft();
+    }
     if (!hasPendingRef.current) return;
     timerRef.current = window.setTimeout(() => {
       timerRef.current = null;
       flush();
     }, debounceMs);
-  }, [debounceMs, flush]);
+  }, [debounceMs, flush, registerDraft, unregisterDraft]);
 
   const onFocus = useCallback(() => {
     isFocusedRef.current = true;
-  }, []);
+    registerDraft();
+  }, [registerDraft]);
 
   const onBlur = useCallback(() => {
     isFocusedRef.current = false;
     flush();
-  }, [flush]);
+    if (!hasPendingRef.current) {
+      unregisterDraft();
+    }
+  }, [flush, unregisterDraft]);
 
   // Flush any pending edit on unmount so we don't drop a fresh keystroke.
-  useEffect(() => () => { flush(); }, [flush]);
+  useEffect(() => () => {
+    flush();
+    unregisterDraft();
+  }, [flush, unregisterDraft]);
 
   return {
     value,
