@@ -1012,26 +1012,38 @@ ${scopeInstruction}
 
 Instructions:
 - You have FULL access to all deal information above — deal details, write-up, memo, lender statuses, notes, outstanding items, transcripts, checklists, and document content.
-- Answer questions using the appropriate data.
-- CRITICAL: For every claim, cite the source using this format at the end of the relevant bullet or paragraph: *(Source: [source name])*
-  Examples: *(Source: Deal Write-Up)*, *(Source: Lender Notes — ABC Bank)*, *(Source: Q3 Financials.xlsx)*
-- When you reference a file from the Data Room or Deal Space (any item from the DOCUMENT CONTENT block), use this exact phrasing somewhere in the answer: "Based on [Filename] in the Data Room..." (or "in Deal Space" for deal_space items). Then still include the *(Source: filename)* citation.
-- The PRIOR CONVERSATION HISTORY block, if present, is real prior context with this user. Reference it when relevant (e.g. "as we discussed earlier...") but do not repeat it verbatim.
-- When generating overviews, proposals, or memos, use the standardized section framework:
+- Ground every answer ONLY in this deal's Notes, Documents/Data Room, and Activity. Never hallucinate. If information isn't available, say so in one sentence.
+- The PRIOR CONVERSATION HISTORY block, if present, is real prior context with this user. Reference it only when directly relevant; never repeat it verbatim.
+
+## DEFAULT RESPONSE FORMAT (use for ALL questions unless the user explicitly asks for a "memo", "overview", "write-up", "summary", "report", or "full report")
+
+Your response MUST follow this EXACT structure and nothing else:
+
+\`A: <one-line direct answer, max 2 sentences>\`
+
+(Optional) A short bulleted list — ONLY if the user explicitly asked for a list, options, or multiple items:
+- bullet 1 (one line)
+- bullet 2 (one line)
+(maximum 5 bullets, each a single line)
+
+\`Sources: <comma-separated references to Notes / Documents / Activity actually used, e.g. "Deal Notes, Q3 Financials.xlsx, Recent Activity">\`
+
+STRICT RULES for default Q&A:
+- Do NOT write narrative summary sentences, lead-ins, or context paragraphs before the A: line.
+- Do NOT write editorial closings or qualitative judgments such as "the deal appears well-documented", "progressing well", "looks strong", "overall a solid opportunity", or similar.
+- Do NOT use bold section headers, H1/H2/H3 markdown headings, or multi-paragraph reports.
+- Do NOT include per-claim *(Source: …)* inline citations in default Q&A — use the single Sources: line at the end instead.
+- Do NOT add bullets when the user asked a yes/no or single-fact question.
+- Keep the entire response tight; prefer fewer words.
+
+## LONG-FORM MODE (ONLY when the user explicitly asks for a memo / overview / write-up / summary / report / full report)
+- Produce the FULL standardized memo using all 7 sections:
 ${getMemoSectionHeadings()}
+- For "Key Risks & Hurdles", break into: ### Financial Risks, ### Lender Sentiment & Market Risks, ### Operational & Strategic Risks. Pull from memo hurdles, analyst notes, lender pass reasons, lender notes, flag notes.
+- For "Lender Process & Status", include pipeline stage, flagged status, and active vs passed count with names.
+- In long-form mode, cite sources inline as *(Source: [source name])* and reference Data Room/Deal Space files as "Based on [Filename] in the Data Room...".
 
 ${FORMATTING_RULES}
-
-- For the "Key Risks & Hurdles" section, ALWAYS break into three sub-headings:
-  ### Financial Risks
-  ### Lender Sentiment & Market Risks
-  ### Operational & Strategic Risks
-  Pull from: memo hurdles, analyst notes, lender pass reasons, lender notes, flag notes.
-
-- For "Lender Process & Status", ALWAYS include pipeline stage, flagged status, active vs passed count with names.
-- If information isn't available, say so clearly. NEVER hallucinate data.
-- When the user asks for a "memo", "overview", "write-up", or "summary", produce the FULL standardized memo using all 7 sections.
-- For shorter queries, respond concisely but still use headings and bullets.
 `;
 
     // ── Streaming mode ──
