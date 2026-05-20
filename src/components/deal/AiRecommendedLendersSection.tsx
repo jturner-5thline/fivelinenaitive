@@ -27,6 +27,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { useAiRecommendedLenders, type AiRecommendation, type AiRecommenderCriteriaOverride } from '@/hooks/useAiRecommendedLenders';
 import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
+import { useAuth } from '@/contexts/AuthContext';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 
 interface Props {
   dealId: string | undefined;
