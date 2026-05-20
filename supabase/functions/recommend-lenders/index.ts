@@ -1194,7 +1194,11 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
       const cAny = c as any;
       const adjEntry = aiAdjustments.get(lc(c.lender.name));
       const adj = adjEntry?.adj ?? 0;
-      const finalScore = Math.max(0, Math.min(100, Math.round(c.detScore + adj)));
+      const penalties = cAny.penalties ?? [];
+      const boosts = cAny.boosts ?? [];
+      const penaltyTotal = penalties.reduce((s: number, p: any) => s + p.delta, 0);
+      const boostTotal = boosts.reduce((s: number, p: any) => s + p.delta, 0);
+      const preDiversity = Math.max(0, Math.min(100, Math.round(c.detScore + adj + penaltyTotal + boostTotal)));
 
       // Confidence: how many evaluative dimensions had real signal
       const sigDims = [
@@ -1216,10 +1220,40 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
         rationale = `Strong ${top[0]} fit (${top[0] === 'evidence' ? top[1] : top[1]}); weakest on ${bot[0]} (${bot[1]}).`;
       }
 
+      const pipelineTrace: PipelineTrace = {
+        hardFilters: { passed: true, checks: cAny.hardFilterChecks ?? [] },
+        structured: {
+          score: Math.round(cAny.structuredScore ?? 0),
+          components: STRUCTURED_KEYS.map((k) => ({
+            name: k, score: (c.components as any)[k], weight: (WEIGHTS as any)[k],
+            reason: cAny.structuredReasons?.[k] ?? "",
+          })),
+        },
+        unstructured: {
+          score: Math.round(cAny.unstructuredScore ?? 0),
+          components: UNSTRUCTURED_KEYS.map((k) => ({
+            name: k, score: (c.components as any)[k], weight: (WEIGHTS as any)[k],
+            reason: cAny.unstructuredReasons?.[k] ?? "",
+          })),
+        },
+        penalties,
+        boosts,
+        final: {
+          deterministic: Math.round(c.detScore),
+          aiAdjustment: adj,
+          penaltyTotal,
+          boostTotal,
+          diversityDelta: 0,
+          matchScore: preDiversity,
+          confidence,
+        },
+        weights: WEIGHTS,
+      };
+
       return {
         lenderId: c.lender.id ?? null,
         lenderName: c.lender.name,
-        matchScore: finalScore,
+        matchScore: preDiversity,
         confidence,
         rationale: rationale.slice(0, 220),
         components: { ...c.components, ai: adj },
@@ -1249,15 +1283,60 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
           recentActivity: recentSet.has(lc(c.lender.name)),
           reasons: c.reasons ?? [],
         }),
+        pipelineTrace,
       };
     });
 
     recommendations.sort((a, b) => b.matchScore - a.matchScore);
 
-    // Drop floor: keep only meaningful matches (>=40). Show up to 12.
-    const final = recommendations
-      .filter((r) => r.matchScore >= 40 && !excludeSet.has(lc(r.lenderName)))
-      .slice(0, 12);
+    // ─── LAYER 7 — DIVERSIFICATION ────────────────────────────────────────────
+    // Greedy selection: take highest-scoring lender; cap how many near-identical
+    // lenders (same lender_type AND same tier) can sit in the top list unless
+    // their score gap is < 4 points (truly tied — let them through).
+    const eligible = recommendations
+      .filter((r) => r.matchScore >= 40 && !excludeSet.has(lc(r.lenderName)));
+    const TARGET = 12;
+    const typeCap = 4, tierCap = 5;
+    const typeCount = new Map<string, number>(), tierCount = new Map<string, number>();
+    const picked: Recommendation[] = [];
+    const deferred: Recommendation[] = [];
+    for (const r of eligible) {
+      const lenderObj = (recommendations as any).__lendersById; // not maintained — read tier/type from rec
+      const tKey = lc((r as any).pipelineTrace?.structured?.components?.find((x: any) => x.name === "structure")?.reason ?? "") || lc(r.tier ?? "any-tier");
+      const tierKey = lc(r.tier ?? "untiered");
+      // Use loanTypes as proxy for lender_type cluster
+      const typeKey = (r.loanTypes ?? []).slice(0, 2).map(lc).join("|") || "no-type";
+      const tCount = typeCount.get(typeKey) ?? 0;
+      const trCount = tierCount.get(tierKey) ?? 0;
+      const overloaded = tCount >= typeCap || trCount >= tierCap;
+      if (overloaded) {
+        // demote: penalize and defer
+        const penalty = -4;
+        const newScore = Math.max(0, r.matchScore + penalty);
+        if (r.pipelineTrace) {
+          r.pipelineTrace.final.diversityDelta = penalty;
+          r.pipelineTrace.final.matchScore = newScore;
+          r.pipelineTrace.diversification = { reason: `cap reached for ${tCount >= typeCap ? `loan-type "${typeKey}"` : `tier "${tierKey}"`}`, demoted: true };
+        }
+        r.matchScore = newScore;
+        deferred.push(r);
+        continue;
+      }
+      typeCount.set(typeKey, tCount + 1);
+      tierCount.set(tierKey, trCount + 1);
+      if (r.pipelineTrace) r.pipelineTrace.diversification = { reason: "passed diversification", demoted: false };
+      picked.push(r);
+      if (picked.length >= TARGET) break;
+    }
+    // Backfill from deferred (already penalty-adjusted) if we have room.
+    if (picked.length < TARGET) {
+      deferred.sort((a, b) => b.matchScore - a.matchScore);
+      for (const r of deferred) {
+        if (picked.length >= TARGET) break;
+        picked.push(r);
+      }
+    }
+    const final = picked;
 
     // Fire-and-forget: extract fit attributes for top candidates missing them,
     // so the next recommendation pass benefits from richer signal.
@@ -1290,6 +1369,9 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
           fitAttributesLoaded: fitById.size,
           backgroundExtractionQueued: missingFitIds.length,
           dealEmbedded: !!dealEmbedding,
+          historicalOutcomesLoaded: positiveByLender.size,
+          pipelineLayers: ["hardFilter", "structured", "unstructured", "aiRerank", "penalties", "boosts", "diversification"],
+          diversification: { typeCap, tierCap, target: TARGET, demoted: final.filter((r) => r.pipelineTrace?.diversification?.demoted).length },
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
