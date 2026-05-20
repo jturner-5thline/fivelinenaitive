@@ -684,7 +684,22 @@ export function useDealsDatabase() {
 
     // Mark as pending to prevent realtime refetch from overwriting optimistic update
     pendingOptimisticUpdatesRef.current.add(`deal-${dealId}`);
-    
+
+    // FinServ deals: the pipeline-card amount, per-stage Value totals, and
+    // Weighted Value KPI all read from `deal.value`. MRR / One-Time Revenue
+    // are the underlying user-entered numbers, so whenever either changes
+    // we mirror their sum into `value` so every aggregate stays consistent
+    // with what the user just typed in the detail modal. Without this the
+    // card and dashboard show stale dollars even after a refetch.
+    const isFinServ = previousDeal?.dealClass === 'finserv';
+    const mrrChanged = (updates as any).mrr !== undefined;
+    const oneTimeChanged = (updates as any).oneTimeRevenue !== undefined;
+    if (isFinServ && (mrrChanged || oneTimeChanged) && updates.value === undefined) {
+      const nextMrr = Number(mrrChanged ? (updates as any).mrr : (previousDeal as any)?.mrr) || 0;
+      const nextOneTime = Number(oneTimeChanged ? (updates as any).oneTimeRevenue : (previousDeal as any)?.oneTimeRevenue) || 0;
+      updates = { ...updates, value: nextMrr + nextOneTime };
+    }
+
     // Optimistically update UI immediately
     setDeals(prev =>
       prev.map(deal =>
