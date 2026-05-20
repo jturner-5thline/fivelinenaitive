@@ -19,6 +19,127 @@ import { cellHistoryKey } from './useCellOverrideHistory';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 /**
+ * Override badge that doubles as a hover/click affordance for the audit
+ * trail. Clicking the pencil icon clears the override (existing behavior).
+ * Hovering the badge opens a popover listing who changed the cell, when,
+ * and the previous → new values.
+ */
+function OverrideBadgeWithHistory({
+  history,
+  onClear,
+}: {
+  history: OverrideHistoryEntry[];
+  onClear: (e: React.MouseEvent) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const closeTimerRef = useRef<number | null>(null);
+  const openNow = useCallback(() => {
+    if (closeTimerRef.current) {
+      window.clearTimeout(closeTimerRef.current);
+      closeTimerRef.current = null;
+    }
+    setOpen(true);
+  }, []);
+  const closeSoon = useCallback(() => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+    closeTimerRef.current = window.setTimeout(() => setOpen(false), 150);
+  }, []);
+  useEffect(() => () => {
+    if (closeTimerRef.current) window.clearTimeout(closeTimerRef.current);
+  }, []);
+
+  const fmt = (v: number | null) => {
+    if (v === null || v === undefined || Number.isNaN(v)) return '—';
+    return fmtAbbrev(v);
+  };
+  const fmtWhen = (iso: string) => {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return iso;
+    return d.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  };
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="cf-override-badge"
+          aria-label="Manual override — hover for history, click to clear"
+          title="Manually overridden — hover for history, click to clear"
+          onClick={onClear}
+          onMouseEnter={openNow}
+          onMouseLeave={closeSoon}
+          onFocus={openNow}
+          onBlur={closeSoon}
+          style={{ cursor: 'pointer', border: 'none' }}
+        >
+          <Pencil size={9} strokeWidth={2.5} />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        side="top"
+        className="w-72 p-0 text-xs"
+        onMouseEnter={openNow}
+        onMouseLeave={closeSoon}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="px-3 py-2 border-b border-border/60 font-medium text-foreground">
+          Manual override history
+        </div>
+        {history.length === 0 ? (
+          <div className="px-3 py-3 text-muted-foreground">
+            No audit entries recorded yet for this cell.
+          </div>
+        ) : (
+          <ol className="max-h-64 overflow-auto divide-y divide-border/40">
+            {history.map((h) => {
+              const who =
+                h.changed_by_name?.trim() ||
+                h.changed_by_email?.trim() ||
+                'Unknown user';
+              const isClear = h.new_value === null;
+              return (
+                <li key={h.id} className="px-3 py-2 leading-snug">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-medium text-foreground truncate" title={who}>
+                      {who}
+                    </span>
+                    <span className="text-muted-foreground tabular-nums shrink-0">
+                      {fmtWhen(h.changed_at)}
+                    </span>
+                  </div>
+                  <div className="text-muted-foreground tabular-nums">
+                    {isClear ? (
+                      <>
+                        Cleared override (was{' '}
+                        <span className="text-foreground">{fmt(h.previous_value)}</span>)
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-foreground">{fmt(h.previous_value)}</span>
+                        {' → '}
+                        <span className="text-foreground">{fmt(h.new_value)}</span>
+                      </>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ol>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+/**
  * Editable Beginning/Ending Cash cell with a local draft state.
  *
  * The input is bound to internal `draft` state — typed characters are NEVER
