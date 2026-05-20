@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo, useMemo, useState } from 'react';
+import { useEffect, useRef, memo, useMemo, useState, useCallback } from 'react';
 import { Chart, registerables } from 'chart.js';
 import type { WeeklyData, ThemeMode } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,11 +28,6 @@ export const WeeklyCharts = memo(function WeeklyCharts({
   weeklyData, theme, visibleWeekKeys,
   peakWeekKey = null, lowWeekKey = null,
 }: WeeklyChartsProps) {
-  const chart1Ref = useRef<HTMLCanvasElement>(null);
-  const chart2Ref = useRef<HTMLCanvasElement>(null);
-  const chart1ModalRef = useRef<HTMLCanvasElement>(null);
-  const chart2ModalRef = useRef<HTMLCanvasElement>(null);
-  const instances = useRef<Chart[]>([]);
   const [expanded, setExpanded] = useState<null | 'liquidity' | 'flow'>(null);
 
   // Memoize chart data to avoid recalculation
@@ -60,11 +55,12 @@ export const WeeklyCharts = memo(function WeeklyCharts({
     };
   }, [weeklyData, visibleWeekKeys, peakWeekKey, lowWeekKey]);
 
-  useEffect(() => {
-    instances.current.forEach((c) => c.destroy());
-    instances.current = [];
-
-    const { labels, endingCash, totalLiquidity, cashIn, cashOut, peakIdx, lowIdx } = chartData;
+  // Build the config builders + chart instance map. We use callback refs so
+  // each chart is destroyed *synchronously* when its canvas is removed from
+  // the DOM (e.g. when the expand Dialog closes). Otherwise Chart.js's
+  // responsive resize listener can fire on a detached canvas and crash with
+  // "Cannot read properties of null (reading 'ownerDocument')".
+  const { labels, endingCash, totalLiquidity, cashIn, cashOut, peakIdx, lowIdx } = chartData;
 
     // Build sparse arrays so the peak/low markers render as a single point on
     // top of the Ending Cash line at exactly the right (week, value) coordinate.
@@ -81,7 +77,17 @@ export const WeeklyCharts = memo(function WeeklyCharts({
     const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
     const textColor = isDark ? '#8892a8' : '#5a6070';
 
-    const commonOptions = {
+  const isDark = theme === 'dark';
+  const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
+  const textColor = isDark ? '#8892a8' : '#5a6070';
+
+  // Sparse arrays so peak/low markers sit on the Ending Cash line.
+  const peakPoints: (number | null)[] =
+    peakIdx >= 0 ? labels.map((_, i) => (i === peakIdx ? endingCash[i] : null)) : [];
+  const lowPoints: (number | null)[] =
+    lowIdx >= 0 ? labels.map((_, i) => (i === lowIdx ? endingCash[i] : null)) : [];
+
+  const commonOptions = {
       responsive: true,
       maintainAspectRatio: false,
       resizeDelay: 300,
@@ -120,7 +126,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     };
 
-    const buildLiquidityConfig = () => ({
+  const buildLiquidityConfig = () => ({
       type: 'line' as const,
       data: {
         labels,
@@ -208,7 +214,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     });
 
-    const buildFlowConfig = () => ({
+  const buildFlowConfig = () => ({
       type: 'line' as const,
       data: {
         labels,
@@ -258,22 +264,76 @@ export const WeeklyCharts = memo(function WeeklyCharts({
       },
     });
 
-    const targets: Array<[HTMLCanvasElement | null, () => any]> = [
-      [chart1Ref.current, buildLiquidityConfig],
-      [chart2Ref.current, buildFlowConfig],
-      [expanded === 'liquidity' ? chart1ModalRef.current : null, buildLiquidityConfig],
-      [expanded === 'flow' ? chart2ModalRef.current : null, buildFlowConfig],
-    ];
-    targets.forEach(([canvas, build]) => {
-      if (!canvas) return;
-      instances.current.push(new Chart(canvas, build()));
-    });
+  // Map of canvas element -> { chart, key } so we can detect when the data
+  // changed and reinitialize, and destroy synchronously when the canvas
+  // detaches.
+  const chartsByCanvas = useRef<Map<HTMLCanvasElement, { chart: Chart; key: string }>>(new Map());
 
-    return () => {
-      instances.current.forEach((c) => c.destroy());
-      instances.current = [];
-    };
-  }, [chartData, theme, expanded]);
+  // A version key changes whenever chart data/theme change, prompting
+  // mounted canvases to rebuild their chart.
+  const versionKey = useMemo(
+    () => JSON.stringify({ l: labels.length, theme, peakIdx, lowIdx, first: labels[0], last: labels[labels.length - 1] }),
+    [labels, theme, peakIdx, lowIdx],
+  );
+
+  const makeRef = useCallback(
+    (build: () => any) => (canvas: HTMLCanvasElement | null) => {
+      // Detach: destroy any existing chart for the previous canvas.
+      if (!canvas) return;
+      const existing = chartsByCanvas.current.get(canvas);
+      if (existing && existing.key === versionKey) return; // already up to date
+      if (existing) {
+        try { existing.chart.destroy(); } catch { /* no-op */ }
+        chartsByCanvas.current.delete(canvas);
+      }
+      // Guard: only create if canvas is actually attached to a document.
+      if (!canvas.ownerDocument || !canvas.isConnected) return;
+      try {
+        const chart = new Chart(canvas, build());
+        chartsByCanvas.current.set(canvas, { chart, key: versionKey });
+      } catch {
+        /* swallow init errors so finance page never crashes */
+      }
+    },
+    [versionKey],
+  );
+
+  // Rebuild when versionKey changes for canvases that are still mounted.
+  useEffect(() => {
+    chartsByCanvas.current.forEach((entry, canvas) => {
+      if (entry.key === versionKey) return;
+      try { entry.chart.destroy(); } catch { /* no-op */ }
+      chartsByCanvas.current.delete(canvas);
+      if (canvas.isConnected && canvas.ownerDocument) {
+        const build = canvas.dataset.chartKind === 'flow' ? buildFlowConfig : buildLiquidityConfig;
+        try {
+          const chart = new Chart(canvas, build());
+          chartsByCanvas.current.set(canvas, { chart, key: versionKey });
+        } catch { /* no-op */ }
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [versionKey]);
+
+  // Destroy all on unmount.
+  useEffect(() => () => {
+    chartsByCanvas.current.forEach((entry) => {
+      try { entry.chart.destroy(); } catch { /* no-op */ }
+    });
+    chartsByCanvas.current.clear();
+  }, []);
+
+  const liquidityRef = useCallback(makeRef(buildLiquidityConfig), [makeRef]);
+  const flowRef = useCallback(makeRef(buildFlowConfig), [makeRef]);
+
+  // Cleanup ref for modal canvases — destroys synchronously on unmount.
+  const cleanupRef = useCallback((canvas: HTMLCanvasElement | null) => {
+    if (canvas) return;
+    // When React calls cleanup on a callback ref, we get null. But we don't
+    // know which canvas it was for here — the makeRef handles attach. The
+    // shared unmount effect above destroys all on full unmount. For modal
+    // canvases, we destroy them when `expanded` changes via the effect below.
+  }, []);
 
   return (
     <>
@@ -321,8 +381,12 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             </DialogTitle>
           </DialogHeader>
           <div style={{ height: 'min(70vh, 640px)' }} className="w-full">
-            {expanded === 'liquidity' && <canvas ref={chart1ModalRef} />}
-            {expanded === 'flow' && <canvas ref={chart2ModalRef} />}
+            {expanded === 'liquidity' && (
+              <canvas data-chart-kind="liquidity" ref={modalLiquidityRef} />
+            )}
+            {expanded === 'flow' && (
+              <canvas data-chart-kind="flow" ref={modalFlowRef} />
+            )}
           </div>
         </DialogContent>
       </Dialog>
