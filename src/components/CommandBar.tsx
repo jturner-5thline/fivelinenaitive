@@ -80,7 +80,7 @@ export function CommandBar() {
     { id: 'nav-dashboard', label: 'Go to Dashboard', icon: <LayoutDashboard className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/dashboard'); } },
     { id: 'nav-deals', label: 'Go to Deals', icon: <Briefcase className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/deals'); } },
     { id: 'nav-tasks', label: 'Go to Tasks', icon: <ListTodo className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/tasks'); } },
-    { id: 'nav-lenders', label: 'Go to Lenders', icon: <Users className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/lenders'); } },
+    { id: 'nav-lenders', label: 'Go to Funding Sources', icon: <Users className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/lenders'); } },
     { id: 'nav-agents', label: 'Go to Agents', icon: <Bot className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/agents'); } },
     { id: 'nav-insights', label: 'Go to Insights', icon: <TrendingUp className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/insights'); } },
     { id: 'nav-settings', label: 'Go to Settings', icon: <Settings className="h-4 w-4" />, group: 'Navigation', action: () => { close(); navigate('/settings'); } },

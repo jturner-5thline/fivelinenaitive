@@ -364,7 +364,7 @@ function actionPromptForDeal(d: DealItem): string {
     case 'status_overdue':
       return `Draft a status update for ${d.company}.`;
     case 'lender_stale':
-      return `Draft a lender follow-up for ${d.company}.`;
+      return `Draft a funding source follow-up for ${d.company}.`;
     case 'milestone':
       return `Show me the upcoming milestone and outstanding items on ${d.company}.`;
     case 'stage_stale':

@@ -354,7 +354,7 @@ export function AddLenderSlideOver({
           className="w-full sm:max-w-[640px] p-0 flex flex-col"
         >
           <SheetHeader className="px-6 pt-6 pb-3">
-            <SheetTitle className="text-base font-semibold">Add Lender to {dealName}</SheetTitle>
+            <SheetTitle className="text-base font-semibold">Add Funding Source to {dealName}</SheetTitle>
           </SheetHeader>
 
           <div className="flex-1 flex flex-col min-h-0">
@@ -362,7 +362,7 @@ export function AddLenderSlideOver({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search lender directory..."
+                placeholder="Search directory..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 h-9 bg-background/40 border-white/10"
@@ -442,12 +442,12 @@ export function AddLenderSlideOver({
             <div className="px-3 py-2 space-y-1">
               {(loading || (aiOnly && aiLoading)) && filteredLenders.length === 0 && (
                 <div className="flex items-center justify-center py-12 text-muted-foreground text-sm gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" /> {aiOnly ? 'Loading AI recommendations…' : 'Loading lender directory…'}
+                  <Loader2 className="h-4 w-4 animate-spin" /> {aiOnly ? 'Loading AI recommendations…' : 'Loading directory…'}
                 </div>
               )}
               {!loading && !(aiOnly && aiLoading) && filteredLenders.length === 0 && (
                 <div className="py-12 text-center text-sm text-muted-foreground">
-                  {aiOnly ? 'No AI-recommended lenders match these filters.' : 'No lenders match these filters.'}
+                  {aiOnly ? 'No AI-recommended lenders match these filters.' : 'No funding sources match these filters.'}
                 </div>
               )}
               {filteredLenders.map(({ lender, score, ai }) => {
@@ -580,7 +580,7 @@ export function AddLenderSlideOver({
               Add {confirmingLender?.name} to {dealName}?
             </AlertDialogTitle>
             <AlertDialogDescription>
-              Choose the starting stage for this lender on the deal.
+              Choose the starting stage for this funding source on the deal.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="py-2">

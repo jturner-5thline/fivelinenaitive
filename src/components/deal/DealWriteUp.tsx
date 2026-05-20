@@ -1073,7 +1073,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
   };
 
   // Build a "Lender Market Update" markdown block from the live deal_lenders
-  // table — same source the Lender Pipeline Snapshot uses. Buckets lenders
+  // table — same source the Funding Source Pipeline Snapshot uses. Buckets lenders
   // into Active / In Review / Passed groups so the AI draft mirrors the
   // Status Report's lender summary.
   const buildLenderMarketUpdate = async (): Promise<string> => {
@@ -1083,7 +1083,7 @@ export const DealWriteUp = ({ dealId, data: incomingData, onChange, onSave, onCa
         .select('name, stage, tracking_status, pass_reason, notes')
         .eq('deal_id', dealId);
       const lenders = (rows || []) as any[];
-      if (lenders.length === 0) return 'No lenders have been added to this deal yet.';
+      if (lenders.length === 0) return 'No funding sources have been added to this deal yet.';
       const passed = lenders.filter(l => /pass/i.test(l.stage || '') || /pass/i.test(l.tracking_status || ''));
       const inReview = lenders.filter(l => !passed.includes(l) && /(review|terms|diligence)/i.test(l.stage || ''));
       const active = lenders.filter(l => !passed.includes(l) && !inReview.includes(l));

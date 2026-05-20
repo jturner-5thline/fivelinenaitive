@@ -230,7 +230,7 @@ export const SEED_FIELDS: Field[] = [
 
   // ──── Lender Metrics (naitive) ────
   { id: 'n-total-lenders',        name: 'Total Lenders',              group: 'Lenders',      dataType: 'number', isMeasure: true,  source: 'naitive' },
-  { id: 'n-active-lenders',       name: 'Active Lenders',             group: 'Lenders',      dataType: 'number', isMeasure: true,  source: 'naitive' },
+  { id: 'n-active-lenders',       name: 'Active Funding Sources',             group: 'Lenders',      dataType: 'number', isMeasure: true,  source: 'naitive' },
   { id: 'n-lenders-by-stage',     name: 'Lenders by Stage',           group: 'Lenders',      dataType: 'number', isMeasure: true,  source: 'naitive' },
   { id: 'n-lenders-by-tier',      name: 'Lenders by Tier',            group: 'Lenders',      dataType: 'number', isMeasure: true,  source: 'naitive' },
   { id: 'n-avg-lenders-per-deal', name: 'Avg Lenders per Deal',       group: 'Lenders',      dataType: 'number', isMeasure: true,  source: 'naitive' },

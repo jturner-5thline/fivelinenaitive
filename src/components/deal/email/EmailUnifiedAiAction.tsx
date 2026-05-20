@@ -484,14 +484,14 @@ export function EmailUnifiedAiAction({
                 `Lender "${effectiveLender.name}" isn't on this deal`,
                 {
                   description:
-                    'Add the lender to the deal first, then re-run "Add note".',
+                    'Add the funding source to the deal first, then re-run "Add note".',
                 },
               );
               return;
             }
           }
 
-          // Step 2: insert deal note (linked to the lender if matched)
+          // Step 2: insert deal note (linked to the funding source if matched)
           const { data: noteRow, error: noteErr } = await supabase
             .from('deal_space_notes')
             .insert({
@@ -515,7 +515,7 @@ export function EmailUnifiedAiAction({
           }
           trace('note:inserted', { noteId: noteRow.id });
 
-          // Step 3: if we matched a lender, update lender record + history.
+          // Step 3: if we matched a funding source, update lender record + history.
           // Best-effort rollback of the note if either lender write fails.
           let appliedLenderStatus: string | null = null;
           let lenderNotesChanged = false;
@@ -528,7 +528,7 @@ export function EmailUnifiedAiAction({
               updated_at: new Date().toISOString(),
             };
             // Map LENDER_STATUS_CONFIG ids onto deal_lenders.substage —
-            // the lender "status" concept persists on substage in this schema.
+            // the funding source "status" concept persists on substage in this schema.
             if (effectiveLender?.status) {
               lenderUpdates.substage = effectiveLender.status;
             }
@@ -580,7 +580,7 @@ export function EmailUnifiedAiAction({
               lenderNotesChanged,
             });
 
-            // History row is best-effort — we already verified the lender update
+            // History row is best-effort — we already verified the funding source update
             const { error: historyErr } = await supabase
               .from('lender_notes_history')
               .insert({

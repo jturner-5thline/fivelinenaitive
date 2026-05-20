@@ -37,7 +37,7 @@ const SOURCE_LABELS: Record<string, string> = {
   note: 'Note',
   memo: 'Memo',
   structured_data: 'Deal Record',
-  lender: 'Lender',
+  lender: 'Funding Source',
   flag_note: 'Flag Note',
 };
 

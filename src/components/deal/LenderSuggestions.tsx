@@ -112,7 +112,7 @@ export function LenderSuggestions({
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">AI Lender Suggestions</span>
+            <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">AI Funding Source Suggestions</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -131,7 +131,7 @@ export function LenderSuggestions({
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-muted-foreground" />
-            Lender Suggestions
+            Funding Source Suggestions
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -151,7 +151,7 @@ export function LenderSuggestions({
             <CardTitle className="text-base flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
               <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
-                Suggested Lenders
+                Suggested Funding Sources
               </span>
               <Badge variant="secondary" className="ml-1 font-normal">
                 {totalMatches} matches
@@ -202,7 +202,7 @@ export function LenderSuggestions({
               <div className="relative">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search lenders..."
+                  placeholder="Search funding sources..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 h-8 text-sm"
@@ -223,7 +223,7 @@ export function LenderSuggestions({
                 <Select value={lenderTypeFilter} onValueChange={setLenderTypeFilter}>
                   <SelectTrigger className="h-8 text-xs flex-1">
                     <Filter className="h-3 w-3 mr-1" />
-                    <SelectValue placeholder="Lender Type" />
+                    <SelectValue placeholder="Funding Source Type" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">All Types</SelectItem>

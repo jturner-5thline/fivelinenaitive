@@ -276,7 +276,7 @@ function groupRelatedActivity(rows: any[]): ActivityGroup[] {
   return out;
 }
 
-// Resolve the latest lender_notes body per lender_name so grouped lender-note
+// Resolve the latest lender_notes body per funding source_name so grouped lender-note
 // tiles can show what the note actually said, not just "lender updated".
 function useLatestLenderNotes(lenderNames: string[]): Map<string, { body: string; updated_at: string }> {
   const [map, setMap] = useState<Map<string, { body: string; updated_at: string }>>(new Map());

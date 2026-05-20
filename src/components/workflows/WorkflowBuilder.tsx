@@ -55,7 +55,7 @@ interface WorkflowBuilderProps {
 
 const TRIGGER_OPTIONS: { value: TriggerType; label: string; icon: React.ReactNode; description: string }[] = [
   { value: 'deal_stage_change', label: 'Deal Stage Change', icon: <Zap className="h-4 w-4" />, description: 'Triggers when a deal moves to a different stage' },
-  { value: 'lender_stage_change', label: 'Lender Stage Change', icon: <Zap className="h-4 w-4" />, description: 'Triggers when a lender status changes' },
+  { value: 'lender_stage_change', label: 'Lender Stage Change', icon: <Zap className="h-4 w-4" />, description: 'Triggers when a funding source status changes' },
   { value: 'new_deal', label: 'New Deal Created', icon: <Plus className="h-4 w-4" />, description: 'Triggers when a new deal is created' },
   { value: 'deal_closed', label: 'Deal Closed', icon: <Zap className="h-4 w-4" />, description: 'Triggers when a deal is closed (won or lost)' },
   { value: 'scheduled', label: 'Scheduled', icon: <Clock className="h-4 w-4" />, description: 'Runs on a schedule (daily, weekly, etc.)' },

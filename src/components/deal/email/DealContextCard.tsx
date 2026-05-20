@@ -148,7 +148,7 @@ export function DealContextCard({ dealId, dealName, onSummaryChange, defaultExpa
               </Row>
 
               {/* Lenders */}
-              <Row icon={Users} label="Lenders">
+              <Row icon={Users} label="Funding Sources">
                 <span className="text-foreground/90 font-medium">
                   {summary.lenderCounts.active}
                 </span>

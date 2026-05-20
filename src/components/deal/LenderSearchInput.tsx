@@ -173,7 +173,7 @@ export function LenderSearchInput({
                 Searching lenders…
               </span>
             ) : (
-              'No lenders found'
+              'No funding sources found'
             )}
           </div>
         )}

@@ -198,9 +198,9 @@ export function AddOutstandingItemsInlineCard({
           </PopoverTrigger>
           <PopoverContent className="w-[260px] p-0 pointer-events-auto" align="start">
             <Command>
-              <CommandInput placeholder="Search lenders…" className="h-8 text-[12px]" />
+              <CommandInput placeholder="Search funding sources…" className="h-8 text-[12px]" />
               <CommandList>
-                <CommandEmpty>No lenders on this deal.</CommandEmpty>
+                <CommandEmpty>No funding sources on this deal.</CommandEmpty>
                 <CommandGroup>
                   <CommandItem
                     value="__none__"

@@ -960,7 +960,7 @@ export default function DealDetail() {
   const [selectedLenderName, setSelectedLenderName] = useState<string | null>(null);
   const [directFetchedLender, setDirectFetchedLender] = useState<import('@/hooks/useMasterLenders').MasterLender | null>(null);
 
-  // When a lender popup opens, if the lender isn't in the cached masterLenders list yet
+  // When a funding source popup opens, if the funding source isn't in the cached masterLenders list yet
   // (background load still in progress), do a targeted single-row fetch so contacts show instantly.
   useEffect(() => {
     if (!selectedLenderName) {
@@ -1278,7 +1278,7 @@ export default function DealDetail() {
     }
   }, []);
 
-  // Helper to check if a lender is stale based on preferences
+  // Helper to check if a funding source is stale based on preferences
   const isLenderStale = useCallback((lender: DealLender) => {
     if (!isPostSubmissionDealStage(deal?.stage)) return { isStale: false, isUrgent: false };
     if (!lender.updatedAt || lender.trackingStatus !== 'active') return { isStale: false, isUrgent: false };
@@ -1869,7 +1869,7 @@ export default function DealDetail() {
       onUndo: async () => {
         if (!deal) return;
         
-        // Re-add the lender to the database
+        // Re-add the funding source to the database
         const restoredLender = await addLenderToDeal(deal.id, {
           name: item.lender.name,
           stage: item.lender.stage,
@@ -4424,7 +4424,7 @@ export default function DealDetail() {
                                   lenderName={lender.name}
                                   onViewAll={() => setRequestedItemsDrawerLender(lender.name)}
                                 />
-                                {/* Lender Notes */}
+                                {/* Funding Source Notes */}
                                 <div className="ml-2 mt-2 space-y-1">
                                   <div className="flex items-start gap-2">
                                     <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
@@ -4797,7 +4797,7 @@ export default function DealDetail() {
                                           lenderName={lender.name}
                                           onViewAll={() => setRequestedItemsDrawerLender(lender.name)}
                                         />
-                                        {/* Lender Notes */}
+                                        {/* Funding Source Notes */}
                                         <div className="ml-2 mt-2 space-y-1">
                                           <div className="flex items-start gap-2">
                                             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
@@ -5175,7 +5175,7 @@ export default function DealDetail() {
                        </div>
                        )}
 
-                      {/* Lender Notes */}
+                      {/* Funding Source Notes */}
                       <div>
                         <h4 className="text-sm font-semibold mb-2">Notes</h4>
                         <InlineEditField
@@ -5215,7 +5215,7 @@ export default function DealDetail() {
                         onViewAll={() => setRequestedItemsDrawerLender(selectedLenderName)}
                       />
                     ) : (
-                      <p className="text-sm text-muted-foreground italic">No items requested by this lender</p>
+                      <p className="text-sm text-muted-foreground italic">No items requested by this funding source</p>
                     )}
                   </div>
 
@@ -5225,7 +5225,7 @@ export default function DealDetail() {
                     {lenderActivities.length > 0 ? (
                       <ActivityTimeline activities={lenderActivities} />
                     ) : (
-                      <p className="text-sm text-muted-foreground italic">No activity recorded for this lender on this deal</p>
+                      <p className="text-sm text-muted-foreground italic">No activity recorded for this funding source on this deal</p>
                     )}
                   </div>
                 </TabsContent>
@@ -5241,7 +5241,7 @@ export default function DealDetail() {
                 </TabsContent>
 
                 <TabsContent value="about" className="space-y-6 mt-4">
-                  {/* Internal Lender Notes */}
+                  {/* Internal Funding Source Notes */}
                   <div>
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-sm font-semibold">Internal Notes</h4>
@@ -5255,7 +5255,7 @@ export default function DealDetail() {
                     <p className="text-[10px] text-muted-foreground mb-2">Internal only — not visible to lenders or borrowers</p>
                   </div>
 
-                  {/* Contact Information - from lender directory */}
+                  {/* Contact Information - from directory */}
                   <div>
                     <h4 className="text-sm font-semibold mb-2">Contact Information</h4>
                     {masterLender?.contact_name ? (
@@ -5326,8 +5326,8 @@ export default function DealDetail() {
                   ? configuredStages.find(s => s.id === pendingPassStageChange.newStageId)?.label 
                   : null;
                 return stageName && stageName.toLowerCase() !== 'passed'
-                  ? `Why is this lender "${stageName}"?`
-                  : 'Why is this lender being passed?';
+                  ? `Why is this funding source "${stageName}"?`
+                  : 'Why is this funding source being passed?';
               })()}
             </DialogTitle>
           </DialogHeader>
@@ -5534,7 +5534,7 @@ export default function DealDetail() {
         onUpdateItem={updateOutstandingItem}
       />
 
-      {/* Add Lender slide-out panel */}
+      {/* Add Funding Source slide-out panel */}
       <AddLenderSlideOver
         open={isAddLenderSlideOverOpen}
         onOpenChange={setIsAddLenderSlideOverOpen}
@@ -5604,7 +5604,7 @@ export default function DealDetail() {
                   const key = l.name.toLowerCase().trim();
                   const masterLender = masterLenders.find(ml => ml.name.toLowerCase().trim() === key);
                   const lenderOutstanding = outstandingItems.filter(oi => !oi.completed && oi.requestedBy?.some(r => r.toLowerCase().trim() === key));
-                  // Count active deals for this lender across all deals
+                  // Count active deals for this funding source across all deals
                   let activeDealCount = 0;
                   deals.forEach(d => {
                     d.lenders?.forEach(dl => {

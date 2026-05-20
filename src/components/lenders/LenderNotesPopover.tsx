@@ -222,7 +222,7 @@ function LenderNotesPanel({
               <p className="text-xs text-muted-foreground">
                 {showFlagsOnly
                   ? 'No flagged notes'
-                  : 'No notes yet for this lender'}
+                  : 'No notes yet for this funding source'}
               </p>
             </div>
           ) : (
@@ -250,7 +250,7 @@ function LenderNotesPanel({
               value={body}
               onChange={(e) => setBody(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Add an internal note about this lender..."
+              placeholder="Add an internal note about this funding source..."
               rows={3}
               className="text-sm min-h-[60px] resize-none"
               autoFocus

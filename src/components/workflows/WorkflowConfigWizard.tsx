@@ -45,7 +45,7 @@ const OBJECTIVE_SUGGESTIONS = [
 const TRIGGER_SUGGESTIONS = [
   { label: 'Deal stage changes', value: 'When a deal moves to a new stage' },
   { label: 'New deal created', value: 'When a new deal is created' },
-  { label: 'Lender status changes', value: 'When a lender status changes' },
+  { label: 'Lender status changes', value: 'When a funding source status changes' },
   { label: 'Deal closed', value: 'When a deal is closed (won or lost)' },
   { label: 'On a schedule', value: 'On a daily or weekly schedule' },
 ];
@@ -295,7 +295,7 @@ export function WorkflowConfigWizard({ onComplete, onCancel }: WorkflowConfigWiz
                 className="cursor-pointer hover:bg-primary/10"
                 onClick={() => setAnswers({ ...answers, conditions: 'Only if there are no active lenders' })}
               >
-                No lenders
+                No funding sources
               </Badge>
             </div>
           </div>

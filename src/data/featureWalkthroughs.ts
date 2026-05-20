@@ -114,8 +114,8 @@ export const featureGuides: FeatureGuide[] = [
       },
       {
         title: 'Add a new lender',
-        description: 'Click "Add Lender" and search for a lender from your master list, or create a new one by typing a name.',
-        action: 'Click "Add Lender"',
+        description: 'Click "Add Funding Source" and search for a funding source from your master list, or create a new one by typing a name.',
+        action: 'Click "Add Funding Source"',
         tip: 'Lenders from your master database will show suggestions as you type.',
       },
       {
@@ -125,7 +125,7 @@ export const featureGuides: FeatureGuide[] = [
       },
       {
         title: 'Add notes and quotes',
-        description: 'Click on a lender card to expand it. Add notes about your conversations and record any quote details.',
+        description: 'Click on a funding source card to expand it. Add notes about your conversations and record any quote details.',
         action: 'Click lender to expand',
         tip: 'Notes are timestamped and saved automatically.',
       },
@@ -196,7 +196,7 @@ export const featureGuides: FeatureGuide[] = [
       },
       {
         title: 'Choose report type',
-        description: 'Select from preset report templates or start a custom report. Options include Pipeline Summary, Lender Activity, and more.',
+        description: 'Select from preset report templates or start a custom report. Options include Pipeline Summary, Funding Source Activity, and more.',
         action: 'Select report type',
       },
       {
@@ -484,7 +484,7 @@ export const featureGuides: FeatureGuide[] = [
     walkthrough: [
       {
         title: 'Start with a template (optional)',
-        description: 'Choose from Quick Start Templates like Deal Advisor, Lender Matcher, or Pipeline Coach to pre-fill common configurations.',
+        description: 'Choose from Quick Start Templates like Deal Advisor, Funding Source Matcher, or Pipeline Coach to pre-fill common configurations.',
         action: 'Click a template button',
         tip: 'Templates set up the name, emoji, personality, and system prompt for you.',
       },

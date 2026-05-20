@@ -74,7 +74,7 @@ const reportTypes: ReportType[] = [
   },
   {
     id: 'lender-engagement',
-    name: 'Lender Engagement',
+    name: 'Funding Source Engagement',
     description: 'Summary of lender interactions and outreach status',
     icon: Users,
     category: 'lender',
@@ -124,7 +124,7 @@ const reportTypes: ReportType[] = [
 
 const categoryLabels = {
   pipeline: 'Pipeline Reports',
-  lender: 'Lender Reports',
+  lender: 'Funding Source Reports',
   performance: 'Performance Reports',
   financial: 'Financial Reports',
 };
@@ -285,7 +285,7 @@ export default function Reports() {
                     <SelectContent>
                       <SelectItem value="all">All Reports</SelectItem>
                       <SelectItem value="pipeline">Pipeline Reports</SelectItem>
-                      <SelectItem value="lender">Lender Reports</SelectItem>
+                      <SelectItem value="lender">Funding Source Reports</SelectItem>
                       <SelectItem value="performance">Performance Reports</SelectItem>
                       <SelectItem value="financial">Financial Reports</SelectItem>
                     </SelectContent>

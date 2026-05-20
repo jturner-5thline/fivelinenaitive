@@ -157,14 +157,14 @@ export function LenderStageManageDialog({
             </span>
           </DialogTitle>
           <p className="text-xs text-slate-400">
-            Edits sync directly to the lender record on this deal. Changes appear in the report immediately.
+            Edits sync directly to the funding source record on this deal. Changes appear in the report immediately.
           </p>
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
           {lenders.length === 0 && (
             <div className="text-sm text-slate-400 italic py-8 text-center">
-              No lenders in this stage yet.
+              No funding sources in this stage yet.
             </div>
           )}
 
@@ -262,7 +262,7 @@ export function LenderStageManageDialog({
                       value={row.passReason}
                       onChange={(e) => updateRow(l.id, { passReason: e.target.value })}
                       className="text-xs min-h-[48px] bg-slate-900/60 border-slate-700 text-slate-100 placeholder:text-slate-500"
-                      placeholder="Why did this lender pass?"
+                      placeholder="Why did this funding source pass?"
                     />
                   </div>
                 )}
@@ -275,7 +275,7 @@ export function LenderStageManageDialog({
                     value={row.notes}
                     onChange={(e) => updateRow(l.id, { notes: e.target.value })}
                     className="text-xs min-h-[60px] bg-slate-900/60 border-slate-700 text-slate-100 placeholder:text-slate-500"
-                    placeholder="Internal notes for this lender…"
+                    placeholder="Internal notes for this funding source…"
                   />
                 </div>
               </div>

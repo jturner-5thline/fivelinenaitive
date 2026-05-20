@@ -22,7 +22,7 @@ const CONFIDENCE_TONE: Record<string, string> = {
 
 /**
  * LenderPassBanner — inline banner above the email body when AI Assist
- * detects a pass response from a lender on a deal-linked thread.
+ * detects a pass response from a funding source on a deal-linked thread.
  */
 export function LenderPassBanner({ detection, committing, onConfirm, onDismiss }: Props) {
   const [editing, setEditing] = useState(false);
@@ -71,7 +71,7 @@ export function LenderPassBanner({ detection, committing, onConfirm, onDismiss }
               value={reason}
               onChange={(e) => setReason(e.target.value)}
               className="mt-2 h-8 text-[12px]"
-              placeholder="Pass reason (will be saved on the lender)"
+              placeholder="Pass reason (will be saved on the funding source)"
             />
           )}
 
@@ -79,7 +79,7 @@ export function LenderPassBanner({ detection, committing, onConfirm, onDismiss }
             <div className="mt-2 flex items-start gap-1.5 text-[11px] text-amber-300/90">
               <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
               <span>
-                Could not match the sender to a lender on this deal. Update the lender
+                Could not match the sender to a funding source on this deal. Update the funding source
                 manually if this is a pass.
               </span>
             </div>

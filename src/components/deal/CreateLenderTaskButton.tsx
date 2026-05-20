@@ -102,7 +102,7 @@ export function CreateLenderTaskButton({ dealId, lenderId, lenderName }: CreateL
           </DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label className="text-xs">Lender</Label>
+              <Label className="text-xs">Funding Source</Label>
               <p className="mt-1 text-sm text-foreground font-medium">{lenderName}</p>
             </div>
             <div>

@@ -27,7 +27,7 @@ interface StatusReportPreviewModalProps {
   outstandingItems?: OutstandingItem[];
   onExport: (content: StatusReportEditableContent) => void;
   /**
-   * Persist a lender update to the underlying deal. Required for the
+   * Persist a funding source update to the underlying deal. Required for the
    * pipeline-snapshot stage cards to act as a live management surface
    * (clicking a card opens an editable lender dialog that writes through
    * to the real lender record). When omitted, the cards remain visual.
@@ -522,7 +522,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
       {content.sectionsVisible.pipelineSnapshot && (
         <>
-          <div className="sr-section-label" style={sectionLabelStyle}>Lender Pipeline Snapshot</div>
+          <div className="sr-section-label" style={sectionLabelStyle}>Funding Source Pipeline Snapshot</div>
           <div className="sr-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 8, alignItems: 'stretch' }}>
             {([
               { key: 'onDeck', label: 'On Deck', color: 'blue', items: buckets.onDeck },
@@ -583,7 +583,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             </colgroup>
             <thead>
               <tr>
-                <th style={thStyle}>Lender</th>
+                <th style={thStyle}>Funding Source</th>
                 <th style={thStyle}>Key Feedback</th>
               </tr>
             </thead>
@@ -675,7 +675,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
         {/* Pipeline Snapshot — shared component (same on the deal page) */}
         {content.sectionsVisible.pipelineSnapshot && onUpdateLender && (
           <div>
-            <DarkLabel>Lender Pipeline Snapshot</DarkLabel>
+            <DarkLabel>Funding Source Pipeline Snapshot</DarkLabel>
             <LenderPipelineSnapshot
               lenders={(deal.lenders || []) as any}
               configuredStages={configuredStages}
@@ -725,7 +725,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
                 </colgroup>
                 <thead>
                   <tr className="bg-slate-800/60 text-slate-400 uppercase tracking-wider text-[10px]">
-                    <th className="text-left px-3 py-2 font-semibold">Lender</th>
+                    <th className="text-left px-3 py-2 font-semibold">Funding Source</th>
                     <th className="text-left px-3 py-2 font-semibold">Key Feedback</th>
                   </tr>
                 </thead>

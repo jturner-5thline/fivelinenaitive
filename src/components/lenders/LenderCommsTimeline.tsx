@@ -89,7 +89,7 @@ export function LenderCommsTimeline({ dealId, lenderName, masterLenderId, fallba
         const { data: auth } = await supabase.auth.getUser();
         if (auth?.user?.email) userEmails.add(auth.user.email.toLowerCase());
 
-        // 3) Pull emails linked to this deal, then narrow to those touching the lender
+        // 3) Pull emails linked to this deal, then narrow to those touching the funding source
         const { data: dealEmails } = await supabase
           .from("deal_emails")
           .select("gmail_message_id")
@@ -136,7 +136,7 @@ export function LenderCommsTimeline({ dealId, lenderName, masterLenderId, fallba
           }
         }
 
-        // 4) Pull Claap meetings for this deal that match the lender (matched_lender_id or organizer/participants)
+        // 4) Pull Claap meetings for this deal that match the funding source (matched_lender_id or organizer/participants)
         const calls: CallItem[] = [];
         const { data: meetings } = await supabase
           .from("claap_meetings")

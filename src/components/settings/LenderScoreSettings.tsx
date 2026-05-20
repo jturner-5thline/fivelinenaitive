@@ -138,7 +138,7 @@ export function LenderScoreSettings({ isAdmin = true }: LenderScoreSettingsProps
                   Enable Lender Score
                 </Label>
                 <p className="text-xs text-muted-foreground">
-                  Show score indicators on lender cards and in the lender detail pop-up.
+                  Show score indicators on lender cards and in the funding source detail pop-up.
                 </p>
               </div>
               <Switch

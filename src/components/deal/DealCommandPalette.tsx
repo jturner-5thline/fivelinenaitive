@@ -99,7 +99,7 @@ export function DealCommandPalette({
           <CommandGroup heading="Quick Actions">
             <CommandItem value="add-lender" onSelect={handleSelect}>
               <Plus className="mr-2 h-4 w-4" />
-              Add a Lender
+              Add a Funding Source
             </CommandItem>
             <CommandItem value="add-milestone" onSelect={handleSelect}>
               <CheckSquare className="mr-2 h-4 w-4" />

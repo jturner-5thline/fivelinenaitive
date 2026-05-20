@@ -817,7 +817,7 @@ export function WriteUpPreviewDialog({ open, onOpenChange, data, owners, totalEq
                           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                             <thead>
                               <tr style={{ borderBottom: `1px solid ${T.cardBorder}`, color: T.mutedFg, textAlign: 'left' }}>
-                                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Lender</th>
+                                <th style={{ padding: '6px 8px', fontWeight: 600 }}>Funding Source</th>
                                 <th style={{ padding: '6px 8px', fontWeight: 600 }}>Amount</th>
                                 <th style={{ padding: '6px 8px', fontWeight: 600 }}>Type</th>
                                 <th style={{ padding: '6px 8px', fontWeight: 600 }}>Maturity</th>

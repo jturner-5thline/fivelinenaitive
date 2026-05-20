@@ -83,7 +83,7 @@ export function LenderWarningBadge({
           </div>
           
           <p className="text-sm text-muted-foreground">
-            Based on past deal activity, this lender has shown patterns that may affect this deal:
+            Based on past deal activity, this funding source has shown patterns that may affect this deal:
           </p>
 
           <div className="space-y-2">

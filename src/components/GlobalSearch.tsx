@@ -116,7 +116,7 @@ export function GlobalSearch() {
 
           {/* Lenders */}
           {lenders && lenders.length > 0 && (
-            <CommandGroup heading="Lenders">
+            <CommandGroup heading="Funding Sources">
               {lenders.slice(0, 5).map((lender) => (
                 <CommandItem
                   key={lender.name}

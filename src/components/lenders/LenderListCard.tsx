@@ -241,7 +241,7 @@ export const LenderListCard = memo(function LenderListCard({
             <AlertDialogHeader>
               <AlertDialogTitle>Delete {lender.name}?</AlertDialogTitle>
               <AlertDialogDescription>
-                This will remove the lender from the available options. This action cannot be undone.
+                This will remove the funding source from the available options. This action cannot be undone.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>

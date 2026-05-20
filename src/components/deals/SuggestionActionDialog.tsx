@@ -97,7 +97,7 @@ export function SuggestionActionDialog({
 
     setIsSubmitting(true);
     try {
-      // Update lender if we have a lender context
+      // Update lender if we have a funding source context
       if (suggestion.lenderId && lender) {
         const lenderUpdates: Record<string, unknown> = {};
         

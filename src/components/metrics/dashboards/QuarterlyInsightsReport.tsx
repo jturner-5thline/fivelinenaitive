@@ -360,7 +360,7 @@ const SEED: ReportState = {
   initiatives: [
     { id: 'i1', title: 'Naitive Agent Platform — Asana Portfolio: AGT-2026', status: 'On Track', progress: 72, owner: 'John Moffitt' },
     { id: 'i2', title: 'FinServ Go-To-Market — Asana Project: FSV-Q2', status: 'At Risk', progress: 41, owner: 'Scott Williams' },
-    { id: 'i3', title: 'Lender Directory Expansion (T1/T2)', status: 'On Track', progress: 88, owner: 'Mark Kaleniecki' },
+    { id: 'i3', title: 'Directory Expansion (T1/T2)', status: 'On Track', progress: 88, owner: 'Mark Kaleniecki' },
   ],
   initiativeOwnerFilter: 'All',
   risks: [],

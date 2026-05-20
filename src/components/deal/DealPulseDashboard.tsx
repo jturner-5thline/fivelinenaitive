@@ -58,7 +58,7 @@ export function DealPulseDashboard({ deal, attachmentCount = 0, checklistTotal =
     const dataChecks = [
       { has: !!deal.value, label: 'Deal value' },
       { has: !!deal.narrative, label: 'Narrative' },
-      { has: (deal.lenders?.length || 0) > 0, label: 'Lenders' },
+      { has: (deal.lenders?.length || 0) > 0, label: 'Funding Sources' },
       { has: (deal.milestones?.length || 0) > 0, label: 'Milestones' },
       { has: attachmentCount > 0, label: 'Documents' },
     ];
@@ -81,10 +81,10 @@ export function DealPulseDashboard({ deal, attachmentCount = 0, checklistTotal =
     });
     const engagementScore = lenders.length === 0 ? 0 : Math.round(((lenders.length - staleLenders.length) / lenders.length) * 100);
     healthMetrics.push({
-      label: 'Lender Engagement',
+      label: 'Funding Source Engagement',
       score: lenders.length === 0 ? 50 : engagementScore,
       weight: 30,
-      detail: lenders.length === 0 ? 'No lenders added' : `${staleLenders.length} stale of ${lenders.length} total`,
+      detail: lenders.length === 0 ? 'No funding sources added' : `${staleLenders.length} stale of ${lenders.length} total`,
     });
 
     // 3. Milestone progress
@@ -219,7 +219,7 @@ export function DealPulseDashboard({ deal, attachmentCount = 0, checklistTotal =
             <span className="text-xs text-destructive font-medium">({metrics.staleLenderCount} stale)</span>
           )}
         </div>
-        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Lenders</span>
+        <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Funding Sources</span>
       </div>
 
       {/* Response Rate */}

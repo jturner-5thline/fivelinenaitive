@@ -202,7 +202,7 @@ export function LenderMatchingSettings() {
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Target className="h-5 w-5" />
-            Lender Matching Algorithm
+            Funding Source Matching Algorithm
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -226,7 +226,7 @@ export function LenderMatchingSettings() {
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Target className="h-5 w-5" />
-                  Lender Matching Algorithm
+                  Funding Source Matching Algorithm
                 </CardTitle>
                 <CardDescription>
                   Configure how lenders are scored and suggested for deals

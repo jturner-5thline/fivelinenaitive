@@ -33,7 +33,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   deal_update: 'Deal Update',
-  lender_communication: 'Lender',
+  lender_communication: 'Funding Source',
   follow_up_needed: 'Follow-up',
   terms_discussion: 'Terms',
   due_diligence: 'DD',

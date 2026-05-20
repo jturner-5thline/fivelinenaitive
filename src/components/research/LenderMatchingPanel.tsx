@@ -102,7 +102,7 @@ export function LenderMatchingPanel({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                <CardTitle className="text-lg">AI Lender Matching</CardTitle>
+                <CardTitle className="text-lg">AI Funding Source Matching</CardTitle>
                 {useDeepMode ? (
                   <Badge className="text-xs bg-amber-500/15 text-amber-600 border-amber-500/30">
                     <Zap className="h-3 w-3 mr-1" />

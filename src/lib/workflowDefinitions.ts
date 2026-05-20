@@ -662,7 +662,7 @@ registerWorkflow('positive_lender_response', {
   handler: async (deal, ctx) => {
     await moveDealStage(deal.id, 'lenders_in_review');
     await createWorkflowTask({
-      dealId: deal.id, title: 'Follow up: Lender Status',
+      dealId: deal.id, title: 'Follow up: Funding Source Status',
       assigneeId: deal.manager_id, workflowOwnerId: ctx.workflowOwnerId,
       workflowKey: 'positive_lender_response', isRecurring: true,
       recurrenceRuleJson: { interval: 7, unit: 'days' },

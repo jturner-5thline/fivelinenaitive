@@ -140,7 +140,7 @@ export function RolePermissionsSettings() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="edit-stage" className="text-sm font-medium">
-                  Edit Lender Stages
+                  Edit Funding Source Stages
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Allow members to move lenders between Active, On-Deck, Passed, On-Hold
@@ -158,7 +158,7 @@ export function RolePermissionsSettings() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="edit-milestones" className="text-sm font-medium">
-                  Edit Lender Milestones
+                  Edit Funding Source Milestones
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Allow members to change lender substage/milestone progress
@@ -176,7 +176,7 @@ export function RolePermissionsSettings() {
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label htmlFor="edit-notes" className="text-sm font-medium">
-                  Edit Lender Notes
+                  Edit Funding Source Notes
                 </Label>
                 <p className="text-xs text-muted-foreground">
                   Allow members to add and modify notes on lenders

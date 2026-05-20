@@ -6,15 +6,15 @@ import { bucketLenders } from '@/lib/lenderStatusBuckets';
 import { LenderStageManageDialog } from './LenderStageManageDialog';
 
 /**
- * Shared Lender Pipeline Snapshot — the 4 stage cards (On Deck, In Review,
- * Terms Issued, Passed) plus the lender-stage management pop-up.
+ * Shared Funding Source Pipeline Snapshot — the 4 stage cards (On Deck, In Review,
+ * Terms Issued, Passed) plus the funding source-stage management pop-up.
  *
  * Used in BOTH:
  *   - the deal details page (Lenders panel header)
  *   - the Status Report preview modal
  *
  * Edits write through `onUpdateLender`, which the parent uses to persist to
- * the lender record (single source of truth) so the report, deal page, and
+ * the funding source record (single source of truth) so the report, deal page, and
  * lender page all stay in sync.
  */
 

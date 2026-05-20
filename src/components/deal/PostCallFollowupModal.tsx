@@ -356,7 +356,7 @@ export function PostCallFollowupModal({ open, onOpenChange, dealId }: PostCallFo
             Post-Management Call Follow-Ups
           </DialogTitle>
           <DialogDescription>
-            Upload the call transcript and we'll draft a client email and a lender email based on the next steps discussed.
+            Upload the call transcript and we'll draft a client email and a funding source email based on the next steps discussed.
           </DialogDescription>
         </DialogHeader>
 

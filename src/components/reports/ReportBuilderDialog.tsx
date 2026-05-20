@@ -544,7 +544,7 @@ function WidgetConfig({
               <SelectContent>
                 <SelectItem value="overview">Full Overview</SelectItem>
                 <SelectItem value="pipeline">Pipeline Changes</SelectItem>
-                <SelectItem value="lender">Lender Activity</SelectItem>
+                <SelectItem value="lender">Funding Source Activity</SelectItem>
                 <SelectItem value="risks">Risk Highlights</SelectItem>
                 <SelectItem value="performance">Performance Metrics</SelectItem>
               </SelectContent>

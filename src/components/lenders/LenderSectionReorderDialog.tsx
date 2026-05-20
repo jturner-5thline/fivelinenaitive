@@ -45,7 +45,7 @@ const SECTION_CONFIG: Record<LenderSectionId, { label: string; icon: React.Compo
   'post-term-sheet-checklist': { label: 'Post-Term Sheet Checklist', icon: ClipboardList },
   'contact-info': { label: 'Contact', icon: User },
   'additional-preferences': { label: 'Additional Preferences', icon: ListChecks },
-  'lender-notes': { label: 'Lender Notes', icon: FileText },
+  'lender-notes': { label: 'Funding Source Notes', icon: FileText },
   'active-deals': { label: 'Active Deals', icon: Briefcase },
   'attachments': { label: 'Attachments', icon: Paperclip },
   'deals-sent': { label: 'Deals Sent', icon: ArrowRightCircle },
@@ -146,7 +146,7 @@ export function LenderSectionReorderDialog({
         <DialogHeader>
           <DialogTitle>Customize Layout</DialogTitle>
           <DialogDescription>
-            Drag and drop to reorder the sections in the lender popup.
+            Drag and drop to reorder the sections in the funding source popup.
           </DialogDescription>
         </DialogHeader>
 

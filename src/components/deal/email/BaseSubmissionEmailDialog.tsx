@@ -30,7 +30,7 @@ interface Props {
 }
 
 /**
- * Step 1 of the lender submission flow: a single, lender-agnostic AI draft
+ * Step 1 of the funding source submission flow: a single, lender-agnostic AI draft
  * the user can edit. On Continue we persist the edited base into
  * `deal_space_notes` (tagged so it shows up in the deal's Notes view) and
  * then hand control back to the parent to open the Review & Exclude modal.

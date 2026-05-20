@@ -267,7 +267,7 @@ export default function LenderMatchingQA() {
         <Card>
           <CardHeader>
             <CardTitle>Restricted</CardTitle>
-            <CardDescription>The Lender Matching QA harness is only available to 5th Line internal users.</CardDescription>
+            <CardDescription>The Funding Source Matching QA harness is only available to 5th Line internal users.</CardDescription>
           </CardHeader>
         </Card>
       </div>
@@ -282,7 +282,7 @@ export default function LenderMatchingQA() {
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-[1400px]">
-      <Helmet><title>Lender Matching QA · naitive</title></Helmet>
+      <Helmet><title>Funding Source Matching QA · naitive</title></Helmet>
 
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
@@ -290,7 +290,7 @@ export default function LenderMatchingQA() {
             <ArrowLeft className="h-4 w-4 mr-1" /> Lenders
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold">Lender Matching QA</h1>
+            <h1 className="text-2xl font-semibold">Funding Source Matching QA</h1>
             <p className="text-sm text-muted-foreground">Inspect, simulate and regression-test the recommendation engine. 5th Line internal only.</p>
           </div>
         </div>
@@ -497,7 +497,7 @@ export default function LenderMatchingQA() {
                           {r && 'matchScore' in r ? <span className={`text-xl font-bold ${scoreColor(r.matchScore)}`}>{r.matchScore}</span> : null}
                         </CardTitle>
                         <CardDescription>
-                          {!r && 'Pick a lender from the Candidates tab (compare icon)'}
+                          {!r && 'Pick a funding source from the Candidates tab (compare icon)'}
                           {r && r.hardFiltered && <Badge variant="destructive">Hard-filtered: {r.failedCheck}</Badge>}
                         </CardDescription>
                       </CardHeader>

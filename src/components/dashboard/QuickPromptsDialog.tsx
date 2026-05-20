@@ -48,7 +48,7 @@ const PRESET_PROMPTS: QuickPrompt[] = [
   },
   {
     id: 'preset-3',
-    title: 'Lender Matching',
+    title: 'Funding Source Matching',
     prompt: 'Find the best matching lenders for a deal in the [industry] sector with [deal size] capital requirements.',
     category: 'lenders',
     icon: 'users',

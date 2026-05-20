@@ -511,7 +511,7 @@ export default function LenderDatabaseConfig() {
               <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="lender-types" className="gap-1">
                   <Building2 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Lender Types</span>
+                  <span className="hidden sm:inline">Funding Source Types</span>
                   <span className="sm:hidden">Types</span>
                 </TabsTrigger>
                 <TabsTrigger value="industries" className="gap-1">
@@ -538,7 +538,7 @@ export default function LenderDatabaseConfig() {
 
               <TabsContent value="lender-types">
                 <ConfigSection
-                  title="Lender Types"
+                  title="Funding Source Types"
                   description="Configure the types of lenders available in your database (e.g., Bank, Non-Bank, Family Office)"
                   icon={Building2}
                   items={lenderTypes}
@@ -615,7 +615,7 @@ export default function LenderDatabaseConfig() {
                       
                       <div className="flex items-center justify-between">
                         <div>
-                          <Label htmlFor="showLenderType" className="font-medium">Lender Type</Label>
+                          <Label htmlFor="showLenderType" className="font-medium">Funding Source Type</Label>
                           <p className="text-sm text-muted-foreground">Display lender type badge (e.g., Bank, Private Credit)</p>
                         </div>
                         <Switch

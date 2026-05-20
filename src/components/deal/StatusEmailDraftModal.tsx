@@ -208,7 +208,7 @@ export function buildStatusEmailHtml(deal: Deal, content: StatusReportEditableCo
       ${
         v.pipelineSnapshot
           ? `
-            ${sectionLabel('Lender Pipeline')}
+            ${sectionLabel('Funding Source Pipeline')}
             ${pipelineTable}
           `
           : ''

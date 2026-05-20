@@ -27,7 +27,7 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
     title: 'Lender Call Notes',
     icon: '🏦',
     content: `<h2>Lender Call Notes</h2>
-<p><strong>Lender Name:</strong> </p>
+<p><strong>Funding Source Name:</strong> </p>
 <p><strong>Date:</strong> </p>
 <hr>
 <h3>Key Points Discussed</h3>
@@ -146,7 +146,7 @@ export const NOTE_TEMPLATES: NoteTemplate[] = [
 <p><strong>Target Close:</strong> </p>
 <hr>
 <table>
-<tr><th>Lender</th><th>Contact</th><th>Date Sent</th><th>Response</th><th>Status</th></tr>
+<tr><th>Funding Source</th><th>Contact</th><th>Date Sent</th><th>Response</th><th>Status</th></tr>
 <tr><td></td><td></td><td></td><td></td><td></td></tr>
 </table>
 <h3>Notes</h3>

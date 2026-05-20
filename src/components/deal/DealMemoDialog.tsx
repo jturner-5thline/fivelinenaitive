@@ -37,7 +37,7 @@ interface MemoSection {
 const MEMO_SECTIONS: MemoSection[] = [
   {
     key: 'lender_notes',
-    label: 'Lender Notes',
+    label: 'Funding Source Notes',
     placeholder: 'Notes about specific lenders, their feedback, or strategy...',
   },
   {

@@ -537,7 +537,7 @@ const DATA_SOURCES = [
   { id: 'deals-by-stage', label: 'Deals by Stage' },
   { id: 'monthly-value', label: 'Monthly Deal Value' },
   { id: 'deals-by-status', label: 'Deals by Status' },
-  { id: 'lender-activity', label: 'Lender Activity' },
+  { id: 'lender-activity', label: 'Funding Source Activity' },
   { id: 'deal-value-distribution', label: 'Deal Value Distribution' },
   { id: 'lender-pass-reasons', label: 'Lender Pass Reasons' },
   { id: 'conversion-funnel', label: 'Conversion Funnel' },

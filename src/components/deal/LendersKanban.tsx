@@ -45,9 +45,9 @@ interface LendersKanbanProps {
   isSaving?: (id: string) => boolean;
   failedSaves?: Set<string>;
   onRetry?: (lenderId: string) => void;
-  /** Metrics per lender, keyed by lender name (lowercase) */
+  /** Metrics per funding source, keyed by lender name (lowercase) */
   lenderMetrics?: Record<string, LenderMetrics>;
-  /** Callback when a lender card is clicked for detail view */
+  /** Callback when a funding source card is clicked for detail view */
   onCardClick?: (lender: DealLender) => void;
   showScore?: boolean;
   scoreConfig?: LenderScoreConfig;

@@ -266,7 +266,7 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
                   <XCircle className="h-5 w-5" />
                   Pass Reasons
                 </CardTitle>
-                <CardDescription>Configure the reasons shown when marking a lender as passed. Changes sync to your entire team.</CardDescription>
+                <CardDescription>Configure the reasons shown when marking a funding source as passed. Changes sync to your entire team.</CardDescription>
               </div>
             </button>
           </CollapsibleTrigger>

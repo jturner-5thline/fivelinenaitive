@@ -150,7 +150,7 @@ export function BankLendersImportButton({ onImport, open, onOpenChange, showTrig
       
       if (lenders.length === 0) {
         toast({ 
-          title: 'No lenders found', 
+          title: 'No funding sources found', 
           description: 'Could not parse any lenders from the file.',
           variant: 'destructive' 
         });

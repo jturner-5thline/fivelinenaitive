@@ -29,7 +29,7 @@ import { toast } from "sonner";
 const quickActions = [
   { name: "Dashboard", icon: Briefcase, path: "/dashboard" },
   { name: "Deals", icon: Briefcase, path: "/deals" },
-  { name: "Lenders", icon: Building2, path: "/lenders" },
+  { name: "Funding Sources", icon: Building2, path: "/lenders" },
   { name: "Analytics", icon: BarChart3, path: "/analytics" },
   { name: "Metrics", icon: TrendingUp, path: "/metrics" },
   { name: "Insights", icon: Lightbulb, path: "/insights" },
@@ -396,7 +396,7 @@ export function GlobalSearchAI() {
 
           {/* Lenders */}
           {lenders && lenders.length > 0 && query && !aiResult && (
-            <CommandGroup heading="Lenders">
+            <CommandGroup heading="Funding Sources">
               {lenders
                 .filter(l => l.name.toLowerCase().includes(query.toLowerCase()))
                 .slice(0, 5)

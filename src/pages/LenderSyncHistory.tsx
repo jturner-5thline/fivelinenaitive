@@ -55,7 +55,7 @@ function getTypeIcon(type: string) {
 function getTypeLabel(type: string) {
   switch (type) {
     case 'new_lender':
-      return 'New Lender';
+      return 'New Funding Source';
     case 'update_existing':
       return 'Update';
     case 'merge_conflict':
@@ -159,7 +159,7 @@ function SyncLogEntry({ request }: SyncLogEntryProps) {
             {/* Incoming data for new lenders */}
             {request.request_type === 'new_lender' && (
               <div>
-                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Lender Details</p>
+                <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Funding Source Details</p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-2 text-sm">
                   {incomingData.lender_type && (
                     <div><span className="text-muted-foreground">Type:</span> {String(incomingData.lender_type)}</div>
@@ -343,7 +343,7 @@ export default function LenderSyncHistory() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="new_lender">New Lender</SelectItem>
+                      <SelectItem value="new_lender">New Funding Source</SelectItem>
                       <SelectItem value="update_existing">Update</SelectItem>
                       <SelectItem value="merge_conflict">Merge Conflict</SelectItem>
                     </SelectContent>

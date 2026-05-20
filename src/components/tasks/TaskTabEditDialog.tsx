@@ -132,7 +132,7 @@ export function TaskTabEditDialog({ open, onClose, tab, onSave }: TaskTabEditDia
                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="any" className="text-xs">Any (no filter)</SelectItem>
-                  <SelectItem value="yes" className="text-xs">Has a lender</SelectItem>
+                  <SelectItem value="yes" className="text-xs">Has a funding source</SelectItem>
                   <SelectItem value="no" className="text-xs">No lender</SelectItem>
                 </SelectContent>
               </Select>
