@@ -314,7 +314,17 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
             {/* Company */}
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-1.5"><Building2 className="h-4 w-4" /> Company</CardTitle>
+                <CardTitle className="text-sm flex items-center gap-1.5">
+                  <Building2 className="h-4 w-4" /> Company
+                  {(contact as any)?.org_company_id === 'c4753066-0da9-4d87-8858-7eb1adecd173' && (
+                    <span
+                      title="Company auto-linked based on email domain and company website; you can override manually."
+                      className="text-[10px] text-muted-foreground font-normal cursor-help"
+                    >
+                      (auto-linked by domain)
+                    </span>
+                  )}
+                </CardTitle>
               </CardHeader>
               <CardContent>
                 {crmCompany ? (

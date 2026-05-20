@@ -4007,6 +4007,7 @@ export type Database = {
           department: string | null
           description: string | null
           email: string | null
+          email_domain_normalized: string | null
           email_opt_in: boolean | null
           external_ids: Json | null
           first_name: string | null
@@ -4483,6 +4484,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           email?: string | null
+          email_domain_normalized?: string | null
           email_opt_in?: boolean | null
           external_ids?: Json | null
           first_name?: string | null
@@ -4963,6 +4965,7 @@ export type Database = {
           department?: string | null
           description?: string | null
           email?: string | null
+          email_domain_normalized?: string | null
           email_opt_in?: boolean | null
           external_ids?: Json | null
           first_name?: string | null
@@ -5608,6 +5611,7 @@ export type Database = {
           customer_tier: string | null
           description: string | null
           domain: string | null
+          domain_normalized: string | null
           employee_count: number | null
           employee_range: string | null
           external_ids: Json | null
@@ -5665,6 +5669,7 @@ export type Database = {
           customer_tier?: string | null
           description?: string | null
           domain?: string | null
+          domain_normalized?: string | null
           employee_count?: number | null
           employee_range?: string | null
           external_ids?: Json | null
@@ -5722,6 +5727,7 @@ export type Database = {
           customer_tier?: string | null
           description?: string | null
           domain?: string | null
+          domain_normalized?: string | null
           employee_count?: number | null
           employee_range?: string | null
           external_ids?: Json | null
@@ -23490,7 +23496,9 @@ export type Database = {
         }
         Returns: number
       }
+      normalize_email_domain: { Args: { em: string }; Returns: string }
       normalize_stage: { Args: { stage_text: string }; Returns: string }
+      normalize_website_domain: { Args: { url: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }
         Returns: {
