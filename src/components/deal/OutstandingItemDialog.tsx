@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { NaitiveDatePicker } from '@/components/ui/naitive-date-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -343,18 +344,15 @@ export function OutstandingItemDialog({
               <Clock className="h-4 w-4 text-muted-foreground" />
               ETA:
             </div>
-            <Input
-              type="date"
-              value={etaValue}
-              onChange={(e) => setEtaValue(e.target.value)}
-              onBlur={handleSaveEta}
-              className="w-40 h-8 text-sm"
+            <NaitiveDatePicker
+              value={etaValue || null}
+              onChange={(next) => {
+                setEtaValue(next || '');
+                onUpdate(item.id, { eta: next || null });
+              }}
+              size="sm"
+              placeholder="Pick ETA"
             />
-            {etaValue && (
-              <span className="text-sm text-muted-foreground">
-                ({format(parseLocalDate(etaValue), 'MMM d, yyyy')})
-              </span>
-            )}
           </div>
 
           {/* Priority */}
