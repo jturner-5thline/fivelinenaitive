@@ -2981,11 +2981,12 @@ export default function DealDetail() {
                 {!isSimplifiedDeal && (
                   <div className="flex items-center gap-1.5 ml-auto">
                     <span className="text-xs text-muted-foreground">Close:</span>
-                    <input
-                      type="date"
-                      value={deal.closingDate || ''}
-                      onChange={(e) => updateDeal('closingDate', e.target.value || null)}
-                      className="text-xs text-muted-foreground bg-transparent border-none outline-none cursor-pointer hover:text-foreground transition-colors p-0 h-auto"
+                    <NaitiveDatePicker
+                      value={deal.closingDate || null}
+                      onChange={(v) => updateDeal('closingDate', v)}
+                      size="sm"
+                      placeholder="Set close date"
+                      buttonClassName="border-none bg-transparent hover:bg-muted/40 px-1"
                     />
                   </div>
                 )}
