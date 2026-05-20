@@ -617,9 +617,12 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
     );
   }, [conversations]);
 
+  const lastMessageLen = messages.length > 0 ? (messages[messages.length - 1]?.content?.length ?? 0) : 0;
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // Anchor to the bottom on send and as streamed tokens arrive, so the
+    // newest answer is never visually truncated at the top of the viewport.
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages.length, lastMessageLen, isAILoading]);
 
   const handleSendQuestion = useCallback(async (overridePrompt?: string) => {
     const prompt = (typeof overridePrompt === 'string' ? overridePrompt : question).trim();
