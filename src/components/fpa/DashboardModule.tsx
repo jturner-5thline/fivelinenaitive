@@ -43,6 +43,20 @@ function TabSkeleton() {
   );
 }
 
+/**
+ * Renders children into the Finance page header's right-side action slot
+ * (`#finance-header-actions`). Falls back to inline rendering if the slot
+ * isn't mounted (e.g. DashboardModule used outside the Finance shell).
+ */
+function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setTarget(document.getElementById('finance-header-actions'));
+  }, []);
+  if (!target) return null;
+  return createPortal(<>{children}</>, target);
+}
+
 // Smart default: pick date range based on current month
 function getSmartDateRange(): string {
   const month = new Date().getMonth();
