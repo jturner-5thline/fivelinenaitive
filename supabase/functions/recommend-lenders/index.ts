@@ -566,6 +566,33 @@ serve(async (req) => {
 
     const dealEvidenceText = [dealNarrative, dealNoteText, dealLenderFeedback].join("\n");
 
+    // ── Embed the deal narrative (cached on deal_writeups via source hash) ───
+    const narrativeBundle = [
+      `Company: ${deal.company ?? ""}`,
+      `Industry: ${writeup?.industry ?? deal.business_model ?? ""}`,
+      `Deal types: ${sufficiency.dealTypes.join(", ")}`,
+      `Capital ask: ${overriddenValue ?? ""}`,
+      `Sponsorship: ${writeup?.sponsorship ?? ""}`,
+      `B2B/B2C: ${writeup?.b2b_b2c ?? ""}`,
+      `Collateral: ${writeup?.collateral_available ?? ""}`,
+      `Use of funds: ${writeup?.use_of_funds ?? ""}`,
+      dealNarrative,
+      dealNoteText,
+    ].filter(Boolean).join("\n\n").slice(0, 8000);
+    const narrativeHash = await sha256Hex(narrativeBundle);
+    let dealEmbedding: number[] | null = parseEmbedding((writeup as any)?.narrative_embedding);
+    if (!dealEmbedding || (writeup as any)?.narrative_source_hash !== narrativeHash) {
+      dealEmbedding = await embedText(narrativeBundle);
+      if (dealEmbedding) {
+        await supabase.from("deal_writeups").update({
+          narrative_embedding: dealEmbedding as any,
+          narrative_source_hash: narrativeHash,
+          narrative_embedded_at: new Date().toISOString(),
+        }).eq("deal_id", dealId);
+      }
+    }
+    const dealNarrativeLc = lc(dealEvidenceText + " " + (writeup?.industry ?? "") + " " + (deal.business_model ?? "") + " " + (writeup?.sponsorship ?? "") + " " + (writeup?.profitability ?? ""));
+
     const dealCtx = {
       name: deal.company ?? null,
       value: overriddenValue,
@@ -631,6 +658,14 @@ serve(async (req) => {
       const hasFlag = noteRecords.some((n) => n.flag);
       const passReasons = passReasonsByLender.get(lc(lender.name)) ?? [];
       const patterns = patternsByLender.get(lender.id) ?? patternsByLender.get(lc(lender.name)) ?? [];
+      const fit = fitById.get(lender.id);
+      const fitPositive: { signal: string; confidence: number }[] = Array.isArray(fit?.positive_signals) ? fit.positive_signals : [];
+      const fitNegative: { signal: string; confidence: number }[] = Array.isArray(fit?.negative_signals) ? fit.negative_signals : [];
+      const fitExclusions: { pattern: string; confidence: number }[] = Array.isArray(fit?.exclusions) ? fit.exclusions : [];
+      const fitEmbedding = parseEmbedding(fit?.embedding);
+
+      // AI-extracted hard exclusion match against the deal narrative/industry
+      const matchedExclusion = fitExclusions.find((ex) => ex.confidence >= 0.7 && ex.pattern && dealNarrativeLc.includes(lc(ex.pattern)));
 
       const type = scoreLoanType(dealCtx, lender);
       const size = scoreSize(dealCtx, lender);
@@ -640,9 +675,23 @@ serve(async (req) => {
       const recency = scoreRecency(lender, recentSet, passReasons);
       const evidence = scoreEvidence(lender, [lenderNoteText], lenderTags, "");
 
+      // Semantic similarity: cosine vs lender fit embedding → 0..100
+      let semantic = 50;
+      if (dealEmbedding && fitEmbedding) {
+        const sim = cosineSim(dealEmbedding, fitEmbedding); // -1..1, typically 0..0.6
+        semantic = Math.round(Math.max(0, Math.min(1, (sim + 0.1) / 0.7)) * 100);
+      }
+
+      // Positive/negative signal nudges (string-contains against deal narrative)
+      const posHits = fitPositive.filter((s) => s.signal && dealNarrativeLc.includes(lc(s.signal.split(" ").slice(0, 4).join(" "))));
+      const negHits = fitNegative.filter((s) => s.signal && dealNarrativeLc.includes(lc(s.signal.split(" ").slice(0, 4).join(" "))));
+      const evidenceAdj = posHits.reduce((a, s) => a + 8 * s.confidence, 0) - negHits.reduce((a, s) => a + 12 * s.confidence, 0);
+      const evidenceScore = Math.max(0, Math.min(100, evidence.score + evidenceAdj));
+
       // HARD FILTERS
       if (industry.hardOut) { filteredOut.push({ name: lender.name, reason: industry.reason }); continue; }
       if (evidence.hardOut) { filteredOut.push({ name: lender.name, reason: evidence.reason }); continue; }
+      if (matchedExclusion) { filteredOut.push({ name: lender.name, reason: `AI exclusion: ${matchedExclusion.pattern}` }); continue; }
       if (type.score <= 10 && (arr(lender.loan_types).length > 0)) {
         filteredOut.push({ name: lender.name, reason: type.reason });
         continue;
@@ -659,7 +708,7 @@ serve(async (req) => {
       const components: ComponentScores = {
         type: type.score, size: size.score, industry: industry.score,
         geography: geography.score, structure: structure.score,
-        recency: recency.score, evidence: evidence.score,
+        recency: recency.score, evidence: evidenceScore, semantic,
       };
       const detScore =
         components.type * WEIGHTS.type +
@@ -668,12 +717,13 @@ serve(async (req) => {
         components.geography * WEIGHTS.geography +
         components.structure * WEIGHTS.structure +
         components.recency * WEIGHTS.recency +
-        components.evidence * WEIGHTS.evidence;
+        components.evidence * WEIGHTS.evidence +
+        components.semantic * WEIGHTS.semantic;
 
       const reasons = [type.reason, size.reason, industry.reason, geography.reason, structure.reason, recency.reason, evidence.reason]
         .filter((r) => r && r.length);
 
-      candidates.push({ lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags });
+      (candidates as any).push({ lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags, fit, posHits, negHits });
     }
 
     // Sort by deterministic score and take top 25 to AI for narrative re-rank
