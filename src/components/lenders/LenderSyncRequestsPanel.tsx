@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
+import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FieldChangeProps {
