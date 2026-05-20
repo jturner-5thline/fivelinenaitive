@@ -1028,6 +1028,13 @@ Your response MUST follow this EXACT structure and nothing else:
 
 \`Sources: <comma-separated references to Notes / Documents / Activity actually used, e.g. "Deal Notes, Q3 Financials.xlsx, Recent Activity">\`
 
+## YES/NO DOCUMENT EXISTENCE QUESTIONS
+If the user asks whether a document, file, note, or item exists (e.g. "Do we have X?", "Is there a Y on file?", "Did we get the Z?"), respond in EXACTLY this 3-line format and NOTHING more:
+- Line 1: \`A: Yes — <filename or item name> (located in <Documents | Notes | Outstanding Items | Activity>).\` OR \`A: No — not currently on file.\`
+- Line 2 (OPTIONAL — include ONLY if directly relevant, ≤20 words): a single short context sentence. Omit the line entirely if not needed.
+- Line 3: \`Sources: <source list>\`
+For yes/no existence questions, do NOT add bullets, bold headers, multi-document inventories, editorial commentary, or closings like "this document provides valuable context" or "useful for diligence" — unless the user explicitly asks for details, a summary, or a list.
+
 STRICT RULES for default Q&A:
 - Do NOT write narrative summary sentences, lead-ins, or context paragraphs before the A: line.
 - Do NOT write editorial closings or qualitative judgments such as "the deal appears well-documented", "progressing well", "looks strong", "overall a solid opportunity", or similar.
