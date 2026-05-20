@@ -570,6 +570,10 @@ export function CashFlowManager() {
   const [weeklyOverrides, setWeeklyOverrides] = useState<WeeklyOverrides>({});
   const [creditFacilities, setCreditFacilities] = useState<CreditFacility[]>([]);
 
+  // Manual override audit trail (company-shared, realtime).
+  const { byCell: overrideHistoryByCell, record: recordOverrideHistory } =
+    useCellOverrideHistory(company?.id ?? null);
+
   // Runtime check: confirm role is a valid RoleMode for all navigation flows.
   // CashFlowManager owns its own role state (FPAWorkspace does not pass it as a prop),
   // so this guards against future regressions where role might become undefined or
