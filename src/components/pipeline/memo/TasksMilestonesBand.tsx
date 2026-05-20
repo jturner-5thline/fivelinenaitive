@@ -322,15 +322,18 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
     try {
       if (task.kind === 'task') {
         const { data: { user: u } } = await supabase.auth.getUser();
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('tasks')
           .update({
             status: TASK_STATUS_COMPLETE,
             completed_at: new Date().toISOString(),
             completed_by: u?.id ?? null,
           })
-          .eq('id', task.id);
+          .eq('id', task.id)
+          .select('id');
         if (error) throw error;
+        if (!data || data.length === 0) throw new Error('Complete blocked by permissions');
+        console.log('[TasksMilestonesBand] task completed', { taskId: task.id });
       } else {
         // outstanding: id is prefixed with "o-"
         const realId = task.id.startsWith('o-') ? task.id.slice(2) : task.id;
@@ -481,14 +484,20 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
       return;
     }
 
-    const { error } = await supabase.from('tasks').update({ title: nextTitle }).eq('id', task.id);
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({ title: nextTitle })
+      .eq('id', task.id)
+      .select('id');
 
-    if (error) {
-      toast.error('Failed to update task title');
+    if (error || !data || data.length === 0) {
+      console.error('[TasksMilestonesBand] title update failed', { taskId: task.id, error, rows: data?.length });
+      toast.error(error ? 'Failed to update task title' : 'You do not have permission to edit this task');
       setTitleDraft(task.title);
       return;
     }
 
+    console.log('[TasksMilestonesBand] title updated', { taskId: task.id, title: nextTitle });
     toast.success('Task title updated');
     await refreshTasks();
   };
@@ -509,9 +518,15 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
     setFieldSaving(taskId, true);
 
     try {
-      const { error } = await supabase.from('tasks').update({ due_date: nextDueDate }).eq('id', taskId);
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ due_date: nextDueDate })
+        .eq('id', taskId)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Update blocked by permissions');
 
+      console.log('[TasksMilestonesBand] due date updated', { taskId, nextDueDate });
       toast.success('Due date updated');
       void syncTaskFieldToAsana(taskId, { due_date: nextDueDate });
       await refreshTasks();
@@ -546,9 +561,15 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
     setFieldSaving(taskId, true);
 
     try {
-      const { error } = await supabase.from('tasks').update({ assigned_to: userId }).eq('id', taskId);
+      const { data, error } = await supabase
+        .from('tasks')
+        .update({ assigned_to: userId })
+        .eq('id', taskId)
+        .select('id');
       if (error) throw error;
+      if (!data || data.length === 0) throw new Error('Update blocked by permissions');
 
+      console.log('[TasksMilestonesBand] assignee updated', { taskId, userId });
       toast.success('Assignee updated');
       void syncTaskFieldToAsana(taskId, { assigned_to: userId });
       await refreshTasks();
