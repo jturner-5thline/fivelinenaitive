@@ -14305,6 +14305,7 @@ export type Database = {
       master_lenders: {
         Row: {
           active: boolean | null
+          address: string | null
           b2b_b2c: string | null
           cash_burn: string | null
           company_id: string | null
@@ -14327,6 +14328,7 @@ export type Database = {
           last_synced_from_flex: string | null
           lender_one_pager_url: string | null
           lender_type: string | null
+          linkedin_url: string | null
           loan_types: string[] | null
           max_deal: number | null
           min_deal: number | null
@@ -14334,6 +14336,7 @@ export type Database = {
           name: string
           nda: string | null
           onboarded_to_flex: string | null
+          phone: string | null
           post_term_sheet_checklist: string | null
           referral_agreement: string | null
           referral_fee_offered: string | null
@@ -14348,9 +14351,11 @@ export type Database = {
           updated_at: string
           upfront_checklist: string | null
           user_id: string
+          website: string | null
         }
         Insert: {
           active?: boolean | null
+          address?: string | null
           b2b_b2c?: string | null
           cash_burn?: string | null
           company_id?: string | null
@@ -14373,6 +14378,7 @@ export type Database = {
           last_synced_from_flex?: string | null
           lender_one_pager_url?: string | null
           lender_type?: string | null
+          linkedin_url?: string | null
           loan_types?: string[] | null
           max_deal?: number | null
           min_deal?: number | null
@@ -14380,6 +14386,7 @@ export type Database = {
           name: string
           nda?: string | null
           onboarded_to_flex?: string | null
+          phone?: string | null
           post_term_sheet_checklist?: string | null
           referral_agreement?: string | null
           referral_fee_offered?: string | null
@@ -14394,9 +14401,11 @@ export type Database = {
           updated_at?: string
           upfront_checklist?: string | null
           user_id: string
+          website?: string | null
         }
         Update: {
           active?: boolean | null
+          address?: string | null
           b2b_b2c?: string | null
           cash_burn?: string | null
           company_id?: string | null
@@ -14419,6 +14428,7 @@ export type Database = {
           last_synced_from_flex?: string | null
           lender_one_pager_url?: string | null
           lender_type?: string | null
+          linkedin_url?: string | null
           loan_types?: string[] | null
           max_deal?: number | null
           min_deal?: number | null
@@ -14426,6 +14436,7 @@ export type Database = {
           name?: string
           nda?: string | null
           onboarded_to_flex?: string | null
+          phone?: string | null
           post_term_sheet_checklist?: string | null
           referral_agreement?: string | null
           referral_fee_offered?: string | null
@@ -14440,6 +14451,7 @@ export type Database = {
           updated_at?: string
           upfront_checklist?: string | null
           user_id?: string
+          website?: string | null
         }
         Relationships: [
           {
