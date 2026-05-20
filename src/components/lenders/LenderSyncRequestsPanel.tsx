@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
@@ -247,7 +248,6 @@ interface LenderSyncRequestsPanelProps {
 
 export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequestsPanelProps) {
   const { requests, pendingCount, loading, refetch, approveRequest, rejectRequest, mergeRequest } = useLenderSyncRequests();
-  const [showAll, setShowAll] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
@@ -275,6 +275,48 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   // Get approvable requests (new_lender and update_existing, not merge_conflict)
   const approvableRequests = pendingRequests.filter(r => r.request_type !== 'merge_conflict');
   const selectedApprovable = approvableRequests.filter(r => selectedIds.has(r.id));
+
+  // Categorize pending requests for tabs
+  const newLenderRequests = pendingRequests.filter(r => r.request_type === 'new_lender');
+  const conflictRequests = pendingRequests.filter(r => r.request_type === 'merge_conflict');
+
+  // Potential duplicates: pending requests that share a normalized lender name
+  // with at least one other pending request, OR new_lender requests whose name
+  // closely matches an existing lender flagged by the sync layer.
+  const normalizeName = (n: string) =>
+    (n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+  const nameCounts = new Map<string, number>();
+  for (const r of pendingRequests) {
+    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
+    if (!n) continue;
+    nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
+  }
+  const duplicateRequests = pendingRequests.filter(r => {
+    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
+    const dupByName = n ? (nameCounts.get(n) || 0) > 1 : false;
+    const dupByExisting = r.request_type === 'new_lender' && !!r.existing_lender_name;
+    return dupByName || dupByExisting;
+  });
+
+  // Group duplicates by normalized name for the Potential Duplicates view
+  const duplicateGroups = (() => {
+    const groups = new Map<string, LenderSyncRequest[]>();
+    for (const r of duplicateRequests) {
+      const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string) || r.id;
+      const arr = groups.get(n) || [];
+      arr.push(r);
+      groups.set(n, arr);
+    }
+    return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
+  })();
+
+  // Default to the most actionable tab. Conflicts win, then new lenders, else all.
+  const defaultTab =
+    conflictRequests.length > 0 ? 'conflicts'
+    : newLenderRequests.length > 0 ? 'new'
+    : duplicateRequests.length > 0 ? 'duplicates'
+    : 'all';
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -395,9 +437,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
               <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
                 <RefreshCw className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); setShowAll(!showAll); }}>
-                {showAll ? 'Show Pending Only' : 'Show All'}
-              </Button>
             </div>
 
             {/* Bulk actions bar */}
@@ -448,25 +487,148 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
               </div>
             )}
 
-            <ScrollArea className="h-[400px]">
-              <div className="space-y-2">
-                {pendingRequests.map(request => (
-                  <SyncRequestCard
-                    key={request.id}
-                    request={request}
-                    isSelected={selectedIds.has(request.id)}
-                    onToggleSelect={toggleSelect}
-                    onApprove={handleApprove}
-                    onReject={rejectRequest}
-                    onMerge={handleMerge}
-                  />
-                ))}
-                
-                {showAll && processedRequests.length > 0 && (
-                  <>
-                    <Separator className="my-4" />
-                    <p className="text-xs font-medium text-muted-foreground uppercase mb-2">Previously Processed</p>
-                    {processedRequests.slice(0, 10).map(request => (
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="w-full grid grid-cols-5">
+                <TabsTrigger value="all" className="gap-1.5">
+                  All
+                  {pendingRequests.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">{pendingRequests.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="new" className="gap-1.5">
+                  New Lenders
+                  {newLenderRequests.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30">
+                      {newLenderRequests.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="conflicts" className="gap-1.5">
+                  Resolve Conflicts
+                  {conflictRequests.length > 0 && (
+                    <Badge variant="destructive" className="h-5 px-1.5 text-xs">{conflictRequests.length}</Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="duplicates" className="gap-1.5">
+                  Potential Duplicates
+                  {duplicateRequests.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                      {duplicateRequests.length}
+                    </Badge>
+                  )}
+                </TabsTrigger>
+                <TabsTrigger value="completed" className="gap-1.5">
+                  Completed
+                  {processedRequests.length > 0 && (
+                    <Badge variant="outline" className="h-5 px-1.5 text-xs">{processedRequests.length}</Badge>
+                  )}
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="all" className="mt-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {pendingRequests.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No pending requests.</p>
+                    )}
+                    {pendingRequests.map(request => (
+                      <SyncRequestCard
+                        key={request.id}
+                        request={request}
+                        isSelected={selectedIds.has(request.id)}
+                        onToggleSelect={toggleSelect}
+                        onApprove={handleApprove}
+                        onReject={rejectRequest}
+                        onMerge={handleMerge}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="new" className="mt-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {newLenderRequests.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No new lender approvals waiting.</p>
+                    )}
+                    {newLenderRequests.map(request => (
+                      <SyncRequestCard
+                        key={request.id}
+                        request={request}
+                        isSelected={selectedIds.has(request.id)}
+                        onToggleSelect={toggleSelect}
+                        onApprove={handleApprove}
+                        onReject={rejectRequest}
+                        onMerge={handleMerge}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="conflicts" className="mt-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {conflictRequests.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No merge conflicts to resolve.</p>
+                    )}
+                    {conflictRequests.map(request => (
+                      <SyncRequestCard
+                        key={request.id}
+                        request={request}
+                        isSelected={selectedIds.has(request.id)}
+                        onToggleSelect={toggleSelect}
+                        onApprove={handleApprove}
+                        onReject={rejectRequest}
+                        onMerge={handleMerge}
+                      />
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="duplicates" className="mt-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-3">
+                    {duplicateGroups.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">No potential duplicates detected.</p>
+                    )}
+                    {duplicateGroups.map(([key, group]) => (
+                      <div key={key} className="border rounded-lg bg-amber-500/5 border-amber-500/30 p-2">
+                        <div className="flex items-center justify-between px-1 pb-2">
+                          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">
+                            {group.length > 1
+                              ? `${group.length} requests for "${(group[0].incoming_data as Record<string, unknown>)?.name as string}"`
+                              : `Matches existing "${group[0].existing_lender_name}"`}
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          {group.map(request => (
+                            <SyncRequestCard
+                              key={request.id}
+                              request={request}
+                              isSelected={selectedIds.has(request.id)}
+                              onToggleSelect={toggleSelect}
+                              onApprove={handleApprove}
+                              onReject={rejectRequest}
+                              onMerge={handleMerge}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="completed" className="mt-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {processedRequests.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">Nothing has been processed yet.</p>
+                    )}
+                    {processedRequests.slice(0, 50).map(request => (
                       <SyncRequestCard
                         key={request.id}
                         request={request}
@@ -477,10 +639,10 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                         onMerge={handleMerge}
                       />
                     ))}
-                  </>
-                )}
-              </div>
-            </ScrollArea>
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </CollapsibleContent>
       </Card>
