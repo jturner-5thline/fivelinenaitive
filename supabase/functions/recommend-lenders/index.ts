@@ -45,6 +45,7 @@ interface Recommendation {
   matchedExclusion?: string | null;
   fitSummary?: string | null;
   explanation?: WhyExplanation;
+  pipelineTrace?: PipelineTrace;
 }
 
 // Transparent per-lender explanation surfaced to the UI.
@@ -62,6 +63,32 @@ interface WhyExplanation {
   };
   dominantDriver: 'structured' | 'notes' | 'history' | 'balanced';
   driverBreakdown: { structured: number; notes: number; history: number };
+}
+
+// Layered pipeline diagnostics surfaced to admins/5th Line users.
+interface PipelineTrace {
+  // Layer 1 — hard filters
+  hardFilters: { passed: boolean; checks: { name: string; passed: boolean; reason?: string }[] };
+  // Layer 2 — structured scoring
+  structured: { score: number; components: { name: string; score: number; weight: number; reason: string }[] };
+  // Layer 3 — unstructured AI / notes / embeddings
+  unstructured: { score: number; components: { name: string; score: number; weight: number; reason: string }[] };
+  // Layer 4 — penalties applied (negative history, exclusion tags, stale notes, mandate conflicts)
+  penalties: { name: string; delta: number; reason: string }[];
+  // Layer 5 — boosts from positive historical outcomes
+  boosts: { name: string; delta: number; reason: string }[];
+  // Layer 6 — final
+  final: {
+    deterministic: number;
+    aiAdjustment: number;
+    penaltyTotal: number;
+    boostTotal: number;
+    diversityDelta: number;
+    matchScore: number;
+    confidence: number;
+  };
+  weights: Record<string, number>;
+  diversification?: { reason: string; demoted: boolean };
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -725,6 +752,32 @@ serve(async (req) => {
       passReasonsByLender.set(key, list);
     });
 
+    // ── Historical positive outcomes (last 18 months) ────────────────────────
+    // Joined to deals so we can compare industry / deal_type to the current deal.
+    const eighteenMoAgo = new Date(Date.now() - 540 * 24 * 60 * 60 * 1000).toISOString();
+    const POSITIVE_STATUSES = ["funded", "closed", "closed-won", "won", "termsheet", "term sheet", "term-sheet", "io", "indication", "loi"];
+    const { data: positiveOutcomes } = await supabase
+      .from("deal_lenders")
+      .select("name, master_lender_id, status, tracking_status, updated_at, deal:deals(id, business_model, deal_type, value)")
+      .gte("updated_at", eighteenMoAgo)
+      .limit(5000);
+    const positiveByLender = new Map<string, { industry: string; dealType: string; value: number | null; status: string }[]>();
+    (positiveOutcomes ?? []).forEach((r: any) => {
+      const status = lc(r.tracking_status) + " " + lc(r.status);
+      if (!POSITIVE_STATUSES.some((p) => status.includes(p))) return;
+      const k = lc(r.name);
+      if (!k) return;
+      const deal = r.deal || {};
+      const list = positiveByLender.get(k) ?? [];
+      list.push({
+        industry: lc(deal.business_model ?? ""),
+        dealType: lc(deal.deal_type ?? ""),
+        value: toNum(deal.value),
+        status: status.trim(),
+      });
+      positiveByLender.set(k, list);
+    });
+
     // Lender notes & pass patterns
     const lenderIds = activeLenders.map((l: any) => l.id).filter(Boolean);
     const lenderNames = activeLenders.map((l: any) => l.name).filter(Boolean);
@@ -867,6 +920,8 @@ serve(async (req) => {
       type: 0.20, size: 0.16, industry: 0.16,
       geography: 0.07, structure: 0.12, recency: 0.07, evidence: 0.10, semantic: 0.12,
     };
+    const STRUCTURED_KEYS = ["type", "size", "industry", "geography", "structure"] as const;
+    const UNSTRUCTURED_KEYS = ["evidence", "semantic", "recency"] as const;
 
     type Scored = {
       lender: any;
@@ -876,6 +931,11 @@ serve(async (req) => {
       passReasons: string[];
       lenderNoteText: string;
       lenderTags: string[];
+      hardFilterChecks: { name: string; passed: boolean; reason?: string }[];
+      structuredReasons: Record<string, string>;
+      unstructuredReasons: Record<string, string>;
+      penalties: { name: string; delta: number; reason: string }[];
+      boosts: { name: string; delta: number; reason: string }[];
     };
     const candidates: Scored[] = [];
     const filteredOut: { name: string; reason: string }[] = [];
@@ -912,9 +972,11 @@ serve(async (req) => {
 
       // Semantic similarity: cosine vs lender fit embedding → 0..100
       let semantic = 50;
+      let semanticReason = "no fit embedding cached yet";
       if (dealEmbedding && fitEmbedding) {
         const sim = cosineSim(dealEmbedding, fitEmbedding); // -1..1, typically 0..0.6
         semantic = Math.round(Math.max(0, Math.min(1, (sim + 0.1) / 0.7)) * 100);
+        semanticReason = `cosine sim ${sim.toFixed(2)} vs lender narrative embedding`;
       }
 
       // Positive/negative signal nudges (string-contains against deal narrative)
@@ -923,28 +985,44 @@ serve(async (req) => {
       const evidenceAdj = posHits.reduce((a, s) => a + 8 * s.confidence, 0) - negHits.reduce((a, s) => a + 12 * s.confidence, 0);
       const evidenceScore = Math.max(0, Math.min(100, evidence.score + evidenceAdj));
 
-      // HARD FILTERS
-      if (industry.hardOut) { filteredOut.push({ name: lender.name, reason: industry.reason }); continue; }
-      if (evidence.hardOut) { filteredOut.push({ name: lender.name, reason: evidence.reason }); continue; }
-      if (matchedExclusion) { filteredOut.push({ name: lender.name, reason: `AI exclusion: ${matchedExclusion.pattern}` }); continue; }
-      if (type.score <= 10 && (arr(lender.loan_types).length > 0)) {
-        filteredOut.push({ name: lender.name, reason: type.reason });
-        continue;
-      }
-      if (size.score <= 5) { filteredOut.push({ name: lender.name, reason: size.reason }); continue; }
-      if (hasFlag) { filteredOut.push({ name: lender.name, reason: "flagged in lender notes" }); continue; }
-      // High-confidence repeat pass patterns → soft hard-out
+      // ─── LAYER 1 — HARD FILTERS (non-negotiables) ──────────────────────────
       const blockingPatterns = patterns.filter((p: any) => Number(p.confidence_score ?? 0) >= 0.8 && Number(p.occurrence_count ?? 0) >= 2);
-      if (blockingPatterns.length >= 2) {
-        filteredOut.push({ name: lender.name, reason: `${blockingPatterns.length} repeat pass patterns` });
-        continue;
-      }
+      const hardChecks: { name: string; passed: boolean; reason?: string }[] = [
+        { name: "Active mandate", passed: lender.active !== false, reason: lender.active === false ? "lender inactive" : undefined },
+        { name: "Product type",   passed: !(type.score <= 10 && arr(lender.loan_types).length > 0), reason: type.score <= 10 ? type.reason : undefined },
+        { name: "Facility size",  passed: size.score > 5, reason: size.score <= 5 ? size.reason : undefined },
+        { name: "Industry avoid list", passed: !industry.hardOut, reason: industry.hardOut ? industry.reason : undefined },
+        { name: "AI exclusion",   passed: !matchedExclusion, reason: matchedExclusion ? `narrative contains "${matchedExclusion.pattern}"` : undefined },
+        { name: "Flagged in notes", passed: !hasFlag, reason: hasFlag ? "flagged in lender notes" : undefined },
+        { name: "Negative-evidence threshold", passed: !evidence.hardOut, reason: evidence.hardOut ? evidence.reason : undefined },
+        { name: "Repeat-pass patterns", passed: blockingPatterns.length < 2, reason: blockingPatterns.length >= 2 ? `${blockingPatterns.length} high-confidence repeat passes` : undefined },
+      ];
+      const failedHard = hardChecks.find((c) => !c.passed);
+      if (failedHard) { filteredOut.push({ name: lender.name, reason: `${failedHard.name}: ${failedHard.reason ?? "blocked"}` }); continue; }
 
       const components: ComponentScores = {
         type: type.score, size: size.score, industry: industry.score,
         geography: geography.score, structure: structure.score,
         recency: recency.score, evidence: evidenceScore, semantic,
       };
+
+      // ─── LAYER 2 — STRUCTURED SCORING ──────────────────────────────────────
+      const structuredScore =
+        (components.type * WEIGHTS.type +
+         components.size * WEIGHTS.size +
+         components.industry * WEIGHTS.industry +
+         components.geography * WEIGHTS.geography +
+         components.structure * WEIGHTS.structure)
+        / STRUCTURED_KEYS.reduce((s, k) => s + (WEIGHTS as any)[k], 0);
+
+      // ─── LAYER 3 — UNSTRUCTURED / AI-DERIVED SCORING ──────────────────────
+      const unstructuredScore =
+        (components.evidence * WEIGHTS.evidence +
+         components.semantic * WEIGHTS.semantic +
+         components.recency * WEIGHTS.recency)
+        / UNSTRUCTURED_KEYS.reduce((s, k) => s + (WEIGHTS as any)[k], 0);
+
+      // Base deterministic blend = same weighted sum as before (sums to 1.0)
       const detScore =
         components.type * WEIGHTS.type +
         components.size * WEIGHTS.size +
@@ -955,10 +1033,62 @@ serve(async (req) => {
         components.evidence * WEIGHTS.evidence +
         components.semantic * WEIGHTS.semantic;
 
+      // ─── LAYER 4 — PENALTIES ──────────────────────────────────────────────
+      const penalties: { name: string; delta: number; reason: string }[] = [];
+      if (passReasons.length) {
+        penalties.push({ name: "Recent passes", delta: -Math.min(15, passReasons.length * 5), reason: `${passReasons.length} pass(es) in last 90d: "${passReasons[0]}"` });
+      }
+      if (blockingPatterns.length === 1) {
+        penalties.push({ name: "Repeat-pass pattern", delta: -8, reason: `pattern "${blockingPatterns[0].pattern_value ?? blockingPatterns[0].reason_category}"` });
+      }
+      if (negHits.length) {
+        penalties.push({ name: "Negative note signals", delta: -Math.min(12, negHits.length * 4), reason: negHits.map((h) => h.signal).slice(0, 2).join("; ") });
+      }
+      // Mandate conflict: lender type or sponsorship clearly mismatched but didn't hit hard filter
+      if (type.score > 10 && type.score < 40) {
+        penalties.push({ name: "Soft mandate conflict", delta: -6, reason: type.reason });
+      }
+      // Stale lender — no recent activity and last note >180d (approximated via no recent activity)
+      if (!recentSet.has(lc(lender.name)) && lenderNoteText.length === 0 && !fit) {
+        penalties.push({ name: "Stale / no signal", delta: -3, reason: "no activity, notes, or AI fit profile" });
+      }
+      const exclusionTags = lenderTags.filter((t) => /avoid|exclude|do[- ]?not|blacklist/i.test(t));
+      if (exclusionTags.length) {
+        penalties.push({ name: "Exclusion tags", delta: -10, reason: exclusionTags.join(", ") });
+      }
+
+      // ─── LAYER 5 — BOOSTS (positive historical outcomes) ──────────────────
+      const boosts: { name: string; delta: number; reason: string }[] = [];
+      const historicalWins = positiveByLender.get(lc(lender.name)) ?? [];
+      const dealIndLc = lc(dealCtx.industry ?? "");
+      const dealTypesLc = (dealCtx.dealTypes ?? []).map(lc);
+      const industryWins = historicalWins.filter((w) => w.industry && dealIndLc && (w.industry.includes(dealIndLc) || dealIndLc.includes(w.industry)));
+      const typeWins = historicalWins.filter((w) => dealTypesLc.some((t) => t && w.dealType && (w.dealType.includes(t) || t.includes(w.dealType))));
+      const sizeWins = dealCtx.value ? historicalWins.filter((w) => w.value && Math.abs((w.value - dealCtx.value) / dealCtx.value) < 0.5) : [];
+      if (industryWins.length) {
+        boosts.push({ name: "Industry track record", delta: Math.min(12, 4 + industryWins.length * 3), reason: `${industryWins.length} prior positive outcome(s) in same industry` });
+      }
+      if (typeWins.length) {
+        boosts.push({ name: "Deal-type track record", delta: Math.min(10, 3 + typeWins.length * 3), reason: `${typeWins.length} prior positive outcome(s) on this deal type` });
+      }
+      if (sizeWins.length) {
+        boosts.push({ name: "Comparable-size wins", delta: Math.min(6, sizeWins.length * 2), reason: `${sizeWins.length} positive outcome(s) within ±50% of this deal's size` });
+      }
+      if (posHits.length) {
+        boosts.push({ name: "Positive note signals", delta: Math.min(10, posHits.length * 4), reason: posHits.map((h) => h.signal).slice(0, 2).join("; ") });
+      }
+
       const reasons = [type.reason, size.reason, industry.reason, geography.reason, structure.reason, recency.reason, evidence.reason]
         .filter((r) => r && r.length);
 
-      (candidates as any).push({ lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags, fit, posHits, negHits });
+      (candidates as any).push({
+        lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags, fit, posHits, negHits,
+        hardFilterChecks: hardChecks,
+        structuredScore, unstructuredScore,
+        structuredReasons: { type: type.reason, size: size.reason, industry: industry.reason, geography: geography.reason, structure: structure.reason },
+        unstructuredReasons: { evidence: evidence.reason, semantic: semanticReason, recency: recency.reason },
+        penalties, boosts,
+      });
     }
 
     // Sort by deterministic score and take top 25 to AI for narrative re-rank
@@ -1064,7 +1194,11 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
       const cAny = c as any;
       const adjEntry = aiAdjustments.get(lc(c.lender.name));
       const adj = adjEntry?.adj ?? 0;
-      const finalScore = Math.max(0, Math.min(100, Math.round(c.detScore + adj)));
+      const penalties = cAny.penalties ?? [];
+      const boosts = cAny.boosts ?? [];
+      const penaltyTotal = penalties.reduce((s: number, p: any) => s + p.delta, 0);
+      const boostTotal = boosts.reduce((s: number, p: any) => s + p.delta, 0);
+      const preDiversity = Math.max(0, Math.min(100, Math.round(c.detScore + adj + penaltyTotal + boostTotal)));
 
       // Confidence: how many evaluative dimensions had real signal
       const sigDims = [
@@ -1086,10 +1220,40 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
         rationale = `Strong ${top[0]} fit (${top[0] === 'evidence' ? top[1] : top[1]}); weakest on ${bot[0]} (${bot[1]}).`;
       }
 
+      const pipelineTrace: PipelineTrace = {
+        hardFilters: { passed: true, checks: cAny.hardFilterChecks ?? [] },
+        structured: {
+          score: Math.round(cAny.structuredScore ?? 0),
+          components: STRUCTURED_KEYS.map((k) => ({
+            name: k, score: (c.components as any)[k], weight: (WEIGHTS as any)[k],
+            reason: cAny.structuredReasons?.[k] ?? "",
+          })),
+        },
+        unstructured: {
+          score: Math.round(cAny.unstructuredScore ?? 0),
+          components: UNSTRUCTURED_KEYS.map((k) => ({
+            name: k, score: (c.components as any)[k], weight: (WEIGHTS as any)[k],
+            reason: cAny.unstructuredReasons?.[k] ?? "",
+          })),
+        },
+        penalties,
+        boosts,
+        final: {
+          deterministic: Math.round(c.detScore),
+          aiAdjustment: adj,
+          penaltyTotal,
+          boostTotal,
+          diversityDelta: 0,
+          matchScore: preDiversity,
+          confidence,
+        },
+        weights: WEIGHTS,
+      };
+
       return {
         lenderId: c.lender.id ?? null,
         lenderName: c.lender.name,
-        matchScore: finalScore,
+        matchScore: preDiversity,
         confidence,
         rationale: rationale.slice(0, 220),
         components: { ...c.components, ai: adj },
@@ -1119,15 +1283,60 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
           recentActivity: recentSet.has(lc(c.lender.name)),
           reasons: c.reasons ?? [],
         }),
+        pipelineTrace,
       };
     });
 
     recommendations.sort((a, b) => b.matchScore - a.matchScore);
 
-    // Drop floor: keep only meaningful matches (>=40). Show up to 12.
-    const final = recommendations
-      .filter((r) => r.matchScore >= 40 && !excludeSet.has(lc(r.lenderName)))
-      .slice(0, 12);
+    // ─── LAYER 7 — DIVERSIFICATION ────────────────────────────────────────────
+    // Greedy selection: take highest-scoring lender; cap how many near-identical
+    // lenders (same lender_type AND same tier) can sit in the top list unless
+    // their score gap is < 4 points (truly tied — let them through).
+    const eligible = recommendations
+      .filter((r) => r.matchScore >= 40 && !excludeSet.has(lc(r.lenderName)));
+    const TARGET = 12;
+    const typeCap = 4, tierCap = 5;
+    const typeCount = new Map<string, number>(), tierCount = new Map<string, number>();
+    const picked: Recommendation[] = [];
+    const deferred: Recommendation[] = [];
+    for (const r of eligible) {
+      const lenderObj = (recommendations as any).__lendersById; // not maintained — read tier/type from rec
+      const tKey = lc((r as any).pipelineTrace?.structured?.components?.find((x: any) => x.name === "structure")?.reason ?? "") || lc(r.tier ?? "any-tier");
+      const tierKey = lc(r.tier ?? "untiered");
+      // Use loanTypes as proxy for lender_type cluster
+      const typeKey = (r.loanTypes ?? []).slice(0, 2).map(lc).join("|") || "no-type";
+      const tCount = typeCount.get(typeKey) ?? 0;
+      const trCount = tierCount.get(tierKey) ?? 0;
+      const overloaded = tCount >= typeCap || trCount >= tierCap;
+      if (overloaded) {
+        // demote: penalize and defer
+        const penalty = -4;
+        const newScore = Math.max(0, r.matchScore + penalty);
+        if (r.pipelineTrace) {
+          r.pipelineTrace.final.diversityDelta = penalty;
+          r.pipelineTrace.final.matchScore = newScore;
+          r.pipelineTrace.diversification = { reason: `cap reached for ${tCount >= typeCap ? `loan-type "${typeKey}"` : `tier "${tierKey}"`}`, demoted: true };
+        }
+        r.matchScore = newScore;
+        deferred.push(r);
+        continue;
+      }
+      typeCount.set(typeKey, tCount + 1);
+      tierCount.set(tierKey, trCount + 1);
+      if (r.pipelineTrace) r.pipelineTrace.diversification = { reason: "passed diversification", demoted: false };
+      picked.push(r);
+      if (picked.length >= TARGET) break;
+    }
+    // Backfill from deferred (already penalty-adjusted) if we have room.
+    if (picked.length < TARGET) {
+      deferred.sort((a, b) => b.matchScore - a.matchScore);
+      for (const r of deferred) {
+        if (picked.length >= TARGET) break;
+        picked.push(r);
+      }
+    }
+    const final = picked;
 
     // Fire-and-forget: extract fit attributes for top candidates missing them,
     // so the next recommendation pass benefits from richer signal.
@@ -1160,6 +1369,9 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
           fitAttributesLoaded: fitById.size,
           backgroundExtractionQueued: missingFitIds.length,
           dealEmbedded: !!dealEmbedding,
+          historicalOutcomesLoaded: positiveByLender.size,
+          pipelineLayers: ["hardFilter", "structured", "unstructured", "aiRerank", "penalties", "boosts", "diversification"],
+          diversification: { typeCap, tierCap, target: TARGET, demoted: final.filter((r) => r.pipelineTrace?.diversification?.demoted).length },
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },

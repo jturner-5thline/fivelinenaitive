@@ -25,8 +25,10 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
-import { useAiRecommendedLenders, type AiRecommendation, type AiRecommenderCriteriaOverride } from '@/hooks/useAiRecommendedLenders';
+import { useAiRecommendedLenders, type AiRecommendation, type AiRecommenderCriteriaOverride, type PipelineTrace } from '@/hooks/useAiRecommendedLenders';
 import { useDealMatchingCriteria } from '@/hooks/useDealMatchingCriteria';
+import { useAuth } from '@/contexts/AuthContext';
+import { canUse5thLineProprietaryActions } from '@/lib/proprietaryAccess';
 
 interface Props {
   dealId: string | undefined;
@@ -121,6 +123,8 @@ export function AiRecommendedLendersSection({
   // survey saves new values (industry / cash-burn / sponsorship live in deal_writeups,
   // which the recommend-lenders edge function already reads).
   const { criteria: savedCriteria } = useDealMatchingCriteria(dealId);
+  const { user } = useAuth();
+  const showDiagnostics = canUse5thLineProprietaryActions(user as any);
 
   const criteriaSignature = useMemo(
     () => JSON.stringify({
@@ -436,6 +440,7 @@ export function AiRecommendedLendersSection({
                   configuredStages={configuredStages}
                   defaultStageId={preferredDefault}
                   added={addedNames.has(rec.lenderName.toLowerCase())}
+                  showDiagnostics={showDiagnostics}
                   onAdd={async (stageId) => {
                     try {
                       await onAddLender(rec.lenderName, stageId);
@@ -462,6 +467,7 @@ function RecommendationRow({
   added,
   onAdd,
   onSkip,
+  showDiagnostics,
 }: {
   rec: AiRecommendation;
   configuredStages: { id: string; label: string; group: string }[];
@@ -469,6 +475,7 @@ function RecommendationRow({
   added: boolean;
   onAdd: (stageId: string) => Promise<void>;
   onSkip: () => void;
+  showDiagnostics: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [stageId, setStageId] = useState(defaultStageId);
@@ -577,7 +584,7 @@ function RecommendationRow({
         )}
         </div>
       </div>
-      {whyOpen && exp && <WhyPanel exp={exp} />}
+      {whyOpen && exp && <WhyPanel exp={exp} trace={showDiagnostics ? rec.pipelineTrace : undefined} />}
     </div>
   );
 }
@@ -648,7 +655,7 @@ function Section({ icon: Icon, title, children }: { icon: any; title: string; ch
   );
 }
 
-function WhyPanel({ exp }: { exp: NonNullable<AiRecommendation['explanation']> }) {
+function WhyPanel({ exp, trace }: { exp: NonNullable<AiRecommendation['explanation']>; trace?: PipelineTrace }) {
   const { fitReasons, risks, matchedFields, unmatchedFields, noteInsights, priorTeamKnowledge, driverBreakdown } = exp;
   return (
     <div className="border-t border-border/40 bg-background/30 px-3 py-3 space-y-3 rounded-b-lg">
@@ -748,6 +755,114 @@ function WhyPanel({ exp }: { exp: NonNullable<AiRecommendation['explanation']> }
         <span>· Notes <span className="text-foreground/80 font-medium">{driverBreakdown.notes}</span></span>
         <span>· History <span className="text-foreground/80 font-medium">{driverBreakdown.history}</span></span>
       </div>
+      {trace && <ScoringDiagnostics trace={trace} />}
+    </div>
+  );
+}
+
+function ScoringDiagnostics({ trace }: { trace: PipelineTrace }) {
+  const [open, setOpen] = useState(false);
+  const { hardFilters, structured, unstructured, penalties, boosts, final, weights, diversification } = trace;
+  return (
+    <div className="mt-2 rounded-md border border-amber-500/30 bg-amber-500/5">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center gap-2 px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-amber-300 hover:bg-amber-500/10 rounded-md"
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        <Sparkles className="h-3 w-3" />
+        Scoring diagnostics (5th Line)
+        <span className="ml-auto font-normal normal-case text-muted-foreground">
+          det {final.deterministic} · ai {final.aiAdjustment >= 0 ? '+' : ''}{final.aiAdjustment} · pen {final.penaltyTotal} · boost {final.boostTotal >= 0 ? '+' : ''}{final.boostTotal}{final.diversityDelta ? ` · div ${final.diversityDelta}` : ''} = {final.matchScore}
+        </span>
+      </button>
+      {open && (
+        <div className="px-3 pb-3 pt-1 space-y-3 text-[11px]">
+          <DiagSection title="Layer 1 — Hard filters (non-negotiables)">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-0.5">
+              {hardFilters.checks.map((c, i) => (
+                <div key={i} className="flex items-start gap-1.5">
+                  <span className={cn('mt-0.5 inline-block h-2 w-2 shrink-0 rounded-full', c.passed ? 'bg-emerald-400' : 'bg-rose-400')} />
+                  <div className="flex-1">
+                    <span className="text-foreground/90 font-medium">{c.name}</span>
+                    {c.reason && <span className="text-muted-foreground"> — {c.reason}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </DiagSection>
+
+          <DiagSection title={`Layer 2 — Structured fit (composite ${structured.score}/100)`}>
+            <ComponentTable rows={structured.components} />
+          </DiagSection>
+
+          <DiagSection title={`Layer 3 — Unstructured fit (composite ${unstructured.score}/100)`}>
+            <ComponentTable rows={unstructured.components} />
+          </DiagSection>
+
+          <DiagSection title={`Layer 4 — Penalties (${final.penaltyTotal})`}>
+            {penalties.length === 0
+              ? <div className="italic text-muted-foreground">None applied.</div>
+              : penalties.map((p, i) => (
+                  <div key={i} className="flex gap-2">
+                    <span className="font-mono text-rose-300 w-10 shrink-0 text-right">{p.delta}</span>
+                    <span><span className="font-medium text-foreground/90">{p.name}</span> — <span className="text-muted-foreground">{p.reason}</span></span>
+                  </div>
+                ))}
+          </DiagSection>
+
+          <DiagSection title={`Layer 5 — Boosts (+${final.boostTotal})`}>
+            {boosts.length === 0
+              ? <div className="italic text-muted-foreground">None applied.</div>
+              : boosts.map((b, i) => (
+                  <div key={i} className="flex gap-2">
+                    <span className="font-mono text-emerald-300 w-10 shrink-0 text-right">+{b.delta}</span>
+                    <span><span className="font-medium text-foreground/90">{b.name}</span> — <span className="text-muted-foreground">{b.reason}</span></span>
+                  </div>
+                ))}
+          </DiagSection>
+
+          <DiagSection title="Layer 6 — Final & diversification">
+            <div className="font-mono text-foreground/85 leading-relaxed">
+              deterministic {final.deterministic} + ai {final.aiAdjustment >= 0 ? '+' : ''}{final.aiAdjustment} + penalties {final.penaltyTotal} + boosts {final.boostTotal >= 0 ? '+' : ''}{final.boostTotal}
+              {final.diversityDelta ? ` + diversity ${final.diversityDelta}` : ''} = <span className="font-bold">{final.matchScore}</span> ({final.confidence}% conf)
+            </div>
+            {diversification && (
+              <div className="mt-1 text-muted-foreground">
+                Diversification: {diversification.demoted ? <span className="text-amber-300">demoted</span> : <span className="text-emerald-300">passed</span>} — {diversification.reason}
+              </div>
+            )}
+            <div className="mt-1 text-[10px] text-muted-foreground">
+              Weights: {Object.entries(weights).map(([k, v]) => `${k} ${(v as number).toFixed(2)}`).join(' · ')}
+            </div>
+          </DiagSection>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DiagSection({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <div className="text-[10px] font-semibold uppercase tracking-wide text-amber-300/80">{title}</div>
+      <div className="pl-2">{children}</div>
+    </div>
+  );
+}
+
+function ComponentTable({ rows }: { rows: { name: string; score: number; weight: number; reason: string }[] }) {
+  return (
+    <div className="space-y-0.5">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <span className="font-mono w-16 shrink-0 text-foreground/85">{r.name}</span>
+          <span className="font-mono w-10 shrink-0 tabular-nums text-foreground/90">{r.score}</span>
+          <span className="font-mono w-12 shrink-0 text-muted-foreground">×{r.weight.toFixed(2)}</span>
+          <span className="text-muted-foreground flex-1">{r.reason}</span>
+        </div>
+      ))}
     </div>
   );
 }

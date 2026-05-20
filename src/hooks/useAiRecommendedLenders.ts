@@ -31,6 +31,7 @@ export interface AiRecommendation {
   matchedExclusion?: string | null;
   fitSummary?: string | null;
   explanation?: WhyExplanation;
+  pipelineTrace?: PipelineTrace;
 }
 
 export interface WhyFieldRow {
@@ -53,6 +54,25 @@ export interface WhyExplanation {
   };
   dominantDriver: 'structured' | 'notes' | 'history' | 'balanced';
   driverBreakdown: { structured: number; notes: number; history: number };
+}
+
+export interface PipelineTrace {
+  hardFilters: { passed: boolean; checks: { name: string; passed: boolean; reason?: string }[] };
+  structured: { score: number; components: { name: string; score: number; weight: number; reason: string }[] };
+  unstructured: { score: number; components: { name: string; score: number; weight: number; reason: string }[] };
+  penalties: { name: string; delta: number; reason: string }[];
+  boosts: { name: string; delta: number; reason: string }[];
+  final: {
+    deterministic: number;
+    aiAdjustment: number;
+    penaltyTotal: number;
+    boostTotal: number;
+    diversityDelta: number;
+    matchScore: number;
+    confidence: number;
+  };
+  weights: Record<string, number>;
+  diversification?: { reason: string; demoted: boolean };
 }
 
 export interface AiRecommendationResponse {
