@@ -1689,6 +1689,7 @@ export function CashFlowManager() {
           weeklyData={filteredWeekly}
           weeklyOverrides={weeklyOverrides}
           onCashOverride={handleWeeklyCashOverride}
+          overrideHistoryByCell={overrideHistoryByCell}
           sidebarData={rawSidebar}
           sidebarDbItems={sidebarDbItems}
           theme={theme}
