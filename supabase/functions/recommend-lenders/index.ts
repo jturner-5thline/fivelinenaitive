@@ -920,6 +920,8 @@ serve(async (req) => {
       type: 0.20, size: 0.16, industry: 0.16,
       geography: 0.07, structure: 0.12, recency: 0.07, evidence: 0.10, semantic: 0.12,
     };
+    const STRUCTURED_KEYS = ["type", "size", "industry", "geography", "structure"] as const;
+    const UNSTRUCTURED_KEYS = ["evidence", "semantic", "recency"] as const;
 
     type Scored = {
       lender: any;
@@ -929,6 +931,11 @@ serve(async (req) => {
       passReasons: string[];
       lenderNoteText: string;
       lenderTags: string[];
+      hardFilterChecks: { name: string; passed: boolean; reason?: string }[];
+      structuredReasons: Record<string, string>;
+      unstructuredReasons: Record<string, string>;
+      penalties: { name: string; delta: number; reason: string }[];
+      boosts: { name: string; delta: number; reason: string }[];
     };
     const candidates: Scored[] = [];
     const filteredOut: { name: string; reason: string }[] = [];
@@ -965,9 +972,11 @@ serve(async (req) => {
 
       // Semantic similarity: cosine vs lender fit embedding → 0..100
       let semantic = 50;
+      let semanticReason = "no fit embedding cached yet";
       if (dealEmbedding && fitEmbedding) {
         const sim = cosineSim(dealEmbedding, fitEmbedding); // -1..1, typically 0..0.6
         semantic = Math.round(Math.max(0, Math.min(1, (sim + 0.1) / 0.7)) * 100);
+        semanticReason = `cosine sim ${sim.toFixed(2)} vs lender narrative embedding`;
       }
 
       // Positive/negative signal nudges (string-contains against deal narrative)
@@ -976,28 +985,44 @@ serve(async (req) => {
       const evidenceAdj = posHits.reduce((a, s) => a + 8 * s.confidence, 0) - negHits.reduce((a, s) => a + 12 * s.confidence, 0);
       const evidenceScore = Math.max(0, Math.min(100, evidence.score + evidenceAdj));
 
-      // HARD FILTERS
-      if (industry.hardOut) { filteredOut.push({ name: lender.name, reason: industry.reason }); continue; }
-      if (evidence.hardOut) { filteredOut.push({ name: lender.name, reason: evidence.reason }); continue; }
-      if (matchedExclusion) { filteredOut.push({ name: lender.name, reason: `AI exclusion: ${matchedExclusion.pattern}` }); continue; }
-      if (type.score <= 10 && (arr(lender.loan_types).length > 0)) {
-        filteredOut.push({ name: lender.name, reason: type.reason });
-        continue;
-      }
-      if (size.score <= 5) { filteredOut.push({ name: lender.name, reason: size.reason }); continue; }
-      if (hasFlag) { filteredOut.push({ name: lender.name, reason: "flagged in lender notes" }); continue; }
-      // High-confidence repeat pass patterns → soft hard-out
+      // ─── LAYER 1 — HARD FILTERS (non-negotiables) ──────────────────────────
       const blockingPatterns = patterns.filter((p: any) => Number(p.confidence_score ?? 0) >= 0.8 && Number(p.occurrence_count ?? 0) >= 2);
-      if (blockingPatterns.length >= 2) {
-        filteredOut.push({ name: lender.name, reason: `${blockingPatterns.length} repeat pass patterns` });
-        continue;
-      }
+      const hardChecks: { name: string; passed: boolean; reason?: string }[] = [
+        { name: "Active mandate", passed: lender.active !== false, reason: lender.active === false ? "lender inactive" : undefined },
+        { name: "Product type",   passed: !(type.score <= 10 && arr(lender.loan_types).length > 0), reason: type.score <= 10 ? type.reason : undefined },
+        { name: "Facility size",  passed: size.score > 5, reason: size.score <= 5 ? size.reason : undefined },
+        { name: "Industry avoid list", passed: !industry.hardOut, reason: industry.hardOut ? industry.reason : undefined },
+        { name: "AI exclusion",   passed: !matchedExclusion, reason: matchedExclusion ? `narrative contains "${matchedExclusion.pattern}"` : undefined },
+        { name: "Flagged in notes", passed: !hasFlag, reason: hasFlag ? "flagged in lender notes" : undefined },
+        { name: "Negative-evidence threshold", passed: !evidence.hardOut, reason: evidence.hardOut ? evidence.reason : undefined },
+        { name: "Repeat-pass patterns", passed: blockingPatterns.length < 2, reason: blockingPatterns.length >= 2 ? `${blockingPatterns.length} high-confidence repeat passes` : undefined },
+      ];
+      const failedHard = hardChecks.find((c) => !c.passed);
+      if (failedHard) { filteredOut.push({ name: lender.name, reason: `${failedHard.name}: ${failedHard.reason ?? "blocked"}` }); continue; }
 
       const components: ComponentScores = {
         type: type.score, size: size.score, industry: industry.score,
         geography: geography.score, structure: structure.score,
         recency: recency.score, evidence: evidenceScore, semantic,
       };
+
+      // ─── LAYER 2 — STRUCTURED SCORING ──────────────────────────────────────
+      const structuredScore =
+        (components.type * WEIGHTS.type +
+         components.size * WEIGHTS.size +
+         components.industry * WEIGHTS.industry +
+         components.geography * WEIGHTS.geography +
+         components.structure * WEIGHTS.structure)
+        / STRUCTURED_KEYS.reduce((s, k) => s + (WEIGHTS as any)[k], 0);
+
+      // ─── LAYER 3 — UNSTRUCTURED / AI-DERIVED SCORING ──────────────────────
+      const unstructuredScore =
+        (components.evidence * WEIGHTS.evidence +
+         components.semantic * WEIGHTS.semantic +
+         components.recency * WEIGHTS.recency)
+        / UNSTRUCTURED_KEYS.reduce((s, k) => s + (WEIGHTS as any)[k], 0);
+
+      // Base deterministic blend = same weighted sum as before (sums to 1.0)
       const detScore =
         components.type * WEIGHTS.type +
         components.size * WEIGHTS.size +
@@ -1008,10 +1033,62 @@ serve(async (req) => {
         components.evidence * WEIGHTS.evidence +
         components.semantic * WEIGHTS.semantic;
 
+      // ─── LAYER 4 — PENALTIES ──────────────────────────────────────────────
+      const penalties: { name: string; delta: number; reason: string }[] = [];
+      if (passReasons.length) {
+        penalties.push({ name: "Recent passes", delta: -Math.min(15, passReasons.length * 5), reason: `${passReasons.length} pass(es) in last 90d: "${passReasons[0]}"` });
+      }
+      if (blockingPatterns.length === 1) {
+        penalties.push({ name: "Repeat-pass pattern", delta: -8, reason: `pattern "${blockingPatterns[0].pattern_value ?? blockingPatterns[0].reason_category}"` });
+      }
+      if (negHits.length) {
+        penalties.push({ name: "Negative note signals", delta: -Math.min(12, negHits.length * 4), reason: negHits.map((h) => h.signal).slice(0, 2).join("; ") });
+      }
+      // Mandate conflict: lender type or sponsorship clearly mismatched but didn't hit hard filter
+      if (type.score > 10 && type.score < 40) {
+        penalties.push({ name: "Soft mandate conflict", delta: -6, reason: type.reason });
+      }
+      // Stale lender — no recent activity and last note >180d (approximated via no recent activity)
+      if (!recentSet.has(lc(lender.name)) && lenderNoteText.length === 0 && !fit) {
+        penalties.push({ name: "Stale / no signal", delta: -3, reason: "no activity, notes, or AI fit profile" });
+      }
+      const exclusionTags = lenderTags.filter((t) => /avoid|exclude|do[- ]?not|blacklist/i.test(t));
+      if (exclusionTags.length) {
+        penalties.push({ name: "Exclusion tags", delta: -10, reason: exclusionTags.join(", ") });
+      }
+
+      // ─── LAYER 5 — BOOSTS (positive historical outcomes) ──────────────────
+      const boosts: { name: string; delta: number; reason: string }[] = [];
+      const historicalWins = positiveByLender.get(lc(lender.name)) ?? [];
+      const dealIndLc = lc(dealCtx.industry ?? "");
+      const dealTypesLc = (dealCtx.dealTypes ?? []).map(lc);
+      const industryWins = historicalWins.filter((w) => w.industry && dealIndLc && (w.industry.includes(dealIndLc) || dealIndLc.includes(w.industry)));
+      const typeWins = historicalWins.filter((w) => dealTypesLc.some((t) => t && w.dealType && (w.dealType.includes(t) || t.includes(w.dealType))));
+      const sizeWins = dealCtx.value ? historicalWins.filter((w) => w.value && Math.abs((w.value - dealCtx.value) / dealCtx.value) < 0.5) : [];
+      if (industryWins.length) {
+        boosts.push({ name: "Industry track record", delta: Math.min(12, 4 + industryWins.length * 3), reason: `${industryWins.length} prior positive outcome(s) in same industry` });
+      }
+      if (typeWins.length) {
+        boosts.push({ name: "Deal-type track record", delta: Math.min(10, 3 + typeWins.length * 3), reason: `${typeWins.length} prior positive outcome(s) on this deal type` });
+      }
+      if (sizeWins.length) {
+        boosts.push({ name: "Comparable-size wins", delta: Math.min(6, sizeWins.length * 2), reason: `${sizeWins.length} positive outcome(s) within ±50% of this deal's size` });
+      }
+      if (posHits.length) {
+        boosts.push({ name: "Positive note signals", delta: Math.min(10, posHits.length * 4), reason: posHits.map((h) => h.signal).slice(0, 2).join("; ") });
+      }
+
       const reasons = [type.reason, size.reason, industry.reason, geography.reason, structure.reason, recency.reason, evidence.reason]
         .filter((r) => r && r.length);
 
-      (candidates as any).push({ lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags, fit, posHits, negHits });
+      (candidates as any).push({
+        lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags, fit, posHits, negHits,
+        hardFilterChecks: hardChecks,
+        structuredScore, unstructuredScore,
+        structuredReasons: { type: type.reason, size: size.reason, industry: industry.reason, geography: geography.reason, structure: structure.reason },
+        unstructuredReasons: { evidence: evidence.reason, semantic: semanticReason, recency: recency.reason },
+        penalties, boosts,
+      });
     }
 
     // Sort by deterministic score and take top 25 to AI for narrative re-rank
