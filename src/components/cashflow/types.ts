@@ -128,6 +128,11 @@ export type ThemeMode = 'dark' | 'light';
 export interface WeeklyCashOverride {
   beginningCash?: number;
   endingCash?: number;
+  /**
+   * Per-week manual override for "Add'l Liquidity (Delayed Draw)".
+   * When undefined, the row defaults to the previous week's TOTAL CASH ON HAND.
+   */
+  addlLiquidity?: number;
 }
 export type WeeklyOverrides = Record<string, WeeklyCashOverride>;
 
