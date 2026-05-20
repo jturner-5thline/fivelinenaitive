@@ -237,12 +237,28 @@ function ProtectedShell() {
   return (
     <ProtectedRoute>
       <AppLayout>
+        <RoutePrefetcher />
         <Suspense fallback={<RouteSkeleton />}>
           <Outlet />
         </Suspense>
       </AppLayout>
     </ProtectedRoute>
   );
+}
+
+/**
+ * Mounted once inside the authenticated shell. After the current page has
+ * settled, warms the chunks for the most-trafficked routes (deals,
+ * pipeline, tasks, finance, etc.) during browser idle time. Subsequent
+ * navigations resolve from memory instead of paying a chunk download,
+ * which is the dominant cause of perceived navigation lag once react-query
+ * caches are warm.
+ */
+function RoutePrefetcher() {
+  useEffect(() => {
+    prefetchCommonRoutes();
+  }, []);
+  return null;
 }
 
 const App = () => (
