@@ -283,35 +283,23 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const newLenderRequests = pendingRequests.filter(r => r.request_type === 'new_lender');
   const conflictRequests = pendingRequests.filter(r => r.request_type === 'merge_conflict');
 
-  // Potential duplicates: pending requests that share a normalized lender name
-  // with at least one other pending request, OR new_lender requests whose name
-  // closely matches an existing lender flagged by the sync layer.
-  const normalizeName = (n: string) =>
-    (n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const nameCounts = new Map<string, number>();
-  for (const r of pendingRequests) {
-    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
-    if (!n) continue;
-    nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
-  }
-  const duplicateRequests = pendingRequests.filter(r => {
-    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
-    const dupByName = n ? (nameCounts.get(n) || 0) > 1 : false;
-    const dupByExisting = r.request_type === 'new_lender' && !!r.existing_lender_name;
-    return dupByName || dupByExisting;
-  });
+  // Dedupe-aware groupings used across every tab. Single-member groups render as
+  // normal request cards; multi-member groups collapse into a parent row with
+  // batch actions.
+  const allGroups = groupSyncRequests(pendingRequests);
+  const newLenderGroups = groupSyncRequests(newLenderRequests);
+  const conflictGroups = groupSyncRequests(conflictRequests);
+  const completedGroups = groupSyncRequests(processedRequests.slice(0, 100));
 
-  // Group duplicates by normalized name for the Potential Duplicates view
-  const duplicateGroups = (() => {
-    const groups = new Map<string, LenderSyncRequest[]>();
-    for (const r of duplicateRequests) {
-      const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string) || r.id;
-      const arr = groups.get(n) || [];
-      arr.push(r);
-      groups.set(n, arr);
-    }
-    return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
-  })();
+  // Potential Duplicates: only groups with 2+ members, plus any lone request whose
+  // name is flagged as matching an existing lender (the soft-dup signal from Flex).
+  const duplicateGroups = allGroups.filter(g => g.isDuplicate);
+  const softDupRequests = pendingRequests.filter(
+    r => r.request_type === 'new_lender'
+      && !!r.existing_lender_name
+      && !duplicateGroups.some(g => g.members.some(m => m.id === r.id)),
+  );
+  const duplicateCount = duplicateGroups.reduce((s, g) => s + g.members.length, 0) + softDupRequests.length;
 
   // Default to the most actionable tab. Conflicts win, then new lenders, else all.
   const defaultTab =
