@@ -64,7 +64,7 @@ export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
 /** Default columns shown to first-time users — fast triage view. */
 export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['priority', 'status'];
 
-const LEADING_TEMPLATE = '20px 20px 20px 20px 20px minmax(240px,1fr)';
+const LEADING_TEMPLATE = '20px 20px 20px 20px minmax(240px,1fr)';
 const TRAILING_TEMPLATE = '32px';
 
 /** Build the gridTemplateColumns CSS value from the active column set. */
