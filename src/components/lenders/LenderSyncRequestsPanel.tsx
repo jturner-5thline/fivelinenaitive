@@ -12,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
+import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
+import { groupSyncRequests, normalizeLenderName } from '@/lib/lenderRequestGrouping';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FieldChangeProps {
@@ -281,41 +283,29 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const newLenderRequests = pendingRequests.filter(r => r.request_type === 'new_lender');
   const conflictRequests = pendingRequests.filter(r => r.request_type === 'merge_conflict');
 
-  // Potential duplicates: pending requests that share a normalized lender name
-  // with at least one other pending request, OR new_lender requests whose name
-  // closely matches an existing lender flagged by the sync layer.
-  const normalizeName = (n: string) =>
-    (n || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-  const nameCounts = new Map<string, number>();
-  for (const r of pendingRequests) {
-    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
-    if (!n) continue;
-    nameCounts.set(n, (nameCounts.get(n) || 0) + 1);
-  }
-  const duplicateRequests = pendingRequests.filter(r => {
-    const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string);
-    const dupByName = n ? (nameCounts.get(n) || 0) > 1 : false;
-    const dupByExisting = r.request_type === 'new_lender' && !!r.existing_lender_name;
-    return dupByName || dupByExisting;
-  });
+  // Dedupe-aware groupings used across every tab. Single-member groups render as
+  // normal request cards; multi-member groups collapse into a parent row with
+  // batch actions.
+  const allGroups = groupSyncRequests(pendingRequests);
+  const newLenderGroups = groupSyncRequests(newLenderRequests);
+  const conflictGroups = groupSyncRequests(conflictRequests);
+  const completedGroups = groupSyncRequests(processedRequests.slice(0, 100));
 
-  // Group duplicates by normalized name for the Potential Duplicates view
-  const duplicateGroups = (() => {
-    const groups = new Map<string, LenderSyncRequest[]>();
-    for (const r of duplicateRequests) {
-      const n = normalizeName((r.incoming_data as Record<string, unknown>)?.name as string) || r.id;
-      const arr = groups.get(n) || [];
-      arr.push(r);
-      groups.set(n, arr);
-    }
-    return Array.from(groups.entries()).sort((a, b) => b[1].length - a[1].length);
-  })();
+  // Potential Duplicates: only groups with 2+ members, plus any lone request whose
+  // name is flagged as matching an existing lender (the soft-dup signal from Flex).
+  const duplicateGroups = allGroups.filter(g => g.isDuplicate);
+  const softDupRequests = pendingRequests.filter(
+    r => r.request_type === 'new_lender'
+      && !!r.existing_lender_name
+      && !duplicateGroups.some(g => g.members.some(m => m.id === r.id)),
+  );
+  const duplicateCount = duplicateGroups.reduce((s, g) => s + g.members.length, 0) + softDupRequests.length;
 
   // Default to the most actionable tab. Conflicts win, then new lenders, else all.
   const defaultTab =
     conflictRequests.length > 0 ? 'conflicts'
     : newLenderRequests.length > 0 ? 'new'
-    : duplicateRequests.length > 0 ? 'duplicates'
+    : duplicateCount > 0 ? 'duplicates'
     : 'all';
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
@@ -352,6 +342,19 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
       toast({ title: 'Partial success', description: `Resolved ${ok}, failed ${fail}.`, variant: 'destructive' });
     }
   };
+
+  // Render a single underlying request — used by GroupedSyncRequestCard for both
+  // single-member and multi-member groups.
+  const renderMember = (request: LenderSyncRequest) => (
+    <SyncRequestCard
+      request={request}
+      isSelected={selectedIds.has(request.id)}
+      onToggleSelect={toggleSelect}
+      onApprove={handleApprove}
+      onReject={rejectRequest}
+      onMerge={handleMerge}
+    />
+  );
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -546,9 +549,9 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                 </TabsTrigger>
                 <TabsTrigger value="duplicates" className="gap-1.5">
                   Potential Duplicates
-                  {duplicateRequests.length > 0 && (
+                  {duplicateCount > 0 && (
                     <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                      {duplicateRequests.length}
+                      {duplicateCount}
                     </Badge>
                   )}
                 </TabsTrigger>
@@ -566,15 +569,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {pendingRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No pending requests.</p>
                     )}
-                    {pendingRequests.map(request => (
-                      <SyncRequestCard
-                        key={request.id}
-                        request={request}
-                        isSelected={selectedIds.has(request.id)}
-                        onToggleSelect={toggleSelect}
+                    {allGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
                         onApprove={handleApprove}
                         onReject={rejectRequest}
                         onMerge={handleMerge}
+                        renderMember={renderMember}
                       />
                     ))}
                   </div>
@@ -587,15 +589,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {newLenderRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No new lender approvals waiting.</p>
                     )}
-                    {newLenderRequests.map(request => (
-                      <SyncRequestCard
-                        key={request.id}
-                        request={request}
-                        isSelected={selectedIds.has(request.id)}
-                        onToggleSelect={toggleSelect}
+                    {newLenderGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
                         onApprove={handleApprove}
                         onReject={rejectRequest}
                         onMerge={handleMerge}
+                        renderMember={renderMember}
                       />
                     ))}
                   </div>
@@ -657,33 +658,28 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
               <TabsContent value="duplicates" className="mt-3">
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-3">
-                    {duplicateGroups.length === 0 && (
+                    {duplicateGroups.length === 0 && softDupRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No potential duplicates detected.</p>
                     )}
-                    {duplicateGroups.map(([key, group]) => (
-                      <div key={key} className="border rounded-lg bg-amber-500/5 border-amber-500/30 p-2">
-                        <div className="flex items-center justify-between px-1 pb-2">
-                          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">
-                            {group.length > 1
-                              ? `${group.length} requests for "${(group[0].incoming_data as Record<string, unknown>)?.name as string}"`
-                              : `Matches existing "${group[0].existing_lender_name}"`}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          {group.map(request => (
-                            <SyncRequestCard
-                              key={request.id}
-                              request={request}
-                              isSelected={selectedIds.has(request.id)}
-                              onToggleSelect={toggleSelect}
-                              onApprove={handleApprove}
-                              onReject={rejectRequest}
-                              onMerge={handleMerge}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                    {duplicateGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
+                        onApprove={handleApprove}
+                        onReject={rejectRequest}
+                        onMerge={handleMerge}
+                        renderMember={renderMember}
+                        defaultOpen
+                      />
                     ))}
+                    {softDupRequests.length > 0 && (
+                      <>
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground pt-2">
+                          Soft matches against existing directory
+                        </p>
+                        {softDupRequests.map(r => renderMember(r))}
+                      </>
+                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -694,15 +690,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {processedRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">Nothing has been processed yet.</p>
                     )}
-                    {processedRequests.slice(0, 50).map(request => (
-                      <SyncRequestCard
-                        key={request.id}
-                        request={request}
-                        isSelected={false}
-                        onToggleSelect={() => {}}
+                    {completedGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
                         onApprove={handleApprove}
                         onReject={rejectRequest}
                         onMerge={handleMerge}
+                        renderMember={renderMember}
                       />
                     ))}
                   </div>
