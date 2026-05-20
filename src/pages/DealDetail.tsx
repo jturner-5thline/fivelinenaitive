@@ -2827,7 +2827,10 @@ export default function DealDetail() {
                   <InlineEditField
                     value={deal.company}
                     onSave={(value) => updateDeal('company', value)}
-                    displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                    // NOTE: use md:text-5xl (not sm:text-5xl) so it wins over
+                    // the shadcn Input default `md:text-sm` at md+ via
+                    // tailwind-merge (same breakpoint, later class wins).
+                    displayClassName="text-3xl md:text-5xl font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
                   {!isDemoAccount && <BetaBadge featureKey="page_deal_detail" />}
                   <Tooltip>
@@ -2863,7 +2866,7 @@ export default function DealDetail() {
                   <InlineEditField
                     value={formatValue(deal.value)}
                     onSave={(value) => updateDeal('value', parseValue(value))}
-                    displayClassName="text-3xl sm:text-5xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
+                    displayClassName="text-3xl md:text-5xl font-semibold leading-tight bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white"
                   />
                 )}
               </div>
