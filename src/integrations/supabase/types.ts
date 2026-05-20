@@ -14,6 +14,30 @@ export type Database = {
   }
   public: {
     Tables: {
+      _migration_log_blount_jobs: {
+        Row: {
+          names_in_list: number | null
+          names_matched: number | null
+          names_skipped: number | null
+          ran_at: string | null
+          rows_updated: number | null
+        }
+        Insert: {
+          names_in_list?: number | null
+          names_matched?: number | null
+          names_skipped?: number | null
+          ran_at?: string | null
+          rows_updated?: number | null
+        }
+        Update: {
+          names_in_list?: number | null
+          names_matched?: number | null
+          names_skipped?: number | null
+          ran_at?: string | null
+          rows_updated?: number | null
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           activity_type: string
