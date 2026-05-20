@@ -752,6 +752,32 @@ serve(async (req) => {
       passReasonsByLender.set(key, list);
     });
 
+    // ── Historical positive outcomes (last 18 months) ────────────────────────
+    // Joined to deals so we can compare industry / deal_type to the current deal.
+    const eighteenMoAgo = new Date(Date.now() - 540 * 24 * 60 * 60 * 1000).toISOString();
+    const POSITIVE_STATUSES = ["funded", "closed", "closed-won", "won", "termsheet", "term sheet", "term-sheet", "io", "indication", "loi"];
+    const { data: positiveOutcomes } = await supabase
+      .from("deal_lenders")
+      .select("name, master_lender_id, status, tracking_status, updated_at, deal:deals(id, business_model, deal_type, value)")
+      .gte("updated_at", eighteenMoAgo)
+      .limit(5000);
+    const positiveByLender = new Map<string, { industry: string; dealType: string; value: number | null; status: string }[]>();
+    (positiveOutcomes ?? []).forEach((r: any) => {
+      const status = lc(r.tracking_status) + " " + lc(r.status);
+      if (!POSITIVE_STATUSES.some((p) => status.includes(p))) return;
+      const k = lc(r.name);
+      if (!k) return;
+      const deal = r.deal || {};
+      const list = positiveByLender.get(k) ?? [];
+      list.push({
+        industry: lc(deal.business_model ?? ""),
+        dealType: lc(deal.deal_type ?? ""),
+        value: toNum(deal.value),
+        status: status.trim(),
+      });
+      positiveByLender.set(k, list);
+    });
+
     // Lender notes & pass patterns
     const lenderIds = activeLenders.map((l: any) => l.id).filter(Boolean);
     const lenderNames = activeLenders.map((l: any) => l.name).filter(Boolean);
