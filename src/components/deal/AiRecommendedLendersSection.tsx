@@ -464,6 +464,7 @@ function RecommendationRow({
   added,
   onAdd,
   onSkip,
+  showDiagnostics,
 }: {
   rec: AiRecommendation;
   configuredStages: { id: string; label: string; group: string }[];
@@ -471,6 +472,7 @@ function RecommendationRow({
   added: boolean;
   onAdd: (stageId: string) => Promise<void>;
   onSkip: () => void;
+  showDiagnostics: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [stageId, setStageId] = useState(defaultStageId);
@@ -579,7 +581,7 @@ function RecommendationRow({
         )}
         </div>
       </div>
-      {whyOpen && exp && <WhyPanel exp={exp} />}
+      {whyOpen && exp && <WhyPanel exp={exp} trace={showDiagnostics ? rec.pipelineTrace : undefined} />}
     </div>
   );
 }
