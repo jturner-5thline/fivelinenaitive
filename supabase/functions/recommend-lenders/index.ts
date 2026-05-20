@@ -923,8 +923,8 @@ serve(async (req) => {
       keyItems: writeUpKeyItems,
       customerBase: writeup?.customer_base || null,
       tags: arr(deal.tags),
-      narrative: dealNarrative,
-      notes: dealNoteText,
+      narrative: simulatedNarrative,
+      notes: simulatedNoteText,
       lenderFeedbackOnThisDeal: dealLenderFeedback,
       financialStatementsOnFile: (financialFiles ?? []).slice(0, 12).map((f: any) => ({
         name: f.name, period: f.fiscal_period, year: f.fiscal_year,
