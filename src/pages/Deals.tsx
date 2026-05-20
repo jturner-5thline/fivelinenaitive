@@ -82,6 +82,15 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  // Performance instrumentation — measure mount and first paint of /deals.
+  // Niki reported ~2min loads; these markers let us confirm fixes server-side.
+  if (typeof performance !== 'undefined' && !(globalThis as any).__dealsMountMarked) {
+    (globalThis as any).__dealsMountMarked = true;
+    // eslint-disable-next-line no-console
+    console.time('deals:firstPaint');
+    // eslint-disable-next-line no-console
+    console.time('deals:mount');
+  }
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const { features: companyFeatures } = useCompanyFeatures();
   const [overlaySearchParams, setOverlaySearchParams] = useSearchParams();
@@ -147,6 +156,24 @@ export default function Dashboard() {
   useEffect(() => {
     localStorage.setItem('deals-view-mode', viewMode);
   }, [viewMode]);
+
+  // End mount/firstPaint timers once deals have actually loaded.
+  useEffect(() => {
+    if ((globalThis as any).__dealsMountMarked && !(globalThis as any).__dealsMountEnded) {
+      (globalThis as any).__dealsMountEnded = true;
+      // eslint-disable-next-line no-console
+      console.timeEnd('deals:mount');
+    }
+  }, []);
+  useEffect(() => {
+    if (!isLoading && (globalThis as any).__dealsMountMarked && !(globalThis as any).__dealsFirstPaintEnded) {
+      (globalThis as any).__dealsFirstPaintEnded = true;
+      // eslint-disable-next-line no-console
+      console.timeEnd('deals:firstPaint');
+      // eslint-disable-next-line no-console
+      console.info('[deals] deal count:', allDeals.length);
+    }
+  }, [isLoading, allDeals.length]);
   
   const showOnboarding = !profileLoading && profile && !profile.onboarding_completed;
 
