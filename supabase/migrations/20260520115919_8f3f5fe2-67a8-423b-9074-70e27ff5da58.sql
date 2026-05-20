@@ -1,0 +1,1 @@
+UPDATE public.feature_flags SET status = 'deployed' WHERE name = 'page_integrations';
