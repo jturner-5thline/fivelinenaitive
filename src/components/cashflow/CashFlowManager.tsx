@@ -1372,7 +1372,21 @@ export function CashFlowManager() {
   // Set or clear a Beginning/Ending Cash override for a specific week.
   // Pass `value === null` to clear the override and revert to computed value.
   const handleWeeklyCashOverride = useCallback(
-    (weekKey: string, field: 'beginningCash' | 'endingCash' | 'addlLiquidity', value: number | null) => {
+    (
+      weekKey: string,
+      field: 'beginningCash' | 'endingCash' | 'addlLiquidity',
+      value: number | null,
+      previousValue?: number | null,
+    ) => {
+      // Resolve the value the cell was showing before this change so the
+      // audit trail records a meaningful previous_value even for cells
+      // that had no prior override (the displayed value is computed).
+      const priorOverride = weeklyOverrides?.[weekKey]?.[field];
+      const resolvedPrevious =
+        priorOverride !== undefined && priorOverride !== null
+          ? Number(priorOverride)
+          : (typeof previousValue === 'number' ? previousValue : null);
+
       setWeeklyOverrides(prev => {
         const next = { ...prev };
         const current = { ...(next[weekKey] || {}) };
@@ -1403,8 +1417,27 @@ export function CashFlowManager() {
           ? `Clear ${fieldLabel} override (${weekKey})`
           : `Override ${fieldLabel} → ${value} (${weekKey})`
       );
+
+      // Persist an immutable audit-trail row. Fire-and-forget — failures are
+      // logged inside the hook so they never block the local UI update.
+      const normalizedNew =
+        value === null || Number.isNaN(value) ? null : Math.round(value);
+      const normalizedPrev =
+        resolvedPrevious === null || Number.isNaN(resolvedPrevious)
+          ? null
+          : Math.round(resolvedPrevious);
+      // Skip recording a no-op (clearing a never-overridden cell, or
+      // re-saving the same value).
+      if (normalizedNew !== normalizedPrev) {
+        void recordOverrideHistory({
+          weekKey,
+          field,
+          previousValue: normalizedPrev,
+          newValue: normalizedNew,
+        });
+      }
     },
-    [logAction]
+    [logAction, weeklyOverrides, recordOverrideHistory]
   );
 
   const handleArchive = useCallback((entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => {
