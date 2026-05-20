@@ -657,12 +657,17 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { dealId, criteriaOverride } = body || {};
+    const { dealId, criteriaOverride, qaMode } = body || {};
     if (!dealId || typeof dealId !== "string") {
       return new Response(JSON.stringify({ error: "dealId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // QA mode is restricted to 5th Line / naitive internal users
+    const userEmail = (userData.user.email ?? "").toLowerCase();
+    const isInternal = userEmail.endsWith("@5thline.co") || userEmail.endsWith("@naitive.co");
+    const qa = !!qaMode && isInternal;
 
     // Deal — pull rich, qualitative columns too
     const { data: deal, error: dealErr } = await supabase
