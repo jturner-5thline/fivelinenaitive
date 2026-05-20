@@ -37,7 +37,7 @@ const TooltipContent = React.forwardRef<
       collisionPadding={8}
       className={cn(
         // Compact, professional, sits above modals/popovers.
-        "z-[100] pointer-events-none select-none overflow-hidden rounded-md border border-border bg-popover px-2 py-1 text-[12px] font-medium leading-tight text-popover-foreground shadow-md subpixel-antialiased [transform:translateZ(0)]",
+        "z-[1400] pointer-events-none select-none overflow-hidden rounded-md border border-border bg-popover px-2 py-1 text-[12px] font-medium leading-tight text-popover-foreground shadow-md subpixel-antialiased [transform:translateZ(0)]",
         "animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95",
         "data-[side=bottom]:slide-in-from-top-1 data-[side=top]:slide-in-from-bottom-1 data-[side=left]:slide-in-from-right-1 data-[side=right]:slide-in-from-left-1",
         className,
