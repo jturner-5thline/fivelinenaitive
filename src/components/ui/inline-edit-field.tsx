@@ -8,6 +8,18 @@ import { activateDealDraft, clearDealDraft } from '@/lib/dealDraftRegistry';
 
 interface InlineEditFieldProps {
   value: string;
+  /**
+   * Optional raw value shown while the field is focused/edited.
+   * When provided, `value` is used for the read-only display and
+   * `editValue` is loaded into the input on focus. `onSave` receives
+   * the (sanitized) edited string for the parent to parse.
+   */
+  editValue?: string;
+  /**
+   * Optional sanitizer applied to each keystroke / paste while editing.
+   * Use to restrict input (e.g. numeric-only currency).
+   */
+  sanitizeInput?: (next: string) => string;
   onSave: (value: string) => void | Promise<void>;
   type?: 'text' | 'textarea' | 'number';
   placeholder?: string;
@@ -22,6 +34,8 @@ interface InlineEditFieldProps {
 
 export function InlineEditField({
   value,
+  editValue,
+  sanitizeInput,
   onSave,
   type = 'text',
   placeholder = 'Click to edit',
@@ -126,15 +140,19 @@ export function InlineEditField({
   }, [commit, debounceMs]);
 
   const handleChange = (next: string) => {
-    setDraft(next);
+    const cleaned = sanitizeInput ? sanitizeInput(next) : next;
+    setDraft(cleaned);
     dirtyRef.current = true;
     registerDraft();
-    scheduleCommit(next);
+    scheduleCommit(cleaned);
   };
 
   const handleFocus = () => {
     isFocusedRef.current = true;
     setIsFocused(true);
+    if (editValue !== undefined) {
+      setDraft(editValue);
+    }
     registerDraft();
   };
 
@@ -142,7 +160,13 @@ export function InlineEditField({
     isFocusedRef.current = false;
     setIsFocused(false);
     flush();
-    if (!dirtyRef.current) unregisterDraft();
+    if (!dirtyRef.current) {
+      unregisterDraft();
+      // Restore display value when the user blurred without edits.
+      if (editValue !== undefined) {
+        setDraft(lastCommittedRef.current);
+      }
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {

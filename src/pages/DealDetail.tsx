@@ -2864,7 +2864,15 @@ export default function DealDetail() {
                 {!isSimplifiedDeal && (
                   <InlineEditField
                     value={formatValue(deal.value)}
-                    onSave={(value) => updateDeal('value', parseValue(value))}
+                    // Edit mode shows the raw USD amount with thousands
+                    // separators (e.g. "25,000,000"); display mode keeps
+                    // the abbreviated $XX.00MM / $XX.00K format.
+                    editValue={formatWithCommas(deal.value)}
+                    sanitizeInput={(next) => next.replace(/[^0-9.,]/g, '')}
+                    onSave={(value) => {
+                      const parsed = parseCurrencyInput(value);
+                      updateDeal('value', parsed ?? 0);
+                    }}
                     // Right-align the Deal Size in the header. `sm:ml-auto`
                     // pushes the field flush right on sm+; `text-right`
                     // right-aligns the value within its inline input.
