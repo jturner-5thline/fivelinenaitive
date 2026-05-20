@@ -170,5 +170,23 @@ export function useFinServPipelineData(): FinServPipelineData {
     if (pipelineId) await fetchDeals(pipelineId);
   }, [pipelineId, fetchDeals]);
 
+  // Realtime: keep tile amounts, stage totals, and pipeline totals in sync
+  // whenever any deal in this pipeline mutates (inline edit, detail drawer,
+  // create/edit modal, drag-and-drop, etc.). Without this the local `deals`
+  // state goes stale and aggregate columns/cards only update after a hard
+  // refresh.
+  useEffect(() => {
+    if (!pipelineId) return;
+    const channel = supabase
+      .channel(`finserv-pipeline-deals-${pipelineId}`)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'deals', filter: `pipeline_id=eq.${pipelineId}` },
+        () => { fetchDeals(pipelineId); }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [pipelineId, fetchDeals]);
+
   return { pipelineId, stages, deals, isLoading, error, refetch };
 }
