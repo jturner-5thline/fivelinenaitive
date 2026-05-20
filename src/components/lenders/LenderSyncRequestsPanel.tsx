@@ -248,7 +248,6 @@ interface LenderSyncRequestsPanelProps {
 
 export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequestsPanelProps) {
   const { requests, pendingCount, loading, refetch, approveRequest, rejectRequest, mergeRequest } = useLenderSyncRequests();
-  const [showAll, setShowAll] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
