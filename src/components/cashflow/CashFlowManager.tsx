@@ -706,8 +706,13 @@ export function CashFlowManager() {
     let lastHistoricalEnd = 0;
     let lastHistoricalAddl = 0;
     let lastHistoricalWeekNum = 0;
+    // Roll-forward chain for TOTAL CASH ON HAND. Used so that
+    // Add'l Liquidity defaults to the prior week's TOTAL CASH ON HAND
+    // whenever no explicit override exists for that week.
+    let prevTotalCashOnHand = 0;
     const historicalKeys = Object.keys(WEEKLY_HISTORICAL_SEED).sort();
-    for (const k of historicalKeys) {
+    for (let i = 0; i < historicalKeys.length; i++) {
+      const k = historicalKeys[i];
       const entry = WEEKLY_HISTORICAL_SEED[k] as any;
       const ov = weeklyOverrides?.[k];
       const seededBegin = Number(entry['BEGINNING CASH']);
@@ -726,16 +731,26 @@ export function CashFlowManager() {
         : (hasBeginningOverride && Number.isFinite(seededNet)
             ? Math.round(beginningCash + seededNet)
             : (Number.isFinite(seededEnd) ? Math.round(seededEnd) : beginningCash));
+      const hasAddlOverride = ov?.addlLiquidity !== undefined && ov.addlLiquidity !== null;
+      // For the first week with no override, fall back to the seeded value
+      // (preserves historical balances). For all subsequent weeks, default
+      // to the previous week's TOTAL CASH ON HAND.
+      const addlLiquidity = hasAddlOverride
+        ? Math.round(Number(ov.addlLiquidity))
+        : (i === 0 ? Math.round(seededAddl) : Math.round(prevTotalCashOnHand));
+      const totalCashOnHand = Math.round(endingCash + addlLiquidity);
 
       out[k] = {
         ...entry,
         'BEGINNING CASH': beginningCash,
         'ENDING CASH': endingCash,
-        'TOTAL CASH ON HAND': Math.round(endingCash + seededAddl),
+        "Add'l Liquidity (Delayed Draw)": addlLiquidity,
+        'TOTAL CASH ON HAND': totalCashOnHand,
       };
       lastHistoricalEnd = endingCash;
-      lastHistoricalAddl = seededAddl || lastHistoricalAddl;
+      lastHistoricalAddl = addlLiquidity;
       lastHistoricalWeekNum = Number(entry.week_num) || lastHistoricalWeekNum;
+      prevTotalCashOnHand = totalCashOnHand;
     }
 
     // 2) Determine the forward horizon — at minimum end of 2026-12-25 (last
@@ -776,20 +791,27 @@ export function CashFlowManager() {
       const ov = weeklyOverrides?.[startKey];
       const begin = ov?.beginningCash !== undefined ? ov.beginningCash : prevEnd;
       const end = ov?.endingCash !== undefined ? ov.endingCash : begin;
+      const hasAddlOverride = ov?.addlLiquidity !== undefined && ov.addlLiquidity !== null;
+      const addlLiquidity = hasAddlOverride
+        ? Math.round(Number(ov.addlLiquidity))
+        : Math.round(prevTotalCashOnHand);
+      const totalCashOnHand = Math.round((Number(end) || 0) + addlLiquidity);
       out[startKey] = {
         week_num: weekNum,
         week_ending: endKey,
         'BEGINNING CASH': begin,
         'ENDING CASH': end,
-        // Carry the latest historical liquidity buffer forward as the default.
-        'Addl Liquidity Chase Tax Reserve MT Chk': lastHistoricalAddl,
-        "Add'l Liquidity (Delayed Draw)": 0,
-        'TOTAL CASH ON HAND': end + lastHistoricalAddl,
+        // Add'l Liquidity defaults to the prior week's TOTAL CASH ON HAND
+        // unless the user enters an explicit per-week override.
+        'Addl Liquidity Chase Tax Reserve MT Chk': addlLiquidity,
+        "Add'l Liquidity (Delayed Draw)": addlLiquidity,
+        'TOTAL CASH ON HAND': totalCashOnHand,
         'TOTAL RECEIPTS': 0,
         'TOTAL DISBURSEMENTS': 0,
         'NET CHANGE': 0,
       } as any;
       prevEnd = end;
+      prevTotalCashOnHand = totalCashOnHand;
       weekEnd = new Date(weekEnd);
       weekEnd.setDate(weekEnd.getDate() + 7);
     }
@@ -894,13 +916,14 @@ export function CashFlowManager() {
         if (s.active) totalAvail += s.available;
       }
       target.__loc_facilities = perFacility;
-      if (!isHistorical) {
-        target["Add'l Liquidity (Delayed Draw)"] = totalAvail;
-        const addlLegacy = totalAvail;
-        const addlNew = Number(target['Addl Liquidity Chase Tax Reserve MT Chk']) || 0;
-        const ec = Number(target['ENDING CASH']) || 0;
-        target['TOTAL CASH ON HAND'] = Math.round(ec + addlLegacy + addlNew);
-      }
+      // NOTE: Add'l Liquidity (Delayed Draw) is now a user-editable row whose
+      // default cascades from the previous week's TOTAL CASH ON HAND. The
+      // resolution + TOTAL CASH ON HAND recompute happens in a dedicated
+      // pass below (see weeklyWithAddl) so the LOC overlay no longer stomps
+      // user overrides. Per-facility availability is still surfaced via the
+      // __loc_facilities sub-rows.
+      void isHistorical;
+      void totalAvail;
       out[k] = target;
     }
     return out;
@@ -947,7 +970,39 @@ export function CashFlowManager() {
 
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithLoc, debouncedYears, debouncedQuarters), [weeklyWithLoc, debouncedYears, debouncedQuarters]);
+  // Final pass: resolve Add'l Liquidity (Delayed Draw) per-week as
+  //   override.addlLiquidity  ?? previous week's TOTAL CASH ON HAND
+  // and recompute TOTAL CASH ON HAND = ENDING CASH + Add'l Liquidity.
+  // Runs after the scheduled merge + LOC overlay so it sees the final
+  // ENDING CASH and is not stomped by upstream recomputes.
+  const weeklyWithAddl = useMemo<WeeklyData>(() => {
+    const sortedKeys = Object.keys(weeklyWithLoc).sort();
+    if (sortedKeys.length === 0) return weeklyWithLoc;
+    const out: WeeklyData = {};
+    let prevTotal: number | null = null;
+    for (let i = 0; i < sortedKeys.length; i++) {
+      const k = sortedKeys[i];
+      const target = { ...(weeklyWithLoc[k] as any) };
+      const ov = weeklyOverrides?.[k];
+      const hasAddlOverride = ov?.addlLiquidity !== undefined && ov.addlLiquidity !== null;
+      const seededAddl = Number(target["Add'l Liquidity (Delayed Draw)"]) || 0;
+      const addl = hasAddlOverride
+        ? Math.round(Number(ov!.addlLiquidity))
+        : (prevTotal !== null ? Math.round(prevTotal) : Math.round(seededAddl));
+      const ec = Number(target['ENDING CASH']) || 0;
+      const total = Math.round(ec + addl);
+      target["Add'l Liquidity (Delayed Draw)"] = addl;
+      // Zero the legacy alias so the mergeScheduledIntoWeekly roll-forward
+      // (which sums both keys) doesn't double-count on subsequent passes.
+      target['Addl Liquidity Chase Tax Reserve MT Chk'] = 0;
+      target['TOTAL CASH ON HAND'] = total;
+      out[k] = target;
+      prevTotal = total;
+    }
+    return out;
+  }, [weeklyWithLoc, weeklyOverrides]);
+
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithAddl, debouncedYears, debouncedQuarters), [weeklyWithAddl, debouncedYears, debouncedQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
@@ -1312,7 +1367,7 @@ export function CashFlowManager() {
   // Set or clear a Beginning/Ending Cash override for a specific week.
   // Pass `value === null` to clear the override and revert to computed value.
   const handleWeeklyCashOverride = useCallback(
-    (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => {
+    (weekKey: string, field: 'beginningCash' | 'endingCash' | 'addlLiquidity', value: number | null) => {
       setWeeklyOverrides(prev => {
         const next = { ...prev };
         const current = { ...(next[weekKey] || {}) };
@@ -1321,17 +1376,27 @@ export function CashFlowManager() {
         } else {
           current[field] = Math.round(value);
         }
-        if (current.beginningCash === undefined && current.endingCash === undefined) {
+        if (
+          current.beginningCash === undefined &&
+          current.endingCash === undefined &&
+          current.addlLiquidity === undefined
+        ) {
           delete next[weekKey];
         } else {
           next[weekKey] = current;
         }
         return next;
       });
+      const fieldLabel =
+        field === 'beginningCash'
+          ? 'Beginning Cash'
+          : field === 'endingCash'
+            ? 'Ending Cash'
+            : "Add'l Liquidity";
       logAction(
         value === null
-          ? `Clear ${field === 'beginningCash' ? 'Beginning' : 'Ending'} Cash override (${weekKey})`
-          : `Override ${field === 'beginningCash' ? 'Beginning' : 'Ending'} Cash → ${value} (${weekKey})`
+          ? `Clear ${fieldLabel} override (${weekKey})`
+          : `Override ${fieldLabel} → ${value} (${weekKey})`
       );
     },
     [logAction]
