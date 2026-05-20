@@ -482,6 +482,20 @@ function RecommendationRow({
           <Badge variant="outline" className={cn('h-5 px-1.5 text-[10px] font-medium border', scoreColor(rec.matchScore))}>
             {rec.matchScore}% match
           </Badge>
+          {typeof rec.confidence === 'number' && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal border-border/60 text-muted-foreground">
+                    {rec.confidence}% conf
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent side="top" className="max-w-xs text-xs">
+                  Confidence reflects how many deal &amp; lender dimensions had real signal (industry, size, geo, structure, notes, recent activity, AI review).
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
           {rec.tier && (
             <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
               {rec.tier}
