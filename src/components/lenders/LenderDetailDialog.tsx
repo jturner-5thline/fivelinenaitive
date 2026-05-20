@@ -91,6 +91,10 @@ interface LenderInfo {
   lenderNotes?: string | null;
   tier?: string | null;
   relationshipOwners?: string | null;
+  websiteUrl?: string | null;
+  linkedinUrl?: string | null;
+  address?: string | null;
+  phoneMain?: string | null;
 }
 
 export interface LenderEditData {
@@ -111,6 +115,10 @@ export interface LenderEditData {
   lenderNotes: string;
   tier: string;
   relationshipOwners: string;
+  websiteUrl: string;
+  linkedinUrl: string;
+  address: string;
+  phoneMain: string;
 }
 
 interface LenderDetailDialogProps {
@@ -362,6 +370,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     lenderNotes: '',
     tier: '',
     relationshipOwners: '',
+    websiteUrl: '',
+    linkedinUrl: '',
+    address: '',
+    phoneMain: '',
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
@@ -399,6 +411,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         lenderNotes: lender.lenderNotes || '',
         tier: lender.tier?.replace(/^T/, '') || '',
         relationshipOwners: lender.relationshipOwners || '',
+        websiteUrl: lender.websiteUrl || '',
+        linkedinUrl: lender.linkedinUrl || '',
+        address: lender.address || '',
+        phoneMain: lender.phoneMain || '',
       });
     }
   }, [lender, isEditMode]);
@@ -432,6 +448,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         lenderNotes: lender.lenderNotes || '',
         tier: lender.tier?.replace(/^T/, '') || '',
         relationshipOwners: lender.relationshipOwners || '',
+        websiteUrl: lender.websiteUrl || '',
+        linkedinUrl: lender.linkedinUrl || '',
+        address: lender.address || '',
+        phoneMain: lender.phoneMain || '',
       });
       setIsEditMode(true);
     }
@@ -939,6 +959,56 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                     onUpdate={updateAdditionalContact}
                     isEditMode={true}
                   />
+                </section>
+                <Separator />
+
+                {/* Edit Mode: Business Info */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Business Info
+                  </h3>
+                  <div className="grid gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Website</Label>
+                      <Input
+                        type="url"
+                        value={editForm.websiteUrl}
+                        onChange={(e) => setEditForm({ ...editForm, websiteUrl: e.target.value })}
+                        placeholder="https://example.com"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">LinkedIn</Label>
+                      <Input
+                        type="url"
+                        value={editForm.linkedinUrl}
+                        onChange={(e) => setEditForm({ ...editForm, linkedinUrl: e.target.value })}
+                        placeholder="https://www.linkedin.com/company/..."
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Phone</Label>
+                      <Input
+                        type="tel"
+                        value={editForm.phoneMain}
+                        onChange={(e) => setEditForm({ ...editForm, phoneMain: e.target.value })}
+                        placeholder="(555) 123-4567"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Address</Label>
+                      <Textarea
+                        value={editForm.address}
+                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                        placeholder="Street, City, State, Zip"
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
                 </section>
                 <Separator />
 
@@ -1521,6 +1591,108 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               onUpdate={updateAdditionalContact}
                               isEditMode={false}
                             />
+                          </section>
+                          <section className="mt-6">
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              Business Info
+                            </h3>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                              <div className="flex items-start gap-3">
+                                <Globe className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">Website</div>
+                                  {lender.websiteUrl ? (
+                                    <a
+                                      href={/^https?:\/\//i.test(lender.websiteUrl) ? lender.websiteUrl : `https://${lender.websiteUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary hover:underline break-all"
+                                    >
+                                      {lender.websiteUrl}
+                                    </a>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add website
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <ExternalLink className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">LinkedIn</div>
+                                  {lender.linkedinUrl ? (
+                                    <a
+                                      href={/^https?:\/\//i.test(lender.linkedinUrl) ? lender.linkedinUrl : `https://${lender.linkedinUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary hover:underline break-all"
+                                    >
+                                      {lender.linkedinUrl}
+                                    </a>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add LinkedIn
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">Phone</div>
+                                  {lender.phoneMain ? (
+                                    <CopyableText
+                                      text={lender.phoneMain}
+                                      href={`tel:${lender.phoneMain}`}
+                                      className="text-sm hover:underline"
+                                      iconSize="h-3.5 w-3.5"
+                                    />
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add phone
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">Address</div>
+                                  {lender.address ? (
+                                    <p className="text-sm whitespace-pre-wrap break-words">{lender.address}</p>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add address
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
                           </section>
                           {showSeparator && <Separator className="my-6" />}
                         </div>
