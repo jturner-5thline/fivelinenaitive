@@ -61,6 +61,62 @@ const splitList = (v: unknown): string[] =>
     .map((s) => s.trim())
     .filter(Boolean);
 
+async function sha256Hex(input: string): Promise<string> {
+  const buf = new TextEncoder().encode(input);
+  const digest = await crypto.subtle.digest("SHA-256", buf);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+const EMBEDDING_MODEL = "openai/text-embedding-3-small";
+const EMBEDDING_DIM = 1536;
+
+async function embedText(text: string): Promise<number[] | null> {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY || !text.trim()) return null;
+  try {
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
+      body: JSON.stringify({
+        model: EMBEDDING_MODEL,
+        input: text.slice(0, 8000),
+        dimensions: EMBEDDING_DIM,
+      }),
+    });
+    if (!res.ok) {
+      console.error("embed error", res.status, await res.text());
+      return null;
+    }
+    const j = await res.json();
+    const v = j?.data?.[0]?.embedding;
+    return Array.isArray(v) ? v : null;
+  } catch (e) {
+    console.error("embed throw", e);
+    return null;
+  }
+}
+
+function cosineSim(a: number[] | null | undefined, b: number[] | null | undefined): number {
+  if (!a || !b || a.length !== b.length) return 0;
+  let dot = 0, na = 0, nb = 0;
+  for (let i = 0; i < a.length; i++) { dot += a[i] * b[i]; na += a[i] * a[i]; nb += b[i] * b[i]; }
+  if (!na || !nb) return 0;
+  return dot / (Math.sqrt(na) * Math.sqrt(nb));
+}
+
+// Parse pgvector embedding string ("[0.1,0.2,...]") into a number[].
+function parseEmbedding(v: unknown): number[] | null {
+  if (!v) return null;
+  if (Array.isArray(v)) return v.map(Number);
+  if (typeof v === "string") {
+    try {
+      const t = v.trim();
+      if (t.startsWith("[")) return JSON.parse(t);
+    } catch { /* noop */ }
+  }
+  return null;
+}
+
 function tokenOverlap(a: string[], b: string[]): number {
   if (!a.length || !b.length) return 0;
   const setB = new Set(b.map(lc));
