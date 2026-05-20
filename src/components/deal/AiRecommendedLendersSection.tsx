@@ -123,6 +123,8 @@ export function AiRecommendedLendersSection({
   // survey saves new values (industry / cash-burn / sponsorship live in deal_writeups,
   // which the recommend-lenders edge function already reads).
   const { criteria: savedCriteria } = useDealMatchingCriteria(dealId);
+  const { user } = useAuth();
+  const showDiagnostics = canUse5thLineProprietaryActions(user as any);
 
   const criteriaSignature = useMemo(
     () => JSON.stringify({
@@ -438,6 +440,7 @@ export function AiRecommendedLendersSection({
                   configuredStages={configuredStages}
                   defaultStageId={preferredDefault}
                   added={addedNames.has(rec.lenderName.toLowerCase())}
+                  showDiagnostics={showDiagnostics}
                   onAdd={async (stageId) => {
                     try {
                       await onAddLender(rec.lenderName, stageId);
