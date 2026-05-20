@@ -5549,6 +5549,7 @@ export type Database = {
       crm_companies: {
         Row: {
           additional_domains: string[] | null
+          address: string | null
           annual_revenue: number | null
           arr: number | null
           company_type: string | null
@@ -5563,6 +5564,7 @@ export type Database = {
           employee_count: number | null
           employee_range: string | null
           external_ids: Json | null
+          hq_address: string | null
           hq_city: string | null
           hq_country: string | null
           hq_postal_code: string | null
@@ -5581,6 +5583,7 @@ export type Database = {
           mrr: number | null
           name: string
           next_activity_date: string | null
+          notes: string | null
           org_company_id: string | null
           owner_user_id: string | null
           parent_company_id: string | null
@@ -5603,6 +5606,7 @@ export type Database = {
         }
         Insert: {
           additional_domains?: string[] | null
+          address?: string | null
           annual_revenue?: number | null
           arr?: number | null
           company_type?: string | null
@@ -5617,6 +5621,7 @@ export type Database = {
           employee_count?: number | null
           employee_range?: string | null
           external_ids?: Json | null
+          hq_address?: string | null
           hq_city?: string | null
           hq_country?: string | null
           hq_postal_code?: string | null
@@ -5635,6 +5640,7 @@ export type Database = {
           mrr?: number | null
           name: string
           next_activity_date?: string | null
+          notes?: string | null
           org_company_id?: string | null
           owner_user_id?: string | null
           parent_company_id?: string | null
@@ -5657,6 +5663,7 @@ export type Database = {
         }
         Update: {
           additional_domains?: string[] | null
+          address?: string | null
           annual_revenue?: number | null
           arr?: number | null
           company_type?: string | null
@@ -5671,6 +5678,7 @@ export type Database = {
           employee_count?: number | null
           employee_range?: string | null
           external_ids?: Json | null
+          hq_address?: string | null
           hq_city?: string | null
           hq_country?: string | null
           hq_postal_code?: string | null
@@ -5689,6 +5697,7 @@ export type Database = {
           mrr?: number | null
           name?: string
           next_activity_date?: string | null
+          notes?: string | null
           org_company_id?: string | null
           owner_user_id?: string | null
           parent_company_id?: string | null
