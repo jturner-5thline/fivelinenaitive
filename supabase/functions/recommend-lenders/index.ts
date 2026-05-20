@@ -657,12 +657,17 @@ serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { dealId, criteriaOverride } = body || {};
+    const { dealId, criteriaOverride, qaMode } = body || {};
     if (!dealId || typeof dealId !== "string") {
       return new Response(JSON.stringify({ error: "dealId required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    // QA mode is restricted to 5th Line / naitive internal users
+    const userEmail = (userData.user.email ?? "").toLowerCase();
+    const isInternal = userEmail.endsWith("@5thline.co") || userEmail.endsWith("@naitive.co");
+    const qa = !!qaMode && isInternal;
 
     // Deal — pull rich, qualitative columns too
     const { data: deal, error: dealErr } = await supabase
@@ -844,15 +849,27 @@ serve(async (req) => {
       deal.key_signal, deal.pain_points_confirmed, deal.objections_raised, deal.product_gap_flagged,
     ].filter(Boolean).join("\n\n").slice(0, 6000);
 
+    // QA / simulation: allow appending synthetic narrative + notes text
+    const narrativeAppend = typeof (criteriaOverride as any)?.narrativeAppend === "string"
+      ? String((criteriaOverride as any).narrativeAppend).slice(0, 3000) : "";
+    const notesAppend = typeof (criteriaOverride as any)?.notesAppend === "string"
+      ? String((criteriaOverride as any).notesAppend).slice(0, 3000) : "";
+    const simulatedNarrative = narrativeAppend
+      ? (dealNarrative + "\n\n[SIMULATED]\n" + narrativeAppend).slice(0, 8000)
+      : dealNarrative;
+
     const dealNoteText = (dealNotes ?? [])
       .map((n: any) => `${n.title}: ${(n.content ?? "").slice(0, 400)} [${arr(n.tags).join(",")}]`)
       .join("\n").slice(0, 4000);
+    const simulatedNoteText = notesAppend
+      ? (dealNoteText + "\n[SIMULATED]: " + notesAppend).slice(0, 5000)
+      : dealNoteText;
     const dealLenderFeedback = (dealLendersOnThisDeal ?? [])
       .filter((dl: any) => dl?.pass_reason || dl?.notes)
       .map((dl: any) => `${dl.name}: ${dl.pass_reason || ""} ${dl.notes || ""}`.trim().slice(0, 300))
       .join("\n").slice(0, 3000);
 
-    const dealEvidenceText = [dealNarrative, dealNoteText, dealLenderFeedback].join("\n");
+    const dealEvidenceText = [simulatedNarrative, simulatedNoteText, dealLenderFeedback].join("\n");
 
     // ── Embed the deal narrative (cached on deal_writeups via source hash) ───
     const narrativeBundle = [
@@ -864,14 +881,15 @@ serve(async (req) => {
       `B2B/B2C: ${writeup?.b2b_b2c ?? ""}`,
       `Collateral: ${writeup?.collateral_available ?? ""}`,
       `Use of funds: ${writeup?.use_of_funds ?? ""}`,
-      dealNarrative,
-      dealNoteText,
+      simulatedNarrative,
+      simulatedNoteText,
     ].filter(Boolean).join("\n\n").slice(0, 8000);
     const narrativeHash = await sha256Hex(narrativeBundle);
     let dealEmbedding: number[] | null = parseEmbedding((writeup as any)?.narrative_embedding);
+    const isSimulated = !!(narrativeAppend || notesAppend);
     if (!dealEmbedding || (writeup as any)?.narrative_source_hash !== narrativeHash) {
       dealEmbedding = await embedText(narrativeBundle);
-      if (dealEmbedding) {
+      if (dealEmbedding && !isSimulated) {
         await supabase.from("deal_writeups").update({
           narrative_embedding: dealEmbedding as any,
           narrative_source_hash: narrativeHash,
@@ -906,8 +924,8 @@ serve(async (req) => {
       keyItems: writeUpKeyItems,
       customerBase: writeup?.customer_base || null,
       tags: arr(deal.tags),
-      narrative: dealNarrative,
-      notes: dealNoteText,
+      narrative: simulatedNarrative,
+      notes: simulatedNoteText,
       lenderFeedbackOnThisDeal: dealLenderFeedback,
       financialStatementsOnFile: (financialFiles ?? []).slice(0, 12).map((f: any) => ({
         name: f.name, period: f.fiscal_period, year: f.fiscal_year,
@@ -939,6 +957,8 @@ serve(async (req) => {
     };
     const candidates: Scored[] = [];
     const filteredOut: { name: string; reason: string }[] = [];
+    // QA mode: also keep full per-check trace + lender meta for filtered lenders
+    const qaHardFiltered: any[] = [];
 
     for (const lender of activeLenders) {
       const noteRecords = [
@@ -998,7 +1018,31 @@ serve(async (req) => {
         { name: "Repeat-pass patterns", passed: blockingPatterns.length < 2, reason: blockingPatterns.length >= 2 ? `${blockingPatterns.length} high-confidence repeat passes` : undefined },
       ];
       const failedHard = hardChecks.find((c) => !c.passed);
-      if (failedHard) { filteredOut.push({ name: lender.name, reason: `${failedHard.name}: ${failedHard.reason ?? "blocked"}` }); continue; }
+      if (failedHard) {
+        filteredOut.push({ name: lender.name, reason: `${failedHard.name}: ${failedHard.reason ?? "blocked"}` });
+        if (qa) {
+          qaHardFiltered.push({
+            lenderId: lender.id ?? null,
+            lenderName: lender.name,
+            tier: lender.tier ?? null,
+            loanTypes: arr(lender.loan_types),
+            industries: arr(lender.industries),
+            minDeal: toNum(lender.min_deal),
+            maxDeal: toNum(lender.max_deal),
+            active: lender.active !== false,
+            hardFiltered: true,
+            failedCheck: failedHard.name,
+            failedReason: failedHard.reason ?? "blocked",
+            hardFilterChecks: hardChecks,
+            components: {
+              type: type.score, size: size.score, industry: industry.score,
+              geography: geography.score, structure: structure.score,
+              recency: recency.score, evidence: evidenceScore, semantic,
+            },
+          });
+        }
+        continue;
+      }
 
       const components: ComponentScores = {
         type: type.score, size: size.score, industry: industry.score,
@@ -1091,9 +1135,12 @@ serve(async (req) => {
       });
     }
 
-    // Sort by deterministic score and take top 25 to AI for narrative re-rank
+    // Sort by deterministic score. AI re-rank is always capped to the top 25
+    // for cost/latency; QA mode still receives the full scored set as
+    // recommendations (the rest just have no AI adjustment).
     candidates.sort((a, b) => b.detScore - a.detScore);
     const topForAI = candidates.slice(0, 25);
+    const allScored = qa ? candidates : topForAI;
 
     // ── AI narrative re-rank (Lovable AI Gateway / Claude / fallback) ────────
     let aiAdjustments = new Map<string, { adj: number; rationale: string }>();
@@ -1190,7 +1237,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
     }
 
     // ── Build final recommendations ──────────────────────────────────────────
-    const recommendations: Recommendation[] = topForAI.map((c) => {
+    const recommendations: Recommendation[] = allScored.map((c) => {
       const cAny = c as any;
       const adjEntry = aiAdjustments.get(lc(c.lender.name));
       const adj = adjEntry?.adj ?? 0;
@@ -1288,6 +1335,33 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
     });
 
     recommendations.sort((a, b) => b.matchScore - a.matchScore);
+
+    // In QA mode skip diversification & the 40-floor — the harness needs to see
+    // every scored lender with its raw final score and full trace.
+    if (qa) {
+      return new Response(
+        JSON.stringify({
+          recommendations,
+          hardFiltered: qaHardFiltered,
+          sufficiency,
+          generatedAt: new Date().toISOString(),
+          meta: {
+            evaluated: activeLenders.length,
+            scored: candidates.length,
+            hardFilteredCount: filteredOut.length,
+            hardFilteredSample: filteredOut.slice(0, 25),
+            modelUsed: ANTHROPIC_API_KEY ? "claude-sonnet-4" : (LOVABLE_API_KEY ? "gemini-2.5-pro" : "deterministic-only"),
+            weights: WEIGHTS,
+            fitAttributesLoaded: fitById.size,
+            dealEmbedded: !!dealEmbedding,
+            historicalOutcomesLoaded: positiveByLender.size,
+            simulated: { narrativeAppend: !!narrativeAppend, notesAppend: !!notesAppend, criteriaOverride: criteriaOverride ?? null },
+            qaMode: true,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     // ─── LAYER 7 — DIVERSIFICATION ────────────────────────────────────────────
     // Greedy selection: take highest-scoring lender; cap how many near-identical

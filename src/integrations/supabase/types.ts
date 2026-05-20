@@ -13737,6 +13737,48 @@ export type Database = {
           },
         ]
       }
+      lender_qa_regression_tests: {
+        Row: {
+          created_at: string
+          created_by: string
+          criteria_override: Json | null
+          deal_id: string
+          description: string | null
+          id: string
+          must_exclude_lenders: string[]
+          must_include_lenders: string[]
+          name: string
+          top_n: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          criteria_override?: Json | null
+          deal_id: string
+          description?: string | null
+          id?: string
+          must_exclude_lenders?: string[]
+          must_include_lenders?: string[]
+          name: string
+          top_n?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          criteria_override?: Json | null
+          deal_id?: string
+          description?: string | null
+          id?: string
+          must_exclude_lenders?: string[]
+          must_include_lenders?: string[]
+          name?: string
+          top_n?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lender_stage_configs: {
         Row: {
           company_id: string | null
