@@ -849,6 +849,15 @@ serve(async (req) => {
       deal.key_signal, deal.pain_points_confirmed, deal.objections_raised, deal.product_gap_flagged,
     ].filter(Boolean).join("\n\n").slice(0, 6000);
 
+    // QA / simulation: allow appending synthetic narrative + notes text
+    const narrativeAppend = typeof (criteriaOverride as any)?.narrativeAppend === "string"
+      ? String((criteriaOverride as any).narrativeAppend).slice(0, 3000) : "";
+    const notesAppend = typeof (criteriaOverride as any)?.notesAppend === "string"
+      ? String((criteriaOverride as any).notesAppend).slice(0, 3000) : "";
+    const simulatedNarrative = narrativeAppend
+      ? (dealNarrative + "\n\n[SIMULATED]\n" + narrativeAppend).slice(0, 8000)
+      : dealNarrative;
+
     const dealNoteText = (dealNotes ?? [])
       .map((n: any) => `${n.title}: ${(n.content ?? "").slice(0, 400)} [${arr(n.tags).join(",")}]`)
       .join("\n").slice(0, 4000);
