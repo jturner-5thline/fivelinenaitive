@@ -419,7 +419,7 @@ serve(async (req) => {
     const { data: writeup } = await supabase
       .from("deal_writeups")
       .select(
-        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, year_founded, headcount, total_equity_raised, financial_comments",
+        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, year_founded, headcount, total_equity_raised, financial_comments, narrative_summary, narrative_embedding, narrative_source_hash",
       )
       .eq("deal_id", dealId)
       .maybeSingle();
