@@ -962,6 +962,56 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 </section>
                 <Separator />
 
+                {/* Edit Mode: Business Info */}
+                <section>
+                  <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Business Info
+                  </h3>
+                  <div className="grid gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Website</Label>
+                      <Input
+                        type="url"
+                        value={editForm.websiteUrl}
+                        onChange={(e) => setEditForm({ ...editForm, websiteUrl: e.target.value })}
+                        placeholder="https://example.com"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">LinkedIn</Label>
+                      <Input
+                        type="url"
+                        value={editForm.linkedinUrl}
+                        onChange={(e) => setEditForm({ ...editForm, linkedinUrl: e.target.value })}
+                        placeholder="https://www.linkedin.com/company/..."
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Phone</Label>
+                      <Input
+                        type="tel"
+                        value={editForm.phoneMain}
+                        onChange={(e) => setEditForm({ ...editForm, phoneMain: e.target.value })}
+                        placeholder="(555) 123-4567"
+                        className="text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs text-muted-foreground">Address</Label>
+                      <Textarea
+                        value={editForm.address}
+                        onChange={(e) => setEditForm({ ...editForm, address: e.target.value })}
+                        placeholder="Street, City, State, Zip"
+                        rows={2}
+                        className="text-sm"
+                      />
+                    </div>
+                  </div>
+                </section>
+                <Separator />
+
                 {/* Edit Mode: Lending Criteria */}
                 <section>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
