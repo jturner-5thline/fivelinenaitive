@@ -1237,7 +1237,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
     }
 
     // ── Build final recommendations ──────────────────────────────────────────
-    const recommendations: Recommendation[] = topForAI.map((c) => {
+    const recommendations: Recommendation[] = allScored.map((c) => {
       const cAny = c as any;
       const adjEntry = aiAdjustments.get(lc(c.lender.name));
       const adj = adjEntry?.adj ?? 0;
