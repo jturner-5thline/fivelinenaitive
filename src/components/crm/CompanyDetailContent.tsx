@@ -19,6 +19,7 @@ import { CreateContactModal } from '@/components/contacts/CreateContactModal';
 import { CrmCompanyTasksCard } from '@/components/crm/CrmCompanyTasksCard';
 import { InlineQuickAddContact } from '@/components/crm/InlineQuickAddContact';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { Loader2 } from 'lucide-react';
@@ -42,6 +43,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const { data: subsidiaries = [] } = useCrmSubsidiaries(companyId);
   const { data: companyDeals = [] } = useCrmCompanyDeals(companyId);
   const deleteCompany = useDeleteCrmCompany();
+  const teamMembers = useTeamMembers();
   const { data: allContactsResult } = useContacts({ pageSize: 1000 });
   const allContacts = allContactsResult?.data ?? [];
   const { data: allDeals = [] } = useAllDeals();
@@ -51,6 +53,7 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
   const unlinkDeal = useUnlinkDealFromCompany();
 
   const [newNote, setNewNote] = useState('');
+  const [notesDraft, setNotesDraft] = useState<string | null>(null);
   const [activityFilter, setActivityFilter] = useState('all');
   const [showLinkContact, setShowLinkContact] = useState(false);
   const [showCreateContact, setShowCreateContact] = useState(false);
@@ -146,6 +149,8 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                 <InfoRow label="Annual Revenue" value={formatCurrency(company.annual_revenue)} />
                 <InfoRow label="Phone" value={company.phone} />
                 <InfoRow label="Email" value={company.main_contact_email} />
+                <InfoRow label="Address" value={company.address} />
+                <InfoRow label="HQ Address" value={company.hq_address} />
                 {company.website_url && <div><p className="text-[10px] text-muted-foreground uppercase">Website</p><a href={company.website_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs flex items-center gap-1 hover:underline">Visit <ExternalLink className="h-3 w-3" /></a></div>}
                 {company.linkedin_url && <div><p className="text-[10px] text-muted-foreground uppercase">LinkedIn</p><a href={company.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs flex items-center gap-1 hover:underline">Profile <ExternalLink className="h-3 w-3" /></a></div>}
               </CardContent>
@@ -166,9 +171,49 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     <SelectContent>{CRM_COMPANY_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
+                <div><p className="text-[10px] text-muted-foreground uppercase mb-1">Owner</p>
+                  <Select
+                    value={company.owner_user_id || 'unassigned'}
+                    onValueChange={v => handleQuickUpdate('owner_user_id', v === 'unassigned' ? null : v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <InfoRow label="Segment" value={company.segment} />
                 <InfoRow label="Tier" value={company.customer_tier} />
                 <InfoRow label="Source" value={company.source_system} />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">Notes</CardTitle></CardHeader>
+              <CardContent>
+                <Textarea
+                  value={notesDraft ?? company.notes ?? ''}
+                  onChange={e => setNotesDraft(e.target.value)}
+                  placeholder="Add notes about this company..."
+                  rows={4}
+                  className="text-xs"
+                />
+                {notesDraft !== null && notesDraft !== (company.notes ?? '') && (
+                  <div className="flex justify-end gap-2 mt-2">
+                    <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setNotesDraft(null)}>Cancel</Button>
+                    <Button
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        const v = notesDraft.trim() === '' ? null : notesDraft;
+                        update.mutate({ id: company.id, notes: v } as any, {
+                          onSuccess: () => setNotesDraft(null),
+                        });
+                      }}
+                    >Save</Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
