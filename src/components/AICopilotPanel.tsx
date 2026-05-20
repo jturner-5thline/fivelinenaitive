@@ -875,7 +875,14 @@ export function AICopilotPanel() {
     setMessages([]);
     setShowHistory(false);
     setLastFailedMessage(null);
-  }, [setConversationId, setMessages]);
+    setContextOverride(null);
+    setMentionQuery(null);
+    setMentionMatches([]);
+    setLastFailedMessage(null);
+    // Reset deal-specific conversational memory so the next turn starts
+    // from a clean slate (no carry-over from prior thread on this deal).
+    try { dealMemory.clear?.(); } catch {}
+  }, [setConversationId, setMessages, dealMemory]);
 
   const loadHistory = useCallback(async () => {
     if (!user) return;
@@ -935,29 +942,9 @@ export function AICopilotPanel() {
     return () => document.removeEventListener('mousedown', handler);
   }, [showHistory]);
 
-  useEffect(() => {
-    // Auto-load most recent conversation as soon as user is available,
-    // so the assistant restores history on page refresh instead of starting a new chat.
-    if (!user || messages.length > 0) return;
-    (async () => {
-      const { data } = await supabase
-        .from('copilot_conversations')
-        .select('id, messages')
-        .eq('user_id', user.id)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (data?.messages && Array.isArray(data.messages) && data.messages.length > 0) {
-        setConversationId(data.id);
-        setMessages(
-          (data.messages as any[]).map((m: any) => ({
-            id: m.id || crypto.randomUUID(), role: m.role, content: m.content,
-            timestamp: new Date(m.timestamp || Date.now()),
-          }))
-        );
-      }
-    })();
-  }, [user]);
+  // Every reload starts a completely fresh copilot session. We intentionally
+  // do NOT auto-restore the most recent conversation here — prior threads are
+  // still available via the History menu, but the panel always opens empty.
 
   const saveConversation = useCallback(
     async (msgs: typeof messages) => {
