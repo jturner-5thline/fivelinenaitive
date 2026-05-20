@@ -370,6 +370,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     lenderNotes: '',
     tier: '',
     relationshipOwners: '',
+    websiteUrl: '',
+    linkedinUrl: '',
+    address: '',
+    phoneMain: '',
   });
   
   const { sectionOrder, setSectionOrderDirect, resetToDefault } = useLenderSectionOrder();
@@ -407,6 +411,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         lenderNotes: lender.lenderNotes || '',
         tier: lender.tier?.replace(/^T/, '') || '',
         relationshipOwners: lender.relationshipOwners || '',
+        websiteUrl: lender.websiteUrl || '',
+        linkedinUrl: lender.linkedinUrl || '',
+        address: lender.address || '',
+        phoneMain: lender.phoneMain || '',
       });
     }
   }, [lender, isEditMode]);
@@ -440,6 +448,10 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
         lenderNotes: lender.lenderNotes || '',
         tier: lender.tier?.replace(/^T/, '') || '',
         relationshipOwners: lender.relationshipOwners || '',
+        websiteUrl: lender.websiteUrl || '',
+        linkedinUrl: lender.linkedinUrl || '',
+        address: lender.address || '',
+        phoneMain: lender.phoneMain || '',
       });
       setIsEditMode(true);
     }
