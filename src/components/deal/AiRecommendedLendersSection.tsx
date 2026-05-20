@@ -1,5 +1,8 @@
 import { useMemo, useState, useEffect } from 'react';
-import { ChevronDown, ChevronRight, RefreshCw, Plus, X, Sparkles, RotateCcw, Info, Filter } from 'lucide-react';
+import {
+  ChevronDown, ChevronRight, RefreshCw, Plus, X, Sparkles, RotateCcw, Info, Filter,
+  CheckCircle2, AlertTriangle, MessageSquare, History, Database, Brain, Network,
+} from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
