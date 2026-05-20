@@ -470,41 +470,91 @@ function TemplateList({
         </div>
       ) : (
         <div className="border rounded-lg divide-y">
-          {/* Standalone templates */}
-          {standalone.map(t => (
-            <div
-              key={t.id}
-              className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors group"
-              onClick={() => onSelect(t)}
-            >
-              <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                {t.template_number}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{t.title}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {t.sequence_name && <span>{t.sequence_name} · </span>}
-                  {t.subject_line}
-                </p>
-              </div>
-              <Badge variant={t.is_active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                {t.is_active ? 'Active' : 'Inactive'}
-              </Badge>
-              <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:block">
-                {format(new Date(t.updated_at), 'MMM d')}
-              </span>
-              {isAdmin && (
-                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onDuplicate(t); }} title="Duplicate">
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onToggle(t); }} title={t.is_active ? 'Deactivate' : 'Activate'}>
-                    <Switch checked={t.is_active} className="scale-75" />
-                  </Button>
+          {/* Standalone templates, grouped by trigger stage */}
+          {(() => {
+            const groups = new Map<string, OutboundEmailTemplate[]>();
+            for (const t of standalone) {
+              const key = t.trigger_stage || 'Unassigned Stage';
+              const arr = groups.get(key) || [];
+              arr.push(t);
+              groups.set(key, arr);
+            }
+            const stageOrder = [
+              'Submitted to Lenders',
+              'Terms Issued',
+              'Agreement Signed',
+              'In Due Diligence',
+              'Funded / Invoiced',
+              'Closed / Funded',
+            ];
+            const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+              const ia = stageOrder.indexOf(a);
+              const ib = stageOrder.indexOf(b);
+              if (ia === -1 && ib === -1) return a.localeCompare(b);
+              if (ia === -1) return 1;
+              if (ib === -1) return -1;
+              return ia - ib;
+            });
+            return sortedKeys.map(stage => (
+              <div key={`stage-${stage}`}>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {stage}
+                  </span>
+                  <Badge variant="outline" className="text-[10px]">
+                    {groups.get(stage)!.length}
+                  </Badge>
                 </div>
-              )}
-            </div>
-          ))}
+                {groups.get(stage)!.map(t => (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors group border-b last:border-b-0"
+                    onClick={() => onSelect(t)}
+                  >
+                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {t.template_number}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{t.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {t.category && <span>{t.category} · </span>}
+                        {t.recipient && <span>To: {t.recipient} · </span>}
+                        {t.subject_line}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {t.trigger_stage && (
+                        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                          {t.trigger_stage}
+                        </Badge>
+                      )}
+                      {t.approval_required && (
+                        <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-600">
+                          Approval Required
+                        </Badge>
+                      )}
+                      <Badge variant={t.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                        {t.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:block">
+                      {format(new Date(t.updated_at), 'MMM d')}
+                    </span>
+                    {isAdmin && (
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onDuplicate(t); }} title="Duplicate">
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onToggle(t); }} title={t.is_active ? 'Deactivate' : 'Activate'}>
+                          <Switch checked={t.is_active} className="scale-75" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ));
+          })()}
 
           {/* Sequence groups */}
           {sequences.map(seq => {
