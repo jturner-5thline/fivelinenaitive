@@ -1,0 +1,778 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
+// recommend-lenders v2
+// Deterministic weighted scoring (with hard filters) + AI narrative re-ranking.
+// Evaluates the FULL deal + FULL lender profile across structured and
+// unstructured signal (notes, tags, narrative, historical activity).
+// ─────────────────────────────────────────────────────────────────────────────
+
+interface ComponentScores {
+  type: number;       // 0-100 — loan/deal type fit
+  size: number;       // 0-100 — size, revenue, ebitda fit
+  industry: number;   // 0-100 — industry / business model fit
+  geography: number;  // 0-100 — geo fit
+  structure: number;  // 0-100 — sponsorship / cash burn / collateral / b2b
+  recency: number;    // 0-100 — recent activity & momentum
+  evidence: number;   // 0-100 — qualitative notes/tags evidence (100=neutral, lower=negative, higher=positive)
+}
+
+interface Recommendation {
+  lenderId: string | null;
+  lenderName: string;
+  matchScore: number;          // 0-100, deterministic + AI blend
+  confidence: number;          // 0-100
+  rationale: string;
+  hardFiltered?: false;
+  components: ComponentScores & { ai: number };
+  tier?: string | null;
+  loanTypes?: string[];
+  industries?: string[];
+  minDeal?: number | null;
+  maxDeal?: number | null;
+  active?: boolean;
+  recentActivity?: boolean;
+}
+
+// ── helpers ──────────────────────────────────────────────────────────────────
+const lc = (v: unknown) => String(v ?? "").trim().toLowerCase();
+const toNum = (v: unknown): number | null => {
+  if (v === null || v === undefined || v === "") return null;
+  const n = typeof v === "number" ? v : Number(String(v).replace(/[^0-9.\-]/g, ""));
+  return Number.isFinite(n) ? n : null;
+};
+const arr = (v: unknown): string[] =>
+  Array.isArray(v) ? v.map((x) => String(x)).filter(Boolean) : [];
+const splitList = (v: unknown): string[] =>
+  String(v ?? "")
+    .split(/[,;|\n]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+function tokenOverlap(a: string[], b: string[]): number {
+  if (!a.length || !b.length) return 0;
+  const setB = new Set(b.map(lc));
+  let hits = 0;
+  for (const x of a) if (setB.has(lc(x))) hits++;
+  return hits / Math.max(a.length, 1);
+}
+
+function fuzzyContains(haystack: string, needles: string[]): boolean {
+  if (!haystack) return false;
+  const h = lc(haystack);
+  return needles.some((n) => n && h.includes(lc(n)));
+}
+
+function checkSufficiency(deal: any, writeup: any, dsDocs: any[], vdrDocs: any[]) {
+  const missing: string[] = [];
+  const dealTypes: string[] = (deal?.dealTypes && deal.dealTypes.length > 0)
+    ? deal.dealTypes
+    : (writeup?.deal_type ? splitList(writeup.deal_type) : []);
+  if (dealTypes.length === 0) missing.push("Deal type");
+  const dealSize: number | null = deal?.value ?? toNum(writeup?.capital_ask) ?? null;
+  if (!dealSize || dealSize <= 0) missing.push("Deal size");
+  const hasFinancials = !!(writeup?.this_year_revenue || writeup?.last_year_revenue || writeup?.financial_years);
+  const hasNarrative = !!(writeup?.description || writeup?.company_highlights || writeup?.team || writeup?.key_items);
+  const hasDocs = (dsDocs?.length || 0) + (vdrDocs?.length || 0) > 0;
+  if (!hasFinancials && !hasNarrative && !hasDocs) {
+    missing.push("Financials, narrative, or data room documents");
+  }
+  return { ok: missing.length === 0, missing, dealTypes, dealSize };
+}
+
+// Negative-evidence keyword scan for free-text lender intel.
+const NEGATIVE_PATTERNS = [
+  "passed", "pass on", "declined", "not a fit", "no fit", "avoid",
+  "do not", "won't fund", "wont fund", "won't do", "wont do",
+  "blacklist", "stay away", "burned", "lost confidence",
+  "ghosted", "unresponsive", "slow", "difficult to work with",
+  "renegotiated", "retraded", "killed the deal",
+];
+const POSITIVE_PATTERNS = [
+  "great partner", "easy to work with", "responsive", "won the deal",
+  "closed", "funded", "loves this space", "active in", "actively funding",
+  "warm intro", "preferred", "fast close", "competitive terms",
+];
+
+function scanEvidence(text: string): { negative: number; positive: number; hits: string[] } {
+  const h = lc(text);
+  if (!h) return { negative: 0, positive: 0, hits: [] };
+  let neg = 0, pos = 0;
+  const hits: string[] = [];
+  for (const p of NEGATIVE_PATTERNS) if (h.includes(p)) { neg++; hits.push(p); }
+  for (const p of POSITIVE_PATTERNS) if (h.includes(p)) { pos++; hits.push(p); }
+  return { negative: neg, positive: pos, hits };
+}
+
+// ── core scorers ─────────────────────────────────────────────────────────────
+function scoreLoanType(deal: any, lender: any): { score: number; reason: string } {
+  const dealTypes = (deal.dealTypes ?? []).map(lc);
+  const lenderTypes = arr(lender.loan_types).map(lc);
+  const lenderTypeStr = lc(lender.lender_type);
+  const notes = lc(lender.deal_structure_notes) + " " + lc(lender.company_requirements);
+  if (!dealTypes.length) return { score: 50, reason: "no deal type specified" };
+  if (!lenderTypes.length && !lenderTypeStr && !notes) return { score: 40, reason: "lender loan types unknown" };
+
+  const exactHits = dealTypes.filter((t) => lenderTypes.includes(t)).length;
+  if (exactHits === dealTypes.length) return { score: 100, reason: `funds ${dealTypes.join("/")}` };
+  if (exactHits > 0) return { score: 80, reason: `funds ${exactHits}/${dealTypes.length} of requested types` };
+
+  // Partial substring match (e.g. "term loan" vs "term")
+  const partial = dealTypes.some((t) => lenderTypes.some((lt) => lt.includes(t) || t.includes(lt)));
+  if (partial) return { score: 65, reason: "partial loan-type alignment" };
+
+  // Lender-type/notes substring hint
+  if (dealTypes.some((t) => lenderTypeStr.includes(t) || notes.includes(t))) {
+    return { score: 55, reason: "indirect deal-type reference in lender notes" };
+  }
+  return { score: 10, reason: `does not fund ${dealTypes.join("/")}` };
+}
+
+function scoreSize(deal: any, lender: any): { score: number; reason: string } {
+  const v = toNum(deal.value);
+  const min = toNum(lender.min_deal);
+  const max = toNum(lender.max_deal);
+  const rev = toNum(deal.revenue);
+  const minRev = toNum(lender.min_revenue);
+  const ebitda = toNum(deal.ebitda);
+  const minEbitda = toNum(lender.ebitda_min);
+
+  let sub = 50;
+  let reason = "size unknown";
+
+  if (v && (min || max)) {
+    if (min && v < min * 0.5) sub = 5, reason = `deal $${(v/1e6).toFixed(1)}M far below min $${(min/1e6).toFixed(1)}M`;
+    else if (min && v < min) sub = 35, reason = `deal slightly below min $${(min/1e6).toFixed(1)}M`;
+    else if (max && v > max * 2) sub = 5, reason = `deal $${(v/1e6).toFixed(1)}M far above max $${(max/1e6).toFixed(1)}M`;
+    else if (max && v > max) sub = 40, reason = `deal slightly above max $${(max/1e6).toFixed(1)}M`;
+    else sub = 100, reason = `inside ${min?`$${(min/1e6).toFixed(0)}M`:"–"}-${max?`$${(max/1e6).toFixed(0)}M`:"–"} band`;
+  } else if (v && !min && !max) {
+    sub = 60; reason = "no published size band";
+  }
+
+  // Revenue/ebitda gating (penalties)
+  if (rev != null && minRev != null && rev < minRev * 0.7) sub = Math.min(sub, 25);
+  else if (rev != null && minRev != null && rev < minRev) sub = Math.min(sub, 55);
+
+  if (ebitda != null && minEbitda != null && ebitda < minEbitda) sub = Math.min(sub, 30);
+
+  return { score: sub, reason };
+}
+
+function scoreIndustry(deal: any, lender: any): { score: number; reason: string; hardOut: boolean } {
+  const dealInd = [
+    deal.industry, deal.subIndustry, deal.businessModel, deal.customerBase,
+    ...(deal.tags ?? []),
+  ].filter(Boolean).map(String);
+  const dealNarrative = lc(deal.narrative ?? "");
+  const lenderInd = arr(lender.industries);
+  const lenderAvoid = arr(lender.industries_to_avoid);
+
+  // Hard exclude: any deal industry token is in lender's avoid list
+  if (lenderAvoid.length && dealInd.some((d) => fuzzyContains(d, lenderAvoid))) {
+    return { score: 0, reason: `industry on lender's avoid list`, hardOut: true };
+  }
+  if (lenderAvoid.length && lenderAvoid.some((a) => dealNarrative.includes(lc(a)))) {
+    return { score: 0, reason: `avoided industry referenced in deal narrative`, hardOut: true };
+  }
+
+  if (!lenderInd.length) return { score: 55, reason: "lender industry appetite unspecified", hardOut: false };
+  if (!dealInd.length) return { score: 50, reason: "deal industry unspecified", hardOut: false };
+
+  // Direct token overlap
+  const overlap = tokenOverlap(dealInd, lenderInd);
+  if (overlap > 0.5) return { score: 100, reason: "industry directly matches lender appetite", hardOut: false };
+  if (overlap > 0) return { score: 80, reason: "partial industry overlap", hardOut: false };
+
+  // Substring match
+  if (lenderInd.some((li) => dealInd.some((di) => lc(di).includes(lc(li)) || lc(li).includes(lc(di))))) {
+    return { score: 65, reason: "industry referenced as substring", hardOut: false };
+  }
+  // B2B/B2C alignment as weak signal
+  if (deal.b2bB2c && lender.b2b_b2c && lc(deal.b2bB2c) === lc(lender.b2b_b2c)) {
+    return { score: 45, reason: "no industry match; B2B/B2C aligned", hardOut: false };
+  }
+  return { score: 20, reason: "no industry overlap", hardOut: false };
+}
+
+function scoreGeography(deal: any, lender: any): { score: number; reason: string; hardOut: boolean } {
+  const dealGeo = lc(deal.location);
+  const lenderGeo = lc(lender.geo);
+  if (!dealGeo || !lenderGeo) return { score: 70, reason: "geo unspecified", hardOut: false };
+  if (lenderGeo.includes("global") || lenderGeo.includes("north america") || lenderGeo.includes("us/canada") || lenderGeo.includes("usa") || lenderGeo.includes("united states")) {
+    // Generous national scope; US-based deals get full credit
+    if (dealGeo.includes("us") || dealGeo.includes("united states") || /^[a-z\s]+,\s*[a-z]{2}/.test(dealGeo)) {
+      return { score: 100, reason: "national lender, US-based deal", hardOut: false };
+    }
+    return { score: 75, reason: "lender national scope", hardOut: false };
+  }
+  if (dealGeo.includes(lenderGeo) || lenderGeo.includes(dealGeo)) {
+    return { score: 100, reason: "geo aligned", hardOut: false };
+  }
+  // Token overlap on state codes / regions
+  const dTok = dealGeo.split(/[,\s]+/);
+  const lTok = lenderGeo.split(/[,\s]+/);
+  if (dTok.some((t) => t && lTok.includes(t))) return { score: 70, reason: "partial geo overlap", hardOut: false };
+  return { score: 25, reason: `lender geo "${lender.geo}" vs deal "${deal.location}"`, hardOut: false };
+}
+
+function scoreStructure(deal: any, lender: any): { score: number; reason: string } {
+  let total = 0, parts = 0;
+  const reasons: string[] = [];
+
+  // Sponsorship
+  if (lender.sponsorship && deal.sponsorship) {
+    const ls = lc(lender.sponsorship), ds = lc(deal.sponsorship);
+    const lenderNeedsSponsor = ls.includes("required") || ls.includes("sponsor-backed only") || ls.includes("yes only");
+    const dealHasSponsor = /sponsor|pe[- ]backed|institutional/.test(ds) && !/no sponsor|non[- ]sponsor/.test(ds);
+    if (lenderNeedsSponsor && !dealHasSponsor) { total += 5; reasons.push("requires sponsor"); }
+    else if (lenderNeedsSponsor && dealHasSponsor) { total += 100; reasons.push("sponsor-backed match"); }
+    else { total += 75; }
+    parts++;
+  }
+
+  // Cash burn
+  if (lender.cash_burn) {
+    const lcb = lc(lender.cash_burn);
+    const lenderOkBurn = /yes|ok|acceptable|tolerate/.test(lcb);
+    const dealBurning = deal.cashBurnOk === false || /unprofitable|burn|loss/.test(lc(deal.profitability));
+    if (dealBurning && !lenderOkBurn) { total += 10; reasons.push("does not tolerate cash burn"); }
+    else if (dealBurning && lenderOkBurn) { total += 100; reasons.push("tolerates cash burn"); }
+    else { total += 80; }
+    parts++;
+  }
+
+  // Collateral
+  if (lender.deal_structure_notes && deal.collateral) {
+    const notes = lc(lender.deal_structure_notes);
+    const coll = lc(deal.collateral);
+    const types = ["ar", "inventory", "equipment", "real estate", "ip", "saas mrr", "recurring revenue"];
+    const hits = types.filter((t) => notes.includes(t) && coll.includes(t)).length;
+    if (hits > 0) { total += Math.min(100, 60 + hits * 20); reasons.push(`${hits} collateral type match`); }
+    else { total += 50; }
+    parts++;
+  }
+
+  // B2B/B2C
+  if (lender.b2b_b2c && deal.b2bB2c) {
+    const same = lc(lender.b2b_b2c) === lc(deal.b2bB2c) || lc(lender.b2b_b2c).includes("both");
+    total += same ? 100 : 30;
+    if (!same) reasons.push("B2B/B2C mismatch");
+    parts++;
+  }
+
+  if (parts === 0) return { score: 70, reason: "structural signals unspecified" };
+  return { score: Math.round(total / parts), reason: reasons.join(", ") || "structural alignment OK" };
+}
+
+function scoreRecency(lender: any, recentSet: Set<string>, passReasons: string[]): { score: number; reason: string } {
+  const isRecent = recentSet.has(lc(lender.name));
+  let base = isRecent ? 90 : 50;
+  if (passReasons.length) {
+    base -= Math.min(40, passReasons.length * 12);
+    return { score: Math.max(0, base), reason: `${passReasons.length} recent pass(es)` };
+  }
+  return { score: base, reason: isRecent ? "active in last 90d" : "no recent activity" };
+}
+
+function scoreEvidence(
+  lender: any,
+  lenderNotes: string[],
+  lenderTags: string[],
+  dealEvidenceText: string,
+): { score: number; reason: string; hardOut: boolean } {
+  const combined = [
+    lender.deal_structure_notes,
+    lender.company_requirements,
+    ...lenderNotes,
+    ...lenderTags,
+    dealEvidenceText,
+  ].filter(Boolean).join(" \n ");
+  const ev = scanEvidence(combined);
+  // Hard out if multiple strong negative signals
+  if (ev.negative >= 3) return { score: 10, reason: `${ev.negative} negative notes`, hardOut: true };
+  // Bias 100 = neutral, range 30..130 then clipped
+  const raw = 100 - ev.negative * 18 + ev.positive * 10;
+  const score = Math.max(0, Math.min(100, raw));
+  let reason = "no qualitative signal";
+  if (ev.negative && ev.positive) reason = `${ev.negative} negative / ${ev.positive} positive notes`;
+  else if (ev.negative) reason = `${ev.negative} negative note(s)`;
+  else if (ev.positive) reason = `${ev.positive} positive note(s)`;
+  return { score, reason, hardOut: false };
+}
+
+// ── main ─────────────────────────────────────────────────────────────────────
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader?.startsWith("Bearer ")) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      { global: { headers: { Authorization: authHeader } } },
+    );
+
+    const { data: userData, error: userErr } = await supabase.auth.getUser();
+    if (userErr || !userData?.user) {
+      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+        status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const body = await req.json().catch(() => ({}));
+    const { dealId, criteriaOverride } = body || {};
+    if (!dealId || typeof dealId !== "string") {
+      return new Response(JSON.stringify({ error: "dealId required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Deal — pull rich, qualitative columns too
+    const { data: deal, error: dealErr } = await supabase
+      .from("deals")
+      .select(
+        "id, company, value, stage, status, company_id, user_id, business_model, deal_type, narrative, engagement_type, deal_class, notes, flag_notes, tags, key_signal, pain_points_confirmed, objections_raised, product_gap_flagged, why_not_moving_forward, opportunity_type, services_offered, next_step, mrr, one_time_revenue, icp_category, prospect_type",
+      )
+      .eq("id", dealId)
+      .maybeSingle();
+    if (dealErr || !deal) {
+      return new Response(JSON.stringify({ error: "Deal not found" }), {
+        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { data: writeup } = await supabase
+      .from("deal_writeups")
+      .select(
+        "deal_type, capital_ask, industry, location, this_year_revenue, last_year_revenue, financial_years, description, company_highlights, team, key_items, customer_base, sponsorship, billing_model, profitability, gross_margins, b2b_b2c, revenue_type, collateral_available, use_of_funds, existing_debt_items, cash_burn_ok, year_founded, headcount, total_equity_raised, financial_comments",
+      )
+      .eq("deal_id", dealId)
+      .maybeSingle();
+
+    const [{ data: dsDocs }, { data: vdrDocs }, { data: dealNotes }, { data: dealLendersOnThisDeal }] = await Promise.all([
+      supabase.from("deal_space_documents").select("name, created_at").eq("deal_id", dealId).limit(50),
+      supabase.from("vdr_documents").select("filename, updated_at").eq("deal_id", dealId).is("deleted_at", null).limit(50),
+      supabase.from("deal_space_notes").select("title, content, tags, is_pinned, updated_at").eq("deal_id", dealId).order("updated_at", { ascending: false }).limit(30),
+      supabase.from("deal_lenders").select("name, pass_reason, notes, tags, tracking_status, stage").eq("deal_id", dealId),
+    ]);
+
+    const dealTypesFromDeal = deal.deal_type ? splitList(deal.deal_type) : [];
+    const overriddenDealTypes = Array.isArray(criteriaOverride?.dealTypes) && criteriaOverride.dealTypes.length > 0
+      ? criteriaOverride.dealTypes.map((s: any) => String(s).trim()).filter(Boolean)
+      : dealTypesFromDeal.length ? dealTypesFromDeal : (writeup?.deal_type ? splitList(writeup.deal_type) : []);
+    const overriddenValue = typeof criteriaOverride?.dealValue === "number" && criteriaOverride.dealValue > 0
+      ? criteriaOverride.dealValue
+      : toNum(deal.value) ?? toNum(writeup?.capital_ask) ?? null;
+
+    const sufficiency = checkSufficiency(
+      { value: overriddenValue, dealTypes: overriddenDealTypes },
+      writeup, dsDocs ?? [], vdrDocs ?? [],
+    );
+    if (!sufficiency.ok) {
+      return new Response(
+        JSON.stringify({ recommendations: [], sufficiency, generatedAt: new Date().toISOString() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    // Exclusions: lenders already on this deal, plus explicit user exclusions
+    const [{ data: exclusions }, { data: financialFiles }] = await Promise.all([
+      supabase.from("deal_lender_recommendation_exclusions").select("lender_name").eq("deal_id", dealId),
+      supabase.from("deal_space_financials").select("name, fiscal_period, fiscal_year, updated_at").eq("deal_id", dealId).limit(20),
+    ]);
+    const excludeSet = new Set<string>([
+      ...(dealLendersOnThisDeal ?? []).map((l: any) => lc(l.name)),
+      ...(exclusions ?? []).map((e: any) => lc(e.lender_name)),
+    ]);
+
+    // Master lender directory
+    const { data: masterLenders } = await supabase
+      .from("master_lenders")
+      .select(
+        "id, name, lender_type, loan_types, sub_debt, cash_burn, sponsorship, min_revenue, ebitda_min, min_deal, max_deal, industries, industries_to_avoid, b2b_b2c, refinancing, geo, tier, active, deal_structure_notes, company_requirements, tags, updated_at",
+      )
+      .limit(2000);
+
+    const activeLenders = (masterLenders ?? []).filter(
+      (l: any) => l.active !== false && !excludeSet.has(lc(l.name)),
+    );
+
+    // Recent activity in last 90 days across all deals
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: recentLenderRows } = await supabase
+      .from("deal_lenders")
+      .select("name, status, pass_reason, tracking_status, updated_at")
+      .gte("updated_at", ninetyDaysAgo)
+      .limit(3000);
+    const recentSet = new Set((recentLenderRows ?? []).map((r: any) => lc(r.name)));
+    const passReasonsByLender = new Map<string, string[]>();
+    (recentLenderRows ?? []).forEach((r: any) => {
+      if (!r?.pass_reason) return;
+      const key = lc(r.name);
+      if (!key) return;
+      const list = passReasonsByLender.get(key) ?? [];
+      if (list.length < 5) list.push(String(r.pass_reason).slice(0, 120));
+      passReasonsByLender.set(key, list);
+    });
+
+    // Lender notes & pass patterns
+    const lenderIds = activeLenders.map((l: any) => l.id).filter(Boolean);
+    const lenderNames = activeLenders.map((l: any) => l.name).filter(Boolean);
+    const [{ data: lenderNotesByIdRows }, { data: lenderNotesByNameRows }, { data: passPatternRows }] = await Promise.all([
+      lenderIds.length
+        ? supabase.from("lender_notes").select("master_lender_id, body, tags, is_flag").in("master_lender_id", lenderIds).limit(2000)
+        : Promise.resolve({ data: [] as any[] } as any),
+      lenderNames.length
+        ? supabase.from("lender_notes").select("lender_name, body, tags, is_flag").in("lender_name", lenderNames).is("master_lender_id", null).limit(2000)
+        : Promise.resolve({ data: [] as any[] } as any),
+      lenderIds.length
+        ? supabase.from("lender_pass_patterns").select("master_lender_id, lender_name, reason_category, pattern_value, confidence_score, occurrence_count").in("master_lender_id", lenderIds).limit(2000)
+        : Promise.resolve({ data: [] as any[] } as any),
+    ]);
+
+    const notesById = new Map<string, { body: string; tags: string[]; flag: boolean }[]>();
+    (lenderNotesByIdRows ?? []).forEach((n: any) => {
+      const k = n.master_lender_id;
+      const list = notesById.get(k) ?? [];
+      list.push({ body: n.body ?? "", tags: arr(n.tags), flag: !!n.is_flag });
+      notesById.set(k, list);
+    });
+    const notesByName = new Map<string, { body: string; tags: string[]; flag: boolean }[]>();
+    (lenderNotesByNameRows ?? []).forEach((n: any) => {
+      const k = lc(n.lender_name);
+      const list = notesByName.get(k) ?? [];
+      list.push({ body: n.body ?? "", tags: arr(n.tags), flag: !!n.is_flag });
+      notesByName.set(k, list);
+    });
+    const patternsByLender = new Map<string, any[]>();
+    (passPatternRows ?? []).forEach((p: any) => {
+      const k = p.master_lender_id || lc(p.lender_name);
+      const list = patternsByLender.get(k) ?? [];
+      list.push(p);
+      patternsByLender.set(k, list);
+    });
+
+    // Build deal evaluation context
+    const overrideIndustry = (criteriaOverride?.industry && String(criteriaOverride.industry).trim()) || null;
+    const overrideGeo = (criteriaOverride?.geo && String(criteriaOverride.geo).trim()) || null;
+    const writeUpDebt = Array.isArray(writeup?.existing_debt_items) ? writeup!.existing_debt_items : [];
+    const writeUpKeyItems = Array.isArray(writeup?.key_items) ? writeup!.key_items : [];
+    const writeUpHighlights = Array.isArray(writeup?.company_highlights) ? writeup!.company_highlights : [];
+    const writeUpTeam = Array.isArray(writeup?.team) ? writeup!.team : [];
+    const revenue = toNum(writeup?.this_year_revenue) ?? toNum(writeup?.last_year_revenue) ?? toNum(deal.mrr) ?? null;
+    const ebitda = toNum((writeup as any)?.ebitda) ?? null;
+
+    const dealNarrative = [
+      deal.narrative, writeup?.description,
+      typeof writeup?.team === "string" ? writeup.team : JSON.stringify(writeUpTeam).slice(0, 600),
+      typeof writeup?.company_highlights === "string" ? writeup.company_highlights : JSON.stringify(writeUpHighlights).slice(0, 600),
+      writeup?.customer_base, writeup?.use_of_funds,
+      (writeup as any)?.existing_debt_details,
+      deal.key_signal, deal.pain_points_confirmed, deal.objections_raised, deal.product_gap_flagged,
+    ].filter(Boolean).join("\n\n").slice(0, 6000);
+
+    const dealNoteText = (dealNotes ?? [])
+      .map((n: any) => `${n.title}: ${(n.content ?? "").slice(0, 400)} [${arr(n.tags).join(",")}]`)
+      .join("\n").slice(0, 4000);
+    const dealLenderFeedback = (dealLendersOnThisDeal ?? [])
+      .filter((dl: any) => dl?.pass_reason || dl?.notes)
+      .map((dl: any) => `${dl.name}: ${dl.pass_reason || ""} ${dl.notes || ""}`.trim().slice(0, 300))
+      .join("\n").slice(0, 3000);
+
+    const dealEvidenceText = [dealNarrative, dealNoteText, dealLenderFeedback].join("\n");
+
+    const dealCtx = {
+      name: deal.company ?? null,
+      value: overriddenValue,
+      dealTypes: sufficiency.dealTypes,
+      industry: overrideIndustry || writeup?.industry || deal.business_model || null,
+      subIndustry: deal.opportunity_type || null,
+      businessModel: deal.business_model || writeup?.billing_model || null,
+      location: overrideGeo || writeup?.location || null,
+      engagementType: deal.engagement_type || null,
+      dealClass: deal.deal_class || null,
+      sponsorship: writeup?.sponsorship || null,
+      billingModel: writeup?.billing_model || null,
+      b2bB2c: writeup?.b2b_b2c || null,
+      revenueType: writeup?.revenue_type || null,
+      revenue,
+      ebitda,
+      profitability: writeup?.profitability || null,
+      grossMargins: writeup?.gross_margins || null,
+      collateral: writeup?.collateral_available || null,
+      cashBurnOk: writeup?.cash_burn_ok ?? null,
+      useOfFunds: writeup?.use_of_funds || null,
+      existingDebt: writeUpDebt,
+      keyItems: writeUpKeyItems,
+      customerBase: writeup?.customer_base || null,
+      tags: arr(deal.tags),
+      narrative: dealNarrative,
+      notes: dealNoteText,
+      lenderFeedbackOnThisDeal: dealLenderFeedback,
+      financialStatementsOnFile: (financialFiles ?? []).slice(0, 12).map((f: any) => ({
+        name: f.name, period: f.fiscal_period, year: f.fiscal_year,
+      })),
+      dataroomDocCount: (dsDocs?.length || 0) + (vdrDocs?.length || 0),
+    };
+
+    // ── Deterministic scoring + hard filters ─────────────────────────────────
+    const WEIGHTS = {
+      type: 0.22, size: 0.18, industry: 0.18,
+      geography: 0.08, structure: 0.14, recency: 0.08, evidence: 0.12,
+    };
+
+    type Scored = {
+      lender: any;
+      components: ComponentScores;
+      detScore: number;
+      reasons: string[];
+      passReasons: string[];
+      lenderNoteText: string;
+      lenderTags: string[];
+    };
+    const candidates: Scored[] = [];
+    const filteredOut: { name: string; reason: string }[] = [];
+
+    for (const lender of activeLenders) {
+      const noteRecords = [
+        ...(notesById.get(lender.id) ?? []),
+        ...(notesByName.get(lc(lender.name)) ?? []),
+      ];
+      const lenderNoteText = noteRecords.map((n) => n.body).join("\n").slice(0, 3000);
+      const lenderTags = [
+        ...arr(lender.tags),
+        ...noteRecords.flatMap((n) => n.tags),
+      ];
+      const hasFlag = noteRecords.some((n) => n.flag);
+      const passReasons = passReasonsByLender.get(lc(lender.name)) ?? [];
+      const patterns = patternsByLender.get(lender.id) ?? patternsByLender.get(lc(lender.name)) ?? [];
+
+      const type = scoreLoanType(dealCtx, lender);
+      const size = scoreSize(dealCtx, lender);
+      const industry = scoreIndustry(dealCtx, lender);
+      const geography = scoreGeography(dealCtx, lender);
+      const structure = scoreStructure(dealCtx, lender);
+      const recency = scoreRecency(lender, recentSet, passReasons);
+      const evidence = scoreEvidence(lender, [lenderNoteText], lenderTags, "");
+
+      // HARD FILTERS
+      if (industry.hardOut) { filteredOut.push({ name: lender.name, reason: industry.reason }); continue; }
+      if (evidence.hardOut) { filteredOut.push({ name: lender.name, reason: evidence.reason }); continue; }
+      if (type.score <= 10 && (arr(lender.loan_types).length > 0)) {
+        filteredOut.push({ name: lender.name, reason: type.reason });
+        continue;
+      }
+      if (size.score <= 5) { filteredOut.push({ name: lender.name, reason: size.reason }); continue; }
+      if (hasFlag) { filteredOut.push({ name: lender.name, reason: "flagged in lender notes" }); continue; }
+      // High-confidence repeat pass patterns → soft hard-out
+      const blockingPatterns = patterns.filter((p: any) => Number(p.confidence_score ?? 0) >= 0.8 && Number(p.occurrence_count ?? 0) >= 2);
+      if (blockingPatterns.length >= 2) {
+        filteredOut.push({ name: lender.name, reason: `${blockingPatterns.length} repeat pass patterns` });
+        continue;
+      }
+
+      const components: ComponentScores = {
+        type: type.score, size: size.score, industry: industry.score,
+        geography: geography.score, structure: structure.score,
+        recency: recency.score, evidence: evidence.score,
+      };
+      const detScore =
+        components.type * WEIGHTS.type +
+        components.size * WEIGHTS.size +
+        components.industry * WEIGHTS.industry +
+        components.geography * WEIGHTS.geography +
+        components.structure * WEIGHTS.structure +
+        components.recency * WEIGHTS.recency +
+        components.evidence * WEIGHTS.evidence;
+
+      const reasons = [type.reason, size.reason, industry.reason, geography.reason, structure.reason, recency.reason, evidence.reason]
+        .filter((r) => r && r.length);
+
+      candidates.push({ lender, components, detScore, reasons, passReasons, lenderNoteText, lenderTags });
+    }
+
+    // Sort by deterministic score and take top 25 to AI for narrative re-rank
+    candidates.sort((a, b) => b.detScore - a.detScore);
+    const topForAI = candidates.slice(0, 25);
+
+    // ── AI narrative re-rank (Lovable AI Gateway / Claude / fallback) ────────
+    let aiAdjustments = new Map<string, { adj: number; rationale: string }>();
+    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+
+    if (topForAI.length && (ANTHROPIC_API_KEY || LOVABLE_API_KEY)) {
+      const aiLenders = topForAI.map(({ lender, components, detScore, lenderNoteText, lenderTags, passReasons }) => ({
+        id: lender.id,
+        name: lender.name,
+        type: lender.lender_type,
+        loanTypes: arr(lender.loan_types),
+        industries: arr(lender.industries),
+        industriesAvoid: arr(lender.industries_to_avoid),
+        minDeal: toNum(lender.min_deal), maxDeal: toNum(lender.max_deal),
+        minRevenue: toNum(lender.min_revenue), ebitdaMin: toNum(lender.ebitda_min),
+        geo: lender.geo, b2bB2c: lender.b2b_b2c,
+        sponsorship: lender.sponsorship, cashBurn: lender.cash_burn,
+        tier: lender.tier, refinancing: lender.refinancing,
+        notes: (lender.deal_structure_notes || "").slice(0, 400),
+        requirements: (lender.company_requirements || "").slice(0, 400),
+        tags: lenderTags.slice(0, 20),
+        internalNotes: lenderNoteText.slice(0, 1500),
+        recentPassReasons: passReasons,
+        detScore: Math.round(detScore),
+        components,
+      }));
+
+      const system = `You are a senior capital markets analyst inside the naitive lender CRM. Each candidate already has a deterministic 0-100 detScore plus component sub-scores. Your job is to nudge that score using qualitative evidence: deal narrative, internal lender notes, tags, recent pass reasons, and structural nuance that rules-based scoring may miss. Output an integer "adj" in [-25, +25] per lender and a one-sentence rationale (<=180 chars, concrete, references the strongest reason — loan type, size band, industry fit, sponsor/burn, geography, or a specific note/pass reason).
+
+Negative adjustments when: internal notes describe friction, repeated passes that still apply, unstated mandate misfit, deal narrative reveals risk (litigation, customer concentration, declining revenue) lender historically dislikes.
+Positive adjustments when: lender notes show active appetite for this exact deal type/industry/size; recent comparable funded deal; warm relationship signals; deal narrative aligns with lender's stated thesis.
+Be decisive — use the full [-25,+25] range so final scores have real separation.
+
+Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 integer>,"rationale":"<one sentence>"}]}.`;
+
+      const userMsg = `DEAL CONTEXT:\n${JSON.stringify(dealCtx)}\n\nCANDIDATE LENDERS (${aiLenders.length}):\n${JSON.stringify(aiLenders)}`;
+
+      try {
+        let text = "";
+        if (ANTHROPIC_API_KEY) {
+          const claudeRes = await fetch("https://api.anthropic.com/v1/messages", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "x-api-key": ANTHROPIC_API_KEY,
+              "anthropic-version": "2023-06-01",
+            },
+            body: JSON.stringify({
+              model: "claude-sonnet-4-20250514",
+              max_tokens: 3500, temperature: 0,
+              system, messages: [{ role: "user", content: userMsg }],
+            }),
+          });
+          if (claudeRes.ok) {
+            const j = await claudeRes.json();
+            text = j?.content?.[0]?.text ?? "";
+          } else {
+            console.error("Claude error", claudeRes.status, await claudeRes.text());
+          }
+        }
+        if (!text && LOVABLE_API_KEY) {
+          const lov = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${LOVABLE_API_KEY}` },
+            body: JSON.stringify({
+              model: "google/gemini-2.5-pro",
+              temperature: 0,
+              messages: [
+                { role: "system", content: system },
+                { role: "user", content: userMsg },
+              ],
+            }),
+          });
+          if (lov.ok) {
+            const j = await lov.json();
+            text = j?.choices?.[0]?.message?.content ?? "";
+          } else {
+            console.error("Lovable AI error", lov.status, await lov.text());
+          }
+        }
+        if (text) {
+          const match = text.match(/\{[\s\S]*\}/);
+          const parsed = JSON.parse(match ? match[0] : text);
+          for (const a of parsed?.adjustments ?? []) {
+            const k = lc(a.name);
+            const adj = Math.max(-25, Math.min(25, Math.round(Number(a.adj) || 0)));
+            aiAdjustments.set(k, { adj, rationale: String(a.rationale ?? "").slice(0, 200) });
+          }
+        }
+      } catch (e) {
+        console.error("AI re-rank failed; falling back to deterministic only", e);
+      }
+    }
+
+    // ── Build final recommendations ──────────────────────────────────────────
+    const recommendations: Recommendation[] = topForAI.map((c) => {
+      const adjEntry = aiAdjustments.get(lc(c.lender.name));
+      const adj = adjEntry?.adj ?? 0;
+      const finalScore = Math.max(0, Math.min(100, Math.round(c.detScore + adj)));
+
+      // Confidence: how many evaluative dimensions had real signal
+      const sigDims = [
+        c.components.type !== 50, c.components.size !== 50,
+        c.components.industry !== 50 && c.components.industry !== 55,
+        c.components.geography !== 70, c.components.structure !== 70,
+        c.components.evidence !== 100,
+        !!adjEntry,
+      ].filter(Boolean).length;
+      const confidence = Math.round((sigDims / 7) * 100);
+
+      // Build rationale: prefer AI; otherwise top 2 deterministic reasons.
+      let rationale = adjEntry?.rationale || "";
+      if (!rationale) {
+        // pick best-scoring + worst-scoring reasons to summarize
+        const entries = Object.entries(c.components) as [keyof ComponentScores, number][];
+        const top = [...entries].sort((a, b) => b[1] - a[1])[0];
+        const bot = [...entries].sort((a, b) => a[1] - b[1])[0];
+        rationale = `Strong ${top[0]} fit (${top[0] === 'evidence' ? top[1] : top[1]}); weakest on ${bot[0]} (${bot[1]}).`;
+      }
+
+      return {
+        lenderId: c.lender.id ?? null,
+        lenderName: c.lender.name,
+        matchScore: finalScore,
+        confidence,
+        rationale: rationale.slice(0, 220),
+        components: { ...c.components, ai: adj },
+        tier: c.lender.tier ?? null,
+        loanTypes: arr(c.lender.loan_types),
+        industries: arr(c.lender.industries),
+        minDeal: toNum(c.lender.min_deal),
+        maxDeal: toNum(c.lender.max_deal),
+        active: c.lender.active !== false,
+        recentActivity: recentSet.has(lc(c.lender.name)),
+      };
+    });
+
+    recommendations.sort((a, b) => b.matchScore - a.matchScore);
+
+    // Drop floor: keep only meaningful matches (>=40). Show up to 12.
+    const final = recommendations
+      .filter((r) => r.matchScore >= 40 && !excludeSet.has(lc(r.lenderName)))
+      .slice(0, 12);
+
+    return new Response(
+      JSON.stringify({
+        recommendations: final,
+        sufficiency,
+        generatedAt: new Date().toISOString(),
+        meta: {
+          evaluated: activeLenders.length,
+          scored: candidates.length,
+          hardFilteredCount: filteredOut.length,
+          hardFilteredSample: filteredOut.slice(0, 10),
+          modelUsed: ANTHROPIC_API_KEY ? "claude-sonnet-4" : (LOVABLE_API_KEY ? "gemini-2.5-pro" : "deterministic-only"),
+          weights: WEIGHTS,
+        },
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (e) {
+    console.error("recommend-lenders error", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Unknown error" }), {
+      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
