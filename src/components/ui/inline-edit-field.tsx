@@ -13,6 +13,7 @@ interface InlineEditFieldProps {
   placeholder?: string;
   className?: string;
   displayClassName?: string;
+  displayStyle?: React.CSSProperties;
   inputClassName?: string;
   debounceMs?: number;
   dealId?: string;
@@ -26,6 +27,7 @@ export function InlineEditField({
   placeholder = 'Click to edit',
   className,
   displayClassName,
+  displayStyle,
   inputClassName,
   debounceMs = 500,
   dealId,
@@ -202,6 +204,7 @@ export function InlineEditField({
           ref={inputRef as React.RefObject<HTMLTextAreaElement>}
           value={draft}
           onChange={(e) => handleChange(e.target.value)}
+          style={displayStyle}
           className={cn(
             'w-full min-h-[80px] border-transparent bg-transparent px-1 py-1 shadow-none resize-none focus-visible:ring-0 focus-visible:ring-offset-0',
             !isFocused && 'hover:bg-muted/40',
@@ -216,6 +219,7 @@ export function InlineEditField({
           type={type}
           value={draft}
           onChange={(e) => handleChange(e.target.value)}
+          style={displayStyle}
           className={cn(
             // h-auto + leading-tight override the shadcn Input default
             // (h-10) which was clipping large title typography (e.g.
