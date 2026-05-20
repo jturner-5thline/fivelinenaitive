@@ -14304,6 +14304,7 @@ export type Database = {
       }
       master_lenders: {
         Row: {
+          about_notes: string | null
           active: boolean | null
           address: string | null
           b2b_b2c: string | null
@@ -14320,6 +14321,7 @@ export type Database = {
           external_created_by: string | null
           external_last_modified: string | null
           flex_lender_id: string | null
+          funding_source_notes: string | null
           geo: string | null
           gift_address: string | null
           id: string
@@ -14354,6 +14356,7 @@ export type Database = {
           website: string | null
         }
         Insert: {
+          about_notes?: string | null
           active?: boolean | null
           address?: string | null
           b2b_b2c?: string | null
@@ -14370,6 +14373,7 @@ export type Database = {
           external_created_by?: string | null
           external_last_modified?: string | null
           flex_lender_id?: string | null
+          funding_source_notes?: string | null
           geo?: string | null
           gift_address?: string | null
           id?: string
@@ -14404,6 +14408,7 @@ export type Database = {
           website?: string | null
         }
         Update: {
+          about_notes?: string | null
           active?: boolean | null
           address?: string | null
           b2b_b2c?: string | null
@@ -14420,6 +14425,7 @@ export type Database = {
           external_created_by?: string | null
           external_last_modified?: string | null
           flex_lender_id?: string | null
+          funding_source_notes?: string | null
           geo?: string | null
           gift_address?: string | null
           id?: string
