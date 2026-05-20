@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Check, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,32 +8,17 @@ import { activateDealDraft, clearDealDraft } from '@/lib/dealDraftRegistry';
 
 interface InlineEditFieldProps {
   value: string;
-  /**
-   * Persist a new value. May return a Promise; if it rejects the field
-   * rolls back to the last saved value and surfaces a retry toast.
-   */
   onSave: (value: string) => void | Promise<void>;
   type?: 'text' | 'textarea' | 'number';
   placeholder?: string;
   className?: string;
   displayClassName?: string;
   inputClassName?: string;
-  /** Debounce window for autosave while the user is still typing. */
   debounceMs?: number;
   dealId?: string;
   fieldName?: string;
 }
 
-/**
- * Click-to-edit text/number/textarea field with autosave semantics:
- *   - editing begins on click; no explicit confirm/cancel buttons
- *   - typing schedules a debounced save (default 600ms)
- *   - blur and Enter flush immediately and exit edit mode
- *   - Esc reverts to the last persisted value
- *   - in-flight writes coalesce: only the most recent value is persisted
- *   - shows a "Saving…" spinner while a write is in flight and a "Saved"
- *     check for 1.5s after success
- */
 export function InlineEditField({
   value,
   onSave,
@@ -42,21 +27,22 @@ export function InlineEditField({
   className,
   displayClassName,
   inputClassName,
-  debounceMs = 600,
+  debounceMs = 500,
   dealId,
   fieldName,
 }: InlineEditFieldProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState(value ?? '');
+  const [isFocused, setIsFocused] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const isFocusedRef = useRef(false);
   const dirtyRef = useRef(false);
   const lastCommittedRef = useRef(value ?? '');
+  const latestRequestedRef = useRef(0);
+  const latestResolvedRef = useRef(0);
   const debounceTimerRef = useRef<number | null>(null);
   const savedTimerRef = useRef<number | null>(null);
-  const requestIdRef = useRef(0);
-  const latestResolvedRequestIdRef = useRef(0);
 
   const registerDraft = useCallback(() => {
     if (dealId && fieldName) activateDealDraft(dealId, fieldName);
@@ -67,13 +53,6 @@ export function InlineEditField({
   }, [dealId, fieldName]);
 
   useEffect(() => {
-    if (isEditing && inputRef.current) {
-      inputRef.current.focus();
-      inputRef.current.select();
-    }
-  }, [isEditing]);
-
-  useEffect(() => {
     const nextValue = value ?? '';
     if (!isFocusedRef.current && !dirtyRef.current && nextValue !== lastCommittedRef.current) {
       setDraft(nextValue);
@@ -82,30 +61,12 @@ export function InlineEditField({
   }, [value]);
 
   useEffect(() => {
-    if (!fieldName || !import.meta.env.DEV) return;
-    console.debug('mount', fieldName);
-  }, [fieldName]);
-
-  useEffect(() => () => {
-    if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
-    if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
-    if (dirtyRef.current) {
-      const next = draft;
-      const requestId = requestIdRef.current + 1;
-      requestIdRef.current = requestId;
-      void Promise.resolve(onSave(next))
-        .then(() => {
-          if (requestId < latestResolvedRequestIdRef.current) return;
-          latestResolvedRequestIdRef.current = requestId;
-          dirtyRef.current = false;
-          unregisterDraft();
-          lastCommittedRef.current = next;
-        })
-        .catch(() => undefined);
-    } else {
+    return () => {
+      if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
+      if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
       unregisterDraft();
-    }
-  }, []);
+    };
+  }, [unregisterDraft]);
 
   const commit = useCallback(async (next: string) => {
     if (next === lastCommittedRef.current) {
@@ -114,15 +75,16 @@ export function InlineEditField({
       return;
     }
 
+    const requestId = latestRequestedRef.current + 1;
+    latestRequestedRef.current = requestId;
     registerDraft();
     setStatus('saving');
-    const requestId = requestIdRef.current + 1;
-    requestIdRef.current = requestId;
 
     try {
       await Promise.resolve(onSave(next));
-      if (requestId < latestResolvedRequestIdRef.current) return;
-      latestResolvedRequestIdRef.current = requestId;
+      if (requestId < latestResolvedRef.current) return;
+
+      latestResolvedRef.current = requestId;
       lastCommittedRef.current = next;
       dirtyRef.current = false;
       unregisterDraft();
@@ -130,11 +92,13 @@ export function InlineEditField({
       if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
       savedTimerRef.current = window.setTimeout(() => setStatus('idle'), 1500);
     } catch (err) {
+      if (requestId < latestResolvedRef.current) return;
+
       const message = err instanceof Error ? err.message : 'Could not save change';
       setStatus('error');
-      setDraft(lastCommittedRef.current);
       dirtyRef.current = false;
       unregisterDraft();
+      setDraft(lastCommittedRef.current);
       toast.error('Failed to save', {
         description: message,
         action: { label: 'Retry', onClick: () => commit(next) },
@@ -142,21 +106,22 @@ export function InlineEditField({
     }
   }, [onSave, registerDraft, unregisterDraft]);
 
-  const scheduleCommit = useCallback((next: string) => {
-    if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
-    debounceTimerRef.current = window.setTimeout(() => {
-      debounceTimerRef.current = null;
-      commit(next);
-    }, debounceMs);
-  }, [commit, debounceMs]);
-
-  const flushCommit = useCallback((next: string) => {
+  const flush = useCallback(() => {
     if (debounceTimerRef.current) {
       window.clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
-    commit(next);
-  }, [commit]);
+    if (!dirtyRef.current) return;
+    void commit(draft);
+  }, [commit, draft]);
+
+  const scheduleCommit = useCallback((next: string) => {
+    if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = window.setTimeout(() => {
+      debounceTimerRef.current = null;
+      void commit(next);
+    }, debounceMs);
+  }, [commit, debounceMs]);
 
   const handleChange = (next: string) => {
     setDraft(next);
@@ -165,21 +130,21 @@ export function InlineEditField({
     scheduleCommit(next);
   };
 
-  const handleBlur = () => {
-    isFocusedRef.current = false;
-    flushCommit(draft);
-    setIsEditing(false);
+  const handleFocus = () => {
+    isFocusedRef.current = true;
+    setIsFocused(true);
+    registerDraft();
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
-      if (type === 'textarea' && e.shiftKey) return;
-      e.preventDefault();
-      flushCommit(draft);
-      (inputRef.current as HTMLElement | null)?.blur();
-    } else if (e.key === 'Tab') {
-      flushCommit(draft);
-    } else if (e.key === 'Escape') {
+  const handleBlur = () => {
+    isFocusedRef.current = false;
+    setIsFocused(false);
+    flush();
+    if (!dirtyRef.current) unregisterDraft();
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === 'Escape') {
       if (debounceTimerRef.current) {
         window.clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
@@ -187,7 +152,24 @@ export function InlineEditField({
       dirtyRef.current = false;
       unregisterDraft();
       setDraft(lastCommittedRef.current);
-      setIsEditing(false);
+      setStatus('idle');
+      inputRef.current?.blur();
+      return;
+    }
+
+    if (e.key === 'Tab') {
+      flush();
+      return;
+    }
+
+    if (e.key === 'Enter' && !(type === 'textarea' && e.shiftKey)) {
+      if (type !== 'textarea') {
+        e.preventDefault();
+      }
+      flush();
+      if (type !== 'textarea') {
+        inputRef.current?.blur();
+      }
     }
   };
 
@@ -202,53 +184,46 @@ export function InlineEditField({
       </span>
     ) : null;
 
-  if (isEditing) {
-    return (
-      <div className={cn('flex items-center gap-2', className)}>
-        {type === 'textarea' ? (
-          <Textarea
-            ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-            value={draft}
-            onChange={(e) => handleChange(e.target.value)}
-            onFocus={() => {
-              isFocusedRef.current = true;
-              registerDraft();
-            }}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className={cn('min-h-[80px]', inputClassName)}
-          />
-        ) : (
-          <Input
-            ref={inputRef as React.RefObject<HTMLInputElement>}
-            type={type}
-            value={draft}
-            onChange={(e) => handleChange(e.target.value)}
-            onFocus={() => {
-              isFocusedRef.current = true;
-              registerDraft();
-            }}
-            onBlur={handleBlur}
-            onKeyDown={handleKeyDown}
-            className={cn('h-8', inputClassName)}
-          />
-        )}
-        {statusBadge}
-      </div>
-    );
-  }
+  const sharedInputProps = {
+    ref: inputRef as React.RefObject<HTMLInputElement> & React.RefObject<HTMLTextAreaElement>,
+    value: draft,
+    onFocus: handleFocus,
+    onBlur: handleBlur,
+    onKeyDown: handleKeyDown,
+    placeholder,
+    'aria-label': fieldName ?? placeholder,
+  };
 
   return (
-    <div
-      className={cn(
-        'group flex items-center gap-2 cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors',
-        displayClassName,
+    <div className={cn('flex items-center gap-2 min-w-0', className)}>
+      {type === 'textarea' ? (
+        <Textarea
+          {...sharedInputProps}
+          ref={inputRef as React.RefObject<HTMLTextAreaElement>}
+          value={draft}
+          onChange={(e) => handleChange(e.target.value)}
+          className={cn(
+            'w-full min-h-[80px] border-transparent bg-transparent px-1 py-1 shadow-none resize-none focus-visible:ring-0 focus-visible:ring-offset-0',
+            !isFocused && 'hover:bg-muted/40',
+            displayClassName,
+            inputClassName,
+          )}
+        />
+      ) : (
+        <Input
+          {...sharedInputProps}
+          ref={inputRef as React.RefObject<HTMLInputElement>}
+          type={type}
+          value={draft}
+          onChange={(e) => handleChange(e.target.value)}
+          className={cn(
+            'w-full min-w-0 border-transparent bg-transparent px-1 py-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0',
+            !isFocused && 'hover:bg-muted/40',
+            displayClassName,
+            inputClassName,
+          )}
+        />
       )}
-      onClick={() => setIsEditing(true)}
-    >
-      <span className={cn('flex-1', !lastCommittedRef.current && 'text-muted-foreground/50 italic')}>
-        {lastCommittedRef.current || placeholder}
-      </span>
       {statusBadge}
     </div>
   );
