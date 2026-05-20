@@ -373,6 +373,11 @@ export default function FinServ() {
           const next = new URLSearchParams(searchParams);
           next.delete('deal');
           setSearchParams(next, { replace: false });
+          // Reconcile tile amount, stage totals, and pipeline totals against
+          // any edits made inside the detail overlay (amount, owner, stage…).
+          // Realtime usually fires first, but this guarantees the aggregates
+          // are fresh the moment the user returns to the board.
+          refetch();
         }}
         onNavigate={(d) => {
           const next = new URLSearchParams(searchParams);
