@@ -747,6 +747,35 @@ serve(async (req) => {
       .gte("updated_at", ninetyDaysAgo)
       .limit(3000);
     const recentSet = new Set((recentLenderRows ?? []).map((r: any) => lc(r.name)));
+
+    // ── Admin match rules (do_not_match / penalize / boost) ─────────────────
+    const { data: matchRules } = await supabase
+      .from("lender_match_rules")
+      .select("rule_type, lender_id, lender_name, applies_when, reason, delta")
+      .eq("active", true)
+      .limit(500);
+    const matchRuleFor = (lenderId: string | null, lenderName: string) => {
+      const lname = lc(lenderName);
+      return (matchRules ?? []).filter((r: any) =>
+        (r.lender_id && r.lender_id === lenderId) || (r.lender_name && lc(r.lender_name) === lname),
+      );
+    };
+
+    // ── Explicit recommendation outcomes (team feedback loop) ───────────────
+    const eighteenMo = new Date(Date.now() - 540 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: outcomeRows } = await supabase
+      .from("lender_recommendation_outcomes")
+      .select("lender_id, lender_name, status, fit_quality, decline_reason, reported_at, deal:deals(business_model, deal_type, value)")
+      .gte("reported_at", eighteenMo)
+      .limit(3000);
+    const outcomesByLender = new Map<string, any[]>();
+    (outcomeRows ?? []).forEach((r: any) => {
+      const k = r.lender_id || lc(r.lender_name);
+      if (!k) return;
+      const list = outcomesByLender.get(k) ?? [];
+      list.push(r);
+      outcomesByLender.set(k, list);
+    });
     const passReasonsByLender = new Map<string, string[]>();
     (recentLenderRows ?? []).forEach((r: any) => {
       if (!r?.pass_reason) return;
