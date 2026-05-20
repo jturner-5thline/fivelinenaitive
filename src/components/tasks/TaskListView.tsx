@@ -492,7 +492,7 @@ export function TaskListView({
 }
 
 // Pinned Overdue Section
-function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded, gridStyle, cols }: {
+function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, gridStyle, cols }: {
   tasks: Task[];
   todayStr: string;
   selectedTaskId: string | null;
@@ -505,8 +505,6 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   onToggleComplete: (id: string, status: string) => void;
   onToggleSelect?: (id: string) => void;
   onToggleStar?: (id: string, current: boolean) => void;
-  expandedTaskIds?: Set<string>;
-  onToggleExpanded?: (taskId: string) => void;
   gridStyle: React.CSSProperties;
   cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
@@ -529,7 +527,6 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           gridTemplateColumns: gridStyle.gridTemplateColumns,
         }}
       >
-        <div aria-hidden />
         <div className="flex items-center justify-center">
           {collapsed
             ? <ChevronRight className="h-3 w-3" style={{ color: '#e57373' }} />
@@ -571,8 +568,6 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
             onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
             showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
-            isExpanded={expandedTaskIds?.has(task.id)}
-            onToggleExpanded={onToggleExpanded ? () => onToggleExpanded(task.id) : undefined}
             onOpenFullDetail={() => onSelectTask(task.id)}
             gridStyle={gridStyle}
             cols={cols}
