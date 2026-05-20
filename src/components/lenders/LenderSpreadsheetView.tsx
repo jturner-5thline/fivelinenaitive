@@ -31,7 +31,7 @@ const COLUMNS = [
   { key: 'active', label: 'Active', width: 70, sortable: true },
   { key: 'tier', label: 'Tier', width: 60, sortable: true },
   { key: 'email', label: 'E-mail', width: 200, sortable: true },
-  { key: 'lender_type', label: 'Lender Type', width: 120, sortable: true },
+  { key: 'lender_type', label: 'Funding Source Type', width: 120, sortable: true },
   { key: 'loan_types', label: 'Loan Type', width: 150, sortable: true },
   { key: 'sub_debt', label: 'Sub Debt', width: 80, sortable: true },
   { key: 'cash_burn', label: 'Cash Burn', width: 90, sortable: true },

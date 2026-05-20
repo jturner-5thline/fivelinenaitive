@@ -76,8 +76,8 @@ interface MergeFieldDef {
 }
 
 const MERGE_FIELDS: MergeFieldDef[] = [
-  { key: 'name', label: 'Lender Name', icon: Building2, format: (v: any) => v || '-' },
-  { key: 'lender_type', label: 'Lender Type', icon: Tag, format: (v: any) => v || '-' },
+  { key: 'name', label: 'Funding Source Name', icon: Building2, format: (v: any) => v || '-' },
+  { key: 'lender_type', label: 'Funding Source Type', icon: Tag, format: (v: any) => v || '-' },
   { key: 'contact_name', label: 'Contact Name', icon: User, format: (v: any) => v || '-', multiSelect: true },
   { key: 'contact_title', label: 'Contact Title', icon: Briefcase, format: (v: any) => v || '-', multiSelect: true },
   { key: 'email', label: 'Email', icon: Mail, format: (v: any) => v || '-', multiSelect: true },

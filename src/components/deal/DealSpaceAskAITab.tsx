@@ -435,7 +435,7 @@ async function generateOneDraftPersonalized(
 
   const parsed = await callDraftAI(dealId, promptBase + constraint);
   const entry = (parsed.drafts || []).find((d) => d && (d.body || d.subject));
-  if (!entry) throw new Error('AI returned no draft for this lender.');
+  if (!entry) throw new Error('AI returned no draft for this funding source.');
 
   return {
     lenderName: entry.lenderName?.trim() || lenderName,
@@ -653,7 +653,7 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
   }, [handleSendQuestion]);
 
   const openDraftSubmissionModal = useCallback(() => {
-    // Step 1 of the new flow: generate a lender-agnostic base submission
+    // Step 1 of the new flow: generate a funding source-agnostic base submission
     // email. The user reviews / edits it, then Continue saves to Notes and
     // opens the Review & Exclude step.
     setBaseDraft(null);
@@ -720,11 +720,11 @@ function DealSpaceAskAITabImpl({ dealId }: DealSpaceAskAITabProps) {
         ? `
 
 PERSONALIZATION (REQUIRED WHEN PROFILE DATA IS PROVIDED):
-- For EACH lender below, customize the OPENING paragraph to explicitly connect this deal to that lender's stated focus areas (deal types, deal-size range, industry focus). Example: if a lender focuses on SaaS growth capital $1–10MM, lead the opening with the company's ARR and SaaS positioning.
+- For EACH lender below, customize the OPENING paragraph to explicitly connect this deal to that lender's stated focus areas (deal types, deal-size range, industry focus). Example: if a funding source focuses on SaaS growth capital $1–10MM, lead the opening with the company's ARR and SaaS positioning.
 - Reference prior interaction on this deal when present (e.g. "circling back after our last conversation on <date>").
 - Keep the rest of the body close to the template — only the OPENING and any natural transitions are personalized.
 - For each draft, also include a "personalizationRationale" field: a single short sentence (max 18 words) explaining what you tailored to. Example: "Tailored to Founderpath's SaaS focus and $1–10MM range."
-- If a lender has no profile data, still output a draft using the generic template and set "personalizationRationale" to "" (empty string).`
+- If a funding source has no profile data, still output a draft using the generic template and set "personalizationRationale" to "" (empty string).`
         : `
 
 BROADCAST MODE (PERSONALIZATION OFF):
@@ -743,7 +743,7 @@ BROADCAST MODE (PERSONALIZATION OFF):
         : '';
 
       const baseTemplateSection = base
-        ? `\n\nAPPROVED BASE TEMPLATE — AUTHORITATIVE SOURCE (the user already reviewed and EDITED this lender-agnostic submission email). You MUST use it verbatim as the email body for every lender. IGNORE the EMAIL BODY TEMPLATE section above and DO NOT rewrite, reorder, shorten, or paraphrase any sentence. The ONLY allowed changes are:\n  1. Replace the salutation line with "Hi <LENDER FIRST NAME>," (or the institution name if no contact first name is known).\n  2. Optionally personalize ONE short opening sentence to connect the deal to the lender's focus area when profile data is provided. Everything else (paragraph order, wording, attachments line, sign-off) must match the approved base exactly.\nFor the subject line, use the same wording as the approved base subject but insert the lender institution into the pipe slot if the base subject does not already include one (format: "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>").\n\nAPPROVED BASE SUBJECT:\n${base.subject}\n\nAPPROVED BASE BODY (use verbatim, only swap the salutation / optional opening line):\n${htmlToPlainText(base.bodyHtml)}\n`
+        ? `\n\nAPPROVED BASE TEMPLATE — AUTHORITATIVE SOURCE (the user already reviewed and EDITED this funding source-agnostic submission email). You MUST use it verbatim as the email body for every lender. IGNORE the EMAIL BODY TEMPLATE section above and DO NOT rewrite, reorder, shorten, or paraphrase any sentence. The ONLY allowed changes are:\n  1. Replace the salutation line with "Hi <LENDER FIRST NAME>," (or the institution name if no contact first name is known).\n  2. Optionally personalize ONE short opening sentence to connect the deal to the funding source's focus area when profile data is provided. Everything else (paragraph order, wording, attachments line, sign-off) must match the approved base exactly.\nFor the subject line, use the same wording as the approved base subject but insert the funding source institution into the pipe slot if the base subject does not already include one (format: "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>").\n\nAPPROVED BASE SUBJECT:\n${base.subject}\n\nAPPROVED BASE BODY (use verbatim, only swap the salutation / optional opening line):\n${htmlToPlainText(base.bodyHtml)}\n`
         : '';
 
       return `You are drafting lender submission emails for this deal.${personalize ? ' Generate ONE email PER ACTIVE LENDER on this deal.' : ''}
@@ -791,7 +791,7 @@ CRITICAL RULES:
     [],
   );
 
-  // Entry point for the lender submission flow. We now ALWAYS open the
+  // Entry point for the funding source submission flow. We now ALWAYS open the
   // base-email step first; the user can edit that draft, then we save it
   // to Notes and open Review & Exclude before per-lender drafts run.
   const handleDraftSubmission = useCallback(async () => {
@@ -823,7 +823,7 @@ CRITICAL RULES:
         : new Map<string, LenderProfileSnapshot>();
 
       // ── Per-lender pipeline ───────────────────────────────────────────
-      // We run one AI call per lender (small concurrent batches) instead of
+      // We run one AI call per funding source (small concurrent batches) instead of
       // one giant batched JSON response. This way:
       //   • One malformed reply only kills that lender, not the whole run.
       //   • The user sees partial successes immediately as drafts stream in.
@@ -833,7 +833,7 @@ CRITICAL RULES:
       let filteredDrafts: EmailDraft[];
 
       if (!personalize) {
-        // When the user already approved a lender-agnostic base draft we
+        // When the user already approved a funding source-agnostic base draft we
         // skip the AI entirely and fan that exact copy out (preserves edits).
         const template: EmailDraft = base
           ? {
@@ -918,7 +918,7 @@ CRITICAL RULES:
 
       // Enrich only the actionable drafts with lender contacts. Failed
       // placeholders are passed through untouched so the user still sees
-      // the lender + error in the pager.
+      // the funding source + error in the pager.
       const successfulOnly = filteredDrafts.filter((d) => d.status !== 'failed');
       const failedPlaceholders = filteredDrafts.filter((d) => d.status === 'failed');
       const enriched = await enrichDraftsWithLenderContacts(successfulOnly);
@@ -1546,7 +1546,7 @@ CRITICAL RULES:
           // Build an explicitly lender-agnostic prompt: reuse the broadcast
           // path (single draft, no per-lender variants) and instruct the
           // model to use a neutral salutation and zero lender-specific
-          // references — the lender-specific personalization happens later.
+          // references — the funding source-specific personalization happens later.
           const base = buildDraftSubmissionPrompt(false, new Map(), null);
           const constraint =
             `\n\nBASE EMAIL MODE (LENDER-AGNOSTIC):\n` +

@@ -28,7 +28,7 @@ interface CatalogAgent {
 
 const CATALOG: CatalogAgent[] = [
   {
-    name: 'Lender Matching Agent',
+    name: 'Funding Source Matching Agent',
     subtitle: 'Automated deal intake specialist',
     description:
       'Every time a new deal enters the pipeline, it reads the deal parameters, scores every lender for fit, ranks the top matches, and prepares personalized outreach drafts — all before a human touches the deal. Eliminates 2–3 hours of manual lender research and email drafting per new deal.',
@@ -87,7 +87,7 @@ const CATALOG: CatalogAgent[] = [
     name: 'Lender Intelligence Agent',
     subtitle: 'Lender knowledge system',
     description:
-      'Maintains and continuously improves the lender database. Learns from every deal interaction — submission, pass, and close — and uses that data to make the Lender Matching Agent smarter over time. Also monitors the market weekly for new lenders and flags relationship-building opportunities.',
+      'Maintains and continuously improves the funding source database. Learns from every deal interaction — submission, pass, and close — and uses that data to make the Funding Source Matching Agent smarter over time. Also monitors the market weekly for new lenders and flags relationship-building opportunities.',
     icon: Database,
   },
   {

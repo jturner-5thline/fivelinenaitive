@@ -22,7 +22,7 @@ interface Props {
 
 /**
  * Inline card to update a deal lender's pipeline **stage** + append a note.
- * Pre-selects the lender that the AI matched in the email when available.
+ * Pre-selects the funding source that the AI matched in the email when available.
  * Single Confirm button writes the change via the shared `updateLender`
  * action so the deal kanban / pipeline updates in real time.
  */
@@ -63,7 +63,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const [done, setDone] = useState(false);
   const [adding, setAdding] = useState(false);
 
-  // True when the AI identified a lender name that isn't (yet) tracked on this deal.
+  // True when the AI identified a funding source name that isn't (yet) tracked on this deal.
   const proposedLenderName = (preselectLenderName || '').trim();
   const proposedAlreadyTracked = useMemo(() => {
     if (!proposedLenderName) return false;
@@ -83,7 +83,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   }
 
   // If the AI surfaced a specific lender that isn't on the deal yet, offer to add them.
-  // (Same prompt covers the "no lenders at all" case when a name was identified.)
+  // (Same prompt covers the "no funding sources at all" case when a name was identified.)
   if (proposedLenderName && !proposedAlreadyTracked) {
     const handleAdd = async () => {
       setAdding(true);
@@ -93,7 +93,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
           trackingStatus: 'active',
         });
         toast.success(`${proposedLenderName} added to ${deal.company}`);
-        // Card will re-render with the lender now tracked; user can pick a status next.
+        // Card will re-render with the funding source now tracked; user can pick a status next.
       } catch (err: any) {
         console.error('[UpdateLenderStatus] add failed', err);
         toast.error(err?.message || 'Failed to add lender');
@@ -116,7 +116,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
           </Button>
           <Button size="sm" className="h-7 text-[11px] gap-1" onClick={handleAdd} disabled={adding}>
             {adding ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-            Add Lender
+            Add Funding Source
           </Button>
         </div>
       </div>
@@ -126,7 +126,7 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   if (lenders.length === 0) {
     return (
       <div className="rounded-md border border-white/[0.06] bg-card/40 p-3 text-[11px] text-muted-foreground">
-        No lenders are tracked on <span className="text-foreground">{deal.company}</span> yet.
+        No funding sources are tracked on <span className="text-foreground">{deal.company}</span> yet.
       </div>
     );
   }

@@ -261,7 +261,7 @@ export const ExternalDataTab = () => {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Lender Name</TableHead>
+                        <TableHead>Funding Source Name</TableHead>
                         <TableHead>Stage</TableHead>
                         <TableHead>Substage</TableHead>
                         <TableHead>Status</TableHead>

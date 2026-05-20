@@ -79,7 +79,7 @@ function parseMarkdownRow(line: string): string[] {
 // 8: Primary Contact
 // 9: Primary Contact Title
 // 10: Primary Contact Email
-// 11: Primary Lender Type
+// 11: Primary Funding Source Type
 // 12-18: Location fields
 // 19: Description
 // 20: Preferred Industry
@@ -166,7 +166,7 @@ export function NonBankLendersImportButton({ onImportComplete, open, onOpenChang
       
       if (lenders.length === 0) {
         toast({ 
-          title: 'No lenders found', 
+          title: 'No funding sources found', 
           description: 'Could not parse any lenders from the file.',
           variant: 'destructive' 
         });

@@ -29,7 +29,7 @@ const FIELD_LABELS: Record<string, string> = {
   name: 'Name',
   aliases: 'Aliases',
   email: 'Email',
-  lender_type: 'Lender Type',
+  lender_type: 'Funding Source Type',
   loan_types: 'Loan Types',
   sub_debt: 'Sub Debt',
   cash_burn: 'Cash Burn',

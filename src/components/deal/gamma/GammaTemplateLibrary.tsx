@@ -42,7 +42,7 @@ export const GAMMA_TEMPLATES: GammaTemplate[] = [
     description: 'Lender pipeline status & engagement metrics',
     icon: TrendingUp,
     suggestedFormat: 'presentation',
-    prompt: 'Create a lender pipeline review presentation. Show: lender engagement funnel, stage distribution, key lender highlights, recent activity, stalled opportunities, and action items for follow-up. Include visual data breakdowns.',
+    prompt: 'Create a funding source pipeline review presentation. Show: lender engagement funnel, stage distribution, key lender highlights, recent activity, stalled opportunities, and action items for follow-up. Include visual data breakdowns.',
   },
   {
     id: 'quarterly-update',

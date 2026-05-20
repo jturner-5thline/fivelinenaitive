@@ -61,7 +61,7 @@ const SOURCE_LABELS: Record<string, string> = {
   recent_activity: 'Recent Activity',
   deal_notes: 'Deal Notes',
   email_thread_only: 'Email Only',
-  lender_name: 'Lender Name',
+  lender_name: 'Funding Source Name',
   lender_stage: 'Lender Stage',
   outstanding_items: 'Outstanding Items',
   deal_stage: 'Deal Stage',

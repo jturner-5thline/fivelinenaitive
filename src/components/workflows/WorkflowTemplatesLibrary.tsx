@@ -96,8 +96,8 @@ const BUILTIN_TEMPLATES: WorkflowTemplate[] = [
   },
   {
     id: 'lender-update-notify',
-    name: 'Lender Status Update',
-    description: 'Notify when a lender changes their stage on a deal',
+    name: 'Funding Source Status Update',
+    description: 'Notify when a funding source changes their stage on a deal',
     category: 'notifications',
     icon: <Bell className="h-5 w-5" />,
     triggerType: 'lender_stage_change',

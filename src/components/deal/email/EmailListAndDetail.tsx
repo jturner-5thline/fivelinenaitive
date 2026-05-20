@@ -1937,7 +1937,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // Hydrate per-thread deal link from the deal_emails table. Looks up any of
   // the thread's real Gmail message IDs; if a row exists, we adopt its
   // deal_id (+ resolve the deal name) so AI Assist downstream cards
-  // (Update Lender Status, Suggested Updates, Outstanding Items, Lender
+  // (Update Funding Source Status, Suggested Updates, Outstanding Items, Lender
   // Q&A, Deal Context) all see the same resolved deal — eliminating the
   // contradictory "no deal linked" state when the chip row already shows
   // a deal.

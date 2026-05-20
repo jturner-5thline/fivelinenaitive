@@ -421,7 +421,7 @@ export function CompanyConfigOverview({ companyId, editable = false }: CompanyCo
                 onEdit={editable ? (v) => handleUpdateSettings('deals_special_widgets', v) : undefined}
               />
               <ConfigBlock
-                label="Lender Matching Config"
+                label="Funding Source Matching Config"
                 data={settings?.lender_matching_config ?? null}
                 onEdit={editable ? (v) => handleUpdateSettings('lender_matching_config', v) : undefined}
               />

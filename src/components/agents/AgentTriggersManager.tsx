@@ -39,8 +39,8 @@ const TRIGGER_OPTIONS: { value: TriggerType; label: string; icon: React.ElementT
   { value: 'deal_created', label: 'New Deal Created', icon: Briefcase, description: 'When a new deal is added' },
   { value: 'deal_stage_change', label: 'Deal Stage Change', icon: Briefcase, description: 'When a deal moves to a new stage' },
   { value: 'deal_closed', label: 'Deal Closed', icon: Briefcase, description: 'When a deal is won or lost' },
-  { value: 'lender_added', label: 'Lender Added', icon: Building2, description: 'When a lender is added to a deal' },
-  { value: 'lender_stage_change', label: 'Lender Stage Change', icon: Building2, description: 'When a lender status changes' },
+  { value: 'lender_added', label: 'Lender Added', icon: Building2, description: 'When a funding source is added to a deal' },
+  { value: 'lender_stage_change', label: 'Lender Stage Change', icon: Building2, description: 'When a funding source status changes' },
   { value: 'milestone_completed', label: 'Milestone Completed', icon: Target, description: 'When a milestone is marked complete' },
   { value: 'scheduled', label: 'Scheduled', icon: Zap, description: 'Run on a schedule (daily, weekly, etc.)' },
 ];

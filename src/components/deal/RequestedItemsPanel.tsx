@@ -128,7 +128,7 @@ export function RequestedItemsPanel({
           <div className="px-6 py-4 space-y-4">
             {items.length === 0 ? (
               <p className="text-sm text-muted-foreground italic py-8 text-center">
-                No items requested by this lender
+                No items requested by this funding source
               </p>
             ) : (
               groups.map((group) => (

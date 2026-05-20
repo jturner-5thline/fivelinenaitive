@@ -489,10 +489,10 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
 
             <Separator className="my-2" />
 
-            {/* Lender Activity Types */}
+            {/* Funding Source Activity Types */}
             <div className="flex items-center gap-2 mb-2">
               <Activity className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">Lender Activity</span>
+              <span className="text-sm font-medium">Funding Source Activity</span>
             </div>
 
             <div className="flex items-center justify-between">

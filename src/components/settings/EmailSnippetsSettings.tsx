@@ -108,7 +108,7 @@ export function EmailSnippetsSettings() {
               <Input
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Intro – New Lender Outreach"
+                placeholder="e.g. Intro – New Funding Source Outreach"
                 className="mt-1"
               />
             </div>

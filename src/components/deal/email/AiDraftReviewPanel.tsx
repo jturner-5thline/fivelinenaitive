@@ -96,7 +96,7 @@ const SOURCE_LABELS: Record<string, string> = {
   deal_notes: 'Notes',
   email_thread_only: 'Email Only',
   // Injected fact keys (set by smart-email-ai when the model actually used them in the body)
-  lender_name: 'Lender Name',
+  lender_name: 'Funding Source Name',
   lender_stage: 'Lender Stage',
   outstanding_items: 'Outstanding Items',
   deal_stage: 'Deal Stage',

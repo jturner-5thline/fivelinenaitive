@@ -113,7 +113,7 @@ export function DisqualifyLenderDialog({
             <Label htmlFor="reason-details">Additional Details (Optional)</Label>
             <Textarea
               id="reason-details"
-              placeholder="Provide any specific details about why this lender isn't a fit..."
+              placeholder="Provide any specific details about why this funding source isn't a fit..."
               value={reasonDetails}
               onChange={(e) => setReasonDetails(e.target.value)}
               rows={3}
@@ -127,7 +127,7 @@ export function DisqualifyLenderDialog({
                 <p className="font-medium">Learning from this decision</p>
                 <p className="text-muted-foreground mt-1">
                   This disqualification will be used to improve future lender suggestions. 
-                  Similar deals may show warnings for this lender based on the pattern.
+                  Similar deals may show warnings for this funding source based on the pattern.
                 </p>
               </div>
             </div>

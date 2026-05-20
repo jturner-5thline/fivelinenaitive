@@ -79,7 +79,7 @@ const COLUMNS = [
   { key: 'active', label: 'Active', width: 70, sortable: true },
   { key: 'tier', label: 'Tier', width: 60, sortable: true },
   { key: 'email', label: 'E-mail', width: 200, sortable: true },
-  { key: 'lender_type', label: 'Lender Type', width: 120, sortable: true },
+  { key: 'lender_type', label: 'Funding Source Type', width: 120, sortable: true },
   { key: 'loan_types', label: 'Loan Type', width: 150, sortable: true },
   { key: 'sub_debt', label: 'Sub Debt', width: 80, sortable: true },
   { key: 'cash_burn', label: 'Cash Burn', width: 90, sortable: true },
@@ -421,7 +421,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
           <div className="relative flex-1 min-w-[240px] max-w-[320px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
             <Input
-              placeholder="Search lenders..."
+              placeholder="Search funding sources..."
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="pl-8 h-8 text-[13px] bg-background border-white/10 shadow-sm focus-visible:border-primary/40 focus-visible:ring-1 focus-visible:ring-primary/20 focus-visible:ring-offset-0 placeholder:text-muted-foreground/50"
@@ -500,9 +500,9 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
 
       <div className="flex-1 overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">Loading lender directory...</div>
+          <div className="flex items-center justify-center py-12 text-muted-foreground">Loading directory...</div>
         ) : sorted.length === 0 ? (
-          <div className="flex items-center justify-center py-12 text-muted-foreground">No lenders found matching your filters.</div>
+          <div className="flex items-center justify-center py-12 text-muted-foreground">No funding sources found matching your filters.</div>
         ) : (
           <div className="h-full overflow-hidden bg-background">
             <ScrollArea className="w-full h-full">
@@ -744,11 +744,11 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
         <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-50 rounded-lg">
           <div className="bg-card border border-border rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
             <h3 className="text-base font-semibold mb-1">Remove {removingLender.name}?</h3>
-            <p className="text-sm text-muted-foreground mb-4">This will remove the lender from this deal. You can optionally add a reason.</p>
+            <p className="text-sm text-muted-foreground mb-4">This will remove the funding source from this deal. You can optionally add a reason.</p>
             <Textarea placeholder="Reason for removal (optional)..." value={removeReason} onChange={e => setRemoveReason(e.target.value)} className="mb-4 resize-none" rows={3} />
             <div className="flex justify-end gap-2">
               <Button variant="outline" size="sm" onClick={() => setRemovingLender(null)}>Cancel</Button>
-              <Button variant="destructive" size="sm" onClick={confirmRemove}>Remove Lender</Button>
+              <Button variant="destructive" size="sm" onClick={confirmRemove}>Remove Funding Source</Button>
             </div>
           </div>
         </div>

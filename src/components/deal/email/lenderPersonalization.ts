@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
  * Profile snapshot used to personalize a single lender's submission email.
  *
  * Sources:
- *  - `master_lenders` for the lender's stated focus areas (deal types,
+ *  - `master_lenders` for the funding source's stated focus areas (deal types,
  *    deal-size range, industries, sponsorship/refinancing posture, notes).
  *  - `deal_lenders` for prior interaction on THIS deal (last contact date,
  *    notes, current substage, pass reason).
@@ -154,7 +154,7 @@ function fmtMoney(n: number | null): string | null {
 /**
  * Render a single lender's profile as a compact prompt block. Returns null
  * when no useful profile data is available, so the caller can decide whether
- * to include the lender in the personalized prompt or fall back to generic
+ * to include the funding source in the personalized prompt or fall back to generic
  * copy.
  */
 export function renderLenderProfileBlock(p: LenderProfileSnapshot): string {

@@ -268,7 +268,7 @@ export function MyDealsWidget({ variant = 'expanded', maxItems }: MyDealsWidgetP
                           {deal.lenders && deal.lenders.filter(l => l.trackingStatus === 'active').length > 0 && (
                             <div>
                               <p className="text-xs font-medium text-muted-foreground mb-1 flex items-center gap-1">
-                                <Users className="h-3 w-3" /> Top Lenders
+                                <Users className="h-3 w-3" /> Top Funding Sources
                               </p>
                               <div className="flex flex-wrap gap-1">
                                 {deal.lenders.filter(l => l.trackingStatus === 'active').slice(0, 4).map(l => (

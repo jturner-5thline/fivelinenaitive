@@ -90,7 +90,7 @@ export function ImportLendersDialog({ open, onOpenChange, onImport }: ImportLend
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>Import Lender Database</DialogTitle>
+          <DialogTitle>Import Funding Source Database</DialogTitle>
           <DialogDescription>
             Upload a CSV file to import lenders into your master database.
           </DialogDescription>
@@ -115,7 +115,7 @@ export function ImportLendersDialog({ open, onOpenChange, onImport }: ImportLend
             />
             <div className="text-xs text-muted-foreground space-y-1">
               <p className="font-medium">Expected columns:</p>
-              <p>E-mail, Lender, Lender Type, Loan Types, Min. Rev, EBITDA Min., Min. Deal, Max Deal, Industries, Geo, Contact, Title, etc.</p>
+              <p>E-mail, Lender, Funding Source Type, Loan Types, Min. Rev, EBITDA Min., Min. Deal, Max Deal, Industries, Geo, Contact, Title, etc.</p>
             </div>
           </div>
         )}

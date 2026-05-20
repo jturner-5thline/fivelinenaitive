@@ -105,7 +105,7 @@ const FIELD_DEFINITIONS: FieldDefinition[] = [
   },
   {
     key: 'lender_type',
-    label: 'Lender Type',
+    label: 'Funding Source Type',
     type: 'multiselect',
     operators: [
       { value: 'is_any_of', label: 'is any of' },

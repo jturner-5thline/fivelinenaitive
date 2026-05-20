@@ -456,7 +456,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       };
       checkField('name', 'Name', lender.name || '');
       checkField('tier', 'Tier', lender.tier?.replace(/^T/, '') || '');
-      checkField('lenderType', 'Lender Type', lender.lenderType || '');
+      checkField('lenderType', 'Funding Source Type', lender.lenderType || '');
       checkField('minDeal', 'Min Deal Size', lender.minDeal?.toString() || '');
       checkField('maxDeal', 'Max Deal Size', lender.maxDeal?.toString() || '');
       checkField('geo', 'Geography', lender.geo || '');
@@ -466,7 +466,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
       checkField('minRevenue', 'Min Revenue', lender.minRevenue?.toString() || '');
       checkField('ebitdaMin', 'EBITDA Min', lender.ebitdaMin?.toString() || '');
       checkField('companyRequirements', 'Company Requirements', lender.companyRequirements || '');
-      checkField('lenderNotes', 'Lender Notes', lender.lenderNotes || '');
+      checkField('lenderNotes', 'Funding Source Notes', lender.lenderNotes || '');
       checkField('relationshipOwners', 'Relationship Owners', lender.relationshipOwners || '');
 
       await onSave(lender.id, editForm);
@@ -564,7 +564,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
     await deleteAttachment(attachment);
   };
 
-  // Find all deals where this lender is involved
+  // Find all deals where this funding source is involved
   const lenderDeals = useMemo(() => {
     if (!lender) return { active: [], sent: [], passReasons: [] };
 
@@ -810,17 +810,17 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                   <Textarea
                     value={editForm.description}
                     onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                    placeholder="Additional notes about the lender..."
+                    placeholder="Additional notes about the funding source..."
                     rows={3}
                     className="text-sm"
                   />
                 </section>
                 <Separator />
 
-                {/* Edit Mode: Lender Type */}
+                {/* Edit Mode: Funding Source Type */}
                 <section>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Lender Type
+                    Funding Source Type
                   </h3>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -1238,15 +1238,15 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                 </section>
                 <Separator />
 
-                {/* Edit Mode: Lender Notes */}
+                {/* Edit Mode: Funding Source Notes */}
                 <section>
                   <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                    Lender Notes
+                    Funding Source Notes
                   </h3>
                   <Textarea
                     value={editForm.lenderNotes}
                     onChange={(e) => setEditForm({ ...editForm, lenderNotes: e.target.value })}
-                    placeholder="Add your notes about this lender..."
+                    placeholder="Add your notes about this funding source..."
                     rows={4}
                     className="text-sm"
                   />
@@ -1565,7 +1565,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                         <div key={sectionId}>
                           <section>
                             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-                              Lender Notes
+                              Funding Source Notes
                             </h3>
                             {lender.lenderNotes ? (
                               <p className="text-sm leading-relaxed whitespace-pre-wrap">{lender.lenderNotes}</p>
@@ -1600,7 +1600,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 ))}
                               </HorizontalScrollContainer>
                             ) : (
-                              <p className="text-muted-foreground text-sm">No active deals with this lender</p>
+                              <p className="text-muted-foreground text-sm">No active deals with this funding source</p>
                             )}
                           </section>
                           {showSeparator && <Separator className="my-6" />}
@@ -1757,7 +1757,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 ))}
                               </HorizontalScrollContainer>
                             ) : (
-                              <p className="text-muted-foreground text-sm">No deals have been sent to this lender</p>
+                              <p className="text-muted-foreground text-sm">No deals have been sent to this funding source</p>
                             )}
                           </section>
                           {showSeparator && <Separator className="my-6" />}
@@ -1794,7 +1794,7 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                                 ))}
                               </HorizontalScrollContainer>
                             ) : (
-                              <p className="text-muted-foreground text-sm">No pass history with this lender</p>
+                              <p className="text-muted-foreground text-sm">No pass history with this funding source</p>
                             )}
                           </section>
                         </div>

@@ -173,7 +173,7 @@ function CostBreakdown({ results, config }: { results: LenderComputedResults; co
   );
 }
 
-// ── Lender Card ─────────────────────────────────────────
+// ── Funding Source Card ─────────────────────────────────────────
 const LenderCard = memo(function LenderCard({ config, results, onChange, label }: {
   config: LenderConfig;
   results: LenderComputedResults;

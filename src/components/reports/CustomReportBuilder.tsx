@@ -82,7 +82,7 @@ const availableFields: FieldOption[] = [
   
   // Lender fields
   { id: 'lenderCount', label: 'Total Lenders', category: 'lender', getValue: (d) => d.lenders?.length || 0 },
-  { id: 'activeLenders', label: 'Active Lenders', category: 'lender', getValue: (d) => d.lenders?.filter(l => l.trackingStatus === 'active').length || 0 },
+  { id: 'activeLenders', label: 'Active Funding Sources', category: 'lender', getValue: (d) => d.lenders?.filter(l => l.trackingStatus === 'active').length || 0 },
   { id: 'passedLenders', label: 'Passed Lenders', category: 'lender', getValue: (d) => d.lenders?.filter(l => l.trackingStatus === 'passed').length || 0 },
   
   // Date fields

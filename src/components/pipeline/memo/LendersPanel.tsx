@@ -243,7 +243,7 @@ function LenderRow({
           <Textarea
             value={noteDraft}
             onChange={(e) => setNoteDraft(e.target.value)}
-            placeholder="Add a note about this lender…"
+            placeholder="Add a note about this funding source…"
             rows={4}
             className="text-xs resize-none"
           />
@@ -598,7 +598,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
       )}
 
       {lenders.length === 0 ? (
-        <p className="text-xs text-muted-foreground italic">No lenders engaged.</p>
+        <p className="text-xs text-muted-foreground italic">No funding sources engaged.</p>
       ) : (
         <div className="space-y-3 min-w-0">
           {(['reviewing', 'onhold', 'ondeck', 'passed'] as Bucket[]).map(b => {

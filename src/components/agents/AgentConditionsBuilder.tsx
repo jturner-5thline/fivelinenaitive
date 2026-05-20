@@ -31,7 +31,7 @@ const FIELD_OPTIONS: Record<string, Array<{ value: string; label: string; type: 
   ],
   lender: [
     { value: 'stage', label: 'Lender Stage', type: 'select' },
-    { value: 'name', label: 'Lender Name', type: 'text' },
+    { value: 'name', label: 'Funding Source Name', type: 'text' },
     { value: 'quote_amount', label: 'Quote Amount', type: 'number' },
     { value: 'quote_rate', label: 'Quote Rate', type: 'number' },
   ],

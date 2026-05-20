@@ -362,7 +362,7 @@ export function PortfolioRiskAnalysis() {
     doc.text(`Total Portfolio Value: ${formatCurrency(kpis.totalValue)}`, 14, 38);
     doc.text(`Active Deals: ${kpis.totalActive}`, 14, 45);
     doc.text(`Avg Pipeline Progress: ${kpis.avgPipelineProgress.toFixed(0)}%`, 14, 52);
-    doc.text(`Avg Lender Engagement: ${kpis.avgEngagement.toFixed(0)}%`, 14, 59);
+    doc.text(`Avg Funding Source Engagement: ${kpis.avgEngagement.toFixed(0)}%`, 14, 59);
 
     // Deals table
     const tableRows = activeDeals.map(d => [
@@ -509,7 +509,7 @@ export function PortfolioRiskAnalysis() {
                 <Users className="h-5 w-5 text-[hsl(var(--chart-4))]" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Avg Lender Engagement</p>
+                <p className="text-xs text-muted-foreground">Avg Funding Source Engagement</p>
                 <p className="text-2xl font-bold">{kpis.avgEngagement.toFixed(0)}%</p>
               </div>
             </div>
@@ -634,10 +634,10 @@ export function PortfolioRiskAnalysis() {
         </CardContent>
       </Card>
 
-      {/* Lender Engagement Overview */}
+      {/* Funding Source Engagement Overview */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg">Lender Engagement by Deal</CardTitle>
+          <CardTitle className="text-lg">Funding Source Engagement by Deal</CardTitle>
         </CardHeader>
         <CardContent>
           {engagementData.length === 0 ? (

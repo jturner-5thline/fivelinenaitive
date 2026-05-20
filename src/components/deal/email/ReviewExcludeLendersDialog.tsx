@@ -39,12 +39,12 @@ export interface LenderReviewRow {
   lastContactAt: string | null;
   /** Raw stage id from deal_lenders.stage. */
   stage: string | null;
-  /** Resolved, user-facing stage label for this lender on this deal. */
+  /** Resolved, user-facing stage label for this funding source on this deal. */
   stageLabel: string;
   /** True by default for `passed`; user can flip. */
   excluded: boolean;
   /**
-   * Snapshot of whether this lender was auto-excluded on load (Passed,
+   * Snapshot of whether this funding source was auto-excluded on load (Passed,
    * disqualified, or otherwise non-actionable). Used to hide non-eligible
    * rows from the default view; the "All lenders" toggle reveals them.
    */
@@ -58,7 +58,7 @@ interface Props {
   dealName?: string | null;
   /**
    * Called with the names of lenders to INCLUDE in the upcoming submission
-   * plus whether to personalize each draft to the lender's profile.
+   * plus whether to personalize each draft to the funding source's profile.
    */
   onConfirm: (includedLenderNames: string[], personalize: boolean) => void;
 }
@@ -327,7 +327,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
   const handleConfirm = async () => {
     if (summary.includedCount === 0) {
       toast({
-        title: 'No lenders selected',
+        title: 'No funding sources selected',
         description: 'Include at least one lender before continuing.',
         variant: 'destructive',
       });
@@ -420,8 +420,8 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             <AlertCircle className="h-5 w-5" />
             <span className="text-sm">
               {isFifthLine
-                ? 'No lenders on this deal are currently in On Deck or On Hold.'
-                : 'No lenders are attached to this deal yet.'}
+                ? 'No funding sources on this deal are currently in On Deck or On Hold.'
+                : 'No funding sources are attached to this deal yet.'}
             </span>
           </div>
         ) : (
@@ -645,8 +645,8 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
           </div>
         )}
 
-        {/* Personalize per lender — when ON, the AI tailors each draft to
-            the lender's stated focus areas (deal types, size, industry).
+        {/* Personalize per funding source — when ON, the AI tailors each draft to
+            the funding source's stated focus areas (deal types, size, industry).
             When OFF, one standard draft is generated and broadcast. */}
         <div className="flex items-start gap-3 rounded-md border border-primary/20 bg-primary/[0.04] px-3 py-2">
           <Sparkles className="h-3.5 w-3.5 mt-0.5 text-primary flex-shrink-0" />
@@ -655,7 +655,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
               htmlFor="personalize-toggle"
               className="text-xs font-medium cursor-pointer flex items-center gap-2"
             >
-              Personalize per lender
+              Personalize per funding source
               {personalize && (
                 <Badge variant="outline" className="text-[9px] py-0 h-4 border-primary/40 text-primary">
                   AI tailoring
@@ -672,7 +672,7 @@ export function ReviewExcludeLendersDialog({ open, onOpenChange, dealId, dealNam
             id="personalize-toggle"
             checked={personalize}
             onCheckedChange={setPersonalize}
-            aria-label="Personalize each draft per lender"
+            aria-label="Personalize each draft per funding source"
           />
         </div>
 

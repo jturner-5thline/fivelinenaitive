@@ -31,9 +31,9 @@ export type LenderContactOption = {
 
 export type EmailDraft = {
   lenderName: string;
-  /** master_lenders.id when the draft is matched to a lender directory record. */
+  /** master_lenders.id when the draft is matched to a directory record. */
   lenderId?: string | null;
-  /** All known contact emails for this lender (for the recipient dropdown). */
+  /** All known contact emails for this funding source (for the recipient dropdown). */
   availableContacts?: LenderContactOption[];
   /** Currently selected contact id from `availableContacts`. */
   selectedContactId?: string | null;
@@ -50,9 +50,9 @@ export type EmailDraft = {
   isBccEdited?: boolean;
   errorMessage?: string;
   /**
-   * One-line explanation of why the AI personalized this draft to the lender
+   * One-line explanation of why the AI personalized this draft to the funding source
    * (e.g. "Tailored to Founderpath's SaaS focus and $1–10MM range"). Empty
-   * when "Personalize per lender" was off and the same draft was broadcast.
+   * when "Personalize per funding source" was off and the same draft was broadcast.
    */
   personalizationRationale?: string;
 };
@@ -161,7 +161,7 @@ export function DraftSubmissionEmailsModal({
                 </div>
               )}
               <div className="text-[10px] text-muted-foreground/70">
-                This may take up to 90 seconds per lender.
+                This may take up to 90 seconds per funding source.
               </div>
             </div>
           </div>
@@ -281,7 +281,7 @@ export function DraftSubmissionEmailsModal({
                   </div>
                 </div>
 
-                {/* No-email warning when the lender directory record has no contacts. */}
+                {/* No-email warning when the directory record has no contacts. */}
                 {(draft.availableContacts?.length ?? 0) === 0 && !draft.to.trim() && (
                   <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/5 px-2 py-1.5 text-[11px] text-amber-700 dark:text-amber-400 ml-[56px]">
                     <AlertTriangle className="h-3 w-3 mt-0.5 flex-shrink-0" />
@@ -366,7 +366,7 @@ export function DraftSubmissionEmailsModal({
                 </div>
 
                 {/* Personalization rationale — surfaced when the AI tailored
-                    this draft to the lender's profile (focus areas, deal
+                    this draft to the funding source's profile (focus areas, deal
                     size range, prior interaction). Hidden when the user
                     chose to broadcast a single generic draft. */}
                 {draft.personalizationRationale && (
@@ -415,7 +415,7 @@ export function DraftSubmissionEmailsModal({
                         type="button"
                         onClick={() => {
                           // Empty body == generation never produced a draft for
-                          // this lender, so retry should re-run the AI call,
+                          // this funding source, so retry should re-run the AI call,
                           // not the send pipeline.
                           const isGenerationFailure = !draft.bodyHtml;
                           if (isGenerationFailure && onRegenerate) {

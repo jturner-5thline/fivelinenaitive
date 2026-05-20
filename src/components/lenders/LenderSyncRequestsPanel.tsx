@@ -57,7 +57,7 @@ interface SyncRequestCardProps {
   onApprove: (id: string) => Promise<boolean>;
   onReject: (id: string) => Promise<boolean>;
   onMerge: (id: string, data: Record<string, unknown>) => Promise<boolean>;
-  /** Total members in this lender's duplicate cluster (incl. self). 1 = unique. */
+  /** Total members in this funding source's duplicate cluster (incl. self). 1 = unique. */
   clusterSize?: number;
 }
 
@@ -112,7 +112,7 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
 
   const getTypeBadge = () => {
     switch (request.request_type) {
-      case 'new_lender': return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">New Lender</Badge>;
+      case 'new_lender': return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">New Funding Source</Badge>;
       case 'update_existing': return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">Update</Badge>;
       case 'merge_conflict': return <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">Merge Conflict</Badge>;
     }
@@ -212,7 +212,7 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
           {/* Show incoming data for new lenders */}
           {request.request_type === 'new_lender' && (
             <div className="space-y-1">
-              <p className="text-xs font-medium text-muted-foreground uppercase">Lender Details</p>
+              <p className="text-xs font-medium text-muted-foreground uppercase">Funding Source Details</p>
               <div className="grid grid-cols-2 gap-2 text-sm">
                 {incomingData.lender_type && (
                   <div><span className="text-muted-foreground">Type:</span> {String(incomingData.lender_type)}</div>
@@ -611,7 +611,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="new" className="gap-1.5">
-                  New Lenders
+                  New Funding Sources
                   {newLenderRequests.length > 0 && (
                     <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30">
                       {newLenderRequests.length}
@@ -661,7 +661,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All types</SelectItem>
-                      <SelectItem value="new_lender">New Lender</SelectItem>
+                      <SelectItem value="new_lender">New Funding Source</SelectItem>
                       <SelectItem value="update_existing">Update</SelectItem>
                       <SelectItem value="merge_conflict">Merge Conflict</SelectItem>
                     </SelectContent>

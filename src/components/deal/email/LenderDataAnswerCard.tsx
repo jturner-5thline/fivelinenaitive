@@ -44,7 +44,7 @@ function isMissingInfo(text: string): boolean {
 
 /**
  * Compose the canonical insertable reply paragraph from a Q&A pair. Keeps
- * the lender-facing tone neutral and explicitly attributes the answer to
+ * the funding source-facing tone neutral and explicitly attributes the answer to
  * "the deal record" — never the AI.
  */
 function buildReplyInsert(question: string, answer: string): string {
@@ -56,7 +56,7 @@ function buildReplyInsert(question: string, answer: string): string {
 /**
  * Compose a single consolidated reply block that addresses every detected
  * question as bullet points. Skips entries the model couldn't answer from
- * the Deal Space (so the lender never sees "Not in deal record" injected
+ * the Deal Space (so the funding source never sees "Not in deal record" injected
  * silently into a reply — those still surface as a closing note).
  *
  * Format:
@@ -81,7 +81,7 @@ function buildConsolidatedInsert(
     for (const { question, state } of answered) {
       const topic = (question.topics[0] || question.text).trim();
       const ans = (state.content || '').trim().replace(/\s+/g, ' ');
-      // Cite up to the top 3 Deal Space sources inline so the lender (and
+      // Cite up to the top 3 Deal Space sources inline so the funding source (and
       // the sender reviewing the draft) can trace where each figure came
       // from. Skip silently when the model returned no sources.
       const cites = (state.sources || [])

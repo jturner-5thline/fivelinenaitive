@@ -255,7 +255,7 @@ export function LenderSuggestionsContent({
       <div className="flex items-center gap-2 mb-4 min-w-0">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search lenders..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 h-8 text-sm" />
+          <Input placeholder="Search funding sources..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-8 h-8 text-sm" />
           {searchQuery && (
             <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6" onClick={() => setSearchQuery('')}>
               <X className="h-3 w-3" />
@@ -263,7 +263,7 @@ export function LenderSuggestionsContent({
           )}
         </div>
         <Select value={lenderTypeFilter} onValueChange={setLenderTypeFilter}>
-          <SelectTrigger className="h-8 text-xs w-[130px] shrink-0"><Filter className="h-3 w-3 mr-1" /><SelectValue placeholder="Lender Type" /></SelectTrigger>
+          <SelectTrigger className="h-8 text-xs w-[130px] shrink-0"><Filter className="h-3 w-3 mr-1" /><SelectValue placeholder="Funding Source Type" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Types</SelectItem>
             {lenderTypes.map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
@@ -416,7 +416,7 @@ export function LenderSuggestionsContent({
   );
 }
 
-// ─── Lender Match Card ────────────────────────────────────────────────────────
+// ─── Funding Source Match Card ────────────────────────────────────────────────────────
 
 interface LenderMatchCardProps {
   match: LenderMatch;

@@ -81,10 +81,10 @@ export function DealPulseDashboard({ deal, attachmentCount = 0, checklistTotal =
     });
     const engagementScore = lenders.length === 0 ? 0 : Math.round(((lenders.length - staleLenders.length) / lenders.length) * 100);
     healthMetrics.push({
-      label: 'Lender Engagement',
+      label: 'Funding Source Engagement',
       score: lenders.length === 0 ? 50 : engagementScore,
       weight: 30,
-      detail: lenders.length === 0 ? 'No lenders added' : `${staleLenders.length} stale of ${lenders.length} total`,
+      detail: lenders.length === 0 ? 'No funding sources added' : `${staleLenders.length} stale of ${lenders.length} total`,
     });
 
     // 3. Milestone progress

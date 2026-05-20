@@ -103,7 +103,7 @@ export function LenderPassSidebarCard({
       {noLenderMatch && (
         <div className="flex items-start gap-1.5 text-[10px] text-amber-300/90 bg-amber-500/[0.04] rounded p-2">
           <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-          <span>Sender not matched to a lender on this deal.</span>
+          <span>Sender not matched to a funding source on this deal.</span>
         </div>
       )}
 

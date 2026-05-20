@@ -34,7 +34,7 @@ const researchTypeConfig: Record<string, { icon: any; label: string; description
   },
   lender_matching: {
     icon: Landmark,
-    label: 'Lender Match',
+    label: 'Funding Source Match',
     description: 'Best-fit lender recommendations',
     color: 'text-purple-500',
   },

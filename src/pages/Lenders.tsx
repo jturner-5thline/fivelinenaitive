@@ -183,7 +183,7 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     // the detail dialog. We intentionally exclude industries / loan_types /
     // geo here because those are already rendered under "Lending Criteria" —
     // duplicating them caused the same chip list to appear in both sections
-    // (Bug 2 sub-bug). When the lender record carries no extra preference
+    // (Bug 2 sub-bug). When the funding source record carries no extra preference
     // fields the section renders its empty-state CTA instead.
     preferences: [] as string[],
     website: lender.lender_one_pager_url || undefined,
@@ -386,7 +386,7 @@ export default function Lenders() {
   }, [deals, masterLenders]);
 
   // Build a per-lender deal-history index used by the search:
-  // deal names, pass reasons, and lender notes from all deals where this lender appears.
+  // deal names, pass reasons, and lender notes from all deals where this funding source appears.
   const lenderDealIndex = useMemo(() => {
     const idx: Record<string, string> = {};
     deals.forEach((deal) => {
@@ -444,7 +444,7 @@ export default function Lenders() {
     return () => { cancelled = true; };
   }, []);
 
-  // AI-driven filter: when the Copilot answers a lender query, it can dispatch
+  // AI-driven filter: when the Copilot answers a funding source query, it can dispatch
   // a 'naitive:lender-filter' event with a list of matching lender names.
   const [aiFilter, setAiFilter] = useState<{ query: string; names: Set<string> } | null>(null);
   useEffect(() => {
@@ -769,7 +769,7 @@ export default function Lenders() {
       });
     } else {
       toast({
-        title: 'No lenders added',
+        title: 'No funding sources added',
         description: 'All selected lenders are already on this deal.',
       });
     }
@@ -1241,7 +1241,7 @@ export default function Lenders() {
                   className="lg-cta gap-1"
                 >
                   <Plus className="h-4 w-4" />
-                  Add Lender
+                  Add Funding Source
                 </Button>
               </div>
             </div>
@@ -1654,7 +1654,7 @@ export default function Lenders() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
                       <FileX className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="text-lg font-medium text-foreground">No lenders found</h3>
+                    <h3 className="text-lg font-medium text-foreground">No funding sources found</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Try adjusting your filters or clearing your search to see more lenders.
                     </p>
@@ -1665,29 +1665,29 @@ export default function Lenders() {
                     <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
                       <Building2 className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="text-lg font-medium text-foreground">No lenders yet</h3>
+                    <h3 className="text-lg font-medium text-foreground">No funding sources yet</h3>
                     <p className="mt-1 text-sm text-muted-foreground">
                       Import your master lender database or add lenders manually to get started.
                     </p>
                     <Button onClick={openAddDialog} size="sm" className="gap-1 mt-4">
                       <Plus className="h-4 w-4" />
-                      Add Lender
+                      Add Funding Source
                     </Button>
                   </div>
                 )}
             </div>
       </WorkspacePage>
 
-      {/* Add/Edit Lender Dialog */}
+      {/* Add/Edit Funding Source Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-lg w-[calc(100dvw-2rem)] sm:w-full max-h-[calc(100dvh-2rem)] overflow-hidden flex flex-col top-4 translate-y-0 sm:top-[50%] sm:translate-y-[-50%]">
           <DialogHeader>
-            <DialogTitle>{editingLenderId ? 'Edit Lender' : 'Add Lender'}</DialogTitle>
+            <DialogTitle>{editingLenderId ? 'Edit Funding Source' : 'Add Funding Source'}</DialogTitle>
           </DialogHeader>
           <ScrollArea className="flex-1 min-h-0 pr-4">
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Lender Name *</Label>
+                <Label htmlFor="name">Funding Source Name *</Label>
                 <Input
                   id="name"
                   value={form.name}
@@ -1697,7 +1697,7 @@ export default function Lenders() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="lenderType">Lender Type</Label>
+                  <Label htmlFor="lenderType">Funding Source Type</Label>
                   <Input
                     id="lenderType"
                     value={form.lenderType}
@@ -1861,7 +1861,7 @@ export default function Lenders() {
                   id="description"
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Additional notes about the lender..."
+                  placeholder="Additional notes about the funding source..."
                   rows={3}
                 />
               </div>
@@ -1873,7 +1873,7 @@ export default function Lenders() {
             </Button>
             <Button variant="gradient" onClick={handleSubmit} disabled={isSaving}>
               {isSaving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              {editingLenderId ? 'Save Changes' : 'Add Lender'}
+              {editingLenderId ? 'Save Changes' : 'Add Funding Source'}
             </Button>
           </DialogFooter>
         </DialogContent>

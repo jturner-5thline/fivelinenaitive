@@ -506,7 +506,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       stage: dealContextSummary.stage,
       days_in_stage: dealContextSummary.daysInStage,
       // Headline financials sourced from Deal Space — let the AI cite real
-      // numbers instead of leaving placeholders when the lender asks about
+      // numbers instead of leaving placeholders when the funding source asks about
       // size, ARR, or margins.
       financials: {
         deal_size: f.dealSize,
@@ -944,7 +944,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             const contactChip = workflowAnalysis?.likely_contact?.name
               || thread.latestEmail.from_name;
             const rawLenderChip = workflowAnalysis?.likely_lender_firm?.name;
-            // Suppress 5th Line as a lender — it's our own firm, not a lender.
+            // Suppress 5th Line as a funding source — it's our own firm, not a funding source.
             const normalizedLender = (rawLenderChip || '')
               .toLowerCase()
               .replace(/[^a-z0-9]+/g, ' ')
@@ -986,7 +986,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
           {/* Quick Actions toolbar — pinned directly below the entity chip
               row. Always visible without scrolling; consolidates the panel's
-              5 primary actions (Save to Data Room, Update Lender Status,
+              5 primary actions (Save to Data Room, Update Funding Source Status,
               Draft Reply, Create Task, Schedule Meeting) into a single
               horizontally scrollable pill row. Each pill (except Draft
               Reply, which expands the dedicated Draft Reply module below)

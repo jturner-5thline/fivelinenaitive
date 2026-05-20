@@ -365,7 +365,7 @@ function DuplicateGroupCard({
 
                 {/* Other field selections */}
                 <MergeField
-                  label="Lender Type"
+                  label="Funding Source Type"
                   options={group.lenders.map(l => ({ id: l.id, value: l.lender_type }))}
                   selectedId={fieldSelections['lender_type'] || group.lenders[0].id}
                   onSelect={(id) => setFieldSelections(prev => ({ ...prev, lender_type: id }))}
@@ -406,7 +406,7 @@ function DuplicateGroupCard({
       <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this lender entry?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this funding source entry?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete this duplicate entry. The other entries will remain.
             </AlertDialogDescription>
@@ -583,7 +583,7 @@ export function DuplicateLendersDialog({
     } catch (error) {
       toast({ 
         title: 'Delete failed', 
-        description: 'An error occurred while deleting the lender.',
+        description: 'An error occurred while deleting the funding source.',
         variant: 'destructive'
       });
     } finally {

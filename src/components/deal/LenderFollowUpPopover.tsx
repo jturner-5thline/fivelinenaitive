@@ -48,11 +48,11 @@ interface Props {
 }
 
 /**
- * Inline ✉ Follow Up popover anchored to a lender tile.
+ * Inline ✉ Follow Up popover anchored to a funding source tile.
  *
  * Flow:
- *  1. On open, look up the lender's contacts (master_lenders.lender_contacts).
- *  2. AI-draft a short subject + body via the lender-followup-draft edge fn.
+ *  1. On open, look up the funding source's contacts (master_lenders.lender_contacts).
+ *  2. AI-draft a short subject + body via the funding source-followup-draft edge fn.
  *  3. User can edit any field, swap contact, or regenerate.
  *  4. On Send: route via gmail-messages (action: 'send'), then write
  *     activity_logs (deal feed) + lender_audit_logs (lender comms timeline)
@@ -138,7 +138,7 @@ export function LenderFollowUpPopover({
 
   const selectedContact = contacts.find((c) => c.id === selectedContactId) || null;
 
-  // Search Gmail for existing threads with this lender about this deal.
+  // Search Gmail for existing threads with this funding source about this deal.
   // Runs in background as soon as we know a recipient email/domain.
   useEffect(() => {
     if (!open) return;
@@ -215,7 +215,7 @@ export function LenderFollowUpPopover({
   const generateDraft = async () => {
     setDrafting(true);
     try {
-      // Try to pull the most recent Gmail thread involving this lender
+      // Try to pull the most recent Gmail thread involving this funding source
       // (by recipient email domain) and this deal name. Best-effort —
       // failures are silently ignored so the draft still generates.
       let gmailContext:
@@ -290,7 +290,7 @@ export function LenderFollowUpPopover({
     if (!v) resetState();
   };
 
-  // When replying to a thread, prefer the lender's email from that thread.
+  // When replying to a thread, prefer the funding source's email from that thread.
   const threadRecipient = selectedThread
     ? (selectedThread.from_email || selectedThread.to_emails[0] || '')
     : '';
@@ -360,7 +360,7 @@ export function LenderFollowUpPopover({
         },
       });
 
-      // 4. Mirror onto the lender comms timeline (per-lender history).
+      // 4. Mirror onto the funding source comms timeline (per-lender history).
       if (masterLenderId) {
         await supabase.from('lender_audit_logs').insert({
           lender_id: masterLenderId,

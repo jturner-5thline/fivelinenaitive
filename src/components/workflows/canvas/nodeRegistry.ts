@@ -7,7 +7,7 @@ export const NODE_REGISTRY: NodePaletteItem[] = [
     label: 'Lender Event',
     icon: '🔔',
     category: 'trigger',
-    description: 'Fires when a lender stage or status changes',
+    description: 'Fires when a funding source stage or status changes',
     inputs: [],
     outputs: [
       { key: 'deal_id', type: 'uuid' },

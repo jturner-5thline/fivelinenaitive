@@ -107,7 +107,7 @@ export function LenderSuggestionsPanel({
                   className="gap-2 bg-gradient-to-r from-primary to-blue-500 hover:from-primary/90 hover:to-blue-500/90 text-primary-foreground shadow-md"
                 >
                   <Sparkles className="h-4 w-4" />
-                  Suggested Lenders
+                  Suggested Funding Sources
                   {totalMatches > 0 && (
                     <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal bg-background/20 text-primary-foreground border-0">
                       {totalMatches}
@@ -148,7 +148,7 @@ export function LenderSuggestionsPanel({
               )}
               <Sparkles className="h-5 w-5 text-primary" />
               <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
-                {showSurvey ? 'Refine Your Search' : 'Suggested Lenders'}
+                {showSurvey ? 'Refine Your Search' : 'Suggested Funding Sources'}
               </span>
               {!showSurvey && totalMatches > 0 && (
                 <Badge variant="secondary" className="font-normal">
@@ -293,7 +293,7 @@ export function LenderSuggestionsFAB({
               )}
               <Sparkles className="h-5 w-5 text-primary" />
               <span className="bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">
-                {showSurvey ? 'Refine Your Search' : 'Suggested Lenders'}
+                {showSurvey ? 'Refine Your Search' : 'Suggested Funding Sources'}
               </span>
               {!showSurvey && matchCount > 0 && (
                 <Badge variant="secondary" className="font-normal">{matchCount} matches</Badge>

@@ -32,7 +32,7 @@ const ONBOARDING_STEPS: OnboardingStep[] = [
     ]
   },
   {
-    title: 'Manage Lenders',
+    title: 'Manage Funding Sources',
     description: 'Track lender relationships and their progress on each deal.',
     icon: <Users className="h-12 w-12" />,
     features: [

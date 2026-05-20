@@ -387,7 +387,7 @@ export function LenderAnalyticsDialog({
             <div className="min-w-0">
               <DialogTitle className="text-[15px] font-semibold tracking-tight text-slate-100 flex items-center gap-2">
                 <TrendingUp className="h-4 w-4 text-sky-400" />
-                Lender Analytics
+                Funding Source Analytics
               </DialogTitle>
               <DialogDescription className="text-[12px] text-slate-400 mt-1">
                 {subtitleParts.join(' · ')}
@@ -423,7 +423,7 @@ export function LenderAnalyticsDialog({
               hint={`${kpis.terms} of ${kpis.submitted} submitted`}
               loading={loading}
             />
-            <KpiCard label="Active Lenders in Pipeline" value={kpis.active} hint="Currently in active stages" loading={loading} />
+            <KpiCard label="Active Funding Sources in Pipeline" value={kpis.active} hint="Currently in active stages" loading={loading} />
           </div>
 
           {error && (

@@ -83,7 +83,7 @@ export function WorkflowEmailModalListener() {
 
     const p = data as unknown as PromptRecord;
     // Demo-only: rewrite any "Dear …" greeting in the saved draft to use
-    // a deterministic fake lender contact name (seeded off the lender /
+    // a deterministic fake lender contact name (seeded off the funding source /
     // recipient name) before the user sees the editable body.
     const lenderSeed =
       (p.metadata as any)?.lender_name ||

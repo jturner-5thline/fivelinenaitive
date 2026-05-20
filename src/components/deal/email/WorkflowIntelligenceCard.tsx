@@ -53,7 +53,7 @@ interface Props {
    * When true, suppress the embedded SuggestedTaskCards block. The
    * redesigned AI Assist sidebar renders task suggestions in its own
    * collapsible "Suggested Tasks" section so the workflow card stays
-   * focused on the lender/deal status update.
+   * focused on the funding source/deal status update.
    */
   hideSuggestedTasks?: boolean;
   /**
@@ -84,7 +84,7 @@ const SIGNAL_TONE: Record<string, string> = {
 };
 
 /**
- * Stage groups that close out a lender — show the disposition detail
+ * Stage groups that close out a funding source — show the disposition detail
  * (pass-reason) dropdown for these. Tied to the configurable Lender
  * Stages in Settings: any stage whose `group === 'passed'` is treated
  * as a closing stage. We deliberately key off the GROUP (not the
@@ -269,14 +269,14 @@ export function WorkflowIntelligenceCard({
   const showDetailField = isLenderStatus && !!selectedStage && CLOSING_STAGE_GROUPS.has(selectedStage.group);
 
   // Lender association: trust the DB-backed resolver first (handles cases
-  // where the AI didn't return a lender_id but the row is already on the
+  // where the AI didn't return a funding source_id but the row is already on the
   // deal). Falls back to AI signals while resolution is in flight.
   const lenderAlreadyOnDeal = isLenderOnDeal === true || !!rec.lender_id;
   const lenderResolvable = !isLenderStatus
     || lenderAlreadyOnDeal
     || !!rec.master_lender_id
     || (!!rec.lender_name && (rec.confidence === 'high' || rec.confidence === 'medium'));
-  // Only flag auto-link when resolution finished AND the lender is
+  // Only flag auto-link when resolution finished AND the funding source is
   // genuinely missing. While `isLenderOnDeal === null` (still loading),
   // suppress the banner to avoid the false positive.
   const willAutoLink =
@@ -668,7 +668,7 @@ export function WorkflowIntelligenceCard({
                   <div className="flex items-start gap-1 text-[10px] text-primary/80 min-w-0">
                     <Link2 className="h-2.5 w-2.5 shrink-0" />
                     <span className="min-w-0 break-words" style={{ overflowWrap: 'anywhere' }}>
-                      Will auto-add {rec.lender_name || 'this lender'} to the deal.
+                      Will auto-add {rec.lender_name || 'this funding source'} to the deal.
                     </span>
                   </div>
                 )}
