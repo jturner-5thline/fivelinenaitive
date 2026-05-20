@@ -44,6 +44,24 @@ interface Recommendation {
   negativeFitSignals?: string[];
   matchedExclusion?: string | null;
   fitSummary?: string | null;
+  explanation?: WhyExplanation;
+}
+
+// Transparent per-lender explanation surfaced to the UI.
+interface FieldRow { label: string; deal: string; lender: string; verdict: 'match' | 'mismatch' | 'partial' | 'unknown'; }
+interface WhyExplanation {
+  fitReasons: string[];        // top 3 concrete fit reasons
+  risks: string[];             // top 1-2 risks/caveats
+  matchedFields: FieldRow[];
+  unmatchedFields: FieldRow[];
+  noteInsights: { positive: string[]; negative: string[]; tags: string[] };
+  priorTeamKnowledge: {
+    recentActivity: boolean;
+    passReasons: string[];
+    repeatPatterns: { reason: string; occurrences: number; confidence: number }[];
+  };
+  dominantDriver: 'structured' | 'notes' | 'history' | 'balanced';
+  driverBreakdown: { structured: number; notes: number; history: number };
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -367,6 +385,223 @@ function scoreEvidence(
   else if (ev.negative) reason = `${ev.negative} negative note(s)`;
   else if (ev.positive) reason = `${ev.positive} positive note(s)`;
   return { score, reason, hardOut: false };
+}
+
+// ── explanation builder ──────────────────────────────────────────────────────
+function fmtUsd(n: number | null | undefined): string {
+  if (n == null) return '—';
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
+  return `$${n}`;
+}
+
+function buildExplanation(args: {
+  lender: any;
+  dealCtx: any;
+  components: ComponentScores;
+  aiAdj: number;
+  aiRationale: string;
+  posHits: { signal: string; confidence: number }[];
+  negHits: { signal: string; confidence: number }[];
+  lenderTags: string[];
+  passReasons: string[];
+  patterns: any[];
+  fit: any;
+  recentActivity: boolean;
+  reasons: string[];
+}): WhyExplanation {
+  const { lender, dealCtx, components, aiAdj, aiRationale, posHits, negHits, lenderTags, passReasons, patterns, fit, recentActivity, reasons } = args;
+
+  // Build matched / unmatched / partial structured field rows
+  const rows: FieldRow[] = [];
+
+  // Loan type
+  const dealTypes = (dealCtx.dealTypes ?? []).join(', ') || '—';
+  const lenderTypes = arr(lender.loan_types).join(', ') || lender.lender_type || '—';
+  rows.push({
+    label: 'Loan type',
+    deal: dealTypes, lender: lenderTypes,
+    verdict: components.type >= 80 ? 'match' : components.type >= 55 ? 'partial' : components.type >= 30 ? 'mismatch' : 'mismatch',
+  });
+
+  // Size band
+  const dealSize = fmtUsd(dealCtx.value);
+  const sizeBand = `${fmtUsd(toNum(lender.min_deal))} – ${fmtUsd(toNum(lender.max_deal))}`;
+  rows.push({
+    label: 'Deal size',
+    deal: dealSize, lender: sizeBand,
+    verdict: components.size >= 80 ? 'match' : components.size >= 50 ? 'partial' : 'mismatch',
+  });
+
+  // Industry
+  rows.push({
+    label: 'Industry',
+    deal: String(dealCtx.industry ?? dealCtx.businessModel ?? '—'),
+    lender: arr(lender.industries).slice(0, 4).join(', ') || '—',
+    verdict: components.industry >= 80 ? 'match' : components.industry >= 55 ? 'partial' : components.industry >= 30 ? 'mismatch' : 'unknown',
+  });
+
+  // Geography
+  rows.push({
+    label: 'Geography',
+    deal: String(dealCtx.location ?? '—'),
+    lender: String(lender.geo ?? '—'),
+    verdict: components.geography >= 85 ? 'match' : components.geography >= 60 ? 'partial' : 'mismatch',
+  });
+
+  // Sponsorship
+  if (lender.sponsorship || dealCtx.sponsorship) {
+    const ls = lc(lender.sponsorship ?? '');
+    const ds = lc(dealCtx.sponsorship ?? '');
+    const lenderNeedsSponsor = /required|sponsor-backed only|yes only/.test(ls);
+    const dealHasSponsor = /sponsor|pe[- ]backed|institutional/.test(ds) && !/no sponsor|non[- ]sponsor/.test(ds);
+    const verdict: FieldRow['verdict'] = lenderNeedsSponsor
+      ? (dealHasSponsor ? 'match' : 'mismatch')
+      : (ls && ds ? 'match' : 'unknown');
+    rows.push({ label: 'Sponsorship', deal: dealCtx.sponsorship ?? '—', lender: lender.sponsorship ?? '—', verdict });
+  }
+
+  // Cash burn
+  if (lender.cash_burn != null || dealCtx.cashBurnOk != null || dealCtx.profitability) {
+    const lcb = lc(lender.cash_burn ?? '');
+    const lenderOkBurn = /yes|ok|acceptable|tolerate/.test(lcb);
+    const dealBurning = dealCtx.cashBurnOk === false || /unprofitable|burn|loss/.test(lc(dealCtx.profitability ?? ''));
+    let verdict: FieldRow['verdict'] = 'unknown';
+    if (dealBurning) verdict = lenderOkBurn ? 'match' : 'mismatch';
+    else if (lcb) verdict = 'match';
+    rows.push({
+      label: 'Cash burn',
+      deal: dealBurning ? 'Burning / unprofitable' : (dealCtx.profitability ?? '—'),
+      lender: lender.cash_burn ?? '—',
+      verdict,
+    });
+  }
+
+  // Collateral
+  if (lender.deal_structure_notes && dealCtx.collateral) {
+    const notes = lc(lender.deal_structure_notes ?? '');
+    const coll = lc(dealCtx.collateral ?? '');
+    const types = ['ar', 'inventory', 'equipment', 'real estate', 'ip', 'saas mrr', 'recurring revenue'];
+    const hits = types.filter((t) => notes.includes(t) && coll.includes(t));
+    rows.push({
+      label: 'Collateral',
+      deal: String(dealCtx.collateral).slice(0, 60),
+      lender: hits.length ? `Accepts ${hits.join(', ')}` : 'See structure notes',
+      verdict: hits.length ? 'match' : 'partial',
+    });
+  }
+
+  // Revenue
+  if (dealCtx.revenue != null && lender.min_revenue != null) {
+    const minRev = toNum(lender.min_revenue);
+    const verdict: FieldRow['verdict'] = minRev != null && dealCtx.revenue >= minRev
+      ? 'match'
+      : minRev != null && dealCtx.revenue >= minRev * 0.7 ? 'partial' : 'mismatch';
+    rows.push({
+      label: 'Revenue floor',
+      deal: fmtUsd(dealCtx.revenue),
+      lender: `Min ${fmtUsd(minRev)}`,
+      verdict,
+    });
+  }
+
+  // EBITDA
+  if (dealCtx.ebitda != null && lender.ebitda_min != null) {
+    const minE = toNum(lender.ebitda_min);
+    rows.push({
+      label: 'EBITDA floor',
+      deal: fmtUsd(dealCtx.ebitda),
+      lender: `Min ${fmtUsd(minE)}`,
+      verdict: minE != null && dealCtx.ebitda >= minE ? 'match' : 'mismatch',
+    });
+  }
+
+  const matchedFields = rows.filter((r) => r.verdict === 'match' || r.verdict === 'partial');
+  const unmatchedFields = rows.filter((r) => r.verdict === 'mismatch' || r.verdict === 'unknown');
+
+  // Fit reasons (top 3) — combine AI rationale, positive signals, strong components, fit summary
+  const fitReasons: string[] = [];
+  if (aiRationale && aiAdj >= 0) fitReasons.push(aiRationale);
+  for (const p of posHits.slice(0, 2)) fitReasons.push(`Note signal: ${p.signal}`);
+  const strongRows = rows.filter((r) => r.verdict === 'match');
+  for (const r of strongRows) {
+    if (fitReasons.length >= 3) break;
+    fitReasons.push(`${r.label}: deal ${r.deal} aligns with lender ${r.lender}`);
+  }
+  if (fit?.summary && fitReasons.length < 3) fitReasons.push(`Fit profile: ${String(fit.summary).slice(0, 160)}`);
+
+  // Risks (top 1-2) — negative signals, weak components, repeat passes, AI negative rationale
+  const risks: string[] = [];
+  if (aiRationale && aiAdj < 0) risks.push(aiRationale);
+  for (const n of negHits.slice(0, 2)) risks.push(`Note caveat: ${n.signal}`);
+  for (const r of unmatchedFields) {
+    if (risks.length >= 2) break;
+    if (r.verdict === 'mismatch') risks.push(`${r.label} mismatch — deal ${r.deal} vs lender ${r.lender}`);
+  }
+  if (passReasons.length && risks.length < 2) {
+    risks.push(`Recent pass on similar deals: "${passReasons[0]}"`);
+  }
+  if (!risks.length) {
+    // surface weakest deterministic dimension as soft caveat
+    const entries = Object.entries(components) as [string, number][];
+    const weakest = entries.sort((a, b) => a[1] - b[1])[0];
+    if (weakest && weakest[1] < 60) risks.push(`Weakest dimension: ${weakest[0]} (${weakest[1]}/100)`);
+  }
+
+  // Note insights
+  const noteInsights = {
+    positive: posHits.map((h) => h.signal).slice(0, 5),
+    negative: negHits.map((h) => h.signal).slice(0, 5),
+    tags: Array.from(new Set(lenderTags)).slice(0, 10),
+  };
+
+  // Prior team knowledge
+  const priorTeamKnowledge = {
+    recentActivity,
+    passReasons: passReasons.slice(0, 4),
+    repeatPatterns: patterns.slice(0, 3).map((p: any) => ({
+      reason: String(p.pattern_value ?? p.reason_category ?? '').slice(0, 120),
+      occurrences: Number(p.occurrence_count ?? 1),
+      confidence: Number(p.confidence_score ?? 0),
+    })),
+  };
+
+  // Dominant driver: weight each bucket by how far signals push scoring
+  const structuredAvg = (components.type + components.size + components.industry + components.geography + components.structure) / 5;
+  const structuredWeight = Math.max(0, structuredAvg - 50); // 0..50
+  const notesWeight = Math.abs(components.evidence - 100) * 0.6
+    + Math.max(0, components.semantic - 50) * 0.5
+    + posHits.length * 6 + negHits.length * 8
+    + (fit?.summary ? 8 : 0);
+  const historyWeight = (recentActivity ? 18 : 0) + passReasons.length * 6 + patterns.length * 10;
+
+  const ranked = [
+    { key: 'structured' as const, w: structuredWeight },
+    { key: 'notes' as const, w: notesWeight },
+    { key: 'history' as const, w: historyWeight },
+  ].sort((a, b) => b.w - a.w);
+  const top = ranked[0];
+  const second = ranked[1];
+  const dominantDriver: WhyExplanation['dominantDriver'] =
+    top.w === 0 ? 'balanced'
+    : (second && top.w - second.w < 5) ? 'balanced'
+    : top.key;
+
+  return {
+    fitReasons: fitReasons.slice(0, 3),
+    risks: risks.slice(0, 2),
+    matchedFields,
+    unmatchedFields,
+    noteInsights,
+    priorTeamKnowledge,
+    dominantDriver,
+    driverBreakdown: {
+      structured: Math.round(structuredWeight),
+      notes: Math.round(notesWeight),
+      history: Math.round(historyWeight),
+    },
+  };
 }
 
 // ── main ─────────────────────────────────────────────────────────────────────
@@ -869,6 +1104,21 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
         negativeFitSignals: (cAny.negHits ?? []).map((h: any) => h.signal).slice(0, 5),
         matchedExclusion: null,
         fitSummary: cAny.fit?.summary ?? null,
+        explanation: buildExplanation({
+          lender: c.lender,
+          dealCtx,
+          components: c.components,
+          aiAdj: adj,
+          aiRationale: adjEntry?.rationale ?? '',
+          posHits: cAny.posHits ?? [],
+          negHits: cAny.negHits ?? [],
+          lenderTags: c.lenderTags ?? [],
+          passReasons: c.passReasons ?? [],
+          patterns: patternsByLender.get(c.lender.id) ?? patternsByLender.get(lc(c.lender.name)) ?? [],
+          fit: cAny.fit,
+          recentActivity: recentSet.has(lc(c.lender.name)),
+          reasons: c.reasons ?? [],
+        }),
       };
     });
 
