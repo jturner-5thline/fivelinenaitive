@@ -16,6 +16,7 @@ export interface AiRecommendation {
     geography?: number;
     structure?: number;
     evidence?: number;
+    semantic?: number;
     ai?: number;
   };
   tier?: string | null;
@@ -25,6 +26,10 @@ export interface AiRecommendation {
   maxDeal?: number | null;
   active?: boolean;
   recentActivity?: boolean;
+  positiveFitSignals?: string[];
+  negativeFitSignals?: string[];
+  matchedExclusion?: string | null;
+  fitSummary?: string | null;
 }
 
 export interface AiRecommendationResponse {
