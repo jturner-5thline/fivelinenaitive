@@ -639,7 +639,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
               <Mail className="h-8 w-8 text-primary" />
             </div>
             <div>
-              <p className="font-medium text-foreground">Connect your Gmail</p>
+              <p className="font-medium text-foreground">Connect your mail</p>
               <p className="text-sm text-muted-foreground mt-1">
                 Link your email in Integrations to access your inbox here.
               </p>
