@@ -2483,6 +2483,18 @@ export default function DealDetail() {
         const milestone = Number(field === 'milestoneFee' ? (value as number | undefined) : prev.milestoneFee) || 0;
         updated.totalFee = retainer + milestone + (dealValue * successPercent) / 100;
       }
+
+      // FinServ deals derive their displayed pipeline-card amount and the
+      // dashboard's per-stage Value / Weighted Value totals from
+      // `deal.value`. Mirror MRR + One-Time Revenue into `value` locally so
+      // the modal, card, and dashboard all reflect the edit instantly —
+      // the same mirror is applied in useDealsDatabase.updateDeal so the
+      // database row stays in sync.
+      if ((field === 'mrr' || field === 'oneTimeRevenue') && prev.dealClass === 'finserv') {
+        const nextMrr = Number(field === 'mrr' ? (value as number | null) : (prev as any).mrr) || 0;
+        const nextOneTime = Number(field === 'oneTimeRevenue' ? (value as number | null) : (prev as any).oneTimeRevenue) || 0;
+        updated.value = nextMrr + nextOneTime;
+      }
       
       // Log activity only for significant changes (not every keystroke for text fields)
       const oldValue = prev[field];

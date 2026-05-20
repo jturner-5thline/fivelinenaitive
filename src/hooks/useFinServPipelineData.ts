@@ -126,6 +126,8 @@ export function useFinServPipelineData(): FinServPipelineData {
       sourcedVia: d.sourced_via || undefined,
       dealClass: 'finserv' as const,
       onHold: d.on_hold === true,
+      mrr: d.mrr ?? null,
+      oneTimeRevenue: d.one_time_revenue ?? null,
       lenders: (d.deal_lenders || []).map((l: any) => ({
         id: l.id,
         name: l.name || '',

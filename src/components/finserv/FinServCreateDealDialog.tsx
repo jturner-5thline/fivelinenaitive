@@ -210,7 +210,13 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
         engagement_type: 'guided',
         status: 'on-track',
         user_id: user.id,
-        value: 0,
+        // Seed `value` from MRR + One-Time Revenue so the new pipeline
+        // card, per-stage totals, and Weighted Value KPI immediately show
+        // the correct dollars. The same mirror is maintained on every
+        // subsequent edit inside useDealsDatabase.updateDeal.
+        value:
+          (parseAmountToNumber(data.mrr || '') || 0) +
+          (parseAmountToNumber(data.oneTimeRevenue || '') || 0),
         // FinServ-specific fields
         lead_source: data.leadSource,
         referral_source: data.referralSource || null,
