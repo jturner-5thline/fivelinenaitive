@@ -7332,6 +7332,57 @@ export type Database = {
           },
         ]
       }
+      deal_fit_profiles: {
+        Row: {
+          created_at: string
+          deal_id: string
+          embedding: string | null
+          exclusions: Json
+          extracted_at: string | null
+          id: string
+          model: string | null
+          negative_signals: Json
+          nuanced_preferences: Json
+          positive_signals: Json
+          risk_flags: Json
+          source_hash: string | null
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          embedding?: string | null
+          exclusions?: Json
+          extracted_at?: string | null
+          id?: string
+          model?: string | null
+          negative_signals?: Json
+          nuanced_preferences?: Json
+          positive_signals?: Json
+          risk_flags?: Json
+          source_hash?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          embedding?: string | null
+          exclusions?: Json
+          extracted_at?: string | null
+          id?: string
+          model?: string | null
+          negative_signals?: Json
+          nuanced_preferences?: Json
+          positive_signals?: Json
+          risk_flags?: Json
+          source_hash?: string | null
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       deal_flag_notes: {
         Row: {
           created_at: string
@@ -13517,6 +13568,48 @@ export type Database = {
           },
         ]
       }
+      lender_match_rules: {
+        Row: {
+          active: boolean
+          applies_when: Json | null
+          created_at: string
+          created_by: string
+          delta: number | null
+          id: string
+          lender_id: string | null
+          lender_name: string | null
+          reason: string
+          rule_type: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          applies_when?: Json | null
+          created_at?: string
+          created_by: string
+          delta?: number | null
+          id?: string
+          lender_id?: string | null
+          lender_name?: string | null
+          reason: string
+          rule_type: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          applies_when?: Json | null
+          created_at?: string
+          created_by?: string
+          delta?: number | null
+          id?: string
+          lender_id?: string | null
+          lender_name?: string | null
+          reason?: string
+          rule_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       lender_notes: {
         Row: {
           author_user_id: string
@@ -13776,6 +13869,172 @@ export type Database = {
           name?: string
           top_n?: number
           updated_at?: string
+        }
+        Relationships: []
+      }
+      lender_recommendation_outcomes: {
+        Row: {
+          deal_id: string
+          decline_reason: string | null
+          fit_quality: number | null
+          id: string
+          lender_id: string | null
+          lender_name: string
+          notes: string | null
+          reported_at: string
+          reported_by: string
+          run_id: string | null
+          status: Database["public"]["Enums"]["lender_recommendation_outcome_status"]
+        }
+        Insert: {
+          deal_id: string
+          decline_reason?: string | null
+          fit_quality?: number | null
+          id?: string
+          lender_id?: string | null
+          lender_name: string
+          notes?: string | null
+          reported_at?: string
+          reported_by: string
+          run_id?: string | null
+          status: Database["public"]["Enums"]["lender_recommendation_outcome_status"]
+        }
+        Update: {
+          deal_id?: string
+          decline_reason?: string | null
+          fit_quality?: number | null
+          id?: string
+          lender_id?: string | null
+          lender_name?: string
+          notes?: string | null
+          reported_at?: string
+          reported_by?: string
+          run_id?: string | null
+          status?: Database["public"]["Enums"]["lender_recommendation_outcome_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_recommendation_outcomes_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "lender_recommendation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_recommendation_run_items: {
+        Row: {
+          ai_adjustment: number | null
+          boost_total: number | null
+          components: Json | null
+          confidence: number | null
+          dominant_driver: string | null
+          failed_check: string | null
+          failed_reason: string | null
+          hard_filtered: boolean
+          id: string
+          lender_id: string | null
+          lender_name: string
+          match_score: number | null
+          penalty_total: number | null
+          rank_position: number | null
+          rationale: string | null
+          run_id: string
+          structured_score: number | null
+          unstructured_score: number | null
+        }
+        Insert: {
+          ai_adjustment?: number | null
+          boost_total?: number | null
+          components?: Json | null
+          confidence?: number | null
+          dominant_driver?: string | null
+          failed_check?: string | null
+          failed_reason?: string | null
+          hard_filtered?: boolean
+          id?: string
+          lender_id?: string | null
+          lender_name: string
+          match_score?: number | null
+          penalty_total?: number | null
+          rank_position?: number | null
+          rationale?: string | null
+          run_id: string
+          structured_score?: number | null
+          unstructured_score?: number | null
+        }
+        Update: {
+          ai_adjustment?: number | null
+          boost_total?: number | null
+          components?: Json | null
+          confidence?: number | null
+          dominant_driver?: string | null
+          failed_check?: string | null
+          failed_reason?: string | null
+          hard_filtered?: boolean
+          id?: string
+          lender_id?: string | null
+          lender_name?: string
+          match_score?: number | null
+          penalty_total?: number | null
+          rank_position?: number | null
+          rationale?: string | null
+          run_id?: string
+          structured_score?: number | null
+          unstructured_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_recommendation_run_items_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "lender_recommendation_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      lender_recommendation_runs: {
+        Row: {
+          criteria_override: Json | null
+          deal_id: string
+          evaluated_count: number
+          generated_at: string
+          hard_filtered_count: number
+          id: string
+          meta: Json | null
+          model_used: string | null
+          qa_mode: boolean
+          scored_count: number
+          triggered_by: string | null
+          weights: Json | null
+        }
+        Insert: {
+          criteria_override?: Json | null
+          deal_id: string
+          evaluated_count?: number
+          generated_at?: string
+          hard_filtered_count?: number
+          id?: string
+          meta?: Json | null
+          model_used?: string | null
+          qa_mode?: boolean
+          scored_count?: number
+          triggered_by?: string | null
+          weights?: Json | null
+        }
+        Update: {
+          criteria_override?: Json | null
+          deal_id?: string
+          evaluated_count?: number
+          generated_at?: string
+          hard_filtered_count?: number
+          id?: string
+          meta?: Json | null
+          model_used?: string | null
+          qa_mode?: boolean
+          scored_count?: number
+          triggered_by?: string | null
+          weights?: Json | null
         }
         Relationships: []
       }
@@ -23256,6 +23515,16 @@ export type Database = {
         | "relationship_issues"
         | "terms_mismatch"
         | "other"
+      lender_recommendation_outcome_status:
+        | "recommended"
+        | "dismissed"
+        | "contacted"
+        | "engaged"
+        | "declined"
+        | "terms_issued"
+        | "diligence"
+        | "closed_won"
+        | "closed_lost"
       notification_category:
         | "deals"
         | "tasks"
@@ -23510,6 +23779,17 @@ export const Constants = {
         "relationship_issues",
         "terms_mismatch",
         "other",
+      ],
+      lender_recommendation_outcome_status: [
+        "recommended",
+        "dismissed",
+        "contacted",
+        "engaged",
+        "declined",
+        "terms_issued",
+        "diligence",
+        "closed_won",
+        "closed_lost",
       ],
       notification_category: [
         "deals",

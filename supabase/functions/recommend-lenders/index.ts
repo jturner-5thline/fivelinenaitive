@@ -747,6 +747,35 @@ serve(async (req) => {
       .gte("updated_at", ninetyDaysAgo)
       .limit(3000);
     const recentSet = new Set((recentLenderRows ?? []).map((r: any) => lc(r.name)));
+
+    // ── Admin match rules (do_not_match / penalize / boost) ─────────────────
+    const { data: matchRules } = await supabase
+      .from("lender_match_rules")
+      .select("rule_type, lender_id, lender_name, applies_when, reason, delta")
+      .eq("active", true)
+      .limit(500);
+    const matchRuleFor = (lenderId: string | null, lenderName: string) => {
+      const lname = lc(lenderName);
+      return (matchRules ?? []).filter((r: any) =>
+        (r.lender_id && r.lender_id === lenderId) || (r.lender_name && lc(r.lender_name) === lname),
+      );
+    };
+
+    // ── Explicit recommendation outcomes (team feedback loop) ───────────────
+    const eighteenMo = new Date(Date.now() - 540 * 24 * 60 * 60 * 1000).toISOString();
+    const { data: outcomeRows } = await supabase
+      .from("lender_recommendation_outcomes")
+      .select("lender_id, lender_name, status, fit_quality, decline_reason, reported_at, deal:deals(business_model, deal_type, value)")
+      .gte("reported_at", eighteenMo)
+      .limit(3000);
+    const outcomesByLender = new Map<string, any[]>();
+    (outcomeRows ?? []).forEach((r: any) => {
+      const k = r.lender_id || lc(r.lender_name);
+      if (!k) return;
+      const list = outcomesByLender.get(k) ?? [];
+      list.push(r);
+      outcomesByLender.set(k, list);
+    });
     const passReasonsByLender = new Map<string, string[]>();
     (recentLenderRows ?? []).forEach((r: any) => {
       if (!r?.pass_reason) return;
@@ -1007,6 +1036,17 @@ serve(async (req) => {
 
       // ─── LAYER 1 — HARD FILTERS (non-negotiables) ──────────────────────────
       const blockingPatterns = patterns.filter((p: any) => Number(p.confidence_score ?? 0) >= 0.8 && Number(p.occurrence_count ?? 0) >= 2);
+      // Admin do_not_match rules — scoped by applies_when (industry/dealType/size)
+      const rulesForLender = matchRuleFor(lender.id, lender.name);
+      const ruleApplies = (r: any) => {
+        const w = r?.applies_when || {};
+        if (Array.isArray(w.dealType) && w.dealType.length && !w.dealType.some((t: string) => (dealCtx.dealTypes ?? []).map(lc).includes(lc(t)))) return false;
+        if (w.industry && lc(dealCtx.industry ?? "").indexOf(lc(w.industry)) < 0) return false;
+        if (typeof w.minDealValue === "number" && (!dealCtx.value || dealCtx.value < w.minDealValue)) return false;
+        if (typeof w.maxDealValue === "number" && dealCtx.value && dealCtx.value > w.maxDealValue) return false;
+        return true;
+      };
+      const activeDoNotMatch = rulesForLender.find((r: any) => r.rule_type === "do_not_match" && ruleApplies(r));
       const hardChecks: { name: string; passed: boolean; reason?: string }[] = [
         { name: "Active mandate", passed: lender.active !== false, reason: lender.active === false ? "lender inactive" : undefined },
         { name: "Product type",   passed: !(type.score <= 10 && arr(lender.loan_types).length > 0), reason: type.score <= 10 ? type.reason : undefined },
@@ -1016,6 +1056,7 @@ serve(async (req) => {
         { name: "Flagged in notes", passed: !hasFlag, reason: hasFlag ? "flagged in lender notes" : undefined },
         { name: "Negative-evidence threshold", passed: !evidence.hardOut, reason: evidence.hardOut ? evidence.reason : undefined },
         { name: "Repeat-pass patterns", passed: blockingPatterns.length < 2, reason: blockingPatterns.length >= 2 ? `${blockingPatterns.length} high-confidence repeat passes` : undefined },
+        { name: "Admin do-not-match rule", passed: !activeDoNotMatch, reason: activeDoNotMatch ? activeDoNotMatch.reason : undefined },
       ];
       const failedHard = hardChecks.find((c) => !c.passed);
       if (failedHard) {
@@ -1101,6 +1142,26 @@ serve(async (req) => {
         penalties.push({ name: "Exclusion tags", delta: -10, reason: exclusionTags.join(", ") });
       }
 
+      // Outcome-based penalties — explicit team feedback from prior recommendations
+      const explicitOutcomes = outcomesByLender.get(lender.id) ?? outcomesByLender.get(lc(lender.name)) ?? [];
+      const negativeOutcomes = explicitOutcomes.filter((o: any) =>
+        ["declined", "closed_lost", "dismissed"].includes(String(o.status)) || (typeof o.fit_quality === "number" && o.fit_quality <= 2),
+      );
+      if (negativeOutcomes.length) {
+        const sample = negativeOutcomes[0];
+        penalties.push({
+          name: "Negative recommendation outcomes",
+          delta: -Math.min(15, negativeOutcomes.length * 5),
+          reason: `${negativeOutcomes.length} prior negative outcome(s) — e.g. ${sample.status}${sample.decline_reason ? `: "${String(sample.decline_reason).slice(0, 80)}"` : ""}`,
+        });
+      }
+      // Admin penalize rule
+      for (const r of rulesForLender) {
+        if (r.rule_type === "penalize" && ruleApplies(r) && typeof r.delta === "number") {
+          penalties.push({ name: "Admin penalize rule", delta: Math.max(-25, Math.min(0, r.delta)), reason: r.reason });
+        }
+      }
+
       // ─── LAYER 5 — BOOSTS (positive historical outcomes) ──────────────────
       const boosts: { name: string; delta: number; reason: string }[] = [];
       const historicalWins = positiveByLender.get(lc(lender.name)) ?? [];
@@ -1120,6 +1181,24 @@ serve(async (req) => {
       }
       if (posHits.length) {
         boosts.push({ name: "Positive note signals", delta: Math.min(10, posHits.length * 4), reason: posHits.map((h) => h.signal).slice(0, 2).join("; ") });
+      }
+
+      // Outcome-based boosts — explicit positive team feedback / closed wins
+      const positiveOutcomes = explicitOutcomes.filter((o: any) =>
+        ["closed_won", "terms_issued", "diligence", "engaged"].includes(String(o.status)) || (typeof o.fit_quality === "number" && o.fit_quality >= 4),
+      );
+      if (positiveOutcomes.length) {
+        boosts.push({
+          name: "Positive recommendation outcomes",
+          delta: Math.min(12, 3 + positiveOutcomes.length * 3),
+          reason: `${positiveOutcomes.length} prior positive team feedback / closed outcome(s)`,
+        });
+      }
+      // Admin boost rule
+      for (const r of rulesForLender) {
+        if (r.rule_type === "boost" && ruleApplies(r) && typeof r.delta === "number") {
+          boosts.push({ name: "Admin boost rule", delta: Math.max(0, Math.min(25, r.delta)), reason: r.reason });
+        }
       }
 
       const reasons = [type.reason, size.reason, industry.reason, geography.reason, structure.reason, recency.reason, evidence.reason]
@@ -1336,9 +1415,75 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
 
     recommendations.sort((a, b) => b.matchScore - a.matchScore);
 
+    // ── Persist a run log + per-item snapshots (fire-and-forget) ────────────
+    const logRun = async (finalList: Recommendation[]) => {
+      try {
+        const { data: runRow, error: runErr } = await supabase
+          .from("lender_recommendation_runs")
+          .insert({
+            deal_id: dealId,
+            triggered_by: userData.user.id,
+            qa_mode: qa,
+            criteria_override: criteriaOverride ?? null,
+            evaluated_count: activeLenders.length,
+            scored_count: candidates.length,
+            hard_filtered_count: filteredOut.length,
+            model_used: ANTHROPIC_API_KEY ? "claude-sonnet-4" : (LOVABLE_API_KEY ? "gemini-2.5-pro" : "deterministic-only"),
+            weights: WEIGHTS,
+            meta: {
+              fitAttributesLoaded: fitById.size,
+              dealEmbedded: !!dealEmbedding,
+              simulated: !!(narrativeAppend || notesAppend),
+              outcomesLoaded: outcomeRows?.length ?? 0,
+              matchRulesLoaded: matchRules?.length ?? 0,
+            },
+          })
+          .select("id")
+          .single();
+        if (runErr || !runRow?.id) return;
+
+        const items: any[] = [];
+        finalList.slice(0, 60).forEach((r, idx) => {
+          const t = r.pipelineTrace;
+          items.push({
+            run_id: runRow.id,
+            lender_id: r.lenderId,
+            lender_name: r.lenderName,
+            hard_filtered: false,
+            match_score: r.matchScore,
+            confidence: r.confidence,
+            structured_score: t?.structured.score ?? null,
+            unstructured_score: t?.unstructured.score ?? null,
+            penalty_total: t?.final.penaltyTotal ?? null,
+            boost_total: t?.final.boostTotal ?? null,
+            ai_adjustment: t?.final.aiAdjustment ?? null,
+            dominant_driver: r.explanation?.dominantDriver ?? null,
+            rationale: r.rationale,
+            components: r.components as any,
+            rank_position: idx + 1,
+          });
+        });
+        qaHardFiltered.slice(0, 40).forEach((h: any) => {
+          items.push({
+            run_id: runRow.id,
+            lender_id: h.lenderId,
+            lender_name: h.lenderName,
+            hard_filtered: true,
+            failed_check: h.failedCheck,
+            failed_reason: h.failedReason,
+            components: h.components ?? null,
+          });
+        });
+        if (items.length) await supabase.from("lender_recommendation_run_items").insert(items);
+      } catch (e) {
+        console.error("logRun failed", e);
+      }
+    };
+
     // In QA mode skip diversification & the 40-floor — the harness needs to see
     // every scored lender with its raw final score and full trace.
     if (qa) {
+      logRun(recommendations); // fire-and-forget; no await to keep latency low
       return new Response(
         JSON.stringify({
           recommendations,
@@ -1411,6 +1556,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
       }
     }
     const final = picked;
+    logRun(final); // persist run log + per-item snapshots (fire-and-forget)
 
     // Fire-and-forget: extract fit attributes for top candidates missing them,
     // so the next recommendation pass benefits from richer signal.

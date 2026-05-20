@@ -174,11 +174,32 @@ export function useAiRecommendedLenders(
     if (insErr && !/duplicate/i.test(insErr.message)) {
       toast.error('Failed to skip lender');
     }
+    // Record an explicit "dismissed" outcome so the feedback loop learns from it.
+    await supabase.from('lender_recommendation_outcomes').insert({
+      deal_id: dealId,
+      lender_id: rec.lenderId,
+      lender_name: rec.lenderName,
+      status: 'dismissed',
+      reported_by: userData.user.id,
+    });
   }, [dealId]);
 
   const markAdded = useCallback((name: string) => {
     setAddedNames(prev => new Set(prev).add(name.toLowerCase()));
-  }, []);
+    // Best-effort: capture the "recommended" → "contacted" transition. We don't
+    // know the lenderId reliably here, so we just log by name.
+    if (dealId) {
+      supabase.auth.getUser().then(({ data }) => {
+        if (!data?.user) return;
+        supabase.from('lender_recommendation_outcomes').insert({
+          deal_id: dealId,
+          lender_name: name,
+          status: 'contacted',
+          reported_by: data.user.id,
+        });
+      });
+    }
+  }, [dealId]);
 
   const resetExclusions = useCallback(async () => {
     if (!dealId) return;
