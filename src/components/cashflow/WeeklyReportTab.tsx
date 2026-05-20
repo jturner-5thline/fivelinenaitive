@@ -1170,9 +1170,12 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                 const parentCollapsed = isDebtAdvParent ? debtAdvCollapsed : isTransfersParent ? transfersCollapsed : false;
                 const parentToggle = isDebtAdvParent ? toggleDebtAdv : isTransfersParent ? toggleTransfers : undefined;
                 const isCashRow = rowDef.key === 'BEGINNING CASH' || rowDef.key === 'ENDING CASH';
-                const overrideField: 'beginningCash' | 'endingCash' | null = isCashRow
+                const isAddlLiquidityRow = rowDef.key === "Add'l Liquidity (Delayed Draw)";
+                const overrideField: 'beginningCash' | 'endingCash' | 'addlLiquidity' | null = isCashRow
                   ? (rowDef.key === 'BEGINNING CASH' ? 'beginningCash' : 'endingCash')
-                  : null;
+                  : isAddlLiquidityRow
+                    ? 'addlLiquidity'
+                    : null;
                 const labelText = isTransferAccount
                   ? (rowDef as WeeklyRow).transferAccount || rowDef.key
                   : rowDef.key;
@@ -1234,10 +1237,13 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                                 ? parentSumForWeek(planEntry)
                                 : ((planEntry[rowDef.key] as number) || 0))
                         : null;
-                      const isOverridden = !!(isCashRow && overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined);
-                      // Beginning/Ending Cash cells are editable for any user — typing
-                      // a value writes a per-week override that persists until cleared.
-                      const editable = isCashRow && !!onCashOverride;
+                      const isOverridden = !!(
+                        overrideField && safeOverrides[weekKey]?.[overrideField] !== undefined
+                      );
+                      // Beginning/Ending Cash and Add'l Liquidity cells are editable
+                      // for any user — typing a value writes a per-week override that
+                      // persists until cleared.
+                      const editable = (isCashRow || isAddlLiquidityRow) && !!onCashOverride;
 
                       // Cell comment plumbing
                       const lineItemKey = isTransferAccount && transferAcc
