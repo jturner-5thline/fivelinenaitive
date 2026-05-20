@@ -331,6 +331,31 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     : 'all';
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
+  // Per-tab search + type filter (each tab keeps its own state so switching tabs
+  // doesn't blow away the user's current filter).
+  const [tabFilters, setTabFilters] = useState<Record<string, { q: string; type: string }>>({});
+  const currentFilter = tabFilters[activeTab] || { q: '', type: 'all' };
+  const setCurrentFilter = (next: { q: string; type: string }) => {
+    setTabFilters(prev => ({ ...prev, [activeTab]: next }));
+  };
+
+  const applyFilters = (list: LenderSyncRequest[], opts?: { allowTypeFilter?: boolean }) => {
+    const { q, type } = currentFilter;
+    const allowType = opts?.allowTypeFilter !== false;
+    const needle = q.trim().toLowerCase();
+    return list.filter(r => {
+      if (allowType && type !== 'all' && r.request_type !== type) return false;
+      if (!needle) return true;
+      const data = (r.incoming_data || {}) as Record<string, unknown>;
+      const name = String(data.name || '').toLowerCase();
+      const existing = (r.existing_lender_name || '').toLowerCase();
+      const aliases = Array.isArray(data.aliases)
+        ? (data.aliases as unknown[]).map(a => String(a).toLowerCase()).join(' ')
+        : '';
+      return name.includes(needle) || existing.includes(needle) || aliases.includes(needle);
+    });
+  };
+
   // Conflict resolution side panel state
   const [conflictPanelOpen, setConflictPanelOpen] = useState(false);
   const [conflictIndex, setConflictIndex] = useState(0);
@@ -365,6 +390,13 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     }
   };
 
+  // Map each pending request id → cluster size, so SyncRequestCard can show the
+  // duplicate-cluster badge even when rendered outside a GroupedSyncRequestCard.
+  const clusterSizeById = new Map<string, number>();
+  for (const g of allGroups) {
+    for (const m of g.members) clusterSizeById.set(m.id, g.members.length);
+  }
+
   // Render a single underlying request — used by GroupedSyncRequestCard for both
   // single-member and multi-member groups.
   const renderMember = (request: LenderSyncRequest) => (
@@ -375,6 +407,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
       onApprove={handleApprove}
       onReject={rejectRequest}
       onMerge={handleMerge}
+      clusterSize={clusterSizeById.get(request.id) || 1}
     />
   );
 
