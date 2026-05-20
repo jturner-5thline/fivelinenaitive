@@ -196,8 +196,28 @@ export function useFinServPipelineData(): FinServPipelineData {
     if (!pipelineId) return;
 
     const handleFinServDealUpdated = (event: Event) => {
-      const detail = (event as CustomEvent<{ dealId?: string }>).detail;
+      const detail = (event as CustomEvent<{
+        dealId?: string;
+        value?: number;
+        mrr?: number | null;
+        oneTimeRevenue?: number | null;
+      }>).detail;
       if (!detail?.dealId) return;
+
+      setDeals((prev) =>
+        prev.map((deal) =>
+          deal.id === detail.dealId
+            ? {
+                ...deal,
+                ...(detail.mrr !== undefined ? { mrr: detail.mrr } : {}),
+                ...(detail.oneTimeRevenue !== undefined ? { oneTimeRevenue: detail.oneTimeRevenue } : {}),
+                ...(detail.value !== undefined ? { value: detail.value } : {}),
+                updatedAt: new Date().toISOString(),
+              }
+            : deal,
+        ),
+      );
+
       fetchDeals(pipelineId);
     };
 
