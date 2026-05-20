@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mail, Phone, Calendar, MessageSquare, Plus, ExternalLink, Building2, Users, Briefcase, Globe, MapPin, Trash2, X, CheckSquare } from 'lucide-react';
 import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
+import { EditableField } from '@/components/crm/EditableField';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -142,17 +143,23 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-1.5"><Building2 className="h-4 w-4" /> Company Profile</CardTitle></CardHeader>
               <CardContent className="space-y-3 text-sm">
-                <InfoRow label="Type" value={CRM_COMPANY_TYPES.find(t => t.value === company.company_type)?.label} />
-                <InfoRow label="Industry" value={company.industry} />
-                {company.sub_industry && <InfoRow label="Sub-Industry" value={company.sub_industry} />}
-                <InfoRow label="Employees" value={company.employee_range || (company.employee_count ? String(company.employee_count) : null)} />
-                <InfoRow label="Annual Revenue" value={formatCurrency(company.annual_revenue)} />
-                <InfoRow label="Phone" value={company.phone} />
-                <InfoRow label="Email" value={company.main_contact_email} />
-                <InfoRow label="Address" value={company.address} />
-                <InfoRow label="HQ Address" value={company.hq_address} />
-                {company.website_url && <div><p className="text-[10px] text-muted-foreground uppercase">Website</p><a href={company.website_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs flex items-center gap-1 hover:underline">Visit <ExternalLink className="h-3 w-3" /></a></div>}
-                {company.linkedin_url && <div><p className="text-[10px] text-muted-foreground uppercase">LinkedIn</p><a href={company.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-primary text-xs flex items-center gap-1 hover:underline">Profile <ExternalLink className="h-3 w-3" /></a></div>}
+                <EditableField label="Name" type="text" value={company.name} onSave={(v) => handleQuickUpdate('name', v)} />
+                <EditableField label="Type" type="select" value={company.company_type} options={CRM_COMPANY_TYPES.map(t => ({ value: t.value, label: t.label }))} onSave={(v) => handleQuickUpdate('company_type', v)} />
+                <EditableField label="Industry" type="text" value={company.industry} onSave={(v) => handleQuickUpdate('industry', v)} />
+                <EditableField label="Sub-Industry" type="text" value={company.sub_industry} onSave={(v) => handleQuickUpdate('sub_industry', v)} />
+                <EditableField label="Employee Range" type="text" value={company.employee_range} onSave={(v) => handleQuickUpdate('employee_range', v)} />
+                <EditableField label="Employee Count" type="number" value={company.employee_count} onSave={(v) => handleQuickUpdate('employee_count', v)} />
+                <EditableField label="Annual Revenue" type="number" value={company.annual_revenue} onSave={(v) => handleQuickUpdate('annual_revenue', v)} />
+                <EditableField label="Phone" type="tel" value={company.phone} onSave={(v) => handleQuickUpdate('phone', v)} />
+                <EditableField label="Email" type="email" asLink value={company.main_contact_email} onSave={(v) => handleQuickUpdate('main_contact_email', v)} />
+                <EditableField label="Domain" type="text" value={(company as any).domain} onSave={(v) => handleQuickUpdate('domain', v)} />
+                <EditableField label="Address" type="textarea" value={company.address} onSave={(v) => handleQuickUpdate('address', v)} />
+                <EditableField label="HQ Address" type="textarea" value={company.hq_address} onSave={(v) => handleQuickUpdate('hq_address', v)} />
+                <EditableField label="HQ City" type="text" value={(company as any).hq_city} onSave={(v) => handleQuickUpdate('hq_city', v)} />
+                <EditableField label="HQ Country" type="text" value={(company as any).hq_country} onSave={(v) => handleQuickUpdate('hq_country', v)} />
+                <EditableField label="Website" type="url" asLink value={company.website_url} onSave={(v) => handleQuickUpdate('website_url', v)} />
+                <EditableField label="LinkedIn" type="url" asLink value={company.linkedin_url} onSave={(v) => handleQuickUpdate('linkedin_url', v)} />
+                <EditableField label="Logo URL" type="url" value={company.logo_url} onSave={(v) => handleQuickUpdate('logo_url', v)} />
               </CardContent>
             </Card>
 
@@ -183,9 +190,9 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
                     </SelectContent>
                   </Select>
                 </div>
-                <InfoRow label="Segment" value={company.segment} />
-                <InfoRow label="Tier" value={company.customer_tier} />
-                <InfoRow label="Source" value={company.source_system} />
+                <EditableField label="Segment" type="text" value={company.segment} onSave={(v) => handleQuickUpdate('segment', v)} />
+                <EditableField label="Tier" type="text" value={company.customer_tier} onSave={(v) => handleQuickUpdate('customer_tier', v)} />
+                <EditableField label="Source" type="text" value={company.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
               </CardContent>
             </Card>
 
@@ -219,12 +226,12 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
 
             <Card>
               <CardHeader className="pb-2"><CardTitle className="text-sm">Commercial</CardTitle></CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-muted-foreground text-xs">ARR</span><span className="font-medium">{formatCurrency(company.arr)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground text-xs">MRR</span><span className="font-medium">{formatCurrency(company.mrr)}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground text-xs">TCV</span><span className="font-medium">{formatCurrency(company.total_contract_value)}</span></div>
-                {company.renewal_date && <div className="flex justify-between"><span className="text-muted-foreground text-xs">Renewal</span><span className="font-medium">{format(new Date(company.renewal_date), 'MMM d, yyyy')}</span></div>}
-                {company.contract_end_date && <div className="flex justify-between"><span className="text-muted-foreground text-xs">Contract End</span><span className="font-medium">{format(new Date(company.contract_end_date), 'MMM d, yyyy')}</span></div>}
+              <CardContent className="space-y-3 text-sm">
+                <EditableField label="ARR" type="number" value={company.arr} onSave={(v) => handleQuickUpdate('arr', v)} />
+                <EditableField label="MRR" type="number" value={company.mrr} onSave={(v) => handleQuickUpdate('mrr', v)} />
+                <EditableField label="TCV" type="number" value={company.total_contract_value} onSave={(v) => handleQuickUpdate('total_contract_value', v)} />
+                <EditableField label="Renewal Date" type="text" placeholder="YYYY-MM-DD" value={company.renewal_date} onSave={(v) => handleQuickUpdate('renewal_date', v)} />
+                <EditableField label="Contract End" type="text" placeholder="YYYY-MM-DD" value={company.contract_end_date} onSave={(v) => handleQuickUpdate('contract_end_date', v)} />
               </CardContent>
             </Card>
 
@@ -378,18 +385,32 @@ export function CompanyDetailContent({ companyId, headerExtra, hideBackButton, o
               </Card>
             )}
 
-            {company.description && (
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">About</CardTitle></CardHeader>
-                <CardContent><p className="text-xs text-muted-foreground whitespace-pre-wrap">{company.description}</p></CardContent>
-              </Card>
-            )}
+            <Card>
+              <CardHeader className="pb-2"><CardTitle className="text-sm">About</CardTitle></CardHeader>
+              <CardContent>
+                <EditableField
+                  label="Description"
+                  type="textarea"
+                  value={company.description}
+                  placeholder="Add a company description…"
+                  onSave={(v) => handleQuickUpdate('description', v)}
+                />
+              </CardContent>
+            </Card>
 
             {company.custom_fields && Object.keys(company.custom_fields).length > 0 && (
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Custom Fields</CardTitle></CardHeader>
                 <CardContent className="space-y-2 text-sm">
-                  {Object.entries(company.custom_fields).map(([k, v]) => <InfoRow key={k} label={k} value={String(v)} />)}
+                  {Object.entries(company.custom_fields).map(([k, v]) => (
+                    <EditableField
+                      key={k}
+                      label={k}
+                      type="text"
+                      value={v == null ? '' : String(v)}
+                      onSave={(nv) => handleQuickUpdate('custom_fields', { ...(company.custom_fields || {}), [k]: nv })}
+                    />
+                  ))}
                 </CardContent>
               </Card>
             )}
