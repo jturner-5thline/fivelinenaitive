@@ -369,7 +369,6 @@ export function TaskListView({
                     gridTemplateColumns: gridStyle.gridTemplateColumns,
                   }}
                 >
-                  <div aria-hidden />
                   <div className="flex items-center justify-center">
                     {isCollapsed
                       ? <ChevronRight className="h-3 w-3 text-muted-foreground" />
