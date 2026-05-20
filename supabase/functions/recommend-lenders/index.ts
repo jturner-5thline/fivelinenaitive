@@ -861,6 +861,9 @@ serve(async (req) => {
     const dealNoteText = (dealNotes ?? [])
       .map((n: any) => `${n.title}: ${(n.content ?? "").slice(0, 400)} [${arr(n.tags).join(",")}]`)
       .join("\n").slice(0, 4000);
+    const simulatedNoteText = notesAppend
+      ? (dealNoteText + "\n[SIMULATED]: " + notesAppend).slice(0, 5000)
+      : dealNoteText;
     const dealLenderFeedback = (dealLendersOnThisDeal ?? [])
       .filter((dl: any) => dl?.pass_reason || dl?.notes)
       .map((dl: any) => `${dl.name}: ${dl.pass_reason || ""} ${dl.notes || ""}`.trim().slice(0, 300))
