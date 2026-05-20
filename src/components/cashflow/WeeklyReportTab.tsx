@@ -1290,7 +1290,7 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                           onContextMenu={(e) => handleCellContextMenu(e, cellCtx)}
                           onClick={!editable ? () => openDrilldown(rowDef.key, labelText, weekKey, (entry?.week_ending as string) ?? null, displayVal) : undefined}
                           onDoubleClick={isOverridden && editable && overrideField
-                            ? () => onCashOverride!(weekKey, overrideField, null)
+                            ? () => onCashOverride!(weekKey, overrideField, null, val)
                             : undefined}
                         >
                           {editable && overrideField ? (
@@ -1306,19 +1306,17 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                             <div>{fmtAbbrev(displayVal)}</div>
                           )}
                           {isOverridden && (
-                            <button
-                              type="button"
-                              className="cf-override-badge"
-                              aria-label="Clear manual override"
-                              title="Manually overridden — click badge (or double-click cell) to clear"
-                              onClick={(e) => {
+                            <OverrideBadgeWithHistory
+                              history={
+                                overrideField
+                                  ? (overrideHistoryByCell?.[cellHistoryKey(weekKey, overrideField)] || [])
+                                  : []
+                              }
+                              onClear={(e) => {
                                 e.stopPropagation();
-                                if (overrideField) onCashOverride!(weekKey, overrideField, null);
+                                if (overrideField) onCashOverride!(weekKey, overrideField, null, val);
                               }}
-                              style={{ cursor: 'pointer', border: 'none' }}
-                            >
-                              <Pencil size={9} strokeWidth={2.5} />
-                            </button>
+                            />
                           )}
                           {cellCommentsHere.length > 0 && (
                             <span
