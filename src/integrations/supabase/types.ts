@@ -1831,6 +1831,45 @@ export type Database = {
           },
         ]
       }
+      cash_flow_override_history: {
+        Row: {
+          changed_at: string
+          changed_by: string | null
+          changed_by_email: string | null
+          changed_by_name: string | null
+          company_id: string
+          field: string
+          id: string
+          new_value: number | null
+          previous_value: number | null
+          week_key: string
+        }
+        Insert: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          changed_by_name?: string | null
+          company_id: string
+          field: string
+          id?: string
+          new_value?: number | null
+          previous_value?: number | null
+          week_key: string
+        }
+        Update: {
+          changed_at?: string
+          changed_by?: string | null
+          changed_by_email?: string | null
+          changed_by_name?: string | null
+          company_id?: string
+          field?: string
+          id?: string
+          new_value?: number | null
+          previous_value?: number | null
+          week_key?: string
+        }
+        Relationships: []
+      }
       cashflow_cash_in_items: {
         Row: {
           amount: number
