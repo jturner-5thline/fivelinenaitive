@@ -526,10 +526,35 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent>
-            <div className="flex items-center justify-end gap-2 mb-3">
-              <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+            {/* Sticky summary bar — gives a queue-wide read-out without scrolling */}
+            <div className="sticky top-0 z-10 -mx-6 px-6 py-2 mb-3 bg-card/95 backdrop-blur border-b">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap text-xs">
+                  <Badge variant="outline" className="gap-1">
+                    <span className="text-muted-foreground">Total</span>
+                    <span className="font-semibold text-foreground">{pendingRequests.length}</span>
+                  </Badge>
+                  <Badge variant="outline" className="gap-1 border-destructive/40 text-destructive">
+                    <AlertTriangle className="h-3 w-3" />
+                    Conflicts <span className="font-semibold">{conflictRequests.length}</span>
+                  </Badge>
+                  <Badge variant="outline" className="gap-1 bg-amber-500/10 border-amber-500/40 text-amber-700 dark:text-amber-400">
+                    <Layers className="h-3 w-3" />
+                    Duplicates <span className="font-semibold">{duplicateCount}</span>
+                  </Badge>
+                  <Badge variant="outline" className="gap-1 bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400">
+                    <UserPlus className="h-3 w-3" />
+                    New <span className="font-semibold">{newLenderRequests.length}</span>
+                  </Badge>
+                  <Badge variant="outline" className="gap-1">
+                    <CheckCheck className="h-3 w-3" />
+                    Selected <span className="font-semibold">{selectedIds.size}</span>
+                  </Badge>
+                </div>
+                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
 
             {/* Bulk actions bar */}
