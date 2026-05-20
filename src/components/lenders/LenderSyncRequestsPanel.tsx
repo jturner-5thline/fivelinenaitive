@@ -658,33 +658,28 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
               <TabsContent value="duplicates" className="mt-3">
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-3">
-                    {duplicateGroups.length === 0 && (
+                    {duplicateGroups.length === 0 && softDupRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No potential duplicates detected.</p>
                     )}
-                    {duplicateGroups.map(([key, group]) => (
-                      <div key={key} className="border rounded-lg bg-amber-500/5 border-amber-500/30 p-2">
-                        <div className="flex items-center justify-between px-1 pb-2">
-                          <p className="text-xs font-medium text-amber-700 dark:text-amber-400 uppercase tracking-wide">
-                            {group.length > 1
-                              ? `${group.length} requests for "${(group[0].incoming_data as Record<string, unknown>)?.name as string}"`
-                              : `Matches existing "${group[0].existing_lender_name}"`}
-                          </p>
-                        </div>
-                        <div className="space-y-2">
-                          {group.map(request => (
-                            <SyncRequestCard
-                              key={request.id}
-                              request={request}
-                              isSelected={selectedIds.has(request.id)}
-                              onToggleSelect={toggleSelect}
-                              onApprove={handleApprove}
-                              onReject={rejectRequest}
-                              onMerge={handleMerge}
-                            />
-                          ))}
-                        </div>
-                      </div>
+                    {duplicateGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
+                        onApprove={handleApprove}
+                        onReject={rejectRequest}
+                        onMerge={handleMerge}
+                        renderMember={renderMember}
+                        defaultOpen
+                      />
                     ))}
+                    {softDupRequests.length > 0 && (
+                      <>
+                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground pt-2">
+                          Soft matches against existing directory
+                        </p>
+                        {softDupRequests.map(r => renderMember(r))}
+                      </>
+                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -695,15 +690,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {processedRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">Nothing has been processed yet.</p>
                     )}
-                    {processedRequests.slice(0, 50).map(request => (
-                      <SyncRequestCard
-                        key={request.id}
-                        request={request}
-                        isSelected={false}
-                        onToggleSelect={() => {}}
+                    {completedGroups.map(group => (
+                      <GroupedSyncRequestCard
+                        key={group.key + ':' + group.members[0].id}
+                        group={group}
                         onApprove={handleApprove}
                         onReject={rejectRequest}
                         onMerge={handleMerge}
+                        renderMember={renderMember}
                       />
                     ))}
                   </div>
