@@ -13,8 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { DebouncedInput } from '@/components/ui/debounced-input';
 import { Separator } from '@/components/ui/separator';
+import { useDebouncedFieldValue, flushOnEnterOrTab } from '@/hooks/useDebouncedFieldValue';
 import {
   getPipelineSchema,
   type PipelineFieldDef,
@@ -41,6 +41,108 @@ const formatCurrencyInput = (n: number | null | undefined): string => {
 };
 
 /**
+ * Strip $/comma/whitespace, return numeric string acceptable to Number().
+ * Empty string stays empty (so users can clear the field while editing).
+ */
+const sanitizeCurrencyInput = (raw: string): string =>
+  raw.replace(/[$,\s]/g, '');
+
+const parseCurrencyDraft = (draft: string): number | null => {
+  const cleaned = sanitizeCurrencyInput(draft);
+  if (cleaned === '') return null;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+};
+
+/**
+ * Locally-debounced text/email field that NEVER binds value directly to the
+ * remote prop — prevents per-keystroke optimistic echoes from clobbering
+ * what the user is typing.
+ */
+function DebouncedTextField({
+  remoteValue,
+  onCommit,
+  type,
+  placeholder,
+}: {
+  remoteValue: string;
+  onCommit: (next: string) => void;
+  type: 'text' | 'email';
+  placeholder?: string;
+}) {
+  const { value, setValue, flush, onFocus, onBlur } = useDebouncedFieldValue<string>(
+    remoteValue ?? '',
+    { commit: onCommit, debounceMs: 500 },
+  );
+  return (
+    <Input
+      type={type}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      onKeyDown={flushOnEnterOrTab(flush)}
+      placeholder={placeholder}
+      className="w-full h-8 text-sm"
+    />
+  );
+}
+
+/**
+ * Currency field that keeps a raw STRING draft locally so users can clear
+ * the field, paste, or type freely without server echoes corrupting input.
+ * The numeric commit only fires on debounce, blur, Enter, or Tab.
+ */
+function DebouncedCurrencyField({
+  remoteValue,
+  onCommit,
+  placeholder,
+}: {
+  remoteValue: number | null | undefined;
+  onCommit: (next: number | null) => void;
+  placeholder?: string;
+}) {
+  const remoteDraft = formatCurrencyInput(remoteValue);
+  const { value, setValue, flush, onFocus, onBlur } = useDebouncedFieldValue<string>(
+    remoteDraft,
+    {
+      // Compare on normalized numeric value so "9876543" and "9,876,543" don't
+      // ping-pong against the formatted server echo.
+      equals: (a, b) => sanitizeCurrencyInput(a) === sanitizeCurrencyInput(b),
+      commit: (draft) => onCommit(parseCurrencyDraft(draft)),
+      debounceMs: 500,
+    },
+  );
+
+  return (
+    <div className="relative w-full">
+      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
+      <Input
+        type="text"
+        inputMode="numeric"
+        value={value}
+        onChange={(e) => {
+          const raw = e.target.value;
+          const cleaned = sanitizeCurrencyInput(raw);
+          // Allow empty draft, only digits otherwise.
+          if (cleaned === '' || /^\d+$/.test(cleaned)) {
+            // Re-format with thousands separators for nicer display while
+            // keeping the raw digits as the underlying draft.
+            const display = cleaned === '' ? '' : Number(cleaned).toLocaleString();
+            setValue(display);
+          }
+        }}
+        onFocus={onFocus}
+        onBlur={onBlur}
+        onKeyDown={flushOnEnterOrTab(flush)}
+        placeholder={placeholder ?? '0'}
+        className="pl-5 h-8 text-sm w-full"
+      />
+    </div>
+  );
+}
+
+/**
  * Renders the pipeline-specific section of the Deal Information panel.
  * Pulls its field list from the centralized schema in
  * `src/config/pipelineFieldSchemas.ts`, so the create form and detail view
@@ -57,33 +159,23 @@ export function PipelineSpecificFields({ deal, onUpdate }: PipelineSpecificField
       case 'text':
       case 'email':
         return (
-          <DebouncedInput
+          <DebouncedTextField
+            key={field.key}
             type={field.type === 'email' ? 'email' : 'text'}
-            value={value || ''}
-            onChange={(v) => onUpdate(field.key as keyof Deal, String(v))}
+            remoteValue={value || ''}
+            onCommit={(next) => onUpdate(field.key as keyof Deal, next)}
             placeholder={field.placeholder}
-            className="w-full h-8 text-sm"
           />
         );
 
       case 'currency': {
-        const display = formatCurrencyInput(value);
         return (
-          <div className="relative w-full">
-            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
-            <Input
-              type="text"
-              value={display}
-              onChange={(e) => {
-                const raw = e.target.value.replace(/,/g, '');
-                if (raw === '' || /^\d+$/.test(raw)) {
-                  onUpdate(field.key as keyof Deal, raw === '' ? null : Number(raw));
-                }
-              }}
-              placeholder={field.placeholder ?? '0'}
-              className="pl-5 h-8 text-sm w-full"
-            />
-          </div>
+          <DebouncedCurrencyField
+            key={field.key}
+            remoteValue={value as number | null | undefined}
+            onCommit={(next) => onUpdate(field.key as keyof Deal, next)}
+            placeholder={field.placeholder}
+          />
         );
       }
 
