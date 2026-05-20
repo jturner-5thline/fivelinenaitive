@@ -12,6 +12,8 @@ import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
+import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
+import { groupSyncRequests, normalizeLenderName } from '@/lib/lenderRequestGrouping';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FieldChangeProps {
