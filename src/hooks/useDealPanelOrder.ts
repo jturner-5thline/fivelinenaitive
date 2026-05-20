@@ -20,25 +20,35 @@ export interface DealPanel {
 // Panels that cannot be hidden
 export const ALWAYS_VISIBLE_PANELS: DealPanelId[] = ['deal-information', 'outstanding-items'];
 
-const DEFAULT_PANEL_ORDER: DealPanelId[] = [
+// Panels that have been permanently retired from the Deal Info experience.
+// They are filtered out of `visiblePanels` and the reorder dialog so they
+// never render — even for users who still have them in a previously saved
+// layout. Keep the IDs in the union type for backward compat with stored
+// configs; we just refuse to surface them.
+export const RETIRED_PANELS: ReadonlySet<DealPanelId> = new Set<DealPanelId>([
   'ai-research',
   'ai-assistant',
   'ai-activity-summary',
   'ai-suggestions',
+  'activity-timeline',
+]);
+
+const DEFAULT_PANEL_ORDER: DealPanelId[] = [
   'deal-information',
   'outstanding-items',
-  'activity-timeline',
 ];
 
-// Default visibility: all panels visible
+// Default visibility: all surviving panels visible. Retired panels are
+// hardcoded off — even if a saved layout flips them back on, the
+// `visiblePanels` selector below strips them out.
 const DEFAULT_PANEL_VISIBILITY: Record<DealPanelId, boolean> = {
-  'ai-research': true,
-  'ai-assistant': true,
-  'ai-activity-summary': true,
-  'ai-suggestions': true,
+  'ai-research': false,
+  'ai-assistant': false,
+  'ai-activity-summary': false,
+  'ai-suggestions': false,
   'deal-information': true,
   'outstanding-items': true,
-  'activity-timeline': true,
+  'activity-timeline': false,
 };
 
 interface DealPanelLayout {
@@ -267,8 +277,8 @@ export function useDealPanelOrder() {
     setIsEditMode(prev => !prev);
   }, []);
 
-  // Get visible panels in order
-  const visiblePanels = panelOrder.filter(id => isPanelVisible(id));
+  // Get visible panels in order — retired panels are always filtered out.
+  const visiblePanels = panelOrder.filter(id => !RETIRED_PANELS.has(id) && isPanelVisible(id));
 
   // Cleanup timeout on unmount
   useEffect(() => {
