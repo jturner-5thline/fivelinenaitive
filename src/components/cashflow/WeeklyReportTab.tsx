@@ -114,7 +114,11 @@ interface SidebarItem {
 interface WeeklyReportTabProps {
   weeklyData: WeeklyData;
   weeklyOverrides?: WeeklyOverrides;
-  onCashOverride?: (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => void;
+  onCashOverride?: (
+    weekKey: string,
+    field: 'beginningCash' | 'endingCash' | 'addlLiquidity',
+    value: number | null,
+  ) => void;
   sidebarData: SidebarData;
   sidebarDbItems: SidebarItem[];
   theme: ThemeMode;
