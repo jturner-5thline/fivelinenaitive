@@ -639,7 +639,7 @@ function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; 
 }
 
 // Sortable task row
-function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators, isExpanded, onToggleExpanded, onOpenFullDetail, gridStyle, cols }: {
+function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocused, onSelect, onUpdate, onDelete, onToggleComplete, onToggleSelect, onToggleStar, showSelectCheckbox, collaborators, onOpenFullDetail, gridStyle, cols }: {
   task: Task;
   todayStr: string;
   isSelected: boolean;
@@ -653,8 +653,6 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
   onToggleStar?: () => void;
   showSelectCheckbox?: boolean;
   collaborators?: { user_id: string; display_name: string; avatar_url: string | null }[];
-  isExpanded?: boolean;
-  onToggleExpanded?: () => void;
   onOpenFullDetail?: () => void;
   gridStyle: React.CSSProperties;
   cols: typeof OPTIONAL_TASK_COLUMNS[number][];
@@ -705,7 +703,6 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
           : null;
 
   return (
-    <>
     <div
       ref={setNodeRef}
       data-task-id={task.id}
@@ -741,24 +738,6 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {/* Drag handle */}
       <div className="flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-grab active:cursor-grabbing" {...attributes} {...listeners} onClick={e => e.stopPropagation()}>
         <GripVertical className="h-3 w-3" style={{ color: '#7a8194' }} />
-      </div>
-
-      {/* Expand toggle */}
-      <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-        <button
-          type="button"
-          onClick={() => onToggleExpanded?.()}
-          className="h-4 w-4 flex items-center justify-center rounded hover:bg-[rgba(255,255,255,0.06)] transition-colors"
-          aria-expanded={!!isExpanded}
-          aria-label={isExpanded ? 'Hide details' : 'Show details'}
-          title={isExpanded ? 'Hide details' : 'Show details'}
-        >
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3" style={{ color: '#cfe3ff' }} />
-          ) : (
-            <ChevronRight className="h-3 w-3" style={{ color: '#7a8194' }} />
-          )}
-        </button>
       </div>
 
       {/* Multi-select */}
@@ -996,13 +975,5 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
         </DropdownMenu>
       </div>
     </div>
-    {isExpanded && (
-      <ExpandedTaskDetails
-        task={task}
-        onUpdate={onUpdate}
-        onOpenFullDetail={onOpenFullDetail || onSelect}
-      />
-    )}
-    </>
   );
 }

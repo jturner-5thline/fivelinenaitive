@@ -85,6 +85,7 @@ const defaultLenderTypes: ConfigItem[] = [
   { id: '6', value: 'Revenue-Based', isDefault: true },
   { id: '7', value: 'Asset-Based', isDefault: true },
   { id: '8', value: 'SBA', isDefault: true },
+  { id: '9', value: 'Buyer', isDefault: true },
 ];
 
 const defaultIndustries: ConfigItem[] = INDUSTRY_OPTIONS.map((value, idx) => ({
