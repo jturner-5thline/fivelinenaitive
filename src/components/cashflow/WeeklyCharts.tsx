@@ -1,4 +1,4 @@
-import { useEffect, useRef, memo, useMemo, useState, useCallback } from 'react';
+import { useEffect, useRef, memo, useMemo, useState } from 'react';
 import { Chart, registerables } from 'chart.js';
 import type { WeeklyData, ThemeMode } from './types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,9 +9,18 @@ Chart.register(...registerables);
 interface WeeklyChartsProps {
   weeklyData: WeeklyData;
   theme: ThemeMode;
+  /**
+   * Optional set of week keys (entries of weeklyData) that should be plotted.
+   * When provided, the chart x-axis is restricted to exactly this window so it
+   * stays in lockstep with the Weekly Report table. When omitted/empty, all
+   * weeks in weeklyData are plotted (legacy behavior).
+   */
   visibleWeekKeys?: string[];
+  /** Week key (entry of weeklyData) of the peak Ending Cash in the visible window. */
   peakWeekKey?: string | null;
+  /** Week key (entry of weeklyData) of the low Ending Cash in the visible window. */
   lowWeekKey?: string | null;
+  /** Deprecated — pulsing animation is no longer used. Kept for prop back-compat. */
   lowWeekBelowCaution?: boolean;
 }
 
@@ -19,8 +28,14 @@ export const WeeklyCharts = memo(function WeeklyCharts({
   weeklyData, theme, visibleWeekKeys,
   peakWeekKey = null, lowWeekKey = null,
 }: WeeklyChartsProps) {
+  const chart1Ref = useRef<HTMLCanvasElement>(null);
+  const chart2Ref = useRef<HTMLCanvasElement>(null);
+  const chart1ModalRef = useRef<HTMLCanvasElement>(null);
+  const chart2ModalRef = useRef<HTMLCanvasElement>(null);
+  const instances = useRef<Chart[]>([]);
   const [expanded, setExpanded] = useState<null | 'liquidity' | 'flow'>(null);
 
+  // Memoize chart data to avoid recalculation
   const chartData = useMemo(() => {
     const all = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
     let entries = all;
@@ -45,217 +60,220 @@ export const WeeklyCharts = memo(function WeeklyCharts({
     };
   }, [weeklyData, visibleWeekKeys, peakWeekKey, lowWeekKey]);
 
-  const { labels, endingCash, totalLiquidity, cashIn, cashOut, peakIdx, lowIdx } = chartData;
-  const isDark = theme === 'dark';
-  const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
-  const textColor = isDark ? '#8892a8' : '#5a6070';
+  useEffect(() => {
+    instances.current.forEach((c) => c.destroy());
+    instances.current = [];
 
-  const peakPoints: (number | null)[] =
-    peakIdx >= 0 ? labels.map((_, i) => (i === peakIdx ? endingCash[i] : null)) : [];
-  const lowPoints: (number | null)[] =
-    lowIdx >= 0 ? labels.map((_, i) => (i === lowIdx ? endingCash[i] : null)) : [];
+    const { labels, endingCash, totalLiquidity, cashIn, cashOut, peakIdx, lowIdx } = chartData;
 
-  const commonOptions = useMemo(() => ({
-    responsive: true,
-    maintainAspectRatio: false,
-    resizeDelay: 300,
-    animation: false as const,
-    plugins: {
-      legend: {
-        position: 'bottom' as const,
-        labels: { font: { size: 10 }, color: textColor, boxWidth: 28, boxHeight: 0, useLineStyle: true },
-      },
-    },
-    scales: {
-      x: {
-        grid: { color: gridColor },
-        ticks: {
-          font: { size: 9 },
-          color: textColor,
-          maxTicksLimit: labels.length <= 16 ? labels.length : labels.length <= 32 ? 16 : 20,
-          autoSkip: true,
-        },
-      },
-      y: {
-        grid: { color: gridColor },
-        ticks: {
-          font: { size: 9 },
-          color: textColor,
-          callback: (v: any) => `$${Number(v) >= 1000 ? (Number(v)/1000).toFixed(0) + 'M' : v + 'K'}`,
-        },
-      },
-    },
-  }), [gridColor, textColor, labels.length]);
+    // Build sparse arrays so the peak/low markers render as a single point on
+    // top of the Ending Cash line at exactly the right (week, value) coordinate.
+    const peakPoints: (number | null)[] =
+      peakIdx >= 0
+        ? labels.map((_, i) => (i === peakIdx ? endingCash[i] : null))
+        : [];
+    const lowPoints: (number | null)[] =
+      lowIdx >= 0
+        ? labels.map((_, i) => (i === lowIdx ? endingCash[i] : null))
+        : [];
 
-  const buildLiquidityConfig = useCallback(() => ({
-    type: 'line' as const,
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Total Liquidity', data: totalLiquidity,
-          borderColor: isDark ? '#4a90d9' : '#2563eb',
-          backgroundColor: isDark ? 'rgba(74,144,217,0.1)' : 'rgba(37,99,235,0.1)',
-          fill: true, tension: 0.3, borderWidth: 1.5, pointRadius: labels.length > 50 ? 0 : 3,
-        },
-        {
-          label: 'Ending Cash', data: endingCash,
-          borderColor: isDark ? '#22c55e' : '#16a34a',
-          backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : 'rgba(22,163,74,0.1)',
-          fill: true, tension: 0.3, borderWidth: 1.5, pointRadius: labels.length > 50 ? 0 : 3,
-        },
-        {
-          label: 'Min Liquidity $250K', data: new Array(labels.length).fill(250),
-          borderColor: isDark ? '#f59e0b' : '#d97706',
-          borderDash: [5, 5], borderWidth: 1.5, pointRadius: 0, fill: false,
-        },
-        {
-          label: 'Caution $100K', data: new Array(labels.length).fill(100),
-          borderColor: isDark ? '#5a6580' : '#9ca3af',
-          borderDash: [3, 3], borderWidth: 1.5, pointRadius: 0, fill: false,
-        },
-        ...(peakIdx >= 0 ? [{
-          label: 'Peak Cash', data: peakPoints,
-          borderColor: isDark ? '#22c55e' : '#16a34a',
-          backgroundColor: isDark ? '#22c55e' : '#16a34a',
-          pointStyle: 'triangle' as const, pointRadius: 9, pointHoverRadius: 11,
-          pointBorderWidth: 2, pointBorderColor: isDark ? '#0b1020' : '#ffffff',
-          showLine: false, fill: false,
-        }] : []),
-        ...(lowIdx >= 0 ? [{
-          label: 'Low Cash', data: lowPoints,
-          borderColor: isDark ? '#ef4444' : '#dc2626',
-          backgroundColor: isDark ? '#ef4444' : '#dc2626',
-          pointStyle: 'triangle' as const, pointRotation: 180,
-          pointRadius: 9, pointHoverRadius: 11,
-          pointBorderWidth: 2, pointBorderColor: isDark ? '#0b1020' : '#ffffff',
-          showLine: false, fill: false,
-        }] : []),
-      ],
-    },
-    options: {
-      ...commonOptions,
+    const isDark = theme === 'dark';
+    const gridColor = isDark ? 'rgba(42,51,72,0.5)' : 'rgba(209,213,219,0.5)';
+    const textColor = isDark ? '#8892a8' : '#5a6070';
+
+    const commonOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      resizeDelay: 300,
+      animation: false as const,
       plugins: {
-        ...commonOptions.plugins,
-        tooltip: { callbacks: { label: (ctx: any) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(0)}K` } },
-      },
-    },
-  }), [labels, totalLiquidity, endingCash, peakPoints, lowPoints, peakIdx, lowIdx, isDark, commonOptions]);
-
-  const buildFlowConfig = useCallback(() => ({
-    type: 'line' as const,
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'Cash Out', data: cashOut,
-          borderColor: isDark ? '#ef4444' : '#dc2626',
-          backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(220,38,38,0.08)',
-          fill: true, tension: 0.3, borderWidth: 1,
-          pointRadius: labels.length > 50 ? 0 : 3, order: 2,
+        legend: {
+          position: 'bottom' as const,
+          labels: {
+            font: { size: 10 },
+            color: textColor,
+            boxWidth: 28,
+            boxHeight: 0,
+            useLineStyle: true,
+          },
         },
-        {
-          label: 'Cash In', data: cashIn,
-          borderColor: isDark ? '#22c55e' : '#16a34a',
-          backgroundColor: isDark ? 'rgba(34,197,94,0.92)' : 'rgba(22,163,74,0.92)',
-          fill: true, tension: 0.3, borderWidth: 2,
-          pointRadius: labels.length > 50 ? 0 : 3, order: 1,
-        },
-      ],
-    },
-    options: {
-      ...commonOptions,
-      plugins: {
-        ...commonOptions.plugins,
-        tooltip: { callbacks: { label: (ctx: any) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}K` } },
       },
       scales: {
-        ...commonOptions.scales,
+        x: {
+          grid: { color: gridColor },
+          ticks: {
+            font: { size: 9 },
+            color: textColor,
+            // Auto-thin ticks based on window size: show all up to ~16, then taper
+            maxTicksLimit: labels.length <= 16 ? labels.length : labels.length <= 32 ? 16 : 20,
+            autoSkip: true,
+          },
+        },
         y: {
-          ...commonOptions.scales.y,
-          ticks: { ...commonOptions.scales.y.ticks, callback: (v: any) => `$${v}K` },
+          grid: { color: gridColor },
+          ticks: {
+            font: { size: 9 },
+            color: textColor,
+            callback: (v: any) => `$${Number(v) >= 1000 ? (Number(v)/1000).toFixed(0) + 'M' : v + 'K'}`,
+          },
         },
       },
-    },
-  }), [labels, cashIn, cashOut, isDark, commonOptions]);
+    };
 
-  // Per-canvas instance tracking. Callback refs guarantee we destroy each
-  // chart *before* React detaches its canvas — otherwise Chart.js's
-  // ResizeObserver fires on a detached node and crashes with
-  // "Cannot read properties of null (reading 'ownerDocument')".
-  const instances = useRef<Map<HTMLCanvasElement, Chart>>(new Map());
-
-  const versionKey = useMemo(
-    () => `${labels.length}|${theme}|${peakIdx}|${lowIdx}|${labels[0] ?? ''}|${labels[labels.length - 1] ?? ''}`,
-    [labels, theme, peakIdx, lowIdx],
-  );
-
-  const attach = useCallback((canvas: HTMLCanvasElement | null, build: () => any) => {
-    if (!canvas) return;
-    if (!canvas.ownerDocument || !canvas.isConnected) return;
-    const existing = instances.current.get(canvas);
-    if (existing) {
-      try { existing.destroy(); } catch { /* no-op */ }
-      instances.current.delete(canvas);
-    }
-    try {
-      instances.current.set(canvas, new Chart(canvas, build()));
-    } catch { /* no-op */ }
-  }, []);
-
-  // Rebuild all currently-mounted charts when versionKey/builders change.
-  useEffect(() => {
-    instances.current.forEach((chart, canvas) => {
-      try { chart.destroy(); } catch { /* no-op */ }
-      if (!canvas.isConnected || !canvas.ownerDocument) {
-        instances.current.delete(canvas);
-        return;
-      }
-      const kind = canvas.dataset.chartKind;
-      const build = kind === 'flow' ? buildFlowConfig : buildLiquidityConfig;
-      try {
-        instances.current.set(canvas, new Chart(canvas, build()));
-      } catch { /* no-op */ }
+    const buildLiquidityConfig = () => ({
+      type: 'line' as const,
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Total Liquidity',
+            data: totalLiquidity,
+            borderColor: isDark ? '#4a90d9' : '#2563eb',
+            backgroundColor: isDark ? 'rgba(74,144,217,0.1)' : 'rgba(37,99,235,0.1)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 1.5,
+            pointRadius: labels.length > 50 ? 0 : 3,
+          },
+          {
+            label: 'Ending Cash',
+            data: endingCash,
+            borderColor: isDark ? '#22c55e' : '#16a34a',
+            backgroundColor: isDark ? 'rgba(34,197,94,0.1)' : 'rgba(22,163,74,0.1)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 1.5,
+            pointRadius: labels.length > 50 ? 0 : 3,
+          },
+          {
+            label: 'Min Liquidity $250K',
+            data: new Array(labels.length).fill(250),
+            borderColor: isDark ? '#f59e0b' : '#d97706',
+            borderDash: [5, 5],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+          },
+          {
+            label: 'Caution $100K',
+            data: new Array(labels.length).fill(100),
+            borderColor: isDark ? '#5a6580' : '#9ca3af',
+            borderDash: [3, 3],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false,
+          },
+          ...(peakIdx >= 0
+            ? [{
+                label: 'Peak Cash',
+                data: peakPoints,
+                borderColor: isDark ? '#22c55e' : '#16a34a',
+                backgroundColor: isDark ? '#22c55e' : '#16a34a',
+                pointStyle: 'triangle' as const,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointBorderWidth: 2,
+                pointBorderColor: isDark ? '#0b1020' : '#ffffff',
+                showLine: false,
+                fill: false,
+              }]
+            : []),
+          ...(lowIdx >= 0
+            ? [{
+                label: 'Low Cash',
+                data: lowPoints,
+                borderColor: isDark ? '#ef4444' : '#dc2626',
+                backgroundColor: isDark ? '#ef4444' : '#dc2626',
+                // Triangle rotated 180° = ▼
+                pointStyle: 'triangle' as const,
+                pointRotation: 180,
+                pointRadius: 9,
+                pointHoverRadius: 11,
+                pointBorderWidth: 2,
+                pointBorderColor: isDark ? '#0b1020' : '#ffffff',
+                showLine: false,
+                fill: false,
+              }]
+            : []),
+        ],
+      },
+      options: {
+        ...commonOptions,
+        plugins: {
+          ...commonOptions.plugins,
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(0)}K` },
+          },
+        },
+      },
     });
-  }, [versionKey, buildFlowConfig, buildLiquidityConfig]);
 
-  // Destroy all on unmount.
-  useEffect(() => () => {
-    instances.current.forEach((c) => { try { c.destroy(); } catch { /* no-op */ } });
-    instances.current.clear();
-  }, []);
-
-  const makeCallbackRef = (build: () => any) => (canvas: HTMLCanvasElement | null) => {
-    if (canvas) {
-      attach(canvas, build);
-    }
-    // React 18 calls the same ref with `null` on unmount of *that* element,
-    // but we can't distinguish which canvas it was; the per-canvas Map and
-    // the unmount-cleanup effect handle disposal collectively.
-  };
-
-  // Stable refs that survive re-renders so React doesn't thrash attach/detach.
-  const liquidityRef = useRef(makeCallbackRef(buildLiquidityConfig));
-  const flowRef = useRef(makeCallbackRef(buildFlowConfig));
-  const modalLiquidityRef = useRef(makeCallbackRef(buildLiquidityConfig));
-  const modalFlowRef = useRef(makeCallbackRef(buildFlowConfig));
-  // Refresh closures when builders change.
-  liquidityRef.current = makeCallbackRef(buildLiquidityConfig);
-  flowRef.current = makeCallbackRef(buildFlowConfig);
-  modalLiquidityRef.current = makeCallbackRef(buildLiquidityConfig);
-  modalFlowRef.current = makeCallbackRef(buildFlowConfig);
-
-  // When dialog closes, destroy any modal-canvas charts immediately so the
-  // canvas can be unmounted safely.
-  useEffect(() => {
-    if (expanded !== null) return;
-    instances.current.forEach((chart, canvas) => {
-      if (canvas.dataset.chartScope === 'modal') {
-        try { chart.destroy(); } catch { /* no-op */ }
-        instances.current.delete(canvas);
-      }
+    const buildFlowConfig = () => ({
+      type: 'line' as const,
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'Cash Out',
+            data: cashOut,
+            borderColor: isDark ? '#ef4444' : '#dc2626',
+            backgroundColor: isDark ? 'rgba(239,68,68,0.08)' : 'rgba(220,38,38,0.08)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 1,
+            pointRadius: labels.length > 50 ? 0 : 3,
+            order: 2,
+          },
+          {
+            label: 'Cash In',
+            data: cashIn,
+            borderColor: isDark ? '#22c55e' : '#16a34a',
+            backgroundColor: isDark ? 'rgba(34,197,94,0.92)' : 'rgba(22,163,74,0.92)',
+            fill: true,
+            tension: 0.3,
+            borderWidth: 2,
+            pointRadius: labels.length > 50 ? 0 : 3,
+            order: 1,
+          },
+        ],
+      },
+      options: {
+        ...commonOptions,
+        plugins: {
+          ...commonOptions.plugins,
+          tooltip: {
+            callbacks: { label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y.toFixed(1)}K` },
+          },
+        },
+        scales: {
+          ...commonOptions.scales,
+          y: {
+            ...commonOptions.scales.y,
+            ticks: {
+              ...commonOptions.scales.y.ticks,
+              callback: (v: any) => `$${v}K`,
+            },
+          },
+        },
+      },
     });
-  }, [expanded]);
+
+    const targets: Array<[HTMLCanvasElement | null, () => any]> = [
+      [chart1Ref.current, buildLiquidityConfig],
+      [chart2Ref.current, buildFlowConfig],
+      [expanded === 'liquidity' ? chart1ModalRef.current : null, buildLiquidityConfig],
+      [expanded === 'flow' ? chart2ModalRef.current : null, buildFlowConfig],
+    ];
+    targets.forEach(([canvas, build]) => {
+      if (!canvas) return;
+      instances.current.push(new Chart(canvas, build()));
+    });
+
+    return () => {
+      instances.current.forEach((c) => c.destroy());
+      instances.current = [];
+    };
+  }, [chartData, theme, expanded]);
 
   return (
     <>
@@ -274,7 +292,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             </button>
           </div>
           <div style={{ height: 200 }}>
-            <canvas data-chart-kind="liquidity" ref={(c) => liquidityRef.current(c)} />
+            <canvas ref={chart1Ref} />
           </div>
         </div>
         <div className="cf-chart-card">
@@ -291,7 +309,7 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             </button>
           </div>
           <div style={{ height: 200 }}>
-            <canvas data-chart-kind="flow" ref={(c) => flowRef.current(c)} />
+            <canvas ref={chart2Ref} />
           </div>
         </div>
       </div>
@@ -303,20 +321,8 @@ export const WeeklyCharts = memo(function WeeklyCharts({
             </DialogTitle>
           </DialogHeader>
           <div style={{ height: 'min(70vh, 640px)' }} className="w-full">
-            {expanded === 'liquidity' && (
-              <canvas
-                data-chart-kind="liquidity"
-                data-chart-scope="modal"
-                ref={(c) => modalLiquidityRef.current(c)}
-              />
-            )}
-            {expanded === 'flow' && (
-              <canvas
-                data-chart-kind="flow"
-                data-chart-scope="modal"
-                ref={(c) => modalFlowRef.current(c)}
-              />
-            )}
+            {expanded === 'liquidity' && <canvas ref={chart1ModalRef} />}
+            {expanded === 'flow' && <canvas ref={chart2ModalRef} />}
           </div>
         </DialogContent>
       </Dialog>
