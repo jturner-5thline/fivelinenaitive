@@ -826,6 +826,7 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
 
     // ── Build final recommendations ──────────────────────────────────────────
     const recommendations: Recommendation[] = topForAI.map((c) => {
+      const cAny = c as any;
       const adjEntry = aiAdjustments.get(lc(c.lender.name));
       const adj = adjEntry?.adj ?? 0;
       const finalScore = Math.max(0, Math.min(100, Math.round(c.detScore + adj)));
@@ -864,6 +865,10 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
         maxDeal: toNum(c.lender.max_deal),
         active: c.lender.active !== false,
         recentActivity: recentSet.has(lc(c.lender.name)),
+        positiveFitSignals: (cAny.posHits ?? []).map((h: any) => h.signal).slice(0, 5),
+        negativeFitSignals: (cAny.negHits ?? []).map((h: any) => h.signal).slice(0, 5),
+        matchedExclusion: null,
+        fitSummary: cAny.fit?.summary ?? null,
       };
     });
 
@@ -873,6 +878,22 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
     const final = recommendations
       .filter((r) => r.matchScore >= 40 && !excludeSet.has(lc(r.lenderName)))
       .slice(0, 12);
+
+    // Fire-and-forget: extract fit attributes for top candidates missing them,
+    // so the next recommendation pass benefits from richer signal.
+    const missingFitIds = topForAI
+      .filter((c: any) => !fitById.get(c.lender.id))
+      .map((c) => c.lender.id)
+      .filter(Boolean)
+      .slice(0, 15);
+    if (missingFitIds.length && Deno.env.get("LOVABLE_API_KEY")) {
+      const url = `${Deno.env.get("SUPABASE_URL")}/functions/v1/extract-lender-fit`;
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: authHeader! },
+        body: JSON.stringify({ lenderIds: missingFitIds }),
+      }).catch((e) => console.error("background extract-lender-fit failed", e));
+    }
 
     return new Response(
       JSON.stringify({
@@ -886,6 +907,9 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
           hardFilteredSample: filteredOut.slice(0, 10),
           modelUsed: ANTHROPIC_API_KEY ? "claude-sonnet-4" : (LOVABLE_API_KEY ? "gemini-2.5-pro" : "deterministic-only"),
           weights: WEIGHTS,
+          fitAttributesLoaded: fitById.size,
+          backgroundExtractionQueued: missingFitIds.length,
+          dealEmbedded: !!dealEmbedding,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
