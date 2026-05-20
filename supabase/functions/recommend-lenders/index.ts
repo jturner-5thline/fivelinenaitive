@@ -1036,6 +1036,17 @@ serve(async (req) => {
 
       // ─── LAYER 1 — HARD FILTERS (non-negotiables) ──────────────────────────
       const blockingPatterns = patterns.filter((p: any) => Number(p.confidence_score ?? 0) >= 0.8 && Number(p.occurrence_count ?? 0) >= 2);
+      // Admin do_not_match rules — scoped by applies_when (industry/dealType/size)
+      const rulesForLender = matchRuleFor(lender.id, lender.name);
+      const ruleApplies = (r: any) => {
+        const w = r?.applies_when || {};
+        if (Array.isArray(w.dealType) && w.dealType.length && !w.dealType.some((t: string) => (dealCtx.dealTypes ?? []).map(lc).includes(lc(t)))) return false;
+        if (w.industry && lc(dealCtx.industry ?? "").indexOf(lc(w.industry)) < 0) return false;
+        if (typeof w.minDealValue === "number" && (!dealCtx.value || dealCtx.value < w.minDealValue)) return false;
+        if (typeof w.maxDealValue === "number" && dealCtx.value && dealCtx.value > w.maxDealValue) return false;
+        return true;
+      };
+      const activeDoNotMatch = rulesForLender.find((r: any) => r.rule_type === "do_not_match" && ruleApplies(r));
       const hardChecks: { name: string; passed: boolean; reason?: string }[] = [
         { name: "Active mandate", passed: lender.active !== false, reason: lender.active === false ? "lender inactive" : undefined },
         { name: "Product type",   passed: !(type.score <= 10 && arr(lender.loan_types).length > 0), reason: type.score <= 10 ? type.reason : undefined },
@@ -1045,6 +1056,7 @@ serve(async (req) => {
         { name: "Flagged in notes", passed: !hasFlag, reason: hasFlag ? "flagged in lender notes" : undefined },
         { name: "Negative-evidence threshold", passed: !evidence.hardOut, reason: evidence.hardOut ? evidence.reason : undefined },
         { name: "Repeat-pass patterns", passed: blockingPatterns.length < 2, reason: blockingPatterns.length >= 2 ? `${blockingPatterns.length} high-confidence repeat passes` : undefined },
+        { name: "Admin do-not-match rule", passed: !activeDoNotMatch, reason: activeDoNotMatch ? activeDoNotMatch.reason : undefined },
       ];
       const failedHard = hardChecks.find((c) => !c.passed);
       if (failedHard) {
