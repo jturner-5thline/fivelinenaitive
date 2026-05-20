@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   format,
   startOfWeek,
@@ -1210,6 +1211,8 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     listCalendars,
     checkStatus,
   } = useGoogleCalendar();
+  const { user } = useAuth();
+  const is5thLineUser = !!user?.email && user.email.toLowerCase().endsWith('@5thline.co');
   const [view, setView] = useState<CalendarViewMode>('week');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
@@ -1713,7 +1716,9 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
             )}
 
             <Separator className="my-3" />
-            <CalendarAIPanel events={viewEvents} currentDate={currentDate} />
+            {is5thLineUser && (
+              <CalendarAIPanel events={viewEvents} currentDate={currentDate} />
+            )}
           </div>
 
           {/* Main content */}
