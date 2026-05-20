@@ -85,6 +85,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
     sequence_group_id: null as string | null,
     sequence_step_key: null as string | null,
     sequence_step_order: null as number | null,
+    trigger_stage: '' as string,
+    cadence: '' as string,
+    recipient: '' as string,
+    category: '' as string,
+    approval_required: false,
   });
 
   const { standalone, sequences } = useMemo(() => {
@@ -147,6 +152,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
       sequence_group_id: template.sequence_group_id || null,
       sequence_step_key: template.sequence_step_key || null,
       sequence_step_order: template.sequence_step_order || null,
+      trigger_stage: template.trigger_stage || '',
+      cadence: template.cadence || '',
+      recipient: template.recipient || '',
+      category: template.category || '',
+      approval_required: !!template.approval_required,
     });
     setSelectedId(template.id);
     setHasUnsavedChanges(false);
@@ -172,6 +182,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
         sequence_group_id: null,
         sequence_step_key: null,
         sequence_step_order: null,
+        trigger_stage: '',
+        cadence: '',
+        recipient: '',
+        category: '',
+        approval_required: false,
       });
       setSelectedId(null);
       setHasUnsavedChanges(false);
@@ -194,6 +209,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
         sequence_group_id: null,
         sequence_step_key: null,
         sequence_step_order: null,
+        trigger_stage: template.trigger_stage || '',
+        cadence: template.cadence || '',
+        recipient: template.recipient || '',
+        category: template.category || '',
+        approval_required: !!template.approval_required,
       });
       setSelectedId(null);
       setHasUnsavedChanges(true);
@@ -223,6 +243,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
       sequence_group_id: formData.sequence_group_id,
       sequence_step_key: formData.sequence_step_key,
       sequence_step_order: formData.sequence_step_order,
+      trigger_stage: formData.trigger_stage.trim() || null,
+      cadence: formData.cadence.trim() || null,
+      recipient: formData.recipient.trim() || null,
+      category: formData.category.trim() || null,
+      approval_required: formData.approval_required,
     };
     if (formData.id) payload.id = formData.id;
     const result = await saveTemplate.mutateAsync(payload);
