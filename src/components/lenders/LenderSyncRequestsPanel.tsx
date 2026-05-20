@@ -643,13 +643,52 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                 </TabsTrigger>
               </TabsList>
 
+              {/* Per-tab search + filter row. State is scoped per tab. */}
+              <div className="flex items-center gap-2 mt-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={currentFilter.q}
+                    onChange={(e) => setCurrentFilter({ ...currentFilter, q: e.target.value })}
+                    placeholder="Search by name, alias, or matched lender…"
+                    className="h-8 pl-7 text-sm"
+                  />
+                </div>
+                {activeTab === 'all' || activeTab === 'completed' ? (
+                  <Select
+                    value={currentFilter.type}
+                    onValueChange={(v) => setCurrentFilter({ ...currentFilter, type: v })}
+                  >
+                    <SelectTrigger className="h-8 w-[170px] text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All types</SelectItem>
+                      <SelectItem value="new_lender">New Lender</SelectItem>
+                      <SelectItem value="update_existing">Update</SelectItem>
+                      <SelectItem value="merge_conflict">Merge Conflict</SelectItem>
+                    </SelectContent>
+                  </Select>
+                ) : null}
+                {(currentFilter.q || currentFilter.type !== 'all') && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8"
+                    onClick={() => setCurrentFilter({ q: '', type: 'all' })}
+                  >
+                    Clear
+                  </Button>
+                )}
+              </div>
+
               <TabsContent value="all" className="mt-3">
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-2">
                     {pendingRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No pending requests.</p>
                     )}
-                    {allGroups.map(group => (
+                    {groupSyncRequests(applyFilters(pendingRequests)).map(group => (
                       <GroupedSyncRequestCard
                         key={group.key + ':' + group.members[0].id}
                         group={group}
@@ -669,7 +708,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {newLenderRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No new lender approvals waiting.</p>
                     )}
-                    {newLenderGroups.map(group => (
+                    {groupSyncRequests(applyFilters(newLenderRequests, { allowTypeFilter: false })).map(group => (
                       <GroupedSyncRequestCard
                         key={group.key + ':' + group.members[0].id}
                         group={group}
@@ -703,9 +742,11 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {conflictRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No merge conflicts to resolve.</p>
                     )}
-                    {conflictRequests.map((request, idx) => {
+                    {applyFilters(conflictRequests, { allowTypeFilter: false }).map((request, idx) => {
                       const name = (request.incoming_data as Record<string, unknown>)?.name as string;
                       const diffCount = Object.keys(request.changes_diff || {}).length;
+                      const confidence = getRequestConfidence(request);
+                      const cluster = clusterSizeById.get(request.id) || 1;
                       return (
                         <button
                           key={request.id}
@@ -715,11 +756,20 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                         >
                           <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 flex-wrap">
                               <span className="font-medium truncate">{name || 'Unknown lender'}</span>
                               <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]">
                                 {diffCount === 0 ? 'Exact match' : `${diffCount} field${diffCount === 1 ? '' : 's'} differ`}
                               </Badge>
+                              {cluster > 1 && (
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40 text-[10px] gap-1">
+                                  <Layers className="h-3 w-3" />
+                                  Cluster ×{cluster}
+                                </Badge>
+                              )}
+                              {confidence.level !== 'none' && (
+                                <Badge variant="outline" className={`text-[10px] ${confidence.className}`}>{confidence.label}</Badge>
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground truncate">
                               {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
@@ -741,23 +791,26 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {duplicateGroups.length === 0 && softDupRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No potential duplicates detected.</p>
                     )}
-                    {duplicateGroups.map(group => (
-                      <GroupedSyncRequestCard
-                        key={group.key + ':' + group.members[0].id}
-                        group={group}
-                        onApprove={handleApprove}
-                        onReject={rejectRequest}
-                        onMerge={handleMerge}
-                        renderMember={renderMember}
-                        defaultOpen
-                      />
-                    ))}
-                    {softDupRequests.length > 0 && (
+                    {duplicateGroups
+                      .map(g => ({ ...g, members: applyFilters(g.members, { allowTypeFilter: false }) }))
+                      .filter(g => g.members.length > 0)
+                      .map(group => (
+                        <GroupedSyncRequestCard
+                          key={group.key + ':' + group.members[0].id}
+                          group={group}
+                          onApprove={handleApprove}
+                          onReject={rejectRequest}
+                          onMerge={handleMerge}
+                          renderMember={renderMember}
+                          defaultOpen
+                        />
+                      ))}
+                    {applyFilters(softDupRequests, { allowTypeFilter: false }).length > 0 && (
                       <>
                         <p className="text-[11px] uppercase tracking-wider text-muted-foreground pt-2">
                           Soft matches against existing directory
                         </p>
-                        {softDupRequests.map(r => renderMember(r))}
+                        {applyFilters(softDupRequests, { allowTypeFilter: false }).map(r => renderMember(r))}
                       </>
                     )}
                   </div>
@@ -770,7 +823,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {processedRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">Nothing has been processed yet.</p>
                     )}
-                    {completedGroups.map(group => (
+                    {groupSyncRequests(applyFilters(processedRequests.slice(0, 100))).map(group => (
                       <GroupedSyncRequestCard
                         key={group.key + ':' + group.members[0].id}
                         group={group}
