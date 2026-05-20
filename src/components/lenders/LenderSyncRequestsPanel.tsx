@@ -343,6 +343,19 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     }
   };
 
+  // Render a single underlying request — used by GroupedSyncRequestCard for both
+  // single-member and multi-member groups.
+  const renderMember = (request: LenderSyncRequest) => (
+    <SyncRequestCard
+      request={request}
+      isSelected={selectedIds.has(request.id)}
+      onToggleSelect={toggleSelect}
+      onApprove={handleApprove}
+      onReject={rejectRequest}
+      onMerge={handleMerge}
+    />
+  );
+
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
       const next = new Set(prev);
