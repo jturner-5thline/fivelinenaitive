@@ -33,11 +33,15 @@ const EditableCashCell = memo(function EditableCashCell({
   onCommit,
 }: {
   weekKey: string;
-  field: 'beginningCash' | 'endingCash';
+  field: 'beginningCash' | 'endingCash' | 'addlLiquidity';
   value: number;
   displayVal: number;
   isOverridden: boolean;
-  onCommit: (weekKey: string, field: 'beginningCash' | 'endingCash', value: number | null) => void;
+  onCommit: (
+    weekKey: string,
+    field: 'beginningCash' | 'endingCash' | 'addlLiquidity',
+    value: number | null,
+  ) => void;
 }) {
   const formatted = fmtAbbrev(displayVal);
   const [draft, setDraft] = useState<string>(formatted);
