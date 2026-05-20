@@ -979,7 +979,7 @@ export function CashFlowManager() {
     const sortedKeys = Object.keys(weeklyWithLoc).sort();
     if (sortedKeys.length === 0) return weeklyWithLoc;
     const out: WeeklyData = {};
-    let prevTotal: number | null = null;
+    let prevAddl: number | null = null;
     for (let i = 0; i < sortedKeys.length; i++) {
       const k = sortedKeys[i];
       const target = { ...(weeklyWithLoc[k] as any) };
@@ -988,7 +988,7 @@ export function CashFlowManager() {
       const seededAddl = Number(target["Add'l Liquidity (Delayed Draw)"]) || 0;
       const addl = hasAddlOverride
         ? Math.round(Number(ov!.addlLiquidity))
-        : (prevTotal !== null ? Math.round(prevTotal) : Math.round(seededAddl));
+        : (prevAddl !== null ? Math.round(prevAddl) : Math.round(seededAddl));
       const ec = Number(target['ENDING CASH']) || 0;
       const total = Math.round(ec + addl);
       target["Add'l Liquidity (Delayed Draw)"] = addl;
@@ -997,7 +997,7 @@ export function CashFlowManager() {
       target['Addl Liquidity Chase Tax Reserve MT Chk'] = 0;
       target['TOTAL CASH ON HAND'] = total;
       out[k] = target;
-      prevTotal = total;
+      prevAddl = addl;
     }
     return out;
   }, [weeklyWithLoc, weeklyOverrides]);
