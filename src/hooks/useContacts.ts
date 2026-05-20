@@ -45,6 +45,7 @@ export interface Contact {
   sms_opt_in: boolean;
   linkedin_url: string | null;
   website_url: string | null;
+  contact_type: string | null;
   description: string | null;
   hubspot_contact_id: string | null;
   source_system: string | null;
