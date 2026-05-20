@@ -85,6 +85,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
     sequence_group_id: null as string | null,
     sequence_step_key: null as string | null,
     sequence_step_order: null as number | null,
+    trigger_stage: '' as string,
+    cadence: '' as string,
+    recipient: '' as string,
+    category: '' as string,
+    approval_required: false,
   });
 
   const { standalone, sequences } = useMemo(() => {
@@ -147,6 +152,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
       sequence_group_id: template.sequence_group_id || null,
       sequence_step_key: template.sequence_step_key || null,
       sequence_step_order: template.sequence_step_order || null,
+      trigger_stage: template.trigger_stage || '',
+      cadence: template.cadence || '',
+      recipient: template.recipient || '',
+      category: template.category || '',
+      approval_required: !!template.approval_required,
     });
     setSelectedId(template.id);
     setHasUnsavedChanges(false);
@@ -172,6 +182,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
         sequence_group_id: null,
         sequence_step_key: null,
         sequence_step_order: null,
+        trigger_stage: '',
+        cadence: '',
+        recipient: '',
+        category: '',
+        approval_required: false,
       });
       setSelectedId(null);
       setHasUnsavedChanges(false);
@@ -194,6 +209,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
         sequence_group_id: null,
         sequence_step_key: null,
         sequence_step_order: null,
+        trigger_stage: template.trigger_stage || '',
+        cadence: template.cadence || '',
+        recipient: template.recipient || '',
+        category: template.category || '',
+        approval_required: !!template.approval_required,
       });
       setSelectedId(null);
       setHasUnsavedChanges(true);
@@ -223,6 +243,11 @@ export function OutboundEmailTemplatesSettings({ isAdmin }: Props) {
       sequence_group_id: formData.sequence_group_id,
       sequence_step_key: formData.sequence_step_key,
       sequence_step_order: formData.sequence_step_order,
+      trigger_stage: formData.trigger_stage.trim() || null,
+      cadence: formData.cadence.trim() || null,
+      recipient: formData.recipient.trim() || null,
+      category: formData.category.trim() || null,
+      approval_required: formData.approval_required,
     };
     if (formData.id) payload.id = formData.id;
     const result = await saveTemplate.mutateAsync(payload);
@@ -445,41 +470,91 @@ function TemplateList({
         </div>
       ) : (
         <div className="border rounded-lg divide-y">
-          {/* Standalone templates */}
-          {standalone.map(t => (
-            <div
-              key={t.id}
-              className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors group"
-              onClick={() => onSelect(t)}
-            >
-              <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
-                {t.template_number}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{t.title}</p>
-                <p className="text-xs text-muted-foreground truncate">
-                  {t.sequence_name && <span>{t.sequence_name} · </span>}
-                  {t.subject_line}
-                </p>
-              </div>
-              <Badge variant={t.is_active ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                {t.is_active ? 'Active' : 'Inactive'}
-              </Badge>
-              <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:block">
-                {format(new Date(t.updated_at), 'MMM d')}
-              </span>
-              {isAdmin && (
-                <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onDuplicate(t); }} title="Duplicate">
-                    <Copy className="h-3 w-3" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onToggle(t); }} title={t.is_active ? 'Deactivate' : 'Activate'}>
-                    <Switch checked={t.is_active} className="scale-75" />
-                  </Button>
+          {/* Standalone templates, grouped by trigger stage */}
+          {(() => {
+            const groups = new Map<string, OutboundEmailTemplate[]>();
+            for (const t of standalone) {
+              const key = t.trigger_stage || 'Unassigned Stage';
+              const arr = groups.get(key) || [];
+              arr.push(t);
+              groups.set(key, arr);
+            }
+            const stageOrder = [
+              'Submitted to Lenders',
+              'Terms Issued',
+              'Agreement Signed',
+              'In Due Diligence',
+              'Funded / Invoiced',
+              'Closed / Funded',
+            ];
+            const sortedKeys = Array.from(groups.keys()).sort((a, b) => {
+              const ia = stageOrder.indexOf(a);
+              const ib = stageOrder.indexOf(b);
+              if (ia === -1 && ib === -1) return a.localeCompare(b);
+              if (ia === -1) return 1;
+              if (ib === -1) return -1;
+              return ia - ib;
+            });
+            return sortedKeys.map(stage => (
+              <div key={`stage-${stage}`}>
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-muted/40 border-b">
+                  <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    {stage}
+                  </span>
+                  <Badge variant="outline" className="text-[10px]">
+                    {groups.get(stage)!.length}
+                  </Badge>
                 </div>
-              )}
-            </div>
-          ))}
+                {groups.get(stage)!.map(t => (
+                  <div
+                    key={t.id}
+                    className="flex items-center gap-3 px-3 py-2.5 hover:bg-muted/50 cursor-pointer transition-colors group border-b last:border-b-0"
+                    onClick={() => onSelect(t)}
+                  >
+                    <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center text-xs font-bold text-primary shrink-0">
+                      {t.template_number}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">{t.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {t.category && <span>{t.category} · </span>}
+                        {t.recipient && <span>To: {t.recipient} · </span>}
+                        {t.subject_line}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {t.trigger_stage && (
+                        <Badge variant="outline" className="text-[10px] border-primary/40 text-primary">
+                          {t.trigger_stage}
+                        </Badge>
+                      )}
+                      {t.approval_required && (
+                        <Badge variant="outline" className="text-[10px] border-amber-400 text-amber-600">
+                          Approval Required
+                        </Badge>
+                      )}
+                      <Badge variant={t.is_active ? 'default' : 'secondary'} className="text-[10px]">
+                        {t.is_active ? 'Active' : 'Inactive'}
+                      </Badge>
+                    </div>
+                    <span className="text-[10px] text-muted-foreground shrink-0 hidden sm:block">
+                      {format(new Date(t.updated_at), 'MMM d')}
+                    </span>
+                    {isAdmin && (
+                      <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onDuplicate(t); }} title="Duplicate">
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={e => { e.stopPropagation(); onToggle(t); }} title={t.is_active ? 'Deactivate' : 'Activate'}>
+                          <Switch checked={t.is_active} className="scale-75" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ));
+          })()}
 
           {/* Sequence groups */}
           {sequences.map(seq => {
@@ -679,6 +754,73 @@ function TemplateEditor({
           disabled={disabled}
           className="h-8 text-sm"
         />
+      </div>
+
+      {/* Automation metadata */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Trigger Deal Stage</Label>
+          <Input
+            value={formData.trigger_stage}
+            onChange={e => updateField('trigger_stage', e.target.value)}
+            placeholder="e.g. Submitted to Lenders"
+            disabled={disabled}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Cadence</Label>
+          <Input
+            value={formData.cadence}
+            onChange={e => updateField('cadence', e.target.value)}
+            placeholder="e.g. One Off, Biweekly"
+            disabled={disabled}
+            className="h-8 text-sm"
+          />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Recipient</Label>
+          <Select
+            value={formData.recipient || 'unset'}
+            onValueChange={v => updateField('recipient', v === 'unset' ? '' : v)}
+            disabled={disabled}
+          >
+            <SelectTrigger className="h-8 text-sm"><SelectValue placeholder="Select recipient" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="unset">—</SelectItem>
+              <SelectItem value="Client">Client</SelectItem>
+              <SelectItem value="Lender">Lender</SelectItem>
+              <SelectItem value="Internal">Internal</SelectItem>
+              <SelectItem value="Referral Partner">Referral Partner</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Category</Label>
+          <Input
+            value={formData.category}
+            onChange={e => updateField('category', e.target.value)}
+            placeholder="e.g. Payment, From FLEx"
+            disabled={disabled}
+            className="h-8 text-sm"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Approval Required</Label>
+          <div className="flex items-center gap-2 h-8">
+            <Switch
+              checked={formData.approval_required}
+              onCheckedChange={v => updateField('approval_required', v)}
+              disabled={disabled}
+            />
+            <span className="text-sm text-muted-foreground">
+              {formData.approval_required ? 'Manager approval required' : 'Auto-send allowed'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* Rich text editor */}
