@@ -82,6 +82,15 @@ import { useDealStages } from '@/contexts/DealStagesContext';
 
 export default function Dashboard() {
   const { user } = useAuth();
+  // Performance instrumentation — measure mount and first paint of /deals.
+  // Niki reported ~2min loads; these markers let us confirm fixes server-side.
+  if (typeof performance !== 'undefined' && !(globalThis as any).__dealsMountMarked) {
+    (globalThis as any).__dealsMountMarked = true;
+    // eslint-disable-next-line no-console
+    console.time('deals:firstPaint');
+    // eslint-disable-next-line no-console
+    console.time('deals:mount');
+  }
   const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
   const { features: companyFeatures } = useCompanyFeatures();
   const [overlaySearchParams, setOverlaySearchParams] = useSearchParams();
