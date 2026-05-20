@@ -3908,73 +3908,8 @@ export default function DealDetail() {
                     ];
                   }, [])}
 
-                  {/* Unified Timeline & Benchmarking */}
-                  {!isDemoAccount && isPanelVisible('activity-timeline') && (
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
-                    <Card className="lg:col-span-2">
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <Clock className="h-4 w-4" />
-                          Activity Timeline
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <Suspense fallback={null}>
-                        <UnifiedTimeline 
-                          events={(activityLogs || []).map(log => ({
-                            id: log.id,
-                            type: log.activity_type?.includes('lender') ? 'lender_update' as const 
-                              : log.activity_type?.includes('stage') ? 'stage_change' as const
-                              : log.activity_type?.includes('milestone') ? 'milestone' as const
-                              : log.activity_type?.includes('attachment') || log.activity_type?.includes('upload') ? 'document' as const
-                              : log.activity_type?.includes('note') ? 'note' as const
-                              : log.activity_type?.includes('email') ? 'email' as const
-                              : 'general' as const,
-                            description: log.description,
-                            timestamp: log.created_at,
-                            actor: log.user_display_name || undefined,
-                          }))}
-                          maxHeight="400px"
-                        />
-                        </Suspense>
-                      </CardContent>
-                    </Card>
-                    <Card>
-                      <CardHeader className="py-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                          <TrendingUp className="h-4 w-4" />
-                          Benchmarks
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="pt-0">
-                        <Suspense fallback={null}>
-                        <DealBenchmarkPanel
-                          currentDeal={{
-                            id: deal.id,
-                            stage: deal.stage,
-                            status: deal.status,
-                            value: deal.value,
-                            createdAt: deal.createdAt,
-                            updatedAt: deal.updatedAt,
-                            lenderCount: deal.lenders?.length || 0,
-                            milestoneProgress: dbMilestones.length === 0 ? 0 : Math.round((dbMilestones.filter(m => m.completed).length / dbMilestones.length) * 100),
-                          }}
-                          portfolioDeals={deals.map(d => ({
-                            id: d.id,
-                            stage: d.stage,
-                            status: d.status,
-                            value: d.value,
-                            createdAt: d.createdAt,
-                            updatedAt: d.updatedAt,
-                            lenderCount: d.lenders?.length || 0,
-                            milestoneProgress: 0,
-                          }))}
-                        />
-                        </Suspense>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  )}
+                  {/* Activity Timeline + Benchmarks: permanently retired from
+                      the Deal Info tab. Do not re-introduce. */}
 
 
                   </>
