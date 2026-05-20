@@ -883,7 +883,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06] shrink-0">
         <Sparkles className="h-4 w-4 text-primary" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-foreground leading-tight">AI Assist</div>
+          <div className="flex items-center gap-1.5 leading-tight">
+            <span className="text-sm font-semibold text-foreground">AI Assist</span>
+            <span className="inline-flex items-center rounded-full bg-warning px-1.5 py-[1px] text-[9px] font-semibold uppercase tracking-wide text-white leading-none">
+              Beta
+            </span>
+          </div>
           <div className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
             {dealName
               || (workflowAnalysis?.likely_deal?.name
