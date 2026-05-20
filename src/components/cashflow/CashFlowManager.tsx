@@ -916,13 +916,14 @@ export function CashFlowManager() {
         if (s.active) totalAvail += s.available;
       }
       target.__loc_facilities = perFacility;
-      if (!isHistorical) {
-        target["Add'l Liquidity (Delayed Draw)"] = totalAvail;
-        const addlLegacy = totalAvail;
-        const addlNew = Number(target['Addl Liquidity Chase Tax Reserve MT Chk']) || 0;
-        const ec = Number(target['ENDING CASH']) || 0;
-        target['TOTAL CASH ON HAND'] = Math.round(ec + addlLegacy + addlNew);
-      }
+      // NOTE: Add'l Liquidity (Delayed Draw) is now a user-editable row whose
+      // default cascades from the previous week's TOTAL CASH ON HAND. The
+      // resolution + TOTAL CASH ON HAND recompute happens in a dedicated
+      // pass below (see weeklyWithAddl) so the LOC overlay no longer stomps
+      // user overrides. Per-facility availability is still surfaced via the
+      // __loc_facilities sub-rows.
+      void isHistorical;
+      void totalAvail;
       out[k] = target;
     }
     return out;
@@ -969,7 +970,39 @@ export function CashFlowManager() {
 
   // Filtered data using debounced values
   const filteredDaily = useMemo(() => filterDailyByPeriod(rawDaily, debouncedYears, debouncedQuarters), [rawDaily, debouncedYears, debouncedQuarters]);
-  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithLoc, debouncedYears, debouncedQuarters), [weeklyWithLoc, debouncedYears, debouncedQuarters]);
+  // Final pass: resolve Add'l Liquidity (Delayed Draw) per-week as
+  //   override.addlLiquidity  ?? previous week's TOTAL CASH ON HAND
+  // and recompute TOTAL CASH ON HAND = ENDING CASH + Add'l Liquidity.
+  // Runs after the scheduled merge + LOC overlay so it sees the final
+  // ENDING CASH and is not stomped by upstream recomputes.
+  const weeklyWithAddl = useMemo<WeeklyData>(() => {
+    const sortedKeys = Object.keys(weeklyWithLoc).sort();
+    if (sortedKeys.length === 0) return weeklyWithLoc;
+    const out: WeeklyData = {};
+    let prevTotal: number | null = null;
+    for (let i = 0; i < sortedKeys.length; i++) {
+      const k = sortedKeys[i];
+      const target = { ...(weeklyWithLoc[k] as any) };
+      const ov = weeklyOverrides?.[k];
+      const hasAddlOverride = ov?.addlLiquidity !== undefined && ov.addlLiquidity !== null;
+      const seededAddl = Number(target["Add'l Liquidity (Delayed Draw)"]) || 0;
+      const addl = hasAddlOverride
+        ? Math.round(Number(ov!.addlLiquidity))
+        : (prevTotal !== null ? Math.round(prevTotal) : Math.round(seededAddl));
+      const ec = Number(target['ENDING CASH']) || 0;
+      const total = Math.round(ec + addl);
+      target["Add'l Liquidity (Delayed Draw)"] = addl;
+      // Zero the legacy alias so the mergeScheduledIntoWeekly roll-forward
+      // (which sums both keys) doesn't double-count on subsequent passes.
+      target['Addl Liquidity Chase Tax Reserve MT Chk'] = 0;
+      target['TOTAL CASH ON HAND'] = total;
+      out[k] = target;
+      prevTotal = total;
+    }
+    return out;
+  }, [weeklyWithLoc, weeklyOverrides]);
+
+  const filteredWeekly = useMemo(() => filterWeeklyByPeriod(weeklyWithAddl, debouncedYears, debouncedQuarters), [weeklyWithAddl, debouncedYears, debouncedQuarters]);
 
   const setActiveData = useCallback((setter: 'daily' | 'sidebar', updater: (prev: any) => any) => {
     if (role === 'viewer') {
