@@ -142,6 +142,18 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
               <div className="flex items-center gap-2">
                 <span className="font-medium truncate">{lenderName}</span>
                 {getTypeBadge()}
+                {clusterSize > 1 && (
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40 text-[10px] gap-1">
+                    <Layers className="h-3 w-3" />
+                    Cluster ×{clusterSize}
+                  </Badge>
+                )}
+                {(() => {
+                  const c = getRequestConfidence(request);
+                  return c.level !== 'none' ? (
+                    <Badge variant="outline" className={`text-[10px] ${c.className}`}>{c.label}</Badge>
+                  ) : null;
+                })()}
               </div>
               <p className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
