@@ -129,6 +129,10 @@ interface LenderInfo {
   lenderNotes?: string | null;
   tier?: string | null;
   relationshipOwners?: string | null;
+  websiteUrl?: string | null;
+  linkedinUrl?: string | null;
+  address?: string | null;
+  phoneMain?: string | null;
 }
 
 interface LenderFormContact {
@@ -203,6 +207,10 @@ function masterLenderToLenderInfo(lender: MasterLender): LenderInfo {
     lenderNotes: lender.deal_structure_notes,
     tier: lender.tier,
     relationshipOwners: lender.relationship_owners,
+    websiteUrl: lender.website,
+    linkedinUrl: lender.linkedin_url,
+    address: lender.address,
+    phoneMain: lender.phone,
   };
 }
 
@@ -891,6 +899,10 @@ export default function Lenders() {
       ebitda_min: data.ebitdaMin ? parseFloat(data.ebitdaMin) : null,
       tier: data.tier ? `T${data.tier}` : null,
       relationship_owners: data.relationshipOwners?.trim() || null,
+      website: data.websiteUrl?.trim() || null,
+      linkedin_url: data.linkedinUrl?.trim() || null,
+      address: data.address?.trim() || null,
+      phone: data.phoneMain?.trim() || null,
     };
 
     // Check if name changed and new name already exists
