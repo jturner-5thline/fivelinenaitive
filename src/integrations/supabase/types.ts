@@ -3946,6 +3946,50 @@ export type Database = {
           },
         ]
       }
+      contact_types: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contact_types_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       contacts: {
         Row: {
           additional_emails: string[] | null
@@ -3955,6 +3999,7 @@ export type Database = {
           campaign: string | null
           company_id: string | null
           contact_score: number | null
+          contact_type: string | null
           created_at: string
           created_by: string | null
           crm_company_id: string | null
@@ -4430,6 +4475,7 @@ export type Database = {
           campaign?: string | null
           company_id?: string | null
           contact_score?: number | null
+          contact_type?: string | null
           created_at?: string
           created_by?: string | null
           crm_company_id?: string | null
@@ -4909,6 +4955,7 @@ export type Database = {
           campaign?: string | null
           company_id?: string | null
           contact_score?: number | null
+          contact_type?: string | null
           created_at?: string
           created_by?: string | null
           crm_company_id?: string | null

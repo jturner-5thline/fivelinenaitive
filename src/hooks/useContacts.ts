@@ -45,6 +45,7 @@ export interface Contact {
   sms_opt_in: boolean;
   linkedin_url: string | null;
   website_url: string | null;
+  contact_type: string | null;
   description: string | null;
   hubspot_contact_id: string | null;
   source_system: string | null;
@@ -64,7 +65,7 @@ export interface Contact {
   ae_owner?: { display_name: string | null; avatar_url: string | null } | null;
 }
 
-const LIST_COLUMNS = 'id, first_name, last_name, full_name, email, phone_work, job_title, lifecycle_stage, status, contact_score, primary_company_id, lead_source, last_activity_date, created_at, hubspot_contact_id, synced_with_hubspot, crm_company_id, crm_company:crm_companies!crm_company_id(id, name)';
+const LIST_COLUMNS = 'id, first_name, last_name, full_name, email, phone_work, job_title, contact_type, linkedin_url, lifecycle_stage, status, contact_score, primary_company_id, lead_source, last_activity_date, created_at, hubspot_contact_id, synced_with_hubspot, crm_company_id, crm_company:crm_companies!crm_company_id(id, name)';
 
 export interface ContactsListParams {
   page?: number;
@@ -99,7 +100,7 @@ export function useContacts(params: ContactsListParams = {}) {
 
       // Server-side search
       if (search?.trim()) {
-        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,job_title.ilike.%${search}%`);
+        query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%,job_title.ilike.%${search}%,linkedin_url.ilike.%${search}%,contact_type.ilike.%${search}%`);
       }
 
       // Server-side filters

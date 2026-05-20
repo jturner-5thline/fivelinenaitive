@@ -38,6 +38,7 @@ import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSett
 import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSettings';
 import { EmailCadenceSettings } from '@/components/settings/EmailCadenceSettings';
 import { PartnerRulesSettings } from '@/components/settings/PartnerRulesSettings';
+import { ContactTypesSettings } from '@/components/settings/ContactTypesSettings';
 import { useCanEditPartnerRules } from '@/hooks/usePartnerRules';
 import { useCompany } from '@/hooks/useCompany';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
@@ -80,6 +81,7 @@ const SETTINGS_SECTIONS = [
   { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
   { id: 'ai-configuration', keywords: ['ai', 'claude', 'anthropic', 'artificial', 'intelligence', 'model', 'temperature', 'tokens', 'chatbot'] },
   { id: 'partner-rules', keywords: ['sales', 'bd', 'partner', 'partners', 'tier', 'tiers', 'rules', 'definitions', 'channel', 'channels', 'criteria'] },
+  { id: 'contact-types', keywords: ['contact', 'types', 'type', 'banker', 'lender', 'client', 'prospect', 'crm', 'dropdown', 'options'] },
 ];
 
 // Tab definitions with which section IDs belong to each
@@ -90,7 +92,7 @@ const TABS = [
   { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'email-signature', 'email-templates-outbound', 'email-style-guide', 'email-cadence', 'distribution-stats'] },
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
-  { id: 'crm', label: 'CRM', sectionIds: ['field-layout'] },
+  { id: 'crm', label: 'CRM', sectionIds: ['field-layout', 'contact-types'] },
   { id: 'ai', label: 'AI', sectionIds: ['ai-configuration'] },
   { id: 'sales-bd', label: 'Sales & BD', sectionIds: ['partner-rules'] },
 ];
@@ -330,6 +332,7 @@ export default function Settings() {
                   {isVisible('field-layout') && (
                     <LinkCard to="/field-layout-editor" title="Field Layout Editor" description="Configure how contact and company fields are displayed on detail pages" />
                   )}
+                  {isVisible('contact-types') && <ContactTypesSettings isAdmin={isAdmin} />}
                 </TabsContent>
 
                 {/* AI Tab */}

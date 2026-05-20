@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { useContact, useUpdateContact, useContactActivities, useCreateContactActivity, useContactDeals, useDeleteContact, LIFECYCLE_STAGES, CONTACT_STATUSES, BUYING_ROLES } from '@/hooks/useContacts';
+import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { useContactCrmCompany, useLinkContactToCompany, useUnlinkContactFromCompany, useLinkContactToDeal, useUnlinkContactFromDeal, useAllDeals } from '@/hooks/useCrmLinks';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
@@ -233,6 +234,14 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Select role" /></SelectTrigger>
                     <SelectContent>{BUYING_ROLES.map(r => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}</SelectContent>
                   </Select>
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Contact Type</p>
+                  <ContactTypeSelect
+                    value={(contact as any).contact_type}
+                    onChange={(v) => handleQuickUpdate('contact_type', v)}
+                    triggerClassName="h-8 text-xs"
+                  />
                 </div>
                 <InfoRow label="Lead Source" value={contact.lead_source} />
                 <InfoRow label="Source System" value={contact.source_system} />

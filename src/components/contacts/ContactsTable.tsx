@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, UserPlus, ChevronDown, Building2, Briefcase, Trash2 } from 'lucide-react';
+import { Search, MoreHorizontal, UserPlus, ChevronDown, Building2, Briefcase, Trash2, Linkedin } from 'lucide-react';
 import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, useDeleteContact } from '@/hooks/useContacts';
+import { useContactTypes } from '@/hooks/useContactTypes';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { useLinkContactToCompany, useLinkContactToDeal, useAllDeals } from '@/hooks/useCrmLinks';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
@@ -51,6 +52,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const [search, setSearch] = useState('');
   const [lifecycleFilter, setLifecycleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [contactTypeFilter, setContactTypeFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { sortField, sortDir, handleSort } = useTriStateSort({
     field: 'created_at',
@@ -68,6 +70,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const linkToCompany = useLinkContactToCompany();
   const linkToDeal = useLinkContactToDeal();
   const deleteContact = useDeleteContact();
+  const { data: contactTypes = [] } = useContactTypes();
 
   const filtered = useMemo(() => {
     let result = [...contacts];
@@ -77,7 +80,9 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
       result = result.filter(c =>
         (c.full_name || '').toLowerCase().includes(q) ||
         (c.email || '').toLowerCase().includes(q) ||
-        (c.job_title || '').toLowerCase().includes(q)
+        (c.job_title || '').toLowerCase().includes(q) ||
+        (c.linkedin_url || '').toLowerCase().includes(q) ||
+        ((c as any).contact_type || '').toLowerCase().includes(q)
       );
     }
 
@@ -86,6 +91,9 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
     }
     if (statusFilter !== 'all') {
       result = result.filter(c => c.status === statusFilter);
+    }
+    if (contactTypeFilter !== 'all') {
+      result = result.filter(c => ((c as any).contact_type || '') === contactTypeFilter);
     }
 
     if (sortField && sortDir) {
@@ -98,7 +106,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
     }
 
     return result;
-  }, [contacts, search, lifecycleFilter, statusFilter, sortField, sortDir]);
+  }, [contacts, search, lifecycleFilter, statusFilter, contactTypeFilter, sortField, sortDir]);
 
   const toggleAll = () => {
     if (selectedIds.size === filtered.length) {
@@ -166,6 +174,15 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
             {CONTACT_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={contactTypeFilter} onValueChange={setContactTypeFilter}>
+          <SelectTrigger className="w-[150px] h-9">
+            <SelectValue placeholder="Contact Type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {contactTypes.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
 
         {selectedIds.size > 0 && (
           <DropdownMenu>
@@ -194,8 +211,10 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
               </TableHead>
               <TableHead><SortHeader field="full_name">Name</SortHeader></TableHead>
               <TableHead><SortHeader field="job_title">Title</SortHeader></TableHead>
+              <TableHead><SortHeader field="contact_type">Type</SortHeader></TableHead>
               <TableHead><SortHeader field="email">Email</SortHeader></TableHead>
               <TableHead>Company</TableHead>
+              <TableHead>LinkedIn</TableHead>
               <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
               <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
               <TableHead><SortHeader field="contact_score">Score</SortHeader></TableHead>
@@ -207,7 +226,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={13} className="text-center py-12 text-muted-foreground">
                   <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
                   <p className="text-sm">No contacts found</p>
                 </TableCell>
@@ -229,7 +248,12 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                     <TableCell>
                       <div className="font-medium text-sm">{contact.full_name || '—'}</div>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">{contact.job_title || '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate" title={contact.job_title || ''}>{contact.job_title || '—'}</TableCell>
+                    <TableCell className="text-sm">
+                      {(contact as any).contact_type ? (
+                        <Badge variant="outline" className="text-[10px]">{(contact as any).contact_type}</Badge>
+                      ) : <span className="text-muted-foreground">—</span>}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">{contact.email || '—'}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {companyName ? (
@@ -238,6 +262,19 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                           onClick={e => { e.stopPropagation(); navigate(`/crm-companies/${companyId}`); }}
                         >{companyName}</span>
                       ) : '—'}
+                    </TableCell>
+                    <TableCell onClick={e => e.stopPropagation()}>
+                      {contact.linkedin_url ? (
+                        <a
+                          href={contact.linkedin_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title={contact.linkedin_url}
+                          className="inline-flex items-center text-primary hover:underline"
+                        >
+                          <Linkedin className="h-4 w-4" />
+                        </a>
+                      ) : <span className="text-muted-foreground text-sm">—</span>}
                     </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[contact.lifecycle_stage] || '')}>

@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
+import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 
@@ -33,6 +34,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
     website_url: '',
     description: '',
     crm_company_id: defaultCompanyId || '' as string,
+    contact_type: '' as string,
   });
 
   const handleEmailChange = (email: string) => {
@@ -48,14 +50,24 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
 
   const handleSubmit = () => {
     if (!form.first_name && !form.last_name && !form.email) return;
-    const payload = { ...form, crm_company_id: form.crm_company_id || null };
+    const linkedinTrim = form.linkedin_url.trim();
+    if (linkedinTrim && !/^https?:\/\//i.test(linkedinTrim) && !/^([\w-]+\.)+[a-z]{2,}/i.test(linkedinTrim)) {
+      // soft validation: warn but do not block; let it through
+    }
+    const payload = {
+      ...form,
+      crm_company_id: form.crm_company_id || null,
+      contact_type: form.contact_type?.trim() || null,
+      linkedin_url: linkedinTrim || null,
+      job_title: form.job_title.trim() || null,
+    };
     createContact.mutate(payload as any, {
       onSuccess: () => {
         onClose();
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
           job_title: '', department: '', lifecycle_stage: 'lead', status: 'new',
-          lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '',
+          lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '',
         });
       },
     });
@@ -137,6 +149,14 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
           <div className="space-y-1.5">
             <Label htmlFor="linkedin_url" className="text-xs">LinkedIn URL</Label>
             <Input id="linkedin_url" value={form.linkedin_url} onChange={(e) => setForm(p => ({ ...p, linkedin_url: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs">Contact Type</Label>
+            <ContactTypeSelect
+              value={form.contact_type}
+              onChange={(v) => setForm(p => ({ ...p, contact_type: v || '' }))}
+              triggerClassName="h-9"
+            />
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="website_url" className="text-xs">Website / Domain</Label>

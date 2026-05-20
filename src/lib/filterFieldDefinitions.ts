@@ -7,6 +7,8 @@ export const CONTACT_CORE_FIELDS: FilterField[] = [
   { name: 'phone_work', label: 'Work Phone', type: 'text', category: 'Contact Info' },
   { name: 'phone_mobile', label: 'Mobile Phone', type: 'text', category: 'Contact Info' },
   { name: 'job_title', label: 'Job Title', type: 'text', category: 'Contact Info' },
+  { name: 'linkedin_url', label: 'LinkedIn URL', type: 'text', category: 'Contact Info' },
+  { name: 'contact_type', label: 'Contact Type', type: 'text', category: 'Contact Info' },
   { name: 'lifecycle_stage', label: 'Lifecycle Stage', type: 'enum', category: 'Status' },
   { name: 'status', label: 'Status', type: 'enum', category: 'Status' },
   { name: 'lead_source', label: 'Lead Source', type: 'text', category: 'Marketing' },
