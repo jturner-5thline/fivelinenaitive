@@ -743,7 +743,7 @@ BROADCAST MODE (PERSONALIZATION OFF):
         : '';
 
       const baseTemplateSection = base
-        ? `\n\nAPPROVED BASE TEMPLATE — AUTHORITATIVE SOURCE (the user already reviewed and EDITED this funding source-agnostic submission email). You MUST use it verbatim as the email body for every lender. IGNORE the EMAIL BODY TEMPLATE section above and DO NOT rewrite, reorder, shorten, or paraphrase any sentence. The ONLY allowed changes are:\n  1. Replace the salutation line with "Hi <LENDER FIRST NAME>," (or the institution name if no contact first name is known).\n  2. Optionally personalize ONE short opening sentence to connect the deal to the funding source's focus area when profile data is provided. Everything else (paragraph order, wording, attachments line, sign-off) must match the approved base exactly.\nFor the subject line, use the same wording as the approved base subject but insert the funding source institution into the pipe slot if the base subject does not already include one (format: "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>").\n\nAPPROVED BASE SUBJECT:\n${base.subject}\n\nAPPROVED BASE BODY (use verbatim, only swap the salutation / optional opening line):\n${htmlToPlainText(base.bodyHtml)}\n`
+        ? `\n\nAPPROVED BASE TEMPLATE — AUTHORITATIVE SOURCE (the user already reviewed and EDITED this funding source-agnostic submission email). You MUST use it VERBATIM as the email body for every lender. IGNORE the EMAIL BODY TEMPLATE section above and DO NOT rewrite, reorder, shorten, paraphrase, or add any new sentences. The ONLY allowed change to the body is:\n  1. Replace the salutation line with "Hi <LENDER FIRST NAME>," (or the institution name if no contact first name is known).\nDo NOT add any lender-fit / qualification / "should align well with your investment criteria" style sentence. Do NOT add an opening line that references the lender's focus areas. Every other paragraph, sentence, attachments line, and sign-off must match the approved base EXACTLY.\nFor the subject line, use the same wording as the approved base subject but insert the funding source institution into the pipe slot if the base subject does not already include one (format: "<COMPANY NAME> | <LENDER INSTITUTION NAME> - New Deal <DEAL AMOUNT>").\n\nAPPROVED BASE SUBJECT:\n${base.subject}\n\nAPPROVED BASE BODY (use verbatim, only swap the salutation):\n${htmlToPlainText(base.bodyHtml)}\n`
         : '';
 
       return `You are drafting lender submission emails for this deal.${personalize ? ' Generate ONE email PER ACTIVE LENDER on this deal.' : ''}
@@ -832,18 +832,38 @@ CRITICAL RULES:
       // resulting template across the selected lenders.
       let filteredDrafts: EmailDraft[];
 
-      if (!personalize) {
+      // When the user already approved a base draft, we ALWAYS skip the AI
+      // and fan that exact copy out — both in broadcast mode AND in
+      // "personalize per lender" mode. This:
+      //   • Preserves the rich-text/HTML body verbatim, including hyperlinks,
+      //     bold/italic/underline, lists, and paragraph structure.
+      //   • Prevents the model from injecting an auto-generated lender-fit
+      //     sentence (e.g. "…should align well with your investment criteria.")
+      //     into the body — that behavior was a regression and is no longer
+      //     wanted for any lender.
+      // Per-lender contact info / salutation is still personalized downstream
+      // when the draft is enriched with lender contacts.
+      if (base) {
+        const template: EmailDraft = {
+          lenderName: 'All selected lenders',
+          to: '', cc: '', bcc: '',
+          subject: base.subject,
+          bodyHtml: base.bodyHtml,
+          status: 'draft',
+        };
+        filteredDrafts = onlyLenders.map((name) => ({
+          ...template,
+          lenderName: name,
+          subject: template.subject.includes('|')
+            ? template.subject.replace(/\|[^|]+(?= -|$)/, `| ${name}`)
+            : template.subject,
+          personalizationRationale: undefined,
+        }));
+        setDraftProgress({ completed: onlyLenders.length, total: onlyLenders.length, failed: 0 });
+      } else if (!personalize) {
         // When the user already approved a funding source-agnostic base draft we
         // skip the AI entirely and fan that exact copy out (preserves edits).
-        const template: EmailDraft = base
-          ? {
-              lenderName: 'All selected lenders',
-              to: '', cc: '', bcc: '',
-              subject: base.subject,
-              bodyHtml: base.bodyHtml,
-              status: 'draft',
-            }
-          : await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
+        const template: EmailDraft = await generateBroadcastTemplate(dealId, onlyLenders, buildDraftSubmissionPrompt);
         filteredDrafts = onlyLenders.map((name) => ({
           ...template,
           lenderName: name,
