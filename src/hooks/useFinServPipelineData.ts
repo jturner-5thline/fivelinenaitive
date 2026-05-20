@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Deal, DealLender, DealMilestone } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
+import { warnIfFinServValueMismatch } from '@/lib/finservValue';
 
 const FINSERV_PIPELINE_NAME = 'FinServ Pipeline';
 
@@ -152,6 +153,7 @@ export function useFinServPipelineData(): FinServPipelineData {
       })) as DealMilestone[],
     }));
 
+    mapped.forEach((deal) => warnIfFinServValueMismatch(deal, 'useFinServPipelineData.fetchDeals'));
     setDeals(mapped);
   }, []);
 
@@ -188,6 +190,19 @@ export function useFinServPipelineData(): FinServPipelineData {
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
+  }, [pipelineId, fetchDeals]);
+
+  useEffect(() => {
+    if (!pipelineId) return;
+
+    const handleFinServDealUpdated = (event: Event) => {
+      const detail = (event as CustomEvent<{ dealId?: string }>).detail;
+      if (!detail?.dealId) return;
+      fetchDeals(pipelineId);
+    };
+
+    window.addEventListener('finserv:deal-updated', handleFinServDealUpdated);
+    return () => window.removeEventListener('finserv:deal-updated', handleFinServDealUpdated);
   }, [pipelineId, fetchDeals]);
 
   return { pipelineId, stages, deals, isLoading, error, refetch };
