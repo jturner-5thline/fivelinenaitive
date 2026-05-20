@@ -57,9 +57,11 @@ interface SyncRequestCardProps {
   onApprove: (id: string) => Promise<boolean>;
   onReject: (id: string) => Promise<boolean>;
   onMerge: (id: string, data: Record<string, unknown>) => Promise<boolean>;
+  /** Total members in this lender's duplicate cluster (incl. self). 1 = unique. */
+  clusterSize?: number;
 }
 
-function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onReject, onMerge }: SyncRequestCardProps) {
+function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onReject, onMerge, clusterSize = 1 }: SyncRequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
