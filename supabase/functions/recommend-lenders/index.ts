@@ -1336,6 +1336,33 @@ Respond with strict JSON only: {"adjustments":[{"name":"<name>","adj":<-25..25 i
 
     recommendations.sort((a, b) => b.matchScore - a.matchScore);
 
+    // In QA mode skip diversification & the 40-floor — the harness needs to see
+    // every scored lender with its raw final score and full trace.
+    if (qa) {
+      return new Response(
+        JSON.stringify({
+          recommendations,
+          hardFiltered: qaHardFiltered,
+          sufficiency,
+          generatedAt: new Date().toISOString(),
+          meta: {
+            evaluated: activeLenders.length,
+            scored: candidates.length,
+            hardFilteredCount: filteredOut.length,
+            hardFilteredSample: filteredOut.slice(0, 25),
+            modelUsed: ANTHROPIC_API_KEY ? "claude-sonnet-4" : (LOVABLE_API_KEY ? "gemini-2.5-pro" : "deterministic-only"),
+            weights: WEIGHTS,
+            fitAttributesLoaded: fitById.size,
+            dealEmbedded: !!dealEmbedding,
+            historicalOutcomesLoaded: positiveByLender.size,
+            simulated: { narrativeAppend: !!narrativeAppend, notesAppend: !!notesAppend, criteriaOverride: criteriaOverride ?? null },
+            qaMode: true,
+          },
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
     // ─── LAYER 7 — DIVERSIFICATION ────────────────────────────────────────────
     // Greedy selection: take highest-scoring lender; cap how many near-identical
     // lenders (same lender_type AND same tier) can sit in the top list unless
