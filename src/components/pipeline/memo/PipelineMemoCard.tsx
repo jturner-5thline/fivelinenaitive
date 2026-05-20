@@ -55,6 +55,7 @@ function PipelineMemoCardImpl({
         cursor-pointer transition-all duration-200
         rounded-xl overflow-hidden
         min-h-[20rem] md:min-h-[22rem]
+        flex flex-col
         border border-white/10 hover:border-primary/40
         bg-gradient-to-b from-white/[0.07] via-white/[0.04] to-white/[0.02]
         shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)] hover:shadow-[0_14px_36px_-16px_rgba(0,0,0,0.7)]
@@ -75,14 +76,14 @@ function PipelineMemoCardImpl({
 
       <div
         className="
-          grid items-stretch
+          grid items-stretch flex-1 min-h-0
           [grid-template-columns:1fr]
           xl:[grid-template-columns:1fr_1fr]
           divide-y xl:divide-y-0 xl:divide-x divide-white/[0.08]
           bg-gradient-to-b from-transparent to-white/[0.015]
         "
       >
-        <div className="min-w-0 flex flex-col">
+        <div className="min-w-0 flex flex-col min-h-0 overflow-y-auto">
           <TasksMilestonesBand deal={deal} tasks={tasks || []} rawDigest={rawDigest} />
           <ActivityPanel
             deal={deal}
@@ -91,7 +92,7 @@ function PipelineMemoCardImpl({
             emails={rawDigest?.emails || []}
           />
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 min-h-0 overflow-y-auto">
           <LendersPanel deal={deal} />
         </div>
       </div>
