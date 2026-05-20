@@ -1592,6 +1592,108 @@ export function LenderDetailDialog({ lender, open, onOpenChange, onEdit, onDelet
                               isEditMode={false}
                             />
                           </section>
+                          <section className="mt-6">
+                            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                              Business Info
+                            </h3>
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                              <div className="flex items-start gap-3">
+                                <Globe className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">Website</div>
+                                  {lender.websiteUrl ? (
+                                    <a
+                                      href={/^https?:\/\//i.test(lender.websiteUrl) ? lender.websiteUrl : `https://${lender.websiteUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary hover:underline break-all"
+                                    >
+                                      {lender.websiteUrl}
+                                    </a>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add website
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <ExternalLink className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">LinkedIn</div>
+                                  {lender.linkedinUrl ? (
+                                    <a
+                                      href={/^https?:\/\//i.test(lender.linkedinUrl) ? lender.linkedinUrl : `https://${lender.linkedinUrl}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-sm text-primary hover:underline break-all"
+                                    >
+                                      {lender.linkedinUrl}
+                                    </a>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add LinkedIn
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <Phone className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">Phone</div>
+                                  {lender.phoneMain ? (
+                                    <CopyableText
+                                      text={lender.phoneMain}
+                                      href={`tel:${lender.phoneMain}`}
+                                      className="text-sm hover:underline"
+                                      iconSize="h-3.5 w-3.5"
+                                    />
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add phone
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                              <div className="flex items-start gap-3">
+                                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs text-muted-foreground mb-0.5">Address</div>
+                                  {lender.address ? (
+                                    <p className="text-sm whitespace-pre-wrap break-words">{lender.address}</p>
+                                  ) : onSave ? (
+                                    <button
+                                      type="button"
+                                      onClick={handleEnterEditMode}
+                                      className="text-sm text-muted-foreground italic hover:text-foreground hover:underline"
+                                    >
+                                      Add address
+                                    </button>
+                                  ) : (
+                                    <span className="text-sm text-muted-foreground italic">—</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </section>
                           {showSeparator && <Separator className="my-6" />}
                         </div>
                       );
