@@ -386,14 +386,17 @@ export function DealMilestones({ milestones, onAdd, onUpdate, onDelete, onReorde
                          onOpenAutoFocus={(e) => e.preventDefault()}
                        >
                         <Calendar
-                          mode="single"
-                          selected={newDate}
-                          onSelect={(d) => {
+                           mode="single"
+                           selected={newDate}
+                           onSelect={(d) => {
                             setNewDate(d);
                             setIsNewDateOpen(false);
                           }}
-                          className={cn("p-3 pointer-events-auto")}
-                        />
+                           fixedWeeks
+                           showOutsideDays
+                           defaultMonth={newDate ?? undefined}
+                           className={cn("p-3 pointer-events-auto")}
+                         />
                       </PopoverContent>
                     </Popover>
                     <Button
@@ -542,14 +545,17 @@ function SortableMilestoneItem({
               onOpenAutoFocus={(e) => e.preventDefault()}
             >
               <Calendar
-                mode="single"
-                selected={editDate}
-                onSelect={(d) => {
+                           mode="single"
+                           selected={editDate}
+                           onSelect={(d) => {
                   onEditDateChange(d);
                   if (d) setIsEditDateOpen(false);
                 }}
-                className={cn("p-3 pointer-events-auto")}
-              />
+                           fixedWeeks
+                           showOutsideDays
+                           defaultMonth={editDate ?? undefined}
+                           className={cn("p-3 pointer-events-auto")}
+                         />
               {editDate && (
                 <div className="px-3 pb-3">
                   <Button
