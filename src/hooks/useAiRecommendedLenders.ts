@@ -7,7 +7,17 @@ export interface AiRecommendation {
   lenderName: string;
   matchScore: number;
   rationale: string;
-  components: { type: number; size: number; industry: number; recency: number };
+  confidence?: number;
+  components: {
+    type: number;
+    size: number;
+    industry: number;
+    recency: number;
+    geography?: number;
+    structure?: number;
+    evidence?: number;
+    ai?: number;
+  };
   tier?: string | null;
   loanTypes?: string[];
   industries?: string[];
@@ -21,6 +31,14 @@ export interface AiRecommendationResponse {
   recommendations: AiRecommendation[];
   sufficiency: { ok: boolean; missing: string[] };
   generatedAt: string;
+  meta?: {
+    evaluated?: number;
+    scored?: number;
+    hardFilteredCount?: number;
+    hardFilteredSample?: { name: string; reason: string }[];
+    modelUsed?: string;
+    weights?: Record<string, number>;
+  };
 }
 
 export interface AiRecommenderCriteriaOverride {
