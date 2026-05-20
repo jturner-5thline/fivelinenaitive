@@ -171,7 +171,7 @@ const pageConfigs: PageConfig[] = [
   },
   { 
     featureKey: "page_lenders", 
-    label: "Lender Directory", 
+    label: "Directory", 
     description: "Master lender directory and management",
     icon: <Building2 className="h-5 w-5" />
   },

@@ -387,7 +387,7 @@ const LenderDirectoryContent = memo(function LenderDirectoryContent({
         <div className="flex items-end justify-between gap-6 flex-wrap">
           <div className="flex items-center gap-4">
             <DialogTitle className="text-[15px] font-semibold tracking-tight text-foreground leading-none">
-              Lender Directory
+              Directory
             </DialogTitle>
             <div className="flex items-center gap-4 pl-4 border-l border-white/5">
               <div className="flex items-baseline gap-1.5">
