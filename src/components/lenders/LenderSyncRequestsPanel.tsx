@@ -21,7 +21,7 @@ import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncR
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
-import { groupSyncRequests, normalizeLenderName, getRequestConfidence } from '@/lib/lenderRequestGrouping';
+import { groupSyncRequests, getRequestConfidence } from '@/lib/lenderRequestGrouping';
 import { formatDistanceToNow } from 'date-fns';
 
 interface FieldChangeProps {
@@ -309,9 +309,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   // normal request cards; multi-member groups collapse into a parent row with
   // batch actions.
   const allGroups = groupSyncRequests(pendingRequests);
-  const newLenderGroups = groupSyncRequests(newLenderRequests);
-  const conflictGroups = groupSyncRequests(conflictRequests);
-  const completedGroups = groupSyncRequests(processedRequests.slice(0, 100));
 
   // Potential Duplicates: only groups with 2+ members, plus any lone request whose
   // name is flagged as matching an existing lender (the soft-dup signal from Flex).
