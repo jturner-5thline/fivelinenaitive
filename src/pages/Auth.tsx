@@ -23,33 +23,25 @@ const emailSchema = z.object({
   email: z.string().trim().email({ message: "Invalid email address" }),
 });
 
-type AuthMode = "login" | "signup" | "forgot" | "reset" | "mfa" | "gate";
+type AuthMode = "login" | "signup" | "forgot" | "reset" | "mfa";
 
 interface MFAChallenge {
   factorId: string;
   challengeId: string;
 }
 
-// Gate validation is now done server-side via edge function
-const GATE_SESSION_KEY = "naitive_gate_verified";
-const GATE_TOKEN_KEY = "naitive_gate_token";
-
 const Auth = () => {
-  // Check if user has already passed the gate this session
-  const hasPassedGate = sessionStorage.getItem(GATE_SESSION_KEY) === "true";
   const location = useLocation();
   const locationState = location.state as { waitlistEmail?: string; waitlistName?: string; waitlistCompany?: string } | null;
-  const [mode, setMode] = useState<AuthMode>("signup");
+  const [mode, setMode] = useState<AuthMode>("login");
   const [email, setEmail] = useState(locationState?.waitlistEmail || "");
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
-  const [gatePassword, setGatePassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
-  const [showGatePassword, setShowGatePassword] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState<MFAChallenge | null>(null);
   const [mfaCode, setMfaCode] = useState("");
   const navigate = useNavigate();
