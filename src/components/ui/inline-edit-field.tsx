@@ -4,6 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { activateDealDraft, clearDealDraft } from '@/lib/dealDraftRegistry';
 
 interface InlineEditFieldProps {
   value: string;
@@ -19,6 +20,8 @@ interface InlineEditFieldProps {
   inputClassName?: string;
   /** Debounce window for autosave while the user is still typing. */
   debounceMs?: number;
+  dealId?: string;
+  fieldName?: string;
 }
 
 /**
@@ -40,19 +43,28 @@ export function InlineEditField({
   displayClassName,
   inputClassName,
   debounceMs = 600,
+  dealId,
+  fieldName,
 }: InlineEditFieldProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(value);
+  const [draft, setDraft] = useState(value ?? '');
   const [status, setStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null);
-
-  // Last value successfully persisted (or seeded from props). Esc reverts here.
-  const lastSavedRef = useRef(value);
-  // Most recent value the user typed — used to coalesce queued writes.
-  const pendingRef = useRef<string | null>(null);
-  const inFlightRef = useRef(false);
+  const isFocusedRef = useRef(false);
+  const dirtyRef = useRef(false);
+  const lastCommittedRef = useRef(value ?? '');
   const debounceTimerRef = useRef<number | null>(null);
   const savedTimerRef = useRef<number | null>(null);
+  const requestIdRef = useRef(0);
+  const latestResolvedRequestIdRef = useRef(0);
+
+  const registerDraft = useCallback(() => {
+    if (dealId && fieldName) activateDealDraft(dealId, fieldName);
+  }, [dealId, fieldName]);
+
+  const unregisterDraft = useCallback(() => {
+    if (dealId && fieldName) clearDealDraft(dealId, fieldName);
+  }, [dealId, fieldName]);
 
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -61,53 +73,74 @@ export function InlineEditField({
     }
   }, [isEditing]);
 
-  // Mirror external value changes while the user isn't actively editing /
-  // saving (e.g. realtime update, parent refetch).
   useEffect(() => {
-    if (!isEditing && !inFlightRef.current) {
-      lastSavedRef.current = value;
-      setEditValue(value);
+    const nextValue = value ?? '';
+    if (!isFocusedRef.current && !dirtyRef.current && nextValue !== lastCommittedRef.current) {
+      setDraft(nextValue);
+      lastCommittedRef.current = nextValue;
     }
-  }, [value, isEditing]);
+  }, [value]);
+
+  useEffect(() => {
+    if (!fieldName || !import.meta.env.DEV) return;
+    console.debug('mount', fieldName);
+  }, [fieldName]);
 
   useEffect(() => () => {
     if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
     if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
+    if (dirtyRef.current) {
+      const next = draft;
+      const requestId = requestIdRef.current + 1;
+      requestIdRef.current = requestId;
+      void Promise.resolve(onSave(next))
+        .then(() => {
+          if (requestId < latestResolvedRequestIdRef.current) return;
+          latestResolvedRequestIdRef.current = requestId;
+          dirtyRef.current = false;
+          unregisterDraft();
+          lastCommittedRef.current = next;
+        })
+        .catch(() => undefined);
+    } else {
+      unregisterDraft();
+    }
   }, []);
 
   const commit = useCallback(async (next: string) => {
-    if (next === lastSavedRef.current) return;
-    if (inFlightRef.current) {
-      // Race-condition guard: keep only the latest queued value.
-      pendingRef.current = next;
+    if (next === lastCommittedRef.current) {
+      dirtyRef.current = false;
+      unregisterDraft();
       return;
     }
-    inFlightRef.current = true;
+
+    registerDraft();
     setStatus('saving');
+    const requestId = requestIdRef.current + 1;
+    requestIdRef.current = requestId;
+
     try {
       await Promise.resolve(onSave(next));
-      lastSavedRef.current = next;
+      if (requestId < latestResolvedRequestIdRef.current) return;
+      latestResolvedRequestIdRef.current = requestId;
+      lastCommittedRef.current = next;
+      dirtyRef.current = false;
+      unregisterDraft();
       setStatus('saved');
       if (savedTimerRef.current) window.clearTimeout(savedTimerRef.current);
       savedTimerRef.current = window.setTimeout(() => setStatus('idle'), 1500);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Could not save change';
       setStatus('error');
-      setEditValue(lastSavedRef.current);
+      setDraft(lastCommittedRef.current);
+      dirtyRef.current = false;
+      unregisterDraft();
       toast.error('Failed to save', {
         description: message,
         action: { label: 'Retry', onClick: () => commit(next) },
       });
-    } finally {
-      inFlightRef.current = false;
-      const queued = pendingRef.current;
-      pendingRef.current = null;
-      if (queued !== null && queued !== lastSavedRef.current) {
-        // Flush the most-recent value the user typed during the flight.
-        commit(queued);
-      }
     }
-  }, [onSave]);
+  }, [onSave, registerDraft, unregisterDraft]);
 
   const scheduleCommit = useCallback((next: string) => {
     if (debounceTimerRef.current) window.clearTimeout(debounceTimerRef.current);
@@ -126,12 +159,15 @@ export function InlineEditField({
   }, [commit]);
 
   const handleChange = (next: string) => {
-    setEditValue(next);
+    setDraft(next);
+    dirtyRef.current = true;
+    registerDraft();
     scheduleCommit(next);
   };
 
   const handleBlur = () => {
-    flushCommit(editValue);
+    isFocusedRef.current = false;
+    flushCommit(draft);
     setIsEditing(false);
   };
 
@@ -139,15 +175,18 @@ export function InlineEditField({
     if (e.key === 'Enter') {
       if (type === 'textarea' && e.shiftKey) return;
       e.preventDefault();
-      flushCommit(editValue);
+      flushCommit(draft);
       (inputRef.current as HTMLElement | null)?.blur();
+    } else if (e.key === 'Tab') {
+      flushCommit(draft);
     } else if (e.key === 'Escape') {
       if (debounceTimerRef.current) {
         window.clearTimeout(debounceTimerRef.current);
         debounceTimerRef.current = null;
       }
-      pendingRef.current = null;
-      setEditValue(lastSavedRef.current);
+      dirtyRef.current = false;
+      unregisterDraft();
+      setDraft(lastCommittedRef.current);
       setIsEditing(false);
     }
   };
@@ -169,8 +208,12 @@ export function InlineEditField({
         {type === 'textarea' ? (
           <Textarea
             ref={inputRef as React.RefObject<HTMLTextAreaElement>}
-            value={editValue}
+            value={draft}
             onChange={(e) => handleChange(e.target.value)}
+            onFocus={() => {
+              isFocusedRef.current = true;
+              registerDraft();
+            }}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             className={cn('min-h-[80px]', inputClassName)}
@@ -179,8 +222,12 @@ export function InlineEditField({
           <Input
             ref={inputRef as React.RefObject<HTMLInputElement>}
             type={type}
-            value={editValue}
+            value={draft}
             onChange={(e) => handleChange(e.target.value)}
+            onFocus={() => {
+              isFocusedRef.current = true;
+              registerDraft();
+            }}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
             className={cn('h-8', inputClassName)}
@@ -199,8 +246,8 @@ export function InlineEditField({
       )}
       onClick={() => setIsEditing(true)}
     >
-      <span className={cn('flex-1', !value && 'text-muted-foreground/50 italic')}>
-        {value || placeholder}
+      <span className={cn('flex-1', !lastCommittedRef.current && 'text-muted-foreground/50 italic')}>
+        {lastCommittedRef.current || placeholder}
       </span>
       {statusBadge}
     </div>
