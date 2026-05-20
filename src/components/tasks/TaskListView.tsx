@@ -20,7 +20,6 @@ import {
   Plus, MoreHorizontal, Trash2, ChevronDown, ChevronRight, GripVertical,
   Calendar as CalendarIcon, Sun, Sunrise, ArrowRight, Star, AlertTriangle, Building2, User, Repeat, Columns3, Mail,
 } from 'lucide-react';
-import { ExpandedTaskDetails } from '@/components/tasks/ExpandedTaskDetails';
 import { cn } from '@/lib/utils';
 import { buildSourceEmailUrl } from '@/lib/sourceEmailLink';
 import { SourceEmailLink } from '@/components/tasks/SourceEmailLink';
@@ -65,7 +64,7 @@ export type TaskColumnId = typeof OPTIONAL_TASK_COLUMNS[number]['id'];
 /** Default columns shown to first-time users — fast triage view. */
 export const DEFAULT_TASK_COLUMNS: TaskColumnId[] = ['priority', 'status'];
 
-const LEADING_TEMPLATE = '20px 20px 20px 20px 20px minmax(240px,1fr)';
+const LEADING_TEMPLATE = '20px 20px 20px 20px minmax(240px,1fr)';
 const TRAILING_TEMPLATE = '32px';
 
 /** Build the gridTemplateColumns CSS value from the active column set. */
@@ -209,7 +208,6 @@ export function TaskListView({
     [visibleSet],
   );
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['complete']));
-  const [expandedTaskIds, setExpandedTaskIds] = useState<Set<string>>(new Set());
   const [dragActiveId, setDragActiveId] = useState<string | null>(null);
   const taskIds = useMemo(() => tasks.map(t => t.id), [tasks]);
   const collaboratorsMap = useTaskCollaboratorsBatch(taskIds);
@@ -227,14 +225,6 @@ export function TaskListView({
       return next;
     });
   };
-
-  const toggleExpanded = useCallback((taskId: string) => {
-    setExpandedTaskIds(prev => {
-      const next = new Set(prev);
-      if (next.has(taskId)) next.delete(taskId); else next.add(taskId);
-      return next;
-    });
-  }, []);
 
   const handleDragStart = (event: DragStartEvent) => setDragActiveId(event.active.id as string);
   const handleDragEnd = (event: DragEndEvent) => {
@@ -302,7 +292,6 @@ export function TaskListView({
           style={gridStyle}
         >
           <div aria-hidden />
-          <div aria-hidden />
           <div
             className="cursor-pointer flex items-center justify-center"
             onClick={onSelectAll}
@@ -348,8 +337,6 @@ export function TaskListView({
             onToggleComplete={handleCompleteWithCelebration}
             onToggleSelect={onToggleSelect}
             onToggleStar={onToggleStar}
-            expandedTaskIds={expandedTaskIds}
-            onToggleExpanded={toggleExpanded}
             gridStyle={gridStyle}
             cols={cols}
           />
@@ -382,7 +369,6 @@ export function TaskListView({
                     gridTemplateColumns: gridStyle.gridTemplateColumns,
                   }}
                 >
-                  <div aria-hidden />
                   <div className="flex items-center justify-center">
                     {isCollapsed
                       ? <ChevronRight className="h-3 w-3 text-muted-foreground" />
@@ -435,8 +421,6 @@ export function TaskListView({
                           onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
                           showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
                           collaborators={collaboratorsMap.get(task.id)}
-                          isExpanded={expandedTaskIds.has(task.id)}
-                          onToggleExpanded={() => toggleExpanded(task.id)}
                           onOpenFullDetail={() => onSelectTask(task.id)}
                           gridStyle={gridStyle}
                           cols={cols}
@@ -453,8 +437,8 @@ export function TaskListView({
                               className={cn('grid', TASK_ROW_MIN_H, 'gap-2 items-center px-4 py-1')}
                               style={gridStyle}
                             >
-                              {/* 5 leading utility columns */}
-                              <div /><div /><div /><div /><div />
+                              {/* 4 leading utility columns */}
+                              <div /><div /><div /><div />
                               {/* Title input occupies the task-name column */}
                               <Input
                                 ref={newTaskRef as any}
@@ -508,7 +492,7 @@ export function TaskListView({
 }
 
 // Pinned Overdue Section
-function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, expandedTaskIds, onToggleExpanded, gridStyle, cols }: {
+function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focusedTaskIndex, allTasks, onSelectTask, onUpdateTask, onDeleteTask, onToggleComplete, onToggleSelect, onToggleStar, gridStyle, cols }: {
   tasks: Task[];
   todayStr: string;
   selectedTaskId: string | null;
@@ -521,8 +505,6 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
   onToggleComplete: (id: string, status: string) => void;
   onToggleSelect?: (id: string) => void;
   onToggleStar?: (id: string, current: boolean) => void;
-  expandedTaskIds?: Set<string>;
-  onToggleExpanded?: (taskId: string) => void;
   gridStyle: React.CSSProperties;
   cols: typeof OPTIONAL_TASK_COLUMNS[number][];
 }) {
@@ -545,7 +527,6 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
           gridTemplateColumns: gridStyle.gridTemplateColumns,
         }}
       >
-        <div aria-hidden />
         <div className="flex items-center justify-center">
           {collapsed
             ? <ChevronRight className="h-3 w-3" style={{ color: '#e57373' }} />
@@ -587,8 +568,6 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
             onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
             onToggleStar={onToggleStar ? () => onToggleStar(task.id, task.is_starred) : undefined}
             showSelectCheckbox={(selectedTaskIds?.size || 0) > 0}
-            isExpanded={expandedTaskIds?.has(task.id)}
-            onToggleExpanded={onToggleExpanded ? () => onToggleExpanded(task.id) : undefined}
             onOpenFullDetail={() => onSelectTask(task.id)}
             gridStyle={gridStyle}
             cols={cols}
