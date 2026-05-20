@@ -58,6 +58,9 @@ export interface CrmCompany {
   created_at: string;
   updated_at: string;
   org_company_id: string | null;
+  address: string | null;
+  hq_address: string | null;
+  notes: string | null;
 }
 
 export const CRM_COMPANY_TYPES = [
@@ -85,7 +88,7 @@ export const CRM_COMPANY_LIFECYCLES = [
   { value: 'churn_risk', label: 'Churn Risk' },
 ];
 
-const LIST_COLUMNS = 'id, name, domain, logo_url, industry, lifecycle_stage, status, segment, annual_revenue, arr, employee_range, company_type, created_at, hubspot_company_id, synced_with_hubspot, hq_city, hq_country, last_activity_date, renewal_date';
+const LIST_COLUMNS = 'id, name, domain, logo_url, industry, lifecycle_stage, status, segment, annual_revenue, arr, employee_range, company_type, created_at, hubspot_company_id, synced_with_hubspot, hq_city, hq_country, last_activity_date, renewal_date, owner_user_id, website_url, linkedin_url, phone, address, hq_address, notes';
 
 export interface CrmCompaniesListParams {
   page?: number;
@@ -120,7 +123,9 @@ export function useCrmCompanies(params: CrmCompaniesListParams = {}) {
 
       // Server-side search
       if (search?.trim()) {
-        query = query.or(`name.ilike.%${search}%,domain.ilike.%${search}%,industry.ilike.%${search}%`);
+        query = query.or(
+          `name.ilike.%${search}%,domain.ilike.%${search}%,industry.ilike.%${search}%,address.ilike.%${search}%,hq_address.ilike.%${search}%,notes.ilike.%${search}%,website_url.ilike.%${search}%,linkedin_url.ilike.%${search}%,phone.ilike.%${search}%`
+        );
       }
 
       // Server-side filters
