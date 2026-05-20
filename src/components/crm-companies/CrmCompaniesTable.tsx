@@ -7,10 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Search, MoreHorizontal, Building2, ChevronDown, Trash2, Users, Briefcase } from 'lucide-react';
-import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, useDeleteCrmCompany } from '@/hooks/useCrmCompanies';
+import { Search, MoreHorizontal, Building2, ChevronDown, Trash2, Users, Briefcase, ExternalLink } from 'lucide-react';
+import { CrmCompany, CRM_COMPANY_LIFECYCLES, CRM_COMPANY_STATUSES, CRM_COMPANY_TYPES, useDeleteCrmCompany } from '@/hooks/useCrmCompanies';
 import { useContacts } from '@/hooks/useContacts';
 import { useLinkContactToCompany } from '@/hooks/useCrmLinks';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { EntitySearchModal, EntityOption } from '@/components/crm/EntitySearchModal';
 import { DeleteConfirmDialog } from '@/components/crm/DeleteConfirmDialog';
 import { CreateContactModal } from '@/components/contacts/CreateContactModal';
@@ -45,6 +46,9 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
   const [search, setSearch] = useState('');
   const [lifecycleFilter, setLifecycleFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [companyTypeFilter, setCompanyTypeFilter] = useState('all');
+  const [ownerFilter, setOwnerFilter] = useState('all');
+  const [industryFilter, setIndustryFilter] = useState('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { sortField, sortDir, handleSort } = useTriStateSort({
     field: 'created_at',
@@ -60,6 +64,16 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
   const allContacts = allContactsResult?.data ?? [];
   const linkContact = useLinkContactToCompany();
   const deleteCompany = useDeleteCrmCompany();
+  const teamMembers = useTeamMembers();
+  const ownerNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    teamMembers.forEach(t => m.set(t.id, t.display_name));
+    return m;
+  }, [teamMembers]);
+  const industryOptions = useMemo(
+    () => Array.from(new Set(companies.map(c => c.industry).filter(Boolean) as string[])).sort(),
+    [companies]
+  );
 
   const filtered = useMemo(() => {
     let result = [...companies];
@@ -68,11 +82,24 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
       result = result.filter(c =>
         c.name.toLowerCase().includes(q) ||
         (c.domain || '').toLowerCase().includes(q) ||
-        (c.industry || '').toLowerCase().includes(q)
+        (c.industry || '').toLowerCase().includes(q) ||
+        (c.address || '').toLowerCase().includes(q) ||
+        (c.hq_address || '').toLowerCase().includes(q) ||
+        (c.phone || '').toLowerCase().includes(q) ||
+        (c.website_url || '').toLowerCase().includes(q) ||
+        (c.linkedin_url || '').toLowerCase().includes(q) ||
+        (c.notes || '').toLowerCase().includes(q)
       );
     }
     if (lifecycleFilter !== 'all') result = result.filter(c => c.lifecycle_stage === lifecycleFilter);
     if (statusFilter !== 'all') result = result.filter(c => c.status === statusFilter);
+    if (companyTypeFilter !== 'all') result = result.filter(c => c.company_type === companyTypeFilter);
+    if (ownerFilter !== 'all') {
+      result = result.filter(c =>
+        ownerFilter === 'unassigned' ? !c.owner_user_id : c.owner_user_id === ownerFilter
+      );
+    }
+    if (industryFilter !== 'all') result = result.filter(c => c.industry === industryFilter);
 
     if (sortField && sortDir) {
       result.sort((a, b) => {
@@ -84,7 +111,7 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
       });
     }
     return result;
-  }, [companies, search, lifecycleFilter, statusFilter, sortField, sortDir]);
+  }, [companies, search, lifecycleFilter, statusFilter, companyTypeFilter, ownerFilter, industryFilter, sortField, sortDir]);
 
   const toggleAll = () => setSelectedIds(selectedIds.size === filtered.length ? new Set() : new Set(filtered.map(c => c.id)));
   const toggleOne = (id: string) => { const next = new Set(selectedIds); next.has(id) ? next.delete(id) : next.add(id); setSelectedIds(next); };
@@ -111,6 +138,27 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
 
   const deleteTarget = companies.find(c => c.id === deleteCompanyId);
 
+  const Truncated = ({ text, className }: { text: string | null | undefined; className?: string }) => (
+    text ? (
+      <span title={text} className={cn('block max-w-[180px] truncate', className)}>{text}</span>
+    ) : <span className="text-muted-foreground">—</span>
+  );
+
+  const LinkCell = ({ href, label }: { href: string | null | undefined; label: string }) => (
+    href ? (
+      <a
+        href={href.startsWith('http') ? href : `https://${href}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        onClick={(e) => e.stopPropagation()}
+        title={href}
+        className="inline-flex items-center gap-1 text-primary hover:underline max-w-[160px] truncate"
+      >
+        {label} <ExternalLink className="h-3 w-3 flex-shrink-0" />
+      </a>
+    ) : <span className="text-muted-foreground">—</span>
+  );
+
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2 flex-wrap">
@@ -130,6 +178,28 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             {CRM_COMPANY_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={companyTypeFilter} onValueChange={setCompanyTypeFilter}>
+          <SelectTrigger className="w-[140px] h-9"><SelectValue placeholder="Type" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Types</SelectItem>
+            {CRM_COMPANY_TYPES.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+          <SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Owner" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Owners</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={industryFilter} onValueChange={setIndustryFilter}>
+          <SelectTrigger className="w-[160px] h-9"><SelectValue placeholder="Industry" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Industries</SelectItem>
+            {industryOptions.map(i => <SelectItem key={i} value={i}>{i}</SelectItem>)}
           </SelectContent>
         </Select>
         {selectedIds.size > 0 && (
@@ -155,6 +225,14 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
               <TableHead><SortHeader field="name">Company</SortHeader></TableHead>
               <TableHead><SortHeader field="domain">Domain</SortHeader></TableHead>
               <TableHead><SortHeader field="industry">Industry</SortHeader></TableHead>
+              <TableHead><SortHeader field="company_type">Type</SortHeader></TableHead>
+              <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
+              <TableHead>Website</TableHead>
+              <TableHead>LinkedIn</TableHead>
+              <TableHead><SortHeader field="phone">Phone</SortHeader></TableHead>
+              <TableHead><SortHeader field="address">Address</SortHeader></TableHead>
+              <TableHead><SortHeader field="hq_address">HQ Address</SortHeader></TableHead>
+              <TableHead>Notes</TableHead>
               <TableHead><SortHeader field="lifecycle_stage">Stage</SortHeader></TableHead>
               <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
               <TableHead><SortHeader field="segment">Segment</SortHeader></TableHead>
@@ -168,7 +246,7 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={20} className="text-center py-12 text-muted-foreground">
                   <Building2 className="h-8 w-8 mx-auto mb-2 opacity-40" />
                   <p className="text-sm">No companies found</p>
                 </TableCell>
@@ -190,6 +268,14 @@ export function CrmCompaniesTable({ companies, onBulkAction }: CrmCompaniesTable
                 </TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.domain || '—'}</TableCell>
                 <TableCell className="text-sm text-muted-foreground">{co.industry || '—'}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{CRM_COMPANY_TYPES.find(t => t.value === co.company_type)?.label || co.company_type || '—'}</TableCell>
+                <TableCell className="text-sm text-muted-foreground">{co.owner_user_id ? (ownerNameById.get(co.owner_user_id) || 'Unknown') : '—'}</TableCell>
+                <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.website_url} label="Visit" /></TableCell>
+                <TableCell className="text-sm" onClick={e => e.stopPropagation()}><LinkCell href={co.linkedin_url} label="Profile" /></TableCell>
+                <TableCell className="text-sm text-muted-foreground">{co.phone || '—'}</TableCell>
+                <TableCell className="text-sm text-muted-foreground"><Truncated text={co.address} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground"><Truncated text={co.hq_address} /></TableCell>
+                <TableCell className="text-sm text-muted-foreground"><Truncated text={co.notes} /></TableCell>
                 <TableCell>
                   <Badge variant="secondary" className={cn('text-[10px]', lifecycleColors[co.lifecycle_stage] || '')}>{CRM_COMPANY_LIFECYCLES.find(l => l.value === co.lifecycle_stage)?.label || co.lifecycle_stage}</Badge>
                 </TableCell>
