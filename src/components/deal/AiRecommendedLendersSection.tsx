@@ -473,41 +473,52 @@ function RecommendationRow({
   const [open, setOpen] = useState(false);
   const [stageId, setStageId] = useState(defaultStageId);
   const [busy, setBusy] = useState(false);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const exp = rec.explanation;
 
   return (
-    <div className="flex items-center gap-3 rounded-lg border border-border/40 bg-background/40 backdrop-blur-sm p-2.5 hover:bg-background/60 transition-colors">
-      <div className="h-9 w-9 shrink-0 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-semibold text-primary">
-        {initials(rec.lenderName) || '?'}
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-sm truncate">{rec.lenderName}</span>
-          <Badge variant="outline" className={cn('h-5 px-1.5 text-[10px] font-medium border', scoreColor(rec.matchScore))}>
-            {rec.matchScore}% match
-          </Badge>
-          {typeof rec.confidence === 'number' && (
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal border-border/60 text-muted-foreground">
-                    {rec.confidence}% conf
-                  </Badge>
-                </TooltipTrigger>
-                <TooltipContent side="top" className="max-w-xs text-xs">
-                  Confidence reflects how many deal &amp; lender dimensions had real signal (industry, size, geo, structure, notes, recent activity, AI review).
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          )}
-          {rec.tier && (
-            <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
-              {rec.tier}
-            </Badge>
-          )}
+    <div className="rounded-lg border border-border/40 bg-background/40 backdrop-blur-sm hover:bg-background/60 transition-colors">
+      <div className="flex items-center gap-3 p-2.5">
+        <div className="h-9 w-9 shrink-0 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center text-xs font-semibold text-primary">
+          {initials(rec.lenderName) || '?'}
         </div>
-        <div className="text-xs text-muted-foreground truncate mt-0.5">{rec.rationale}</div>
-      </div>
-      <div className="flex items-center gap-1.5 shrink-0">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-medium text-sm truncate">{rec.lenderName}</span>
+            <Badge variant="outline" className={cn('h-5 px-1.5 text-[10px] font-medium border', scoreColor(rec.matchScore))}>
+              {rec.matchScore}% match
+            </Badge>
+            {typeof rec.confidence === 'number' && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge variant="outline" className="h-5 px-1.5 text-[10px] font-normal border-border/60 text-muted-foreground">
+                      {rec.confidence}% conf
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    Confidence reflects how many deal &amp; lender dimensions had real signal (industry, size, geo, structure, notes, recent activity, AI review).
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+            {rec.tier && (
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] font-normal">
+                {rec.tier}
+              </Badge>
+            )}
+            {exp && <DriverBadge driver={exp.dominantDriver} />}
+          </div>
+          <button
+            type="button"
+            onClick={() => setWhyOpen((v) => !v)}
+            className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground text-left"
+          >
+            {whyOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            <span className="truncate">{whyOpen ? 'Hide explanation' : (rec.rationale || 'Why this match?')}</span>
+          </button>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
         {added ? (
           <Badge variant="secondary" className="text-[11px] gap-1">✓ Added</Badge>
         ) : (
@@ -564,6 +575,178 @@ function RecommendationRow({
             </Button>
           </>
         )}
+        </div>
+      </div>
+      {whyOpen && exp && <WhyPanel exp={exp} />}
+    </div>
+  );
+}
+
+function DriverBadge({ driver }: { driver: 'structured' | 'notes' | 'history' | 'balanced' }) {
+  const map = {
+    structured: { label: 'Structured fit', Icon: Database, cls: 'border-blue-500/30 text-blue-300 bg-blue-500/10' },
+    notes:      { label: 'Notes-driven',   Icon: Brain,    cls: 'border-purple-500/30 text-purple-300 bg-purple-500/10' },
+    history:    { label: 'History-driven', Icon: History,  cls: 'border-amber-500/30 text-amber-300 bg-amber-500/10' },
+    balanced:   { label: 'Balanced',       Icon: Network,  cls: 'border-border/60 text-muted-foreground bg-muted/30' },
+  } as const;
+  const { label, Icon, cls } = map[driver];
+  return (
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Badge variant="outline" className={cn('h-5 px-1.5 text-[10px] font-normal border gap-1', cls)}>
+            <Icon className="h-3 w-3" />
+            {label}
+          </Badge>
+        </TooltipTrigger>
+        <TooltipContent side="top" className="text-xs max-w-xs">
+          Where this recommendation's signal mostly came from: structured field fit, AI-extracted notes/tags inference, or prior team activity & pass patterns.
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  );
+}
+
+function verdictPill(v: 'match' | 'partial' | 'mismatch' | 'unknown') {
+  const map = {
+    match:    'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    partial:  'bg-blue-500/15 text-blue-300 border-blue-500/30',
+    mismatch: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    unknown:  'bg-muted/40 text-muted-foreground border-border/50',
+  } as const;
+  const label = { match: 'Match', partial: 'Partial', mismatch: 'Mismatch', unknown: 'Unknown' }[v];
+  return <span className={cn('inline-block rounded-sm border px-1 py-px text-[9px] uppercase tracking-wide', map[v])}>{label}</span>;
+}
+
+function FieldList({ rows }: { rows: { label: string; deal: string; lender: string; verdict: 'match' | 'partial' | 'mismatch' | 'unknown' }[] }) {
+  if (!rows.length) return <div className="text-[11px] text-muted-foreground italic">None</div>;
+  return (
+    <div className="space-y-1">
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-start gap-2 text-[11px]">
+          {verdictPill(r.verdict)}
+          <div className="flex-1 min-w-0">
+            <span className="font-medium text-foreground/90">{r.label}:</span>{' '}
+            <span className="text-muted-foreground">deal</span> <span className="text-foreground/80">{r.deal}</span>{' '}
+            <span className="text-muted-foreground">↔ lender</span> <span className="text-foreground/80">{r.lender}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function Section({ icon: Icon, title, children }: { icon: any; title: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        <Icon className="h-3 w-3" />
+        {title}
+      </div>
+      <div className="pl-4">{children}</div>
+    </div>
+  );
+}
+
+function WhyPanel({ exp }: { exp: NonNullable<AiRecommendation['explanation']> }) {
+  const { fitReasons, risks, matchedFields, unmatchedFields, noteInsights, priorTeamKnowledge, driverBreakdown } = exp;
+  return (
+    <div className="border-t border-border/40 bg-background/30 px-3 py-3 space-y-3 rounded-b-lg">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <Section icon={CheckCircle2} title="Deal Fit — top reasons">
+          {fitReasons.length ? (
+            <ul className="space-y-1">
+              {fitReasons.map((r, i) => (
+                <li key={i} className="text-[11px] text-foreground/90 leading-snug flex gap-1.5">
+                  <span className="text-emerald-400 mt-0.5">•</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <div className="text-[11px] text-muted-foreground italic">No specific fit signals extracted.</div>}
+        </Section>
+
+        <Section icon={AlertTriangle} title="Risks & caveats">
+          {risks.length ? (
+            <ul className="space-y-1">
+              {risks.map((r, i) => (
+                <li key={i} className="text-[11px] text-foreground/90 leading-snug flex gap-1.5">
+                  <span className="text-amber-400 mt-0.5">•</span>
+                  <span>{r}</span>
+                </li>
+              ))}
+            </ul>
+          ) : <div className="text-[11px] text-muted-foreground italic">No major caveats detected.</div>}
+        </Section>
+      </div>
+
+      <Section icon={Database} title="Lender Appetite — matched fields">
+        <FieldList rows={matchedFields} />
+      </Section>
+
+      <Section icon={X} title="Unmatched / unknown fields">
+        <FieldList rows={unmatchedFields} />
+      </Section>
+
+      <Section icon={MessageSquare} title="Notes & Tags signals">
+        <div className="space-y-1.5 text-[11px]">
+          {noteInsights.positive.length > 0 && (
+            <div><span className="text-emerald-400 font-medium">Positive:</span>{' '}
+              <span className="text-foreground/85">{noteInsights.positive.join(' · ')}</span>
+            </div>
+          )}
+          {noteInsights.negative.length > 0 && (
+            <div><span className="text-rose-400 font-medium">Negative:</span>{' '}
+              <span className="text-foreground/85">{noteInsights.negative.join(' · ')}</span>
+            </div>
+          )}
+          {noteInsights.tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 pt-0.5">
+              {noteInsights.tags.map((t, i) => (
+                <span key={i} className="rounded-full bg-muted/40 border border-border/40 px-1.5 py-px text-[10px] text-muted-foreground">{t}</span>
+              ))}
+            </div>
+          )}
+          {!noteInsights.positive.length && !noteInsights.negative.length && !noteInsights.tags.length && (
+            <div className="text-muted-foreground italic">No tag or note signals extracted yet.</div>
+          )}
+        </div>
+      </Section>
+
+      <Section icon={History} title="Prior team knowledge">
+        <div className="space-y-1 text-[11px]">
+          <div className="text-foreground/85">
+            {priorTeamKnowledge.recentActivity
+              ? 'Active in the last 90 days across the team.'
+              : 'No recent team activity in last 90 days.'}
+          </div>
+          {priorTeamKnowledge.passReasons.length > 0 && (
+            <div>
+              <span className="text-muted-foreground">Recent pass reasons: </span>
+              <span className="text-foreground/85">{priorTeamKnowledge.passReasons.map((r) => `"${r}"`).join(' · ')}</span>
+            </div>
+          )}
+          {priorTeamKnowledge.repeatPatterns.length > 0 && (
+            <div className="space-y-0.5">
+              <div className="text-muted-foreground">Repeat patterns:</div>
+              {priorTeamKnowledge.repeatPatterns.map((p, i) => (
+                <div key={i} className="text-foreground/85">
+                  • {p.reason} <span className="text-muted-foreground">({p.occurrences}× · {Math.round(p.confidence * 100)}% conf)</span>
+                </div>
+              ))}
+            </div>
+          )}
+          {!priorTeamKnowledge.recentActivity && !priorTeamKnowledge.passReasons.length && !priorTeamKnowledge.repeatPatterns.length && (
+            <div className="text-muted-foreground italic">No prior interactions recorded.</div>
+          )}
+        </div>
+      </Section>
+
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground border-t border-border/30 pt-2">
+        <span className="uppercase tracking-wide">Signal mix:</span>
+        <span>Structured <span className="text-foreground/80 font-medium">{driverBreakdown.structured}</span></span>
+        <span>· Notes <span className="text-foreground/80 font-medium">{driverBreakdown.notes}</span></span>
+        <span>· History <span className="text-foreground/80 font-medium">{driverBreakdown.history}</span></span>
       </div>
     </div>
   );
