@@ -822,6 +822,17 @@ export function useDealsDatabase() {
 
       if (error) throw error;
 
+      if (previousDeal?.dealClass === 'finserv') {
+        window.dispatchEvent(new CustomEvent('finserv:deal-updated', {
+          detail: {
+            dealId,
+            value: updates.value,
+            mrr: (updates as any).mrr,
+            oneTimeRevenue: (updates as any).oneTimeRevenue,
+          },
+        }));
+      }
+
       // Toast when a stage change pushes the deal out of the FLEx marketplace.
       // The DB trigger already fires the unpublish — this just surfaces feedback.
       if (
