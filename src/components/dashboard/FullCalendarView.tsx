@@ -1,4 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   format,
   startOfWeek,
@@ -1713,7 +1714,9 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
             )}
 
             <Separator className="my-3" />
-            <CalendarAIPanel events={viewEvents} currentDate={currentDate} />
+            {is5thLineUser && (
+              <CalendarAIPanel events={viewEvents} currentDate={currentDate} />
+            )}
           </div>
 
           {/* Main content */}
