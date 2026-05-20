@@ -603,22 +603,53 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
               </TabsContent>
 
               <TabsContent value="conflicts" className="mt-3">
+                {exactDuplicateConflicts.length > 0 && (
+                  <div className="flex items-center justify-between mb-3 p-2 rounded-md border border-amber-500/30 bg-amber-500/5">
+                    <div className="text-xs text-muted-foreground">
+                      <span className="font-medium text-amber-700 dark:text-amber-400">
+                        {exactDuplicateConflicts.length} exact match{exactDuplicateConflicts.length === 1 ? '' : 'es'}
+                      </span>
+                      {' '}detected (Flex record is identical to existing). Safe to keep existing in batch.
+                    </div>
+                    <Button size="sm" variant="outline" onClick={handleBatchKeepExisting} disabled={isBulkProcessing}>
+                      {isBulkProcessing ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <CheckCheck className="h-3 w-3 mr-1" />}
+                      Batch keep existing
+                    </Button>
+                  </div>
+                )}
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-2">
                     {conflictRequests.length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-8">No merge conflicts to resolve.</p>
                     )}
-                    {conflictRequests.map(request => (
-                      <SyncRequestCard
-                        key={request.id}
-                        request={request}
-                        isSelected={selectedIds.has(request.id)}
-                        onToggleSelect={toggleSelect}
-                        onApprove={handleApprove}
-                        onReject={rejectRequest}
-                        onMerge={handleMerge}
-                      />
-                    ))}
+                    {conflictRequests.map((request, idx) => {
+                      const name = (request.incoming_data as Record<string, unknown>)?.name as string;
+                      const diffCount = Object.keys(request.changes_diff || {}).length;
+                      return (
+                        <button
+                          key={request.id}
+                          type="button"
+                          onClick={() => openConflict(request.id)}
+                          className="w-full text-left border rounded-lg p-3 bg-card hover:bg-muted/40 transition-colors flex items-center gap-3"
+                        >
+                          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium truncate">{name || 'Unknown lender'}</span>
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 text-[10px]">
+                                {diffCount === 0 ? 'Exact match' : `${diffCount} field${diffCount === 1 ? '' : 's'} differ`}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">
+                              {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
+                              {request.existing_lender_name && ` • Matches "${request.existing_lender_name}"`}
+                            </p>
+                          </div>
+                          <Badge variant="secondary" className="text-[10px]">#{idx + 1}</Badge>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </button>
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -681,6 +712,15 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
           </CardContent>
         </CollapsibleContent>
       </Card>
+      <ConflictResolutionPanel
+        open={conflictPanelOpen}
+        onOpenChange={setConflictPanelOpen}
+        conflicts={conflictRequests}
+        initialIndex={conflictIndex}
+        onApprove={handleApprove}
+        onReject={rejectRequest}
+        onMerge={handleMerge}
+      />
     </Collapsible>
   );
 }
