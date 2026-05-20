@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useCreateCrmCompany, CRM_COMPANY_TYPES, CRM_COMPANY_STATUSES, CRM_COMPANY_LIFECYCLES } from '@/hooks/useCrmCompanies';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 
 interface CreateCrmCompanyModalProps {
   open: boolean;
@@ -14,6 +15,7 @@ interface CreateCrmCompanyModalProps {
 
 export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalProps) {
   const create = useCreateCrmCompany();
+  const teamMembers = useTeamMembers();
   const [form, setForm] = useState({
     name: '',
     domain: '',
@@ -30,17 +32,26 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
     phone: '',
     main_contact_email: '',
     description: '',
+    address: '',
+    hq_address: '',
+    notes: '',
+    owner_user_id: '',
   });
 
   const handleSubmit = () => {
     if (!form.name.trim()) return;
-    create.mutate(form as any, {
+    // Convert empty strings to null so optional fields stay blank rather than empty text.
+    const payload = Object.fromEntries(
+      Object.entries(form).map(([k, v]) => [k, typeof v === 'string' && v.trim() === '' ? null : v])
+    );
+    create.mutate(payload as any, {
       onSuccess: () => {
         onClose();
         setForm({
           name: '', domain: '', industry: '', company_type: 'prospect', status: 'active',
           lifecycle_stage: 'target', employee_range: '', hq_city: '', hq_country: '',
           segment: '', website_url: '', linkedin_url: '', phone: '', main_contact_email: '', description: '',
+          address: '', hq_address: '', notes: '', owner_user_id: '',
         });
       },
     });
@@ -126,8 +137,35 @@ export function CreateCrmCompanyModal({ open, onClose }: CreateCrmCompanyModalPr
             <Input id="main_contact_email" value={form.main_contact_email} onChange={(e) => setForm(p => ({ ...p, main_contact_email: e.target.value }))} />
           </div>
           <div className="space-y-1.5 col-span-2">
+            <Label htmlFor="address" className="text-xs">Address</Label>
+            <Input id="address" value={form.address} onChange={(e) => setForm(p => ({ ...p, address: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5 col-span-2">
+            <Label htmlFor="hq_address" className="text-xs">HQ Address</Label>
+            <Input id="hq_address" value={form.hq_address} onChange={(e) => setForm(p => ({ ...p, hq_address: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5 col-span-2">
+            <Label className="text-xs">Owner</Label>
+            <Select
+              value={form.owner_user_id || 'unassigned'}
+              onValueChange={v => setForm(p => ({ ...p, owner_user_id: v === 'unassigned' ? '' : v }))}
+            >
+              <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {teamMembers.map(m => (
+                  <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5 col-span-2">
             <Label htmlFor="description" className="text-xs">Description</Label>
             <Textarea id="description" value={form.description} onChange={(e) => setForm(p => ({ ...p, description: e.target.value }))} rows={3} />
+          </div>
+          <div className="space-y-1.5 col-span-2">
+            <Label htmlFor="notes" className="text-xs">Notes</Label>
+            <Textarea id="notes" value={form.notes} onChange={(e) => setForm(p => ({ ...p, notes: e.target.value }))} rows={3} />
           </div>
         </div>
 

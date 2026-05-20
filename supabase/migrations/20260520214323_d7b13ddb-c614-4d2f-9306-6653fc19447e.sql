@@ -1,0 +1,4 @@
+ALTER TABLE public.crm_companies
+  ADD COLUMN IF NOT EXISTS address TEXT,
+  ADD COLUMN IF NOT EXISTS hq_address TEXT,
+  ADD COLUMN IF NOT EXISTS notes TEXT;
