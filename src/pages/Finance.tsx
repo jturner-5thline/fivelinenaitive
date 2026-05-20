@@ -33,9 +33,9 @@ function FinanceHeader() {
   };
 
   return (
-    <div className="flex items-center justify-between gap-3 flex-wrap">
+    <div className="flex items-center gap-3 flex-wrap">
       <h1 className="text-2xl font-bold leading-none">Finance</h1>
-      <nav className="flex items-center gap-1 flex-wrap ml-auto" aria-label="Finance sections">
+      <nav className="flex items-center gap-1 flex-wrap" aria-label="Finance sections">
         {SECTION_LINKS.map((s) => {
           const isActive = active === s.key;
           const Icon = s.icon;
@@ -58,6 +58,8 @@ function FinanceHeader() {
           );
         })}
       </nav>
+      {/* Portal target — DashboardModule renders Charts/Export/Team Config/Views here */}
+      <div id="finance-header-actions" className="ml-auto flex items-center gap-2 flex-wrap" />
     </div>
   );
 }

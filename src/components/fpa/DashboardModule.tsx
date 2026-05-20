@@ -1,4 +1,5 @@
-import { useState, lazy, Suspense, useCallback, useMemo } from 'react';
+import { useState, lazy, Suspense, useCallback, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -40,6 +41,20 @@ function TabSkeleton() {
       <Skeleton className="h-[200px] w-full" />
     </div>
   );
+}
+
+/**
+ * Renders children into the Finance page header's right-side action slot
+ * (`#finance-header-actions`). Falls back to inline rendering if the slot
+ * isn't mounted (e.g. DashboardModule used outside the Finance shell).
+ */
+function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setTarget(document.getElementById('finance-header-actions'));
+  }, []);
+  if (!target) return null;
+  return createPortal(<>{children}</>, target);
 }
 
 // Smart default: pick date range based on current month
@@ -134,6 +149,33 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
         isSaving={isSaving}
       />
 
+      {/* Top-right header actions — portaled into the Finance page header. */}
+      <HeaderActionsPortal>
+        {e.chartConfigButton && (
+          <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setChartConfigOpen(true)}>
+            <Settings2 className="h-3.5 w-3.5" /> Charts
+          </Button>
+        )}
+        {e.exportButton && (
+          <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+            <Download className="h-3.5 w-3.5" /> Export
+          </Button>
+        )}
+        {isAdmin && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setTeamConfigOpen(true)}>
+                <Shield className="h-3.5 w-3.5" /> Team Config
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p className="text-xs">Configure which elements are visible to your team</p>
+            </TooltipContent>
+          </Tooltip>
+        )}
+        {headerExtras}
+      </HeaderActionsPortal>
+
       {/* Global Filters */}
       <div className="flex items-center justify-between flex-wrap gap-2">
         <Tabs value={activeTab} onValueChange={setDashboardTab}>
@@ -181,29 +223,6 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
               </SelectContent>
             </Select>
           )}
-          {e.chartConfigButton && (
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setChartConfigOpen(true)}>
-              <Settings2 className="h-3.5 w-3.5" /> Charts
-            </Button>
-          )}
-          {e.exportButton && (
-            <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
-              <Download className="h-3.5 w-3.5" /> Export
-            </Button>
-          )}
-          {isAdmin && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1 text-xs" onClick={() => setTeamConfigOpen(true)}>
-                  <Shield className="h-3.5 w-3.5" /> Team Config
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p className="text-xs">Configure which elements are visible to your team</p>
-              </TooltipContent>
-            </Tooltip>
-          )}
-          {headerExtras}
         </div>
       </div>
 
