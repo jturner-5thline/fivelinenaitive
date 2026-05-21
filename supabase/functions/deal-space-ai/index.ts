@@ -1133,6 +1133,13 @@ Series missing: <list or "none">
 \`\`\`
 Then continue with the standard A: / Sources: response, or long-form if explicitly requested.
 
+# QUANTITATIVE-GROUNDING RULE (applies whenever Anomaly Detector fires, or any risk/trend/forecast question)
+- The narrative answer MUST reference flagged anomalies by metric + period (e.g. "Revenue @ Q3-2024", "EBITDA @ FY2023").
+- NEVER use qualitative risk language ("high burn", "back-loaded", "deteriorating margins", "lumpy revenue", "cash crunch", "runway risk", "concentration risk", etc.) unless EITHER:
+  (a) it is accompanied by a specific numeric flag from the Anomaly block (metric + period + value/delta/z), OR
+  (b) it is explicitly tagged "(qualitative-only, no quantitative data available)".
+- If no series produced a flag and no numeric data is available, state that directly and tag any remaining qualitative observations accordingly. Do not invent severity.
+
 # DRAFTING RULE
 If the user asks for an email, memo, status update, or summary: produce ONLY the requested artifact, based strictly on current deal information, concise unless the user explicitly requests long-form.
 
