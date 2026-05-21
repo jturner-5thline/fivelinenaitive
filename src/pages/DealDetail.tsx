@@ -602,6 +602,22 @@ export default function DealDetail() {
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
   const [statusEmailContent, setStatusEmailContent] = useState<StatusReportEditableContent | null>(null);
+  /** Holds the generated PDF + flow-picker state while the user chooses
+   *  between replying into an existing thread or starting a new email. */
+  const [statusEmailFlow, setStatusEmailFlow] = useState<
+    | {
+        content: StatusReportEditableContent;
+        attachment: File;
+        greetingHtml: string;
+        defaultSubject: string;
+        defaultRecipients: string[];
+        contactDisplayName: string;
+      }
+    | null
+  >(null);
+  /** Once the picker resolves, this drives `DraftAndSendDialog`. */
+  const [statusEmailDraftInitial, setStatusEmailDraftInitial] =
+    useState<DraftAndSendInitial | null>(null);
   const { profile } = useProfile();
 
   // Allow other deal-scoped components (e.g. the Deal Space Ask AI tab) to
