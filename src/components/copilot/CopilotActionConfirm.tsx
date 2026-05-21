@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef, useImperativeHandle } from 'react';
 import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw, AlertTriangle, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -18,6 +18,14 @@ interface Props {
   action: ConfirmAction;
 }
 
+export interface CopilotActionConfirmHandle {
+  confirm: () => Promise<void>;
+  cancel: () => void;
+  getStatus: () => 'pending' | 'loading' | 'done' | 'cancelled';
+  getLabel: () => string;
+  getActionType: () => string;
+}
+
 const iconMap: Record<string, typeof ArrowRight> = {
   update_deal_stage: ArrowRight,
   update_deal_status: AlertTriangle,
@@ -31,7 +39,7 @@ const iconMap: Record<string, typeof ArrowRight> = {
   log_note: FileText,
 };
 
-export function CopilotActionConfirm({ action }: Props) {
+export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props>(function CopilotActionConfirm({ action }, ref) {
   // Unified human-approval card for all AI-proposed task drafts
   // (personal, deal-linked, and delegated all flow through here).
   if (action.action_type === 'create_task') {
@@ -159,8 +167,17 @@ export function CopilotActionConfirm({ action }: Props) {
     } catch (err: any) {
       setStatus('pending');
       toast.error(err.message || 'Failed to execute action');
+      throw err;
     }
   };
+
+  useImperativeHandle(ref, () => ({
+    confirm: handleConfirm,
+    cancel: () => setStatus('cancelled'),
+    getStatus: () => status,
+    getLabel: () => formattedDescription,
+    getActionType: () => action.action_type,
+  }));
 
   if (status === 'done') {
     return (
@@ -245,4 +262,4 @@ export function CopilotActionConfirm({ action }: Props) {
       </div>
     </div>
   );
-}
+});

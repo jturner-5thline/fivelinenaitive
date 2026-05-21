@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { CopilotApprovalGroup } from '@/components/copilot/CopilotApprovalGroup';
 import { DealAiSettingsPopover } from '@/components/copilot/DealAiSettingsPopover';
 import { useDealCopilotMemory } from '@/hooks/useDealCopilotMemory';
 import { CopilotAutoExecuted } from '@/components/copilot/CopilotAutoExecuted';
@@ -471,10 +472,37 @@ function CopilotAssistantContent({ content }: { content: string }) {
   if (lastIndex < displayContent.length) segments.push({ type: 'text', value: displayContent.slice(lastIndex) });
   if (segments.length === 0) segments.push({ type: 'text', value: displayContent });
 
+  // Coalesce consecutive 'confirm' segments that share the same action_type
+  // (and are not create_task, which has its own dedicated UI) into a single
+  // grouped segment so we can render an "Approve all (N)" bar.
+  const groupedSegments: Array<{ type: string; value: any }> = [];
+  for (let i = 0; i < segments.length; i++) {
+    const seg = segments[i];
+    if (seg.type === 'confirm' && seg.value?.action_type && seg.value.action_type !== 'create_task') {
+      const batch = [seg.value];
+      let j = i + 1;
+      while (
+        j < segments.length &&
+        segments[j].type === 'confirm' &&
+        segments[j].value?.action_type === seg.value.action_type
+      ) {
+        batch.push(segments[j].value);
+        j++;
+      }
+      if (batch.length >= 2) {
+        groupedSegments.push({ type: 'confirm_group', value: batch });
+        i = j - 1;
+        continue;
+      }
+    }
+    groupedSegments.push(seg);
+  }
+
   return (
     <>
-      {segments.map((seg, i) => {
+      {groupedSegments.map((seg, i) => {
         if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
+        if (seg.type === 'confirm_group') return <CopilotApprovalGroup key={i} actions={seg.value} />;
         if (seg.type === 'auto_executed') return <CopilotAutoExecuted key={i} action={seg.value} />;
         if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
         if (seg.type === 'deal') return <CopilotDealCard key={i} deal={seg.value.deal} milestones={seg.value.milestones} />;
