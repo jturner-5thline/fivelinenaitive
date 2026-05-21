@@ -919,7 +919,7 @@ export function AICopilotPanel() {
 
   /** Visible chip label — override > auto-detected. */
   const effectiveContextLabel = contextOverride
-    ? `${contextOverride.entityName} (override)`
+    ? `Deal: ${contextOverride.entityName}`
     : autoContextLabel;
 
   // Non-modal: no focus trap. The Ask bar at the bottom is the input
