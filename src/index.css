@@ -814,7 +814,7 @@
      of the swap. These rules turn that into a coordinated horizontal
      slide on whichever Radix dialog is currently entering/exiting, so
      every header overlay (Dashboard, Tasks, Calendar, Mail, Daily
-     Rundown, Action Queue) animates the same way without each component
+     Rundown, Approval Queue) animates the same way without each component
      having to opt in. Mirrors the widget-swipe pattern above but uses
      attribute selectors instead of a className. */
   @keyframes header-overlay-in-from-right {

@@ -19,7 +19,7 @@ export function ActionQueueBadge() {
   const [open, setOpen] = useState(false);
 
   const label = useMemo(
-    () => (count === 0 ? 'Action Queue' : `Action Queue · ${count}`),
+    () => (count === 0 ? 'Approval Queue' : `Approval Queue · ${count}`),
     [count],
   );
 

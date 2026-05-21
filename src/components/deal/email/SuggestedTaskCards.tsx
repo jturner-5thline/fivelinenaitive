@@ -492,7 +492,7 @@ export function SuggestedTaskCards({ suggestions, dealId, dealName, threadId }: 
                   size="sm"
                   variant="outline"
                   className="h-7 px-2 text-[11px] gap-1 shrink-0"
-                  title="Add to Action Queue for batch review"
+                  title="Add to Approval Queue for batch review"
                   onClick={async () => {
                     await enqueueAiAction({
                       action_type: 'create_task',

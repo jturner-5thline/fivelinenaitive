@@ -15,7 +15,7 @@ interface Props {
   onSetAutoCommit: (v: boolean) => void;
   onConfirm: (reasonOverride?: string) => void;
   onDismiss: () => void;
-  /** Defer the suggestion to the dashboard Action Queue instead of confirming now. */
+  /** Defer the suggestion to the dashboard Approval Queue instead of confirming now. */
   onAddToQueue?: (reasonOverride?: string) => void;
 }
 
@@ -124,7 +124,7 @@ export function LenderPassSidebarCard({
             className="h-7 px-2 text-[11px] gap-1"
             disabled={committing || noLenderMatch}
             onClick={() => onAddToQueue(editing ? reason : undefined)}
-            title="Add to Action Queue — review later from the dashboard"
+            title="Add to Approval Queue — review later from the dashboard"
           >
             <Inbox className="h-3 w-3" />
             Queue

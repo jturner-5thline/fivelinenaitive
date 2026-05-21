@@ -232,7 +232,7 @@ function EmailTileWithIntelligence({
     const vw = window.innerWidth;
 
     // Always anchor BENEATH the Email tile so the popover never overlaps
-    // the neighboring Action Queue / Deals tiles. Falls back to side
+    // the neighboring Approval Queue / Deals tiles. Falls back to side
     // placements only if there's truly no vertical room (rare on desktop).
     const spaceBelow = window.innerHeight - tileRect.bottom - VIEWPORT_PAD;
     const spaceRight = vw - tileRect.right - VIEWPORT_PAD;
@@ -521,7 +521,7 @@ export default function Dashboard() {
   const [pendingRemoval, setPendingRemoval] = useState<{ widgetId: string; widget: WidgetConfig; gridItem: GridItem } | null>(null);
   const [dealsDialogOpen, setDealsDialogOpen] = useState(false);
   const [dealsInitialView, setDealsInitialView] = useState<DealsCarouselView | undefined>(undefined);
-  // Action Queue modal — opened from the top-row quick-action tile so the
+  // Approval Queue modal — opened from the top-row quick-action tile so the
   // queue stays a first-class shortcut rather than a sibling card.
   const [actionQueueOpen, setActionQueueOpen] = useState(false);
   const actionQueueCount = useAiActionQueueCount();
@@ -719,7 +719,7 @@ export default function Dashboard() {
     const skeletonTileCount =
       4 /* base */ +
       1 /* always-on Deals tile */ +
-      1 /* always-on Action Queue tile */ +
+      1 /* always-on Approval Queue tile */ +
       (isJTurner ? 1 : 0) +
       (canSeeNiki ? 1 : 0) +
       (is5thLine ? 1 : 0);
@@ -805,7 +805,7 @@ export default function Dashboard() {
             // who is allowed to see it (jturner included). For jturner the
             // tiles are also reordered via Tailwind `order-*` classes.
             const nikiInTopRow = canSeeNiki;
-            // Base tiles: Calendar + Email + Action Queue + Deals (AI insights).
+            // Base tiles: Calendar + Email + Approval Queue + Deals (AI insights).
             // New Deal moved to the dashboard action row next to Templates.
             const tileCount = 4 + (isJTurner ? 1 : 0) + (nikiInTopRow ? 1 : 0) + (is5thLine ? 1 : 0);
             const gridColsClass =
@@ -861,14 +861,14 @@ export default function Dashboard() {
                 })
               }
             />
-            {/* Action Queue tile — first-class quick-action sibling to
+            {/* Approval Queue tile — first-class quick-action sibling to
                 Calendar/Email/Deals. Click opens the queue modal so deferred
                 AI suggestions are one tap away from the dashboard hero. */}
             <QuickActionTile
-              label="Action Queue"
+              label="Approval Queue"
               icon={InboxIcon}
               category="inbox"
-              ariaLabel={`Open Action Queue${actionQueueCount > 0 ? `, ${actionQueueCount} pending` : ''}`}
+              ariaLabel={`Open Approval Queue${actionQueueCount > 0 ? `, ${actionQueueCount} pending` : ''}`}
               badgeCount={actionQueueCount}
               className={cn(isJTurner && 'order-3')}
               onClick={openActionQueue}
@@ -1141,7 +1141,7 @@ export default function Dashboard() {
       <Dialog open={actionQueueOpen} onOpenChange={setActionQueueOpen}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
           <DialogHeader className="sr-only">
-            <DialogTitle>Action Queue</DialogTitle>
+            <DialogTitle>Approval Queue</DialogTitle>
           </DialogHeader>
           <ActionQueuePanel items={actionQueueItems} onClose={() => setActionQueueOpen(false)} />
         </DialogContent>

@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 /**
- * AI Action Queue — deferred AI suggestions awaiting user approval.
+ * AI Approval Queue — deferred AI suggestions awaiting user approval.
  *
  * Items live in `ai_action_queue` and expire after 48h. The user can
  * "Add to Queue" any AI-suggested action (instead of confirming it inline)
@@ -217,7 +217,7 @@ export function useEnqueueAiAction() {
         toast.error('Could not add to queue');
         return null;
       }
-      toast.success('Added to Action Queue', {
+      toast.success('Added to Approval Queue', {
         description: `${args.title} — review later from the queue.`,
       });
       invalidateQueueAll(qc);

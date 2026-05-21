@@ -1,7 +1,7 @@
 /**
  * Header pop-up swipe navigation — direction state.
  *
- * The floating header opens several overlays (Calendar, Mail, Action Queue,
+ * The floating header opens several overlays (Calendar, Mail, Approval Queue,
  * Tasks, Deal Rundown, optional Dashboard / Daily Rundown / Niki's Daily
  * Rundown). They're all separate components mounted via Radix Dialog, so
  * threading "which direction did the user move?" through every overlay
