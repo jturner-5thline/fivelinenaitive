@@ -5678,7 +5678,13 @@ serve(async (req) => {
     // ── Handle confirm action ──
     if (body.confirmAction) {
       const auditId: string | null = body.confirmAction.params?.audit_id || null;
-      const result = await executeConfirmAction(supabaseUser, body.confirmAction.action_type, body.confirmAction.params, userId);
+      const result = await executeConfirmAction(
+        supabaseUser,
+        body.confirmAction.action_type,
+        body.confirmAction.params,
+        userId,
+        req.headers.get("Authorization") || "",
+      );
       if (body.confirmAction.action_type === "create_task") {
         if (result?.success) {
           await updateAuditOutcome(auditId, {
