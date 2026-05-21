@@ -627,7 +627,7 @@ export function CopilotTaskConfirm({ action }: Props) {
             </Row>
           )}
           {resolvedDealId && dealLinked && (
-            <Row icon={Building2} label="Deal" value={initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />
+            <Row icon={Building2} label="Deal" value={resolvedDealName || initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />
           )}
           <Row icon={Tag} label="Type" value={TYPE_LABELS[taskType] || taskType} inferred={isInferred('task_type')} />
           <Row icon={Flag} label="Priority" value={PRIORITY_LABELS[priority] || priority} inferred={isInferred('priority')} />
