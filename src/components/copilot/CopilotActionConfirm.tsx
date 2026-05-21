@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { getStageDisplayName } from '@/lib/copilot-utils';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { CopilotTaskConfirm } from './CopilotTaskConfirm';
+import { renderTextWithEntityLinks } from './EntityLink';
 
 interface ConfirmAction {
   action: 'confirm';
@@ -60,6 +61,11 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       return display !== slug ? `"${display}"` : match;
     }
   );
+
+  // Convert [Name](entity://type/id) tokens emitted by the AI into
+  // clickable in-app links so entity references inside approval card
+  // titles match the rest of the chat surface.
+  const renderedDescription = renderTextWithEntityLinks(formattedDescription);
 
   const invalidateRelatedQueries = (actionType: string, params: Record<string, any>) => {
     const dealId = params.deal_id;
@@ -194,7 +200,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         }}
       >
         <Check size={16} style={{ color: 'rgb(34, 197, 94)' }} />
-        <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {formattedDescription}</span>
+        <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {renderedDescription}</span>
       </div>
     );
   }
@@ -219,7 +225,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
         <Icon size={16} style={{ color: 'hsl(var(--primary))' }} />
-        <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{formattedDescription}</span>
+        <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{renderedDescription}</span>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
         <button
