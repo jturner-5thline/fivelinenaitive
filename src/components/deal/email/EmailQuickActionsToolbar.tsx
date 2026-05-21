@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 import {
   FolderUp,
   Building2,
@@ -45,6 +45,7 @@ const ALL_ACTIONS: ActionDef[] = [
 interface Props {
   thread: EmailThread;
   dealId?: string | null;
+  contactId?: string | null;
   dealName?: string | null;
   /** AI-suggested lender (e.g. workflow analysis likely_lender_firm.name). */
   likelyLenderName?: string | null;
@@ -72,6 +73,7 @@ interface Props {
 export function EmailQuickActionsToolbar({
   thread,
   dealId,
+  contactId,
   dealName,
   likelyLenderName,
   attachments,
@@ -114,6 +116,15 @@ export function EmailQuickActionsToolbar({
     if (active === 'save_dr' && uploadableCount === 0) setActive(null);
   }, [active, uploadableCount]);
 
+  const meetingPopoverOpen = active === 'meeting' && meetingMode === 'quick-book';
+
+  const handleMeetingClick = () => {
+    // eslint-disable-next-line no-console
+    console.log('[ScheduleMeeting] tile clicked', { meetingPopoverOpen, hasDeal: !!dealId, hasContact: !!contactId });
+    setMeetingMode('quick-book');
+    setActive('meeting');
+  };
+
   const handleClick = (key: QuickActionKey) => {
     if (key === 'draft') {
       // Draft Reply expands the existing Draft Reply module (panel-level
@@ -133,13 +144,7 @@ export function EmailQuickActionsToolbar({
       return;
     }
     if (key === 'meeting') {
-      // The Schedule Meeting tile is wrapped in a Radix Popover. The
-      // popover's `open` state is driven by `onOpenChange` only — toggling
-      // `active` here would race with that handler and immediately close
-      // the popover on the first click. We deliberately no-op so Radix
-      // alone controls the open state.
-      // eslint-disable-next-line no-console
-      console.log('[QuickActions] meeting clicked', { active, meetingMode });
+      handleMeetingClick();
       return;
     }
     setActive((prev) => (prev === key ? null : key));
@@ -182,6 +187,8 @@ export function EmailQuickActionsToolbar({
 
   return (
     <div className="space-y-2">
+      {meetingPopoverOpen && <div className='bg-red-500 text-white p-2 rounded-md text-xs font-medium'>POPOVER OPEN</div>}
+
       {/* 2-column quick-action grid. Cohesive cards — subtle elevated
           surface, 1px hairline border, accent-colored icon at 70%, label
           at 90% foreground. Single AIAssistActionButton component drives
@@ -197,10 +204,10 @@ export function EmailQuickActionsToolbar({
             return (
               <Popover
                 key={a.key}
-                open={isActive && meetingMode === 'quick-book'}
+                open={meetingPopoverOpen}
                 onOpenChange={(open) => {
                   if (!open) {
-                    setActive((prev) => (prev === 'meeting' && meetingMode === 'quick-book' ? null : prev));
+                    setActive((prev) => (prev === 'meeting' ? null : prev));
                   } else {
                     setMeetingMode('quick-book');
                     setActive('meeting');
@@ -213,13 +220,14 @@ export function EmailQuickActionsToolbar({
                     icon={a.icon}
                     iconClass={a.iconClass}
                     isActive={isActive}
-                    onClick={() => handleClick(a.key)}
+                    onClick={handleMeetingClick}
                   />
                 </PopoverTrigger>
                 <PopoverContent
                   align="start"
                   side="bottom"
                   sideOffset={6}
+                  container={typeof document !== 'undefined' ? document.body : null}
                   className="p-0 border-white/10 bg-card/95 backdrop-blur rounded-xl shadow-xl w-auto"
                 >
                   <QuickBookMeetingPopover
@@ -356,30 +364,31 @@ export function EmailQuickActionsToolbar({
 // sidebar. Same height / radius / padding / typography as the "Save Email
 // to Deal" pill family elsewhere on the panel so the whole right rail
 // reads as one design system.
-interface AIAssistActionButtonProps {
+interface AIAssistActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
   icon: ReactNode;
   iconClass?: string;
   isActive?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
 }
 
-function AIAssistActionButton({
+const AIAssistActionButton = forwardRef<HTMLButtonElement, AIAssistActionButtonProps>(function AIAssistActionButton({
   label,
   icon,
   iconClass,
   isActive = false,
   disabled = false,
   onClick,
-}: AIAssistActionButtonProps) {
+  ...props
+}, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={label}
       aria-pressed={isActive}
+      {...props}
       className={cn(
         // Layout — equal-height 2-col grid cell, icon + label left-aligned
         'group inline-flex w-full items-center gap-2 h-10 px-3 py-2 rounded-lg text-left',
@@ -413,4 +422,4 @@ function AIAssistActionButton({
       <span className="truncate flex-1 min-w-0">{label}</span>
     </button>
   );
-}
+});
