@@ -32,6 +32,7 @@ import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { AskAiActionBar, extractAskAiActions, type AskAiAction } from './AskAiActionBar';
+import { parseCitations, uniqueCitedIds, renderWithCitations, type ParsedCitation } from './AskAiCitations';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import { BaseSubmissionEmailDialog, type BaseSubmissionDraft } from './email/BaseSubmissionEmailDialog';
 import { htmlToPlainText } from '@/lib/htmlToPlainText';
@@ -127,12 +128,27 @@ function HighlightedFinancials({
   );
 }
 
-function highlightChildren(children: React.ReactNode, sources?: string[]): React.ReactNode {
+function highlightChildren(
+  children: React.ReactNode,
+  sources?: string[],
+  onCitationClick?: (c: ParsedCitation) => void,
+): React.ReactNode {
   return React.Children.map(children, (child, idx) => {
-    if (typeof child === 'string') {
-      return <HighlightedFinancials key={idx} text={child} sources={sources} />;
-    }
-    return child;
+    if (typeof child !== 'string') return child;
+    // 1) split out citation tokens into chips; 2) wrap remaining text in
+    //    HighlightedFinancials so financial figures still get tooltips.
+    const { nodes } = renderWithCitations(child, onCitationClick);
+    return (
+      <React.Fragment key={idx}>
+        {nodes.map((n, i) =>
+          typeof n === 'string' ? (
+            <HighlightedFinancials key={`f-${i}`} text={n} sources={sources} />
+          ) : (
+            <React.Fragment key={`c-${i}`}>{n}</React.Fragment>
+          ),
+        )}
+      </React.Fragment>
+    );
   });
 }
 
