@@ -31,7 +31,74 @@ interface ClaapWebhookPayload {
       textUrl: string;
       isTranscript: boolean;
     }>;
+    // New Claap aiFields flat-collection format (preferred). Each entry is
+    // one rendered AI field (key/label/value/type). Rolling out alongside
+    // the legacy insightTemplates shape — both must be supported until
+    // 2026-06-15, at which point the legacy branch can be removed.
+    aiFields?: Array<{
+      key: string;
+      label: string;
+      value: string;
+      type: string;
+    }>;
+    // Legacy nested insightTemplates -> insights -> sections shape.
+    insightTemplates?: Array<{
+      id?: string;
+      name?: string;
+      insights?: Array<{
+        id?: string;
+        name?: string;
+        sections?: Array<{
+          title?: string;
+          description?: string;
+          content?: string;
+          text?: string;
+        }>;
+      }>;
+    }>;
   };
+}
+
+/**
+ * Normalize Claap insight payloads into a flat list of
+ * { title, description } entries.
+ *
+ * Claap is in the middle of migrating from the nested
+ * insightTemplates[].insights[].sections[] shape to a flat aiFields[]
+ * collection. Both shapes ship in webhook payloads and REST responses
+ * during the rollout window (until 2026-06-15). Prefer aiFields when
+ * present; otherwise flatten the legacy template tree.
+ */
+export function extractClaapInsights(data: {
+  aiFields?: ClaapWebhookPayload["data"]["aiFields"];
+  insightTemplates?: ClaapWebhookPayload["data"]["insightTemplates"];
+}): Array<{ title: string; description: string }> {
+  // New format takes precedence.
+  if (Array.isArray(data?.aiFields) && data.aiFields.length > 0) {
+    return data.aiFields
+      .map((f) => ({
+        title: (f?.label || f?.key || "").trim(),
+        description: (f?.value ?? "").toString().trim(),
+      }))
+      .filter((s) => s.title || s.description);
+  }
+
+  // Legacy fallback: flatten insightTemplates[].insights[].sections[].
+  if (Array.isArray(data?.insightTemplates) && data.insightTemplates.length > 0) {
+    const out: Array<{ title: string; description: string }> = [];
+    for (const tpl of data.insightTemplates) {
+      for (const ins of tpl?.insights ?? []) {
+        for (const sec of ins?.sections ?? []) {
+          const title = (sec?.title || ins?.name || tpl?.name || "").trim();
+          const description = (sec?.description ?? sec?.content ?? sec?.text ?? "").toString().trim();
+          if (title || description) out.push({ title, description });
+        }
+      }
+    }
+    return out;
+  }
+
+  return [];
 }
 
 // ─── Shared matching utilities ───────────────────────────
