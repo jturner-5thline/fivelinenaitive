@@ -220,7 +220,18 @@ export function DraftAndSendDialog({
   };
   const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
 
-  const canSend = to.length > 0 && subject.trim().length > 0 && !isSending;
+  // Block send while any pre-attached file is still empty (e.g. the generated
+  // status report PDF hasn't finished rendering). Prevents shipping a chip
+  // with an empty payload.
+  const hasEmptyAttachment = files.some((f) => !f.size || f.size === 0);
+  const canSend =
+    to.length > 0 && subject.trim().length > 0 && !isSending && !hasEmptyAttachment;
+
+  const formatBytes = (n: number): string => {
+    if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    if (n >= 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+    return `${n} B`;
+  };
 
   const handleSend = async () => {
     if (!canSend) {
@@ -355,6 +366,9 @@ export function DraftAndSendDialog({
                 <Badge key={`${f.name}-${i}`} variant="secondary" className="gap-1 pr-1">
                   <Paperclip className="h-3 w-3" />
                   <span className="max-w-[180px] truncate">{f.name}</span>
+                  <span className="text-[10px] text-muted-foreground ml-1">
+                    {f.size > 0 ? formatBytes(f.size) : 'empty'}
+                  </span>
                   <button
                     type="button"
                     onClick={() => removeFile(i)}
@@ -366,8 +380,13 @@ export function DraftAndSendDialog({
                 </Badge>
               ))}
               <span className="text-[11px] text-muted-foreground self-center">
-                {(totalBytes / (1024 * 1024)).toFixed(1)} MB
+                Total {formatBytes(totalBytes)}
               </span>
+              {hasEmptyAttachment && (
+                <span className="text-[11px] text-destructive self-center">
+                  Attachment is still generating — please wait.
+                </span>
+              )}
             </div>
           )}
 
