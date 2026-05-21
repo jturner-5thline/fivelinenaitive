@@ -260,6 +260,7 @@ export function useDealAssistant() {
         update_deal_status: 'update_deal_status',
         update_deal_notes: 'update_deal_notes',
         add_lender: 'add_lender_to_deal',
+        add_lenders: 'add_lenders_to_deal',
         remove_lender: 'remove_lender_from_deal',
         update_lender_stage: 'update_lender_stage',
         add_outstanding_item: 'add_outstanding_item',
