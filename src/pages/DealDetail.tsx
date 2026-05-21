@@ -5737,7 +5737,10 @@ export default function DealDetail() {
               console.error('Failed to generate status report PDF', err);
               toast({
                 title: 'Could not generate status report',
-                description: 'The PDF attachment failed to build. Please try again.',
+                description:
+                  err instanceof Error
+                    ? err.message
+                    : 'The PDF attachment failed to build. Please try again.',
                 variant: 'destructive',
               });
             }
