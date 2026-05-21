@@ -1171,7 +1171,35 @@ export function exportStatusReportToPDF(
     );
   }
 
-  doc.save(`${deal.company} Status Update - ${dateMMDD}.pdf`);
+  const fileName = `${deal.company} Status Update - ${dateMMDD}.pdf`;
+  if (options?.returnBlob) {
+    return doc.output('blob');
+  }
+  doc.save(fileName);
+}
+
+/** Convenience helper: build the Status Report PDF as a File ready to attach. */
+export function buildStatusReportPdfFile(
+  deal: Deal,
+  configuredStages?: LenderStageConfig[],
+  configuredSubstages?: LenderStageConfig[],
+  outstandingItems?: OutstandingItem[],
+  editableContent?: StatusReportEditableContent,
+): File {
+  const blob = exportStatusReportToPDF(
+    deal,
+    configuredStages,
+    configuredSubstages,
+    outstandingItems,
+    editableContent,
+    { returnBlob: true },
+  ) as Blob;
+  const dateMMDD = new Date()
+    .toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })
+    .replace('/', '-');
+  return new File([blob], `${deal.company} Status Update - ${dateMMDD}.pdf`, {
+    type: 'application/pdf',
+  });
 }
 
 // Status Report Word Export
