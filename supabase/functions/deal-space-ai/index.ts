@@ -395,6 +395,62 @@ function buildEnhancedContext(docName: string, extracted: ExtractedContent): str
 
 // ─── Deal context builder (shared across all actions) ───────────────
 
+// ─── Status snapshot extraction & persistence ───────────────────────
+const STATUS_SNAPSHOT_RE = /<!--STATUS_SNAPSHOT:(\{[\s\S]*?\})-->/;
+
+async function persistStatusSnapshot(
+  supabaseService: any,
+  dealId: string,
+  fullContent: string,
+  userId: string | null,
+) {
+  try {
+    const m = fullContent.match(STATUS_SNAPSHOT_RE);
+    if (!m) return;
+    let snap: any;
+    try { snap = JSON.parse(m[1]); } catch { return; }
+    if (!snap || typeof snap !== "object") return;
+
+    const derived = typeof snap.derived === "string" ? snap.derived : null;
+    const header = typeof snap.header === "string" ? snap.header : null;
+    const mismatch = Boolean(snap.mismatch);
+    const rationale = typeof snap.rationale === "string" ? snap.rationale : null;
+    const signals = snap.signals && typeof snap.signals === "object" ? snap.signals : {};
+
+    const payload = {
+      derived_status: derived,
+      header_status: header,
+      mismatch,
+      rationale,
+      signals,
+      updated_at: new Date().toISOString(),
+      source: "ask_ai",
+    };
+
+    // Persist latest snapshot on deals + audit row. Fire-and-forget but logged.
+    await Promise.all([
+      supabaseService
+        .from("deals")
+        .update({ ai_status_snapshot: payload })
+        .eq("id", dealId),
+      supabaseService
+        .from("deal_ai_status_snapshots")
+        .insert({
+          deal_id: dealId,
+          header_status: header,
+          derived_status: derived,
+          mismatch,
+          rationale,
+          signals,
+          source: "ask_ai",
+          created_by: userId,
+        }),
+    ]);
+  } catch (err) {
+    console.error("persistStatusSnapshot failed", err);
+  }
+}
+
 interface SourceRef {
   type: string;
   name: string;
@@ -1222,6 +1278,16 @@ Severity summary, before A:, before Anomalies). Exact format:
 
 If the statuses MATCH, or if there is insufficient signal to derive a status, do NOT emit a banner. Never emit more than one banner per answer.
 
+# STATUS SNAPSHOT (machine-readable, hidden from UI)
+At the VERY END of EVERY answer (after the Actions block), append a single
+HTML comment carrying the derived status snapshot. The frontend hides HTML
+comments; the server parses this to persist the snapshot.
+
+Exact format (one line, no extra whitespace inside the JSON):
+\`<!--STATUS_SNAPSHOT:{"derived":"On Track|At Risk|Off Track|Stalled|Unknown","header":"<deal.header.status_badge or empty>","mismatch":true|false,"rationale":"<one short sentence>","signals":{"high":<int>,"medium":<int>,"low":<int>,"stalest_activity_days":<int|null>,"primary_lender_stalled_days":<int|null>,"overdue_outstanding":<int>}}-->\`
+
+If you cannot derive a status, use "derived":"Unknown" with mismatch:false. Always emit the comment exactly once.
+
 # ACTION ROW RULE (REQUIRED — last block of EVERY response)
 EVERY answer (including the default 2-line Q&A, long-form, drafting, and risk
 answers) MUST end with an "Actions" block containing 2–3 contextual CTAs the
@@ -1328,8 +1394,26 @@ ${FORMATTING_RULES}
 
         // Transform Anthropic SSE into a simpler SSE format for the client
         const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+        let assistantBuffer = "";
+        const userIdForSnap = String((claimsData.claims as any)?.sub || "") || null;
         const transformStream = new TransformStream({
           transform(chunk, controller) {
+            try {
+              const text = decoder.decode(chunk, { stream: true });
+              // Anthropic SSE lines: data: {...}
+              for (const line of text.split("\n")) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith("data:")) continue;
+                const payload = trimmed.slice(5).trim();
+                if (!payload || payload === "[DONE]") continue;
+                try {
+                  const evt = JSON.parse(payload);
+                  const delta = evt?.delta?.text || evt?.content_block?.text;
+                  if (typeof delta === "string") assistantBuffer += delta;
+                } catch { /* ignore non-JSON keepalive */ }
+              }
+            } catch { /* ignore decode errors */ }
             controller.enqueue(chunk);
           },
           flush(controller) {
@@ -1337,6 +1421,8 @@ ${FORMATTING_RULES}
             const sourcesEvent = `data: ${JSON.stringify({ type: 'sources', sources: ctx.sourcesUsed.map(s => s.name) })}\n\n`;
             controller.enqueue(encoder.encode(sourcesEvent));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            // Fire-and-forget snapshot persist
+            persistStatusSnapshot(supabaseService, dealId, assistantBuffer, userIdForSnap);
           }
         });
 
@@ -1362,6 +1448,10 @@ ${FORMATTING_RULES}
 
     // Build source list from what was actually referenced in the response
     const sources: string[] = ctx.sourcesUsed.map(s => s.name);
+
+    // Persist derived status snapshot (parsed from hidden HTML comment).
+    const userIdForSnap = String((claimsData.claims as any)?.sub || "") || null;
+    persistStatusSnapshot(supabaseService, dealId, rawContent, userIdForSnap);
 
     return new Response(
       JSON.stringify({ content, sources }),
