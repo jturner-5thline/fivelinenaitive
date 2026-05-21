@@ -364,30 +364,31 @@ export function EmailQuickActionsToolbar({
 // sidebar. Same height / radius / padding / typography as the "Save Email
 // to Deal" pill family elsewhere on the panel so the whole right rail
 // reads as one design system.
-interface AIAssistActionButtonProps {
+interface AIAssistActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   label: string;
   icon: ReactNode;
   iconClass?: string;
   isActive?: boolean;
-  disabled?: boolean;
-  onClick: () => void;
 }
 
-function AIAssistActionButton({
+const AIAssistActionButton = forwardRef<HTMLButtonElement, AIAssistActionButtonProps>(function AIAssistActionButton({
   label,
   icon,
   iconClass,
   isActive = false,
   disabled = false,
   onClick,
-}: AIAssistActionButtonProps) {
+  ...props
+}, ref) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       disabled={disabled}
       title={label}
       aria-pressed={isActive}
+      {...props}
       className={cn(
         // Layout — equal-height 2-col grid cell, icon + label left-aligned
         'group inline-flex w-full items-center gap-2 h-10 px-3 py-2 rounded-lg text-left',
@@ -421,4 +422,4 @@ function AIAssistActionButton({
       <span className="truncate flex-1 min-w-0">{label}</span>
     </button>
   );
-}
+});
