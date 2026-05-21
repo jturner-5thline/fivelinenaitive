@@ -5756,8 +5756,8 @@ export default function DealDetail() {
           defaultRecipients={statusEmailFlow.defaultRecipients}
           bodyPreview={
             statusEmailFlow.contactDisplayName
-              ? `Hey ${statusEmailFlow.contactDisplayName}, see attached. See current status report for your review.`
-              : 'Hey there, see attached. See current status report for your review.'
+              ? `Hey ${statusEmailFlow.contactDisplayName}, — See attached. See the current status report for your review.`
+              : 'Hey there, — See attached. See the current status report for your review.'
           }
           attachmentName={statusEmailFlow.attachment.name}
           onContinue={(sel: StatusEmailFlowSelection) => {
