@@ -2038,7 +2038,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "create_task",
-        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
+        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date}${args.due_time ? ` ${args.due_time}` : ""})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
         params: {
           title: args.title,
           description: args.description,
@@ -2049,6 +2049,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           assignee_name: args.assignee_name,
           priority: args.priority || "medium",
           due_date: args.due_date,
+          due_time: typeof args.due_time === "string" ? args.due_time : null,
           task_type: args.task_type || "task",
           rationale: typeof args.rationale === "string" ? args.rationale : null,
           duplicate_status: ["none", "low", "possible", "high"].includes(args.duplicate_status) ? args.duplicate_status : "none",
