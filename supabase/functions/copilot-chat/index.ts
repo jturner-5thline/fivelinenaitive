@@ -339,6 +339,21 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "find_entity",
+      description: "AUTHORITATIVE entity resolver. ALWAYS use this — not conversation history or guesses — to look up a deal, user (teammate), CRM company, or contact by free-text name. Runs ILIKE plus pg_trgm similarity directly against the database and returns the top 3 candidates with id, display_name, and a 0–1 confidence score. You MUST present a disambiguation picker (list the candidates and ask the user to pick) whenever the top result's confidence is below 0.8 OR more than one candidate is returned. Never pass a resolved id to a write tool (update_deal_*, create_task, assign_manager, link_contact_to_deal, etc.) without first calling find_entity in the same turn.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["deal", "user", "company", "contact"], description: "Which table to search. deal=public.deals, user=public.profiles (teammates), company=public.crm_companies, contact=public.contacts." },
+          query: { type: "string", description: "Free-text name or fragment. Case-insensitive. Trimmed." },
+        },
+        required: ["type", "query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal",
       description: "Get details about a specific deal by ID or by searching company name.",
       parameters: {
@@ -1791,6 +1806,7 @@ function selectToolsWithScopes(
   if (entityType === "deal") return filterByScopes(tools);
 
   const coreNames = new Set([
+    "find_entity",
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
     "draft_email", "create_task", "get_tasks", "search_team_members",
     "get_pipelines", "move_deal_pipeline",
@@ -1867,6 +1883,48 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         return { results: data || [] };
       }
       return { error: "Provide deal_id or search" };
+    }
+    case "find_entity": {
+      const entityType: string = typeof args.type === "string" ? args.type.trim().toLowerCase() : "";
+      const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
+      const allowed = new Set(["deal", "user", "company", "contact"]);
+      if (!allowed.has(entityType)) {
+        return { error: `Invalid type "${entityType}". Must be one of: deal, user, company, contact.` };
+      }
+      if (!queryText) {
+        return { error: "Query is required." };
+      }
+      const { data, error } = await supabase.rpc("find_entity", {
+        _type: entityType,
+        _query: queryText,
+        _limit: 3,
+      });
+      if (error) {
+        console.error("find_entity rpc error", error);
+        return { error: `Lookup failed: ${error.message}` };
+      }
+      const candidates = (data || []).map((row: any) => ({
+        id: row.id,
+        display_name: row.display_name,
+        subtitle: row.subtitle || null,
+        confidence: Number((row.confidence ?? 0).toFixed(3)),
+      }));
+      const top = candidates[0];
+      const needsDisambiguation = candidates.length === 0
+        || candidates.length > 1
+        || (top?.confidence ?? 0) < 0.8;
+      return {
+        type: entityType,
+        query: queryText,
+        count: candidates.length,
+        candidates,
+        needs_disambiguation: needsDisambiguation,
+        guidance: candidates.length === 0
+          ? `No ${entityType} matched "${queryText}". Ask the user to confirm the name — do NOT guess or fall back to conversation history.`
+          : needsDisambiguation
+            ? `Confidence is below 0.8 or multiple candidates returned. STOP and ask the user to pick from these ${candidates.length} candidate(s): ${candidates.map((c) => `${c.display_name} (${c.confidence})`).join(", ")}. Do NOT call any write tool until the user picks.`
+            : `Single high-confidence match (${top.confidence}). Safe to use ${top.id}.`,
+      };
     }
     case "search_deals": {
       const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
@@ -5958,6 +6016,14 @@ Current user feature scopes (authoritative — do not question, do not infer bey
 - can_view_activities: ${scopes.can_view_activities}
 - can_view_lenders: ${scopes.can_view_lenders}
 - can_view_insights: ${scopes.can_view_insights}
+
+ENTITY RESOLUTION — DATABASE IS SOURCE OF TRUTH (HARD RULE):
+- For ANY deal, teammate (user), CRM company, or contact lookup, you MUST call find_entity({ type, query }) FIRST. It runs ILIKE + pg_trgm similarity directly against the database and returns the top 3 candidates with id, display_name, and a 0–1 confidence score.
+- NEVER resolve an entity from conversation history, page context alone, prior turns, or your own memory. The database is the only source of truth.
+- If find_entity returns 0 candidates: tell the user the name did not match and ask them to confirm — do NOT proceed.
+- If find_entity returns more than 1 candidate, OR the top candidate's confidence is below 0.8: STOP and present a disambiguation picker — list each candidate by display_name (with subtitle and confidence) and ask the user to pick. Do NOT call any write tool (update_deal_*, create_task, assign_manager, link_contact_to_deal, etc.) until the user picks.
+- Only when find_entity returns exactly one candidate with confidence ≥ 0.8 may you pass its id to a downstream tool.
+- find_entity supersedes search_deals / search_team_members / search_contacts / search_crm_companies for resolving a single referenced entity. The broader search tools are still fine for browsing/filtering, but not for "which deal does the user mean".
 
 Hard rules:
 - Treat the provided feature scopes as strict authorization boundaries.
