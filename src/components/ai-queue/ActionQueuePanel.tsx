@@ -16,6 +16,8 @@ import {
   Save,
   Loader2,
   KeyRound,
+  Video,
+  ListChecks,
 } from 'lucide-react';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import {
@@ -42,6 +44,8 @@ const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare;
   save_to_data_room: { label: 'Save to Data Room', icon: Save, color: 'text-violet-500' },
   log_note: { label: 'Log Note', icon: FileText, color: 'text-amber-500' },
   deal_update: { label: 'Update Deal', icon: Briefcase, color: 'text-blue-500' },
+  claap_recording_review: { label: 'Claap Recording', icon: Video, color: 'text-fuchsia-500' },
+  claap_action_items: { label: 'Meeting Action Items', icon: ListChecks, color: 'text-cyan-500' },
 };
 
 function expiryLabel(item: QueuedAiAction): string {
