@@ -1,65 +1,58 @@
-## Goal
+# Align AI pipeline scope with the dashboard
 
-Turn the existing "Schedule Meeting" tile in the email AI Assist quick-actions toolbar into a compact popover anchored to that tile, with a true in-app calendar booking experience — visual week grid, editable invite fields, one-click Google Calendar create with Meet link, and a graceful fallback to the existing propose-by-email flow.
+## Problem
 
-## What changes
+The dashboard shows 7 active deals at 5th Line (default pipeline, status=active), but the AI says 476 active deals / $2.5BN because `get_pipeline_summary`, `search_deals`, `get_stale_deal_alerts`, and several other tools query `deals` without scoping by `company_id`, pipeline, or status — they only get whatever RLS hands them. For a 5th Line admin (who has cross-tenant visibility), that returns thousands of rows. Users can't reconcile any AI claim against the UI.
 
-### New component: `QuickBookMeetingPopover.tsx`
-Compact popover anchored to the Schedule Meeting tile (no full-screen modal). Sections, top to bottom:
+## Approach
 
-1. **Header** — "Schedule meeting" title, X close button.
-2. **Calendar status guard** — if `calendar-status` reports no connected calendar, render a small "Connect your calendar" prompt linking to `/integrations` and stop here.
-3. **Duration toggle** — pill row: 15 / 30 / 45 / 60 / 90 min. Persists to existing `naitive.meetingScheduler.durationMinutes` localStorage key so it stays in sync with the legacy card.
-4. **Mini weekly calendar grid** —
-   - 5-column Mon–Fri view (current week by default), prev/next-week arrows, "Today" pill.
-   - Working hours 9 AM–5 PM in the user's persisted timezone, 30-min row resolution.
-   - Visual layers: user's Google Calendar busy blocks in gray; AI-recommended best-fit slot (from the existing availability suggester) in green with a small "Best fit" badge; secondary AI slot suggestions in blue.
-   - Click any open slot → outline-selected; selected slot drives the editable fields below.
-   - Conflicts: if a selected slot overlaps a busy block, show an inline warning chip `Conflicts with: <event title>` but allow override.
-5. **Quick-create invite fields** —
-   - **Title** input (pre-filled `Re: <thread subject>` or `<deal name> — Intro call`).
-   - **Date / start–end time** (pre-filled from grid selection, editable via shadcn time pickers).
-   - **Attendees** chip editor (`Me`, latest sender, plus any other email participants extracted from the thread; type-to-add + remove). Same dedup logic as the existing scheduler.
-   - **Location / video** — default chip "Google Meet (auto-generated)"; toggle to switch to custom location text input.
-   - **Description / notes** — pre-filled with a short AI-generated agenda derived from the thread (reuse the existing `summarizeSelectedEmailThread` util, trimmed to ~3 bullets).
-   - **More options** (collapsed) — recurrence, reminder, visibility selects.
-6. **Primary CTA row** — `Book meeting` (creates the event) + `Cancel`.
-   - On book:
-     a. Call `calendar-events` edge function with `action: 'create'`, `add_meet_link: true`, the selected timezone, attendees, title, description.
-     b. Toast: `Meeting booked for <day, time>. Invite sent to <N> attendees.`
-     c. Append `Meeting booked for <day, time> — invite sent.` (plus Meet link) to the reply draft via the existing `onInsertDraft` callback.
-     d. If `dealId` is set, write a `meeting_booked` entry to `deal_audit_log` with thread/event metadata so it shows in the deal Activity feed.
-     e. Close the popover.
-7. **Secondary link** — `Propose via email instead` at the bottom; collapses the popover and opens the legacy `MeetingSchedulerCard` inline (existing propose +1hr / propose anyway behavior preserved).
+1. **Frontend computes one canonical `chatScope` object every turn** and sends it to `copilot-chat`. Shape:
+   ```
+   {
+     company_id: string | null,        // active workspace (PipelineContext)
+     pipeline_id: string | null,       // active default/selected pipeline
+     status_filter: 'active' | 'all',  // 'active' = exclude closed/on-hold/archived
+     include_archived: boolean,
+     label: string                     // "5th Line · Active Pipeline · Active only"
+   }
+   ```
+   Read from `PipelineContext` / current company override / the same selector the dashboard uses, so the chat header and the AI tool calls are always in lockstep with what the UI is showing.
 
-### Wiring changes
+2. **Edge function `copilot-chat` accepts `context.chatScope`** and threads it into every deal-touching tool. Tools updated:
+   - `search_deals` — add `.eq('company_id', scope.company_id)` and stage/status filter when `status_filter='active'`. Add explicit "broaden scope" hint in the no-results response.
+   - `get_pipeline_summary` — already filters active/all; additionally scope to `company_id` + `pipeline_id` and report `scope.label` in the response so the AI's narration matches the chip.
+   - `get_stale_deal_alerts`, `list_finserv_deals`, `get_finserv_pipeline_summary`, `get_partner_pipeline_summary`, `get_deals` — same scoping.
+   - `get_deal` / `get_deal_full` — allow out-of-scope reads (so the user can still look up a closed deal by name) but tag the response with `out_of_current_scope: true` so the model warns the user.
+   - Off-page deal resolver — restricted to scope by default; if no match, retry across all scopes once and surface "I found this in <other workspace>".
 
-- `EmailQuickActionsToolbar.tsx`
-  - Wrap the `meeting` tile in a shadcn `<Popover>`; the trigger is the existing `AIAssistActionButton`. Content = `<QuickBookMeetingPopover>` anchored with `align="start" side="bottom" sideOffset={6}`.
-  - Keep `<MeetingSchedulerCard>` rendering as the inline panel only when the popover requests the "propose via email" fallback (controlled by a new `mode` state — default `quick-book`, falls through to `propose`).
+3. **System prompt update** — add a `CURRENT SCOPE` block printed verbatim above the existing CURRENT CONTEXT, plus a rule: "Every pipeline number you report (counts, totals, lists) MUST come from a tool call made within the CURRENT SCOPE. If you cite a deal outside the current scope, explicitly say so."
 
-- `AiAssistSidebar.tsx`
-  - The existing `schedulerOpen` flow (line 690 + line 1446) currently opens the legacy card directly when the AI hint detects a scheduling intent. Switch that trigger so it now opens the new popover anchored to the meeting tile in the quick-actions toolbar (via a shared `scheduleIntent:open` window event the toolbar already listens for, or via a small lifted state). Legacy propose flow remains reachable through the popover's "Propose via email instead" link.
+4. **Chat header UI**:
+   - Replace the existing "Context:" chip with a `ScopeChip` showing `<workspace> · <pipeline> · <status>` plus the live count from `useDealsContext` filtered by the same scope ("7 deals").
+   - Add a `ScopeMenu` dropdown (Radix `DropdownMenu`) with:
+     - Workspace: current workspace ▾ / All workspaces (admin only)
+     - Pipeline: current pipeline ▾ / All pipelines
+     - Status: Active only / Include closed & on-hold / Include archived
+   - Persist the selection in `sessionStorage` under `naitive.copilot.chat_scope` so it survives panel close but resets per tab.
+   - When the user changes scope, replay the chip count and post a system message in the chat: "_Scope changed → 5th Line · Active Pipeline · Active only (7 deals)._"
 
-### Edge function / data
-- Reuse existing `calendar-events` function (already supports `action: 'list'` for busy and `action: 'create'` with `add_meet_link: true` and timezone). No backend changes required.
-- Reuse `calendar-status` to detect whether to show the Connect prompt.
-- Activity log: insert into `deal_audit_log` with `action_type='meeting_booked'`, `entity_type='calendar_event'`, `entity_name=<title>`, `metadata={ event_id, start, end, attendees, meet_link, thread_id }` via the user-scoped Supabase client.
+5. **Acceptance verification**:
+   - On the 5th Line workspace with default scope, `get_pipeline_summary` returns `{ total: 7, active: 7, scope_label: "5th Line · Active Pipeline · Active only" }`, matching the dashboard.
+   - Searching "Turbine" with default scope returns the Turbine deal only if it is in the active 5th Line pipeline; otherwise the AI says "Turbine exists but is outside your current scope (in <workspace/pipeline>). Want me to broaden the scope?".
+   - Header chip count equals `Active Deals` KPI tile.
+   - Changing the dropdown to "All workspaces" makes the AI's totals jump and the chip count update.
 
-### Visual style
-- Match the AI Assist dark theme: `rounded-xl`, `bg-card/95 backdrop-blur`, `border-white/10`, subtle shadow, ~360px wide × auto height, max-height ~520px with internal scroll. Anchored to the tile so it reads as a quick-action overlay.
+## Open questions (need answers before I build)
 
-## What stays unchanged
-- `MeetingSchedulerCard.tsx`, `AvailabilityCheckCard.tsx`, `OpenAvailabilityCard.tsx` are not modified. Legacy flows reachable via the "Propose via email instead" link.
-- `calendar-events`, `calendar-status` edge functions unchanged.
+1. **What exactly defines "Active Pipeline" in the 5th Line dashboard tile that shows 7?** I see three candidates in the codebase: `deals.company_id` + the company's default `deal_pipelines` row + `status IN ('active')`, or a hardcoded `deal_class` filter, or the FinServ vs Debt split. Can you confirm? My default is: `company_id = current company` AND `pipeline_id = is_default pipeline of that company` AND `status NOT IN ('closed','on-hold','archived')` AND `stage NOT IN ('closed-won','closed-lost')`, plus the existing global exclusions (`Test-Niki's Store`, `Example Deal`, `test *`).
+2. **"All workspaces" option** — should this be visible to every user or gated to the 5th Line internal allowlist? (My default: gated; non-admins only see workspace switcher options matching their `company_members` rows.)
+3. **Out-of-scope deal references** — if the AI knows of a deal outside scope (e.g. user asks "what's on BT Advisory?" and BT Advisory is archived), should we (a) refuse, (b) answer but flag, or (c) silently auto-broaden? My default is (b).
 
-## Out of scope
-- Multi-week month view.
-- Drag-to-select on the grid (click only).
-- Editing existing busy events.
-- Cross-tenant calendar invites beyond what Nylas already supports.
+If you're happy with the defaults in parens, just say "go" and I'll ship it.
 
-## Risk / verification
-- Smoke: open thread → click Schedule Meeting → popover appears anchored to the tile, busy blocks load, AI slot is badged "Best fit", change duration, pick a slot, edit title, add an attendee, click Book → toast + draft line appended + (if linked) Activity entry.
-- Fallback: disconnect calendar → popover shows Connect prompt only.
-- Regression: existing propose-by-email path still reachable via the secondary link, and no behavior change to AvailabilityCheckCard or OpenAvailabilityCard auto-surfacing.
+## Technical notes
+
+- `PipelineContext` already exposes the current company + pipeline; reuse it instead of re-deriving from URL.
+- Tool changes are mechanical `.eq('company_id', …)` / `.in('status', …)` additions; the heaviest lift is `search_deals` because of its fuzzy-rank path — add the filter at the SQL `select` stage, before scoring, so ranking still works.
+- Header chip count uses `useDealsContext` (already filters by workspace) + a local memo that applies the active scope filter — no extra round-trip.
+- No DB migration needed; this is pure query-shape + UI work.
