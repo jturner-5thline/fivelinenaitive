@@ -1223,6 +1223,10 @@ Allowed types and params (use ONLY these; URL-encode values with spaces as +):
 - ask_followup?q=<question> — re-prompts Ask AI with the given question.
 - create_task?title=<title>&due=<YYYY-MM-DD> — opens task creation modal.
 - add_outstanding_item?label=<item name> — adds to outstanding items checklist.
+- request_document?doc=<doc name>&owner=<who>&due=<YYYY-MM-DD> — request a specific missing document.
+- send_followup?recipient=<name>&subject=<subject>&body=<short draft> — draft a follow-up email (e.g. to a quiet lender).
+- update_status?from=<stage>&to=<stage>&reason=<why>&flag=<true|false> — suggest a deal status change or IC flag.
+- schedule_task?title=<title>&date=<YYYY-MM-DD>&attendees=<comma list> — schedule a meeting/call.
 
 Rules:
 - 2 or 3 actions only. Never 0, 1, or 4+.
@@ -1231,6 +1235,25 @@ Rules:
 - Place the Actions block AFTER the Sources line (or after the long-form memo). Nothing comes after it.
 - The block label must be exactly \`Actions:\` (case-sensitive) on its own line, followed by the bullet list.
 - Do not wrap the Actions block in code fences.
+- Every CTA MUST carry a PREFILLED payload (all required params populated from the deal context). Never emit a CTA with empty params when the type expects them.
+- Never emit a CTA the user cannot execute given their current permissions and the available deal data.
+
+SELECTION RULES — pick the 2–3 MOST relevant CTAs for the answer just produced:
+- Answer mentions a MISSING document or data point → emit BOTH
+    \`request_document?doc=<name>&owner=<who>&due=<+7d>\` AND
+    \`add_outstanding_item?label=<name>\`.
+- Answer mentions a LENDER who is quiet/stalled → emit
+    \`send_followup?recipient=<lender>&subject=<subject>&body=<short draft>\`.
+- Answer surfaces a NEW RISK → emit
+    \`add_outstanding_item?label=Deal note: <risk>\` AND
+    \`update_status?flag=true&reason=<risk>\` (Flag for IC).
+- Answer reports a STATUS DELTA → emit
+    \`update_status?from=<current>&to=<suggested>&reason=<why>\`.
+- Answer summarizes an upcoming MEETING / CALL need → emit
+    \`schedule_task?title=<meeting>&date=<YYYY-MM-DD>&attendees=<list>\`.
+- Answer is a RECAP / explainer → emit
+    \`draft_email\` (Generate Status Report for the deal lead).
+When multiple rules match, prefer the 2–3 that best advance the deal RIGHT NOW.
 
 # DRAFTING RULE
 If the user asks for an email, memo, status update, or summary: produce ONLY the requested artifact, based strictly on current deal information, concise unless the user explicitly requests long-form.
