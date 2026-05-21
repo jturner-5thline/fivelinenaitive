@@ -3,7 +3,7 @@ import { ArrowRight, Plus, Edit, Check, Loader2, CheckCircle, RefreshCw, AlertTr
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { getStageDisplayName } from '@/lib/copilot-utils';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { CopilotTaskConfirm } from './CopilotTaskConfirm';
@@ -57,6 +57,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   }
 
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'failed'>('pending');
+  const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [completedAt, setCompletedAt] = useState<number | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
@@ -284,7 +285,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
                 onClick: () => runUndo(dealId, dealName, before!),
               }
             : dealId
-              ? { label: 'View deal', onClick: () => { window.location.assign(`/deals/${dealId}`); } }
+              ? { label: 'View deal', onClick: () => { navigate(`/deal/${dealId}`); } }
               : undefined,
         });
       } else {
