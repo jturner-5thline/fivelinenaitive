@@ -31,6 +31,8 @@ import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
 import type { ConversationMutation } from '@/lib/copilot-utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { logUsage } from '@/lib/usageLogger';
+import { useCopilotChatScope, serializeScope, type CopilotScopeOverride } from '@/lib/copilotChatScope';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
