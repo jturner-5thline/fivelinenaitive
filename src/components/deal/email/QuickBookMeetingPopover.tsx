@@ -607,7 +607,7 @@ export function QuickBookMeetingPopover({
   /* ----- not-connected guard ---------------------------------------- */
   if (statusLoading) {
     return (
-      <div className="w-[360px] p-4 flex items-center justify-center text-[12px] text-muted-foreground">
+      <div className="w-[min(360px,calc(100vw-48px))] max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-4 flex items-center justify-center text-[12px] text-muted-foreground">
         <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
         Checking calendar…
       </div>
@@ -615,7 +615,7 @@ export function QuickBookMeetingPopover({
   }
   if (!connected) {
     return (
-      <div className="w-[340px] p-4">
+      <div className="w-[min(340px,calc(100vw-48px))] max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-4">
         <Header onClose={onClose} />
         <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 space-y-2">
           <div className="flex items-center gap-1.5 text-[12px] font-medium text-amber-200">
@@ -646,7 +646,7 @@ export function QuickBookMeetingPopover({
   const totalRows = (WORK_END_HOUR - WORK_START_HOUR) * (60 / ROW_MINUTES);
 
   return (
-    <div className="w-[525px] max-w-full max-h-[86vh] overflow-y-auto p-3 space-y-3 text-foreground">
+    <div className="w-full max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-3 space-y-3 text-foreground">
       <Header onClose={onClose} />
 
       {/* Duration pill row */}

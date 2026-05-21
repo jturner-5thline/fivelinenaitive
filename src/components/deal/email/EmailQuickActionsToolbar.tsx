@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import {
   FolderUp,
   Building2,
@@ -17,7 +18,6 @@ import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
 import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import { QuickBookMeetingPopover } from './QuickBookMeetingPopover';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/contexts/AuthContext';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
@@ -117,6 +117,22 @@ export function EmailQuickActionsToolbar({
   }, [active, uploadableCount]);
 
   const meetingPopoverOpen = active === 'meeting' && meetingMode === 'quick-book';
+  const modalRoot = typeof document !== 'undefined'
+    ? document.getElementById('email-popup-modal-root')
+    : null;
+
+  useEffect(() => {
+    if (!meetingPopoverOpen) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setActive((prev) => (prev === 'meeting' ? null : prev));
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [meetingPopoverOpen]);
 
   const handleMeetingClick = () => {
     // eslint-disable-next-line no-console
@@ -200,55 +216,14 @@ export function EmailQuickActionsToolbar({
           const isActive = active === a.key;
           if (a.key === 'meeting') {
             return (
-              <Popover
+              <AIAssistActionButton
                 key={a.key}
-                open={meetingPopoverOpen}
-                onOpenChange={(open) => {
-                  if (!open) {
-                    setActive((prev) => (prev === 'meeting' ? null : prev));
-                  } else {
-                    setMeetingMode('quick-book');
-                    setActive('meeting');
-                  }
-                }}
-              >
-                <PopoverTrigger asChild>
-                  <AIAssistActionButton
-                    label={a.label}
-                    icon={a.icon}
-                    iconClass={a.iconClass}
-                    isActive={isActive}
-                    onClick={handleMeetingClick}
-                  />
-                </PopoverTrigger>
-                <PopoverContent
-                  align="start"
-                  side="bottom"
-                  sideOffset={-14}
-                  alignOffset={-40}
-                  collisionPadding={8}
-                  container={
-                    typeof document !== 'undefined'
-                      ? document.getElementById('email-popup-modal-root') ?? document.body
-                      : null
-                  }
-                  className="p-0 border border-border bg-card rounded-xl shadow-xl w-auto max-w-[min(525px,calc(100vw-16px))] max-h-[min(86vh,calc(100vh-32px))] overflow-hidden"
-                >
-                  <QuickBookMeetingPopover
-                    thread={thread}
-                    dealId={dealId || fallbackDealId}
-                    dealName={dealName || fallbackDealName || undefined}
-                    meEmail={user?.email || null}
-                    meName={(user?.user_metadata as any)?.full_name || null}
-                    onInsertDraft={(text) => onInsertDraft(text)}
-                    onProposeViaEmail={() => {
-                      setMeetingMode('propose');
-                      setActive('meeting');
-                    }}
-                    onClose={() => setActive(null)}
-                  />
-                </PopoverContent>
-              </Popover>
+                label={a.label}
+                icon={a.icon}
+                iconClass={a.iconClass}
+                isActive={isActive}
+                onClick={handleMeetingClick}
+              />
             );
           }
           return (
@@ -358,6 +333,38 @@ export function EmailQuickActionsToolbar({
             </div>
           )}
         </div>
+      )}
+
+      {meetingPopoverOpen && modalRoot && createPortal(
+        <div className="absolute inset-0 z-50">
+          <button
+            type="button"
+            aria-label="Close schedule meeting dialog"
+            className="absolute inset-0 rounded-[inherit] bg-background/40 backdrop-blur-sm"
+            onClick={() => setActive(null)}
+          />
+          <div className="relative h-full w-full">
+            <div
+              className="absolute left-1/2 top-1/2 z-10 flex w-[min(525px,calc(100%-48px))] max-w-[calc(100%-48px)] max-h-[calc(100%-48px)] -translate-x-1/2 -translate-y-1/2 items-stretch overflow-hidden rounded-xl border border-border bg-card shadow-xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <QuickBookMeetingPopover
+                thread={thread}
+                dealId={dealId || fallbackDealId}
+                dealName={dealName || fallbackDealName || undefined}
+                meEmail={user?.email || null}
+                meName={(user?.user_metadata as any)?.full_name || null}
+                onInsertDraft={(text) => onInsertDraft(text)}
+                onProposeViaEmail={() => {
+                  setMeetingMode('propose');
+                  setActive('meeting');
+                }}
+                onClose={() => setActive(null)}
+              />
+            </div>
+          </div>
+        </div>,
+        modalRoot,
       )}
     </div>
   );
