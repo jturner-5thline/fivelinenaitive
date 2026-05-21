@@ -85,6 +85,9 @@ export function CopilotToggleButton() {
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  // Most recently submitted prompt — used by ArrowUp to recall the
+  // previous query when the input is empty (terminal-style history).
+  const [lastSentPrompt, setLastSentPrompt] = useState<string>('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const barRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
@@ -342,6 +345,7 @@ export function CopilotToggleButton() {
   const askAi = (text: string) => {
     const trimmed = text.trim();
     if (!trimmed) return;
+    setLastSentPrompt(trimmed);
     openPanelWithPrompt(trimmed);
     setValue('');
   };
@@ -360,6 +364,7 @@ export function CopilotToggleButton() {
       goTo(s.path);
       return;
     }
+    setLastSentPrompt(text);
     askAi(text);
   };
 
