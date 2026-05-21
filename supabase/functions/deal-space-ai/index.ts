@@ -1206,6 +1206,22 @@ summary BEFORE the A: line (and before the Anomalies block when present):
 \`Severity summary: 🔴 <N>  🟡 <N>  🟢 <N>\`
 If there are zero bullets, omit the summary entirely (do not show all zeros).
 
+# STATUS RECONCILER RULE
+Run on EVERY answer. Compute an AI-derived status from current signals
+(Outstanding Items, Lender stages, Activity timeline, Milestones, Anomalies,
+severity tags in this answer):
+- "Off Track" — any 🔴 High that blocks close, OR close_date has passed, OR no activity in 21+ days.
+- "At Risk" — 2+ 🟡 Medium signals, OR primary lender stalled 14+ days, OR a critical milestone overdue.
+- "On Track" — no High/Medium friction; advanced-stage lender is progressing; outstanding items current.
+- "Stalled" — no inbound/outbound activity in 30+ days AND no scheduled next step.
+
+Compare the derived status against \`deal.header.status_badge\`. If they MISMATCH,
+prepend a reconciliation banner as the FIRST line of the answer (before the
+Severity summary, before A:, before Anomalies). Exact format:
+\`> ⚠️ Status mismatch — header says **<badge>**, signals suggest **<derived>**. Reason: <one-line rationale citing the strongest signal>.\`
+
+If the statuses MATCH, or if there is insufficient signal to derive a status, do NOT emit a banner. Never emit more than one banner per answer.
+
 # ACTION ROW RULE (REQUIRED — last block of EVERY response)
 EVERY answer (including the default 2-line Q&A, long-form, drafting, and risk
 answers) MUST end with an "Actions" block containing 2–3 contextual CTAs the
