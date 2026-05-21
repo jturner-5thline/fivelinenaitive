@@ -5500,12 +5500,14 @@ PRE-LOADED FINANCE / CASH-FLOW CONTEXT (firm-level, accrual basis, last 3 months
 
     // ── Dashboard / unknown — pipeline summary fallback ──
     if (page === "dashboard" || page === "unknown" || page === "" || page === "pipeline" || page === "deals") {
-      const { data: deals } = await supabase
+      let dq: any = supabase
         .from("deals")
         .select("id, company, value, stage, status, updated_at")
-        .neq("status", "closed")
         .order("updated_at", { ascending: false })
         .limit(500);
+      if (chatScopeForPrefetch) dq = applyDealScope(dq, chatScopeForPrefetch);
+      else dq = dq.neq("status", "closed");
+      const { data: deals } = await dq;
       const all = deals || [];
       const active = all.filter((d: any) => d.status === "active");
       const stageCounts: Record<string, number> = {};
