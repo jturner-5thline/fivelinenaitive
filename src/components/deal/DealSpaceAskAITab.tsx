@@ -1350,6 +1350,9 @@ CRITICAL RULES:
                     No documents uploaded yet — but Ask AI can still analyze deal details, lender statuses, notes, outstanding items, and activity logs.
                   </p>
                 )}
+                <p className="text-[11px] text-muted-foreground/60 mb-4 max-w-xs">
+                  Tip: ask relationship or history questions (e.g. "Have we worked with this sponsor before?" or "What's our history with this lender?") and Ask AI will expand the search across all deals, contacts, and activity.
+                </p>
                 <div className="space-y-2 w-full max-w-sm">
                   <button
                     type="button"
