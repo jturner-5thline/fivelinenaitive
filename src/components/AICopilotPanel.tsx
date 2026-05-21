@@ -343,20 +343,35 @@ function DealSuggestionChips({
 function CopilotAssistantContent({ content }: { content: string }) {
   const navigate = useNavigate();
 
-  // Extract trailing chip suggestions emitted by the copilot system prompt
-  // in the form: [[CHIPS:["A","B","C"]]]. They are stripped from the visible
-  // content and rendered as clickable quick-action chips below the bubble.
+  // Extract chip suggestions emitted by the copilot system prompt in the form:
+  //   [[CHIPS:["A","B","C"]]]
+  // Multiple blocks may appear anywhere in the message. We strip every
+  // occurrence from the visible content, merge into a single deduped row, and
+  // render as clickable quick-action chips below the bubble.
   let chips: string[] = [];
   let strippedContent = content;
-  const chipsMatch = content.match(/\[\[CHIPS:\s*(\[[\s\S]*?\])\s*\]\]\s*$/);
-  if (chipsMatch) {
-    try {
-      const parsed = JSON.parse(chipsMatch[1]);
-      if (Array.isArray(parsed)) {
-        chips = parsed.filter((c) => typeof c === 'string' && c.trim().length > 0).slice(0, 3);
-        strippedContent = content.slice(0, chipsMatch.index).trimEnd();
+  {
+    const re = /\[\[CHIPS:\s*(\[[\s\S]*?\])\s*\]\]/g;
+    const seen = new Set<string>();
+    strippedContent = content.replace(re, (_full, jsonArr) => {
+      try {
+        const parsed = JSON.parse(jsonArr);
+        if (Array.isArray(parsed)) {
+          for (const c of parsed) {
+            if (typeof c === 'string') {
+              const label = c.trim();
+              if (label && !seen.has(label)) {
+                seen.add(label);
+                chips.push(label);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[AICopilot] Failed to parse CHIPS token, stripping silently', err);
       }
-    } catch { /* ignore malformed chip tail */ }
+      return '';
+    }).replace(/\n{3,}/g, '\n\n').trim();
   }
 
   // Fix 1: Detect and format raw JSON responses
