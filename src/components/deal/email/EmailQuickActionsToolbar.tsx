@@ -225,8 +225,13 @@ export function EmailQuickActionsToolbar({
                   align="start"
                   side="bottom"
                   sideOffset={6}
-                  container={typeof document !== 'undefined' ? document.body : null}
-                  className="p-0 border-white/10 bg-card/95 backdrop-blur rounded-xl shadow-xl w-auto"
+                  collisionPadding={12}
+                  container={
+                    typeof document !== 'undefined'
+                      ? document.getElementById('email-popup-modal-root') ?? document.body
+                      : null
+                  }
+                  className="p-0 border border-border bg-card rounded-xl shadow-xl w-auto max-w-[min(440px,calc(100vw-32px))] max-h-[min(78vh,calc(100vh-120px))] overflow-hidden"
                 >
                   <QuickBookMeetingPopover
                     thread={thread}
