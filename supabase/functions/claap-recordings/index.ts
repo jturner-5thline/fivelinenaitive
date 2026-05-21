@@ -43,6 +43,60 @@ interface ClaapRecording {
     type?: string;
     conferenceUrl?: string;
   };
+  // New flat aiFields format (preferred). Returned when the request includes
+  // returnAiFields=true. Both this and the legacy insightTemplates shape are
+  // delivered during the rollout window until 2026-06-15.
+  aiFields?: Array<{
+    key: string;
+    label: string;
+    value: string;
+    type: string;
+  }>;
+  // Legacy nested template shape.
+  insightTemplates?: Array<{
+    id?: string;
+    name?: string;
+    insights?: Array<{
+      id?: string;
+      name?: string;
+      sections?: Array<{
+        title?: string;
+        description?: string;
+        content?: string;
+        text?: string;
+      }>;
+    }>;
+  }>;
+}
+
+/**
+ * Flatten Claap insight data into { title, description } entries.
+ * Prefers the new aiFields collection; falls back to the legacy
+ * insightTemplates -> insights -> sections tree.
+ */
+function extractClaapInsights(rec: Pick<ClaapRecording, "aiFields" | "insightTemplates">): Array<{ title: string; description: string }> {
+  if (Array.isArray(rec?.aiFields) && rec.aiFields.length > 0) {
+    return rec.aiFields
+      .map((f) => ({
+        title: (f?.label || f?.key || "").trim(),
+        description: (f?.value ?? "").toString().trim(),
+      }))
+      .filter((s) => s.title || s.description);
+  }
+  if (Array.isArray(rec?.insightTemplates) && rec.insightTemplates.length > 0) {
+    const out: Array<{ title: string; description: string }> = [];
+    for (const tpl of rec.insightTemplates) {
+      for (const ins of tpl?.insights ?? []) {
+        for (const sec of ins?.sections ?? []) {
+          const title = (sec?.title || ins?.name || tpl?.name || "").trim();
+          const description = (sec?.description ?? sec?.content ?? sec?.text ?? "").toString().trim();
+          if (title || description) out.push({ title, description });
+        }
+      }
+    }
+    return out;
+  }
+  return [];
 }
 
 Deno.serve(async (req) => {
@@ -98,6 +152,9 @@ Deno.serve(async (req) => {
       const claapUrl = new URL("https://api.claap.io/v1/recordings");
       claapUrl.searchParams.set("limit", limit);
       claapUrl.searchParams.set("sort", "created_desc");
+      // Opt into the new flat aiFields format (legacy insightTemplates is
+      // still returned alongside during the rollout window).
+      claapUrl.searchParams.set("returnAiFields", "true");
 
       const response = await fetch(claapUrl.toString(), {
         method: "GET",
@@ -126,14 +183,22 @@ Deno.serve(async (req) => {
         );
       }
 
-      return new Response(JSON.stringify({ recordings }), {
+      // Attach normalized insights so downstream consumers don't have to
+      // know about the legacy vs new shape.
+      const normalized = recordings.map((r: ClaapRecording) => ({
+        ...r,
+        insights: extractClaapInsights(r),
+      }));
+      return new Response(JSON.stringify({ recordings: normalized }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     if (action === "get" && recordingId) {
       // Get single recording details
-      const response = await fetch(`https://api.claap.io/v1/recordings/${recordingId}`, {
+      const getUrl = new URL(`https://api.claap.io/v1/recordings/${recordingId}`);
+      getUrl.searchParams.set("returnAiFields", "true");
+      const response = await fetch(getUrl.toString(), {
         method: "GET",
         headers: claapHeaders,
       });
@@ -148,7 +213,11 @@ Deno.serve(async (req) => {
       }
 
       const data = await response.json();
-      return new Response(JSON.stringify({ recording: data.result?.recording }), {
+      const recording = data.result?.recording;
+      const enriched = recording
+        ? { ...recording, insights: extractClaapInsights(recording) }
+        : recording;
+      return new Response(JSON.stringify({ recording: enriched }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
