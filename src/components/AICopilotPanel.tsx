@@ -28,6 +28,7 @@ import { CopilotWorkspacePane, type WorkspaceItem, type WorkspaceItemType } from
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
+import { cleanupCopilotResponse } from '@/lib/copilotResponseCleanup';
 import type { ConversationMutation } from '@/lib/copilot-utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { logUsage } from '@/lib/usageLogger';
@@ -1259,6 +1260,21 @@ export function AICopilotPanel() {
         });
       }
 
+      // Post-stream cleanup: dedupe near-duplicate paragraphs the LLM
+      // sometimes emits (e.g. "Pipeline Summary" followed by "Pipeline
+      // Breakdown by Stage" with identical bullets) and normalize money
+      // formatting to $N.NNMM. The streamed view shows the raw token feed;
+      // the final stored/rendered message is the cleaned form.
+      if (assistantContent.trim()) {
+        const cleaned = cleanupCopilotResponse(assistantContent);
+        if (cleaned !== assistantContent) {
+          assistantContent = cleaned;
+          useCopilotStore.setState({
+            messages: useCopilotStore.getState().messages.map((m) => m.id === assistantId ? { ...m, content: cleaned } : m),
+          });
+        }
+      }
+
       const allMsgs = useCopilotStore.getState().messages;
       await saveConversation(allMsgs);
       // Persist last user + assistant turn to per-deal memory + activity timeline
@@ -1536,7 +1552,7 @@ export function AICopilotPanel() {
       )}
 
       {/* Header */}
-      <div style={{ height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>
+      <div style={{ position: 'relative', height: 48, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <img src={naitiveFavicon} alt="" style={{ width: 20, height: 20 }} />
           <span style={{ fontSize: 14, fontWeight: 600, color: 'var(--foreground)' }}>naitive AI</span>
@@ -1561,7 +1577,7 @@ export function AICopilotPanel() {
             Beta
           </span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 2, position: 'relative' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           {([
             { key: 'new', label: 'New conversation', onClick: handleNewConversation, icon: <Plus size={18} /> },
             { key: 'history', label: 'Conversation history', onClick: loadHistory, icon: <Clock size={18} /> },
@@ -1585,36 +1601,87 @@ export function AICopilotPanel() {
               <TooltipContent side="bottom">{b.label}</TooltipContent>
             </Tooltip>
           ))}
+        </div>
 
-          {/* History Dropdown */}
-          {showHistory && (
-            <div ref={historyRef} role="listbox" aria-label="Conversation history" style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, width: 300, maxHeight: 320, overflowY: 'auto', background: 'var(--glass-surface)', border: '1px solid var(--glass-border)', borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.4)', zIndex: 60, padding: 4 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 8px', borderBottom: '1px solid var(--glass-border)' }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.5px' }}>History</span>
+        {/* History Dropdown — full-width panel anchored to header */}
+        {showHistory && (
+          <div
+            ref={historyRef}
+            role="listbox"
+            aria-label="Conversation history"
+            style={{
+              position: 'absolute',
+              top: '100%',
+              left: 8,
+              right: 8,
+              marginTop: 6,
+              maxHeight: 360,
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'var(--glass-surface)',
+              border: '1px solid var(--glass-border)',
+              borderRadius: 10,
+              boxShadow: '0 12px 32px rgba(0,0,0,0.4)',
+              zIndex: 60,
+              padding: 4,
+              overflow: 'hidden',
+            }}
+          >
+            {/* Sticky header with HISTORY · Clear all · Switch Context — kept on top, never overlapped */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 8,
+                padding: '6px 8px',
+                borderBottom: '1px solid var(--glass-border)',
+                flexShrink: 0,
+                background: 'var(--glass-surface)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <span style={{ fontSize: 11, fontWeight: 600, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: '0.5px', flexShrink: 0 }}>History</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
                 {historyItems.length > 0 && (
                   <button onClick={clearAllConversations} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'hsl(var(--muted-foreground))', padding: '2px 4px' }}>
                     Clear all
                   </button>
                 )}
+                <button
+                  onClick={() => {
+                    const next = readScopePreference() === 'pipeline' ? 'auto' : 'pipeline';
+                    writeScopePreference(next);
+                    toast.success(next === 'pipeline' ? 'Switched to Pipeline scope' : 'Switched to auto context');
+                    setShowHistory(false);
+                  }}
+                  title="Toggle between auto-detected and pipeline-wide context"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 11, color: 'hsl(var(--muted-foreground))', padding: '2px 4px' }}
+                >
+                  Switch Context
+                </button>
               </div>
+            </div>
+            {/* Scrollable list — vertical only, no horizontal scroll */}
+            <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden' }}>
               {historyItems.length === 0 ? (
                 <div style={{ padding: '12px 10px', fontSize: 13, color: 'hsl(var(--muted-foreground))', textAlign: 'center' }}>No conversations yet</div>
               ) : (
                 historyItems.map((item) => (
-                  <div key={item.id} role="option" aria-selected={item.id === conversationId} style={{ display: 'flex', alignItems: 'center', gap: 4, background: item.id === conversationId ? 'rgba(126,184,247,0.1)' : 'none', borderRadius: 6, transition: 'background 100ms' }} onMouseEnter={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'rgba(126,184,247,0.06)'; }} onMouseLeave={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'none'; }}>
-                    <button onClick={() => loadConversation(item.id)} style={{ flex: 1, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, color: 'inherit' }}>
-                      <span style={{ fontSize: 13, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{item.preview}</span>
+                  <div key={item.id} role="option" aria-selected={item.id === conversationId} style={{ display: 'flex', alignItems: 'center', gap: 4, background: item.id === conversationId ? 'rgba(126,184,247,0.1)' : 'none', borderRadius: 6, transition: 'background 100ms', minWidth: 0 }} onMouseEnter={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'rgba(126,184,247,0.06)'; }} onMouseLeave={(e) => { if (item.id !== conversationId) e.currentTarget.style.background = 'none'; }}>
+                    <button onClick={() => loadConversation(item.id)} title={item.preview} style={{ flex: 1, minWidth: 0, textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, color: 'inherit' }}>
+                      <span style={{ fontSize: 13, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>{item.preview}</span>
                       <span style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', whiteSpace: 'nowrap', flexShrink: 0 }}>{formatRelativeDate(item.date)}</span>
                     </button>
-                    <button onClick={(e) => { e.stopPropagation(); deleteConversation(item.id); }} aria-label="Delete conversation" title="Delete conversation" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: '6px 8px', display: 'flex', borderRadius: 6 }} onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--destructive, 0 84% 60%))')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
+                    <button onClick={(e) => { e.stopPropagation(); deleteConversation(item.id); }} aria-label="Delete conversation" title="Delete conversation" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'hsl(var(--muted-foreground))', padding: '6px 8px', display: 'flex', borderRadius: 6, flexShrink: 0 }} onMouseEnter={(e) => (e.currentTarget.style.color = 'hsl(var(--destructive, 0 84% 60%))')} onMouseLeave={(e) => (e.currentTarget.style.color = 'hsl(var(--muted-foreground))')}>
                       <Trash2 size={13} />
                     </button>
                   </div>
                 ))
               )}
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       {/* Context Badge — shows what the AI will treat as focus this turn */}

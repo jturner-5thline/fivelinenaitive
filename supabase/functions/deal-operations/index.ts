@@ -301,6 +301,77 @@ serve(async (req) => {
         return ok({ deal_name: current.company, lender: { id: newLender.id, name: lender_name } });
       }
 
+      // ─── ADD MULTIPLE LENDERS TO DEAL (atomic batch) ──
+      // One Confirm card from the UI can stand for N entities. We insert
+      // every row in a single Postgres statement so the operation is
+      // row-level atomic: if any row violates a constraint, Postgres
+      // rolls back the entire INSERT and no partial state is left
+      // behind. After the insert we re-read deal_lenders to verify
+      // BOTH rows landed; any missing entity is reported back so the
+      // client can render a red "Failed" chip for it.
+      case "add_lenders_to_deal": {
+        const { deal_id } = params;
+        const lender_names: string[] = Array.isArray(params.lender_names) ? params.lender_names : [];
+        if (!deal_id || lender_names.length === 0) return err("deal_id and lender_names[] required");
+
+        const { data: current } = await supabase.from("deals").select("company").eq("id", deal_id).single();
+        if (!current) return err("Deal not found");
+
+        // De-dup user input and filter ones already on the deal
+        const uniq = Array.from(new Set(lender_names.map((n) => n.trim()).filter(Boolean)));
+        const { data: alreadyOn } = await supabase
+          .from("deal_lenders")
+          .select("name")
+          .eq("deal_id", deal_id);
+        const existingLower = new Set((alreadyOn || []).map((r: any) => (r.name || "").toLowerCase()));
+
+        const toInsert: Array<{ deal_id: string; name: string; stage: string; tracking_status: string }> = [];
+        const skipped: string[] = [];
+        for (const name of uniq) {
+          if (existingLower.has(name.toLowerCase())) {
+            skipped.push(name);
+          } else {
+            toInsert.push({ deal_id, name, stage: "reviewing-drl", tracking_status: "active" });
+          }
+        }
+
+        let inserted: any[] = [];
+        if (toInsert.length > 0) {
+          // Atomic single-statement insert. Either every row is persisted
+          // or none are.
+          const { data, error: insertErr } = await supabase
+            .from("deal_lenders")
+            .insert(toInsert)
+            .select();
+          if (insertErr) return err(insertErr.message);
+          inserted = data || [];
+        }
+
+        // Post-write verification: re-read names back and compare against
+        // what we asked for. Anything missing is surfaced as a failure
+        // for that specific entity so the client renders the red card.
+        const { data: after } = await supabase
+          .from("deal_lenders")
+          .select("id, name")
+          .eq("deal_id", deal_id);
+        const afterLower = new Set((after || []).map((r: any) => (r.name || "").toLowerCase()));
+        const failed = uniq.filter((n) => !afterLower.has(n.toLowerCase()) && !skipped.includes(n));
+
+        for (const row of inserted) {
+          await logActivity(deal_id, "lender_added", `Lender ${row.name} added via AI (batch)`);
+        }
+
+        return ok({
+          deal_name: current.company,
+          inserted: inserted.map((r: any) => ({ id: r.id, name: r.name })),
+          skipped_existing: skipped,
+          failed,
+          requested_count: uniq.length,
+          inserted_count: inserted.length,
+          atomic: true,
+        });
+      }
+
       // ─── REMOVE LENDER FROM DEAL ──────────────────
       case "remove_lender_from_deal": {
         const { deal_id, lender_name } = params;
