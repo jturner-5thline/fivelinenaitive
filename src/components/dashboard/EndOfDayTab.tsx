@@ -459,12 +459,21 @@ export function EndOfDayTab({
     const ws = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS));
     const we = endOfDay(new Date());
     const ref = startOfDay(new Date());
-    return (events || [])
+    const result = (events || [])
       .filter(ev => {
         const s = safeParse(ev.start); if (!s) return false;
         return s >= ws && s <= we;
       })
-      .filter(ev => (ev.attendees || []).some(a => !a.self))
+      .filter(ev => {
+        // Today's events: always include (even internal-only) so the
+        // Daily Rundown reflects the full day. Carry-forward (prior days):
+        // only keep meetings with at least one external attendee, since
+        // follow-up tracking only makes sense for externals.
+        const s = safeParse(ev.start);
+        const age = s ? differenceInCalendarDays(ref, startOfDay(s)) : 0;
+        if (age <= 0) return true;
+        return (ev.attendees || []).some(a => !a.self);
+      })
       .filter(ev => !isResolved(ev.id) && !isDismissed(ev.id, safeParse(ev.start)) && !isSnoozed(ev.id))
       .map(ev => {
         const s = safeParse(ev.start);
@@ -472,6 +481,20 @@ export function EndOfDayTab({
         return { ...ev, _ageDays: ageDays, _isCarry: ageDays > 0 };
       })
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+    // Debug surface for diagnosing empty-list reports.
+    try {
+      const todayRows = result.filter(r => r._ageDays <= 0).length;
+      const carryForwardRows = result.filter(r => r._ageDays > 0).length;
+      // eslint-disable-next-line no-console
+      console.log('[EndOfDay] query result', {
+        rawEvents: (events || []).length,
+        totalRows: result.length,
+        todayRows,
+        carryForwardRows,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+      });
+    } catch { /* noop */ }
+    return result;
   }, [events, isResolved, isDismissed, isSnoozed]);
 
   // Attendee contact lookup (batched)
