@@ -1,12 +1,25 @@
 import { useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Mail, MessageSquare, ListChecks, CheckSquare } from 'lucide-react';
+import {
+  Mail,
+  MessageSquare,
+  ListChecks,
+  CheckSquare,
+  FileText,
+  Send,
+  Flag,
+  CalendarPlus,
+} from 'lucide-react';
 
 export type AskAiActionType =
   | 'draft_email'
   | 'ask_followup'
   | 'create_task'
-  | 'add_outstanding_item';
+  | 'add_outstanding_item'
+  | 'request_document'
+  | 'send_followup'
+  | 'update_status'
+  | 'schedule_task';
 
 export interface AskAiAction {
   label: string;
@@ -19,6 +32,10 @@ const ALLOWED: ReadonlySet<AskAiActionType> = new Set([
   'ask_followup',
   'create_task',
   'add_outstanding_item',
+  'request_document',
+  'send_followup',
+  'update_status',
+  'schedule_task',
 ]);
 
 // Matches a trailing "Actions:" block (case-insensitive) with bullet list of
@@ -73,6 +90,10 @@ const ICONS: Record<AskAiActionType, React.ComponentType<{ className?: string }>
   ask_followup: MessageSquare,
   create_task: CheckSquare,
   add_outstanding_item: ListChecks,
+  request_document: FileText,
+  send_followup: Send,
+  update_status: Flag,
+  schedule_task: CalendarPlus,
 };
 
 interface Props {
