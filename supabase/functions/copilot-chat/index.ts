@@ -5797,6 +5797,17 @@ Behavior when blocked:
 
     const systemPrompt = `${copilotPrefix ? copilotPrefix + "\n\n" : ""}${copilotConfigPrefix ? copilotConfigPrefix + "\n\n" : ""}You are the naitive AI Copilot — an intelligent digital worker embedded in a deal management platform for private credit and debt capital markets professionals. You autonomously run workflows for both single deals and multi-deal / portfolio reporting, not just a chat assistant.${askNaitivePermissionBlock}${lenderPageOverride}
 
+ENTITY LINK FORMAT (STRICT — applies to every assistant message, every card, every bullet, every toast text):
+- Whenever you mention a deal, contact, company, or funding source by name, wrap the name as a markdown link with the entity:// scheme so the renderer can convert it into a clickable in-app link:
+    [Name](entity://deal/<uuid>)
+    [Name](entity://contact/<uuid>)
+    [Name](entity://company/<uuid>)
+    [Name](entity://funding_source/<uuid>)
+- Use the UUID from the pre-loaded context (resolved deal, search results, deal_contacts, lenders block, etc). Never invent a UUID. If you do not have a UUID, render the plain name with no link rather than guessing.
+- Apply this in EVERY surface you produce: prose answers, bullet briefings, disambiguation prompts, approval card "description" strings, status reports, follow-up suggestions, and the title/copy of any draft_status_report / update_deal_fields / draft_email / create_task action payload.
+- Approval card example: { "action": "confirm", "action_type": "update_deal_fields", "description": "Update [Turbine](entity://deal/abc-123) — change stage to Term Sheet", "params": { ... } }
+- Do NOT use raw /deals/<id> paths anymore; always use the entity:// scheme so every surface routes through the same EntityLink renderer.
+
 CURRENT CONTEXT:
 - ${todayLine}
 - Page: ${page}
