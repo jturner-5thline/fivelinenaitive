@@ -333,6 +333,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
           <Check size={16} style={{ color: 'rgb(34, 197, 94)' }} />
           <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {renderedDescription}</span>
         </div>
+        <FieldDiffTable
+          diffs={fieldDiffs}
+          statuses={fieldStatuses}
+          showOldValues={isUpdateLikeAction}
+          tone="done"
+        />
         <div
           style={{
             display: 'flex',
@@ -409,6 +415,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
             )}
           </div>
         </div>
+        <FieldDiffTable
+          diffs={fieldDiffs}
+          statuses={fieldStatuses}
+          showOldValues={isUpdateLikeAction}
+          tone="failed"
+        />
         <div style={{ display: 'flex', gap: 8, paddingLeft: 24 }}>
           <button
             onClick={handleConfirm}
@@ -474,6 +486,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         <Icon size={16} style={{ color: 'hsl(var(--primary))' }} />
         <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{renderedDescription}</span>
       </div>
+      <FieldDiffTable
+        diffs={fieldDiffs}
+        statuses={fieldStatuses}
+        showOldValues={isUpdateLikeAction}
+        tone="pending"
+      />
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={handleConfirm}
