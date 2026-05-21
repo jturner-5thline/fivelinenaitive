@@ -4874,11 +4874,13 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 async function executeConfirmAction(supabase: any, actionType: string, params: any, userId: string, authHeader: string = "") {
   switch (actionType) {
     case "update_deal_stage": {
-      const { error } = await supabase.from("deals").update({ stage: params.new_stage }).eq("id", params.deal_id);
-      if (error) return { success: false, error: error.message };
-      const { data: verified } = await supabase.from("deals").select("stage").eq("id", params.deal_id).single();
-      if (!verified || verified.stage !== params.new_stage) {
-        return { success: false, error: `Failed to move "${params.deal_name}" to "${params.new_stage}". The stage is still "${verified?.stage || 'unknown'}".` };
+      try {
+        await verifiedDealUpdate(supabase, params.deal_id, { stage: params.new_stage });
+      } catch (e) {
+        if (e instanceof WriteNotPersistedError) {
+          return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
+        }
+        return { success: false, error: (e as Error).message };
       }
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id, activity_type: "stage_change",
