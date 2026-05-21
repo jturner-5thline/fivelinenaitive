@@ -112,7 +112,8 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
 
   const candidates: DealCandidate[] = Array.isArray(initial.deal_candidates) ? initial.deal_candidates! : [];
-  const hasMultipleCandidates = candidates.length > 1;
+  const [candidatesDismissed, setCandidatesDismissed] = useState(false);
+  const hasMultipleCandidates = candidates.length > 1 && !candidatesDismissed;
   const lowDealConfidence = typeof initial.confidences?.deal === 'number' && (initial.confidences!.deal as number) < 0.7;
   const [resolvedDealId, setResolvedDealId] = useState<string | null>(initial.deal_id || null);
   const [resolvedDealName, setResolvedDealName] = useState<string | null>(initial.deal_name || null);
@@ -354,13 +355,10 @@ export function CopilotTaskConfirm({ action }: Props) {
           ))}
           <button
             onClick={() => {
-              // User chose "none of these" — drop the deal link and let them confirm without one.
               setResolvedDealId(null);
               setResolvedDealName(null);
               setDealLinked(false);
-              // Mark as resolved by stuffing a sentinel; re-render via state already happens.
-              // Clearing candidates locally:
-              (initial as any).deal_candidates = [];
+              setCandidatesDismissed(true);
             }}
             style={{
               ...secondaryActionStyle,
