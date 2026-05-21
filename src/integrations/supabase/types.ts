@@ -6507,6 +6507,53 @@ export type Database = {
           },
         ]
       }
+      deal_ai_status_snapshots: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          derived_status: string | null
+          header_status: string | null
+          id: string
+          mismatch: boolean
+          rationale: string | null
+          signals: Json
+          source: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          derived_status?: string | null
+          header_status?: string | null
+          id?: string
+          mismatch?: boolean
+          rationale?: string | null
+          signals?: Json
+          source?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          derived_status?: string | null
+          header_status?: string | null
+          id?: string
+          mismatch?: boolean
+          rationale?: string | null
+          signals?: Json
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_ai_status_snapshots_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_aliases: {
         Row: {
           alias: string
@@ -9035,6 +9082,7 @@ export type Database = {
         Row: {
           agreement_sent: boolean
           ai_custom_instructions: string | null
+          ai_status_snapshot: Json | null
           analyst: string | null
           business_model: string | null
           closing_date: string | null
@@ -9117,6 +9165,7 @@ export type Database = {
         Insert: {
           agreement_sent?: boolean
           ai_custom_instructions?: string | null
+          ai_status_snapshot?: Json | null
           analyst?: string | null
           business_model?: string | null
           closing_date?: string | null
@@ -9199,6 +9248,7 @@ export type Database = {
         Update: {
           agreement_sent?: boolean
           ai_custom_instructions?: string | null
+          ai_status_snapshot?: Json | null
           analyst?: string | null
           business_model?: string | null
           closing_date?: string | null
