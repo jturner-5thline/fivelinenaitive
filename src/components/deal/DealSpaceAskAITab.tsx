@@ -31,6 +31,7 @@ import { ToastAction } from '@/components/ui/toast';
 import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
+import { AskAiActionBar, extractAskAiActions, type AskAiAction } from './AskAiActionBar';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import { BaseSubmissionEmailDialog, type BaseSubmissionDraft } from './email/BaseSubmissionEmailDialog';
 import { htmlToPlainText } from '@/lib/htmlToPlainText';
@@ -1419,6 +1420,25 @@ CRITICAL RULES:
                       )}
                     >
                       {msg.role === 'assistant' ? (
+                        (() => {
+                          const { cleanContent, actions } = extractAskAiActions(msg.content);
+                          const handleAction = (a: AskAiAction) => {
+                            if (a.type === 'draft_email') {
+                              openDraftSubmissionModal();
+                              return;
+                            }
+                            if (a.type === 'ask_followup') {
+                              const q = a.params.q || a.params.question || a.label;
+                              if (q) sendMessage(q);
+                              return;
+                            }
+                            // create_task / add_outstanding_item — surface for now
+                            toast({
+                              title: a.type === 'create_task' ? 'Create task' : 'Add outstanding item',
+                              description: a.label,
+                            });
+                          };
+                          return (
                         <>
                           <TooltipProvider delayDuration={150}>
                             <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -1443,7 +1463,7 @@ CRITICAL RULES:
                                   ),
                                 }}
                               >
-                                {msg.content}
+                                {cleanContent}
                               </ReactMarkdown>
                             </div>
                           </TooltipProvider>
@@ -1452,7 +1472,10 @@ CRITICAL RULES:
                             documents={documents}
                             onOpenDocument={handleOpenCitedDocument}
                           />
+                          <AskAiActionBar actions={actions} onAction={handleAction} disabled={isAILoading} />
                         </>
+                          );
+                        })()
                       ) : (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
