@@ -1260,6 +1260,21 @@ export function AICopilotPanel() {
         });
       }
 
+      // Post-stream cleanup: dedupe near-duplicate paragraphs the LLM
+      // sometimes emits (e.g. "Pipeline Summary" followed by "Pipeline
+      // Breakdown by Stage" with identical bullets) and normalize money
+      // formatting to $N.NNMM. The streamed view shows the raw token feed;
+      // the final stored/rendered message is the cleaned form.
+      if (assistantContent.trim()) {
+        const cleaned = cleanupCopilotResponse(assistantContent);
+        if (cleaned !== assistantContent) {
+          assistantContent = cleaned;
+          useCopilotStore.setState({
+            messages: useCopilotStore.getState().messages.map((m) => m.id === assistantId ? { ...m, content: cleaned } : m),
+          });
+        }
+      }
+
       const allMsgs = useCopilotStore.getState().messages;
       await saveConversation(allMsgs);
       // Persist last user + assistant turn to per-deal memory + activity timeline
