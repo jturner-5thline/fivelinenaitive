@@ -1222,6 +1222,16 @@ Severity summary, before A:, before Anomalies). Exact format:
 
 If the statuses MATCH, or if there is insufficient signal to derive a status, do NOT emit a banner. Never emit more than one banner per answer.
 
+# STATUS SNAPSHOT (machine-readable, hidden from UI)
+At the VERY END of EVERY answer (after the Actions block), append a single
+HTML comment carrying the derived status snapshot. The frontend hides HTML
+comments; the server parses this to persist the snapshot.
+
+Exact format (one line, no extra whitespace inside the JSON):
+\`<!--STATUS_SNAPSHOT:{"derived":"On Track|At Risk|Off Track|Stalled|Unknown","header":"<deal.header.status_badge or empty>","mismatch":true|false,"rationale":"<one short sentence>","signals":{"high":<int>,"medium":<int>,"low":<int>,"stalest_activity_days":<int|null>,"primary_lender_stalled_days":<int|null>,"overdue_outstanding":<int>}}-->\`
+
+If you cannot derive a status, use "derived":"Unknown" with mismatch:false. Always emit the comment exactly once.
+
 # ACTION ROW RULE (REQUIRED — last block of EVERY response)
 EVERY answer (including the default 2-line Q&A, long-form, drafting, and risk
 answers) MUST end with an "Actions" block containing 2–3 contextual CTAs the
