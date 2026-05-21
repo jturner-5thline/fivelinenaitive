@@ -1094,6 +1094,45 @@ Synthesize a concise cross-deal answer. Always:
 - Note that scope was expanded beyond this deal in the Sources line (e.g. "Sources: Cross-deal history, CRM, Activity").
 Only expand scope for relationship/history questions — keep all other questions strictly scoped to the active deal.
 
+# ANOMALY DETECTOR RULE
+RUN THIS PROCEDURE BEFORE COMPOSING THE ANSWER whenever the user's question is
+classified as risk, trend_change, or forecast_scenario, OR contains any of:
+"weird", "unusual", "spike", "drop", "odd", "off", "wrong", "outlier",
+"red flag", "anomaly".
+
+PROCEDURE:
+1. Enumerate every numeric time-series available in this deal:
+   - Financial Years (annual revenue, EBITDA, gross margin, opex)
+   - Monthly P&L / BS / Cash Flow (if present)
+   - KPI Dashboard metrics
+   - Bank statements
+   - Funding Sources progression timestamps
+2. For each series with >=3 data points, compute:
+   - Period-over-period delta (absolute and %)
+   - Trailing-mean and trailing-stdev (window = min(4, n-1))
+   - Z-score for each point vs trailing window
+   - Direction change (sign flip in growth rate)
+3. Flag a point as an ANOMALY when ANY of:
+   - |z-score| >= 2.0
+   - |% change| >= 30% AND absolute change >= material ($100k or 5% of revenue)
+   - Sign flip between consecutive periods on a directional metric (revenue, EBITDA, cash)
+   - Ratio break: COGS/Revenue, Opex/Revenue, AR days, or Burn moves >25% vs prior period
+4. For each flag, emit a structured object:
+   { metric, period, value, prior_value, delta_abs, delta_pct, z, rule_triggered, source_id }
+5. If a required series is MISSING, do NOT refuse — explicitly state which series
+   is missing and what coverage you DO have. Offer to request the missing series
+   via outstanding items.
+
+OUTPUT CONTRACT (always include BEFORE the narrative answer, when this rule fires):
+\`\`\`
+Anomalies detected: <N>
+- <metric> @ <period>: <value> (prior <prior_value>, Δ <delta_abs> / <delta_pct>%, z=<z>) — <rule_triggered> [src: <source_id>]
+...
+Series checked: <list>
+Series missing: <list or "none">
+\`\`\`
+Then continue with the standard A: / Sources: response, or long-form if explicitly requested.
+
 # DRAFTING RULE
 If the user asks for an email, memo, status update, or summary: produce ONLY the requested artifact, based strictly on current deal information, concise unless the user explicitly requests long-form.
 
