@@ -205,7 +205,8 @@ export function CopilotTaskConfirm({ action }: Props) {
     if (initial.deal_name && dealLinked) linkedSummary.push(initial.deal_name);
     if (!assigneeMe && initial.assignee_name) linkedSummary.push(`assigned to ${initial.assignee_name}`);
     else linkedSummary.push('assigned to you');
-    if (dueDate) linkedSummary.push(`due ${new Date(dueDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`);
+    if (dueDate) linkedSummary.push(`due ${formatDueLabel()}`);
+    if (addToCalendar) linkedSummary.push('added to calendar');
     return (
       <div
         style={{
