@@ -49,46 +49,14 @@ export async function captureStatusReportPdf(
   if (opts?.waitForReady) await opts.waitForReady();
   await waitForRender();
 
-  // 2. Snapshot the preview node at a FIXED desktop width.
-  //    The dialog on a 654-px mobile viewport renders ~600 px wide; if we
-  //    capture that narrow DOM and stretch it to fill 7.5" of Letter, the
-  //    output looks zoomed-in and spills onto 3-4 pages. To make the PDF
-  //    viewport-independent (and identical between "Export as PDF" and
-  //    "Generate Status Email"), we clone the node into an off-screen
-  //    wrapper at a canonical desktop width and capture that instead.
-  const RENDER_WIDTH = 1024; // px — desktop layout, fits cleanly to Letter
-  const wrapper = document.createElement('div');
-  wrapper.setAttribute('data-naitive-pdf-capture', 'true');
-  wrapper.style.cssText = [
-    'position:fixed',
-    'left:-100000px',
-    'top:0',
-    `width:${RENDER_WIDTH}px`,
-    'pointer-events:none',
-    'opacity:1',
-    'z-index:-1',
-  ].join(';');
-  const clone = node.cloneNode(true) as HTMLElement;
-  clone.style.width = `${RENDER_WIDTH}px`;
-  clone.style.maxWidth = `${RENDER_WIDTH}px`;
-  clone.style.margin = '0';
-  wrapper.appendChild(clone);
-  document.body.appendChild(wrapper);
-
-  let canvas: HTMLCanvasElement;
-  try {
-    await waitForRender();
-    canvas = await html2canvas(clone, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: null,
-      windowWidth: RENDER_WIDTH,
-      width: RENDER_WIDTH,
-      logging: false,
-    });
-  } finally {
-    wrapper.remove();
-  }
+  // 2. Snapshot the preview node.
+  const canvas = await html2canvas(node, {
+    scale: 2,
+    useCORS: true,
+    backgroundColor: null,
+    windowWidth: node.scrollWidth,
+    logging: false,
+  });
 
   // 3. Paginate onto Letter @ pt.
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'letter' });
