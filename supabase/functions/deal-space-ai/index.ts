@@ -1069,33 +1069,90 @@ ${scopeInstruction}
 
     **AVAILABLE DATA SOURCES:** ${sourceLabels}
 
-**SOURCE INVENTORY (use ONLY these source_ids in [src:…] citation tokens — never fabricate IDs):**
-${[
-  ...(ctx.dealSpaceDocs || []).map((d: any) => `- doc_${d.id} — ${d.name}`),
-  ...(ctx.dataRoomDocs || []).map((d: any) => `- doc_${d.id} — ${d.name} (Data Room)`),
-  ...(ctx.transcripts || []).map((t: any) => `- tx_${t.id} — ${t.call_type || 'Call'} ${t.recorded_at ? `(${String(t.recorded_at).slice(0,10)})` : ''}`),
-  ...(ctx.notes || []).map((n: any) => `- note_${n.id} — ${n.title || 'Untitled note'}`),
-  ...(ctx.lenders || []).map((l: any) => l.id ? `- lender_${l.id} — ${l.name}` : null).filter(Boolean),
-].slice(0, 80).join('\n') || '- (no resolvable source IDs available for citation)'}
+**RETRIEVAL SET (the ONLY valid source_ids + anchors you may cite — never fabricate):**
+Each retrieval result is a JSON object: \`{source_id, type, anchor_candidates: [{kind, value, snippet}]}\`.
+You MAY only emit a citation \`[src:<source_id>#<anchor>]\` where:
+  • \`<source_id>\` exactly matches a \`source_id\` below, AND
+  • \`<anchor>\` is built from one of that source's \`anchor_candidates\` (kind+value).
+An anchor MUST only be cited if its \`snippet\` was actually used to produce the claim in that sentence. Do NOT cite an anchor you did not draw from.
+
+\`\`\`json
+${JSON.stringify(
+  [
+    ...(ctx.dealSpaceDocs || []).map((d: any) => ({
+      source_id: `doc_${d.id}`,
+      type: 'document',
+      name: d.name,
+      anchor_candidates: [{
+        kind: 'whole',
+        value: 'doc',
+        snippet: String(d.extracted_text || '').slice(0, 160),
+      }],
+    })),
+    ...(ctx.dataRoomDocs || []).map((d: any) => ({
+      source_id: `doc_${d.id}`,
+      type: 'document',
+      name: `${d.name} (Data Room)`,
+      anchor_candidates: [{
+        kind: 'whole',
+        value: 'doc',
+        snippet: String(d.extracted_text || '').slice(0, 160),
+      }],
+    })),
+    ...(ctx.transcripts || []).map((t: any) => ({
+      source_id: `tx_${t.id}`,
+      type: 'transcript',
+      name: `${t.call_type || 'Call'}${t.recorded_at ? ` ${String(t.recorded_at).slice(0,10)}` : ''}`,
+      anchor_candidates: [{
+        kind: t.duration_seconds ? 'segment' : 'whole',
+        value: t.duration_seconds ? 't0' : 'transcript',
+        snippet: String(t.summary || t.transcript_text || '').slice(0, 160),
+      }],
+    })),
+    ...(ctx.notes || []).map((n: any) => ({
+      source_id: `note_${n.id}`,
+      type: 'note',
+      name: n.title || 'Untitled note',
+      anchor_candidates: [{
+        kind: 'line',
+        value: 'l1',
+        snippet: String(n.content || '').slice(0, 160),
+      }],
+    })),
+    ...(ctx.lenders || []).filter((l: any) => l.id).map((l: any) => ({
+      source_id: `lender_${l.id}`,
+      type: 'lender',
+      name: l.name,
+      anchor_candidates: [{
+        kind: 'row',
+        value: `row_${l.id}`,
+        snippet: `${l.name} — ${l.stage || 'n/a'}`,
+      }],
+    })),
+  ].slice(0, 80),
+  null,
+  2,
+)}
+\`\`\`
 
 # CITATION REQUIREMENT
 Every factual claim drawn from a source MUST be followed by an inline citation
-token of the form \`[src:<source_id>#<anchor>]\` using IDs from the SOURCE
-INVENTORY above. Anchor formats:
-- Document: \`[src:doc_<id>#p<page>]\`         e.g. \`[src:doc_abc123#p4]\`
-- Transcript: \`[src:tx_<id>#t<seconds>]\`     e.g. \`[src:tx_9c3d#t842]\` (renders as mm:ss)
-- Note: \`[src:note_<id>#l<line>]\`            e.g. \`[src:note_xyz#l12]\`
-- Email: \`[src:email_<id>]\`
-- Structured field: \`[src:field_<table>.<column>#row_<id>]\`  e.g. \`[src:field_financial_years.revenue#row_2025]\`
-- Funding source / lender row: \`[src:lender_<id>]\`
+token of the form \`[src:<source_id>#<anchor>]\`. Anchor encoding rules:
+- Document page: \`#p<page>\`  → only when anchor_candidate \`kind=page\`
+- Document whole-doc: \`#whole\` → when anchor_candidate \`kind=whole\`
+- Transcript timestamp: \`#t<seconds>\` → when anchor_candidate \`kind=segment\`
+- Transcript whole: \`#transcript\` → when anchor_candidate \`kind=whole\`
+- Note line: \`#l<line>\` → when anchor_candidate \`kind=line\`
+- Structured field: \`[src:field_<table>.<column>#row_<id>]\` (kind=row)
+- Lender row: \`[src:lender_<id>#row_<id>]\` (kind=row)
+- Email: \`[src:email_<id>]\` (no anchor)
 
-Rules:
-- Cite at the SENTENCE level, not the paragraph level.
-- Up to 3 citations per sentence; if more would apply, keep the 3 most load-bearing.
-- Every quoted string ("…") MUST be cited.
-- Every NUMBER (dollar amounts, percentages, counts, durations) MUST be cited.
+Composer constraints (HARD):
+- Cite at the SENTENCE level. Max 3 citations per sentence.
+- Every quoted string ("…") and every NUMBER (dollars, %, counts, durations) MUST carry a citation.
+- Emit a citation ONLY if the cited anchor's \`snippet\` (or the underlying retrieved content for that anchor) was actually used to produce the claim. If you did not consult that anchor, do not cite it.
+- NEVER fabricate a \`source_id\` or an anchor value not present in the RETRIEVAL SET. If the claim cannot be tied to a real anchor, omit the citation and tag the sentence with \`[unverified]\`.
 - Do NOT cite the same source >2 times consecutively in the same paragraph.
-- NEVER fabricate a source_id. If a claim cannot be tied to an ID from the inventory, omit the citation and tag the sentence with \`[unverified]\`.
 - Citation tokens are render-only chips; do not duplicate them in the trailing \`Sources:\` line.
 
 # AVAILABLE SOURCES (use any/all that apply to the active deal)
