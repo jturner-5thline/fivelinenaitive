@@ -423,6 +423,7 @@ const tools = [
           assignee_name: { type: "string", description: "Display name of the assignee (for the confirm card label only)." },
           priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
           due_date: { type: "string", description: "ISO date string YYYY-MM-DD" },
+          due_time: { type: "string", description: "Time-of-day in 24h HH:MM (user-local, America/New_York). Examples: '10:00' for 10am, '17:00' for EOD, '14:00' for afternoon, '09:00' for morning. Default to 09:00 when the user gives a date but no time. Honor explicit times verbatim." },
           task_type: { type: "string", enum: ["task", "follow_up", "call", "email", "meeting"], description: "Task category. Default 'task'. Set to follow_up/call/email/meeting only when the user explicitly says so." },
           rationale: { type: "string", description: "One short sentence explaining WHY the linked entity was chosen (e.g. 'Linked to Worthy because that is the deal currently open.'). Shown verbatim on the approval card. Required when deal_id/contact_id is INFERRED rather than explicitly named by the user; optional otherwise." },
           duplicate_status: { type: "string", enum: ["none", "low", "possible", "high"], description: "Result of the pre-create duplicate check. 'none' = no similar task. 'low' = weak overlap, proceed. 'possible' (medium) = similar task — surface side-by-side on the card. 'high' = strong duplicate — recommend reuse." },
