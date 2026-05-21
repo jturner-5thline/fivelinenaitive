@@ -296,6 +296,84 @@ export function CopilotTaskConfirm({ action }: Props) {
     );
   }
 
+  // Disambiguation-first: AI returned multiple candidate deals. Hide the
+  // approval card entirely until the user picks one so they can't Confirm a
+  // card with an unresolved entity reference.
+  if (needsDisambiguation) {
+    const headline = initial.deal_name
+      ? `Multiple deals match "${initial.deal_name}" — which one did you mean?`
+      : 'Multiple matching deals — pick one to continue';
+    return (
+      <div
+        style={{
+          background: 'rgba(245,158,11,0.06)',
+          border: '1px solid rgba(245,158,11,0.30)',
+          borderRadius: 10,
+          padding: '12px 14px',
+          marginTop: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <AlertTriangle size={14} style={{ color: 'rgb(217, 119, 6)' }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'hsl(var(--foreground))', letterSpacing: 0.3 }}>
+            {headline}
+          </span>
+        </div>
+        <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginBottom: 10 }}>
+          I won't create the task until you select the right deal.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {candidates.map(c => (
+            <button
+              key={c.deal_id}
+              onClick={() => {
+                setResolvedDealId(c.deal_id);
+                setResolvedDealName(c.name);
+                setDealLinked(true);
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 10px', borderRadius: 8,
+                background: 'var(--glass-surface)',
+                border: '1px solid var(--glass-border)',
+                color: 'hsl(var(--foreground))',
+                fontSize: 12, textAlign: 'left', cursor: 'pointer',
+              }}
+            >
+              <Building2 size={13} style={{ color: 'hsl(var(--muted-foreground))', flexShrink: 0 }} />
+              <span style={{ fontWeight: 600 }}>{c.name}</span>
+              {c.stage && (
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>· {c.stage}</span>
+              )}
+              {c.last_activity && (
+                <span style={{ color: 'hsl(var(--muted-foreground))', marginLeft: 'auto', fontSize: 11 }}>
+                  Last activity {c.last_activity}
+                </span>
+              )}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              // User chose "none of these" — drop the deal link and let them confirm without one.
+              setResolvedDealId(null);
+              setResolvedDealName(null);
+              setDealLinked(false);
+              // Mark as resolved by stuffing a sentinel; re-render via state already happens.
+              // Clearing candidates locally:
+              (initial as any).deal_candidates = [];
+            }}
+            style={{
+              ...secondaryActionStyle,
+              marginTop: 4, alignSelf: 'flex-start',
+            }}
+          >
+            None of these — create without a deal
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const InferredTag = () => (
     <span
       title="Inferred by AI — review before confirming"
