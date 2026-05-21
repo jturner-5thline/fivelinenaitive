@@ -1007,6 +1007,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           <EmailQuickActionsToolbar
             thread={thread}
             dealId={dealId}
+            contactId={null}
             dealName={dealName}
             likelyLenderName={workflowAnalysis?.likely_lender_firm?.name || null}
             attachments={drAttachments}
