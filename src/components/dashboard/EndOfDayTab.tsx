@@ -384,6 +384,12 @@ export function EndOfDayTab({
   const [filterChips, setFilterChips] = useState<Set<FilterChip>>(new Set());
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Tracks items the user resolved/dismissed/snoozed during this session.
+  // Used to decide whether the empty state is a celebratory "you cleared
+  // everything" vs. a neutral "nothing here today" vs. a filter-zero state.
+  const [clearedCount, setClearedCount] = useState(0);
+  const bumpCleared = useCallback((n = 1) => setClearedCount(c => c + n), []);
+
   // Collapsed groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(readLS<string[]>(COLLAPSED_GROUPS_KEY, [])),
@@ -594,25 +600,28 @@ export function EndOfDayTab({
     clearResolved(id);
     activity.append(id, { kind: 'resolved', by: userId });
     if (selectedId === id) setSelectedId(null);
+    bumpCleared(1);
     undoToast(id, 'resolved', 'Marked as resolved');
-  }, [clearResolved, activity, userId, selectedId, undoToast]);
+  }, [clearResolved, activity, userId, selectedId, undoToast, bumpCleared]);
 
   const handleDismiss = useCallback((id: string) => {
     clearDismissed(id);
     activity.append(id, { kind: 'dismissed', by: userId });
     if (selectedId === id) setSelectedId(null);
+    bumpCleared(1);
     undoToast(id, 'dismissed', 'Dismissed');
-  }, [clearDismissed, activity, userId, selectedId, undoToast]);
+  }, [clearDismissed, activity, userId, selectedId, undoToast, bumpCleared]);
 
   const handleSnooze = useCallback((id: string, until: Date, label: string) => {
     snooze(id, until);
     activity.append(id, { kind: 'snoozed', by: userId, detail: `Until ${format(until, 'PPp')}` });
     if (selectedId === id) setSelectedId(null);
+    bumpCleared(1);
     toast(`Snoozed ${label}`, {
       duration: UNDO_WINDOW_MS,
       action: { label: 'Undo', onClick: () => { unsnooze(id); activity.append(id, { kind: 'restored', by: userId, detail: 'Undid snooze' }); } },
     });
-  }, [snooze, unsnooze, activity, userId, selectedId]);
+  }, [snooze, unsnooze, activity, userId, selectedId, bumpCleared]);
 
   // Bulk actions ─────────────────────────────────────────────
   const bulkResolve = () => {
@@ -620,6 +629,7 @@ export function EndOfDayTab({
     ids.forEach(id => { clearResolved(id); activity.append(id, { kind: 'resolved', by: userId, detail: 'Bulk' }); });
     setBulkSelected(new Set());
     if (selectedId && ids.includes(selectedId)) setSelectedId(null);
+    bumpCleared(ids.length);
     toast(`Resolved ${ids.length} item${ids.length === 1 ? '' : 's'}`, {
       duration: UNDO_WINDOW_MS,
       action: { label: 'Undo', onClick: () => ids.forEach(id => restoreResolved(id)) },
@@ -630,6 +640,7 @@ export function EndOfDayTab({
     ids.forEach(id => { clearDismissed(id); activity.append(id, { kind: 'dismissed', by: userId, detail: 'Bulk' }); });
     setBulkSelected(new Set());
     if (selectedId && ids.includes(selectedId)) setSelectedId(null);
+    bumpCleared(ids.length);
     toast(`Dismissed ${ids.length} item${ids.length === 1 ? '' : 's'}`, {
       duration: UNDO_WINDOW_MS,
       action: { label: 'Undo', onClick: () => ids.forEach(id => restoreDismissed(id)) },
@@ -697,6 +708,11 @@ export function EndOfDayTab({
   }
 
   const isFullyEmpty = outstanding.length === 0;
+  const hasActiveFilters = filterChips.size > 0 || search.trim().length > 0;
+  const clearAllFilters = useCallback(() => {
+    setFilterChips(new Set());
+    setSearch('');
+  }, []);
 
   // Master pane content
   const masterPane = (
@@ -767,15 +783,41 @@ export function EndOfDayTab({
 
       {/* List */}
       <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-3">
-        {isFullyEmpty ? (
+        {filtered.length === 0 && !isFullyEmpty ? (
+          // Filters/search are hiding everything — neutral state, no celebration.
+          <div className="text-center py-12">
+            <p className="text-sm text-white/85">No items match the current filters</p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {outstanding.length} outstanding item{outstanding.length === 1 ? '' : 's'} hidden by filters
+            </p>
+            {hasActiveFilters && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 h-7 text-[11px]"
+                onClick={clearAllFilters}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        ) : isFullyEmpty && clearedCount > 0 ? (
+          // User cleared everything in this session — celebrate.
           <div className="text-center py-12">
             <PartyPopper className="h-8 w-8 mx-auto text-emerald-300 mb-3" />
             <p className="text-sm font-medium text-white">You're clear of outstanding items</p>
-            <p className="text-xs text-muted-foreground mt-1">Nothing left to follow up on. Nice work.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Nothing left to follow up on. Nice work.
+            </p>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-xs text-muted-foreground">
-            No items match the current search or filters.
+        ) : isFullyEmpty ? (
+          // Naturally empty (nothing was cleared this session) — soft neutral.
+          <div className="text-center py-12">
+            <Inbox className="h-7 w-7 mx-auto text-white/40 mb-3" />
+            <p className="text-sm text-white/85">Nothing outstanding right now</p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              New meeting follow-ups will appear here as they come in.
+            </p>
           </div>
         ) : (
           buckets.map(b => {
