@@ -384,6 +384,12 @@ export function EndOfDayTab({
   const [filterChips, setFilterChips] = useState<Set<FilterChip>>(new Set());
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // Tracks items the user resolved/dismissed/snoozed during this session.
+  // Used to decide whether the empty state is a celebratory "you cleared
+  // everything" vs. a neutral "nothing here today" vs. a filter-zero state.
+  const [clearedCount, setClearedCount] = useState(0);
+  const bumpCleared = useCallback((n = 1) => setClearedCount(c => c + n), []);
+
   // Collapsed groups
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
     () => new Set(readLS<string[]>(COLLAPSED_GROUPS_KEY, [])),
@@ -594,25 +600,28 @@ export function EndOfDayTab({
     clearResolved(id);
     activity.append(id, { kind: 'resolved', by: userId });
     if (selectedId === id) setSelectedId(null);
+    bumpCleared(1);
     undoToast(id, 'resolved', 'Marked as resolved');
-  }, [clearResolved, activity, userId, selectedId, undoToast]);
+  }, [clearResolved, activity, userId, selectedId, undoToast, bumpCleared]);
 
   const handleDismiss = useCallback((id: string) => {
     clearDismissed(id);
     activity.append(id, { kind: 'dismissed', by: userId });
     if (selectedId === id) setSelectedId(null);
+    bumpCleared(1);
     undoToast(id, 'dismissed', 'Dismissed');
-  }, [clearDismissed, activity, userId, selectedId, undoToast]);
+  }, [clearDismissed, activity, userId, selectedId, undoToast, bumpCleared]);
 
   const handleSnooze = useCallback((id: string, until: Date, label: string) => {
     snooze(id, until);
     activity.append(id, { kind: 'snoozed', by: userId, detail: `Until ${format(until, 'PPp')}` });
     if (selectedId === id) setSelectedId(null);
+    bumpCleared(1);
     toast(`Snoozed ${label}`, {
       duration: UNDO_WINDOW_MS,
       action: { label: 'Undo', onClick: () => { unsnooze(id); activity.append(id, { kind: 'restored', by: userId, detail: 'Undid snooze' }); } },
     });
-  }, [snooze, unsnooze, activity, userId, selectedId]);
+  }, [snooze, unsnooze, activity, userId, selectedId, bumpCleared]);
 
   // Bulk actions ─────────────────────────────────────────────
   const bulkResolve = () => {
@@ -620,6 +629,7 @@ export function EndOfDayTab({
     ids.forEach(id => { clearResolved(id); activity.append(id, { kind: 'resolved', by: userId, detail: 'Bulk' }); });
     setBulkSelected(new Set());
     if (selectedId && ids.includes(selectedId)) setSelectedId(null);
+    bumpCleared(ids.length);
     toast(`Resolved ${ids.length} item${ids.length === 1 ? '' : 's'}`, {
       duration: UNDO_WINDOW_MS,
       action: { label: 'Undo', onClick: () => ids.forEach(id => restoreResolved(id)) },
@@ -630,6 +640,7 @@ export function EndOfDayTab({
     ids.forEach(id => { clearDismissed(id); activity.append(id, { kind: 'dismissed', by: userId, detail: 'Bulk' }); });
     setBulkSelected(new Set());
     if (selectedId && ids.includes(selectedId)) setSelectedId(null);
+    bumpCleared(ids.length);
     toast(`Dismissed ${ids.length} item${ids.length === 1 ? '' : 's'}`, {
       duration: UNDO_WINDOW_MS,
       action: { label: 'Undo', onClick: () => ids.forEach(id => restoreDismissed(id)) },
