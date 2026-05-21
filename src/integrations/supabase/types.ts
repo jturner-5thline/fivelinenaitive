@@ -23533,6 +23533,15 @@ export type Database = {
           primary_domain: string
         }[]
       }
+      find_entity: {
+        Args: { _limit?: number; _query: string; _type: string }
+        Returns: {
+          confidence: number
+          display_name: string
+          id: string
+          subtitle: string
+        }[]
+      }
       get_company_join_requests: {
         Args: { _company_id: string; _status?: string }
         Returns: {
@@ -23698,6 +23707,8 @@ export type Database = {
         Args: { _company_id: string }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       user_has_deal_access: {
         Args: { _deal_id: string; _user_id: string }
         Returns: boolean
