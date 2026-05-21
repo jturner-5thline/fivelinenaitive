@@ -724,6 +724,81 @@ serve(async (req: Request): Promise<Response> => {
         });
       }
 
+      case "save_draft": {
+        // Create a Nylas v3 draft so it lands in the user's Gmail Drafts folder.
+        // Does NOT send. Mirrors the `send` action's recipient normalization.
+        const { to, cc, bcc, subject, body, body_html, attachments, reply_to_message_id } = requestData as any;
+        const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        const normalizeRecipients = (input: any): string[] => {
+          if (!input) return [];
+          const arr = Array.isArray(input) ? input : [input];
+          const out: string[] = [];
+          for (const item of arr) {
+            if (typeof item === "string") {
+              out.push(...item.split(/[,;\s]+/).map((s) => s.trim()).filter(Boolean));
+            } else if (item && typeof item === "object" && typeof item.email === "string") {
+              out.push(item.email.trim());
+            }
+          }
+          return Array.from(new Set(out));
+        };
+        const toList = normalizeRecipients(to);
+        const ccList = normalizeRecipients(cc);
+        const bccList = normalizeRecipients(bcc);
+        if (toList.length === 0 || !subject) {
+          return new Response(JSON.stringify({ error: "To and subject are required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const invalid = [...toList, ...ccList, ...bccList].filter((e) => !EMAIL_RE.test(e));
+        if (invalid.length > 0) {
+          return new Response(
+            JSON.stringify({ error: `Invalid recipient address(es): ${invalid.join(", ")}` }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        const draftBody: any = {
+          to: toList.map((email) => ({ email, name: email })),
+          subject,
+          body: body_html || body || "",
+        };
+        if (ccList.length > 0) draftBody.cc = ccList.map((email) => ({ email, name: email }));
+        if (bccList.length > 0) draftBody.bcc = bccList.map((email) => ({ email, name: email }));
+        if (Array.isArray(attachments) && attachments.length > 0) {
+          draftBody.attachments = attachments
+            .filter((a: any) => a && a.filename && typeof a.content === "string")
+            .map((a: any) => ({
+              filename: a.filename,
+              content_type: a.content_type || "application/octet-stream",
+              content: a.content,
+              size: typeof a.size === "number" ? a.size : Math.floor((a.content.length * 3) / 4),
+              is_inline: !!a.is_inline,
+            }));
+        }
+        if (typeof reply_to_message_id === "string" && reply_to_message_id.length > 0) {
+          draftBody.reply_to_message_id = reply_to_message_id;
+        }
+        const draftResponse = await fetch(`${baseUrl}/drafts`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify(draftBody),
+        });
+        const draftData = await draftResponse.json();
+        if (!draftResponse.ok) {
+          console.error("Nylas draft error:", JSON.stringify(draftData));
+          return new Response(
+            JSON.stringify({ error: draftData?.error?.message || `Nylas returned ${draftResponse.status}` }),
+            { status: draftResponse.status, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        const draft = draftData.data || draftData;
+        return new Response(JSON.stringify({ success: true, draft_id: draft.id }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
       case "mark_read":
       case "mark_unread": {
         const { message_id } = requestData;
