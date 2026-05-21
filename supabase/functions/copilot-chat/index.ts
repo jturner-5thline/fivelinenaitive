@@ -1806,6 +1806,7 @@ function selectToolsWithScopes(
   if (entityType === "deal") return filterByScopes(tools);
 
   const coreNames = new Set([
+    "find_entity",
     "get_deal", "search_deals", "get_pipeline_summary", "get_activity_log",
     "draft_email", "create_task", "get_tasks", "search_team_members",
     "get_pipelines", "move_deal_pipeline",
