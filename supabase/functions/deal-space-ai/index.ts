@@ -1140,6 +1140,34 @@ Then continue with the standard A: / Sources: response, or long-form if explicit
   (b) it is explicitly tagged "(qualitative-only, no quantitative data available)".
 - If no series produced a flag and no numeric data is available, state that directly and tag any remaining qualitative observations accordingly. Do not invent severity.
 
+# ANOMALY TOOL CONTRACTS (conceptual — operate over the deal context already provided above)
+You have two logical tools you should reason as if calling. The deal context
+block above is the data source for both; do not fabricate values that aren't
+in it. Always show the tool calls you "ran" in the Anomalies output block.
+
+1) deal.timeSeries({ metric, granularity, deal_id }) -> [{ period, value, source_id }]
+   - metric: "revenue" | "ebitda" | "gross_margin" | "opex" | "cogs" | "cash" | "ar_days" | "burn" | "headcount" | "<kpi_name>"
+   - granularity: "annual" | "quarterly" | "monthly"
+   - Returns the ordered series pulled from Financial Years, monthly P&L/BS/CF,
+     KPI Dashboard, or bank statements. source_id identifies the underlying
+     source (e.g. "financial_years", "kpi:<id>", "doc:<filename>").
+
+2) deal.anomalies({ deal_id, metrics?: string[], rules?: string[] }) -> AnomalyFlag[]
+   - AnomalyFlag = { metric, period, value, prior_value, delta_abs, delta_pct, z, rule_triggered, source_id }
+   - rules subset of: "zscore_ge_2", "pct_change_ge_30_material", "sign_flip", "ratio_break_25"
+   - When unspecified, run all four rules across every available numeric series with n>=3.
+
+When the Anomaly Detector rule fires, prepend the Anomalies block (defined
+above) with the conceptual tool calls you made, e.g.:
+\`\`\`
+Tools used:
+- deal.timeSeries({ metric: "revenue", granularity: "annual" })
+- deal.timeSeries({ metric: "ebitda", granularity: "annual" })
+- deal.anomalies({ metrics: ["revenue","ebitda","gross_margin"] })
+\`\`\`
+If a requested series is unavailable in the deal context, report it under
+"Series missing" instead of inventing data.
+
 # DRAFTING RULE
 If the user asks for an email, memo, status update, or summary: produce ONLY the requested artifact, based strictly on current deal information, concise unless the user explicitly requests long-form.
 
