@@ -1470,6 +1470,20 @@ CRITICAL RULES:
                               description: payloadStr || a.label,
                             });
                           };
+                          const onCitationClick = (c: ParsedCitation) => {
+                            if (c.kind === 'doc') {
+                              const doc = documents.find((d) => d.id === c.id);
+                              if (doc) { handleOpenCitedDocument(doc); return; }
+                            }
+                            const KIND_LABEL: Record<string, string> = {
+                              doc: 'Document', tx: 'Transcript', note: 'Note',
+                              email: 'Email', field: 'Field', lender: 'Lender',
+                            };
+                            toast({
+                              title: `${KIND_LABEL[c.kind] ?? 'Source'} citation`,
+                              description: `${c.id}${c.anchor ? ` · ${c.anchor}` : ''}`,
+                            });
+                          };
                           return (
                         <>
                           <TooltipProvider delayDuration={150}>
@@ -1482,16 +1496,16 @@ CRITICAL RULES:
                                   // so nested markdown (bold/italic/links)
                                   // continues to render normally.
                                   p: ({ children }) => (
-                                    <p>{highlightChildren(children, msg.sources)}</p>
+                                    <p>{highlightChildren(children, msg.sources, onCitationClick)}</p>
                                   ),
                                   li: ({ children }) => (
-                                    <li>{highlightChildren(children, msg.sources)}</li>
+                                    <li>{highlightChildren(children, msg.sources, onCitationClick)}</li>
                                   ),
                                   strong: ({ children }) => (
-                                    <strong>{highlightChildren(children, msg.sources)}</strong>
+                                    <strong>{highlightChildren(children, msg.sources, onCitationClick)}</strong>
                                   ),
                                   em: ({ children }) => (
-                                    <em>{highlightChildren(children, msg.sources)}</em>
+                                    <em>{highlightChildren(children, msg.sources, onCitationClick)}</em>
                                   ),
                                 }}
                               >
@@ -1503,6 +1517,7 @@ CRITICAL RULES:
                             sources={msg.sources}
                             documents={documents}
                             onOpenDocument={handleOpenCitedDocument}
+                            messageContent={cleanContent}
                           />
                           <AskAiActionBar actions={actions} onAction={handleAction} disabled={isAILoading} />
                         </>
