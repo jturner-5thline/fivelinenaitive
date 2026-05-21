@@ -32,6 +32,7 @@ import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
 import { AskAiActionBar, extractAskAiActions, type AskAiAction } from './AskAiActionBar';
+import { parseCitations, uniqueCitedIds, renderWithCitations, type ParsedCitation } from './AskAiCitations';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import { BaseSubmissionEmailDialog, type BaseSubmissionDraft } from './email/BaseSubmissionEmailDialog';
 import { htmlToPlainText } from '@/lib/htmlToPlainText';
@@ -127,12 +128,27 @@ function HighlightedFinancials({
   );
 }
 
-function highlightChildren(children: React.ReactNode, sources?: string[]): React.ReactNode {
+function highlightChildren(
+  children: React.ReactNode,
+  sources?: string[],
+  onCitationClick?: (c: ParsedCitation) => void,
+): React.ReactNode {
   return React.Children.map(children, (child, idx) => {
-    if (typeof child === 'string') {
-      return <HighlightedFinancials key={idx} text={child} sources={sources} />;
-    }
-    return child;
+    if (typeof child !== 'string') return child;
+    // 1) split out citation tokens into chips; 2) wrap remaining text in
+    //    HighlightedFinancials so financial figures still get tooltips.
+    const { nodes } = renderWithCitations(child, onCitationClick);
+    return (
+      <React.Fragment key={idx}>
+        {nodes.map((n, i) =>
+          typeof n === 'string' ? (
+            <HighlightedFinancials key={`f-${i}`} text={n} sources={sources} />
+          ) : (
+            <React.Fragment key={`c-${i}`}>{n}</React.Fragment>
+          ),
+        )}
+      </React.Fragment>
+    );
   });
 }
 
@@ -147,12 +163,17 @@ function SourceCitations({
   sources,
   documents,
   onOpenDocument,
+  messageContent,
 }: {
   sources?: string[];
   documents: DealSpaceDocument[];
   onOpenDocument: (doc: DealSpaceDocument) => void;
+  messageContent?: string;
 }) {
-  if (!sources || sources.length === 0) return null;
+  const considered = sources?.length ?? 0;
+  const citedIds = messageContent ? uniqueCitedIds(messageContent) : new Set<string>();
+  const cited = citedIds.size;
+  if (considered === 0 && cited === 0) return null;
 
   // Build a case-insensitive lookup by document name. The edge function
   // pushes `doc.name` directly into sourcesUsed, so an exact (case-folded)
@@ -167,13 +188,13 @@ function SourceCitations({
       <CollapsibleTrigger asChild>
         <button className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors group">
           <FileText className="h-3 w-3" />
-          <span>{sources.length} source{sources.length !== 1 ? 's' : ''} referenced</span>
+          <span>Cited: {cited} • Considered: {considered}</span>
           <ChevronDown className="h-2.5 w-2.5 transition-transform group-data-[state=open]:rotate-180" />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="flex flex-wrap gap-1 mt-1.5">
-          {sources.map((source, i) => {
+          {(sources ?? []).map((source, i) => {
             const matched = docByName.get(source.toLowerCase());
             if (matched) {
               return (
@@ -1449,6 +1470,20 @@ CRITICAL RULES:
                               description: payloadStr || a.label,
                             });
                           };
+                          const onCitationClick = (c: ParsedCitation) => {
+                            if (c.kind === 'doc') {
+                              const doc = documents.find((d) => d.id === c.id);
+                              if (doc) { handleOpenCitedDocument(doc); return; }
+                            }
+                            const KIND_LABEL: Record<string, string> = {
+                              doc: 'Document', tx: 'Transcript', note: 'Note',
+                              email: 'Email', field: 'Field', lender: 'Lender',
+                            };
+                            toast({
+                              title: `${KIND_LABEL[c.kind] ?? 'Source'} citation`,
+                              description: `${c.id}${c.anchor ? ` · ${c.anchor}` : ''}`,
+                            });
+                          };
                           return (
                         <>
                           <TooltipProvider delayDuration={150}>
@@ -1461,16 +1496,16 @@ CRITICAL RULES:
                                   // so nested markdown (bold/italic/links)
                                   // continues to render normally.
                                   p: ({ children }) => (
-                                    <p>{highlightChildren(children, msg.sources)}</p>
+                                    <p>{highlightChildren(children, msg.sources, onCitationClick)}</p>
                                   ),
                                   li: ({ children }) => (
-                                    <li>{highlightChildren(children, msg.sources)}</li>
+                                    <li>{highlightChildren(children, msg.sources, onCitationClick)}</li>
                                   ),
                                   strong: ({ children }) => (
-                                    <strong>{highlightChildren(children, msg.sources)}</strong>
+                                    <strong>{highlightChildren(children, msg.sources, onCitationClick)}</strong>
                                   ),
                                   em: ({ children }) => (
-                                    <em>{highlightChildren(children, msg.sources)}</em>
+                                    <em>{highlightChildren(children, msg.sources, onCitationClick)}</em>
                                   ),
                                 }}
                               >
@@ -1482,6 +1517,7 @@ CRITICAL RULES:
                             sources={msg.sources}
                             documents={documents}
                             onOpenDocument={handleOpenCitedDocument}
+                            messageContent={cleanContent}
                           />
                           <AskAiActionBar actions={actions} onAction={handleAction} disabled={isAILoading} />
                         </>

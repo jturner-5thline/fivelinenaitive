@@ -465,7 +465,7 @@ async function buildDealContext(supabase: any, dealId: string, opts?: { includeD
   ] = await Promise.all([
     supabase.from("deals").select("company, value, stage, status, deal_type, business_model, contact, contact_info, company_url, deal_owner, manager, referred_by, engagement_type, exclusivity, created_at, updated_at, is_flagged, flag_notes, notes, pre_signing_hours, post_signing_hours, retainer_fee, milestone_fee, success_fee_percent, total_fee, ai_custom_instructions").eq("id", dealId).single(),
     supabase.from("deal_writeups").select("company_name, description, industry, location, year_founded, headcount, capital_ask, use_of_funds, deal_type, b2b_b2c, revenue_type, billing_model, gross_margins, profitability, last_year_revenue, this_year_revenue, total_equity_raised, sponsorship, collateral_available, existing_debt_details, accounting_system, company_url, linkedin_url, data_room_url, company_highlights, key_items, financial_years, financial_comments").eq("deal_id", dealId).single(),
-    supabase.from("deal_lenders").select("name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("deal_lenders").select("id, name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
     supabase.from("deal_milestones").select("title, completed, due_date, completed_at").eq("deal_id", dealId).order("position").limit(20),
     supabase.from("activity_logs").select("activity_type, description, user_display_name, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
     supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes").eq("deal_id", dealId).single(),
@@ -477,7 +477,7 @@ async function buildDealContext(supabase: any, dealId: string, opts?: { includeD
     // New: outstanding items
     supabase.from("outstanding_items").select("description, status, priority, due_date, notes, assigned_to, lender_id").eq("deal_id", dealId).order("position").limit(30),
     // New: CLAAP transcripts
-    supabase.from("claap_transcripts").select("summary, transcript_text, recorded_at, call_type, participants, duration_seconds").eq("deal_id", dealId).order("recorded_at", { ascending: false }).limit(5),
+    supabase.from("claap_transcripts").select("id, summary, transcript_text, recorded_at, call_type, participants, duration_seconds").eq("deal_id", dealId).order("recorded_at", { ascending: false }).limit(5),
     // New: checklist items
     supabase.from("deal_checklist_items").select("name, category, is_required").eq("deal_id", dealId).limit(30),
   ]);
@@ -1067,7 +1067,36 @@ ${scopedDocInventory}
 
 ${scopeInstruction}
 
-**AVAILABLE DATA SOURCES:** ${sourceLabels}
+    **AVAILABLE DATA SOURCES:** ${sourceLabels}
+
+**SOURCE INVENTORY (use ONLY these source_ids in [src:…] citation tokens — never fabricate IDs):**
+${[
+  ...(ctx.dealSpaceDocs || []).map((d: any) => `- doc_${d.id} — ${d.name}`),
+  ...(ctx.dataRoomDocs || []).map((d: any) => `- doc_${d.id} — ${d.name} (Data Room)`),
+  ...(ctx.transcripts || []).map((t: any) => `- tx_${t.id} — ${t.call_type || 'Call'} ${t.recorded_at ? `(${String(t.recorded_at).slice(0,10)})` : ''}`),
+  ...(ctx.notes || []).map((n: any) => `- note_${n.id} — ${n.title || 'Untitled note'}`),
+  ...(ctx.lenders || []).map((l: any) => l.id ? `- lender_${l.id} — ${l.name}` : null).filter(Boolean),
+].slice(0, 80).join('\n') || '- (no resolvable source IDs available for citation)'}
+
+# CITATION REQUIREMENT
+Every factual claim drawn from a source MUST be followed by an inline citation
+token of the form \`[src:<source_id>#<anchor>]\` using IDs from the SOURCE
+INVENTORY above. Anchor formats:
+- Document: \`[src:doc_<id>#p<page>]\`         e.g. \`[src:doc_abc123#p4]\`
+- Transcript: \`[src:tx_<id>#t<seconds>]\`     e.g. \`[src:tx_9c3d#t842]\` (renders as mm:ss)
+- Note: \`[src:note_<id>#l<line>]\`            e.g. \`[src:note_xyz#l12]\`
+- Email: \`[src:email_<id>]\`
+- Structured field: \`[src:field_<table>.<column>#row_<id>]\`  e.g. \`[src:field_financial_years.revenue#row_2025]\`
+- Funding source / lender row: \`[src:lender_<id>]\`
+
+Rules:
+- Cite at the SENTENCE level, not the paragraph level.
+- Up to 3 citations per sentence; if more would apply, keep the 3 most load-bearing.
+- Every quoted string ("…") MUST be cited.
+- Every NUMBER (dollar amounts, percentages, counts, durations) MUST be cited.
+- Do NOT cite the same source >2 times consecutively in the same paragraph.
+- NEVER fabricate a source_id. If a claim cannot be tied to an ID from the inventory, omit the citation and tag the sentence with \`[unverified]\`.
+- Citation tokens are render-only chips; do not duplicate them in the trailing \`Sources:\` line.
 
 # AVAILABLE SOURCES (use any/all that apply to the active deal)
 Deal Info, Deal Space, Notes, Activity, Write-Up / Deal Memo, Data Room / Documents, Management, Funding Sources / Lenders, and any parsed transcript or extracted document text tied to this deal.
