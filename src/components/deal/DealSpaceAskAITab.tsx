@@ -31,6 +31,7 @@ import { ToastAction } from '@/components/ui/toast';
 import ReactMarkdown from 'react-markdown';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { DraftSubmissionEmailsModal, type EmailDraft, type LenderContactOption, draftBodyToPlainText } from './email/DraftSubmissionEmailsModal';
+import { AskAiActionBar, extractAskAiActions, type AskAiAction } from './AskAiActionBar';
 import { ReviewExcludeLendersDialog } from './email/ReviewExcludeLendersDialog';
 import { BaseSubmissionEmailDialog, type BaseSubmissionDraft } from './email/BaseSubmissionEmailDialog';
 import { htmlToPlainText } from '@/lib/htmlToPlainText';
