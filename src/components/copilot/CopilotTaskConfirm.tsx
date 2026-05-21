@@ -501,7 +501,7 @@ export function CopilotTaskConfirm({ action }: Props) {
             <button onClick={handleUseExisting} style={dupStatus === 'high' ? primaryActionStyle : secondaryActionStyle}>
               <ArrowRight size={12} /> Use existing task
             </button>
-            <button onClick={handleConfirm} disabled={status === 'loading' || ambiguous} style={dupStatus === 'high' ? secondaryActionStyle : primaryActionStyle}>
+            <button onClick={handleConfirm} disabled={status === 'loading' || blockConfirm} style={dupStatus === 'high' ? secondaryActionStyle : primaryActionStyle}>
               <Plus size={12} /> Create new task anyway
             </button>
             <button onClick={() => setEditing(true)} style={secondaryActionStyle}>
@@ -626,7 +626,7 @@ export function CopilotTaskConfirm({ action }: Props) {
               </label>
             </Row>
           )}
-          {initial.deal_id && dealLinked && (
+          {resolvedDealId && dealLinked && (
             <Row icon={Building2} label="Deal" value={initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />
           )}
           <Row icon={Tag} label="Type" value={TYPE_LABELS[taskType] || taskType} inferred={isInferred('task_type')} />
@@ -641,16 +641,30 @@ export function CopilotTaskConfirm({ action }: Props) {
         </div>
       )}
 
+      {needsDisambiguation && (
+        <div
+          style={{
+            marginTop: 8, padding: '8px 10px', borderRadius: 6,
+            background: 'rgba(245,158,11,0.10)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            fontSize: 11, color: 'rgb(217, 119, 6)',
+            display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
+          }}
+        >
+          <AlertTriangle size={12} /> Select a deal below before confirming.
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <button
           onClick={handleConfirm}
-          disabled={status === 'loading' || ambiguous}
+          disabled={status === 'loading' || blockConfirm}
           style={{
             height: 32, padding: '0 14px', borderRadius: 8,
-            background: ambiguous ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
-            color: ambiguous ? 'hsl(var(--muted-foreground))' : 'white',
+            background: blockConfirm ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
+            color: blockConfirm ? 'hsl(var(--muted-foreground))' : 'white',
             border: 'none', fontSize: 13, fontWeight: 500,
-            cursor: status === 'loading' || ambiguous ? 'not-allowed' : 'pointer',
+            cursor: status === 'loading' || blockConfirm ? 'not-allowed' : 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
           }}
         >
