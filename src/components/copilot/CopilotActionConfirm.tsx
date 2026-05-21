@@ -8,6 +8,14 @@ import { getStageDisplayName } from '@/lib/copilot-utils';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { CopilotTaskConfirm } from './CopilotTaskConfirm';
 import { renderTextWithEntityLinks } from './EntityLink';
+import {
+  deriveFieldDiffs,
+  computeFieldStatuses,
+  formatFieldValue,
+  type FieldDiff,
+  type FieldStatus,
+  type VerifiedResult,
+} from './copilotFieldDiff';
 
 interface ConfirmAction {
   action: 'confirm';
@@ -53,6 +61,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   const [completedAt, setCompletedAt] = useState<number | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [resolvedDealId, setResolvedDealId] = useState<string | null>(null);
+  // Store the raw verified-write response so the field table can render
+  // per-field status badges after Confirm (✅ / ⚠️ / ❌). The backend
+  // attaches `error_code` and `mismatches` for WriteNotPersistedError
+  // failures so we can mark only the offending fields red instead of
+  // the whole card.
+  const [verifiedResult, setVerifiedResult] = useState<VerifiedResult | null>(null);
   const [relativeTick, setRelativeTick] = useState(0);
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
@@ -72,6 +86,17 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   // clickable in-app links so entity references inside approval card
   // titles match the rest of the chat surface.
   const renderedDescription = renderTextWithEntityLinks(formattedDescription);
+
+  // Field-by-field diff is rebuilt from the action's params and never
+  // collapses into a one-line summary — that's the whole point of
+  // this card.
+  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(action.action_type, action.params || {});
+  const fieldStatuses = computeFieldStatuses(
+    action.action_type,
+    fieldDiffs,
+    status === 'done' || status === 'failed' ? verifiedResult : null,
+  );
+  const isUpdateLikeAction = fieldDiffs.some((d) => d.oldValue !== undefined);
 
   // Re-render the "Updated Xs ago" label on a steady tick so the
   // timestamp on the Done card stays accurate without a heavy interval.
@@ -205,6 +230,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   const handleConfirm = async () => {
     setStatus('loading');
     setErrorMessage(null);
+    setVerifiedResult(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -224,6 +250,9 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         throw new Error(`Backend error (${resp.status}): ${text.slice(0, 160) || resp.statusText}`);
       }
       const result = await resp.json();
+      // Keep the response so the field table can render per-field
+      // badges in both the success and failure branches.
+      setVerifiedResult(result as VerifiedResult);
       if (result.success) {
         const dealId = result.params?.deal_id || action.params?.deal_id;
         const dealName = result.params?.deal_name || action.params?.deal_name;
@@ -259,7 +288,15 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
               : undefined,
         });
       } else {
-        throw new Error(result.error || 'Action failed');
+        // Build an Error that preserves the structured fields so the
+        // failed-state branch can render per-field mismatch badges.
+        const e = new Error(result.error || 'Action failed') as Error & {
+          error_code?: string;
+          mismatches?: VerifiedResult['mismatches'];
+        };
+        e.error_code = result.error_code;
+        e.mismatches = result.mismatches;
+        throw e;
       }
     } catch (err: any) {
       setStatus('failed');
