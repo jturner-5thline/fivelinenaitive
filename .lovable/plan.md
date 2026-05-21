@@ -1,67 +1,151 @@
+# Read-after-Write Verification for Deal Updates
+
 ## Goal
 
-Every Claap recording that arrives via sync/webhook automatically lands in the Approval Queue with (a) AI-suggested deal/company/contact links and (b) AI-extracted action items, gated behind a two-stage human approval before anything is written to deals, contacts, or tasks. Rename the surface from "Action Queue" to "Approval Queue" everywhere user-facing.
+Every backend write to `public.deals` performs `.update(patch).eq('id', dealId).select(<written cols>).maybeSingle()`, then compares each written field against the returned row. Mismatches raise a structured `WriteNotPersistedError` that the copilot ask bar surfaces verbatim ("I tried to set X to A but the database still has B") instead of a generic "Done."
+
+No UI changes in this pass — only handler logic, a shared helper, and the error type. UI surfacing of the new error format in the copilot is wired up in `copilot-chat` only (the ask bar already renders text from that function).
 
 ## Scope
 
-### 1. Backend — auto-enqueue Claap recordings
-
-- Update `supabase/functions/claap-webhook/index.ts`: after a new recording is persisted, enqueue an item into `ai_action_queue` of a new `type = 'claap_recording_review'` with a payload referencing `claap_recording_id`, `title`, `meeting_at`, raw attendees, and `org_company_id`. Skip if the recording is already linked to a deal with high confidence (preserves existing auto-link behavior in `claap-suggest-matches`).
-- Reuse `claap-suggest-matches` to produce candidate deals/companies/contacts; store top 3 with confidence + an explanation string (e.g. "attendee email domain matches Vispero; transcript mentions 'Vispero Q2'"). Pre-select top candidate when confidence ≥ 0.75.
-- New edge function `claap-extract-action-items`: pulls transcript + summary from the recording, calls Lovable AI Gateway (Gemini 2.5 Flash) with a structured schema returning `{ title, description, suggested_owner_user_id, suggested_owner_name, due_at|null, source_quote, dedupe_key }`. Group by owner. Dedupe via case-insensitive title hash + similar `dedupe_key`. Store results on the queue item's payload (not in `tasks` yet — tasks are only created on approval).
-- Both calls are fired after webhook insert; failures degrade gracefully (queue item still created, with empty suggestions/action_items and a `processing_error` field the UI can surface as "AI analysis failed — retry").
-
-### 2. Frontend — Approval Queue card UX
-
-Add a new card renderer in `ActionQueuePanel.tsx` for `type === 'claap_recording_review'`:
-
-- **Header:** recording title, meeting date/time, attendee chips.
-- **Stage 1 — Relationship matching:** suggested deal / company / contacts rows with a Confidence pill (High/Medium/Low) and an "Why this match?" tooltip showing the AI's explanation. Buttons: **Approve**, **Edit match** (opens picker reusing `ClaapDealSelector` / contact + company pickers), **Create new** (opens quick-create flows), **Reject** (drops the suggestion, recording stays linked to nothing).
-- **Stage 2 — Action items:** unlocks after Stage 1 is approved or skipped. Renders the extracted action items grouped by owner with inline edit (title, owner, due date). Buttons per row: **Approve**, **Edit**, **Discard**. Toolbar: **Approve all**, **Discard all**.
-- All writes go through new RPC-style handlers in `useAiActionQueue.ts`:
-  - `approveClaapMatch(itemId, { dealId, companyId, contactIds })` → updates `claap_recordings` link rows, logs `deal_activity`, then advances queue item to `awaiting_tasks` sub-status.
-  - `approveClaapTasks(itemId, taskPayloads[])` → bulk insert into `tasks` with `source = 'claap'`, link to deal/company, log activity, mark queue item `approved`.
-- No optimistic completion: queue item only flips to `approved` after the DB write returns success. On failure, surface a toast and keep the item open.
-
-### 3. Rename: Action Queue → Approval Queue (user-facing only)
-
-Files to update (string-level only, no DB/table rename):
-
-- `src/components/ai-queue/ActionQueueBadge.tsx`, `ActionQueuePanel.tsx`
-- `src/components/dashboard/ActionQueueWidget.tsx` (label, aria, title attrs)
-- `src/components/deals/DealsHeader.tsx` (overlay key, label, icon map)
-- `src/components/deal/email/*` (tooltip strings)
-- `src/hooks/useAiActionQueue.ts` (toast copy + comment headers)
-- `src/pages/Dashboard.tsx` (dialog title, tile label, aria)
-- `src/lib/headerOverlayNav.ts` comment
-- `src/index.css` comment (cosmetic)
-
-Keep file/component names, DB table `ai_action_queue`, hook name, and route as-is to avoid breakage. Only the strings the user sees change. The overlay registry key `'Action Queue'` in `DealsHeader.tsx` is used as a lookup key in 4 places — rename all 4 in lockstep.
-
-### 4. Activity logging
-
-After each approved match or task batch, insert into `deal_activity` (`type` = `'claap_match_approved'` or `'claap_tasks_approved'`) with a payload referencing the recording + queue item ID. Only on confirmed DB success.
-
-## Technical details
+In-scope edge functions (write to `deals`):
 
 ```
-claap-webhook (recording.created)
-  └── inserts ai_action_queue row { type: 'claap_recording_review', payload: { claap_recording_id, meta } }
-        ├── async: claap-suggest-matches → payload.suggestions = [{deal, company, contacts, confidence, why}]
-        └── async: claap-extract-action-items → payload.action_items = [{title, owner, due_at, source_quote}]
+deal-operations          copilot-chat              claap-webhook
+agent-orchestrator       agent-chat                claap-suggest-matches
+execute-agent-graph      execute-workflow          claap-backfill
+wf-stage-trigger         weekly-hours-api          dashboard-chat
+hubspot-sync             hubspot-create-deal       hubspot-deal-stage-push
+smart-email-ai           deal-space-ai             slack-agent-gateway
+send-flex-reply          process-scheduled-actions process-followup-scheduled
+process-recurring-tasks  daily-crm-update-scan     classify-file
+compute-financial-metrics recommend-lenders        seed-sample-deal
+seed-demo-account        execute-agent-trigger     generate-scheduled-report
+send-ux-insights-email   create-demo-access
 ```
 
+Frontend hooks (`src/hooks/use*`) that call `.update()` directly on `deals` are **out of scope for this pass** — they show toasts client-side already and don't route through the ask bar. They will be addressed in a follow-up if the user wants.
+
+## Design
+
+### 1. Shared helper (new file)
+
+`supabase/functions/_shared/verifiedDealUpdate.ts`
+
+```ts
+export class WriteNotPersistedError extends Error {
+  code = 'WRITE_NOT_PERSISTED' as const;
+  constructor(
+    public dealId: string,
+    public mismatches: Array<{ field: string; expected: unknown; actual: unknown }>,
+  ) {
+    super(
+      `Deal ${dealId} did not persist ${mismatches.length} field(s): ` +
+      mismatches.map(m => `${m.field} expected ${JSON.stringify(m.expected)} got ${JSON.stringify(m.actual)}`).join('; ')
+    );
+    this.name = 'WriteNotPersistedError';
+  }
+}
+
+export async function verifiedDealUpdate(
+  client: SupabaseClient,
+  dealId: string,
+  patch: Record<string, unknown>,
+  opts?: { skipVerifyFields?: string[] }
+): Promise<Row> { /* ... */ }
 ```
-ApprovalQueueCard (new renderer)
-  Stage 1: match approval  ──► writes claap_recordings links + activity ──► sets payload.stage = 'tasks'
-  Stage 2: action items    ──► bulk insert tasks + activity              ──► status = 'approved'
+
+Behavior:
+- Builds `selectCols` = union of `Object.keys(patch)` + `['id', 'updated_at']`, minus any caller-specified `skipVerifyFields`.
+- Runs `.update(patch).eq('id', dealId).select(selectCols.join(',')).maybeSingle()`.
+- Throws if `error` or if row is `null` (row not found / RLS blocked) — both become `WriteNotPersistedError` with `mismatches: [{field: '__row__', expected: 'present', actual: 'null'}]`.
+- For each key in `patch`, normalizes both sides before compare:
+  - Dates (`closing_date`, `projected_close_date`, `contract_*_date`, `next_step_date`, `notes_updated_at`) → ISO date prefix `YYYY-MM-DD`.
+  - Numerics → `Number()` with `Number.EPSILON` tolerance.
+  - Arrays → sorted shallow compare.
+  - Strings → trim.
+  - JSONB → `JSON.stringify` of canonicalized object.
+- Collects mismatches into one `WriteNotPersistedError` (don't throw on the first — surface all so the AI can report them together).
+
+### 2. Skip-verify list (necessary to avoid false positives)
+
+The helper auto-skips these even if present in `patch`:
+- Generated columns: `total_fee`
+- Trigger-managed: `updated_at` (we always pass `now()` but trigger may overwrite)
+- Server-defaulted fields when caller passed `undefined`/`null` intentionally
+
+Caller may pass extras via `opts.skipVerifyFields`.
+
+### 3. Edge function changes (pattern)
+
+Replace every:
+```ts
+const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
+if (error) throw error;
 ```
 
-`ai_action_queue.type` enum likely already accepts strings; add `'claap_recording_review'` to the TS union in `useAiActionQueue.ts`. No DB migration needed for the type column (text). Add a `payload.stage` field tracked client-side and persisted via the existing payload JSONB.
+with:
 
-### Out of scope
+```ts
+import { verifiedDealUpdate, WriteNotPersistedError } from '../_shared/verifiedDealUpdate.ts';
+const updated = await verifiedDealUpdate(supabase, dealId, patch);
+```
 
-- Renaming the DB table or hook (`useAiActionQueue`)
-- Changing the route `/dashboard` overlay path
-- Backfilling existing recordings — only new recordings from webhook time forward auto-enqueue
-- Building a separate top-level `/approval-queue` page (the existing dialog/dashboard tile stays the entry point)
+And wrap the existing top-level try/catch so `WriteNotPersistedError` is serialized:
+
+```ts
+catch (err) {
+  if (err instanceof WriteNotPersistedError) {
+    return new Response(JSON.stringify({
+      ok: false,
+      error_code: 'WRITE_NOT_PERSISTED',
+      message: err.message,
+      mismatches: err.mismatches,
+      deal_id: err.dealId,
+    }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+  }
+  // existing fallthrough
+}
+```
+
+### 4. Copilot ask-bar wiring (`supabase/functions/copilot-chat/index.ts`)
+
+When the copilot calls a tool that performs a deal write and the response contains `error_code === 'WRITE_NOT_PERSISTED'`, prepend a system-level note to the model turn:
+
+> Tool reported the write did not persist. Tell the user verbatim: "I tried to set {field} to {expected} but the database still has {actual}." Do not say "Done." Do not retry silently.
+
+The streamed model output is what the ask bar already renders — no UI code change.
+
+### 5. Tests
+
+Add `supabase/functions/_shared/verifiedDealUpdate_test.ts` covering:
+- Happy path: returned row equals patch.
+- Mismatch on one field → throws with one entry.
+- Mismatch on multiple fields → throws with all entries.
+- Date normalization (string vs `Date` vs ISO).
+- Numeric tolerance.
+- RLS / row-not-found → throws with `__row__` mismatch.
+- Skip-list fields excluded from compare.
+
+## Caveats the user should know
+
+1. **False positives are the real risk.** DB triggers normalize values (e.g. `manager` may be trimmed, `closing_date` parsed via `to_date`, `stage` may be lower-cased by a trigger). The normalization layer in §2 covers the common ones, but each function we touch needs a spot-check that its patch doesn't include a field a trigger rewrites. If it does, that field goes in `skipVerifyFields`.
+
+2. **Generated/computed fields** (`total_fee`) can never be verified — auto-skipped.
+
+3. **RLS silent denials** are now loud — this is the *point*, but it means handlers that previously "succeeded" silently on permission failure will start returning 409s. We should grep for any function relying on that behavior (e.g., best-effort writes inside loops) and add explicit `skipVerifyFields: ['*']` opt-out or stop calling the helper for those.
+
+4. **`hubspot-sync` writes thousands of rows in a batch** — wrapping each in a read-after-write doubles the round trips and may push it past timeout. Recommend keeping `hubspot-sync` and `claap-backfill` on the *unverified* path (they have their own reconciliation). Confirm before excluding them.
+
+## Out of scope
+
+- Frontend `src/hooks/*` direct `.update()` calls on `deals`.
+- Writes to other tables (`tasks`, `claap_*`, etc.).
+- Retrying on mismatch (the user asked for surfacing, not retry).
+- UI changes in the ask bar component (the new message comes through naturally as model output).
+
+## Open questions before I start
+
+- Confirm `hubspot-sync` and `claap-backfill` are excluded (batch writers).
+- Confirm 409 status code is acceptable (vs 200 with `ok: false`).
+- For tools the copilot calls *speculatively* (e.g. `set_hours` with an unchanged value), should an unchanged-value write also be verified? (Current plan: yes, because the contract is "the DB now equals what we sent.")

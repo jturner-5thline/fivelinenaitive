@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  verifiedDealUpdate,
+  WriteNotPersistedError,
+  writeNotPersistedPayload,
+} from "../_shared/verifiedDealUpdate.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -203,11 +208,10 @@ serve(async (req) => {
         const { data: current } = await supabase.from("deals").select("company, stage").eq("id", deal_id).single();
         if (!current) return err("Deal not found");
 
-        const { error: updateErr } = await supabase
-          .from("deals")
-          .update({ stage: new_stage, updated_at: new Date().toISOString() })
-          .eq("id", deal_id);
-        if (updateErr) return err(updateErr.message);
+        await verifiedDealUpdate(supabase, deal_id, {
+          stage: new_stage,
+          updated_at: new Date().toISOString(),
+        });
 
         await logActivity(deal_id, "stage_change", `Stage changed from ${current.stage} to ${new_stage}`, {
           from_stage: current.stage,
@@ -223,11 +227,10 @@ serve(async (req) => {
         const { data: current } = await supabase.from("deals").select("company, status").eq("id", deal_id).single();
         if (!current) return err("Deal not found");
 
-        const { error: updateErr } = await supabase
-          .from("deals")
-          .update({ status: new_status, updated_at: new Date().toISOString() })
-          .eq("id", deal_id);
-        if (updateErr) return err(updateErr.message);
+        await verifiedDealUpdate(supabase, deal_id, {
+          status: new_status,
+          updated_at: new Date().toISOString(),
+        });
 
         await logActivity(deal_id, "status_change", `Status changed from ${current.status} to ${new_status}`, {
           from_status: current.status,
@@ -249,11 +252,17 @@ serve(async (req) => {
         const newNote = `[${timestamp} - ${author}] ${note_text}`;
         const updatedNotes = current.notes ? `${newNote}\n\n${current.notes}` : newNote;
 
-        const { error: updateErr } = await supabase
-          .from("deals")
-          .update({ notes: updatedNotes, notes_updated_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-          .eq("id", deal_id);
-        if (updateErr) return err(updateErr.message);
+        await verifiedDealUpdate(
+          supabase,
+          deal_id,
+          {
+            notes: updatedNotes,
+            notes_updated_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+          // `notes_updated_at` is bumped on the server side; don't compare exact ts.
+          { skipVerifyFields: ["notes_updated_at"] },
+        );
 
         await logActivity(deal_id, "note_added", `Note added via AI: ${note_text.substring(0, 100)}`, { note_preview: note_text.substring(0, 200) });
 
@@ -422,6 +431,12 @@ serve(async (req) => {
     }
   } catch (error) {
     console.error("Deal operations error:", error);
+    if (error instanceof WriteNotPersistedError) {
+      return new Response(JSON.stringify(writeNotPersistedPayload(error)), {
+        status: 409,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     return err(error instanceof Error ? error.message : "Unknown error", 500);
   }
 });

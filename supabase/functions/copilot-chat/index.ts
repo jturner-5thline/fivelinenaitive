@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  verifiedDealUpdate,
+  WriteNotPersistedError,
+} from "../_shared/verifiedDealUpdate.ts";
 
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
@@ -2826,11 +2830,17 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       // Flag changes are LOW RISK — auto-execute
       if (args.is_flagged !== undefined && args.value === undefined && args.closing_date === undefined) {
-        const { error } = await supabase.from("deals").update({
-          is_flagged: args.is_flagged,
-          flag_notes: args.flag_notes || null,
-        }).eq("id", args.deal_id);
-        if (error) return { error: `Failed to update flag: ${error.message}` };
+        try {
+          await verifiedDealUpdate(supabase, args.deal_id, {
+            is_flagged: args.is_flagged,
+            flag_notes: args.flag_notes || null,
+          });
+        } catch (e) {
+          if (e instanceof WriteNotPersistedError) {
+            return { error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
+          }
+          return { error: `Failed to update flag: ${(e as Error).message}` };
+        }
         await supabase.from("activity_logs").insert({
           deal_id: args.deal_id, activity_type: "deal_flagged",
           description: `Deal ${args.is_flagged ? 'flagged' : 'unflagged'} via AI Copilot${args.flag_notes ? ': ' + args.flag_notes : ''}`,
@@ -4864,11 +4874,13 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 async function executeConfirmAction(supabase: any, actionType: string, params: any, userId: string, authHeader: string = "") {
   switch (actionType) {
     case "update_deal_stage": {
-      const { error } = await supabase.from("deals").update({ stage: params.new_stage }).eq("id", params.deal_id);
-      if (error) return { success: false, error: error.message };
-      const { data: verified } = await supabase.from("deals").select("stage").eq("id", params.deal_id).single();
-      if (!verified || verified.stage !== params.new_stage) {
-        return { success: false, error: `Failed to move "${params.deal_name}" to "${params.new_stage}". The stage is still "${verified?.stage || 'unknown'}".` };
+      try {
+        await verifiedDealUpdate(supabase, params.deal_id, { stage: params.new_stage });
+      } catch (e) {
+        if (e instanceof WriteNotPersistedError) {
+          return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
+        }
+        return { success: false, error: (e as Error).message };
       }
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id, activity_type: "stage_change",
@@ -5234,8 +5246,14 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       const before: Record<string, any> = {};
       for (const k of beforeCols) before[k] = (beforeRow as any)?.[k] ?? null;
 
-      const { error } = await supabase.from("deals").update(updateFields).eq("id", params.deal_id);
-      if (error) return { success: false, error: error.message };
+      try {
+        await verifiedDealUpdate(supabase, params.deal_id, updateFields);
+      } catch (e) {
+        if (e instanceof WriteNotPersistedError) {
+          return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
+        }
+        return { success: false, error: (e as Error).message };
+      }
       const changes: string[] = [];
       if (params.value !== undefined) changes.push(`deal size to $${params.value.toLocaleString()}`);
       if (params.closing_date !== undefined) changes.push(`closing date to ${params.closing_date || 'none'}`);
@@ -5270,21 +5288,13 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       };
     }
     case "update_deal_status": {
-      const { error } = await supabase
-        .from("deals")
-        .update({ status: params.new_status })
-        .eq("id", params.deal_id);
-      if (error) return { success: false, error: error.message };
-      const { data: verified } = await supabase
-        .from("deals")
-        .select("status")
-        .eq("id", params.deal_id)
-        .single();
-      if (!verified || verified.status !== params.new_status) {
-        return {
-          success: false,
-          error: `Failed to update "${params.deal_name}" status to "${params.new_status}". Current status: "${verified?.status || "unknown"}".`,
-        };
+      try {
+        await verifiedDealUpdate(supabase, params.deal_id, { status: params.new_status });
+      } catch (e) {
+        if (e instanceof WriteNotPersistedError) {
+          return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
+        }
+        return { success: false, error: (e as Error).message };
       }
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id,
