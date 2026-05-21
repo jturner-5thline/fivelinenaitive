@@ -339,6 +339,21 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "find_entity",
+      description: "AUTHORITATIVE entity resolver. ALWAYS use this — not conversation history or guesses — to look up a deal, user (teammate), CRM company, or contact by free-text name. Runs ILIKE plus pg_trgm similarity directly against the database and returns the top 3 candidates with id, display_name, and a 0–1 confidence score. You MUST present a disambiguation picker (list the candidates and ask the user to pick) whenever the top result's confidence is below 0.8 OR more than one candidate is returned. Never pass a resolved id to a write tool (update_deal_*, create_task, assign_manager, link_contact_to_deal, etc.) without first calling find_entity in the same turn.",
+      parameters: {
+        type: "object",
+        properties: {
+          type: { type: "string", enum: ["deal", "user", "company", "contact"], description: "Which table to search. deal=public.deals, user=public.profiles (teammates), company=public.crm_companies, contact=public.contacts." },
+          query: { type: "string", description: "Free-text name or fragment. Case-insensitive. Trimmed." },
+        },
+        required: ["type", "query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_deal",
       description: "Get details about a specific deal by ID or by searching company name.",
       parameters: {
