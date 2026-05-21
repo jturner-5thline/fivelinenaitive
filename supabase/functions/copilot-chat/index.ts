@@ -5058,6 +5058,35 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         companyId = cm?.company_id || null;
       }
 
+      // Build due_at (timestamptz) from due_date + due_time in user's tz.
+      // Default time of day = 09:00 local when a date is set without a time.
+      const userTz = (params as any).tz || "America/New_York";
+      let dueAt: string | null = null;
+      if (dueDate) {
+        const rawTime = typeof (params as any).due_time === "string" ? (params as any).due_time.trim() : "";
+        const timeStr = /^\d{1,2}:\d{2}$/.test(rawTime)
+          ? rawTime.padStart(5, "0")
+          : "09:00";
+        try {
+          // Walltime in user's tz → UTC ISO. Compute the tz offset for that
+          // specific instant so DST is handled correctly.
+          const wall = new Date(`${dueDate}T${timeStr}:00Z`);
+          const tzParts = new Intl.DateTimeFormat("en-US", {
+            timeZone: userTz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+          }).formatToParts(wall).reduce<Record<string, string>>((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+          const tzAsUtc = Date.UTC(
+            +tzParts.year, +tzParts.month - 1, +tzParts.day,
+            +tzParts.hour % 24, +tzParts.minute, +tzParts.second,
+          );
+          const offsetMs = tzAsUtc - wall.getTime();
+          dueAt = new Date(wall.getTime() - offsetMs).toISOString();
+        } catch {
+          dueAt = null;
+        }
+      }
+
       const insertRow: Record<string, unknown> = {
         title: params.title,
         description: params.description || null,
@@ -5065,6 +5094,7 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         contact_id: params.contact_id || null,
         priority: params.priority || "medium",
         due_date: dueDate,
+        due_at: dueAt,
         status: "not_started",
         task_type: params.task_type || "task",
         assigned_to: assignee,
@@ -5084,12 +5114,61 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         return { success: false, error: error.message };
       }
       if (!newTask) return { success: false, error: `Failed to create task "${params.title}".` };
+
+      // Optional: also create a Google Calendar event via Nylas v3 unified sync.
+      let calendarEventId: string | null = null;
+      let calendarError: string | null = null;
+      if ((params as any).add_to_calendar && dueAt) {
+        try {
+          const startMs = new Date(dueAt).getTime();
+          const endIso = new Date(startMs + 30 * 60 * 1000).toISOString(); // 30-min default
+          const authHeader = req.headers.get("Authorization") || "";
+          const calResp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/calendar-events`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: authHeader,
+              apikey: Deno.env.get("SUPABASE_ANON_KEY") || "",
+            },
+            body: JSON.stringify({
+              action: "create",
+              calendar_id: "primary",
+              timezone: userTz,
+              event_data: {
+                summary: params.title,
+                description: params.description || undefined,
+                start: dueAt,
+                end: endIso,
+              },
+            }),
+          });
+          const calData = await calResp.json().catch(() => ({}));
+          if (calResp.ok && calData?.event?.id) {
+            calendarEventId = calData.event.id;
+            await supabase.from("tasks").update({ nylas_event_id: calendarEventId }).eq("id", newTask.id);
+          } else {
+            calendarError = calData?.error || `Calendar event create failed (${calResp.status})`;
+            console.error("[create_task] calendar error:", calendarError);
+          }
+        } catch (e: any) {
+          calendarError = e?.message || "Calendar event create threw";
+          console.error("[create_task] calendar exception:", calendarError);
+        }
+      }
+
       const who = params.assignee_name && assignee !== userId ? ` for ${params.assignee_name}` : "";
       return {
         success: true,
-        message: `Task "${params.title}" created${who}`,
+        message: `Task "${params.title}" created${who}${calendarEventId ? " · added to calendar" : ""}${calendarError ? ` (calendar: ${calendarError})` : ""}`,
         actionType: "create_task",
-        params: { task_id: newTask.id, deal_id: params.deal_id, assigned_to: newTask.assigned_to },
+        params: {
+          task_id: newTask.id,
+          deal_id: params.deal_id,
+          assigned_to: newTask.assigned_to,
+          due_at: dueAt,
+          calendar_event_id: calendarEventId,
+          calendar_error: calendarError,
+        },
       };
     }
     case "update_milestone": {
