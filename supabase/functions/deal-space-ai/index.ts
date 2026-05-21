@@ -395,6 +395,62 @@ function buildEnhancedContext(docName: string, extracted: ExtractedContent): str
 
 // ─── Deal context builder (shared across all actions) ───────────────
 
+// ─── Status snapshot extraction & persistence ───────────────────────
+const STATUS_SNAPSHOT_RE = /<!--STATUS_SNAPSHOT:(\{[\s\S]*?\})-->/;
+
+async function persistStatusSnapshot(
+  supabaseService: any,
+  dealId: string,
+  fullContent: string,
+  userId: string | null,
+) {
+  try {
+    const m = fullContent.match(STATUS_SNAPSHOT_RE);
+    if (!m) return;
+    let snap: any;
+    try { snap = JSON.parse(m[1]); } catch { return; }
+    if (!snap || typeof snap !== "object") return;
+
+    const derived = typeof snap.derived === "string" ? snap.derived : null;
+    const header = typeof snap.header === "string" ? snap.header : null;
+    const mismatch = Boolean(snap.mismatch);
+    const rationale = typeof snap.rationale === "string" ? snap.rationale : null;
+    const signals = snap.signals && typeof snap.signals === "object" ? snap.signals : {};
+
+    const payload = {
+      derived_status: derived,
+      header_status: header,
+      mismatch,
+      rationale,
+      signals,
+      updated_at: new Date().toISOString(),
+      source: "ask_ai",
+    };
+
+    // Persist latest snapshot on deals + audit row. Fire-and-forget but logged.
+    await Promise.all([
+      supabaseService
+        .from("deals")
+        .update({ ai_status_snapshot: payload })
+        .eq("id", dealId),
+      supabaseService
+        .from("deal_ai_status_snapshots")
+        .insert({
+          deal_id: dealId,
+          header_status: header,
+          derived_status: derived,
+          mismatch,
+          rationale,
+          signals,
+          source: "ask_ai",
+          created_by: userId,
+        }),
+    ]);
+  } catch (err) {
+    console.error("persistStatusSnapshot failed", err);
+  }
+}
+
 interface SourceRef {
   type: string;
   name: string;
