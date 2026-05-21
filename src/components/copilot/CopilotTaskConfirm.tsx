@@ -254,19 +254,19 @@ export function CopilotTaskConfirm({ action }: Props) {
               <ExternalLink size={11} /> Open task
             </button>
           )}
-          {initial.deal_id && dealLinked && (
-            <button onClick={() => goto(`/deals?deal=${initial.deal_id}`)} style={quickActionStyle}>
+          {resolvedDealId && dealLinked && (
+            <button onClick={() => goto(`/deals?deal=${resolvedDealId}`)} style={quickActionStyle}>
               <Building2 size={11} /> Open linked deal
             </button>
           )}
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Draft an email related to "${title}"${initial.deal_name ? ` on ${initial.deal_name}` : ''}.` } }))}
+            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Draft an email related to "${title}"${resolvedDealName ? ` on ${resolvedDealName}` : ''}.` } }))}
             style={quickActionStyle}
           >
             <Mail size={11} /> Draft email
           </button>
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Add a note related to "${title}"${initial.deal_name ? ` on ${initial.deal_name}` : ''}.` } }))}
+            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Add a note related to "${title}"${resolvedDealName ? ` on ${resolvedDealName}` : ''}.` } }))}
             style={quickActionStyle}
           >
             <FileText size={11} /> Add note
