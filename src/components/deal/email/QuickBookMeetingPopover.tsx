@@ -805,6 +805,11 @@ export function QuickBookMeetingPopover({
               </button>
             </div>
           </div>
+        {attendees.filter((a) => a.role !== 'me').length === 0 && (
+          <p className="mt-1 text-[10.5px] text-amber-200/80">
+            Add an attendee to send the invite.
+          </p>
+        )}
         </div>
 
         {/* Video / location */}
