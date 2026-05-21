@@ -10798,6 +10798,72 @@ export type Database = {
         }
         Relationships: []
       }
+      event_claap_recordings: {
+        Row: {
+          company_ids: string[]
+          contact_ids: string[]
+          created_at: string
+          deal_ids: string[]
+          duration_seconds: number | null
+          event_id: string
+          id: string
+          linked_at: string
+          linked_by: string | null
+          notes: string | null
+          org_company_id: string
+          recorded_at: string | null
+          recorder_email: string | null
+          recorder_name: string | null
+          recording_id: string
+          recording_title: string | null
+          recording_url: string | null
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          company_ids?: string[]
+          contact_ids?: string[]
+          created_at?: string
+          deal_ids?: string[]
+          duration_seconds?: number | null
+          event_id: string
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          notes?: string | null
+          org_company_id: string
+          recorded_at?: string | null
+          recorder_email?: string | null
+          recorder_name?: string | null
+          recording_id: string
+          recording_title?: string | null
+          recording_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          company_ids?: string[]
+          contact_ids?: string[]
+          created_at?: string
+          deal_ids?: string[]
+          duration_seconds?: number | null
+          event_id?: string
+          id?: string
+          linked_at?: string
+          linked_by?: string | null
+          notes?: string | null
+          org_company_id?: string
+          recorded_at?: string | null
+          recorder_email?: string | null
+          recorder_name?: string | null
+          recording_id?: string
+          recording_title?: string | null
+          recording_url?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       external_activity_logs: {
         Row: {
           activity_type: string | null

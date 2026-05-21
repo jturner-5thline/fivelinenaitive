@@ -9,7 +9,7 @@ import {
   Search, ChevronDown, ChevronRight, Loader2, ListPlus, Link2,
   ExternalLink, Sparkles, StickyNote, Inbox,
   PartyPopper, GripVertical, ArrowLeft, Copy as CopyIcon,
-  Briefcase,
+  Briefcase, Video,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -41,6 +41,7 @@ import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
+import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
@@ -1009,6 +1010,7 @@ function EventDetailPane({
   const [composerForOne, setComposerForOne] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [dealQuery, setDealQuery] = useState('');
+  const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
 
   const matchingDeals = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
@@ -1261,6 +1263,14 @@ function EventDetailPane({
             >
               <CalendarIcon className="h-3.5 w-3.5" /> Schedule next
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 justify-start gap-2 text-xs col-span-2 border-primary/30 bg-primary/[0.06] hover:bg-primary/[0.12] text-white"
+              onClick={() => setClaapLinkerOpen(true)}
+            >
+              <Video className="h-3.5 w-3.5 text-primary" /> Link Claap Recording
+            </Button>
           </div>
 
           {/* Add note */}
@@ -1330,6 +1340,14 @@ function EventDetailPane({
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <EventClaapLinker
+        open={claapLinkerOpen}
+        onOpenChange={setClaapLinkerOpen}
+        eventId={event.id}
+        eventTitle={eventTitle}
+        attendeeEmails={allEmails}
+      />
     </div>
   );
 }
