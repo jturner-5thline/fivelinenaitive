@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { CopilotApprovalGroup } from '@/components/copilot/CopilotApprovalGroup';
 import { DealAiSettingsPopover } from '@/components/copilot/DealAiSettingsPopover';
 import { useDealCopilotMemory } from '@/hooks/useDealCopilotMemory';
 import { CopilotAutoExecuted } from '@/components/copilot/CopilotAutoExecuted';
