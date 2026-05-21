@@ -1423,7 +1423,7 @@ CRITICAL RULES:
                         (() => {
                           const { cleanContent, actions } = extractAskAiActions(msg.content);
                           const handleAction = (a: AskAiAction) => {
-                            if (a.type === 'draft_email') {
+                            if (a.type === 'draft_email' || a.type === 'send_followup') {
                               openDraftSubmissionModal();
                               return;
                             }
@@ -1432,10 +1432,21 @@ CRITICAL RULES:
                               if (q) sendMessage(q);
                               return;
                             }
-                            // create_task / add_outstanding_item — surface for now
+                            // Other intents surface via toast with payload preview
+                            // until dedicated confirmation modals are wired up.
+                            const TITLES: Record<string, string> = {
+                              create_task: 'Create task',
+                              add_outstanding_item: 'Add outstanding item',
+                              request_document: 'Request document',
+                              update_status: 'Update deal status',
+                              schedule_task: 'Schedule meeting',
+                            };
+                            const payloadStr = Object.entries(a.params)
+                              .map(([k, v]) => `${k}: ${v}`)
+                              .join(' · ');
                             toast({
-                              title: a.type === 'create_task' ? 'Create task' : 'Add outstanding item',
-                              description: a.label,
+                              title: TITLES[a.type] ?? a.label,
+                              description: payloadStr || a.label,
                             });
                           };
                           return (
