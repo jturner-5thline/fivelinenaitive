@@ -20041,11 +20041,13 @@ export type Database = {
           crm_company_id: string | null
           deal_id: string | null
           description: string | null
+          due_at: string | null
           due_date: string | null
           id: string
           is_recurring: boolean
           is_starred: boolean
           lender_id: string | null
+          nylas_event_id: string | null
           parent_task_id: string | null
           position: number
           priority: string
@@ -20087,11 +20089,13 @@ export type Database = {
           crm_company_id?: string | null
           deal_id?: string | null
           description?: string | null
+          due_at?: string | null
           due_date?: string | null
           id?: string
           is_recurring?: boolean
           is_starred?: boolean
           lender_id?: string | null
+          nylas_event_id?: string | null
           parent_task_id?: string | null
           position?: number
           priority?: string
@@ -20133,11 +20137,13 @@ export type Database = {
           crm_company_id?: string | null
           deal_id?: string | null
           description?: string | null
+          due_at?: string | null
           due_date?: string | null
           id?: string
           is_recurring?: boolean
           is_starred?: boolean
           lender_id?: string | null
+          nylas_event_id?: string | null
           parent_task_id?: string | null
           position?: number
           priority?: string

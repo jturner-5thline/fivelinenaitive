@@ -423,6 +423,7 @@ const tools = [
           assignee_name: { type: "string", description: "Display name of the assignee (for the confirm card label only)." },
           priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
           due_date: { type: "string", description: "ISO date string YYYY-MM-DD" },
+          due_time: { type: "string", description: "Time-of-day in 24h HH:MM (user-local, America/New_York). Examples: '10:00' for 10am, '17:00' for EOD, '14:00' for afternoon, '09:00' for morning. Default to 09:00 when the user gives a date but no time. Honor explicit times verbatim." },
           task_type: { type: "string", enum: ["task", "follow_up", "call", "email", "meeting"], description: "Task category. Default 'task'. Set to follow_up/call/email/meeting only when the user explicitly says so." },
           rationale: { type: "string", description: "One short sentence explaining WHY the linked entity was chosen (e.g. 'Linked to Worthy because that is the deal currently open.'). Shown verbatim on the approval card. Required when deal_id/contact_id is INFERRED rather than explicitly named by the user; optional otherwise." },
           duplicate_status: { type: "string", enum: ["none", "low", "possible", "high"], description: "Result of the pre-create duplicate check. 'none' = no similar task. 'low' = weak overlap, proceed. 'possible' (medium) = similar task — surface side-by-side on the card. 'high' = strong duplicate — recommend reuse." },
@@ -2037,7 +2038,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "create_task",
-        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
+        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date}${args.due_time ? ` ${args.due_time}` : ""})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
         params: {
           title: args.title,
           description: args.description,
@@ -2048,6 +2049,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           assignee_name: args.assignee_name,
           priority: args.priority || "medium",
           due_date: args.due_date,
+          due_time: typeof args.due_time === "string" ? args.due_time : null,
           task_type: args.task_type || "task",
           rationale: typeof args.rationale === "string" ? args.rationale : null,
           duplicate_status: ["none", "low", "possible", "high"].includes(args.duplicate_status) ? args.duplicate_status : "none",
@@ -4859,7 +4861,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 }
 
 // ── Confirm action executor ──────────────────────────────────────
-async function executeConfirmAction(supabase: any, actionType: string, params: any, userId: string) {
+async function executeConfirmAction(supabase: any, actionType: string, params: any, userId: string, authHeader: string = "") {
   switch (actionType) {
     case "update_deal_stage": {
       const { error } = await supabase.from("deals").update({ stage: params.new_stage }).eq("id", params.deal_id);
@@ -5056,6 +5058,35 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         companyId = cm?.company_id || null;
       }
 
+      // Build due_at (timestamptz) from due_date + due_time in user's tz.
+      // Default time of day = 09:00 local when a date is set without a time.
+      const userTz = (params as any).tz || "America/New_York";
+      let dueAt: string | null = null;
+      if (dueDate) {
+        const rawTime = typeof (params as any).due_time === "string" ? (params as any).due_time.trim() : "";
+        const timeStr = /^\d{1,2}:\d{2}$/.test(rawTime)
+          ? rawTime.padStart(5, "0")
+          : "09:00";
+        try {
+          // Walltime in user's tz → UTC ISO. Compute the tz offset for that
+          // specific instant so DST is handled correctly.
+          const wall = new Date(`${dueDate}T${timeStr}:00Z`);
+          const tzParts = new Intl.DateTimeFormat("en-US", {
+            timeZone: userTz,
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+          }).formatToParts(wall).reduce<Record<string, string>>((acc, p) => { acc[p.type] = p.value; return acc; }, {});
+          const tzAsUtc = Date.UTC(
+            +tzParts.year, +tzParts.month - 1, +tzParts.day,
+            +tzParts.hour % 24, +tzParts.minute, +tzParts.second,
+          );
+          const offsetMs = tzAsUtc - wall.getTime();
+          dueAt = new Date(wall.getTime() - offsetMs).toISOString();
+        } catch {
+          dueAt = null;
+        }
+      }
+
       const insertRow: Record<string, unknown> = {
         title: params.title,
         description: params.description || null,
@@ -5063,6 +5094,7 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         contact_id: params.contact_id || null,
         priority: params.priority || "medium",
         due_date: dueDate,
+        due_at: dueAt,
         status: "not_started",
         task_type: params.task_type || "task",
         assigned_to: assignee,
@@ -5082,12 +5114,60 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         return { success: false, error: error.message };
       }
       if (!newTask) return { success: false, error: `Failed to create task "${params.title}".` };
+
+      // Optional: also create a Google Calendar event via Nylas v3 unified sync.
+      let calendarEventId: string | null = null;
+      let calendarError: string | null = null;
+      if ((params as any).add_to_calendar && dueAt) {
+        try {
+          const startMs = new Date(dueAt).getTime();
+          const endIso = new Date(startMs + 30 * 60 * 1000).toISOString(); // 30-min default
+          const calResp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/calendar-events`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: authHeader,
+              apikey: Deno.env.get("SUPABASE_ANON_KEY") || "",
+            },
+            body: JSON.stringify({
+              action: "create",
+              calendar_id: "primary",
+              timezone: userTz,
+              event_data: {
+                summary: params.title,
+                description: params.description || undefined,
+                start: dueAt,
+                end: endIso,
+              },
+            }),
+          });
+          const calData = await calResp.json().catch(() => ({}));
+          if (calResp.ok && calData?.event?.id) {
+            calendarEventId = calData.event.id;
+            await supabase.from("tasks").update({ nylas_event_id: calendarEventId }).eq("id", newTask.id);
+          } else {
+            calendarError = calData?.error || `Calendar event create failed (${calResp.status})`;
+            console.error("[create_task] calendar error:", calendarError);
+          }
+        } catch (e: any) {
+          calendarError = e?.message || "Calendar event create threw";
+          console.error("[create_task] calendar exception:", calendarError);
+        }
+      }
+
       const who = params.assignee_name && assignee !== userId ? ` for ${params.assignee_name}` : "";
       return {
         success: true,
-        message: `Task "${params.title}" created${who}`,
+        message: `Task "${params.title}" created${who}${calendarEventId ? " · added to calendar" : ""}${calendarError ? ` (calendar: ${calendarError})` : ""}`,
         actionType: "create_task",
-        params: { task_id: newTask.id, deal_id: params.deal_id, assigned_to: newTask.assigned_to },
+        params: {
+          task_id: newTask.id,
+          deal_id: params.deal_id,
+          assigned_to: newTask.assigned_to,
+          due_at: dueAt,
+          calendar_event_id: calendarEventId,
+          calendar_error: calendarError,
+        },
       };
     }
     case "update_milestone": {
@@ -5598,7 +5678,13 @@ serve(async (req) => {
     // ── Handle confirm action ──
     if (body.confirmAction) {
       const auditId: string | null = body.confirmAction.params?.audit_id || null;
-      const result = await executeConfirmAction(supabaseUser, body.confirmAction.action_type, body.confirmAction.params, userId);
+      const result = await executeConfirmAction(
+        supabaseUser,
+        body.confirmAction.action_type,
+        body.confirmAction.params,
+        userId,
+        req.headers.get("Authorization") || "",
+      );
       if (body.confirmAction.action_type === "create_task") {
         if (result?.success) {
           await updateAuditOutcome(auditId, {
@@ -6107,6 +6193,14 @@ INTENT DETECTION (run BEFORE deciding which tool to call — classify every user
 
 DATE & TIME NORMALIZATION (apply when extracting due_date for create_task — use TODAY from CURRENT CONTEXT as the anchor and the user's timezone listed there):
 - Always pass due_date as a YYYY-MM-DD string. Never pass a relative phrase. Compute the calendar date yourself from TODAY in the user's timezone.
+- ALWAYS also set due_time as 24-hour HH:MM (user-local). Parse the time from the user's phrasing:
+  - Explicit time → honor it ("10am" → "10:00", "2:30pm" → "14:30", "noon" → "12:00", "midnight" → "00:00").
+  - "EOD" / "end of day" / "by end of day" → "17:00".
+  - "morning" / "first thing" → "09:00".
+  - "afternoon" → "14:00".
+  - "evening" / "tonight" → "18:00".
+  - No time given → "09:00" (default).
+- Strip the parsed time phrase from the title the same way you strip date phrases.
 - Mappings (anchor on TODAY = the date in CURRENT CONTEXT):
   - "today" → TODAY.
   - "tomorrow" → TODAY + 1 day.

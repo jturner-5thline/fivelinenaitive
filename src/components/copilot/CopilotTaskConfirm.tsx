@@ -35,6 +35,7 @@ interface ConfirmAction {
     assignee_name?: string | null;
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     due_date?: string | null;
+    due_time?: string | null;
     task_type?: 'task' | 'follow_up' | 'call' | 'email' | 'meeting';
     inferred?: string[];
     rationale?: string | null;
@@ -88,6 +89,11 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [title, setTitle] = useState<string>(initial.title || '');
   const [description, setDescription] = useState<string>(initial.description || '');
   const [dueDate, setDueDate] = useState<string>(initial.due_date || '');
+  const [dueTime, setDueTime] = useState<string>(() => {
+    const raw = (initial.due_time || '').trim();
+    return /^\d{1,2}:\d{2}$/.test(raw) ? raw.padStart(5, '0') : '09:00';
+  });
+  const [addToCalendar, setAddToCalendar] = useState<boolean>(false);
   const [priority, setPriority] = useState<string>(initial.priority || 'medium');
   const [taskType, setTaskType] = useState<string>(initial.task_type || 'task');
   const [dealLinked, setDealLinked] = useState<boolean>(!!initial.deal_id);
@@ -107,6 +113,29 @@ export function CopilotTaskConfirm({ action }: Props) {
   const dueIsInferredToday = isInferred('due_date') && !!dueDate && dueDate === new Date().toISOString().slice(0, 10);
   const entityInferred = (isInferred('deal_id') && !!initial.deal_id) || (isInferred('contact_id') && !!initial.contact_id);
   const entityLabel = initial.deal_name || (initial.contact_id ? 'this contact' : '');
+
+  const userTz = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; }
+  })();
+  const tzAbbrev = (() => {
+    if (!dueDate) return '';
+    try {
+      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTz, timeZoneName: 'short' }).formatToParts(d);
+      return parts.find(p => p.type === 'timeZoneName')?.value || '';
+    } catch { return ''; }
+  })();
+  const formatDueLabel = () => {
+    if (!dueDate) return 'No due date';
+    try {
+      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
+      const dateStr = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return `${dateStr} · ${timeStr}${tzAbbrev ? ` ${tzAbbrev}` : ''}`;
+    } catch {
+      return dueDate;
+    }
+  };
 
   async function handleConfirm() {
     if (ambiguous) {
@@ -128,8 +157,10 @@ export function CopilotTaskConfirm({ action }: Props) {
         assignee_name: assigneeMe ? null : initial.assignee_name || null,
         priority,
         due_date: dueDate || null,
+        due_time: dueDate ? (dueTime || '09:00') : null,
+        add_to_calendar: !!addToCalendar && !!dueDate,
         task_type: taskType,
-        tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; } })(),
+        tz: userTz,
       };
 
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
@@ -174,7 +205,8 @@ export function CopilotTaskConfirm({ action }: Props) {
     if (initial.deal_name && dealLinked) linkedSummary.push(initial.deal_name);
     if (!assigneeMe && initial.assignee_name) linkedSummary.push(`assigned to ${initial.assignee_name}`);
     else linkedSummary.push('assigned to you');
-    if (dueDate) linkedSummary.push(`due ${new Date(dueDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}`);
+    if (dueDate) linkedSummary.push(`due ${formatDueLabel()}`);
+    if (addToCalendar) linkedSummary.push('added to calendar');
     return (
       <div
         style={{
@@ -393,6 +425,18 @@ export function CopilotTaskConfirm({ action }: Props) {
               <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ marginTop: 4, height: 32, fontSize: 13 }} />
             </div>
             <div>
+              <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Due time</label>
+              <Input
+                type="time"
+                value={dueTime}
+                onChange={e => setDueTime(e.target.value)}
+                disabled={!dueDate}
+                style={{ marginTop: 4, height: 32, fontSize: 13 }}
+              />
+            </div>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+            <div>
               <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Priority {isInferred('priority') && <InferredTag />}</label>
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger style={{ marginTop: 4, height: 32, fontSize: 13 }}><SelectValue /></SelectTrigger>
@@ -400,6 +444,30 @@ export function CopilotTaskConfirm({ action }: Props) {
                   {Object.entries(PRIORITY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
                 </SelectContent>
               </Select>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
+              <label
+                style={{
+                  display: 'inline-flex', alignItems: 'center', gap: 8,
+                  fontSize: 12, color: 'var(--foreground)',
+                  padding: '7px 10px', borderRadius: 6,
+                  background: 'var(--glass-surface)', border: '1px solid var(--glass-border)',
+                  cursor: dueDate ? 'pointer' : 'not-allowed',
+                  opacity: dueDate ? 1 : 0.55,
+                  width: '100%', height: 32, marginTop: 4,
+                }}
+                title={dueDate ? 'Also create a Google Calendar event via your connected calendar' : 'Set a due date to enable'}
+              >
+                <input
+                  type="checkbox"
+                  checked={addToCalendar}
+                  disabled={!dueDate}
+                  onChange={e => setAddToCalendar(e.target.checked)}
+                  style={{ accentColor: 'hsl(var(--primary))' }}
+                />
+                <CalendarIcon size={12} />
+                <span>Add to calendar</span>
+              </label>
             </div>
           </div>
           <div>
@@ -446,7 +514,20 @@ export function CopilotTaskConfirm({ action }: Props) {
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <Row icon={Plus} label="Title" value={title} inferred={isInferred('title')} />
           <Row icon={UserIcon} label="Owner" value={assigneeMe || !initial.assignee_name ? 'You' : initial.assignee_name} inferred={isInferred('assignee_user_id') && !assigneeMe} />
-          <Row icon={CalendarIcon} label="Due" value={dueDate ? new Date(dueDate + 'T00:00:00').toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' }) : 'No due date'} inferred={isInferred('due_date')} />
+          <Row icon={CalendarIcon} label="Due" value={formatDueLabel()} inferred={isInferred('due_date')} />
+          {dueDate && (
+            <Row icon={CalendarIcon} label="Calendar">
+              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
+                <input
+                  type="checkbox"
+                  checked={addToCalendar}
+                  onChange={e => setAddToCalendar(e.target.checked)}
+                  style={{ accentColor: 'hsl(var(--primary))' }}
+                />
+                <span>Add to calendar</span>
+              </label>
+            </Row>
+          )}
           {initial.deal_id && dealLinked && (
             <Row icon={Building2} label="Deal" value={initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />
           )}
