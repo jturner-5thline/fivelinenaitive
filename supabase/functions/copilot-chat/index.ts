@@ -6193,6 +6193,14 @@ INTENT DETECTION (run BEFORE deciding which tool to call — classify every user
 
 DATE & TIME NORMALIZATION (apply when extracting due_date for create_task — use TODAY from CURRENT CONTEXT as the anchor and the user's timezone listed there):
 - Always pass due_date as a YYYY-MM-DD string. Never pass a relative phrase. Compute the calendar date yourself from TODAY in the user's timezone.
+- ALWAYS also set due_time as 24-hour HH:MM (user-local). Parse the time from the user's phrasing:
+  - Explicit time → honor it ("10am" → "10:00", "2:30pm" → "14:30", "noon" → "12:00", "midnight" → "00:00").
+  - "EOD" / "end of day" / "by end of day" → "17:00".
+  - "morning" / "first thing" → "09:00".
+  - "afternoon" → "14:00".
+  - "evening" / "tonight" → "18:00".
+  - No time given → "09:00" (default).
+- Strip the parsed time phrase from the title the same way you strip date phrases.
 - Mappings (anchor on TODAY = the date in CURRENT CONTEXT):
   - "today" → TODAY.
   - "tomorrow" → TODAY + 1 day.
