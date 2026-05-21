@@ -224,14 +224,15 @@ export function EmailQuickActionsToolbar({
                 <PopoverContent
                   align="start"
                   side="bottom"
-                  sideOffset={6}
-                  collisionPadding={12}
+                  sideOffset={-14}
+                  alignOffset={-40}
+                  collisionPadding={8}
                   container={
                     typeof document !== 'undefined'
                       ? document.getElementById('email-popup-modal-root') ?? document.body
                       : null
                   }
-                  className="p-0 border border-border bg-card rounded-xl shadow-xl w-auto max-w-[min(440px,calc(100vw-32px))] max-h-[min(78vh,calc(100vh-120px))] overflow-hidden"
+                  className="p-0 border border-border bg-card rounded-xl shadow-xl w-auto max-w-[min(525px,calc(100vw-16px))] max-h-[min(86vh,calc(100vh-32px))] overflow-hidden"
                 >
                   <QuickBookMeetingPopover
                     thread={thread}
