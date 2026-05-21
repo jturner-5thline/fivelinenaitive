@@ -8,6 +8,14 @@ import { getStageDisplayName } from '@/lib/copilot-utils';
 import { useCopilotStore } from '@/stores/copilotStore';
 import { CopilotTaskConfirm } from './CopilotTaskConfirm';
 import { renderTextWithEntityLinks } from './EntityLink';
+import {
+  deriveFieldDiffs,
+  computeFieldStatuses,
+  formatFieldValue,
+  type FieldDiff,
+  type FieldStatus,
+  type VerifiedResult,
+} from './copilotFieldDiff';
 
 interface ConfirmAction {
   action: 'confirm';
@@ -53,6 +61,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   const [completedAt, setCompletedAt] = useState<number | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [resolvedDealId, setResolvedDealId] = useState<string | null>(null);
+  // Store the raw verified-write response so the field table can render
+  // per-field status badges after Confirm (✅ / ⚠️ / ❌). The backend
+  // attaches `error_code` and `mismatches` for WriteNotPersistedError
+  // failures so we can mark only the offending fields red instead of
+  // the whole card.
+  const [verifiedResult, setVerifiedResult] = useState<VerifiedResult | null>(null);
   const [relativeTick, setRelativeTick] = useState(0);
   const queryClient = useQueryClient();
   const addMutation = useCopilotStore(s => s.addMutation);
@@ -72,6 +86,17 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   // clickable in-app links so entity references inside approval card
   // titles match the rest of the chat surface.
   const renderedDescription = renderTextWithEntityLinks(formattedDescription);
+
+  // Field-by-field diff is rebuilt from the action's params and never
+  // collapses into a one-line summary — that's the whole point of
+  // this card.
+  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(action.action_type, action.params || {});
+  const fieldStatuses = computeFieldStatuses(
+    action.action_type,
+    fieldDiffs,
+    status === 'done' || status === 'failed' ? verifiedResult : null,
+  );
+  const isUpdateLikeAction = fieldDiffs.some((d) => d.oldValue !== undefined);
 
   // Re-render the "Updated Xs ago" label on a steady tick so the
   // timestamp on the Done card stays accurate without a heavy interval.
@@ -205,6 +230,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   const handleConfirm = async () => {
     setStatus('loading');
     setErrorMessage(null);
+    setVerifiedResult(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -224,6 +250,9 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         throw new Error(`Backend error (${resp.status}): ${text.slice(0, 160) || resp.statusText}`);
       }
       const result = await resp.json();
+      // Keep the response so the field table can render per-field
+      // badges in both the success and failure branches.
+      setVerifiedResult(result as VerifiedResult);
       if (result.success) {
         const dealId = result.params?.deal_id || action.params?.deal_id;
         const dealName = result.params?.deal_name || action.params?.deal_name;
@@ -259,7 +288,15 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
               : undefined,
         });
       } else {
-        throw new Error(result.error || 'Action failed');
+        // Build an Error that preserves the structured fields so the
+        // failed-state branch can render per-field mismatch badges.
+        const e = new Error(result.error || 'Action failed') as Error & {
+          error_code?: string;
+          mismatches?: VerifiedResult['mismatches'];
+        };
+        e.error_code = result.error_code;
+        e.mismatches = result.mismatches;
+        throw e;
       }
     } catch (err: any) {
       setStatus('failed');
@@ -296,6 +333,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
           <Check size={16} style={{ color: 'rgb(34, 197, 94)' }} />
           <span style={{ fontSize: 13, color: 'rgb(34, 197, 94)' }}>Done — {renderedDescription}</span>
         </div>
+        <FieldDiffTable
+          diffs={fieldDiffs}
+          statuses={fieldStatuses}
+          showOldValues={isUpdateLikeAction}
+          tone="done"
+        />
         <div
           style={{
             display: 'flex',
@@ -372,6 +415,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
             )}
           </div>
         </div>
+        <FieldDiffTable
+          diffs={fieldDiffs}
+          statuses={fieldStatuses}
+          showOldValues={isUpdateLikeAction}
+          tone="failed"
+        />
         <div style={{ display: 'flex', gap: 8, paddingLeft: 24 }}>
           <button
             onClick={handleConfirm}
@@ -437,6 +486,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         <Icon size={16} style={{ color: 'hsl(var(--primary))' }} />
         <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{renderedDescription}</span>
       </div>
+      <FieldDiffTable
+        diffs={fieldDiffs}
+        statuses={fieldStatuses}
+        showOldValues={isUpdateLikeAction}
+        tone="pending"
+      />
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={handleConfirm}
@@ -479,3 +534,166 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     </div>
   );
 });
+
+// ─── Field-by-field diff table ─────────────────────────────────────
+//
+// Renders every field the action will write (or just wrote) as a
+// dedicated row: name, old value (for updates), new value, and a
+// per-field status badge in the post-Confirm states. We never
+// collapse fields into a one-line summary — the table is always
+// shown when there's at least one field to display.
+
+const STATUS_BADGE: Record<FieldStatus, { label: string; color: string; bg: string; border: string }> = {
+  pending: {
+    label: '— pending',
+    color: 'hsl(var(--muted-foreground))',
+    bg: 'transparent',
+    border: 'var(--glass-border)',
+  },
+  verified: {
+    label: '✅ verified',
+    color: 'rgb(34, 197, 94)',
+    bg: 'rgba(34, 197, 94, 0.10)',
+    border: 'rgba(34, 197, 94, 0.35)',
+  },
+  'activity-only': {
+    label: '⚠️ activity-logged only',
+    color: 'rgb(234, 179, 8)',
+    bg: 'rgba(234, 179, 8, 0.10)',
+    border: 'rgba(234, 179, 8, 0.35)',
+  },
+  mismatch: {
+    label: '❌ did not persist',
+    color: 'rgb(239, 68, 68)',
+    bg: 'rgba(239, 68, 68, 0.10)',
+    border: 'rgba(239, 68, 68, 0.40)',
+  },
+};
+
+function FieldDiffTable({
+  diffs,
+  statuses,
+  showOldValues,
+  tone,
+}: {
+  diffs: FieldDiff[];
+  statuses: Record<string, FieldStatus>;
+  showOldValues: boolean;
+  tone: 'pending' | 'done' | 'failed';
+}) {
+  if (!diffs.length) return null;
+
+  const headerColor = 'hsl(var(--muted-foreground))';
+  const rowBorder =
+    tone === 'done'
+      ? 'rgba(34, 197, 94, 0.18)'
+      : tone === 'failed'
+        ? 'rgba(239, 68, 68, 0.20)'
+        : 'var(--glass-border)';
+
+  return (
+    <div
+      role="table"
+      aria-label="Fields this action will write"
+      style={{
+        marginTop: tone === 'pending' ? 4 : 8,
+        marginBottom: tone === 'pending' ? 12 : 0,
+        marginLeft: tone === 'pending' ? 0 : 24,
+        border: `1px solid ${rowBorder}`,
+        borderRadius: 6,
+        overflow: 'hidden',
+        fontSize: 12,
+      }}
+    >
+      <div
+        role="row"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: showOldValues ? '1.2fr 1.2fr 1.4fr 1.2fr' : '1.4fr 2fr 1.2fr',
+          gap: 8,
+          padding: '6px 10px',
+          background: 'rgba(255,255,255,0.02)',
+          fontSize: 11,
+          fontWeight: 500,
+          color: headerColor,
+          textTransform: 'uppercase',
+          letterSpacing: 0.3,
+        }}
+      >
+        <div role="columnheader">Field</div>
+        {showOldValues && <div role="columnheader">From</div>}
+        <div role="columnheader">{showOldValues ? 'To' : 'Value'}</div>
+        <div role="columnheader" style={{ textAlign: 'right' }}>
+          Status
+        </div>
+      </div>
+      {diffs.map((d, i) => {
+        const st = statuses[d.field] ?? 'pending';
+        const badge = STATUS_BADGE[st];
+        return (
+          <div
+            key={`${d.field}-${i}`}
+            role="row"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: showOldValues ? '1.2fr 1.2fr 1.4fr 1.2fr' : '1.4fr 2fr 1.2fr',
+              gap: 8,
+              padding: '8px 10px',
+              borderTop: `1px solid ${rowBorder}`,
+              alignItems: 'center',
+              background: st === 'mismatch' ? 'rgba(239, 68, 68, 0.04)' : 'transparent',
+            }}
+          >
+            <div role="cell" style={{ color: 'var(--foreground)', fontWeight: 500 }}>
+              {d.label}
+            </div>
+            {showOldValues && (
+              <div
+                role="cell"
+                style={{
+                  color: 'hsl(var(--muted-foreground))',
+                  textDecoration: st === 'verified' ? 'line-through' : undefined,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={formatFieldValue(d.oldValue)}
+              >
+                {formatFieldValue(d.oldValue)}
+              </div>
+            )}
+            <div
+              role="cell"
+              style={{
+                color: 'var(--foreground)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={formatFieldValue(d.newValue)}
+            >
+              {formatFieldValue(d.newValue)}
+            </div>
+            <div role="cell" style={{ textAlign: 'right' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  fontSize: 10.5,
+                  fontWeight: 500,
+                  color: badge.color,
+                  background: badge.bg,
+                  border: `1px solid ${badge.border}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {badge.label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
