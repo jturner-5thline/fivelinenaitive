@@ -512,6 +512,11 @@ export function CopilotToggleButton() {
             } else if (showDropdown && e.key === 'ArrowUp') {
               e.preventDefault();
               setActiveIndex((i) => (i - 1 + dropdownItemCount) % dropdownItemCount);
+            } else if (!showDropdown && e.key === 'ArrowUp' && !value && lastSentPrompt) {
+              // Recall the previous prompt when the input is empty and no
+              // suggestion dropdown is showing — terminal-style history.
+              e.preventDefault();
+              setValue(lastSentPrompt);
             }
           }}
           readOnly={demoMode}
