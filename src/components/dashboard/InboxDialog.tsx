@@ -168,8 +168,17 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // up where the prefetch left off.
   const [inboxNextToken, setInboxNextToken] = useState<string | null>(cacheSnapshot.inboxNextToken);
   const [sentNextToken, setSentNextToken] = useState<string | null>(cacheSnapshot.sentNextToken);
-  const [hasMoreInbox, setHasMoreInbox] = useState(true);
-  const [hasMoreSent, setHasMoreSent] = useState(true);
+  // Seed hasMore* from the cached cursor so a warm open with a fully
+  // drained upstream cursor doesn't show a stuck "Load more" that calls
+  // loadMore with a null pageToken and no-ops forever. Cold open has no
+  // cached token, but the first foreground fetch in the open-effect sets
+  // these accurately before the list ever needs the value.
+  const [hasMoreInbox, setHasMoreInbox] = useState<boolean>(
+    cacheSnapshot.inboxMessages.length === 0 ? true : !!cacheSnapshot.inboxNextToken,
+  );
+  const [hasMoreSent, setHasMoreSent] = useState<boolean>(
+    cacheSnapshot.sentMessages.length === 0 ? true : !!cacheSnapshot.sentNextToken,
+  );
   // Tracks whether the local `email_cache` cursor fallback still has
   // older rows. Starts optimistic; flips false the first time a cursor
   // query returns 0 rows so the "End of inbox" sentinel can render.
@@ -180,6 +189,12 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // Otherwise the open is instant and the refresh happens silently below.
   const [isInitialLoading, setIsInitialLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  // Mirror of `isPaginatingRef` exposed as React state so the
+  // PaginationFooter (and its IntersectionObserver) actually re-render
+  // when auto-pagination starts/stops. A bare ref never triggers a
+  // re-render, which kept the "Loading older messages…" copy and the
+  // sentinel out of sync with the real fetch state.
+  const [isAutoPaginating, setIsAutoPaginating] = useState(false);
 
   // Lifecycle refs to prevent overlapping fetches & stale state writes after close
   // Pre-seeded as `true` when cache already has data so the open-effect
@@ -260,6 +275,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   ) => {
     if (isPaginatingRef.current) return;
     isPaginatingRef.current = true;
+    setIsAutoPaginating(true);
     try {
       // 1. Drain inbox
       let token: string | null = initialInboxToken;
@@ -327,6 +343,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       }
     } finally {
       isPaginatingRef.current = false;
+      if (isMountedRef.current) setIsAutoPaginating(false);
     }
   }, [mergeUniqueById]);
 
@@ -388,6 +405,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       isMountedRef.current = false;
       isPaginatingRef.current = false;
       setIsLoadingMore(false);
+      setIsAutoPaginating(false);
     } else {
       isMountedRef.current = true;
     }
@@ -399,10 +417,18 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     // Cursor-based fallback: even when upstream token is gone, we may
     // still have older messages cached locally — keep going if so.
     const canCacheFallback = !!oldestReceivedAt && hasMoreCache;
-    if (!hasMoreInbox && !hasMoreSent && !canCacheFallback) return;
+    // Edge case from a warm open: hasMoreInbox was optimistically true but
+    // we never received a page token (cursor exhausted previously). Flip
+    // it false here so the UI advances to the cache fallback (or "End of
+    // inbox") instead of looping with a null pageToken forever.
+    const inboxHasUpstreamMore = hasMoreInbox && !!inboxNextToken;
+    const sentHasUpstreamMore = hasMoreSent && !!sentNextToken;
+    if (hasMoreInbox && !inboxNextToken) setHasMoreInbox(false);
+    if (hasMoreSent && !sentNextToken) setHasMoreSent(false);
+    if (!inboxHasUpstreamMore && !sentHasUpstreamMore && !canCacheFallback) return;
     setIsLoadingMore(true);
     try {
-      if (hasMoreInbox && inboxNextToken) {
+      if (inboxHasUpstreamMore) {
         const page = await fetchPage({ labelIds: ['INBOX'], pageToken: inboxNextToken });
         if (!isMountedRef.current) return;
         if (!page.rateLimited) {
@@ -418,7 +444,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
             else setHasMoreCache(false);
           }
         }
-      } else if (!hasMoreInbox && canCacheFallback) {
+      } else if (canCacheFallback) {
         // Upstream exhausted but the local cache still has older rows
         // anchored before our oldest loaded `received_at`.
         const older = await loadOlderFromCache(oldestReceivedAt, 100);
@@ -427,7 +453,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           else setHasMoreCache(false);
         }
       }
-      if (hasMoreSent && sentNextToken) {
+      if (sentHasUpstreamMore) {
         await new Promise(r => setTimeout(r, AUTO_LOAD_DELAY_MS));
         const page = await fetchPage({ labelIds: ['SENT'], pageToken: sentNextToken });
         if (!isMountedRef.current) return;
@@ -600,6 +626,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const handleRefresh = useCallback(async () => {
     if (!status.connected) return;
     isPaginatingRef.current = false;
+    setIsAutoPaginating(false);
     setInboxMessages([]);
     setSentMessages([]);
     setDraftsMessages([]);
@@ -694,7 +721,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
               onLoadMore={loadMore}
               hasMore={hasMore}
               isLoadingMore={isLoadingMore}
-              isAutoPaginating={isPaginatingRef.current}
+            isAutoPaginating={isAutoPaginating}
               onAfterTrash={refreshTrash}
             />
           </EmailPaneErrorBoundary>
