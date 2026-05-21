@@ -5292,6 +5292,7 @@ async function consumeToolStream(
 async function prefetchPageContext(
   supabase: any,
   ctx: { page?: string; entityType?: string | null; entityId?: string | null },
+  chatScopeForPrefetch: ChatScope | null = null,
 ): Promise<{ block: string; label: string | null }> {
   try {
     const page = ctx.page || "unknown";
