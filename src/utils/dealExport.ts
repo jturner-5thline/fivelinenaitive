@@ -806,7 +806,14 @@ export interface StatusReportEditableContent {
 }
 
 // Status Report PDF Export — matches branded design template
-export function exportStatusReportToPDF(deal: Deal, configuredStages?: LenderStageConfig[], configuredSubstages?: LenderStageConfig[], outstandingItems?: OutstandingItem[], editableContent?: StatusReportEditableContent): void {
+export function exportStatusReportToPDF(
+  deal: Deal,
+  configuredStages?: LenderStageConfig[],
+  configuredSubstages?: LenderStageConfig[],
+  outstandingItems?: OutstandingItem[],
+  editableContent?: StatusReportEditableContent,
+  options?: { returnBlob?: boolean },
+): Blob | void {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
   const pageHeight = doc.internal.pageSize.getHeight();
