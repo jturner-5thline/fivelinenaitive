@@ -687,6 +687,11 @@ export function EndOfDayTab({
   const [followUpOpen, setFollowUpOpen] = useState(false);
   const [prefill, setPrefill] = useState<{ title: string; dealId: string | null; eventId?: string }>({ title: '', dealId: null });
 
+  const clearAllFilters = useCallback(() => {
+    setFilterChips(new Set());
+    setSearch('');
+  }, []);
+
   // Empty / disconnected states
   if (!status?.connected) {
     return (
@@ -710,10 +715,6 @@ export function EndOfDayTab({
 
   const isFullyEmpty = outstanding.length === 0;
   const hasActiveFilters = filterChips.size > 0 || search.trim().length > 0;
-  const clearAllFilters = useCallback(() => {
-    setFilterChips(new Set());
-    setSearch('');
-  }, []);
 
   // Master pane content
   const masterPane = (
