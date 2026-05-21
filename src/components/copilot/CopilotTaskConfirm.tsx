@@ -21,6 +21,13 @@ interface DuplicateMatch {
   differences?: string;
 }
 
+interface DealCandidate {
+  deal_id: string;
+  name: string;
+  stage?: string | null;
+  last_activity?: string | null;
+}
+
 interface ConfirmAction {
   action: 'confirm';
   action_type: 'create_task';
@@ -41,6 +48,8 @@ interface ConfirmAction {
     rationale?: string | null;
     duplicate_status?: 'none' | 'low' | 'possible' | 'high';
     duplicate_match?: DuplicateMatch | null;
+    deal_candidates?: DealCandidate[] | null;
+    confidences?: { deal?: number; assignee?: number; due_date?: number } | null;
   };
 }
 
@@ -102,17 +111,30 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'used_existing'>('pending');
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
 
+  const candidates: DealCandidate[] = Array.isArray(initial.deal_candidates) ? initial.deal_candidates! : [];
+  const [candidatesDismissed, setCandidatesDismissed] = useState(false);
+  const hasMultipleCandidates = candidates.length > 1 && !candidatesDismissed;
+  const lowDealConfidence = typeof initial.confidences?.deal === 'number' && (initial.confidences!.deal as number) < 0.7;
+  const [resolvedDealId, setResolvedDealId] = useState<string | null>(initial.deal_id || null);
+  const [resolvedDealName, setResolvedDealName] = useState<string | null>(initial.deal_name || null);
+  // Unresolved entity reference: AI returned multiple candidates and user hasn't picked,
+  // OR confidence is low and candidates exist to choose from.
+  const needsDisambiguation =
+    (hasMultipleCandidates && !resolvedDealId) ||
+    (lowDealConfidence && candidates.length > 0 && !resolvedDealId);
+
   const inferredSet = new Set(initial.inferred || []);
   const isInferred = (k: string) => inferredSet.has(k);
   const ambiguous = !title.trim();
+  const blockConfirm = ambiguous || needsDisambiguation;
   const rationale = (initial.rationale || '').trim();
   const dupStatus = initial.duplicate_status || 'none';
   const dup = initial.duplicate_match || null;
   const showDupCompare = (dupStatus === 'high' || dupStatus === 'possible') && !!dup;
   const showDupLowHint = dupStatus === 'low' && !!dup;
   const dueIsInferredToday = isInferred('due_date') && !!dueDate && dueDate === new Date().toISOString().slice(0, 10);
-  const entityInferred = (isInferred('deal_id') && !!initial.deal_id) || (isInferred('contact_id') && !!initial.contact_id);
-  const entityLabel = initial.deal_name || (initial.contact_id ? 'this contact' : '');
+  const entityInferred = (isInferred('deal_id') && !!resolvedDealId) || (isInferred('contact_id') && !!initial.contact_id);
+  const entityLabel = resolvedDealName || (initial.contact_id ? 'this contact' : '');
 
   const userTz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; }
@@ -151,7 +173,8 @@ export function CopilotTaskConfirm({ action }: Props) {
       const params: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || null,
-        deal_id: dealLinked ? initial.deal_id || null : null,
+        deal_id: dealLinked ? (resolvedDealId || null) : null,
+        deal_name: dealLinked ? (resolvedDealName || null) : null,
         contact_id: initial.contact_id || null,
         assignee_user_id: assigneeMe ? null : initial.assignee_user_id || null,
         assignee_name: assigneeMe ? null : initial.assignee_name || null,
@@ -202,7 +225,7 @@ export function CopilotTaskConfirm({ action }: Props) {
 
   if (status === 'done') {
     const linkedSummary: string[] = [];
-    if (initial.deal_name && dealLinked) linkedSummary.push(initial.deal_name);
+    if (resolvedDealName && dealLinked) linkedSummary.push(resolvedDealName);
     if (!assigneeMe && initial.assignee_name) linkedSummary.push(`assigned to ${initial.assignee_name}`);
     else linkedSummary.push('assigned to you');
     if (dueDate) linkedSummary.push(`due ${formatDueLabel()}`);
@@ -232,19 +255,19 @@ export function CopilotTaskConfirm({ action }: Props) {
               <ExternalLink size={11} /> Open task
             </button>
           )}
-          {initial.deal_id && dealLinked && (
-            <button onClick={() => goto(`/deals?deal=${initial.deal_id}`)} style={quickActionStyle}>
+          {resolvedDealId && dealLinked && (
+            <button onClick={() => goto(`/deals?deal=${resolvedDealId}`)} style={quickActionStyle}>
               <Building2 size={11} /> Open linked deal
             </button>
           )}
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Draft an email related to "${title}"${initial.deal_name ? ` on ${initial.deal_name}` : ''}.` } }))}
+            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Draft an email related to "${title}"${resolvedDealName ? ` on ${resolvedDealName}` : ''}.` } }))}
             style={quickActionStyle}
           >
             <Mail size={11} /> Draft email
           </button>
           <button
-            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Add a note related to "${title}"${initial.deal_name ? ` on ${initial.deal_name}` : ''}.` } }))}
+            onClick={() => window.dispatchEvent(new CustomEvent('copilot-send-message', { detail: { text: `Add a note related to "${title}"${resolvedDealName ? ` on ${resolvedDealName}` : ''}.` } }))}
             style={quickActionStyle}
           >
             <FileText size={11} /> Add note
@@ -270,6 +293,81 @@ export function CopilotTaskConfirm({ action }: Props) {
     return (
       <div style={{ marginTop: 8, fontSize: 12, color: 'hsl(var(--muted-foreground))' }}>
         Cancelled — no task was created.
+      </div>
+    );
+  }
+
+  // Disambiguation-first: AI returned multiple candidate deals. Hide the
+  // approval card entirely until the user picks one so they can't Confirm a
+  // card with an unresolved entity reference.
+  if (needsDisambiguation) {
+    const headline = initial.deal_name
+      ? `Multiple deals match "${initial.deal_name}" — which one did you mean?`
+      : 'Multiple matching deals — pick one to continue';
+    return (
+      <div
+        style={{
+          background: 'rgba(245,158,11,0.06)',
+          border: '1px solid rgba(245,158,11,0.30)',
+          borderRadius: 10,
+          padding: '12px 14px',
+          marginTop: 8,
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+          <AlertTriangle size={14} style={{ color: 'rgb(217, 119, 6)' }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: 'hsl(var(--foreground))', letterSpacing: 0.3 }}>
+            {headline}
+          </span>
+        </div>
+        <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginBottom: 10 }}>
+          I won't create the task until you select the right deal.
+        </div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {candidates.map(c => (
+            <button
+              key={c.deal_id}
+              onClick={() => {
+                setResolvedDealId(c.deal_id);
+                setResolvedDealName(c.name);
+                setDealLinked(true);
+              }}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 8,
+                padding: '8px 10px', borderRadius: 8,
+                background: 'var(--glass-surface)',
+                border: '1px solid var(--glass-border)',
+                color: 'hsl(var(--foreground))',
+                fontSize: 12, textAlign: 'left', cursor: 'pointer',
+              }}
+            >
+              <Building2 size={13} style={{ color: 'hsl(var(--muted-foreground))', flexShrink: 0 }} />
+              <span style={{ fontWeight: 600 }}>{c.name}</span>
+              {c.stage && (
+                <span style={{ color: 'hsl(var(--muted-foreground))' }}>· {c.stage}</span>
+              )}
+              {c.last_activity && (
+                <span style={{ color: 'hsl(var(--muted-foreground))', marginLeft: 'auto', fontSize: 11 }}>
+                  Last activity {c.last_activity}
+                </span>
+              )}
+            </button>
+          ))}
+          <button
+            onClick={() => {
+              setResolvedDealId(null);
+              setResolvedDealName(null);
+              setDealLinked(false);
+              setCandidatesDismissed(true);
+            }}
+            style={{
+              ...secondaryActionStyle,
+              marginTop: 4, alignSelf: 'flex-start',
+            }}
+          >
+            None of these — create without a deal
+          </button>
+        </div>
       </div>
     );
   }
@@ -403,7 +501,7 @@ export function CopilotTaskConfirm({ action }: Props) {
             <button onClick={handleUseExisting} style={dupStatus === 'high' ? primaryActionStyle : secondaryActionStyle}>
               <ArrowRight size={12} /> Use existing task
             </button>
-            <button onClick={handleConfirm} disabled={status === 'loading' || ambiguous} style={dupStatus === 'high' ? secondaryActionStyle : primaryActionStyle}>
+            <button onClick={handleConfirm} disabled={status === 'loading' || blockConfirm} style={dupStatus === 'high' ? secondaryActionStyle : primaryActionStyle}>
               <Plus size={12} /> Create new task anyway
             </button>
             <button onClick={() => setEditing(true)} style={secondaryActionStyle}>
@@ -528,8 +626,8 @@ export function CopilotTaskConfirm({ action }: Props) {
               </label>
             </Row>
           )}
-          {initial.deal_id && dealLinked && (
-            <Row icon={Building2} label="Deal" value={initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />
+          {resolvedDealId && dealLinked && (
+            <Row icon={Building2} label="Deal" value={resolvedDealName || initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />
           )}
           <Row icon={Tag} label="Type" value={TYPE_LABELS[taskType] || taskType} inferred={isInferred('task_type')} />
           <Row icon={Flag} label="Priority" value={PRIORITY_LABELS[priority] || priority} inferred={isInferred('priority')} />
@@ -543,16 +641,30 @@ export function CopilotTaskConfirm({ action }: Props) {
         </div>
       )}
 
+      {needsDisambiguation && (
+        <div
+          style={{
+            marginTop: 8, padding: '8px 10px', borderRadius: 6,
+            background: 'rgba(245,158,11,0.10)',
+            border: '1px solid rgba(245,158,11,0.35)',
+            fontSize: 11, color: 'rgb(217, 119, 6)',
+            display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600,
+          }}
+        >
+          <AlertTriangle size={12} /> Select a deal below before confirming.
+        </div>
+      )}
+
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
         <button
           onClick={handleConfirm}
-          disabled={status === 'loading' || ambiguous}
+          disabled={status === 'loading' || blockConfirm}
           style={{
             height: 32, padding: '0 14px', borderRadius: 8,
-            background: ambiguous ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
-            color: ambiguous ? 'hsl(var(--muted-foreground))' : 'white',
+            background: blockConfirm ? 'hsl(var(--muted))' : 'hsl(var(--primary))',
+            color: blockConfirm ? 'hsl(var(--muted-foreground))' : 'white',
             border: 'none', fontSize: 13, fontWeight: 500,
-            cursor: status === 'loading' || ambiguous ? 'not-allowed' : 'pointer',
+            cursor: status === 'loading' || blockConfirm ? 'not-allowed' : 'pointer',
             display: 'flex', alignItems: 'center', gap: 6,
           }}
         >
