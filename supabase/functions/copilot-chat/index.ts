@@ -4861,7 +4861,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 }
 
 // ── Confirm action executor ──────────────────────────────────────
-async function executeConfirmAction(supabase: any, actionType: string, params: any, userId: string) {
+async function executeConfirmAction(supabase: any, actionType: string, params: any, userId: string, authHeader: string = "") {
   switch (actionType) {
     case "update_deal_stage": {
       const { error } = await supabase.from("deals").update({ stage: params.new_stage }).eq("id", params.deal_id);
