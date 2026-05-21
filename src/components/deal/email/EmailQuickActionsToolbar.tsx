@@ -133,11 +133,13 @@ export function EmailQuickActionsToolbar({
       return;
     }
     if (key === 'meeting') {
-      // Toggling the meeting tile always resets to quick-book mode so
-      // the popover surface is the default entry point. The legacy
-      // propose inline card is only reached via the popover link.
-      setMeetingMode('quick-book');
-      setActive((prev) => (prev === 'meeting' ? null : 'meeting'));
+      // The Schedule Meeting tile is wrapped in a Radix Popover. The
+      // popover's `open` state is driven by `onOpenChange` only — toggling
+      // `active` here would race with that handler and immediately close
+      // the popover on the first click. We deliberately no-op so Radix
+      // alone controls the open state.
+      // eslint-disable-next-line no-console
+      console.log('[QuickActions] meeting clicked', { active, meetingMode });
       return;
     }
     setActive((prev) => (prev === key ? null : key));
