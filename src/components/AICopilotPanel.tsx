@@ -697,6 +697,9 @@ export function AICopilotPanel() {
   const demoMode = useCopilotStore((s) => s.demoMode);
   const [agentMode, setAgentMode] = useState(false);
   const { user } = useAuth();
+  // Canonical data scope (workspace + pipeline + status) sent on every
+  // request so the AI's deal queries match what the dashboard shows.
+  const { scope: chatScope, override: chatScopeOverride, setOverride: setChatScopeOverride } = useCopilotChatScope();
   const [input, setInput] = useState('');
   const [showHistory, setShowHistory] = useState(false);
   const [historyItems, setHistoryItems] = useState<Array<{ id: string; preview: string; date: string }>>([]);
