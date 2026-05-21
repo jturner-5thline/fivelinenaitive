@@ -285,7 +285,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
                 onClick: () => runUndo(dealId, dealName, before!),
               }
             : dealId
-              ? { label: 'View deal', onClick: () => { window.location.assign(`/deals/${dealId}`); } }
+              ? { label: 'View deal', onClick: () => { navigate(`/deal/${dealId}`); } }
               : undefined,
         });
       } else {
