@@ -5122,7 +5122,6 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         try {
           const startMs = new Date(dueAt).getTime();
           const endIso = new Date(startMs + 30 * 60 * 1000).toISOString(); // 30-min default
-          const authHeader = req.headers.get("Authorization") || "";
           const calResp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/calendar-events`, {
             method: "POST",
             headers: {
