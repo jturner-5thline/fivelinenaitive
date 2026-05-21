@@ -21,6 +21,13 @@ interface DuplicateMatch {
   differences?: string;
 }
 
+interface DealCandidate {
+  deal_id: string;
+  name: string;
+  stage?: string | null;
+  last_activity?: string | null;
+}
+
 interface ConfirmAction {
   action: 'confirm';
   action_type: 'create_task';
@@ -41,6 +48,8 @@ interface ConfirmAction {
     rationale?: string | null;
     duplicate_status?: 'none' | 'low' | 'possible' | 'high';
     duplicate_match?: DuplicateMatch | null;
+    deal_candidates?: DealCandidate[] | null;
+    confidences?: { deal?: number; assignee?: number; due_date?: number } | null;
   };
 }
 
@@ -102,17 +111,29 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'used_existing'>('pending');
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
 
+  const candidates: DealCandidate[] = Array.isArray(initial.deal_candidates) ? initial.deal_candidates! : [];
+  const hasMultipleCandidates = candidates.length > 1;
+  const lowDealConfidence = typeof initial.confidences?.deal === 'number' && (initial.confidences!.deal as number) < 0.7;
+  const [resolvedDealId, setResolvedDealId] = useState<string | null>(initial.deal_id || null);
+  const [resolvedDealName, setResolvedDealName] = useState<string | null>(initial.deal_name || null);
+  // Unresolved entity reference: AI returned multiple candidates and user hasn't picked,
+  // OR confidence is low and candidates exist to choose from.
+  const needsDisambiguation =
+    (hasMultipleCandidates && !resolvedDealId) ||
+    (lowDealConfidence && candidates.length > 0 && !resolvedDealId);
+
   const inferredSet = new Set(initial.inferred || []);
   const isInferred = (k: string) => inferredSet.has(k);
   const ambiguous = !title.trim();
+  const blockConfirm = ambiguous || needsDisambiguation;
   const rationale = (initial.rationale || '').trim();
   const dupStatus = initial.duplicate_status || 'none';
   const dup = initial.duplicate_match || null;
   const showDupCompare = (dupStatus === 'high' || dupStatus === 'possible') && !!dup;
   const showDupLowHint = dupStatus === 'low' && !!dup;
   const dueIsInferredToday = isInferred('due_date') && !!dueDate && dueDate === new Date().toISOString().slice(0, 10);
-  const entityInferred = (isInferred('deal_id') && !!initial.deal_id) || (isInferred('contact_id') && !!initial.contact_id);
-  const entityLabel = initial.deal_name || (initial.contact_id ? 'this contact' : '');
+  const entityInferred = (isInferred('deal_id') && !!resolvedDealId) || (isInferred('contact_id') && !!initial.contact_id);
+  const entityLabel = resolvedDealName || (initial.contact_id ? 'this contact' : '');
 
   const userTz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; }
@@ -151,7 +172,8 @@ export function CopilotTaskConfirm({ action }: Props) {
       const params: Record<string, unknown> = {
         title: title.trim(),
         description: description.trim() || null,
-        deal_id: dealLinked ? initial.deal_id || null : null,
+        deal_id: dealLinked ? (resolvedDealId || null) : null,
+        deal_name: dealLinked ? (resolvedDealName || null) : null,
         contact_id: initial.contact_id || null,
         assignee_user_id: assigneeMe ? null : initial.assignee_user_id || null,
         assignee_name: assigneeMe ? null : initial.assignee_name || null,
@@ -202,7 +224,7 @@ export function CopilotTaskConfirm({ action }: Props) {
 
   if (status === 'done') {
     const linkedSummary: string[] = [];
-    if (initial.deal_name && dealLinked) linkedSummary.push(initial.deal_name);
+    if (resolvedDealName && dealLinked) linkedSummary.push(resolvedDealName);
     if (!assigneeMe && initial.assignee_name) linkedSummary.push(`assigned to ${initial.assignee_name}`);
     else linkedSummary.push('assigned to you');
     if (dueDate) linkedSummary.push(`due ${formatDueLabel()}`);
