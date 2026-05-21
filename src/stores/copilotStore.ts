@@ -66,13 +66,43 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   closePanel: () => set({ isOpen: false, isMinimized: false, unreadCount: 0, messages: [], conversationId: null, conversationMutations: [] }),
   minimizePanel: () => set({ isMinimized: true }),
   expandPanel: () => set({ isOpen: true, isMinimized: false, unreadCount: 0 }),
-  addMessage: (message) => set((s) => ({
-    messages: [...s.messages, message],
-    // Treat any state where the user can't see the transcript (closed OR
-    // minimized) as needing an unread indicator on the Ask bar.
-    unreadCount: (!s.isOpen || s.isMinimized) && message.role === 'assistant' ? s.unreadCount + 1 : s.unreadCount,
-  })),
-  setMessages: (messages) => set({ messages }),
+  addMessage: (message) => set((s) => {
+    // Dedupe streamed/persisted messages by id. Streaming + persistence
+    // races can otherwise push the same assistant message twice, which
+    // shows as the same paragraph repeated back-to-back in the ask bar.
+    // If an existing message shares the id, replace it in place rather
+    // than appending a duplicate.
+    const idx = message.id ? s.messages.findIndex((m) => m.id === message.id) : -1;
+    const nextMessages = idx >= 0
+      ? s.messages.map((m, i) => (i === idx ? message : m))
+      : [...s.messages, message];
+    const isNew = idx < 0;
+    return {
+      messages: nextMessages,
+      // Treat any state where the user can't see the transcript (closed OR
+      // minimized) as needing an unread indicator on the Ask bar.
+      unreadCount: isNew && (!s.isOpen || s.isMinimized) && message.role === 'assistant'
+        ? s.unreadCount + 1
+        : s.unreadCount,
+    };
+  }),
+  setMessages: (messages) => set({
+    // Dedupe by id when seeding/replacing the transcript so a duplicated
+    // entry from persistence can't leak into render. Last write wins.
+    messages: (() => {
+      const seen = new Map<string, number>();
+      const out: typeof messages = [];
+      for (const m of messages) {
+        if (m.id && seen.has(m.id)) {
+          out[seen.get(m.id)!] = m;
+        } else {
+          if (m.id) seen.set(m.id, out.length);
+          out.push(m);
+        }
+      }
+      return out;
+    })(),
+  }),
   setProcessing: (processing) => set({ isProcessing: processing }),
   clearMessages: () => set({ messages: [], conversationId: null, conversationMutations: [], unreadCount: 0 }),
   setConversationId: (id) => set({ conversationId: id }),
