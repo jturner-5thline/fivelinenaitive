@@ -534,3 +534,166 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     </div>
   );
 });
+
+// ─── Field-by-field diff table ─────────────────────────────────────
+//
+// Renders every field the action will write (or just wrote) as a
+// dedicated row: name, old value (for updates), new value, and a
+// per-field status badge in the post-Confirm states. We never
+// collapse fields into a one-line summary — the table is always
+// shown when there's at least one field to display.
+
+const STATUS_BADGE: Record<FieldStatus, { label: string; color: string; bg: string; border: string }> = {
+  pending: {
+    label: '— pending',
+    color: 'hsl(var(--muted-foreground))',
+    bg: 'transparent',
+    border: 'var(--glass-border)',
+  },
+  verified: {
+    label: '✅ verified',
+    color: 'rgb(34, 197, 94)',
+    bg: 'rgba(34, 197, 94, 0.10)',
+    border: 'rgba(34, 197, 94, 0.35)',
+  },
+  'activity-only': {
+    label: '⚠️ activity-logged only',
+    color: 'rgb(234, 179, 8)',
+    bg: 'rgba(234, 179, 8, 0.10)',
+    border: 'rgba(234, 179, 8, 0.35)',
+  },
+  mismatch: {
+    label: '❌ did not persist',
+    color: 'rgb(239, 68, 68)',
+    bg: 'rgba(239, 68, 68, 0.10)',
+    border: 'rgba(239, 68, 68, 0.40)',
+  },
+};
+
+function FieldDiffTable({
+  diffs,
+  statuses,
+  showOldValues,
+  tone,
+}: {
+  diffs: FieldDiff[];
+  statuses: Record<string, FieldStatus>;
+  showOldValues: boolean;
+  tone: 'pending' | 'done' | 'failed';
+}) {
+  if (!diffs.length) return null;
+
+  const headerColor = 'hsl(var(--muted-foreground))';
+  const rowBorder =
+    tone === 'done'
+      ? 'rgba(34, 197, 94, 0.18)'
+      : tone === 'failed'
+        ? 'rgba(239, 68, 68, 0.20)'
+        : 'var(--glass-border)';
+
+  return (
+    <div
+      role="table"
+      aria-label="Fields this action will write"
+      style={{
+        marginTop: tone === 'pending' ? 4 : 8,
+        marginBottom: tone === 'pending' ? 12 : 0,
+        marginLeft: tone === 'pending' ? 0 : 24,
+        border: `1px solid ${rowBorder}`,
+        borderRadius: 6,
+        overflow: 'hidden',
+        fontSize: 12,
+      }}
+    >
+      <div
+        role="row"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: showOldValues ? '1.2fr 1.2fr 1.4fr 1.2fr' : '1.4fr 2fr 1.2fr',
+          gap: 8,
+          padding: '6px 10px',
+          background: 'rgba(255,255,255,0.02)',
+          fontSize: 11,
+          fontWeight: 500,
+          color: headerColor,
+          textTransform: 'uppercase',
+          letterSpacing: 0.3,
+        }}
+      >
+        <div role="columnheader">Field</div>
+        {showOldValues && <div role="columnheader">From</div>}
+        <div role="columnheader">{showOldValues ? 'To' : 'Value'}</div>
+        <div role="columnheader" style={{ textAlign: 'right' }}>
+          Status
+        </div>
+      </div>
+      {diffs.map((d, i) => {
+        const st = statuses[d.field] ?? 'pending';
+        const badge = STATUS_BADGE[st];
+        return (
+          <div
+            key={`${d.field}-${i}`}
+            role="row"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: showOldValues ? '1.2fr 1.2fr 1.4fr 1.2fr' : '1.4fr 2fr 1.2fr',
+              gap: 8,
+              padding: '8px 10px',
+              borderTop: `1px solid ${rowBorder}`,
+              alignItems: 'center',
+              background: st === 'mismatch' ? 'rgba(239, 68, 68, 0.04)' : 'transparent',
+            }}
+          >
+            <div role="cell" style={{ color: 'var(--foreground)', fontWeight: 500 }}>
+              {d.label}
+            </div>
+            {showOldValues && (
+              <div
+                role="cell"
+                style={{
+                  color: 'hsl(var(--muted-foreground))',
+                  textDecoration: st === 'verified' ? 'line-through' : undefined,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+                title={formatFieldValue(d.oldValue)}
+              >
+                {formatFieldValue(d.oldValue)}
+              </div>
+            )}
+            <div
+              role="cell"
+              style={{
+                color: 'var(--foreground)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
+              title={formatFieldValue(d.newValue)}
+            >
+              {formatFieldValue(d.newValue)}
+            </div>
+            <div role="cell" style={{ textAlign: 'right' }}>
+              <span
+                style={{
+                  display: 'inline-block',
+                  padding: '2px 8px',
+                  borderRadius: 999,
+                  fontSize: 10.5,
+                  fontWeight: 500,
+                  color: badge.color,
+                  background: badge.bg,
+                  border: `1px solid ${badge.border}`,
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {badge.label}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
