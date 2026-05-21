@@ -1884,6 +1884,48 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       }
       return { error: "Provide deal_id or search" };
     }
+    case "find_entity": {
+      const entityType: string = typeof args.type === "string" ? args.type.trim().toLowerCase() : "";
+      const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
+      const allowed = new Set(["deal", "user", "company", "contact"]);
+      if (!allowed.has(entityType)) {
+        return { error: `Invalid type "${entityType}". Must be one of: deal, user, company, contact.` };
+      }
+      if (!queryText) {
+        return { error: "Query is required." };
+      }
+      const { data, error } = await supabase.rpc("find_entity", {
+        _type: entityType,
+        _query: queryText,
+        _limit: 3,
+      });
+      if (error) {
+        console.error("find_entity rpc error", error);
+        return { error: `Lookup failed: ${error.message}` };
+      }
+      const candidates = (data || []).map((row: any) => ({
+        id: row.id,
+        display_name: row.display_name,
+        subtitle: row.subtitle || null,
+        confidence: Number((row.confidence ?? 0).toFixed(3)),
+      }));
+      const top = candidates[0];
+      const needsDisambiguation = candidates.length === 0
+        || candidates.length > 1
+        || (top?.confidence ?? 0) < 0.8;
+      return {
+        type: entityType,
+        query: queryText,
+        count: candidates.length,
+        candidates,
+        needs_disambiguation: needsDisambiguation,
+        guidance: candidates.length === 0
+          ? `No ${entityType} matched "${queryText}". Ask the user to confirm the name — do NOT guess or fall back to conversation history.`
+          : needsDisambiguation
+            ? `Confidence is below 0.8 or multiple candidates returned. STOP and ask the user to pick from these ${candidates.length} candidate(s): ${candidates.map((c) => `${c.display_name} (${c.confidence})`).join(", ")}. Do NOT call any write tool until the user picks.`
+            : `Single high-confidence match (${top.confidence}). Safe to use ${top.id}.`,
+      };
+    }
     case "search_deals": {
       const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
       // When a name query is supplied, pull a broader candidate pool across
