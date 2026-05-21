@@ -304,6 +304,23 @@ export function QuickBookMeetingPopover({
     };
   }, []);
 
+  // Surface a toast with a Connect CTA the first time we detect a
+  // disconnected calendar, so the user notices even if the inline prompt
+  // is scrolled out of view.
+  const connectToastShownRef = useRef(false);
+  useEffect(() => {
+    if (connected === false && !connectToastShownRef.current) {
+      connectToastShownRef.current = true;
+      toast('Google Calendar not connected', {
+        description: 'Connect your calendar to book meetings from here.',
+        action: {
+          label: 'Connect Google Calendar',
+          onClick: () => window.open('/settings/integrations', '_blank'),
+        },
+      });
+    }
+  }, [connected]);
+
   /* ----- timezone + duration prefs */
   const [timezone] = useState<string>(() => {
     try {
@@ -613,7 +630,7 @@ export function QuickBookMeetingPopover({
             size="sm"
             className="h-7 text-[11.5px] w-full"
             onClick={() => {
-              window.open('/integrations', '_blank');
+              window.open('/settings/integrations', '_blank');
             }}
           >
             <ExternalLink className="h-3 w-3 mr-1.5" />
@@ -805,6 +822,11 @@ export function QuickBookMeetingPopover({
               </button>
             </div>
           </div>
+        {attendees.filter((a) => a.role !== 'me').length === 0 && (
+          <p className="mt-1 text-[10.5px] text-amber-200/80">
+            Add an attendee to send the invite.
+          </p>
+        )}
         </div>
 
         {/* Video / location */}
