@@ -458,14 +458,18 @@ function CopilotAssistantContent({ content }: { content: string }) {
         // rather than leaking JSON to the user.
         segments.push({ type: 'confirm', value: parsed });
       } else {
-        segments.push({ type: 'text', value: match[0] });
+        // Unknown JSON shape. In dev show the raw block for debugging; in
+        // production hide it entirely so tool-protocol JSON never leaks.
+        if (import.meta.env.MODE !== 'production') {
+          segments.push({ type: 'text', value: match[0] });
+        }
       }
     } catch {
       // If the candidate looked like an action payload (bare-JSON branch)
       // but failed to parse, hide it instead of dumping JSON to the user.
       if (match[2]) {
         segments.push({ type: 'text', value: '_Action ready for confirmation_' });
-      } else {
+      } else if (import.meta.env.MODE !== 'production') {
         segments.push({ type: 'text', value: match[0] });
       }
     }

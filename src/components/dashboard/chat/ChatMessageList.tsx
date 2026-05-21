@@ -76,8 +76,16 @@ function extractCopilotAction(content: string): {
       // skip non-confirm JSON blocks
     }
   }
-  if (!found) return { action: null, cleanedContent: content };
-  return { action: found, cleanedContent: content.replace(foundRaw, '').trim() };
+  let cleaned = found ? content.replace(foundRaw, '') : content;
+  // Strip ANY remaining tool-protocol JSON (fenced or bare {…"action":…}) so
+  // raw protocol blocks never reach the markdown renderer in production. In
+  // dev we leave them visible for debugging.
+  if (import.meta.env.MODE === 'production') {
+    cleaned = cleaned
+      .replace(/```json\s*\n[\s\S]*?"action"\s*:\s*"[^"]+"[\s\S]*?\n```/g, '')
+      .replace(/\{(?:[^{}]|\{[^{}]*\})*"action"\s*:\s*"[^"]+"(?:[^{}]|\{[^{}]*\})*\}/g, '');
+  }
+  return { action: found, cleanedContent: cleaned.trim() };
 }
 
 /**
