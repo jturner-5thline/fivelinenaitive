@@ -1872,6 +1872,11 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (args.status) q = q.eq("status", args.status);
       if (args.stage) q = q.ilike("stage", `%${args.stage}%`);
       if (args.deal_type) q = q.ilike("deal_type", `%${args.deal_type}%`);
+      // Constrain to the chat's current scope (workspace + pipeline +
+      // status). The caller can opt out by passing { broaden: true } when
+      // the model needs to look beyond the active scope.
+      const broaden = args.broaden === true;
+      q = applyDealScope(q, scope, { allowOutOfScope: broaden });
       if (queryText) {
         // Broad ilike OR across the query and its tokens, then fuzzy-rank.
         const tokens = Array.from(new Set(
@@ -1896,10 +1901,15 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         return {
           count: ranked.length,
           query: queryText,
+          scope_label: scope.label,
+          scope_applied: !broaden,
+          broaden_hint: ranked.length === 0 && !broaden
+            ? "No matches inside the current scope. Re-run search_deals with { broaden: true } to look across all workspaces / pipelines / statuses."
+            : undefined,
           deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)) })),
         };
       }
-      return { count: results.length, deals: results };
+      return { count: results.length, scope_label: scope.label, scope_applied: !broaden, deals: results };
     }
     case "update_deal_stage": {
       const { data: deal } = await supabase.from("deals").select("id, company, stage").eq("id", args.deal_id).single();
