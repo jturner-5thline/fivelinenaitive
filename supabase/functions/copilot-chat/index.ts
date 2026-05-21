@@ -5720,7 +5720,7 @@ serve(async (req) => {
     // Insights page — that block must never reach the model.
     const prefetched = (!scopes.can_view_insights && page.toLowerCase().includes("insight"))
       ? { block: "", label: null }
-      : await prefetchPageContext(supabaseUser, { page, entityType, entityId });
+      : await prefetchPageContext(supabaseUser, { page, entityType, entityId }, chatScope);
 
     // ── Off-page deal-name resolver ──
     // When no deal entity is in context (user is not on a deal page and did not
