@@ -36,6 +36,11 @@ export interface DraftAndSendInitial {
   bodyHtml?: string;
   /** When set, the composer surfaces a thread picker scoped to this deal. */
   dealId?: string;
+  /** Files to pre-attach (e.g. the freshly generated status report PDF). */
+  attachments?: File[];
+  /** Optional pre-selected thread id (Gmail `thread_id`). When provided and
+   *  it matches a fetched thread, the composer opens replying into it. */
+  initialThreadId?: string;
 }
 
 interface DraftAndSendDialogProps {
@@ -118,8 +123,8 @@ export function DraftAndSendDialog({
       : plainTextToHtml(initial.body ?? '');
     const sigHtml = signature ? plainTextToHtml(signature) : '';
     setBody(sigHtml ? `${bodyHtml}<p></p>${sigHtml}` : bodyHtml);
-    setFiles([]);
-    setSelectedThreadId('new');
+    setFiles(initial.attachments ?? []);
+    setSelectedThreadId(initial.initialThreadId ?? 'new');
   }, [open, initial, signature]);
 
   // Load relevant threads for this deal so the user can reply into an existing one.
