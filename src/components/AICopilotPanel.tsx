@@ -968,9 +968,12 @@ export function AICopilotPanel() {
     ta.style.height = Math.min(ta.scrollHeight, 96) + 'px';
   }, [input]);
 
+  const lastMsgLen = messages.length > 0 ? (messages[messages.length - 1]?.content?.length ?? 0) : 0;
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    // Anchor to the bottom on send and as streamed tokens arrive, so the
+    // newest answer is never visually clipped at the top of the viewport.
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [messages.length, lastMsgLen, isProcessing]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
