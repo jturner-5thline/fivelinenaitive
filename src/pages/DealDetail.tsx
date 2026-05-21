@@ -202,10 +202,6 @@ import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportT
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { LenderPipelineSnapshot } from '@/components/deal/LenderPipelineSnapshot';
-import {
-  buildStatusEmailHtml,
-  buildStatusEmailSubject,
-} from '@/components/deal/StatusEmailDraftModal';
 import { DraftAndSendDialog, type DraftAndSendInitial } from '@/components/deal/DraftAndSendDialog';
 import { StatusEmailFlowPicker, type StatusEmailFlowSelection } from '@/components/deal/StatusEmailFlowPicker';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
@@ -601,7 +597,6 @@ export default function DealDetail() {
   const [mentionNoteContext, setMentionNoteContext] = useState('');
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
-  const [statusEmailContent, setStatusEmailContent] = useState<StatusReportEditableContent | null>(null);
   /** Holds the generated PDF + flow-picker state while the user chooses
    *  between replying into an existing thread or starting a new email. */
   const [statusEmailFlow, setStatusEmailFlow] = useState<
