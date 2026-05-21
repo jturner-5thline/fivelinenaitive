@@ -5144,6 +5144,16 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         updateFields.is_flagged = params.is_flagged;
         if (params.flag_notes !== undefined) updateFields.flag_notes = params.flag_notes;
       }
+      // Capture "before" snapshot of the exact fields we are about to change
+      const beforeCols = Object.keys(updateFields);
+      const { data: beforeRow } = await supabase
+        .from("deals")
+        .select(beforeCols.join(","))
+        .eq("id", params.deal_id)
+        .maybeSingle();
+      const before: Record<string, any> = {};
+      for (const k of beforeCols) before[k] = (beforeRow as any)?.[k] ?? null;
+
       const { error } = await supabase.from("deals").update(updateFields).eq("id", params.deal_id);
       if (error) return { success: false, error: error.message };
       const changes: string[] = [];
@@ -5155,7 +5165,29 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         description: `Deal updated: ${changes.join(', ')} via AI Copilot`,
         user_id: userId,
       });
-      return { success: true, message: `Updated ${params.deal_name}: ${changes.join(', ')}`, actionType: "update_deal_fields", params: { deal_id: params.deal_id } };
+      // Write structured audit row
+      const { data: auditRow } = await supabase.from("deal_activity").insert({
+        deal_id: params.deal_id,
+        user_id: userId,
+        source: "ai_assistant",
+        action_type: "update_deal_fields",
+        before,
+        after: updateFields,
+      }).select("id, created_at").maybeSingle();
+      return {
+        success: true,
+        message: `Updated ${params.deal_name}: ${changes.join(', ')}`,
+        actionType: "update_deal_fields",
+        params: { deal_id: params.deal_id, deal_name: params.deal_name },
+        audit: {
+          id: auditRow?.id ?? null,
+          deal_id: params.deal_id,
+          before,
+          after: updateFields,
+          fields: beforeCols,
+          timestamp: auditRow?.created_at ?? new Date().toISOString(),
+        },
+      };
     }
     case "update_deal_status": {
       const { error } = await supabase
