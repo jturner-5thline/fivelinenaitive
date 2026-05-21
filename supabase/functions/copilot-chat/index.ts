@@ -2481,6 +2481,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         .neq("stage", "closed-lost")
         .limit(500);
       if (args.deal_id) dealsQ = dealsQ.eq("id", args.deal_id);
+      dealsQ = applyDealScope(dealsQ, scope, { allowOutOfScope: args.broaden === true });
       const { data: deals, error: dealsErr } = await dealsQ;
       if (dealsErr) return { error: dealsErr.message };
       if (!deals || deals.length === 0) return { count: 0, stale_deals: [] };
