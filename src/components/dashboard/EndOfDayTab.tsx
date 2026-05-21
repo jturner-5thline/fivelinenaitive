@@ -60,6 +60,7 @@ import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 // ─────────────────────────────────────────────────────────────
 
 const EOD_LOOKBACK_DAYS = 90;
+const EOD_FETCH_MAX_RESULTS = 2000;
 const PANE_WIDTH_KEY = 'eod:left-pane-width';
 const SNOOZE_KEY_PREFIX = 'eod:snoozed';
 const ACTIVITY_KEY_PREFIX = 'eod:activity';
@@ -96,7 +97,20 @@ function fmtTime(iso: string | undefined, allDay?: boolean) {
 }
 function safeParse(iso?: string): Date | null {
   if (!iso) return null;
-  try { return parseISO(iso); } catch { return null; }
+  try {
+    const parsed = parseISO(iso);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  } catch {
+    return null;
+  }
+}
+function emailDomain(email: string | null | undefined): string {
+  if (!email) return '';
+  const idx = email.lastIndexOf('@');
+  return idx >= 0 ? email.slice(idx + 1).toLowerCase() : '';
+}
+function isInternalAttendee(email: string | null | undefined): boolean {
+  return emailDomain(email) === '5thline.co';
 }
 function readLS<T>(key: string, fallback: T): T {
   try { const raw = localStorage.getItem(key); return raw ? JSON.parse(raw) as T : fallback; }
@@ -349,6 +363,10 @@ export function EndOfDayTab({
   const [events, setEvents] = useState<CalendarEvent[]>(hookEvents || []);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    setEvents(hookEvents || []);
+  }, [hookEvents]);
+
   const { deals } = useDealsContext();
   const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
@@ -448,54 +466,71 @@ export function EndOfDayTab({
       setLoading(true);
       const timeMin = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS)).toISOString();
       const timeMax = endOfDay(new Date()).toISOString();
-      const res = await listEvents({ timeMin, timeMax, maxResults: 500 });
-      if (!cancelled) { setEvents(res?.events || []); setLoading(false); }
+      const res = await listEvents({ timeMin, timeMax, maxResults: EOD_FETCH_MAX_RESULTS });
+      if (!cancelled) {
+        setEvents(res?.events || hookEvents || []);
+        setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
-  }, [enabled, status?.connected, listEvents]);
+  }, [enabled, status?.connected, listEvents, hookEvents]);
 
   // Build outstanding (filter resolved + dismissed + snoozed)
   const outstanding = useMemo<TileEvent[]>(() => {
-    const ws = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS));
-    const we = endOfDay(new Date());
-    const ref = startOfDay(new Date());
-    const result = (events || [])
-      .filter(ev => {
-        const s = safeParse(ev.start); if (!s) return false;
-        return s >= ws && s <= we;
-      })
-      .filter(ev => {
-        // Today's events: always include (even internal-only) so the
-        // Daily Rundown reflects the full day. Carry-forward (prior days):
-        // only keep meetings with at least one external attendee, since
-        // follow-up tracking only makes sense for externals.
-        const s = safeParse(ev.start);
-        const age = s ? differenceInCalendarDays(ref, startOfDay(s)) : 0;
-        if (age <= 0) return true;
-        return (ev.attendees || []).some(a => !a.self);
-      })
-      .filter(ev => !isResolved(ev.id) && !isDismissed(ev.id, safeParse(ev.start)) && !isSnoozed(ev.id))
-      .map(ev => {
-        const s = safeParse(ev.start);
-        const ageDays = s ? differenceInCalendarDays(ref, startOfDay(s)) : 0;
+    const now = new Date();
+    const ws = startOfDay(subDays(now, EOD_LOOKBACK_DAYS));
+    const we = endOfDay(now);
+    const ref = startOfDay(now);
+    const normalizedEvents = (events || []).map(ev => {
+      const start = safeParse(ev.start);
+      const attendeeCount = (ev.attendees || []).length;
+      const externalCount = (ev.attendees || []).filter(a => !a.self && !isInternalAttendee(a.email)).length;
+      return { ev, start, attendeeCount, externalCount };
+    });
+
+    const windowed = normalizedEvents.filter(({ start }) => !!start && start >= ws && start <= we);
+    const audienceEligible = windowed.filter(({ start, externalCount, attendeeCount }) => {
+      const age = start ? differenceInCalendarDays(ref, startOfDay(start)) : 0;
+      if (age <= 0) return true;
+      if (externalCount > 0) return true;
+      return attendeeCount === 0;
+    });
+    const uncleared = audienceEligible.filter(({ ev, start }) => (
+      !isResolved(ev.id) && !isDismissed(ev.id, start) && !isSnoozed(ev.id)
+    ));
+    const result = uncleared
+      .map(({ ev, start }) => {
+        const ageDays = start ? differenceInCalendarDays(ref, startOfDay(start)) : 0;
         return { ...ev, _ageDays: ageDays, _isCarry: ageDays > 0 };
       })
       .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
-    // Debug surface for diagnosing empty-list reports.
+
     try {
       const todayRows = result.filter(r => r._ageDays <= 0).length;
       const carryForwardRows = result.filter(r => r._ageDays > 0).length;
+      const invalidDateRows = normalizedEvents.filter(({ start }) => !start).length;
+      const outsideWindowRows = normalizedEvents.length - windowed.length;
+      const audienceFilteredRows = windowed.length - audienceEligible.length;
+      const clearedRows = audienceEligible.length - uncleared.length;
       // eslint-disable-next-line no-console
       console.log('[EndOfDay] query result', {
-        rawEvents: (events || []).length,
+        rawEvents: normalizedEvents.length,
+        invalidDateRows,
+        outsideWindowRows,
+        audienceFilteredRows,
+        clearedRows,
         totalRows: result.length,
         todayRows,
         carryForwardRows,
+        appliedFilters: {
+          search: search.trim(),
+          chips: Array.from(filterChips),
+        },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     } catch { /* noop */ }
     return result;
-  }, [events, isResolved, isDismissed, isSnoozed]);
+  }, [events, isResolved, isDismissed, isSnoozed, search, filterChips]);
 
   // Attendee contact lookup (batched)
   const allEmails = useMemo(() => {
@@ -811,7 +846,7 @@ export function EndOfDayTab({
         {filtered.length === 0 && !isFullyEmpty ? (
           // Filters/search are hiding everything — neutral state, no celebration.
           <div className="text-center py-12">
-            <p className="text-sm text-white/85">No items match the current filters</p>
+            <p className="text-sm text-white/85">No items match your filters</p>
             <p className="text-[11px] text-muted-foreground mt-1">
               {outstanding.length} outstanding item{outstanding.length === 1 ? '' : 's'} hidden by filters
             </p>
