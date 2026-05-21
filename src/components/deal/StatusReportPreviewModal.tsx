@@ -15,8 +15,6 @@ import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
 import { LenderPipelineSnapshot } from './LenderPipelineSnapshot';
 import type { DealLender } from '@/types/deal';
-import { captureStatusReportPdf } from '@/utils/statusReportPdfFromDom';
-import { saveAs } from 'file-saver';
 
 export type { StatusReportEditableContent };
 
@@ -27,14 +25,7 @@ interface StatusReportPreviewModalProps {
   configuredStages?: LenderStageConfig[];
   configuredSubstages?: LenderStageConfig[];
   outstandingItems?: OutstandingItem[];
-  /**
-   * Fired when the user clicks "Generate Status Email". The modal pre-builds
-   * the Status Report PDF from the SAME live preview node that "Export as
-   * PDF" downloads, so the email attachment is a byte-identical visual
-   * snapshot of what the user just reviewed. The caller is responsible for
-   * binding `pdfFile` into the outgoing Draft & Send composer.
-   */
-  onExport: (content: StatusReportEditableContent, pdfFile: File) => void;
+  onExport: (content: StatusReportEditableContent) => void;
   /**
    * Persist a funding source update to the underlying deal. Required for the
    * pipeline-snapshot stage cards to act as a live management surface
@@ -341,74 +332,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       sectionsVisible: { ...p.sectionsVisible, [key]: !p.sectionsVisible[key] },
     }));
 
-  // ── Shared PDF capture ──────────────────────────────────────────────────
-  // Both "Export as PDF" and "Generate Status Email" route through the SAME
-  // helper (`captureStatusReportPdf`) against the SAME live preview node
-  // (`printableRef`), so the downloaded file and the email attachment are
-  // byte-identical snapshots of what the user sees on screen.
+  // ── PDF export via window.print() — prints the SAME dark Naitive preview
+  // node the user is editing, so the PDF is a high-fidelity capture (no
+  // alternate light layout). We inject @media print rules that hide every
+  // other element on the page and force backgrounds/gradients to render.
   const printableRef = useRef<HTMLDivElement | null>(null);
-  const [pdfBusy, setPdfBusy] = useState<null | 'download' | 'email'>(null);
-
-  /** Resolve once all async preview data (AI sections + pass-feedback
-   *  rewrites) has finished loading. */
-  const waitForPreviewReady = async () => {
-    const start = Date.now();
-    while (aiLoading || aiPassFeedbackLoading) {
-      if (Date.now() - start > 20_000) break; // safety ceiling
-      await new Promise((r) => setTimeout(r, 120));
-    }
-  };
-
-  const captureFromPreview = async () => {
-    const node = printableRef.current;
-    if (!node) throw new Error('Status report preview is not mounted.');
-    return captureStatusReportPdf(node, deal.company, {
-      waitForReady: waitForPreviewReady,
-    });
-  };
-
-  const handleDownloadPdf = async () => {
-    if (pdfBusy) return;
-    setPdfBusy('download');
-    try {
-      const { blob, fileName, bytes, pages } = await captureFromPreview();
-      saveAs(blob, fileName);
-      toast({ title: 'PDF downloaded', description: `${pages} page${pages === 1 ? '' : 's'} · ${(bytes / 1024).toFixed(1)} KB` });
-    } catch (err) {
-      console.error('Status report PDF download failed', err);
-      toast({
-        title: 'Could not export PDF',
-        description: err instanceof Error ? err.message : 'Unknown error',
-        variant: 'destructive',
-      });
-    } finally {
-      setPdfBusy(null);
-    }
-  };
-
-  const handleGenerateStatusEmail = async () => {
-    if (pdfBusy) return;
-    setPdfBusy('email');
-    try {
-      const { file } = await captureFromPreview();
-      onExport(content, file);
-    } catch (err) {
-      console.error('Status report PDF for email failed', err);
-      toast({
-        title: 'Could not generate status report',
-        description: err instanceof Error ? err.message : 'Unknown error',
-        variant: 'destructive',
-      });
-    } finally {
-      setPdfBusy(null);
-    }
-  };
-
-  // Legacy window.print() fallback — retained as dead code below for the
-  // edge case where html2canvas fails. NOT wired to any button. Remove
-  // entirely after a release of stable DOM-capture exports.
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _legacyHandlePrintPdf = () => {
+  const handlePrintPdf = () => {
     const node = printableRef.current;
     if (!node) {
       toast({ title: 'Preview not ready', variant: 'destructive' });
@@ -941,28 +870,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
         <DialogFooter className="px-6 py-3 border-t border-slate-200 dark:border-slate-700 shrink-0 bg-white dark:bg-slate-800 gap-2">
           <Button variant="outline" onClick={() => handleOpenChange(false)}>Cancel</Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadPdf}
-            disabled={pdfBusy !== null}
-            className="gap-2"
-          >
-            {pdfBusy === 'download'
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : <Download className="h-4 w-4" />}
+          <Button variant="outline" size="sm" onClick={handlePrintPdf} className="gap-2">
+            <Download className="h-4 w-4" />
             Export as PDF
           </Button>
-          <Button
-            variant="liquid-glass"
-            size="sm"
-            onClick={handleGenerateStatusEmail}
-            disabled={pdfBusy !== null}
-            className="gap-2"
-          >
-            {pdfBusy === 'email'
-              ? <Loader2 className="h-4 w-4 animate-spin" />
-              : <Mail className="h-4 w-4" />}
+          <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
+            <Mail className="h-4 w-4" />
             Generate Status Email
           </Button>
         </DialogFooter>

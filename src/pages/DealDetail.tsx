@@ -198,7 +198,7 @@ import { toast } from '@/hooks/use-toast';
 import { applyDefaultChecklistToOutstandingItems } from '@/utils/applyDefaultChecklist';
 import { useChecklistPhaseControls } from '@/hooks/useChecklistPhaseControls';
 import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycle';
-import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToWord } from '@/utils/dealExport';
+import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord, buildStatusReportPdfFile } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { LenderPipelineSnapshot } from '@/components/deal/LenderPipelineSnapshot';
@@ -5699,15 +5699,18 @@ export default function DealDetail() {
                 : l),
             } : prev);
           }}
-          onExport={(editableContent, pdfFile) => {
-            // The Status Report PDF has already been captured from the SAME
-            // live preview DOM the user just reviewed (see
-            // StatusReportPreviewModal → captureStatusReportPdf). Nothing
-            // further to build here — just wire the File into the composer.
+          onExport={(editableContent) => {
+            // 1. Build the Status Report PDF and attach it to the outgoing draft.
+            //    Generation runs synchronously (jsPDF) — wrap in try/catch so a
+            //    failed PDF never opens a broken composer.
             try {
-              if (!pdfFile) {
-                throw new Error('Status report PDF was not produced.');
-              }
+              const pdfFile = buildStatusReportPdfFile(
+                deal,
+                configuredStages,
+                configuredSubstages,
+                outstandingItems,
+                editableContent,
+              );
               const rawContact = (deal.contact || '').trim();
               const contactDisplayName = rawContact.split(/\s+/)[0] || '';
               // Salutation must be its OWN paragraph, then a blank line,
@@ -5731,13 +5734,13 @@ export default function DealDetail() {
               });
               setShowStatusReportPreview(false);
             } catch (err) {
-              console.error('Failed to wire status report PDF into composer', err);
+              console.error('Failed to generate status report PDF', err);
               toast({
                 title: 'Could not generate status report',
                 description:
                   err instanceof Error
                     ? err.message
-                    : 'The PDF attachment could not be attached. Please try again.',
+                    : 'The PDF attachment failed to build. Please try again.',
                 variant: 'destructive',
               });
             }
