@@ -336,16 +336,16 @@ export function EmailQuickActionsToolbar({
       )}
 
       {meetingPopoverOpen && modalRoot && createPortal(
-        <div className="absolute inset-0 z-50 p-6">
+        <div className="absolute inset-0 z-50">
           <button
             type="button"
             aria-label="Close schedule meeting dialog"
             className="absolute inset-0 rounded-[inherit] bg-background/40 backdrop-blur-sm"
             onClick={() => setActive(null)}
           />
-          <div className="relative flex h-full w-full items-center justify-center">
+          <div className="relative h-full w-full">
             <div
-              className="relative z-10 flex h-full w-full max-w-[525px] items-stretch rounded-xl border border-border bg-card shadow-xl overflow-hidden"
+              className="absolute left-1/2 top-1/2 z-10 flex w-[min(525px,calc(100%-48px))] max-w-[calc(100%-48px)] max-h-[calc(100%-48px)] -translate-x-1/2 -translate-y-1/2 items-stretch overflow-hidden rounded-xl border border-border bg-card shadow-xl"
               onClick={(event) => event.stopPropagation()}
             >
               <QuickBookMeetingPopover
