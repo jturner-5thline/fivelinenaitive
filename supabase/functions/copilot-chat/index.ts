@@ -1,5 +1,9 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  verifiedDealUpdate,
+  WriteNotPersistedError,
+} from "../_shared/verifiedDealUpdate.ts";
 
 // ── AI action audit helpers ──────────────────────────────────────
 function adminClient() {
@@ -2826,11 +2830,17 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
       // Flag changes are LOW RISK — auto-execute
       if (args.is_flagged !== undefined && args.value === undefined && args.closing_date === undefined) {
-        const { error } = await supabase.from("deals").update({
-          is_flagged: args.is_flagged,
-          flag_notes: args.flag_notes || null,
-        }).eq("id", args.deal_id);
-        if (error) return { error: `Failed to update flag: ${error.message}` };
+        try {
+          await verifiedDealUpdate(supabase, args.deal_id, {
+            is_flagged: args.is_flagged,
+            flag_notes: args.flag_notes || null,
+          });
+        } catch (e) {
+          if (e instanceof WriteNotPersistedError) {
+            return { error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
+          }
+          return { error: `Failed to update flag: ${(e as Error).message}` };
+        }
         await supabase.from("activity_logs").insert({
           deal_id: args.deal_id, activity_type: "deal_flagged",
           description: `Deal ${args.is_flagged ? 'flagged' : 'unflagged'} via AI Copilot${args.flag_notes ? ': ' + args.flag_notes : ''}`,
