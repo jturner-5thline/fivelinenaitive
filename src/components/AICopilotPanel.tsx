@@ -1160,6 +1160,10 @@ export function AICopilotPanel() {
               contextOverride: contextOverride
                 ? { entityType: contextOverride.entityType, entityId: contextOverride.entityId, entityName: contextOverride.entityName }
                 : null,
+              // Canonical pipeline scope (workspace + pipeline + status) that
+              // every deal-touching tool call must respect so the AI's
+              // numbers match what the dashboard renders.
+              chatScope: serializeScope(chatScope),
             },
             history,
             conversationMutations: useCopilotStore.getState().conversationMutations,
