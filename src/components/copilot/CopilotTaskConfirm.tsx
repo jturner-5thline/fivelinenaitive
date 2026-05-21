@@ -35,6 +35,7 @@ interface ConfirmAction {
     assignee_name?: string | null;
     priority?: 'low' | 'medium' | 'high' | 'urgent';
     due_date?: string | null;
+    due_time?: string | null;
     task_type?: 'task' | 'follow_up' | 'call' | 'email' | 'meeting';
     inferred?: string[];
     rationale?: string | null;
@@ -88,6 +89,11 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [title, setTitle] = useState<string>(initial.title || '');
   const [description, setDescription] = useState<string>(initial.description || '');
   const [dueDate, setDueDate] = useState<string>(initial.due_date || '');
+  const [dueTime, setDueTime] = useState<string>(() => {
+    const raw = (initial.due_time || '').trim();
+    return /^\d{1,2}:\d{2}$/.test(raw) ? raw.padStart(5, '0') : '09:00';
+  });
+  const [addToCalendar, setAddToCalendar] = useState<boolean>(false);
   const [priority, setPriority] = useState<string>(initial.priority || 'medium');
   const [taskType, setTaskType] = useState<string>(initial.task_type || 'task');
   const [dealLinked, setDealLinked] = useState<boolean>(!!initial.deal_id);
@@ -107,6 +113,29 @@ export function CopilotTaskConfirm({ action }: Props) {
   const dueIsInferredToday = isInferred('due_date') && !!dueDate && dueDate === new Date().toISOString().slice(0, 10);
   const entityInferred = (isInferred('deal_id') && !!initial.deal_id) || (isInferred('contact_id') && !!initial.contact_id);
   const entityLabel = initial.deal_name || (initial.contact_id ? 'this contact' : '');
+
+  const userTz = (() => {
+    try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; }
+  })();
+  const tzAbbrev = (() => {
+    if (!dueDate) return '';
+    try {
+      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
+      const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTz, timeZoneName: 'short' }).formatToParts(d);
+      return parts.find(p => p.type === 'timeZoneName')?.value || '';
+    } catch { return ''; }
+  })();
+  const formatDueLabel = () => {
+    if (!dueDate) return 'No due date';
+    try {
+      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
+      const dateStr = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+      const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
+      return `${dateStr} · ${timeStr}${tzAbbrev ? ` ${tzAbbrev}` : ''}`;
+    } catch {
+      return dueDate;
+    }
+  };
 
   async function handleConfirm() {
     if (ambiguous) {
@@ -128,8 +157,10 @@ export function CopilotTaskConfirm({ action }: Props) {
         assignee_name: assigneeMe ? null : initial.assignee_name || null,
         priority,
         due_date: dueDate || null,
+        due_time: dueDate ? (dueTime || '09:00') : null,
+        add_to_calendar: !!addToCalendar && !!dueDate,
         task_type: taskType,
-        tz: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; } })(),
+        tz: userTz,
       };
 
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
