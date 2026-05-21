@@ -405,6 +405,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       isMountedRef.current = false;
       isPaginatingRef.current = false;
       setIsLoadingMore(false);
+      setIsAutoPaginating(false);
     } else {
       isMountedRef.current = true;
     }
