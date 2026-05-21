@@ -688,6 +688,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
+        id="email-popup-modal-root"
         className={cn(
           swipeClass,
           // Near-fullscreen workspace: scales proportionally with the viewport
