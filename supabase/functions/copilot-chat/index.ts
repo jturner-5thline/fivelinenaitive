@@ -5246,8 +5246,14 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       const before: Record<string, any> = {};
       for (const k of beforeCols) before[k] = (beforeRow as any)?.[k] ?? null;
 
-      const { error } = await supabase.from("deals").update(updateFields).eq("id", params.deal_id);
-      if (error) return { success: false, error: error.message };
+      try {
+        await verifiedDealUpdate(supabase, params.deal_id, updateFields);
+      } catch (e) {
+        if (e instanceof WriteNotPersistedError) {
+          return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
+        }
+        return { success: false, error: (e as Error).message };
+      }
       const changes: string[] = [];
       if (params.value !== undefined) changes.push(`deal size to $${params.value.toLocaleString()}`);
       if (params.closing_date !== undefined) changes.push(`closing date to ${params.closing_date || 'none'}`);
