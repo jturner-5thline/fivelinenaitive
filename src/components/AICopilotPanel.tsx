@@ -1387,7 +1387,11 @@ export function AICopilotPanel() {
       if (prompt && prompt.trim()) handleSend(prompt.trim());
     };
     window.addEventListener('copilot-chip-click', handler as EventListener);
-    return () => window.removeEventListener('copilot-chip-click', handler as EventListener);
+    window.addEventListener('naitive:copilot-prompt', handler as EventListener);
+    return () => {
+      window.removeEventListener('copilot-chip-click', handler as EventListener);
+      window.removeEventListener('naitive:copilot-prompt', handler as EventListener);
+    };
   }, [handleSend]);
 
   // When the collapsed composer hands off a typed prompt, auto-send it
