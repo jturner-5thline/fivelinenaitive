@@ -198,15 +198,12 @@ import { toast } from '@/hooks/use-toast';
 import { applyDefaultChecklistToOutstandingItems } from '@/utils/applyDefaultChecklist';
 import { useChecklistPhaseControls } from '@/hooks/useChecklistPhaseControls';
 import { getDealInactiveReason, inactiveReasonLabel } from '@/utils/dealLifecycle';
-import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord } from '@/utils/dealExport';
+import { exportDealToCSV, exportDealToPDF, exportDealToWord, exportStatusReportToPDF, exportStatusReportToWord, buildStatusReportPdfFile } from '@/utils/dealExport';
 import type { StatusReportEditableContent } from '@/utils/dealExport';
 import { StatusReportPreviewModal } from '@/components/deal/StatusReportPreviewModal';
 import { LenderPipelineSnapshot } from '@/components/deal/LenderPipelineSnapshot';
-import {
-  buildStatusEmailHtml,
-  buildStatusEmailSubject,
-} from '@/components/deal/StatusEmailDraftModal';
 import { DraftAndSendDialog, type DraftAndSendInitial } from '@/components/deal/DraftAndSendDialog';
+import { StatusEmailFlowPicker, type StatusEmailFlowSelection } from '@/components/deal/StatusEmailFlowPicker';
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
@@ -600,7 +597,22 @@ export default function DealDetail() {
   const [mentionNoteContext, setMentionNoteContext] = useState('');
   const [isTaskDialogOpen, setIsTaskDialogOpen] = useState(false);
   const [showStatusReportPreview, setShowStatusReportPreview] = useState(false);
-  const [statusEmailContent, setStatusEmailContent] = useState<StatusReportEditableContent | null>(null);
+  /** Holds the generated PDF + flow-picker state while the user chooses
+   *  between replying into an existing thread or starting a new email. */
+  const [statusEmailFlow, setStatusEmailFlow] = useState<
+    | {
+        content: StatusReportEditableContent;
+        attachment: File;
+        greetingHtml: string;
+        defaultSubject: string;
+        defaultRecipients: string[];
+        contactDisplayName: string;
+      }
+    | null
+  >(null);
+  /** Once the picker resolves, this drives `DraftAndSendDialog`. */
+  const [statusEmailDraftInitial, setStatusEmailDraftInitial] =
+    useState<DraftAndSendInitial | null>(null);
   const { profile } = useProfile();
 
   // Allow other deal-scoped components (e.g. the Deal Space Ask AI tab) to
@@ -5688,25 +5700,90 @@ export default function DealDetail() {
             } : prev);
           }}
           onExport={(editableContent) => {
-            setStatusEmailContent(editableContent);
-            setShowStatusReportPreview(false);
-            toast({ title: 'Status email ready', description: 'Formatted email draft generated.' });
+            // 1. Build the Status Report PDF and attach it to the outgoing draft.
+            //    Generation runs synchronously (jsPDF) — wrap in try/catch so a
+            //    failed PDF never opens a broken composer.
+            try {
+              const pdfFile = buildStatusReportPdfFile(
+                deal,
+                configuredStages,
+                configuredSubstages,
+                outstandingItems,
+                editableContent,
+              );
+              const rawContact = (deal.contact || '').trim();
+              const contactDisplayName = rawContact.split(/\s+/)[0] || '';
+              const greetingLine = contactDisplayName
+                ? `Hey ${contactDisplayName}, see attached. See current status report for your review.`
+                : 'Hey there, see attached. See current status report for your review.';
+              const greetingHtml = `<p>${greetingLine}</p>`;
+              const contactEmail =
+                (deal as any).contact_email || deal.contactEmail || null;
+              setStatusEmailFlow({
+                content: editableContent,
+                attachment: pdfFile,
+                greetingHtml,
+                defaultSubject: `${deal.company} Status Update`,
+                defaultRecipients: contactEmail ? [contactEmail] : [],
+                contactDisplayName,
+              });
+              setShowStatusReportPreview(false);
+            } catch (err) {
+              console.error('Failed to generate status report PDF', err);
+              toast({
+                title: 'Could not generate status report',
+                description: 'The PDF attachment failed to build. Please try again.',
+                variant: 'destructive',
+              });
+            }
           }}
         />
       )}
 
-      {deal && statusEmailContent && (
+      {/* Step 1: thread vs new-email picker (after PDF is generated). */}
+      {deal && statusEmailFlow && !statusEmailDraftInitial && (
+        <StatusEmailFlowPicker
+          open
+          onOpenChange={(o) => { if (!o) setStatusEmailFlow(null); }}
+          dealId={deal.id}
+          dealName={deal.company}
+          defaultSubject={statusEmailFlow.defaultSubject}
+          defaultRecipients={statusEmailFlow.defaultRecipients}
+          bodyPreview={
+            statusEmailFlow.contactDisplayName
+              ? `Hey ${statusEmailFlow.contactDisplayName}, see attached. See current status report for your review.`
+              : 'Hey there, see attached. See current status report for your review.'
+          }
+          attachmentName={statusEmailFlow.attachment.name}
+          onContinue={(sel: StatusEmailFlowSelection) => {
+            setStatusEmailDraftInitial({
+              subject: sel.subject,
+              bodyHtml: statusEmailFlow.greetingHtml,
+              to: sel.to,
+              dealId: deal.id,
+              attachments: [statusEmailFlow.attachment],
+              initialThreadId: sel.threadId,
+            });
+          }}
+        />
+      )}
+
+      {/* Step 2: editable composer with attachment + signature. */}
+      {deal && statusEmailDraftInitial && (
         <DraftAndSendDialog
-          open={!!statusEmailContent}
-          onOpenChange={(o) => { if (!o) setStatusEmailContent(null); }}
+          open
+          onOpenChange={(o) => {
+            if (!o) {
+              setStatusEmailDraftInitial(null);
+              setStatusEmailFlow(null);
+            }
+          }}
           contextLabel="Status Update"
-          initial={{
-            subject: buildStatusEmailSubject(deal),
-            bodyHtml: buildStatusEmailHtml(deal, statusEmailContent),
-            to: (deal as any).contact_email ? [(deal as any).contact_email] : [],
-            dealId: deal.id,
-          } as DraftAndSendInitial}
-          onSent={() => setStatusEmailContent(null)}
+          initial={statusEmailDraftInitial}
+          onSent={() => {
+            setStatusEmailDraftInitial(null);
+            setStatusEmailFlow(null);
+          }}
         />
       )}
 
