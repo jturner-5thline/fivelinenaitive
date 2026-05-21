@@ -60,6 +60,7 @@ import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 // ─────────────────────────────────────────────────────────────
 
 const EOD_LOOKBACK_DAYS = 90;
+const EOD_FETCH_MAX_RESULTS = 2000;
 const PANE_WIDTH_KEY = 'eod:left-pane-width';
 const SNOOZE_KEY_PREFIX = 'eod:snoozed';
 const ACTIVITY_KEY_PREFIX = 'eod:activity';
@@ -362,6 +363,10 @@ export function EndOfDayTab({
   const [events, setEvents] = useState<CalendarEvent[]>(hookEvents || []);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    setEvents(hookEvents || []);
+  }, [hookEvents]);
+
   const { deals } = useDealsContext();
   const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
@@ -461,11 +466,14 @@ export function EndOfDayTab({
       setLoading(true);
       const timeMin = startOfDay(subDays(new Date(), EOD_LOOKBACK_DAYS)).toISOString();
       const timeMax = endOfDay(new Date()).toISOString();
-      const res = await listEvents({ timeMin, timeMax, maxResults: 500 });
-      if (!cancelled) { setEvents(res?.events || []); setLoading(false); }
+      const res = await listEvents({ timeMin, timeMax, maxResults: EOD_FETCH_MAX_RESULTS });
+      if (!cancelled) {
+        setEvents(res?.events || hookEvents || []);
+        setLoading(false);
+      }
     })();
     return () => { cancelled = true; };
-  }, [enabled, status?.connected, listEvents]);
+  }, [enabled, status?.connected, listEvents, hookEvents]);
 
   // Build outstanding (filter resolved + dismissed + snoozed)
   const outstanding = useMemo<TileEvent[]>(() => {
