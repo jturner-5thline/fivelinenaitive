@@ -537,6 +537,23 @@ function CopilotAssistantContent({ content }: { content: string }) {
                 <a
                   href={href || '#'}
                   onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                    if (href?.startsWith('entity://')) {
+                      e.preventDefault();
+                      const m = /^entity:\/\/([a-z_]+)\/([^/?#\s]+)$/i.exec(href);
+                      if (m) {
+                        const type = m[1].toLowerCase();
+                        const id = m[2];
+                        const route =
+                          type === 'deal' ? `/deals/${id}` :
+                          type === 'contact' ? `/contacts/${id}` :
+                          type === 'company' ? `/crm-companies/${id}` :
+                          type === 'funding_source' ? `/lenders/${encodeURIComponent(id)}/history` :
+                          null;
+                        if (route) navigate(route);
+                      }
+                      return;
+                    }
                     if (href?.startsWith('/')) {
                       e.preventDefault();
                       navigate(href);
