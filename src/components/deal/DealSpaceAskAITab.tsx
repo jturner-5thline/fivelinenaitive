@@ -163,12 +163,17 @@ function SourceCitations({
   sources,
   documents,
   onOpenDocument,
+  messageContent,
 }: {
   sources?: string[];
   documents: DealSpaceDocument[];
   onOpenDocument: (doc: DealSpaceDocument) => void;
+  messageContent?: string;
 }) {
-  if (!sources || sources.length === 0) return null;
+  const considered = sources?.length ?? 0;
+  const citedIds = messageContent ? uniqueCitedIds(messageContent) : new Set<string>();
+  const cited = citedIds.size;
+  if (considered === 0 && cited === 0) return null;
 
   // Build a case-insensitive lookup by document name. The edge function
   // pushes `doc.name` directly into sourcesUsed, so an exact (case-folded)
@@ -183,13 +188,13 @@ function SourceCitations({
       <CollapsibleTrigger asChild>
         <button className="flex items-center gap-1 mt-2 text-[10px] text-muted-foreground hover:text-foreground transition-colors group">
           <FileText className="h-3 w-3" />
-          <span>{sources.length} source{sources.length !== 1 ? 's' : ''} referenced</span>
+          <span>Cited: {cited} • Considered: {considered}</span>
           <ChevronDown className="h-2.5 w-2.5 transition-transform group-data-[state=open]:rotate-180" />
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent>
         <div className="flex flex-wrap gap-1 mt-1.5">
-          {sources.map((source, i) => {
+          {(sources ?? []).map((source, i) => {
             const matched = docByName.get(source.toLowerCase());
             if (matched) {
               return (
