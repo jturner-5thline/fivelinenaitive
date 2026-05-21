@@ -187,8 +187,6 @@ export function EmailQuickActionsToolbar({
 
   return (
     <div className="space-y-2">
-      {meetingPopoverOpen && <div className='bg-red-500 text-white p-2 rounded-md text-xs font-medium'>POPOVER OPEN</div>}
-
       {/* 2-column quick-action grid. Cohesive cards — subtle elevated
           surface, 1px hairline border, accent-colored icon at 70%, label
           at 90% foreground. Single AIAssistActionButton component drives
