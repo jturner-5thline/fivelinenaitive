@@ -28,6 +28,7 @@ import { CopilotWorkspacePane, type WorkspaceItem, type WorkspaceItemType } from
 import { useProactiveNudges } from '@/hooks/useProactiveNudges';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { formatAIResponse, getStageDisplayName } from '@/lib/copilot-utils';
+import { cleanupCopilotResponse } from '@/lib/copilotResponseCleanup';
 import type { ConversationMutation } from '@/lib/copilot-utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { logUsage } from '@/lib/usageLogger';
