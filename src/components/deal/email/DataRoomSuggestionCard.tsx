@@ -11,7 +11,7 @@ interface Props {
   loading: boolean;
   onConfirm: () => void;
   onDismiss: () => void;
-  /** Optional — defer this suggestion to the AI Action Queue. */
+  /** Optional — defer this suggestion to the AI Approval Queue. */
   onAddToQueue?: () => void;
 }
 
@@ -97,7 +97,7 @@ export function DataRoomSuggestionCard({
             className="h-7 text-[11px] gap-1"
             onClick={onAddToQueue}
             disabled={loading}
-            title="Add to Action Queue for batch review"
+            title="Add to Approval Queue for batch review"
           >
             <InboxIcon className="h-3 w-3" /> Add to Queue
           </Button>

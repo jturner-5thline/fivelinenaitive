@@ -6,7 +6,7 @@ import { toast } from 'sonner';
 
 /**
  * Pending requests from users asking for access to a specific deal.
- * Surfaced inside the Action Queue alongside AI suggestions and styled
+ * Surfaced inside the Approval Queue alongside AI suggestions and styled
  * after the lender sync-request rows on the Management tab.
  */
 export type DealAccessRequestStatus = 'pending' | 'approved' | 'declined';

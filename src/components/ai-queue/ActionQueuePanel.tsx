@@ -16,6 +16,8 @@ import {
   Save,
   Loader2,
   KeyRound,
+  Video,
+  ListChecks,
 } from 'lucide-react';
 import { formatDistanceToNow, formatDistanceToNowStrict } from 'date-fns';
 import {
@@ -29,6 +31,7 @@ import {
 } from '@/hooks/useAiActionQueue';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { ClaapApprovalCard } from './ClaapApprovalCard';
 import {
   useDealAccessRequests,
   useApproveDealAccessRequest,
@@ -42,6 +45,8 @@ const TYPE_META: Record<AiActionType, { label: string; icon: typeof CheckSquare;
   save_to_data_room: { label: 'Save to Data Room', icon: Save, color: 'text-violet-500' },
   log_note: { label: 'Log Note', icon: FileText, color: 'text-amber-500' },
   deal_update: { label: 'Update Deal', icon: Briefcase, color: 'text-blue-500' },
+  claap_recording_review: { label: 'Claap Recording', icon: Video, color: 'text-fuchsia-500' },
+  claap_action_items: { label: 'Meeting Action Items', icon: ListChecks, color: 'text-cyan-500' },
 };
 
 function expiryLabel(item: QueuedAiAction): string {
@@ -119,7 +124,7 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
       <div className="px-3 py-2.5 border-b flex items-center justify-between">
         <div className="flex items-center gap-2">
           <InboxIcon className="h-4 w-4 text-muted-foreground" />
-          <p className="font-medium text-sm">Action Queue</p>
+          <p className="font-medium text-sm">Approval Queue</p>
           {(items.length + accessRequests.length) > 0 && (
             <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
               {items.length + accessRequests.length}
@@ -318,6 +323,15 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                 </div>
                 <ul className="divide-y divide-border/40">
                   {group.items.map(item => {
+                    // Claap approval cards get a dedicated renderer with their own
+                    // two-stage approval flow (relationship matching vs. action items).
+                    if (item.action_type === 'claap_recording_review' || item.action_type === 'claap_action_items') {
+                      return (
+                        <li key={item.id} className="p-2.5">
+                          <ClaapApprovalCard item={item} />
+                        </li>
+                      );
+                    }
                     const meta = TYPE_META[item.action_type];
                     const Icon = meta?.icon ?? CheckSquare;
                     const isEditing = editingId === item.id;

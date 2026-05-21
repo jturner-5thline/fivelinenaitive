@@ -7,7 +7,7 @@ import { useDealAccessRequests } from '@/hooks/useDealAccessRequests';
 import { ActionQueuePanel } from '@/components/ai-queue/ActionQueuePanel';
 
 /**
- * Compact dashboard widget that surfaces the AI Action Queue above the
+ * Compact dashboard widget that surfaces the AI Approval Queue above the
  * assistant input. Clicking opens a modal with the full queue panel —
  * no separate page or sidebar destination.
  */
@@ -43,7 +43,7 @@ export function ActionQueueWidget() {
           'transition-colors hover:bg-card/80 hover:border-border/60 text-left',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         )}
-        aria-label={`Open Action Queue${count > 0 ? `, ${count} pending` : ''}`}
+        aria-label={`Open Approval Queue${count > 0 ? `, ${count} pending` : ''}`}
       >
         <div className="flex items-center gap-2.5 min-w-0">
           <div className="h-7 w-7 rounded-md bg-muted/60 flex items-center justify-center shrink-0">
@@ -51,7 +51,7 @@ export function ActionQueueWidget() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-foreground leading-tight truncate flex items-center gap-1.5">
-              <span>Action Queue</span>
+              <span>Approval Queue</span>
               {count > 0 && (
                 <button
                   type="button"
@@ -61,8 +61,8 @@ export function ActionQueueWidget() {
                     e.stopPropagation();
                     handleOpenChange(true);
                   }}
-                  aria-label={`${count} pending — open Action Queue`}
-                  title={`${count} pending — open Action Queue`}
+                  aria-label={`${count} pending — open Approval Queue`}
+                  title={`${count} pending — open Approval Queue`}
                   className="inline-flex items-center justify-center rounded-full h-4 min-w-[16px] px-1 text-[10px] font-semibold bg-[hsl(var(--outlook-blue))] text-white leading-none cursor-pointer hover:bg-[hsl(var(--outlook-blue)/0.85)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--outlook-blue))] focus-visible:ring-offset-1 transition-colors"
                 >
                   {count > 99 ? '99+' : count}
@@ -84,7 +84,7 @@ export function ActionQueueWidget() {
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
           <DialogHeader className="sr-only">
-            <DialogTitle>Action Queue</DialogTitle>
+            <DialogTitle>Approval Queue</DialogTitle>
           </DialogHeader>
           <ActionQueuePanel items={items} onClose={() => setOpen(false)} />
         </DialogContent>

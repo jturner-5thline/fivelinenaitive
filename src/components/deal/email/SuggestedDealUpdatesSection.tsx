@@ -496,7 +496,7 @@ function SuggestionCard({
           variant="outline"
           size="sm"
           className="h-7 text-[11px] gap-1 px-2"
-          title="Add to Action Queue for batch review"
+          title="Add to Approval Queue for batch review"
           disabled={working || !draft.email}
           onClick={async () => {
             setWorking(true);

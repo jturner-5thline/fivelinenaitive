@@ -1108,6 +1108,102 @@ Deno.serve(async (req) => {
       }
     }
 
+    // ─── Approval Queue: enqueue recording-review card + trigger action-items ───
+    // Every newly-synced Claap recording lands in the Approval Queue so the user
+    // can confirm the suggested deal/company/contact links before they're written
+    // to anything user-visible, and review AI-extracted follow-up tasks before
+    // they're created.
+    if (!excluded && taskAssignee) {
+      try {
+        // Build the top-3 suggestions for Stage-1 (relationship matching).
+        const candidateDealIds = resolvedDealId
+          ? [resolvedDealId, ...multipleDealCandidates.filter((id) => id !== resolvedDealId)].slice(0, 3)
+          : multipleDealCandidates.slice(0, 3);
+
+        let candidateDeals: Array<{ id: string; company: string | null; company_id: string | null }> = [];
+        if (candidateDealIds.length > 0) {
+          const { data } = await supabaseAdmin
+            .from("deals")
+            .select("id, company, company_id")
+            .in("id", candidateDealIds);
+          candidateDeals = data || [];
+        }
+
+        const whyParts: string[] = [];
+        if (matchResult.matchSource) whyParts.push(matchResult.matchSource);
+        if (matchResult.callType) whyParts.push(`call type: ${matchResult.callType}`);
+        const externalDomains = Array.from(new Set(
+          classifiedParticipants.filter(p => !p.is_internal).map(p => p.domain).filter(Boolean)
+        ));
+        if (externalDomains.length > 0) whyParts.push(`attendee domains: ${externalDomains.join(", ")}`);
+        if (extractedCompanyName) whyParts.push(`title mentions "${extractedCompanyName}"`);
+
+        const dealNameForQueue = candidateDeals.find(d => d.id === resolvedDealId)?.company
+          || candidateDeals[0]?.company
+          || extractedCompanyName
+          || null;
+
+        const queuePayload = {
+          claap_meeting_id: meetingId,
+          claap_id: claapId,
+          recording_title: data.title || null,
+          recording_url: data.url || data.videoUrl || null,
+          recorded_at: data.meeting?.startingAt || data.createdAt || null,
+          duration_seconds: data.durationSeconds || null,
+          attendees: classifiedParticipants.map(p => ({
+            name: p.name, email: p.email, is_internal: p.is_internal,
+          })),
+          suggestions: {
+            deals: candidateDeals.map(d => ({
+              id: d.id, name: d.company, company_id: d.company_id,
+              pre_selected: d.id === resolvedDealId,
+            })),
+            company_id: resolvedCompanyId,
+            company_name: extractedCompanyName,
+            contact_ids: resolvedContactIds,
+          },
+          confidence: matchResult.confidence,
+          confidence_label: matchResult.confidence >= 75 ? "high"
+            : matchResult.confidence >= 40 ? "medium" : "low",
+          why: whyParts.join(" · "),
+          ambiguous: matchResult.ambiguous || multipleDealCandidates.length > 1,
+          stage: "matching" as const,
+        };
+
+        await supabaseAdmin
+          .from("ai_action_queue")
+          .insert({
+            user_id: taskAssignee,
+            deal_id: resolvedDealId || null,
+            deal_name: dealNameForQueue,
+            action_type: "claap_recording_review",
+            title: `New Claap recording: ${data.title || "Untitled recording"}`,
+            description: dealNameForQueue
+              ? `Confirm link to ${dealNameForQueue}${queuePayload.confidence_label === "high" ? " (high confidence)" : ""}.`
+              : `Choose a deal/company to link this recording to.`,
+            payload: queuePayload,
+            source: { provider: "claap", origin: "claap-webhook" },
+          });
+      } catch (e) {
+        console.error("Failed to enqueue Approval Queue card for Claap recording:", e);
+      }
+
+      // Trigger action-items extraction asynchronously — this inserts a SECOND
+      // approval-queue row (action_type = 'claap_action_items') once the AI is done.
+      if (transcript && !transcriptMissing) {
+        try {
+          const extractUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/claap-extract-action-items`;
+          fetch(extractUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "Authorization": `Bearer ${Deno.env.get("SUPABASE_ANON_KEY")}` },
+            body: JSON.stringify({ meeting_id: meetingId, assignee_user_id: taskAssignee }),
+          }).catch((e) => console.error("Failed to trigger action-items extraction:", e));
+        } catch (e) {
+          console.error("Failed to trigger action-items extraction:", e);
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({
         ok: true,

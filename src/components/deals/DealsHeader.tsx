@@ -48,7 +48,7 @@ const OVERLAY_PREFETCHERS: Record<string, () => Promise<unknown>> = {
   Dashboard: loadDashboard,
   Calendar: loadCalendar,
   Mail: loadMail,
-  'Action Queue': loadTasks,
+  'Approval Queue': loadTasks,
 };
 import {
   canSeeNikiBriefing,
@@ -207,7 +207,7 @@ export function DealsHeader() {
   const overlayRegistry = [
     { label: 'Calendar' as const, isOpen: isCalendarOpen, open: () => setIsCalendarOpen(true), close: () => setIsCalendarOpen(false), available: true },
     { label: 'Mail' as const, isOpen: isMailOpen, open: () => setIsMailOpen(true), close: () => setIsMailOpen(false), available: true },
-    { label: 'Action Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: true },
+    { label: 'Approval Queue' as const, isOpen: isActionQueueOpen, open: () => { setIsActionQueueOpen(true); refetchActionQueue(); }, close: () => setIsActionQueueOpen(false), available: true },
     { label: 'Tasks' as const, isOpen: isTasksListOpen, open: () => setIsTasksListOpen(true), close: () => setIsTasksListOpen(false), available: true },
     { label: 'Deal Rundown' as const, isOpen: isDealRundownOpen, open: () => setIsDealRundownOpen(true), close: () => setIsDealRundownOpen(false), available: true },
     { label: 'Dashboard' as const, isOpen: isDashboardOpen, open: () => setIsDashboardOpen(true), close: () => setIsDashboardOpen(false), available: isFifthLine },
@@ -374,7 +374,7 @@ export function DealsHeader() {
               const ICONS: Record<string, typeof Calendar> = {
                 'Calendar': Calendar,
                 'Mail': Mail,
-                'Action Queue': Inbox,
+                'Approval Queue': Inbox,
                 'Tasks': ListChecks,
                 'Deal Rundown': ClipboardList,
                 'Dashboard': LayoutDashboard,
@@ -501,7 +501,7 @@ export function DealsHeader() {
       <Dialog open={isActionQueueOpen} onOpenChange={setIsActionQueueOpen}>
         <DialogContent className="sm:max-w-[640px] p-0 overflow-hidden flex flex-col max-h-[80vh]">
           <DialogHeader className="sr-only">
-            <DialogTitle>Action Queue</DialogTitle>
+            <DialogTitle>Approval Queue</DialogTitle>
           </DialogHeader>
           <ActionQueuePanel items={actionQueueItems} onClose={() => setIsActionQueueOpen(false)} />
         </DialogContent>

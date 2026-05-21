@@ -1,58 +1,67 @@
-# Align AI pipeline scope with the dashboard
+## Goal
 
-## Problem
+Every Claap recording that arrives via sync/webhook automatically lands in the Approval Queue with (a) AI-suggested deal/company/contact links and (b) AI-extracted action items, gated behind a two-stage human approval before anything is written to deals, contacts, or tasks. Rename the surface from "Action Queue" to "Approval Queue" everywhere user-facing.
 
-The dashboard shows 7 active deals at 5th Line (default pipeline, status=active), but the AI says 476 active deals / $2.5BN because `get_pipeline_summary`, `search_deals`, `get_stale_deal_alerts`, and several other tools query `deals` without scoping by `company_id`, pipeline, or status — they only get whatever RLS hands them. For a 5th Line admin (who has cross-tenant visibility), that returns thousands of rows. Users can't reconcile any AI claim against the UI.
+## Scope
 
-## Approach
+### 1. Backend — auto-enqueue Claap recordings
 
-1. **Frontend computes one canonical `chatScope` object every turn** and sends it to `copilot-chat`. Shape:
-   ```
-   {
-     company_id: string | null,        // active workspace (PipelineContext)
-     pipeline_id: string | null,       // active default/selected pipeline
-     status_filter: 'active' | 'all',  // 'active' = exclude closed/on-hold/archived
-     include_archived: boolean,
-     label: string                     // "5th Line · Active Pipeline · Active only"
-   }
-   ```
-   Read from `PipelineContext` / current company override / the same selector the dashboard uses, so the chat header and the AI tool calls are always in lockstep with what the UI is showing.
+- Update `supabase/functions/claap-webhook/index.ts`: after a new recording is persisted, enqueue an item into `ai_action_queue` of a new `type = 'claap_recording_review'` with a payload referencing `claap_recording_id`, `title`, `meeting_at`, raw attendees, and `org_company_id`. Skip if the recording is already linked to a deal with high confidence (preserves existing auto-link behavior in `claap-suggest-matches`).
+- Reuse `claap-suggest-matches` to produce candidate deals/companies/contacts; store top 3 with confidence + an explanation string (e.g. "attendee email domain matches Vispero; transcript mentions 'Vispero Q2'"). Pre-select top candidate when confidence ≥ 0.75.
+- New edge function `claap-extract-action-items`: pulls transcript + summary from the recording, calls Lovable AI Gateway (Gemini 2.5 Flash) with a structured schema returning `{ title, description, suggested_owner_user_id, suggested_owner_name, due_at|null, source_quote, dedupe_key }`. Group by owner. Dedupe via case-insensitive title hash + similar `dedupe_key`. Store results on the queue item's payload (not in `tasks` yet — tasks are only created on approval).
+- Both calls are fired after webhook insert; failures degrade gracefully (queue item still created, with empty suggestions/action_items and a `processing_error` field the UI can surface as "AI analysis failed — retry").
 
-2. **Edge function `copilot-chat` accepts `context.chatScope`** and threads it into every deal-touching tool. Tools updated:
-   - `search_deals` — add `.eq('company_id', scope.company_id)` and stage/status filter when `status_filter='active'`. Add explicit "broaden scope" hint in the no-results response.
-   - `get_pipeline_summary` — already filters active/all; additionally scope to `company_id` + `pipeline_id` and report `scope.label` in the response so the AI's narration matches the chip.
-   - `get_stale_deal_alerts`, `list_finserv_deals`, `get_finserv_pipeline_summary`, `get_partner_pipeline_summary`, `get_deals` — same scoping.
-   - `get_deal` / `get_deal_full` — allow out-of-scope reads (so the user can still look up a closed deal by name) but tag the response with `out_of_current_scope: true` so the model warns the user.
-   - Off-page deal resolver — restricted to scope by default; if no match, retry across all scopes once and surface "I found this in <other workspace>".
+### 2. Frontend — Approval Queue card UX
 
-3. **System prompt update** — add a `CURRENT SCOPE` block printed verbatim above the existing CURRENT CONTEXT, plus a rule: "Every pipeline number you report (counts, totals, lists) MUST come from a tool call made within the CURRENT SCOPE. If you cite a deal outside the current scope, explicitly say so."
+Add a new card renderer in `ActionQueuePanel.tsx` for `type === 'claap_recording_review'`:
 
-4. **Chat header UI**:
-   - Replace the existing "Context:" chip with a `ScopeChip` showing `<workspace> · <pipeline> · <status>` plus the live count from `useDealsContext` filtered by the same scope ("7 deals").
-   - Add a `ScopeMenu` dropdown (Radix `DropdownMenu`) with:
-     - Workspace: current workspace ▾ / All workspaces (admin only)
-     - Pipeline: current pipeline ▾ / All pipelines
-     - Status: Active only / Include closed & on-hold / Include archived
-   - Persist the selection in `sessionStorage` under `naitive.copilot.chat_scope` so it survives panel close but resets per tab.
-   - When the user changes scope, replay the chip count and post a system message in the chat: "_Scope changed → 5th Line · Active Pipeline · Active only (7 deals)._"
+- **Header:** recording title, meeting date/time, attendee chips.
+- **Stage 1 — Relationship matching:** suggested deal / company / contacts rows with a Confidence pill (High/Medium/Low) and an "Why this match?" tooltip showing the AI's explanation. Buttons: **Approve**, **Edit match** (opens picker reusing `ClaapDealSelector` / contact + company pickers), **Create new** (opens quick-create flows), **Reject** (drops the suggestion, recording stays linked to nothing).
+- **Stage 2 — Action items:** unlocks after Stage 1 is approved or skipped. Renders the extracted action items grouped by owner with inline edit (title, owner, due date). Buttons per row: **Approve**, **Edit**, **Discard**. Toolbar: **Approve all**, **Discard all**.
+- All writes go through new RPC-style handlers in `useAiActionQueue.ts`:
+  - `approveClaapMatch(itemId, { dealId, companyId, contactIds })` → updates `claap_recordings` link rows, logs `deal_activity`, then advances queue item to `awaiting_tasks` sub-status.
+  - `approveClaapTasks(itemId, taskPayloads[])` → bulk insert into `tasks` with `source = 'claap'`, link to deal/company, log activity, mark queue item `approved`.
+- No optimistic completion: queue item only flips to `approved` after the DB write returns success. On failure, surface a toast and keep the item open.
 
-5. **Acceptance verification**:
-   - On the 5th Line workspace with default scope, `get_pipeline_summary` returns `{ total: 7, active: 7, scope_label: "5th Line · Active Pipeline · Active only" }`, matching the dashboard.
-   - Searching "Turbine" with default scope returns the Turbine deal only if it is in the active 5th Line pipeline; otherwise the AI says "Turbine exists but is outside your current scope (in <workspace/pipeline>). Want me to broaden the scope?".
-   - Header chip count equals `Active Deals` KPI tile.
-   - Changing the dropdown to "All workspaces" makes the AI's totals jump and the chip count update.
+### 3. Rename: Action Queue → Approval Queue (user-facing only)
 
-## Open questions (need answers before I build)
+Files to update (string-level only, no DB/table rename):
 
-1. **What exactly defines "Active Pipeline" in the 5th Line dashboard tile that shows 7?** I see three candidates in the codebase: `deals.company_id` + the company's default `deal_pipelines` row + `status IN ('active')`, or a hardcoded `deal_class` filter, or the FinServ vs Debt split. Can you confirm? My default is: `company_id = current company` AND `pipeline_id = is_default pipeline of that company` AND `status NOT IN ('closed','on-hold','archived')` AND `stage NOT IN ('closed-won','closed-lost')`, plus the existing global exclusions (`Test-Niki's Store`, `Example Deal`, `test *`).
-2. **"All workspaces" option** — should this be visible to every user or gated to the 5th Line internal allowlist? (My default: gated; non-admins only see workspace switcher options matching their `company_members` rows.)
-3. **Out-of-scope deal references** — if the AI knows of a deal outside scope (e.g. user asks "what's on BT Advisory?" and BT Advisory is archived), should we (a) refuse, (b) answer but flag, or (c) silently auto-broaden? My default is (b).
+- `src/components/ai-queue/ActionQueueBadge.tsx`, `ActionQueuePanel.tsx`
+- `src/components/dashboard/ActionQueueWidget.tsx` (label, aria, title attrs)
+- `src/components/deals/DealsHeader.tsx` (overlay key, label, icon map)
+- `src/components/deal/email/*` (tooltip strings)
+- `src/hooks/useAiActionQueue.ts` (toast copy + comment headers)
+- `src/pages/Dashboard.tsx` (dialog title, tile label, aria)
+- `src/lib/headerOverlayNav.ts` comment
+- `src/index.css` comment (cosmetic)
 
-If you're happy with the defaults in parens, just say "go" and I'll ship it.
+Keep file/component names, DB table `ai_action_queue`, hook name, and route as-is to avoid breakage. Only the strings the user sees change. The overlay registry key `'Action Queue'` in `DealsHeader.tsx` is used as a lookup key in 4 places — rename all 4 in lockstep.
 
-## Technical notes
+### 4. Activity logging
 
-- `PipelineContext` already exposes the current company + pipeline; reuse it instead of re-deriving from URL.
-- Tool changes are mechanical `.eq('company_id', …)` / `.in('status', …)` additions; the heaviest lift is `search_deals` because of its fuzzy-rank path — add the filter at the SQL `select` stage, before scoring, so ranking still works.
-- Header chip count uses `useDealsContext` (already filters by workspace) + a local memo that applies the active scope filter — no extra round-trip.
-- No DB migration needed; this is pure query-shape + UI work.
+After each approved match or task batch, insert into `deal_activity` (`type` = `'claap_match_approved'` or `'claap_tasks_approved'`) with a payload referencing the recording + queue item ID. Only on confirmed DB success.
+
+## Technical details
+
+```
+claap-webhook (recording.created)
+  └── inserts ai_action_queue row { type: 'claap_recording_review', payload: { claap_recording_id, meta } }
+        ├── async: claap-suggest-matches → payload.suggestions = [{deal, company, contacts, confidence, why}]
+        └── async: claap-extract-action-items → payload.action_items = [{title, owner, due_at, source_quote}]
+```
+
+```
+ApprovalQueueCard (new renderer)
+  Stage 1: match approval  ──► writes claap_recordings links + activity ──► sets payload.stage = 'tasks'
+  Stage 2: action items    ──► bulk insert tasks + activity              ──► status = 'approved'
+```
+
+`ai_action_queue.type` enum likely already accepts strings; add `'claap_recording_review'` to the TS union in `useAiActionQueue.ts`. No DB migration needed for the type column (text). Add a `payload.stage` field tracked client-side and persisted via the existing payload JSONB.
+
+### Out of scope
+
+- Renaming the DB table or hook (`useAiActionQueue`)
+- Changing the route `/dashboard` overlay path
+- Backfilling existing recordings — only new recordings from webhook time forward auto-enqueue
+- Building a separate top-level `/approval-queue` page (the existing dialog/dashboard tile stays the entry point)
