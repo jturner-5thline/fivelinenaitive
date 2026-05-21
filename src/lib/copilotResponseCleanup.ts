@@ -47,7 +47,7 @@ export function normalizeMoneyFormatting(input: string): string {
  * Threshold tuned conservatively (0.85) so we don't strip legitimate
  * follow-ups that merely repeat a deal/lender name.
  */
-export function dedupeParagraphs(input: string, threshold = 0.85): string {
+export function dedupeParagraphs(input: string, threshold = 0.7): string {
   const paragraphs = input.split(/\n\s*\n/);
   if (paragraphs.length < 2) return input;
   const kept: string[] = [];
@@ -70,7 +70,16 @@ export function dedupeParagraphs(input: string, threshold = 0.85): string {
     let isDup = false;
     for (const prev of keptTokens) {
       if (prev.size < 6) continue;
-      if (jaccard(tokens, prev) >= threshold) {
+      // Use overlap coefficient (intersection / min size) — more forgiving
+      // than Jaccard for the common LLM failure mode where the second
+      // paragraph repeats the same data list under a different heading
+      // (only the heading tokens differ, so Jaccard drops below 0.85
+      // even though >90% of the data is duplicated). Threshold tuned
+      // on real "Pipeline Summary" vs "Pipeline Breakdown" cases.
+      let inter = 0;
+      for (const t of tokens) if (prev.has(t)) inter++;
+      const overlap = inter / Math.min(tokens.size, prev.size);
+      if (overlap >= 0.85 || jaccard(tokens, prev) >= threshold) {
         isDup = true;
         break;
       }
