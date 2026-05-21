@@ -1178,64 +1178,11 @@ export function exportStatusReportToPDF(
   doc.save(fileName);
 }
 
-/** Convenience helper: build the Status Report PDF as a File ready to attach. */
-export function buildStatusReportPdfFile(
-  deal: Deal,
-  configuredStages?: LenderStageConfig[],
-  configuredSubstages?: LenderStageConfig[],
-  outstandingItems?: OutstandingItem[],
-  editableContent?: StatusReportEditableContent,
-): File {
-  const result = exportStatusReportToPDF(
-    deal,
-    configuredStages,
-    configuredSubstages,
-    outstandingItems,
-    editableContent,
-    { returnBlob: true },
-  ) as { blob: Blob; pageCount: number };
-  const { blob, pageCount } = result;
-  const dateMMDD = new Date()
-    .toLocaleDateString('en-US', { month: '2-digit', day: '2-digit' })
-    .replace('/', '-');
-  // Fresh per-generation stamp prevents any cached/stale chip from being
-  // re-used. The composer binds by File identity, but this also makes the
-  // server-side storage key (if uploaded later) unique per click.
-  const uniq = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-  const fileName = `${deal.company} Status Update - ${dateMMDD} [${uniq}].pdf`;
-  // Verify the PDF is a real, non-stub document before handing it to the
-  // composer. A jsPDF-rendered status report for any real deal should be
-  // well above 5 KB and have at least one page. If anything looks off,
-  // throw so the caller can surface an error instead of attaching a broken
-  // chip to the email draft.
-  // eslint-disable-next-line no-console
-  console.info('[StatusReport] generated PDF', {
-    deal: deal.company,
-    bytes: blob.size,
-    mime: blob.type,
-    pages: pageCount,
-    fileName,
-  });
-  const MIN_BYTES = 5_000; // stub jsPDF is ~1–2 KB; real reports start ~15 KB+
-  if (!blob || blob.size < MIN_BYTES) {
-    throw new Error(
-      `Status report PDF looks empty (${blob?.size ?? 0} bytes, ${pageCount} pages). Refusing to attach.`,
-    );
-  }
-  if (blob.type && blob.type !== 'application/pdf') {
-    throw new Error(
-      `Status report blob has wrong mime type "${blob.type}". Expected application/pdf.`,
-    );
-  }
-  const file = new File([blob], fileName, { type: 'application/pdf' });
-  // eslint-disable-next-line no-console
-  console.info('[StatusReport] attached File', {
-    name: file.name,
-    size: file.size,
-    type: file.type,
-  });
-  return file;
-}
+// NOTE: `buildStatusReportPdfFile` (the legacy minimal-template path used by
+// the email flow) has been removed. The Status Report PDF is now captured
+// directly from the live preview DOM in StatusReportPreviewModal via
+// `captureStatusReportPdf` (src/utils/statusReportPdfFromDom.ts), so the
+// email attachment is byte-identical to the "Export as PDF" download.
 
 // Status Report Word Export
 export async function exportStatusReportToWord(
