@@ -6475,7 +6475,7 @@ Your response MUST be beautifully formatted markdown text. Write like an experie
 
 REQUIRED MARKDOWN STRUCTURE:
 
-*Single-deal workflow: [1-2 sentence plan description]*
+*⚡ Single-deal workflow: [1-2 sentence plan description]*
 
 ---
 
@@ -6554,7 +6554,7 @@ FEW-SHOT EXAMPLE — given input: "From: john@sponsor.com Subject: Project Atlas
 
 Expected response:
 
-*Single-deal workflow: Extracting deal structure from forwarded email regarding Project Atlas, a $25M senior secured revolver for Atlas Corp. Will normalize key fields, assess credit risks, and produce deal summary, deck outline, and internal report.*
+*⚡ Single-deal workflow: Extracting deal structure from forwarded email regarding Project Atlas, a $25M senior secured revolver for Atlas Corp. Will normalize key fields, assess credit risks, and produce deal summary, deck outline, and internal report.*
 
 ---
 
