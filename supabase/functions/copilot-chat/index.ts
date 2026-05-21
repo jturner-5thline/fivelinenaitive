@@ -2518,10 +2518,12 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { count: stale_deals.length, stale_days_threshold: staleDays, stale_deals };
     }
     case "get_pipeline_summary": {
-      const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
+      let pq = supabase.from("deals").select("id, company, value, stage, status").limit(1000);
+      pq = applyDealScope(pq, scope, { allowOutOfScope: args.broaden === true });
+      const { data: deals } = await pq;
       if (!deals) return { error: "No deals" };
-      const scope = args.scope || "active_only";
-      const filtered = scope === "active_only"
+      const argScope = args.scope || "active_only";
+      const filtered = argScope === "active_only"
         ? deals.filter((d: any) => d.status !== "on-hold" && d.status !== "closed" && d.stage !== "on-hold" && d.stage !== "closed")
         : deals;
       const excluded = deals.length - filtered.length;
@@ -2538,7 +2540,8 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         active,
         totalValue,
         byStage: stageCounts,
-        scope: scope === "active_only" ? `Active Pipeline (excluding ${excluded} on-hold/closed deals)` : `Full Pipeline (all ${deals.length} deals including on-hold/closed)`,
+        scope: `${scope.label}${argScope === "active_only" ? "" : " (incl. on-hold/closed)"}`,
+        scope_label: scope.label,
         excluded_count: excluded,
         full_count: deals.length,
       };
