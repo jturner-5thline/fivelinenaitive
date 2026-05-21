@@ -5713,10 +5713,15 @@ export default function DealDetail() {
               );
               const rawContact = (deal.contact || '').trim();
               const contactDisplayName = rawContact.split(/\s+/)[0] || '';
-              const greetingLine = contactDisplayName
-                ? `Hey ${contactDisplayName}, see attached. See current status report for your review.`
-                : 'Hey there, see attached. See current status report for your review.';
-              const greetingHtml = `<p>${greetingLine}</p>`;
+              // Salutation must be its OWN paragraph, then a blank line,
+              // then the body sentence. The composer's signature insertion
+              // appends another blank line + the signature block below.
+              const salutation = contactDisplayName
+                ? `Hey ${contactDisplayName},`
+                : 'Hey there,';
+              const bodyLine =
+                'See attached. See the current status report for your review.';
+              const greetingHtml = `<p>${salutation}</p><p><br/></p><p>${bodyLine}</p>`;
               const contactEmail =
                 (deal as any).contact_email || deal.contactEmail || null;
               setStatusEmailFlow({
@@ -5751,8 +5756,8 @@ export default function DealDetail() {
           defaultRecipients={statusEmailFlow.defaultRecipients}
           bodyPreview={
             statusEmailFlow.contactDisplayName
-              ? `Hey ${statusEmailFlow.contactDisplayName}, see attached. See current status report for your review.`
-              : 'Hey there, see attached. See current status report for your review.'
+              ? `Hey ${statusEmailFlow.contactDisplayName}, — See attached. See the current status report for your review.`
+              : 'Hey there, — See attached. See the current status report for your review.'
           }
           attachmentName={statusEmailFlow.attachment.name}
           onContinue={(sel: StatusEmailFlowSelection) => {

@@ -71,6 +71,21 @@ function plainTextToHtml(text: string): string {
   return blocks.join('');
 }
 
+/** Heuristic: treat a string as HTML if it contains any tag-like markup.
+ *  Saved email signatures (e.g. the default 5th Line block) ship as HTML and
+ *  must NOT be escaped — otherwise the composer renders literal `<p>` /
+ *  `<strong>` text instead of formatted content. */
+function looksLikeHtml(s: string): boolean {
+  return /<\/?[a-z][\s\S]*?>/i.test(s);
+}
+
+/** Render a signature for the rich-text editor. Accepts either HTML
+ *  (returned as-is) or plain text (converted to escaped paragraphs). */
+function renderSignatureHtml(sig: string | undefined): string {
+  if (!sig || !sig.trim()) return '';
+  return looksLikeHtml(sig) ? sig : plainTextToHtml(sig);
+}
+
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB per file (Gmail cap)
 
 interface ThreadOption {
@@ -121,8 +136,9 @@ export function DraftAndSendDialog({
     const bodyHtml = initial.bodyHtml && initial.bodyHtml.trim().length > 0
       ? initial.bodyHtml
       : plainTextToHtml(initial.body ?? '');
-    const sigHtml = signature ? plainTextToHtml(signature) : '';
-    setBody(sigHtml ? `${bodyHtml}<p></p>${sigHtml}` : bodyHtml);
+    const sigHtml = renderSignatureHtml(signature);
+    // Blank paragraph keeps a visible separator line between body & signature.
+    setBody(sigHtml ? `${bodyHtml}<p><br/></p>${sigHtml}` : bodyHtml);
     setFiles(initial.attachments ?? []);
     setSelectedThreadId(initial.initialThreadId ?? 'new');
   }, [open, initial, signature]);
@@ -204,7 +220,18 @@ export function DraftAndSendDialog({
   };
   const removeFile = (idx: number) => setFiles((prev) => prev.filter((_, i) => i !== idx));
 
-  const canSend = to.length > 0 && subject.trim().length > 0 && !isSending;
+  // Block send while any pre-attached file is still empty (e.g. the generated
+  // status report PDF hasn't finished rendering). Prevents shipping a chip
+  // with an empty payload.
+  const hasEmptyAttachment = files.some((f) => !f.size || f.size === 0);
+  const canSend =
+    to.length > 0 && subject.trim().length > 0 && !isSending && !hasEmptyAttachment;
+
+  const formatBytes = (n: number): string => {
+    if (n >= 1024 * 1024) return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+    if (n >= 1024) return `${Math.max(1, Math.round(n / 1024))} KB`;
+    return `${n} B`;
+  };
 
   const handleSend = async () => {
     if (!canSend) {
@@ -339,6 +366,9 @@ export function DraftAndSendDialog({
                 <Badge key={`${f.name}-${i}`} variant="secondary" className="gap-1 pr-1">
                   <Paperclip className="h-3 w-3" />
                   <span className="max-w-[180px] truncate">{f.name}</span>
+                  <span className="text-[10px] text-muted-foreground ml-1">
+                    {f.size > 0 ? formatBytes(f.size) : 'empty'}
+                  </span>
                   <button
                     type="button"
                     onClick={() => removeFile(i)}
@@ -350,8 +380,13 @@ export function DraftAndSendDialog({
                 </Badge>
               ))}
               <span className="text-[11px] text-muted-foreground self-center">
-                {(totalBytes / (1024 * 1024)).toFixed(1)} MB
+                Total {formatBytes(totalBytes)}
               </span>
+              {hasEmptyAttachment && (
+                <span className="text-[11px] text-destructive self-center">
+                  Attachment is still generating — please wait.
+                </span>
+              )}
             </div>
           )}
 
