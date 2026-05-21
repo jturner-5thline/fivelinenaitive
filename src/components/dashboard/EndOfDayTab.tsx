@@ -783,15 +783,41 @@ export function EndOfDayTab({
 
       {/* List */}
       <div className="flex-1 min-h-0 overflow-y-auto px-2 py-2 space-y-3">
-        {isFullyEmpty ? (
+        {filtered.length === 0 && !isFullyEmpty ? (
+          // Filters/search are hiding everything — neutral state, no celebration.
+          <div className="text-center py-12">
+            <p className="text-sm text-white/85">No items match the current filters</p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {outstanding.length} outstanding item{outstanding.length === 1 ? '' : 's'} hidden by filters
+            </p>
+            {hasActiveFilters && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="mt-3 h-7 text-[11px]"
+                onClick={clearAllFilters}
+              >
+                Clear filters
+              </Button>
+            )}
+          </div>
+        ) : isFullyEmpty && clearedCount > 0 ? (
+          // User cleared everything in this session — celebrate.
           <div className="text-center py-12">
             <PartyPopper className="h-8 w-8 mx-auto text-emerald-300 mb-3" />
             <p className="text-sm font-medium text-white">You're clear of outstanding items</p>
-            <p className="text-xs text-muted-foreground mt-1">Nothing left to follow up on. Nice work.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Nothing left to follow up on. Nice work.
+            </p>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="text-center py-12 text-xs text-muted-foreground">
-            No items match the current search or filters.
+        ) : isFullyEmpty ? (
+          // Naturally empty (nothing was cleared this session) — soft neutral.
+          <div className="text-center py-12">
+            <Inbox className="h-7 w-7 mx-auto text-white/40 mb-3" />
+            <p className="text-sm text-white/85">Nothing outstanding right now</p>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              New meeting follow-ups will appear here as they come in.
+            </p>
           </div>
         ) : (
           buckets.map(b => {
