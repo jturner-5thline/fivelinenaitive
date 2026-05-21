@@ -46,13 +46,25 @@ export class WriteNotPersistedError extends Error {
       if (m.field === "__row__") {
         return `I tried to update this deal but the database returned no row — it's likely blocked by access rules or the deal id is wrong.`;
       }
-      return `I tried to set ${m.field} to ${formatValue(m.expected)} but the database still has ${formatValue(m.actual)}.`;
+      const base = `I tried to set ${m.field} to ${formatValue(m.expected)} but the database still has ${formatValue(m.actual)}.`;
+      const triggers = KNOWN_TRIGGERS_BY_FIELD[m.field];
+      if (triggers && triggers.length > 0) {
+        return `${base} ${m.field} write may have been reverted by trigger(s): ${triggers.join(", ")} — likely a workflow rule.`;
+      }
+      return base;
     }
     const parts = this.mismatches.map(
       (m) =>
         `${m.field} (tried ${formatValue(m.expected)}, still ${formatValue(m.actual)})`,
     );
-    return `I tried to update ${this.mismatches.length} fields but the database didn't accept them: ${parts.join("; ")}.`;
+    let msg = `I tried to update ${this.mismatches.length} fields but the database didn't accept them: ${parts.join("; ")}.`;
+    const triggeredFields = this.mismatches
+      .map((m) => m.field)
+      .filter((f) => KNOWN_TRIGGERS_BY_FIELD[f]);
+    if (triggeredFields.length > 0) {
+      msg += ` Possible cause: triggers on ${triggeredFields.join(", ")} (workflow rules).`;
+    }
+    return msg;
   }
 }
 
