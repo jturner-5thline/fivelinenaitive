@@ -57,6 +57,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   }
 
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'failed'>('pending');
+  const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [completedAt, setCompletedAt] = useState<number | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
