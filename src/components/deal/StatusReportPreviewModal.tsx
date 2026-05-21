@@ -15,6 +15,8 @@ import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
 import { LenderPipelineSnapshot } from './LenderPipelineSnapshot';
 import type { DealLender } from '@/types/deal';
+import { captureStatusReportPdf } from '@/utils/statusReportPdfFromDom';
+import { saveAs } from 'file-saver';
 
 export type { StatusReportEditableContent };
 
@@ -25,7 +27,14 @@ interface StatusReportPreviewModalProps {
   configuredStages?: LenderStageConfig[];
   configuredSubstages?: LenderStageConfig[];
   outstandingItems?: OutstandingItem[];
-  onExport: (content: StatusReportEditableContent) => void;
+  /**
+   * Fired when the user clicks "Generate Status Email". The modal pre-builds
+   * the Status Report PDF from the SAME live preview node that "Export as
+   * PDF" downloads, so the email attachment is a byte-identical visual
+   * snapshot of what the user just reviewed. The caller is responsible for
+   * binding `pdfFile` into the outgoing Draft & Send composer.
+   */
+  onExport: (content: StatusReportEditableContent, pdfFile: File) => void;
   /**
    * Persist a funding source update to the underlying deal. Required for the
    * pipeline-snapshot stage cards to act as a live management surface
