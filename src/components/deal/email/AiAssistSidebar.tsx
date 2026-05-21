@@ -52,6 +52,15 @@ import {
 import { CalendarClock } from 'lucide-react';
 
 /**
+ * Feature gate: hide the "Ask naitive AI" entry point inside the Email
+ * AI Assist sidebar. The underlying EmailUnifiedAiAction component, its
+ * routing edge function, and the floating Ask naitive AI panel remain
+ * fully functional everywhere else — flip this flag to `true` to restore
+ * the inline entry point in the email sidebar.
+ */
+const SHOW_EMAIL_ASK_NAITIVE_AI = false;
+
+/**
  * Cheap classifier for "this inbound is a calendar invite or an automated
  * notification" — used to suppress the auto-surfaced AvailabilityCheckCard
  * (we never want to ask James to "confirm a time" for a Google Calendar
@@ -911,24 +920,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         <div className="min-w-0 max-w-full w-full p-4 space-y-4">
           {/* AI Action — primary input lives at the very top of the panel
               so it's the first thing the user sees. Context chips, quick
-              actions, and suggested updates render below. */}
-          <EmailUnifiedAiAction
-            thread={thread}
-            dealId={dealId}
-            dealName={dealName}
-            fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
-            fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
-          />
-          {/* Skeleton hint shown while the initial workflow analysis is
-              still resolving deal / contact / lender context for the AI
-              action surface. Suppressed once analysis lands or the user
-              has typed. */}
-          {workflowLoading && !workflowAnalysis && (
-            <div className="flex items-center gap-1.5 -mt-1" aria-hidden>
-              <Skeleton className="h-4 w-24 rounded-full bg-primary/10" />
-              <Skeleton className="h-4 w-28 rounded-full bg-sky-500/10" />
-              <Skeleton className="h-4 w-20 rounded-full bg-emerald-500/10" />
-            </div>
+              actions, and suggested updates render below.
+              Gated behind SHOW_EMAIL_ASK_NAITIVE_AI so the Email module
+              hides the "Ask naitive AI" entry point without removing the
+              component, its routing logic, or the floating panel surface
+              used elsewhere in the app. */}
+          {SHOW_EMAIL_ASK_NAITIVE_AI && (
+            <>
+              <EmailUnifiedAiAction
+                thread={thread}
+                dealId={dealId}
+                dealName={dealName}
+                fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
+                fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
+              />
+              {workflowLoading && !workflowAnalysis && (
+                <div className="flex items-center gap-1.5 -mt-1" aria-hidden>
+                  <Skeleton className="h-4 w-24 rounded-full bg-primary/10" />
+                  <Skeleton className="h-4 w-28 rounded-full bg-sky-500/10" />
+                  <Skeleton className="h-4 w-20 rounded-full bg-emerald-500/10" />
+                </div>
+              )}
+            </>
           )}
 
           {/* Deal context chip row — single-line at-a-glance summary of the
