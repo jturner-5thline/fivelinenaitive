@@ -625,6 +625,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const handleRefresh = useCallback(async () => {
     if (!status.connected) return;
     isPaginatingRef.current = false;
+    setIsAutoPaginating(false);
     setInboxMessages([]);
     setSentMessages([]);
     setDraftsMessages([]);
