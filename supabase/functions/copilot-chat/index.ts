@@ -95,6 +95,61 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ── Chat scope (workspace + pipeline + status) ────────────────────────
+// The Copilot panel sends a `chatScope` object on every request describing
+// which slice of the data the AI is allowed to "see" for deal-related
+// queries. This is what keeps the AI's reported numbers (e.g. "7 active
+// deals") in lockstep with what the dashboard renders. Every deal-touching
+// tool MUST funnel its supabase query through `applyDealScope` so the
+// model can never silently expand its own scope.
+export interface ChatScope {
+  company_id: string | null;
+  pipeline_id: string | null;
+  active_only: boolean;
+  include_archived: boolean;
+  label: string;
+}
+
+function parseChatScope(raw: any): ChatScope {
+  const s = raw && typeof raw === "object" ? raw : {};
+  return {
+    company_id: typeof s.company_id === "string" && s.company_id.length > 0 ? s.company_id : null,
+    pipeline_id: typeof s.pipeline_id === "string" && s.pipeline_id.length > 0 ? s.pipeline_id : null,
+    active_only: s.active_only === undefined ? true : !!s.active_only,
+    include_archived: !!s.include_archived,
+    label: typeof s.label === "string" && s.label.length > 0 ? s.label : "Current workspace · Active only",
+  };
+}
+
+/**
+ * Apply the scope to a supabase query against `public.deals`. The query
+ * must already have its `.select(...)` (or whatever) called — this only
+ * chains filters.
+ */
+function applyDealScope<T extends { eq: any; not: any; in: any }>(q: T, scope: ChatScope, opts?: { allowOutOfScope?: boolean }): T {
+  if (opts?.allowOutOfScope) return q;
+  let next: any = q;
+  if (scope.company_id) next = next.eq("company_id", scope.company_id);
+  if (scope.pipeline_id) next = next.eq("pipeline_id", scope.pipeline_id);
+  if (scope.active_only) {
+    next = next
+      .not("status", "in", '("closed","on-hold","archived","closed-won","closed-lost")')
+      .not("stage", "in", '("closed-won","closed-lost","on-hold")');
+  } else if (!scope.include_archived) {
+    next = next.not("status", "eq", "archived");
+  }
+  return next as T;
+}
+
+/** Globally-excluded test deals (matches the rule in mem://constraints/global-deal-exclusion-rules). */
+function isGloballyExcludedDealName(name?: string | null): boolean {
+  const x = (name || "").toLowerCase().trim();
+  if (!x) return false;
+  if (x === "example deal" || x === "test - niki's store" || x === "test-niki's store") return true;
+  if (x === "test" || x.startsWith("test ")) return true;
+  return false;
+}
+
 // ── Fuzzy deal-name matching helpers ─────────────────────────────
 // Used by both the off-page deal resolver and the search_deals tool so the
 // model never says "not found" on a near-miss like "censys technology" vs
@@ -1787,7 +1842,7 @@ function selectToolsWithScopes(
 }
 
 // ── Tool executors ──────────────────────────────────────────────
-async function executeTool(supabase: any, name: string, args: any, userId: string): Promise<any> {
+async function executeTool(supabase: any, name: string, args: any, userId: string, scope: ChatScope = parseChatScope(null)): Promise<any> {
   // (See writeAuditDraft / updateAuditOutcome below for the audit log helpers.
   // Audit writes happen at the call sites that have access to the user prompt.)
   switch (name) {
@@ -1817,6 +1872,11 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (args.status) q = q.eq("status", args.status);
       if (args.stage) q = q.ilike("stage", `%${args.stage}%`);
       if (args.deal_type) q = q.ilike("deal_type", `%${args.deal_type}%`);
+      // Constrain to the chat's current scope (workspace + pipeline +
+      // status). The caller can opt out by passing { broaden: true } when
+      // the model needs to look beyond the active scope.
+      const broaden = args.broaden === true;
+      q = applyDealScope(q, scope, { allowOutOfScope: broaden });
       if (queryText) {
         // Broad ilike OR across the query and its tokens, then fuzzy-rank.
         const tokens = Array.from(new Set(
@@ -1841,10 +1901,15 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         return {
           count: ranked.length,
           query: queryText,
+          scope_label: scope.label,
+          scope_applied: !broaden,
+          broaden_hint: ranked.length === 0 && !broaden
+            ? "No matches inside the current scope. Re-run search_deals with { broaden: true } to look across all workspaces / pipelines / statuses."
+            : undefined,
           deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)) })),
         };
       }
-      return { count: results.length, deals: results };
+      return { count: results.length, scope_label: scope.label, scope_applied: !broaden, deals: results };
     }
     case "update_deal_stage": {
       const { data: deal } = await supabase.from("deals").select("id, company, stage").eq("id", args.deal_id).single();
@@ -2416,6 +2481,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         .neq("stage", "closed-lost")
         .limit(500);
       if (args.deal_id) dealsQ = dealsQ.eq("id", args.deal_id);
+      dealsQ = applyDealScope(dealsQ, scope, { allowOutOfScope: args.broaden === true });
       const { data: deals, error: dealsErr } = await dealsQ;
       if (dealsErr) return { error: dealsErr.message };
       if (!deals || deals.length === 0) return { count: 0, stale_deals: [] };
@@ -2453,10 +2519,12 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return { count: stale_deals.length, stale_days_threshold: staleDays, stale_deals };
     }
     case "get_pipeline_summary": {
-      const { data: deals } = await supabase.from("deals").select("id, company, value, stage, status").limit(1000);
+      let pq = supabase.from("deals").select("id, company, value, stage, status").limit(1000);
+      pq = applyDealScope(pq, scope, { allowOutOfScope: args.broaden === true });
+      const { data: deals } = await pq;
       if (!deals) return { error: "No deals" };
-      const scope = args.scope || "active_only";
-      const filtered = scope === "active_only"
+      const argScope = args.scope || "active_only";
+      const filtered = argScope === "active_only"
         ? deals.filter((d: any) => d.status !== "on-hold" && d.status !== "closed" && d.stage !== "on-hold" && d.stage !== "closed")
         : deals;
       const excluded = deals.length - filtered.length;
@@ -2473,7 +2541,8 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         active,
         totalValue,
         byStage: stageCounts,
-        scope: scope === "active_only" ? `Active Pipeline (excluding ${excluded} on-hold/closed deals)` : `Full Pipeline (all ${deals.length} deals including on-hold/closed)`,
+        scope: `${scope.label}${argScope === "active_only" ? "" : " (incl. on-hold/closed)"}`,
+        scope_label: scope.label,
         excluded_count: excluded,
         full_count: deals.length,
       };
@@ -5223,6 +5292,7 @@ async function consumeToolStream(
 async function prefetchPageContext(
   supabase: any,
   ctx: { page?: string; entityType?: string | null; entityId?: string | null },
+  chatScopeForPrefetch: ChatScope | null = null,
 ): Promise<{ block: string; label: string | null }> {
   try {
     const page = ctx.page || "unknown";
@@ -5431,12 +5501,14 @@ PRE-LOADED FINANCE / CASH-FLOW CONTEXT (firm-level, accrual basis, last 3 months
 
     // ── Dashboard / unknown — pipeline summary fallback ──
     if (page === "dashboard" || page === "unknown" || page === "" || page === "pipeline" || page === "deals") {
-      const { data: deals } = await supabase
+      let dq: any = supabase
         .from("deals")
         .select("id, company, value, stage, status, updated_at")
-        .neq("status", "closed")
         .order("updated_at", { ascending: false })
         .limit(500);
+      if (chatScopeForPrefetch) dq = applyDealScope(dq, chatScopeForPrefetch);
+      else dq = dq.neq("status", "closed");
+      const { data: deals } = await dq;
       const all = deals || [];
       const active = all.filter((d: any) => d.status === "active");
       const stageCounts: Record<string, number> = {};
@@ -5523,6 +5595,7 @@ serve(async (req) => {
     }
 
     const { message, context, history, conversationMutations } = body;
+    const chatScope = parseChatScope(context?.chatScope);
 
     // Lightweight profile fetch only — all other data is lazy-loaded via tools
     const { data: profile } = await supabaseUser.from("profiles").select("display_name, email").eq("user_id", userId).single();
@@ -5647,7 +5720,7 @@ serve(async (req) => {
     // Insights page — that block must never reach the model.
     const prefetched = (!scopes.can_view_insights && page.toLowerCase().includes("insight"))
       ? { block: "", label: null }
-      : await prefetchPageContext(supabaseUser, { page, entityType, entityId });
+      : await prefetchPageContext(supabaseUser, { page, entityType, entityId }, chatScope);
 
     // ── Off-page deal-name resolver ──
     // When no deal entity is in context (user is not on a deal page and did not
@@ -6588,7 +6661,7 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                     "You do not have permission to access Insights data in this workspace.",
                 };
               } else {
-                result = await executeTool(supabaseUser, tc.function.name, args, userId);
+                result = await executeTool(supabaseUser, tc.function.name, args, userId, chatScope);
               }
               // Audit log: every AI-drafted task action (intent, confidence, resolved
               // entities, extracted fields) — must happen even if the user later cancels.
