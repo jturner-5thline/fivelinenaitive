@@ -695,7 +695,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_fields",
-      description: "Update deal fields like value/size, closing_date, or flag status. Value and closing_date are MEDIUM RISK (confirmation). Flag is LOW RISK (auto-execute).",
+      description: "Update one or more deal fields in a SINGLE transactional update — value/size, closing_date, flag status, stage, manager, deal_owner, narrative, deal_type, engagement_type. Use this when the user requests multiple field changes in one prompt; it renders ONE combined confirmation card and verifies each column individually after write. HIGH RISK for stage/manager/owner/type/engagement — returns a confirmation card.",
       parameters: {
         type: "object",
         properties: {
@@ -705,6 +705,22 @@ const tools = [
           closing_date: { type: "string", description: "New closing date YYYY-MM-DD or null to clear" },
           is_flagged: { type: "boolean", description: "Set flag true/false" },
           flag_notes: { type: "string", description: "Flag notes" },
+          stage: { type: "string", description: "New stage id (e.g. 'terms-issued'). Use ONLY when changing stage as part of a multi-field update; otherwise prefer update_deal_stage." },
+          manager: { type: "string", description: "New deal manager (display name)" },
+          deal_owner: { type: "string", description: "New deal owner (display name)" },
+          narrative: { type: "string", description: "New deal narrative / overview text" },
+          deal_type: { type: "string", description: "New deal type" },
+          engagement_type: { type: "string", description: "New engagement type" },
+          current_value: { type: "number", description: "Current value, for the diff card" },
+          current_closing_date: { type: "string", description: "Current closing date, for the diff card" },
+          current_is_flagged: { type: "boolean", description: "Current flag state, for the diff card" },
+          current_flag_notes: { type: "string", description: "Current flag notes, for the diff card" },
+          current_stage: { type: "string", description: "Current stage id, for the diff card" },
+          current_manager: { type: "string", description: "Current deal manager, for the diff card" },
+          current_deal_owner: { type: "string", description: "Current deal owner, for the diff card" },
+          current_narrative: { type: "string", description: "Current narrative, for the diff card" },
+          current_deal_type: { type: "string", description: "Current deal type, for the diff card" },
+          current_engagement_type: { type: "string", description: "Current engagement type, for the diff card" },
         },
         required: ["deal_id", "deal_name"],
       },
@@ -5294,8 +5310,17 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         updateFields.is_flagged = params.is_flagged;
         if (params.flag_notes !== undefined) updateFields.flag_notes = params.flag_notes;
       }
+      if (params.stage !== undefined) updateFields.stage = params.stage;
+      if (params.manager !== undefined) updateFields.manager = params.manager;
+      if (params.deal_owner !== undefined) updateFields.deal_owner = params.deal_owner;
+      if (params.narrative !== undefined) updateFields.narrative = params.narrative;
+      if (params.deal_type !== undefined) updateFields.deal_type = params.deal_type;
+      if (params.engagement_type !== undefined) updateFields.engagement_type = params.engagement_type;
       // Capture "before" snapshot of the exact fields we are about to change
       const beforeCols = Object.keys(updateFields);
+      if (beforeCols.length === 0) {
+        return { success: false, error: "No deal fields provided to update." };
+      }
       const { data: beforeRow } = await supabase
         .from("deals")
         .select(beforeCols.join(","))
@@ -5316,6 +5341,12 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.value !== undefined) changes.push(`deal size to $${params.value.toLocaleString()}`);
       if (params.closing_date !== undefined) changes.push(`closing date to ${params.closing_date || 'none'}`);
       if (params.is_flagged !== undefined) changes.push(`flag ${params.is_flagged ? 'on' : 'off'}`);
+      if (params.stage !== undefined) changes.push(`stage to ${params.stage}`);
+      if (params.manager !== undefined) changes.push(`manager to ${params.manager}`);
+      if (params.deal_owner !== undefined) changes.push(`owner to ${params.deal_owner}`);
+      if (params.deal_type !== undefined) changes.push(`type to ${params.deal_type}`);
+      if (params.engagement_type !== undefined) changes.push(`engagement to ${params.engagement_type}`);
+      if (params.narrative !== undefined) changes.push(`narrative updated`);
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id, activity_type: "deal_updated",
         description: `Deal updated: ${changes.join(', ')} via AI Copilot`,

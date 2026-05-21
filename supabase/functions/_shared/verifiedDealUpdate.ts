@@ -46,13 +46,25 @@ export class WriteNotPersistedError extends Error {
       if (m.field === "__row__") {
         return `I tried to update this deal but the database returned no row — it's likely blocked by access rules or the deal id is wrong.`;
       }
-      return `I tried to set ${m.field} to ${formatValue(m.expected)} but the database still has ${formatValue(m.actual)}.`;
+      const base = `I tried to set ${m.field} to ${formatValue(m.expected)} but the database still has ${formatValue(m.actual)}.`;
+      const triggers = KNOWN_TRIGGERS_BY_FIELD[m.field];
+      if (triggers && triggers.length > 0) {
+        return `${base} ${m.field} write may have been reverted by trigger(s): ${triggers.join(", ")} — likely a workflow rule.`;
+      }
+      return base;
     }
     const parts = this.mismatches.map(
       (m) =>
         `${m.field} (tried ${formatValue(m.expected)}, still ${formatValue(m.actual)})`,
     );
-    return `I tried to update ${this.mismatches.length} fields but the database didn't accept them: ${parts.join("; ")}.`;
+    let msg = `I tried to update ${this.mismatches.length} fields but the database didn't accept them: ${parts.join("; ")}.`;
+    const triggeredFields = this.mismatches
+      .map((m) => m.field)
+      .filter((f) => KNOWN_TRIGGERS_BY_FIELD[f]);
+    if (triggeredFields.length > 0) {
+      msg += ` Possible cause: triggers on ${triggeredFields.join(", ")} (workflow rules).`;
+    }
+    return msg;
   }
 }
 
@@ -84,8 +96,46 @@ const DATE_ONLY_FIELDS = new Set<string>([
   "expected_close_date",
 ]);
 
+// Columns where we MUST compare strict, case-sensitive, no whitespace
+// coercion, and no null/empty-string equivalence. These are
+// enum-like columns where a silent mismatch is a real failure we
+// must surface as a hard ✗, not a green ✅. `stage` is the
+// canonical case: the historical false-positive bug came from
+// permissive normalization here.
+const STRICT_FIELDS = new Set<string>([
+  "stage",
+  "status",
+  "manager",
+  "deal_owner",
+  "deal_type",
+  "engagement_type",
+  "pipeline_id",
+]);
+
+// Triggers we know touch each field on `public.deals`. When a strict
+// mismatch fires we surface the trigger name in the error so the
+// user can see "Stage write was reverted by trigger X — likely a
+// workflow rule." instead of an opaque "didn't persist."
+const KNOWN_TRIGGERS_BY_FIELD: Record<string, string[]> = {
+  stage: [
+    "deals_log_stage_change (AFTER, log only)",
+    "deals_workflow_stage_trigger (AFTER, workflow dispatch)",
+    "trg_record_deal_stage_change (AFTER, audit)",
+    "trg_deal_followup_dispatch (AFTER, followup)",
+    "trg_hubspot_deal_stage_push (AFTER, hubspot sync)",
+    "deals_flex_auto_remove (AFTER, FLEx visibility)",
+  ],
+};
+
 function normalize(field: string, v: unknown): unknown {
   if (v === null || v === undefined) return null;
+  // Strict fields: no normalization at all. We want a raw string
+  // compare so "Terms Issued" never matches "terms-issued" or
+  // "Terms Issued ".
+  if (STRICT_FIELDS.has(field)) {
+    if (typeof v === "string") return v; // no trim, no lowercase
+    return v;
+  }
   if (DATE_ONLY_FIELDS.has(field)) {
     if (v instanceof Date) return v.toISOString().slice(0, 10);
     if (typeof v === "string") return v.slice(0, 10);
@@ -108,6 +158,12 @@ function normalize(field: string, v: unknown): unknown {
 function valuesMatch(field: string, expected: unknown, actual: unknown): boolean {
   const a = normalize(field, expected);
   const b = normalize(field, actual);
+  // Strict fields require exact === equality after the (no-op)
+  // normalization. Null/"" are NOT considered equivalent here —
+  // setting stage="" is a different intent than stage=null.
+  if (STRICT_FIELDS.has(field)) {
+    return a === b;
+  }
   if (a === b) return true;
   if (typeof a === "number" && typeof b === "number") {
     return Math.abs(a - b) < 1e-6;
@@ -137,6 +193,12 @@ export async function verifiedDealUpdate(
     new Set<string>(["id", ...writtenCols, ...(opts.alsoSelect ?? [])]),
   );
 
+  // Per-column strict read-back: for any field in STRICT_FIELDS we
+  // run a dedicated `.update({col}).eq('id').select('col').single()`
+  // and assert `row[col] === patch[col]` before claiming success.
+  // This is what protects against the historical false-positive on
+  // `deals.stage` where a chained multi-column update appeared to
+  // succeed while the stage column itself was reverted/blocked.
   const { data, error } = await client
     .from("deals")
     .update(patch)
@@ -167,6 +229,43 @@ export async function verifiedDealUpdate(
       });
     }
   }
+
+  // Belt-and-suspenders re-read of strict fields with `.single()` so
+  // the verification can never piggy-back on the same query that
+  // RETURNING produced. If a trigger overwrote the value between
+  // the UPDATE...RETURNING and this read, we still catch it.
+  const strictCols = verifyCols.filter((c) => STRICT_FIELDS.has(c));
+  if (strictCols.length > 0) {
+    const { data: reread } = await client
+      .from("deals")
+      .select(strictCols.join(","))
+      .eq("id", dealId)
+      .single();
+    const r = (reread ?? {}) as Record<string, any>;
+    for (const field of strictCols) {
+      const expected = patch[field];
+      const actual = r[field];
+      // Exact strict equality after (no-op) normalization.
+      if (normalize(field, expected) !== normalize(field, actual)) {
+        // Replace any earlier (RETURNING-based) mismatch entry for
+        // this field with the authoritative re-read value.
+        const existingIdx = mismatches.findIndex((m) => m.field === field);
+        const entry: FieldMismatch = {
+          field,
+          expected: expected ?? null,
+          actual: actual ?? null,
+        };
+        if (existingIdx >= 0) mismatches[existingIdx] = entry;
+        else mismatches.push(entry);
+      } else {
+        // Re-read confirmed strict equality — drop any false-positive
+        // mismatch picked up from the RETURNING row.
+        const idx = mismatches.findIndex((m) => m.field === field);
+        if (idx >= 0) mismatches.splice(idx, 1);
+      }
+    }
+  }
+
   if (mismatches.length > 0) {
     throw new WriteNotPersistedError(dealId, mismatches);
   }

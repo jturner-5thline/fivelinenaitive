@@ -121,6 +121,54 @@ export function deriveFieldDiffs(
           newValue: get("flag_notes"),
         });
       }
+      if (get("stage") !== undefined) {
+        rows.push({
+          field: "stage",
+          label: "Stage",
+          oldValue: get("current_stage"),
+          newValue: get("stage"),
+        });
+      }
+      if (get("manager") !== undefined) {
+        rows.push({
+          field: "manager",
+          label: "Deal manager",
+          oldValue: get("current_manager"),
+          newValue: get("manager"),
+        });
+      }
+      if (get("deal_owner") !== undefined) {
+        rows.push({
+          field: "deal_owner",
+          label: "Deal owner",
+          oldValue: get("current_deal_owner"),
+          newValue: get("deal_owner"),
+        });
+      }
+      if (get("narrative") !== undefined) {
+        rows.push({
+          field: "narrative",
+          label: "Narrative",
+          oldValue: get("current_narrative"),
+          newValue: get("narrative"),
+        });
+      }
+      if (get("deal_type") !== undefined) {
+        rows.push({
+          field: "deal_type",
+          label: "Deal type",
+          oldValue: get("current_deal_type"),
+          newValue: get("deal_type"),
+        });
+      }
+      if (get("engagement_type") !== undefined) {
+        rows.push({
+          field: "engagement_type",
+          label: "Engagement",
+          oldValue: get("current_engagement_type"),
+          newValue: get("engagement_type"),
+        });
+      }
       return rows;
     }
     case "move_deal_pipeline":

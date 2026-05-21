@@ -125,7 +125,23 @@ function collapseRepeatedTrailingParagraphs(content: string): string {
 
 function dedupeMessages(messages: ChatMessage[]): ChatMessage[] {
   const out: ChatMessage[] = [];
+  const seenIds = new Set<string>();
   for (const msg of messages) {
+    // Primary dedupe: by stable message id. Streamed assistant messages
+    // can otherwise land twice when an optimistic in-flight bubble and
+    // the persisted message both reach the renderer with the same id —
+    // the "Interpreting X as Y" preamble was rendering back-to-back as
+    // a result. Last write wins so the persisted/complete payload is
+    // preferred over an earlier in-flight snapshot.
+    const msgId = (msg as { id?: string }).id;
+    if (msgId) {
+      if (seenIds.has(msgId)) {
+        const existingIdx = out.findIndex((m) => (m as { id?: string }).id === msgId);
+        if (existingIdx >= 0) out[existingIdx] = msg;
+        continue;
+      }
+      seenIds.add(msgId);
+    }
     const cleaned: ChatMessage =
       msg.role === 'assistant'
         ? { ...msg, content: collapseRepeatedTrailingParagraphs(msg.content) }
