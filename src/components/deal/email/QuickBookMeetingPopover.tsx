@@ -646,7 +646,7 @@ export function QuickBookMeetingPopover({
   const totalRows = (WORK_END_HOUR - WORK_START_HOUR) * (60 / ROW_MINUTES);
 
   return (
-    <div className="w-[420px] max-h-[78vh] overflow-y-auto p-3 space-y-3 text-foreground">
+    <div className="w-[525px] max-w-full max-h-[86vh] overflow-y-auto p-3 space-y-3 text-foreground">
       <Header onClose={onClose} />
 
       {/* Duration pill row */}
