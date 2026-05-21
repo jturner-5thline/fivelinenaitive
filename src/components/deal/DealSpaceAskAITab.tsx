@@ -1420,6 +1420,25 @@ CRITICAL RULES:
                       )}
                     >
                       {msg.role === 'assistant' ? (
+                        (() => {
+                          const { cleanContent, actions } = extractAskAiActions(msg.content);
+                          const handleAction = (a: AskAiAction) => {
+                            if (a.type === 'draft_email') {
+                              openDraftSubmissionModal();
+                              return;
+                            }
+                            if (a.type === 'ask_followup') {
+                              const q = a.params.q || a.params.question || a.label;
+                              if (q) sendMessage(q);
+                              return;
+                            }
+                            // create_task / add_outstanding_item — surface for now
+                            toast({
+                              title: a.type === 'create_task' ? 'Create task' : 'Add outstanding item',
+                              description: a.label,
+                            });
+                          };
+                          return (
                         <>
                           <TooltipProvider delayDuration={150}>
                             <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -1444,7 +1463,7 @@ CRITICAL RULES:
                                   ),
                                 }}
                               >
-                                {msg.content}
+                                {cleanContent}
                               </ReactMarkdown>
                             </div>
                           </TooltipProvider>
@@ -1453,7 +1472,10 @@ CRITICAL RULES:
                             documents={documents}
                             onOpenDocument={handleOpenCitedDocument}
                           />
+                          <AskAiActionBar actions={actions} onAction={handleAction} disabled={isAILoading} />
                         </>
+                          );
+                        })()
                       ) : (
                         <p className="whitespace-pre-wrap">{msg.content}</p>
                       )}
