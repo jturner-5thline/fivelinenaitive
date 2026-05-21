@@ -9,7 +9,6 @@ import {
   Plus,
   Loader2,
   AlertTriangle,
-  Sparkles,
   ChevronDown,
   ChevronUp,
   CalendarX,
@@ -26,7 +25,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
