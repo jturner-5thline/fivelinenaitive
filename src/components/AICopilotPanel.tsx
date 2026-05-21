@@ -1686,6 +1686,71 @@ export function AICopilotPanel() {
         )}
       </div>
 
+      {/* Data Scope chip — controls (and shows) which workspace / pipeline /
+          status the AI sees. Every tool call is constrained to this scope so
+          the numbers reported by the AI match the dashboard. */}
+      <div style={{ padding: '6px 16px 8px', borderBottom: '1px solid var(--glass-border)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, minHeight: 32, fontSize: 11 }}>
+        <span style={{ color: 'hsl(var(--muted-foreground))' }}>Scope:</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              title="Change the data scope the AI sees. Tool calls are constrained to this slice."
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                padding: '3px 8px', borderRadius: 999, fontSize: 11,
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--glass-border)',
+                color: 'var(--foreground)', cursor: 'pointer', fontWeight: 600,
+              }}
+            >
+              {chatScope.label}
+              <ChevronDown size={11} style={{ color: 'hsl(var(--muted-foreground))' }} />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" style={{ minWidth: 240 }}>
+            <DropdownMenuLabel>Workspace</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={chatScopeOverride.workspace_mode}
+              onValueChange={(v) => {
+                setChatScopeOverride({ workspace_mode: v as CopilotScopeOverride['workspace_mode'] });
+                toast.success('Scope updated');
+              }}
+            >
+              <DropdownMenuRadioItem value="workspace">Current workspace</DropdownMenuRadioItem>
+              {chatScope.can_broaden_workspaces ? (
+                <DropdownMenuRadioItem value="all">All workspaces (admin)</DropdownMenuRadioItem>
+              ) : null}
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Pipeline</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={chatScopeOverride.pipeline_mode}
+              onValueChange={(v) => {
+                setChatScopeOverride({ pipeline_mode: v as CopilotScopeOverride['pipeline_mode'] });
+                toast.success('Scope updated');
+              }}
+            >
+              <DropdownMenuRadioItem value="default">Active pipeline</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="all">All pipelines</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+            <DropdownMenuSeparator />
+            <DropdownMenuLabel>Status</DropdownMenuLabel>
+            <DropdownMenuRadioGroup
+              value={chatScopeOverride.status_mode}
+              onValueChange={(v) => {
+                setChatScopeOverride({ status_mode: v as CopilotScopeOverride['status_mode'] });
+                toast.success('Scope updated');
+              }}
+            >
+              <DropdownMenuRadioItem value="active">Active only</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="include_inactive">Include closed &amp; on-hold</DropdownMenuRadioItem>
+              <DropdownMenuRadioItem value="include_archived">Include archived</DropdownMenuRadioItem>
+            </DropdownMenuRadioGroup>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
       {/* Proactive Nudges */}
       {nudges.length > 0 && messages.length === 0 && (
         <div style={{ padding: '8px 16px 0', display: 'flex', flexDirection: 'column', gap: 8, flexShrink: 0 }}>
