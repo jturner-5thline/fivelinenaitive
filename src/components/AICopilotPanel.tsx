@@ -1385,7 +1385,10 @@ export function AICopilotPanel() {
         width: '100%',
         height: '100%',
         maxWidth: isMobile ? 'none' : 1440,
-        maxHeight: 'calc(100vh - 48px)',
+        // Leave room at the bottom for the persistent Ask naitive AI / Ask
+        // about this deal composer bar so the modal frame never sits behind
+        // or below the input area.
+        maxHeight: 'calc(100vh - 200px)',
         marginInline: 0,
         borderRadius: 18,
       }
@@ -1834,7 +1837,15 @@ export function AICopilotPanel() {
         role="dialog"
         aria-modal="true"
         aria-label="naitive AI expanded"
-        style={{ padding: isMobile ? 8 : 24 }}
+        // Reserve bottom padding equal to the floating composer bar height
+        // (~44px offset + ~64px bar + ~16px breathing room) so the modal
+        // bottom border sits visibly above the input.
+        style={{
+          paddingTop: isMobile ? 8 : 24,
+          paddingLeft: isMobile ? 8 : 24,
+          paddingRight: isMobile ? 8 : 24,
+          paddingBottom: isMobile ? 140 : 160,
+        }}
       >
         <div
           aria-hidden
@@ -1852,7 +1863,7 @@ export function AICopilotPanel() {
             width: '100%',
             height: '100%',
             maxWidth: isMobile ? 'none' : 1440,
-            maxHeight: 'calc(100vh - 48px)',
+            maxHeight: 'calc(100vh - 200px)',
             display: 'flex',
           }}
         >
