@@ -16,7 +16,9 @@ export type AiActionType =
   | 'update_lender_status'
   | 'save_to_data_room'
   | 'log_note'
-  | 'deal_update';
+  | 'deal_update'
+  | 'claap_recording_review'
+  | 'claap_action_items';
 
 export type AiActionStatus =
   | 'pending'
