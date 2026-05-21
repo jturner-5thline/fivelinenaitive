@@ -6440,6 +6440,47 @@ export type Database = {
           },
         ]
       }
+      deal_activity: {
+        Row: {
+          action_type: string
+          after: Json
+          before: Json
+          created_at: string
+          deal_id: string
+          id: string
+          source: string
+          user_id: string | null
+        }
+        Insert: {
+          action_type: string
+          after?: Json
+          before?: Json
+          created_at?: string
+          deal_id: string
+          id?: string
+          source?: string
+          user_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          after?: Json
+          before?: Json
+          created_at?: string
+          deal_id?: string
+          id?: string
+          source?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_activity_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_advance_reasons: {
         Row: {
           created_at: string
