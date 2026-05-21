@@ -504,10 +504,6 @@ export function EndOfDayTab({
       const outsideWindowRows = normalizedEvents.length - windowed.length;
       const audienceFilteredRows = windowed.length - audienceEligible.length;
       const clearedRows = audienceEligible.length - uncleared.length;
-      const appliedFilters = {
-        search: search.trim(),
-        chips: Array.from(filterChips),
-      };
       // eslint-disable-next-line no-console
       console.log('[EndOfDay] query result', {
         rawEvents: normalizedEvents.length,
@@ -518,7 +514,10 @@ export function EndOfDayTab({
         totalRows: result.length,
         todayRows,
         carryForwardRows,
-        appliedFilters,
+        appliedFilters: {
+          search: search.trim(),
+          chips: Array.from(filterChips),
+        },
         timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       });
     } catch { /* noop */ }
