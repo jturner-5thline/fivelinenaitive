@@ -95,6 +95,61 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ── Chat scope (workspace + pipeline + status) ────────────────────────
+// The Copilot panel sends a `chatScope` object on every request describing
+// which slice of the data the AI is allowed to "see" for deal-related
+// queries. This is what keeps the AI's reported numbers (e.g. "7 active
+// deals") in lockstep with what the dashboard renders. Every deal-touching
+// tool MUST funnel its supabase query through `applyDealScope` so the
+// model can never silently expand its own scope.
+export interface ChatScope {
+  company_id: string | null;
+  pipeline_id: string | null;
+  active_only: boolean;
+  include_archived: boolean;
+  label: string;
+}
+
+function parseChatScope(raw: any): ChatScope {
+  const s = raw && typeof raw === "object" ? raw : {};
+  return {
+    company_id: typeof s.company_id === "string" && s.company_id.length > 0 ? s.company_id : null,
+    pipeline_id: typeof s.pipeline_id === "string" && s.pipeline_id.length > 0 ? s.pipeline_id : null,
+    active_only: s.active_only === undefined ? true : !!s.active_only,
+    include_archived: !!s.include_archived,
+    label: typeof s.label === "string" && s.label.length > 0 ? s.label : "Current workspace · Active only",
+  };
+}
+
+/**
+ * Apply the scope to a supabase query against `public.deals`. The query
+ * must already have its `.select(...)` (or whatever) called — this only
+ * chains filters.
+ */
+function applyDealScope<T extends { eq: any; not: any; in: any }>(q: T, scope: ChatScope, opts?: { allowOutOfScope?: boolean }): T {
+  if (opts?.allowOutOfScope) return q;
+  let next: any = q;
+  if (scope.company_id) next = next.eq("company_id", scope.company_id);
+  if (scope.pipeline_id) next = next.eq("pipeline_id", scope.pipeline_id);
+  if (scope.active_only) {
+    next = next
+      .not("status", "in", '("closed","on-hold","archived","closed-won","closed-lost")')
+      .not("stage", "in", '("closed-won","closed-lost","on-hold")');
+  } else if (!scope.include_archived) {
+    next = next.not("status", "eq", "archived");
+  }
+  return next as T;
+}
+
+/** Globally-excluded test deals (matches the rule in mem://constraints/global-deal-exclusion-rules). */
+function isGloballyExcludedDealName(name?: string | null): boolean {
+  const x = (name || "").toLowerCase().trim();
+  if (!x) return false;
+  if (x === "example deal" || x === "test - niki's store" || x === "test-niki's store") return true;
+  if (x === "test" || x.startsWith("test ")) return true;
+  return false;
+}
+
 // ── Fuzzy deal-name matching helpers ─────────────────────────────
 // Used by both the off-page deal resolver and the search_deals tool so the
 // model never says "not found" on a near-miss like "censys technology" vs
