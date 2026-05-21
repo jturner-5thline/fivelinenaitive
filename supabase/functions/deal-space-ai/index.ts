@@ -1394,8 +1394,26 @@ ${FORMATTING_RULES}
 
         // Transform Anthropic SSE into a simpler SSE format for the client
         const encoder = new TextEncoder();
+        const decoder = new TextDecoder();
+        let assistantBuffer = "";
+        const userIdForSnap = String((claimsData.claims as any)?.sub || "") || null;
         const transformStream = new TransformStream({
           transform(chunk, controller) {
+            try {
+              const text = decoder.decode(chunk, { stream: true });
+              // Anthropic SSE lines: data: {...}
+              for (const line of text.split("\n")) {
+                const trimmed = line.trim();
+                if (!trimmed.startsWith("data:")) continue;
+                const payload = trimmed.slice(5).trim();
+                if (!payload || payload === "[DONE]") continue;
+                try {
+                  const evt = JSON.parse(payload);
+                  const delta = evt?.delta?.text || evt?.content_block?.text;
+                  if (typeof delta === "string") assistantBuffer += delta;
+                } catch { /* ignore non-JSON keepalive */ }
+              }
+            } catch { /* ignore decode errors */ }
             controller.enqueue(chunk);
           },
           flush(controller) {
@@ -1403,6 +1421,8 @@ ${FORMATTING_RULES}
             const sourcesEvent = `data: ${JSON.stringify({ type: 'sources', sources: ctx.sourcesUsed.map(s => s.name) })}\n\n`;
             controller.enqueue(encoder.encode(sourcesEvent));
             controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+            // Fire-and-forget snapshot persist
+            persistStatusSnapshot(supabaseService, dealId, assistantBuffer, userIdForSnap);
           }
         });
 
@@ -1428,6 +1448,10 @@ ${FORMATTING_RULES}
 
     // Build source list from what was actually referenced in the response
     const sources: string[] = ctx.sourcesUsed.map(s => s.name);
+
+    // Persist derived status snapshot (parsed from hidden HTML comment).
+    const userIdForSnap = String((claimsData.claims as any)?.sub || "") || null;
+    persistStatusSnapshot(supabaseService, dealId, rawContent, userIdForSnap);
 
     return new Response(
       JSON.stringify({ content, sources }),
