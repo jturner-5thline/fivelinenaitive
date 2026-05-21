@@ -71,6 +71,21 @@ function plainTextToHtml(text: string): string {
   return blocks.join('');
 }
 
+/** Heuristic: treat a string as HTML if it contains any tag-like markup.
+ *  Saved email signatures (e.g. the default 5th Line block) ship as HTML and
+ *  must NOT be escaped — otherwise the composer renders literal `<p>` /
+ *  `<strong>` text instead of formatted content. */
+function looksLikeHtml(s: string): boolean {
+  return /<\/?[a-z][\s\S]*?>/i.test(s);
+}
+
+/** Render a signature for the rich-text editor. Accepts either HTML
+ *  (returned as-is) or plain text (converted to escaped paragraphs). */
+function renderSignatureHtml(sig: string | undefined): string {
+  if (!sig || !sig.trim()) return '';
+  return looksLikeHtml(sig) ? sig : plainTextToHtml(sig);
+}
+
 const MAX_FILE_BYTES = 25 * 1024 * 1024; // 25 MB per file (Gmail cap)
 
 interface ThreadOption {
@@ -121,8 +136,9 @@ export function DraftAndSendDialog({
     const bodyHtml = initial.bodyHtml && initial.bodyHtml.trim().length > 0
       ? initial.bodyHtml
       : plainTextToHtml(initial.body ?? '');
-    const sigHtml = signature ? plainTextToHtml(signature) : '';
-    setBody(sigHtml ? `${bodyHtml}<p></p>${sigHtml}` : bodyHtml);
+    const sigHtml = renderSignatureHtml(signature);
+    // Blank paragraph keeps a visible separator line between body & signature.
+    setBody(sigHtml ? `${bodyHtml}<p><br/></p>${sigHtml}` : bodyHtml);
     setFiles(initial.attachments ?? []);
     setSelectedThreadId(initial.initialThreadId ?? 'new');
   }, [open, initial, signature]);
