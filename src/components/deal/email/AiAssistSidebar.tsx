@@ -52,6 +52,15 @@ import {
 import { CalendarClock } from 'lucide-react';
 
 /**
+ * Feature gate: hide the "Ask naitive AI" entry point inside the Email
+ * AI Assist sidebar. The underlying EmailUnifiedAiAction component, its
+ * routing edge function, and the floating Ask naitive AI panel remain
+ * fully functional everywhere else — flip this flag to `true` to restore
+ * the inline entry point in the email sidebar.
+ */
+const SHOW_EMAIL_ASK_NAITIVE_AI = false;
+
+/**
  * Cheap classifier for "this inbound is a calendar invite or an automated
  * notification" — used to suppress the auto-surfaced AvailabilityCheckCard
  * (we never want to ask James to "confirm a time" for a Google Calendar
