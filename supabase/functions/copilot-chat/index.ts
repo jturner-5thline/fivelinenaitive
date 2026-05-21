@@ -5592,6 +5592,7 @@ serve(async (req) => {
     }
 
     const { message, context, history, conversationMutations } = body;
+    const chatScope = parseChatScope(context?.chatScope);
 
     // Lightweight profile fetch only — all other data is lazy-loaded via tools
     const { data: profile } = await supabaseUser.from("profiles").select("display_name, email").eq("user_id", userId).single();
@@ -6657,7 +6658,7 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                     "You do not have permission to access Insights data in this workspace.",
                 };
               } else {
-                result = await executeTool(supabaseUser, tc.function.name, args, userId);
+                result = await executeTool(supabaseUser, tc.function.name, args, userId, chatScope);
               }
               // Audit log: every AI-drafted task action (intent, confidence, resolved
               // entities, extracted fields) — must happen even if the user later cancels.
