@@ -16,6 +16,9 @@ import { SaveToDealCard } from './SaveToDealCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
 import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
+import { QuickBookMeetingPopover } from './QuickBookMeetingPopover';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { useAuth } from '@/contexts/AuthContext';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 
@@ -79,10 +82,15 @@ export function EmailQuickActionsToolbar({
   onInsertDraft,
 }: Props) {
   const [active, setActive] = useState<QuickActionKey | null>(null);
+  // Meeting tile has two modes: 'quick-book' (popover) and 'propose'
+  // (legacy inline MeetingSchedulerCard reached via the popover's
+  // "Propose via email instead" link). Defaults to quick-book.
+  const [meetingMode, setMeetingMode] = useState<'quick-book' | 'propose'>('quick-book');
   const [summary, setSummary] = useState<string[] | null>(null);
   const [summarizing, setSummarizing] = useState(false);
   const [summaryDebug, setSummaryDebug] = useState<EmailThreadSummaryDebug | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
+  const { user } = useAuth();
 
   // Reset summary if thread changes
   useEffect(() => {
@@ -122,6 +130,14 @@ export function EmailQuickActionsToolbar({
       }
       setActive('summarize');
       void runSummarize();
+      return;
+    }
+    if (key === 'meeting') {
+      // Toggling the meeting tile always resets to quick-book mode so
+      // the popover surface is the default entry point. The legacy
+      // propose inline card is only reached via the popover link.
+      setMeetingMode('quick-book');
+      setActive((prev) => (prev === 'meeting' ? null : 'meeting'));
       return;
     }
     setActive((prev) => (prev === key ? null : key));
@@ -175,6 +191,52 @@ export function EmailQuickActionsToolbar({
       >
         {actions.map((a) => {
           const isActive = active === a.key;
+          if (a.key === 'meeting') {
+            return (
+              <Popover
+                key={a.key}
+                open={isActive && meetingMode === 'quick-book'}
+                onOpenChange={(open) => {
+                  if (!open) {
+                    setActive((prev) => (prev === 'meeting' && meetingMode === 'quick-book' ? null : prev));
+                  } else {
+                    setMeetingMode('quick-book');
+                    setActive('meeting');
+                  }
+                }}
+              >
+                <PopoverTrigger asChild>
+                  <AIAssistActionButton
+                    label={a.label}
+                    icon={a.icon}
+                    iconClass={a.iconClass}
+                    isActive={isActive}
+                    onClick={() => handleClick(a.key)}
+                  />
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  side="bottom"
+                  sideOffset={6}
+                  className="p-0 border-white/10 bg-card/95 backdrop-blur rounded-xl shadow-xl w-auto"
+                >
+                  <QuickBookMeetingPopover
+                    thread={thread}
+                    dealId={dealId || fallbackDealId}
+                    dealName={dealName || fallbackDealName || undefined}
+                    meEmail={user?.email || null}
+                    meName={(user?.user_metadata as any)?.full_name || null}
+                    onInsertDraft={(text) => onInsertDraft(text)}
+                    onProposeViaEmail={() => {
+                      setMeetingMode('propose');
+                      setActive('meeting');
+                    }}
+                    onClose={() => setActive(null)}
+                  />
+                </PopoverContent>
+              </Popover>
+            );
+          }
           return (
             <AIAssistActionButton
               key={a.key}
@@ -219,7 +281,7 @@ export function EmailQuickActionsToolbar({
           onCancel={() => setActive(null)}
         />
       )}
-      {active === 'meeting' && (
+      {active === 'meeting' && meetingMode === 'propose' && (
         <MeetingSchedulerCard
           recipientEmail={thread.latestEmail?.from_email}
           recipientName={thread.latestEmail?.from_name || undefined}
