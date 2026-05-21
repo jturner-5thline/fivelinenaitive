@@ -5310,8 +5310,17 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         updateFields.is_flagged = params.is_flagged;
         if (params.flag_notes !== undefined) updateFields.flag_notes = params.flag_notes;
       }
+      if (params.stage !== undefined) updateFields.stage = params.stage;
+      if (params.manager !== undefined) updateFields.manager = params.manager;
+      if (params.deal_owner !== undefined) updateFields.deal_owner = params.deal_owner;
+      if (params.narrative !== undefined) updateFields.narrative = params.narrative;
+      if (params.deal_type !== undefined) updateFields.deal_type = params.deal_type;
+      if (params.engagement_type !== undefined) updateFields.engagement_type = params.engagement_type;
       // Capture "before" snapshot of the exact fields we are about to change
       const beforeCols = Object.keys(updateFields);
+      if (beforeCols.length === 0) {
+        return { success: false, error: "No deal fields provided to update." };
+      }
       const { data: beforeRow } = await supabase
         .from("deals")
         .select(beforeCols.join(","))
@@ -5332,6 +5341,12 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.value !== undefined) changes.push(`deal size to $${params.value.toLocaleString()}`);
       if (params.closing_date !== undefined) changes.push(`closing date to ${params.closing_date || 'none'}`);
       if (params.is_flagged !== undefined) changes.push(`flag ${params.is_flagged ? 'on' : 'off'}`);
+      if (params.stage !== undefined) changes.push(`stage to ${params.stage}`);
+      if (params.manager !== undefined) changes.push(`manager to ${params.manager}`);
+      if (params.deal_owner !== undefined) changes.push(`owner to ${params.deal_owner}`);
+      if (params.deal_type !== undefined) changes.push(`type to ${params.deal_type}`);
+      if (params.engagement_type !== undefined) changes.push(`engagement to ${params.engagement_type}`);
+      if (params.narrative !== undefined) changes.push(`narrative updated`);
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id, activity_type: "deal_updated",
         description: `Deal updated: ${changes.join(', ')} via AI Copilot`,
