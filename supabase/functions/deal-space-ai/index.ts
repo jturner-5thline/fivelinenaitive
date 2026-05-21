@@ -465,7 +465,7 @@ async function buildDealContext(supabase: any, dealId: string, opts?: { includeD
   ] = await Promise.all([
     supabase.from("deals").select("company, value, stage, status, deal_type, business_model, contact, contact_info, company_url, deal_owner, manager, referred_by, engagement_type, exclusivity, created_at, updated_at, is_flagged, flag_notes, notes, pre_signing_hours, post_signing_hours, retainer_fee, milestone_fee, success_fee_percent, total_fee, ai_custom_instructions").eq("id", dealId).single(),
     supabase.from("deal_writeups").select("company_name, description, industry, location, year_founded, headcount, capital_ask, use_of_funds, deal_type, b2b_b2c, revenue_type, billing_model, gross_margins, profitability, last_year_revenue, this_year_revenue, total_equity_raised, sponsorship, collateral_available, existing_debt_details, accounting_system, company_url, linkedin_url, data_room_url, company_highlights, key_items, financial_years, financial_comments").eq("deal_id", dealId).single(),
-    supabase.from("deal_lenders").select("name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
+    supabase.from("deal_lenders").select("id, name, stage, substage, tracking_status, quote_amount, quote_rate, quote_term, notes, pass_reason").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
     supabase.from("deal_milestones").select("title, completed, due_date, completed_at").eq("deal_id", dealId).order("position").limit(20),
     supabase.from("activity_logs").select("activity_type, description, user_display_name, created_at").eq("deal_id", dealId).order("created_at", { ascending: false }).limit(30),
     supabase.from("deal_memos").select("narrative, highlights, hurdles, analyst_notes, lender_notes, other_notes").eq("deal_id", dealId).single(),
@@ -477,7 +477,7 @@ async function buildDealContext(supabase: any, dealId: string, opts?: { includeD
     // New: outstanding items
     supabase.from("outstanding_items").select("description, status, priority, due_date, notes, assigned_to, lender_id").eq("deal_id", dealId).order("position").limit(30),
     // New: CLAAP transcripts
-    supabase.from("claap_transcripts").select("summary, transcript_text, recorded_at, call_type, participants, duration_seconds").eq("deal_id", dealId).order("recorded_at", { ascending: false }).limit(5),
+    supabase.from("claap_transcripts").select("id, summary, transcript_text, recorded_at, call_type, participants, duration_seconds").eq("deal_id", dealId).order("recorded_at", { ascending: false }).limit(5),
     // New: checklist items
     supabase.from("deal_checklist_items").select("name, category, is_required").eq("deal_id", dealId).limit(30),
   ]);
