@@ -85,6 +85,14 @@ type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'bloc
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 type FilterDueDate = 'all' | 'overdue' | 'today' | 'this_week' | 'no_date';
 type FilterRecurring = 'all' | 'recurring' | 'paused';
+type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
+const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
 
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
@@ -117,7 +125,10 @@ export default function Tasks() {
     }
   }, [tasks]);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  // Default to incomplete — completed tasks would otherwise dominate the
+  // view and trigger the misleading "Xd overdue" badge on done rows.
+  // Subtask 5 of Asana 1215035328425908.
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('incomplete');
   const [sortBy, setSortBy] = useState<SortBy>('due_date');
   const [groupBy, setGroupBy] = useState<GroupBy>('status');
   const [isCreating, setIsCreating] = useState(false);
@@ -128,6 +139,8 @@ export default function Tasks() {
   const newTaskRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
+  const [filterPriorities, setFilterPriorities] = useState<Set<TaskPriority>>(new Set());
+  const [showAllDeals, setShowAllDeals] = useState(false);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [filterRecurring, setFilterRecurring] = useState<FilterRecurring>('all');
@@ -190,10 +203,16 @@ export default function Tasks() {
     const merged = new Map<string, string>(fromTasks);
     allDeals.forEach(d => {
       if (d.status === 'archived') return;
+      // Default: only include deals on the active board (not closed/on-hold).
+      // Niki can flip "Show all deals" to surface dormant ones. Subtask 3.
+      if (!showAllDeals) {
+        if (d.status === 'on-hold') return;
+        if (typeof d.stage === 'string' && ACTIVE_DEAL_INACTIVE_STAGES.has(d.stage)) return;
+      }
       if (!merged.has(d.id)) merged.set(d.id, d.company || d.name);
     });
     return Array.from(merged.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [allDeals, uniqueDeals]);
+  }, [allDeals, uniqueDeals, showAllDeals]);
   const [dealFilterQuery, setDealFilterQuery] = useState('');
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
@@ -222,6 +241,7 @@ export default function Tasks() {
       if (filterStatus !== 'all' && filterStatus !== 'incomplete' && t.status !== filterStatus) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (filterDealIds.size > 0 && (!t.deal_id || !filterDealIds.has(t.deal_id))) return false;
+      if (filterPriorities.size > 0 && !filterPriorities.has(t.priority as TaskPriority)) return false;
       if (filterLabelIds.size > 0) {
         const taskLabels = taskLabelMap.get(t.id);
         if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
@@ -666,13 +686,28 @@ export default function Tasks() {
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
             <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#8a93a6' }}>
-              <span>{filtered.filter(t => t.status !== 'complete').length} open</span>
-              {overdueCount > 0 && (
-                <>
-                  <span className="mx-1.5 opacity-60">·</span>
-                  <span style={{ color: '#ef8a8a' }}>{overdueCount} overdue</span>
-                </>
-              )}
+              {(() => {
+                const openCount = filtered.filter(t => t.status !== 'complete').length;
+                const completedCount = filtered.filter(t => t.status === 'complete').length;
+                const showingCompleted = filterStatus === 'all' || filterStatus === 'complete';
+                return (
+                  <>
+                    <span>{openCount} open</span>
+                    {showingCompleted && completedCount > 0 && (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span style={{ color: '#7fc89a' }}>{completedCount} completed</span>
+                      </>
+                    )}
+                    {overdueCount > 0 && (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span style={{ color: '#ef8a8a' }}>{overdueCount} overdue</span>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </p>
           </div>
           <div className="shrink-0 flex items-center">
@@ -769,11 +804,11 @@ export default function Tasks() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <SelectTrigger aria-label="Status: All" className="h-8 w-[110px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="text-xs">All statuses</SelectItem>
+              <SelectItem value="all" className="text-xs">All</SelectItem>
               <SelectItem value="incomplete" className="text-xs">Incomplete</SelectItem>
               <SelectItem value="complete" className="text-xs">Complete</SelectItem>
               <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
@@ -803,19 +838,19 @@ export default function Tasks() {
                 size="sm"
                 className="h-8 text-[12px] gap-1.5"
                 style={{
-                  borderColor: (filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all')
+                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all')
                     ? 'rgba(126,184,247,0.35)'
                     : 'rgba(255,255,255,0.06)',
                   backgroundColor: 'rgba(255,255,255,0.025)',
-                  color: (filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all') ? '#cfe3ff' : '#b3bccc',
+                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') ? '#cfe3ff' : '#b3bccc',
                 }}
               >
                 <SlidersHorizontal className="h-3 w-3" />
                 Filters
-                {(filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all') && (
+                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') && (
                   <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
                     style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
-                    {filterDealIds.size + filterLabelIds.size + (filterRecurring !== 'all' ? 1 : 0)}
+                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0)}
                   </span>
                 )}
               </Button>
@@ -856,6 +891,34 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Priority</label>
+                  {filterPriorities.size > 0 && (
+                    <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterPriorities(new Set())}>Clear</button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {PRIORITY_OPTIONS.map(p => {
+                    const checked = filterPriorities.has(p.value);
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                        onClick={() => setFilterPriorities(prev => {
+                          const next = new Set(prev);
+                          if (next.has(p.value)) next.delete(p.value); else next.add(p.value);
+                          return next;
+                        })}
+                      >
+                        <Checkbox checked={checked} className="h-3.5 w-3.5" />
+                        <span>{p.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               {allDealOptions.length > 0 && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
@@ -864,6 +927,14 @@ export default function Tasks() {
                       <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterDealIds(new Set())}>Clear</button>
                     )}
                   </div>
+                  <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+                    <Checkbox
+                      checked={showAllDeals}
+                      onCheckedChange={(c) => setShowAllDeals(!!c)}
+                      className="h-3.5 w-3.5"
+                    />
+                    Show all deals (incl. closed / on-hold)
+                  </label>
                   <Input
                     value={dealFilterQuery}
                     onChange={(e) => setDealFilterQuery(e.target.value)}
@@ -1618,11 +1689,7 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, statusColor, priority
             <SortableBoardCard key={task.id} task={task} priorityPill={priorityPill} todayStr={todayStr} selectedTaskId={selectedTaskId} onSelectTask={onSelectTask} />
           ))}
         </SortableContext>
-        {!isAdding && (
-          <button onClick={startAdding} className="w-full flex items-center gap-1.5 text-xs py-1.5 px-2 rounded transition-colors" style={{ color: '#8b92a5' }}>
-            <Plus className="h-3 w-3" /> Add task
-          </button>
-        )}
+        {/* Board column inline "+ Add task" removed — use the column header "+" button. Subtask 2. */}
       </div>
     </div>
   );

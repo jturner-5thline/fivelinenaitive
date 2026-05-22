@@ -455,11 +455,7 @@ export function TaskListView({
                             </div>
                             {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
                           </>
-                        ) : (
-                          <button onClick={() => onNewTaskChange('')} className="w-full flex items-center gap-2 px-4 py-2 text-xs transition-colors" style={{ color: '#8b92a5' }}>
-                            <Plus className="h-3.5 w-3.5" /> Add task
-                          </button>
-                        )}
+                        ) : null /* bottom inline "+ Add task" removed — use top-right "+ Add Task" CTA */}
                       </>
                     )}
                   </div>
@@ -579,9 +575,31 @@ function OverdueSection({ tasks, todayStr, selectedTaskId, selectedTaskIds, focu
 }
 
 // Quick date shortcuts
-function QuickDatePicker({ value, onChange, todayStr }: { value: string | null; onChange: (v: string | null) => void; todayStr: string }) {
+function QuickDatePicker({ value, onChange, todayStr, status, completedAt }: { value: string | null; onChange: (v: string | null) => void; todayStr: string; status?: string; completedAt?: string | null }) {
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
   const nextMon = format(nextMonday(new Date()), 'yyyy-MM-dd');
+
+  // Completed tasks must never render a red "Xd overdue" pill — show a muted
+  // green "Completed <relative>" pill instead. Subtask 5 of Asana 1215035328425908.
+  if (status === 'complete') {
+    const ref = normalizeDueDate(completedAt) || normalizeDueDate(value) || todayStr;
+    const diff = daysFromToday(ref, { today: todayStr, tomorrow: todayStr, weekEnd: todayStr });
+    const rel =
+      diff === null ? 'Completed'
+      : diff === 0 ? 'Completed today'
+      : diff === -1 ? 'Completed yesterday'
+      : diff < 0 ? `Completed ${Math.abs(diff)}d ago`
+      : `Completed`;
+    return (
+      <span
+        className="inline-flex items-center px-1.5 py-0.5 rounded-md text-[10px] font-medium"
+        style={{ backgroundColor: 'rgba(127,200,154,0.12)', color: '#7fc89a', border: '1px solid rgba(127,200,154,0.25)' }}
+        title={ref}
+      >
+        {rel}
+      </span>
+    );
+  }
 
   const getRelativeLabel = () => {
     const due = normalizeDueDate(value);
@@ -912,7 +930,13 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {/* Due date — right-aligned, tabular-nums for stable column width */}
       {visibleSet.has('due') && (
       <div className="flex items-center justify-end tabular-nums" onClick={e => e.stopPropagation()}>
-        <QuickDatePicker value={task.due_date} onChange={v => onUpdate({ due_date: v } as any)} todayStr={todayStr} />
+        <QuickDatePicker
+          value={task.due_date}
+          onChange={v => onUpdate({ due_date: v } as any)}
+          todayStr={todayStr}
+          status={task.status}
+          completedAt={(task as any).completed_at}
+        />
       </div>
       )}
 
