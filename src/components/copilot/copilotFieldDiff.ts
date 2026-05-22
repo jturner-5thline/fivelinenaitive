@@ -298,6 +298,7 @@ export function deriveFieldDiffs(
 
 export interface VerifiedResult {
   success: boolean;
+  error?: string;
   error_code?: string;
   mismatches?: Array<{ field: string; expected?: unknown; actual?: unknown }>;
   audit?: { after?: Record<string, unknown> | null } | null;
