@@ -20,7 +20,9 @@ import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
 } from '@/hooks/useQBStackedFinServRevenue';
-import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
+import { InsightsTimeRangeSelector, type InsightsTimeRangeValue } from '@/components/insights/InsightsTimeRangeSelector';
+import { loadPersistedRange, resolveRange, defaultGranularityForRange } from '@/lib/insightsTimeRange';
+import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -102,7 +104,20 @@ function VarianceIndicator({ value, suffix = '' }: { value: number; suffix?: str
 // ────────────────────────────────────────────────────────────
 
 export function FinServFinancialMetricsDashboard() {
-  const { selectedQuarter, timeframe } = useInsightsTimeframe();
+  // Per-board time range selector — overrides the global context for this board.
+  const initialPersisted = useMemo(() => loadPersistedRange('finserv-financial-metrics'), []);
+  const initialResolved = useMemo(() => {
+    const id = initialPersisted?.presetId ?? 'ytd';
+    return resolveRange(id, initialPersisted?.custom);
+  }, [initialPersisted]);
+  const [range, setRange] = useState<InsightsTimeRangeValue>(() => ({
+    presetId: initialPersisted?.presetId ?? 'ytd',
+    granularity:
+      initialPersisted?.granularity ?? defaultGranularityForRange(initialResolved.start, initialResolved.end),
+    custom: initialPersisted?.custom,
+    resolved: initialResolved,
+  }));
+
   const [drill, setDrill] = useState<{
     context: DrilldownContext;
     columns: DrilldownColumn[];
@@ -110,10 +125,18 @@ export function FinServFinancialMetricsDashboard() {
   } | null>(null);
 
   const selectedPeriod = useMemo(() => ({
-    start_date: timeframe.start,
-    end_date: timeframe.end,
-    label: timeframe.label,
-  }), [timeframe.end, timeframe.label, timeframe.start]);
+    start_date: range.resolved.start,
+    end_date: range.resolved.end,
+    label: range.resolved.label,
+  }), [range.resolved.start, range.resolved.end, range.resolved.label]);
+
+  // Derive a QuarterOption-shaped value for legacy widgets bound to selectedQuarter.
+  const selectedQuarter = useMemo(() => {
+    const s = new Date(range.resolved.start + 'T00:00:00');
+    const e = new Date(range.resolved.end + 'T00:00:00');
+    const q = buildCustomPeriod(s, e);
+    return { ...q, label: range.resolved.label };
+  }, [range.resolved.start, range.resolved.end, range.resolved.label]);
 
   const openSinglePoint = (
     sourceLabel: string,
@@ -138,7 +161,7 @@ export function FinServFinancialMetricsDashboard() {
   };
 
   // Data hooks
-  const totalRev = useFinServTotalRevenue(selectedPeriod);
+  const totalRev = useFinServTotalRevenue(selectedPeriod, range.granularity);
   const profits = useFinServQuarterlyProfits(selectedPeriod, 6);
   const revenueByClient = useFinServRevenueByClient(selectedQuarter, selectedQuarter.months.length - 1);
   const cashflow = useFinServCashflow();
@@ -148,8 +171,16 @@ export function FinServFinancialMetricsDashboard() {
   return (
     <>
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <Badge variant="outline" className="w-fit text-xs">Period · {selectedPeriod.label}</Badge>
+      <div className="flex items-center gap-3 flex-wrap">
+        <InsightsTimeRangeSelector
+          boardId="finserv-financial-metrics"
+          defaultPresetId="ytd"
+          defaultGranularity="monthly"
+          onChange={setRange}
+        />
+        {(totalRev.isLoading || profits.isLoading) && (
+          <Badge variant="outline" className="text-xs animate-pulse">Loading from QuickBooks…</Badge>
+        )}
       </div>
 
       {/* ── Row 0: Active Clients KPI ── */}

@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from './useCompany';
 import { type QuarterOption } from './useQBQuarterlyRevenue';
 import { endOfMonth, endOfQuarter, format, startOfMonth, startOfQuarter, subQuarters } from 'date-fns';
+import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 
 const FINSERV_REALM_ID = '9341451968897660';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
@@ -202,28 +203,31 @@ async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPer
 
 export interface MonthBar { month: string; monthKey: string; amount: number }
 
-export function useFinServTotalRevenue(period: SnapshotPeriod & { label: string } | null) {
+export function useFinServTotalRevenue(
+  period: SnapshotPeriod & { label: string } | null,
+  granularity: Granularity = 'monthly',
+) {
   const { user } = useAuth();
   const { company } = useCompany();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-total-revenue', user?.id, company?.id, period?.start_date, period?.end_date],
+    queryKey: ['finserv-total-revenue', user?.id, company?.id, period?.start_date, period?.end_date, granularity],
     queryFn: async () => {
       if (!period || !company?.id) return null;
 
+      const bucketPeriods = buildBuckets(period.start_date, period.end_date, granularity);
       const requestedPeriods = dedupePeriods([
         { start_date: period.start_date, end_date: period.end_date },
-        ...buildMonthlySnapshotPeriods(period.start_date, period.end_date),
+        ...bucketPeriods.map((b) => ({ start_date: b.start_date, end_date: b.end_date })),
       ]);
       const rows = await ensureFinServPnlSnapshots(company.id, requestedPeriods);
       const rowsByKey = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
       const periodRow = rowsByKey.get(periodKey(period));
-      const monthPeriods = buildMonthlySnapshotPeriods(period.start_date, period.end_date);
 
-      const months: MonthBar[] = monthPeriods.map((month) => ({
-        month: month.label,
-        monthKey: month.key,
-        amount: Number(rowsByKey.get(periodKey(month))?.income_total ?? 0),
+      const months: MonthBar[] = bucketPeriods.map((bucket) => ({
+        month: bucket.label,
+        monthKey: bucket.key,
+        amount: Number(rowsByKey.get(periodKey(bucket))?.income_total ?? 0),
       }));
 
       return {
