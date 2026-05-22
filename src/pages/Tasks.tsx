@@ -891,6 +891,34 @@ export default function Tasks() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Priority</label>
+                  {filterPriorities.size > 0 && (
+                    <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterPriorities(new Set())}>Clear</button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-1">
+                  {PRIORITY_OPTIONS.map(p => {
+                    const checked = filterPriorities.has(p.value);
+                    return (
+                      <button
+                        key={p.value}
+                        type="button"
+                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                        onClick={() => setFilterPriorities(prev => {
+                          const next = new Set(prev);
+                          if (next.has(p.value)) next.delete(p.value); else next.add(p.value);
+                          return next;
+                        })}
+                      >
+                        <Checkbox checked={checked} className="h-3.5 w-3.5" />
+                        <span>{p.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
               {allDealOptions.length > 0 && (
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
