@@ -747,6 +747,15 @@ export default function DealDetail() {
           passReason: l.pass_reason || undefined,
           score: l.score ?? null,
           updatedAt: l.updated_at,
+          createdAt: l.created_at,
+          submittedAt: l.submitted_at ?? null,
+          approvedAt: l.approved_at ?? null,
+          passedAt: l.passed_at ?? null,
+          declinedAt: l.declined_at ?? null,
+          excludedAt: l.excluded_at ?? null,
+          onHoldAt: l.on_hold_at ?? null,
+          onDeckAt: l.on_deck_at ?? null,
+          lastStatusChangeAt: l.last_status_change_at ?? null,
           notesHistory: [],
         }));
 
