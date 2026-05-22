@@ -19,7 +19,7 @@ const ALL_SCOPES = [
   "customers", "invoices", "payments", "accounts", "vendors",
   "expenses", "bills", "purchase_orders", "journal_entries",
   "estimates", "credit_memos", "bank_deposits", "bank_transfers",
-  "profit_and_loss", "balance_sheet", "ar_aging", "ap_aging",
+  "profit_and_loss", "cash_flow", "balance_sheet", "ar_aging", "ap_aging",
 ] as const;
 
 type SyncScope = typeof ALL_SCOPES[number];
@@ -69,21 +69,50 @@ serve(async (req) => {
     }
     const user = { id: userId } as { id: string };
 
-    const { syncType, realmId: targetRealmId, scopes, start_date, end_date, periods } = await req.json();
+    const { syncType, realmId: targetRealmId, scopes, start_date, end_date, periods, company_id: requestedCompanyId, accounting_method } = await req.json();
     const activeScopes: SyncScope[] = scopes && Array.isArray(scopes) ? scopes : [...ALL_SCOPES];
     console.log(`[QuickBooks Sync] Starting sync for user ${user.id}, realm: ${targetRealmId || "all"}, scopes: ${activeScopes.join(",")}`);
 
     // Get stored tokens
-    let tokenQuery = supabase
-      .from("quickbooks_tokens")
-      .select("*")
+    const membershipQuery = supabase
+      .from("company_members")
+      .select("company_id")
       .eq("user_id", user.id);
 
-    if (targetRealmId) {
-      tokenQuery = tokenQuery.eq("realm_id", targetRealmId);
+    const { data: memberships } = await membershipQuery;
+    const memberCompanyIds = (memberships ?? []).map((row) => row.company_id).filter(Boolean);
+    const effectiveCompanyId = requestedCompanyId ?? memberCompanyIds[0] ?? null;
+
+    let tokenRows: any[] | null = null;
+    let tokenError: any = null;
+
+    if (effectiveCompanyId) {
+      const tokenByCompanyQuery = supabase
+        .from("quickbooks_tokens")
+        .select("*")
+        .eq("company_id", effectiveCompanyId);
+
+      const companyScoped = targetRealmId
+        ? await tokenByCompanyQuery.eq("realm_id", targetRealmId)
+        : await tokenByCompanyQuery;
+
+      tokenRows = companyScoped.data;
+      tokenError = companyScoped.error;
     }
 
-    const { data: tokenRows, error: tokenError } = await tokenQuery;
+    if (!tokenRows || tokenRows.length === 0) {
+      const tokenByUserQuery = supabase
+        .from("quickbooks_tokens")
+        .select("*")
+        .eq("user_id", user.id);
+
+      const userScoped = targetRealmId
+        ? await tokenByUserQuery.eq("realm_id", targetRealmId)
+        : await tokenByUserQuery;
+
+      tokenRows = userScoped.data;
+      tokenError = tokenError ?? userScoped.error;
+    }
 
     if (tokenError || !tokenRows || tokenRows.length === 0) {
       return new Response(JSON.stringify({ error: "QuickBooks not connected" }), {
@@ -92,22 +121,23 @@ serve(async (req) => {
       });
     }
 
-    const { data: memberships } = await supabase
-      .from("company_members")
-      .select("company_id")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    const fallbackCompanyId = memberships?.[0]?.company_id ?? null;
+    const fallbackCompanyId = effectiveCompanyId;
 
     const parseAmount = (value: unknown) => {
       const parsed = Number(value ?? 0);
       return Number.isFinite(parsed) ? parsed : 0;
     };
 
+    const extractReportRows = (node: any): any[] => {
+      if (!node) return [];
+      if (Array.isArray(node)) return node.flatMap((item) => extractReportRows(item));
+      const rows = Array.isArray(node?.Rows?.Row) ? node.Rows.Row : [];
+      return [node, ...rows.flatMap((row: any) => extractReportRows(row))];
+    };
+
     const getPLSummaryValue = (report: any, targetGroups: string[], targetLabels: string[] = []) => {
-      const rows = report?.Rows?.Row;
-      if (!Array.isArray(rows)) return 0;
+      const rows = extractReportRows(report?.Rows?.Row ?? report?.Rows);
+      if (!Array.isArray(rows) || rows.length === 0) return 0;
       const normalizedGroups = targetGroups.map((group) => group.toLowerCase());
       const normalizedLabels = targetLabels.map((label) => label.toLowerCase());
 
@@ -120,6 +150,13 @@ serve(async (req) => {
       }
 
       return 0;
+    };
+
+    const buildCashFlowPeriods = () => {
+      if (start_date && end_date) {
+        return [{ start_date, end_date }];
+      }
+      return [null];
     };
 
     const buildProfitAndLossPeriods = () => {
@@ -447,6 +484,15 @@ serve(async (req) => {
                   const incomeTotal = getPLSummaryValue(report, ["Income"], ["Total Income", "Total for Income"]);
                   const cogsTotal = getPLSummaryValue(report, ["COGS"], ["Total Cost of Goods Sold"]);
                   const grossProfit = getPLSummaryValue(report, ["GrossProfit"], ["Gross Profit"]);
+                  const operatingExpenses = getPLSummaryValue(report, ["Expenses"], ["Total Expenses"]);
+                  console.log(`[QuickBooks Sync] [qbo.pnl.fetch] ${realmId} ${resolvedStart}..${resolvedEnd}`, JSON.stringify({
+                    params: plParams,
+                    incomeTotal,
+                    cogsTotal,
+                    grossProfit,
+                    operatingExpenses,
+                    header: report?.Header,
+                  }));
 
                   const { error: snapshotError } = await supabase
                     .from("qbo_pnl_snapshots")
@@ -460,6 +506,7 @@ serve(async (req) => {
                       income_total: incomeTotal,
                       cogs_total: cogsTotal,
                       gross_profit: grossProfit,
+                      operating_expenses: operatingExpenses,
                       raw_response: report,
                       fetched_at: new Date().toISOString(),
                     }, { onConflict: "company_id,realm_id,period_start,period_end,accounting_method" });
@@ -480,6 +527,98 @@ serve(async (req) => {
           } catch (e) {
             console.error("[QuickBooks Sync] P&L report sync error:", e);
             results.profit_and_loss = { synced: 0, errors: 1 };
+          }
+        }
+
+        if (shouldSync("cash_flow")) {
+          try {
+            const cfPeriods = buildCashFlowPeriods();
+            let synced = 0;
+            let errors = 0;
+
+            for (const period of cfPeriods) {
+              try {
+                const cfParams: Record<string, string> = period
+                  ? {
+                      accounting_method: accounting_method || "Accrual",
+                      start_date: period.start_date,
+                      end_date: period.end_date,
+                      summarize_column_by: "Month",
+                    }
+                  : {
+                      accounting_method: accounting_method || "Accrual",
+                      date_macro: "This Fiscal Year-to-date",
+                      summarize_column_by: "Month",
+                    };
+
+                const report = await fetchQBReport("CashFlow", cfParams);
+                const resolvedStart = period?.start_date ?? report.Header?.StartPeriod;
+                const resolvedEnd = period?.end_date ?? report.Header?.EndPeriod;
+                const reportDate = new Date().toISOString().split("T")[0];
+
+                await supabase.from("quickbooks_reports").insert({
+                  user_id: user.id, realm_id: realmId, report_type: "cash_flow",
+                  report_date: reportDate,
+                  period_start: resolvedStart, period_end: resolvedEnd,
+                  report_data: report, metadata: { header: report.Header, accounting_method: accounting_method || "Accrual" },
+                });
+
+                if (resolvedStart && resolvedEnd && fallbackCompanyId) {
+                  const rows = Array.isArray(report?.Rows?.Row) ? report.Rows.Row : [];
+                  const columns = Array.isArray(report?.Columns?.Column) ? report.Columns.Column : [];
+                  const monthColumns = columns
+                    .map((column: any, index: number) => ({ column, index }))
+                    .filter(({ index, column }) => index > 0 && column?.ColType === "Money" && column?.ColTitle);
+
+                  const netRow = extractReportRows(rows).find((row: any) => String(row?.group ?? "").toLowerCase() === "netcashprovidedbyoperatingactivities")
+                    ?? extractReportRows(rows).find((row: any) => String(row?.Summary?.ColData?.[0]?.value ?? row?.Header?.ColData?.[0]?.value ?? "").toLowerCase().includes("net change in cash"))
+                    ?? extractReportRows(rows).find((row: any) => String(row?.Summary?.ColData?.[0]?.value ?? row?.Header?.ColData?.[0]?.value ?? "").toLowerCase().includes("net cash provided by operating activities"));
+
+                  const upsertRows = monthColumns.map(({ column, index }: any) => {
+                    const title = String(column?.ColTitle ?? "").trim();
+                    const start = title ? `${title}-01` : resolvedStart;
+                    const date = new Date(`${start}T00:00:00`);
+                    const bucketStart = Number.isNaN(date.getTime()) ? resolvedStart : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
+                    const bucketEndDate = Number.isNaN(date.getTime()) ? new Date(`${resolvedEnd}T00:00:00`) : new Date(date.getFullYear(), date.getMonth() + 1, 0);
+                    const bucketEnd = `${bucketEndDate.getFullYear()}-${String(bucketEndDate.getMonth() + 1).padStart(2, '0')}-${String(bucketEndDate.getDate()).padStart(2, '0')}`;
+                    const value = parseAmount(netRow?.Summary?.ColData?.[index]?.value ?? netRow?.ColData?.[index]?.value);
+
+                    return {
+                      company_id: fallbackCompanyId,
+                      user_id: user.id,
+                      realm_id: realmId,
+                      period_start: resolvedStart,
+                      period_end: resolvedEnd,
+                      accounting_method: accounting_method || "Accrual",
+                      bucket_start: bucketStart,
+                      bucket_end: bucketEnd,
+                      bucket_label: title || bucketStart,
+                      net_cash_flow: value,
+                      raw_response: report,
+                      fetched_at: new Date().toISOString(),
+                    };
+                  });
+
+                  if (upsertRows.length > 0) {
+                    const { error: cashflowSnapshotError } = await supabase
+                      .from("qbo_cashflow_snapshots")
+                      .upsert(upsertRows, { onConflict: "company_id,realm_id,period_start,period_end,accounting_method,bucket_start,bucket_end" });
+
+                    if (cashflowSnapshotError) throw cashflowSnapshotError;
+                  }
+                }
+
+                synced += 1;
+              } catch (periodError) {
+                console.error("[QuickBooks Sync] CashFlow period sync error:", periodError);
+                errors += 1;
+              }
+            }
+
+            results.cash_flow = { synced, errors };
+          } catch (e) {
+            console.error("[QuickBooks Sync] CashFlow report sync error:", e);
+            results.cash_flow = { synced: 0, errors: 1 };
           }
         }
 

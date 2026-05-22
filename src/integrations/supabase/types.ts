@@ -17030,6 +17030,60 @@ export type Database = {
         }
         Relationships: []
       }
+      qbo_cashflow_snapshots: {
+        Row: {
+          accounting_method: string
+          bucket_end: string
+          bucket_label: string
+          bucket_start: string
+          company_id: string
+          created_at: string
+          fetched_at: string
+          id: string
+          net_cash_flow: number
+          period_end: string
+          period_start: string
+          raw_response: Json
+          realm_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accounting_method?: string
+          bucket_end: string
+          bucket_label: string
+          bucket_start: string
+          company_id: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          net_cash_flow?: number
+          period_end: string
+          period_start: string
+          raw_response: Json
+          realm_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accounting_method?: string
+          bucket_end?: string
+          bucket_label?: string
+          bucket_start?: string
+          company_id?: string
+          created_at?: string
+          fetched_at?: string
+          id?: string
+          net_cash_flow?: number
+          period_end?: string
+          period_start?: string
+          raw_response?: Json
+          realm_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       qbo_pnl_snapshots: {
         Row: {
           accounting_method: string
@@ -17040,6 +17094,7 @@ export type Database = {
           gross_profit: number
           id: string
           income_total: number
+          operating_expenses: number
           period_end: string
           period_start: string
           raw_response: Json
@@ -17056,6 +17111,7 @@ export type Database = {
           gross_profit?: number
           id?: string
           income_total?: number
+          operating_expenses?: number
           period_end: string
           period_start: string
           raw_response: Json
@@ -17072,6 +17128,7 @@ export type Database = {
           gross_profit?: number
           id?: string
           income_total?: number
+          operating_expenses?: number
           period_end?: string
           period_start?: string
           raw_response?: Json

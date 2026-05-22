@@ -47,11 +47,12 @@ const fmtPctPrecise = (v: number) => `${v.toFixed(2)}%`;
 // Shared widget wrappers
 // ────────────────────────────────────────────────────────────
 
-function WidgetLoading() {
+function WidgetLoading({ subtitle = 'Fetching from QuickBooks…' }: { subtitle?: string }) {
   return (
     <div className="space-y-3 p-4">
       <Skeleton className="h-4 w-32" />
       <Skeleton className="h-[180px] w-full" />
+      <p className="text-xs text-muted-foreground">{subtitle}</p>
     </div>
   );
 }
@@ -324,7 +325,11 @@ export function FinServFinancialMetricsDashboard() {
             <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
           </CardHeader>
           <CardContent>
-            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.operatingProfit === 0) ? <WidgetEmpty /> : (
+            <div className="mb-4">
+              <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.operatingProfit)}</div>
+              <div className="text-xs text-muted-foreground">Gross Profit − Operating Expenses from QuickBooks P&amp;L</div>
+            </div>
+            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.operatingProfit === 0 && q.revenue === 0) ? <WidgetEmpty /> : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={profits.quarters}>
@@ -362,7 +367,13 @@ export function FinServFinancialMetricsDashboard() {
             <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
           </CardHeader>
           <CardContent>
-            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.operatingMargin === 0) ? <WidgetEmpty /> : (
+            <div className="mb-4">
+              <div className="text-3xl font-semibold text-foreground">
+                {typeof totalRev.operatingMargin === 'number' ? fmtPctPrecise(totalRev.operatingMargin) : '—'}
+              </div>
+              <div className="text-xs text-muted-foreground">Operating Profit ÷ Revenue</div>
+            </div>
+            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.operatingMargin === 0 && q.revenue === 0) ? <WidgetEmpty /> : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={profits.quarters}>
@@ -398,7 +409,7 @@ export function FinServFinancialMetricsDashboard() {
           <Badge variant="outline" className="w-fit text-xs">Monthly · Last 12 months</Badge>
         </CardHeader>
         <CardContent>
-          {cashflow.isLoading ? <WidgetLoading /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
+          {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={cashflow.points}>

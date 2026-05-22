@@ -82,6 +82,16 @@ type FinServSnapshotRow = {
   income_total: number;
   cogs_total: number;
   gross_profit: number;
+  operating_expenses: number;
+};
+
+type FinServCashflowSnapshotRow = {
+  period_start: string;
+  period_end: string;
+  bucket_start: string;
+  bucket_end: string;
+  bucket_label: string;
+  net_cash_flow: number;
 };
 
 function periodKey(period: SnapshotPeriod) {
@@ -154,7 +164,7 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
 
   const { data, error } = await supabase
     .from('qbo_pnl_snapshots')
-    .select('period_start, period_end, income_total, cogs_total, gross_profit')
+    .select('period_start, period_end, income_total, cogs_total, gross_profit, operating_expenses')
     .eq('company_id', companyId)
     .eq('realm_id', FINSERV_REALM_ID)
     .eq('accounting_method', 'Accrual')
@@ -169,16 +179,26 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
   return ((data ?? []) as FinServSnapshotRow[]).filter((row) => requestedKeys.has(`${row.period_start}_${row.period_end}`));
 }
 
-async function syncFinServPnlSnapshots(periods: SnapshotPeriod[]) {
+async function syncFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
   if (periods.length === 0) return;
 
-  const { error } = await supabase.functions.invoke('quickbooks-sync', {
-    body: {
-      syncType: 'profit_and_loss',
-      realmId: FINSERV_REALM_ID,
-      periods,
-    },
+  const request = {
+    syncType: 'profit_and_loss',
+    realmId: FINSERV_REALM_ID,
+    company_id: companyId,
+    accounting_method: 'Accrual',
+    start_date: periods.length === 1 ? periods[0].start_date : undefined,
+    end_date: periods.length === 1 ? periods[0].end_date : undefined,
+    periods,
+  };
+
+  console.info('[qbo.pnl.fetch] request', request);
+
+  const { data, error } = await supabase.functions.invoke('quickbooks-sync', {
+    body: request,
   });
+
+  console.info('[qbo.pnl.fetch] response', { data, error: error?.message ?? null });
 
   if (error) throw error;
 }
@@ -190,8 +210,14 @@ async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPer
   const missing = requested.filter((period) => !found.has(periodKey(period)));
 
   if (missing.length > 0) {
-    await syncFinServPnlSnapshots(missing);
+    await syncFinServPnlSnapshots(companyId, missing);
     rows = await fetchFinServPnlSnapshots(companyId, requested);
+  }
+
+  const refreshed = new Set(rows.map((row) => `${row.period_start}_${row.period_end}`));
+  const stillMissing = requested.filter((period) => !refreshed.has(periodKey(period)));
+  if (stillMissing.length > 0) {
+    throw new Error(`QuickBooks P&L snapshots still missing after sync for ${stillMissing.map(periodKey).join(', ')}`);
   }
 
   return rows;
@@ -234,8 +260,13 @@ export function useFinServTotalRevenue(
         months,
         total: Number(periodRow?.income_total ?? 0),
         grossProfit: Number(periodRow?.gross_profit ?? 0),
+        operatingExpenses: Number(periodRow?.operating_expenses ?? 0),
+        operatingProfit: Number(periodRow?.gross_profit ?? 0) - Number(periodRow?.operating_expenses ?? 0),
         grossMargin: Number(periodRow?.income_total)
           ? (Number(periodRow?.gross_profit ?? 0) / Number(periodRow?.income_total ?? 0)) * 100
+          : null,
+        operatingMargin: Number(periodRow?.income_total)
+          ? ((Number(periodRow?.gross_profit ?? 0) - Number(periodRow?.operating_expenses ?? 0)) / Number(periodRow?.income_total ?? 0)) * 100
           : null,
       };
     },
@@ -247,7 +278,10 @@ export function useFinServTotalRevenue(
     months: data?.months ?? [],
     total: data?.total ?? 0,
     grossProfit: data?.grossProfit ?? 0,
+    operatingExpenses: data?.operatingExpenses ?? 0,
+    operatingProfit: data?.operatingProfit ?? 0,
     grossMargin: data?.grossMargin ?? null,
+    operatingMargin: data?.operatingMargin ?? null,
     isLoading,
     error,
   };
@@ -289,15 +323,17 @@ export function useFinServQuarterlyProfits(period: SnapshotPeriod | null, quarte
         const revenue = Number(row?.income_total ?? 0);
         const cogs = Number(row?.cogs_total ?? 0);
         const grossProfit = Number(row?.gross_profit ?? 0);
+        const operatingExpenses = Number(row?.operating_expenses ?? 0);
+        const operatingProfit = grossProfit - operatingExpenses;
         return {
           quarter: quarter.label,
           revenue,
           cogs,
           grossProfit,
           grossMargin: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
-          opex: 0,
-          operatingProfit: 0,
-          operatingMargin: 0,
+          opex: operatingExpenses,
+          operatingProfit,
+          operatingMargin: revenue > 0 ? (operatingProfit / revenue) * 100 : 0,
         };
       });
     },
@@ -394,78 +430,75 @@ export interface CashflowPoint { month: string; monthKey: string; value: number 
 
 export function useFinServCashflow() {
   const { user } = useAuth();
+  const { company } = useCompany();
   const buckets = useMemo(() => buildMonthRange(12), []);
   const startDate = buckets[0].start;
   const endDate = buckets[buckets.length - 1].end;
 
-  const { data: invoices, isLoading: l1 } = useQuery({
-    queryKey: ['finserv-cf-invoices', FINSERV_REALM_ID, startDate, endDate],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['finserv-cashflow-snapshots', user?.id, company?.id, startDate, endDate],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_invoices')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
+      if (!company?.id) return [] as FinServCashflowSnapshotRow[];
+
+      const readRows = async () => {
+        const { data: snapshotRows, error: snapshotError } = await supabase
+          .from('qbo_cashflow_snapshots')
+          .select('period_start, period_end, bucket_start, bucket_end, bucket_label, net_cash_flow')
+          .eq('company_id', company.id)
+          .eq('realm_id', FINSERV_REALM_ID)
+          .eq('accounting_method', 'Accrual')
+          .eq('period_start', startDate)
+          .eq('period_end', endDate)
+          .order('bucket_start', { ascending: true });
+
+        if (snapshotError) throw snapshotError;
+        return (snapshotRows ?? []) as FinServCashflowSnapshotRow[];
+      };
+
+      let snapshotRows = await readRows();
+      if (snapshotRows.length === 0) {
+        const request = {
+          syncType: 'cash_flow',
+          realmId: FINSERV_REALM_ID,
+          company_id: company.id,
+          accounting_method: 'Accrual',
+          start_date: startDate,
+          end_date: endDate,
+        };
+        console.info('[qbo.cashflow.fetch] request', request);
+
+        const { data: syncData, error: syncError } = await supabase.functions.invoke('quickbooks-sync', {
+          body: request,
+        });
+
+        console.info('[qbo.cashflow.fetch] response', { data: syncData, error: syncError?.message ?? null });
+        if (syncError) throw syncError;
+
+        snapshotRows = await readRows();
+      }
+
+      if (snapshotRows.length === 0) {
+        throw new Error(`QuickBooks cashflow snapshots still missing after sync for ${startDate}_${endDate}`);
+      }
+
+      return snapshotRows;
     },
-    enabled: !!user,
+    enabled: !!user && !!company?.id,
     staleTime: 30_000,
   });
-
-  const { data: expenses, isLoading: l2 } = useQuery({
-    queryKey: ['finserv-cf-expenses', FINSERV_REALM_ID, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_expenses')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-
-  const { data: bills, isLoading: l3 } = useQuery({
-    queryKey: ['finserv-cf-bills', FINSERV_REALM_ID, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_bills')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-
-  const isLoading = l1 || l2 || l3;
 
   return useMemo(() => {
-    const points: CashflowPoint[] = buckets.map(b => ({ month: b.label, monthKey: b.key, value: 0 }));
-    const map = new Map(points.map(p => [p.monthKey, p]));
+    const points: CashflowPoint[] = buckets.map((bucket) => {
+      const row = (data ?? []).find((snapshot) => snapshot.bucket_start === bucket.start && snapshot.bucket_end === bucket.end);
+      return {
+        month: bucket.label,
+        monthKey: bucket.key,
+        value: Number(row?.net_cash_flow ?? 0),
+      };
+    });
 
-    for (const r of invoices ?? []) {
-      if (!r.txn_date) continue;
-      const p = map.get(r.txn_date.slice(0, 7));
-      if (p) p.value += Number(r.total_amt) || 0;
-    }
-
-    for (const r of [...(expenses ?? []), ...(bills ?? [])]) {
-      if (!r.txn_date) continue;
-      const p = map.get(r.txn_date.slice(0, 7));
-      if (p) p.value -= Number(r.total_amt) || 0;
-    }
-
-    return { points, isLoading };
-  }, [invoices, expenses, bills, buckets, isLoading]);
+    return { points, isLoading, error };
+  }, [data, buckets, isLoading, error]);
 }
 
 // ────────────────────────────────────────────────────────────
