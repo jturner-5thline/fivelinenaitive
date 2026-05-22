@@ -30,4 +30,15 @@ describe('isActiveDeal', () => {
     expect(isActiveDeal(d('initial-review', 'on-hold'))).toBe(false);
     expect(isActiveDeal(d('initial-review', 'closed-lost'))).toBe(false);
   });
+
+  it('treats Blount Capital "Passed" as inactive', () => {
+    expect(isActiveDeal(d('passed'))).toBe(false);
+    expect(isActiveDeal(d('Passed'))).toBe(false);
+  });
+
+  it('treats Blount Capital "Prospect - Unqualified" as active (intake stage)', () => {
+    expect(isActiveDeal(d('prospect-unqualified'))).toBe(true);
+    expect(isActiveDeal(d('Prospect - Unqualified'))).toBe(true);
+    expect(isActiveDeal(d('prospect-qualified-intake'))).toBe(true);
+  });
 });
