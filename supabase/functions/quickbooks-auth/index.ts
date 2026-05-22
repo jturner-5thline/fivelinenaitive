@@ -196,10 +196,28 @@ serve(async (req) => {
       const userId = await getUserId();
       if (!userId) return jsonResponse({ connected: false, connections: [] });
 
+      // Resolve all user_ids in the caller's company so any teammate sees
+      // QuickBooks as connected once any single member has linked it.
+      const { data: companyRows } = await supabase
+        .from("company_members")
+        .select("company_id")
+        .eq("user_id", userId);
+
+      const companyIds = (companyRows ?? []).map((r: { company_id: string }) => r.company_id);
+      let memberIds: string[] = [userId];
+      if (companyIds.length > 0) {
+        const { data: members } = await supabase
+          .from("company_members")
+          .select("user_id")
+          .in("company_id", companyIds);
+        const ids = new Set<string>([userId, ...(members ?? []).map((m: { user_id: string }) => m.user_id)]);
+        memberIds = Array.from(ids);
+      }
+
       const { data: allTokens } = await supabase
         .from("quickbooks_tokens")
         .select("id, realm_id, company_name, access_token, refresh_token, expires_at, updated_at")
-        .eq("user_id", userId)
+        .in("user_id", memberIds)
         .order("created_at");
 
       if (!allTokens || allTokens.length === 0) {
