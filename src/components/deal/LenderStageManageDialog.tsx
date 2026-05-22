@@ -291,3 +291,55 @@ export function LenderStageManageDialog({
     </Dialog>
   );
 }
+
+function StatusHistory({ lender }: { lender: DealLender }) {
+  const events = buildStatusTimeline(lender);
+  if (events.length === 0) {
+    return (
+      <div className="text-[11px] text-slate-500 italic">
+        No recorded status transitions yet.
+      </div>
+    );
+  }
+  return (
+    <div className="rounded-lg border border-slate-700/40 bg-slate-900/40 px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wider text-slate-400 mb-1.5">
+        Status history
+      </div>
+      <ol className="space-y-1">
+        {events.map((ev, i) => (
+          <li key={i} className="flex items-center gap-2 text-[11.5px] text-slate-200">
+            <span
+              className="inline-block h-1.5 w-1.5 rounded-full"
+              style={{ background: kindColor(ev.kind) }}
+            />
+            <span className="text-slate-300">{ev.label}</span>
+            <span className="text-slate-500">·</span>
+            <TooltipProvider delayDuration={150}>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="tabular-nums text-slate-400 cursor-help">
+                    {formatShortDate(ev.iso)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="text-xs">
+                  {formatFullTimestamp(ev.iso)}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function kindColor(kind: string): string {
+  switch (kind) {
+    case 'submitted': return 'hsl(220 85% 60%)';
+    case 'approved':  return 'hsl(150 70% 50%)';
+    case 'passed':    return 'hsl(0 75% 60%)';
+    case 'declined':  return 'hsl(20 80% 55%)';
+    default:          return 'hsl(220 10% 60%)';
+  }
+}
