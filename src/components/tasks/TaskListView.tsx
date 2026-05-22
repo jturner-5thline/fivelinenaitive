@@ -930,7 +930,13 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       {/* Due date — right-aligned, tabular-nums for stable column width */}
       {visibleSet.has('due') && (
       <div className="flex items-center justify-end tabular-nums" onClick={e => e.stopPropagation()}>
-        <QuickDatePicker value={task.due_date} onChange={v => onUpdate({ due_date: v } as any)} todayStr={todayStr} />
+        <QuickDatePicker
+          value={task.due_date}
+          onChange={v => onUpdate({ due_date: v } as any)}
+          todayStr={todayStr}
+          status={task.status}
+          completedAt={(task as any).completed_at}
+        />
       </div>
       )}
 
