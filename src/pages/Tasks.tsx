@@ -241,6 +241,7 @@ export default function Tasks() {
       if (filterStatus !== 'all' && filterStatus !== 'incomplete' && t.status !== filterStatus) return false;
       if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
       if (filterDealIds.size > 0 && (!t.deal_id || !filterDealIds.has(t.deal_id))) return false;
+      if (filterPriorities.size > 0 && !filterPriorities.has(t.priority as TaskPriority)) return false;
       if (filterLabelIds.size > 0) {
         const taskLabels = taskLabelMap.get(t.id);
         if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
