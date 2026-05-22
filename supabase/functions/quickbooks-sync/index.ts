@@ -19,7 +19,7 @@ const ALL_SCOPES = [
   "customers", "invoices", "payments", "accounts", "vendors",
   "expenses", "bills", "purchase_orders", "journal_entries",
   "estimates", "credit_memos", "bank_deposits", "bank_transfers",
-  "profit_and_loss", "balance_sheet", "ar_aging", "ap_aging",
+  "profit_and_loss", "cash_flow", "balance_sheet", "ar_aging", "ap_aging",
 ] as const;
 
 type SyncScope = typeof ALL_SCOPES[number];
@@ -69,15 +69,29 @@ serve(async (req) => {
     }
     const user = { id: userId } as { id: string };
 
-    const { syncType, realmId: targetRealmId, scopes, start_date, end_date, periods } = await req.json();
+    const { syncType, realmId: targetRealmId, scopes, start_date, end_date, periods, company_id: requestedCompanyId, accounting_method } = await req.json();
     const activeScopes: SyncScope[] = scopes && Array.isArray(scopes) ? scopes : [...ALL_SCOPES];
     console.log(`[QuickBooks Sync] Starting sync for user ${user.id}, realm: ${targetRealmId || "all"}, scopes: ${activeScopes.join(",")}`);
 
     // Get stored tokens
+    const membershipQuery = supabase
+      .from("company_members")
+      .select("company_id")
+      .eq("user_id", user.id);
+
+    const { data: memberships } = await membershipQuery;
+    const memberCompanyIds = (memberships ?? []).map((row) => row.company_id).filter(Boolean);
+    const effectiveCompanyId = requestedCompanyId ?? memberCompanyIds[0] ?? null;
+
     let tokenQuery = supabase
       .from("quickbooks_tokens")
-      .select("*")
-      .eq("user_id", user.id);
+      .select("*");
+
+    if (effectiveCompanyId) {
+      tokenQuery = tokenQuery.eq("company_id", effectiveCompanyId);
+    } else {
+      tokenQuery = tokenQuery.eq("user_id", user.id);
+    }
 
     if (targetRealmId) {
       tokenQuery = tokenQuery.eq("realm_id", targetRealmId);
@@ -92,22 +106,23 @@ serve(async (req) => {
       });
     }
 
-    const { data: memberships } = await supabase
-      .from("company_members")
-      .select("company_id")
-      .eq("user_id", user.id)
-      .limit(1);
-
-    const fallbackCompanyId = memberships?.[0]?.company_id ?? null;
+    const fallbackCompanyId = effectiveCompanyId;
 
     const parseAmount = (value: unknown) => {
       const parsed = Number(value ?? 0);
       return Number.isFinite(parsed) ? parsed : 0;
     };
 
+    const extractReportRows = (node: any): any[] => {
+      if (!node) return [];
+      if (Array.isArray(node)) return node.flatMap((item) => extractReportRows(item));
+      const rows = Array.isArray(node?.Rows?.Row) ? node.Rows.Row : [];
+      return [node, ...rows.flatMap((row: any) => extractReportRows(row))];
+    };
+
     const getPLSummaryValue = (report: any, targetGroups: string[], targetLabels: string[] = []) => {
-      const rows = report?.Rows?.Row;
-      if (!Array.isArray(rows)) return 0;
+      const rows = extractReportRows(report?.Rows?.Row ?? report?.Rows);
+      if (!Array.isArray(rows) || rows.length === 0) return 0;
       const normalizedGroups = targetGroups.map((group) => group.toLowerCase());
       const normalizedLabels = targetLabels.map((label) => label.toLowerCase());
 
@@ -120,6 +135,13 @@ serve(async (req) => {
       }
 
       return 0;
+    };
+
+    const buildCashFlowPeriods = () => {
+      if (start_date && end_date) {
+        return [{ start_date, end_date }];
+      }
+      return [null];
     };
 
     const buildProfitAndLossPeriods = () => {
