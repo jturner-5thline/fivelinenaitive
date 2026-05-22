@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Link as RouterLink } from 'react-router-dom';
+import { useFreeSlots, formatSlotLineET, ET_TZ, type Slot } from '@/hooks/useFreeSlots';
 
 interface Props {
   /** Insert formatted HTML block at end of body. */
@@ -23,12 +24,6 @@ interface Props {
   meetingId?: string | null;
 }
 
-interface Slot {
-  start: Date;
-  end: Date;
-  key: string;
-}
-
 interface Teammate {
   user_id: string;
   email: string | null;
@@ -38,7 +33,6 @@ interface Teammate {
 
 const DURATIONS = [15, 30, 45, 60, 90];
 const BUFFERS = [0, 5, 10, 15];
-const ET_TZ = 'America/New_York';
 
 function escapeHtml(s: string): string {
   return s
