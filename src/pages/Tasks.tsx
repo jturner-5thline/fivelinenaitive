@@ -1689,11 +1689,7 @@ function BoardColumn({ groupKey, label, tasks: groupTasks, statusColor, priority
             <SortableBoardCard key={task.id} task={task} priorityPill={priorityPill} todayStr={todayStr} selectedTaskId={selectedTaskId} onSelectTask={onSelectTask} />
           ))}
         </SortableContext>
-        {!isAdding && (
-          <button onClick={startAdding} className="w-full flex items-center gap-1.5 text-xs py-1.5 px-2 rounded transition-colors" style={{ color: '#8b92a5' }}>
-            <Plus className="h-3 w-3" /> Add task
-          </button>
-        )}
+        {/* Board column inline "+ Add task" removed — use the column header "+" button. Subtask 2. */}
       </div>
     </div>
   );
