@@ -11,6 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { Link as RouterLink } from 'react-router-dom';
+import { useFreeSlots, formatSlotLineET, ET_TZ, type Slot } from '@/hooks/useFreeSlots';
 
 interface Props {
   /** Insert formatted HTML block at end of body. */
@@ -23,12 +24,6 @@ interface Props {
   meetingId?: string | null;
 }
 
-interface Slot {
-  start: Date;
-  end: Date;
-  key: string;
-}
-
 interface Teammate {
   user_id: string;
   email: string | null;
@@ -38,7 +33,6 @@ interface Teammate {
 
 const DURATIONS = [15, 30, 45, 60, 90];
 const BUFFERS = [0, 5, 10, 15];
-const ET_TZ = 'America/New_York';
 
 function escapeHtml(s: string): string {
   return s
@@ -83,78 +77,7 @@ function formatSlotLine(slot: Slot, tz: string): string {
   return `${day} — ${t1}–${t2} ${abbr}`;
 }
 
-/** Format a slot line in Eastern Time with explicit ET label, e.g. "Tue May 26 — 10:00–10:30 AM ET". */
-function formatSlotLineET(slot: Slot): string {
-  const fmtDay = new Intl.DateTimeFormat('en-US', {
-    timeZone: ET_TZ, weekday: 'short', month: 'short', day: 'numeric',
-  });
-  const fmtTime = new Intl.DateTimeFormat('en-US', {
-    timeZone: ET_TZ, hour: 'numeric', minute: '2-digit', hour12: true,
-  });
-  const day = fmtDay.format(slot.start);
-  const t1 = fmtTime.format(slot.start);
-  const t2 = fmtTime.format(slot.end);
-  // Collapse trailing AM/AM or AM/PM: "10:00 AM–10:30 AM" → "10:00–10:30 AM"
-  const m1 = t1.match(/^(.+?)\s(AM|PM)$/i);
-  const m2 = t2.match(/^(.+?)\s(AM|PM)$/i);
-  const compact =
-    m1 && m2 && m1[2] === m2[2]
-      ? `${m1[1]}–${m2[1]} ${m2[2]}`
-      : `${t1.replace(' ', '')}–${t2.replace(' ', '')}`;
-  return `${day} — ${compact} ET`;
-}
-
-/** Build candidate weekday slots for the next N business days based on settings. */
-function buildCandidates(opts: {
-  daysAhead: number;
-  startHour: number;
-  endHour: number;
-  durationMin: number;
-  bufferMin: number;
-}): Slot[] {
-  const { daysAhead, startHour, endHour, durationMin, bufferMin } = opts;
-  const out: Slot[] = [];
-  const now = new Date();
-  const stepMs = (durationMin + bufferMin) * 60 * 1000;
-  let added = 0;
-  let dayOffset = 0;
-  while (added < daysAhead && dayOffset < 60) {
-    const day = new Date(now);
-    day.setDate(day.getDate() + dayOffset);
-    dayOffset += 1;
-    const dow = day.getDay();
-    if (dow === 0 || dow === 6) continue; // weekdays only
-    added += 1;
-    const dayStart = new Date(day);
-    dayStart.setHours(startHour, 0, 0, 0);
-    const dayEnd = new Date(day);
-    dayEnd.setHours(endHour, 0, 0, 0);
-    let cursor = dayStart.getTime();
-    // Skip slots in the past
-    const minStart = Math.max(cursor, now.getTime() + 15 * 60 * 1000);
-    cursor = Math.max(cursor, Math.ceil(minStart / (30 * 60 * 1000)) * (30 * 60 * 1000));
-    while (cursor + durationMin * 60 * 1000 <= dayEnd.getTime()) {
-      const s = new Date(cursor);
-      const e = new Date(cursor + durationMin * 60 * 1000);
-      out.push({ start: s, end: e, key: `${s.toISOString()}_${e.toISOString()}` });
-      cursor += stepMs;
-    }
-  }
-  return out;
-}
-
-function filterBusy(candidates: Slot[], busy: { start: Date; end: Date }[], bufferMin: number): Slot[] {
-  const bufMs = bufferMin * 60 * 1000;
-  return candidates.filter(
-    (c) =>
-      !busy.some(
-        (b) =>
-          c.start.getTime() < b.end.getTime() + bufMs &&
-          c.end.getTime() + bufMs > b.start.getTime(),
-      ),
-  );
-}
-
+// formatSlotLineET imported from useFreeSlots
 function pickPerDay(slots: Slot[], maxPerDay: number, tz: string): Slot[] {
   const byDay = new Map<string, Slot[]>();
   const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
@@ -184,22 +107,42 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
   const [maxPerDay, setMaxPerDay] = useState(4);
   const [workHours, setWorkHours] = useState<[number, number]>([9, 18]);
   const [tz, setTz] = useState(getUserTz());
-  const [loading, setLoading] = useState(false);
-  const [candidates, setCandidates] = useState<Slot[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
   const [inserting, setInserting] = useState(false);
-
-  // Gcal connection probe state
-  const [gcalChecked, setGcalChecked] = useState(false);
-  const [gcalConnected, setGcalConnected] = useState<boolean | null>(null);
 
   // Teammate overlay state
   const [teammateOptions, setTeammateOptions] = useState<Teammate[]>([]);
   const [selectedTeammates, setSelectedTeammates] = useState<Teammate[]>([]);
-  const [teammateConnState, setTeammateConnState] = useState<Record<string, boolean>>({});
   const [teammateSearch, setTeammateSearch] = useState('');
   const [teammatePickerOpen, setTeammatePickerOpen] = useState(false);
+
+  // Shared free-slots fetch (mirrors FindATimeDialog code path)
+  const teammateIds = useMemo(() => selectedTeammates.map((t) => t.user_id), [selectedTeammates]);
+  const {
+    loading,
+    error,
+    candidates: rawCandidates,
+    gcalConnected,
+    teammateConnState,
+    load,
+    reset: resetFreeSlots,
+  } = useFreeSlots({
+    enabled: open,
+    daysAhead,
+    duration,
+    buffer,
+    startHour: workHours[0],
+    endHour: workHours[1],
+    teammateIds,
+    tz,
+    logPrefix: '[InsertAvailability]',
+  });
+
+  // Apply per-day cap on top of free slots returned by the hook.
+  const candidates = useMemo<Slot[] | null>(() => {
+    if (!rawCandidates) return null;
+    return pickPerDay(rawCandidates, maxPerDay, tz);
+  }, [rawCandidates, maxPerDay, tz]);
 
   // Load org teammates (excluding the current user) once on first open
   useEffect(() => {
@@ -215,140 +158,14 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
     })();
   }, [open, user, teammateOptions.length]);
 
-  // Probe Google Calendar connection on first open
-  useEffect(() => {
-    if (!open || gcalChecked) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const now = new Date();
-        const horizon = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        const { data, error: probeErr } = await supabase.functions.invoke('calendar-events', {
-          body: {
-            action: 'list',
-            calendar_id: 'primary',
-            time_min: now.toISOString(),
-            time_max: horizon.toISOString(),
-            max_results: 1,
-          },
-        });
-        if (cancelled) return;
-        if (probeErr) {
-          console.error('[InsertAvailability] gcal probe error:', probeErr.message || probeErr);
-          const msg = String(probeErr.message || '').toLowerCase();
-          setGcalConnected(!(msg.includes('not connected') || msg.includes('unauthorized') || msg.includes('token')));
-        } else if (data?.error) {
-          console.error('[InsertAvailability] gcal probe payload error:', data.error);
-          setGcalConnected(false);
-        } else {
-          setGcalConnected(true);
-        }
-      } catch (e: any) {
-        console.error('[InsertAvailability] gcal probe threw:', e?.message || e);
-        if (!cancelled) setGcalConnected(false);
-      } finally {
-        if (!cancelled) setGcalChecked(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, gcalChecked]);
-
   const hasUnconnectedSelected = selectedTeammates.some(
     (t) => teammateConnState[t.user_id] === false,
   );
 
   const loadAvailability = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setCandidates(null);
     setSelected(new Set());
-    try {
-      const now = new Date();
-      const horizon = new Date(now);
-      horizon.setDate(horizon.getDate() + Math.max(daysAhead * 2, 14));
-      const { data, error: fnErr } = await supabase.functions.invoke('calendar-events', {
-        body: {
-          action: 'list',
-          calendar_id: 'primary',
-          time_min: now.toISOString(),
-          time_max: horizon.toISOString(),
-          max_results: 200,
-        },
-      });
-      if (fnErr) {
-        console.error('[InsertAvailability] calendar-events failed:', fnErr.message || fnErr);
-        throw fnErr;
-      }
-      if (data?.error) {
-        console.error('[InsertAvailability] calendar-events payload error:', data.error);
-        throw new Error(data.error);
-      }
-      const events = (data?.events || []) as Array<{ start: string; end: string; all_day?: boolean }>;
-      const busy = events
-        .filter((e) => e.start && e.end && !e.all_day)
-        .map((e) => ({ start: new Date(e.start), end: new Date(e.end) }));
-
-      // Overlay teammate busy blocks (intersection of free time)
-      const connState: Record<string, boolean> = {};
-      if (selectedTeammates.length > 0) {
-        const { data: tmData, error: tmErr } = await supabase.functions.invoke(
-          'teammates-availability',
-          {
-            body: {
-              user_ids: selectedTeammates.map((t) => t.user_id),
-              time_min: now.toISOString(),
-              time_max: horizon.toISOString(),
-            },
-          },
-        );
-        if (tmErr) {
-          console.error('[InsertAvailability] teammate overlay failed:', tmErr.message);
-        } else {
-          const teammates = (tmData?.teammates || []) as Array<{
-            user_id: string;
-            connected: boolean;
-            busy: { start: string; end: string }[];
-          }>;
-          for (const tm of teammates) {
-            connState[tm.user_id] = tm.connected;
-            if (tm.connected) {
-              for (const b of tm.busy) {
-                busy.push({ start: new Date(b.start), end: new Date(b.end) });
-              }
-            }
-          }
-        }
-      }
-      setTeammateConnState(connState);
-
-      const all = buildCandidates({
-        daysAhead,
-        startHour: workHours[0],
-        endHour: workHours[1],
-        durationMin: duration,
-        bufferMin: buffer,
-      });
-      const free = filterBusy(all, busy, buffer);
-      const picked = pickPerDay(free, maxPerDay, tz);
-      setCandidates(picked);
-      if (picked.length === 0) {
-        console.warn('[InsertAvailability] zero slots returned for window');
-      }
-    } catch (e: any) {
-      const msg = e?.message || 'Could not load calendar availability.';
-      console.error('[InsertAvailability] loadAvailability failed:', msg);
-      setError(
-        msg.toLowerCase().includes('not connected')
-          ? 'Connect Google Calendar in Settings → Integrations to use Insert Availability.'
-          : msg,
-      );
-      if (msg.toLowerCase().includes('not connected') || msg.toLowerCase().includes('token')) {
-        setGcalConnected(false);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [daysAhead, workHours, duration, buffer, maxPerDay, tz, selectedTeammates]);
+    await load();
+  }, [load]);
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -404,7 +221,7 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
       onInsert(block);
       toast.success(`${chosen.length} slot${chosen.length === 1 ? '' : 's'} inserted and held until accepted`);
       setOpen(false);
-      setCandidates(null);
+      resetFreeSlots();
       setSelected(new Set());
     } finally {
       setInserting(false);
@@ -434,9 +251,8 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
       onOpenChange={(o) => {
         setOpen(o);
         if (!o) {
-          setCandidates(null);
+          resetFreeSlots();
           setSelected(new Set());
-          setError(null);
         }
       }}
     >
@@ -465,6 +281,26 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
         sideOffset={6}
         className="w-[420px] p-0 max-h-[560px] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        onPointerDownOutside={(e) => {
+          // Keep popover open when interacting with any portaled child
+          // (teammate sub-popover, native <select> options, tooltips, toasts).
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('[data-radix-popper-content-wrapper], [data-sonner-toast], [role="listbox"], [role="menu"]')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('[data-radix-popper-content-wrapper], [data-sonner-toast], [role="listbox"], [role="menu"]')) {
+            e.preventDefault();
+          }
+        }}
+        onFocusOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+        }}
       >
         <div className="px-4 py-3 border-b">
           <div className="text-sm font-semibold">Insert availability</div>

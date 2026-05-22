@@ -10,10 +10,10 @@ import { AlertTriangle, Calendar as CalendarIcon, Check, Loader2, RefreshCw, Vid
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { useFreeSlots, ET_TZ, formatSlotLineET as fmtET } from '@/hooks/useFreeSlots';
 
 const DURATIONS = [15, 30, 45, 60, 90];
 const BUFFERS = [0, 5, 10, 15];
-const ET_TZ = 'America/New_York';
 
 type ConferencingProvider = 'google_meet' | 'zoom' | 'teams' | 'phone' | 'none';
 
@@ -35,54 +35,6 @@ interface Props {
   onScheduled?: (eventId: string | null) => void;
 }
 
-function buildCandidates(opts: {
-  daysAhead: number; startHour: number; endHour: number; durationMin: number; bufferMin: number;
-}): Slot[] {
-  const { daysAhead, startHour, endHour, durationMin, bufferMin } = opts;
-  const out: Slot[] = [];
-  const now = new Date();
-  const step = (durationMin + bufferMin) * 60_000;
-  let added = 0, dayOffset = 0;
-  while (added < daysAhead && dayOffset < 60) {
-    const day = new Date(now);
-    day.setDate(day.getDate() + dayOffset);
-    dayOffset += 1;
-    const dow = day.getDay();
-    if (dow === 0 || dow === 6) continue;
-    added += 1;
-    const dayStart = new Date(day); dayStart.setHours(startHour, 0, 0, 0);
-    const dayEnd = new Date(day); dayEnd.setHours(endHour, 0, 0, 0);
-    const minStart = Math.max(dayStart.getTime(), now.getTime() + 15 * 60_000);
-    let cursor = Math.ceil(minStart / (30 * 60_000)) * (30 * 60_000);
-    while (cursor + durationMin * 60_000 <= dayEnd.getTime()) {
-      const s = new Date(cursor);
-      const e = new Date(cursor + durationMin * 60_000);
-      out.push({ start: s, end: e, key: `${s.toISOString()}_${e.toISOString()}` });
-      cursor += step;
-    }
-  }
-  return out;
-}
-
-function filterBusy(c: Slot[], busy: { start: Date; end: Date }[], bufMin: number): Slot[] {
-  const buf = bufMin * 60_000;
-  return c.filter((x) => !busy.some((b) =>
-    x.start.getTime() < b.end.getTime() + buf && x.end.getTime() + buf > b.start.getTime(),
-  ));
-}
-
-function fmtET(s: Slot): string {
-  const day = new Intl.DateTimeFormat('en-US', { timeZone: ET_TZ, weekday: 'short', month: 'short', day: 'numeric' }).format(s.start);
-  const t1 = new Intl.DateTimeFormat('en-US', { timeZone: ET_TZ, hour: 'numeric', minute: '2-digit', hour12: true }).format(s.start);
-  const t2 = new Intl.DateTimeFormat('en-US', { timeZone: ET_TZ, hour: 'numeric', minute: '2-digit', hour12: true }).format(s.end);
-  const m1 = t1.match(/^(.+?)\s(AM|PM)$/i);
-  const m2 = t2.match(/^(.+?)\s(AM|PM)$/i);
-  const compact = m1 && m2 && m1[2] === m2[2]
-    ? `${m1[1]}–${m2[1]} ${m2[2]}`
-    : `${t1.replace(' ', '')}–${t2.replace(' ', '')}`;
-  return `${day} — ${compact} ET`;
-}
-
 export function FindATimeDialog({ open, onOpenChange, defaultTitle, attendees, dealId, meetingId, onScheduled }: Props) {
   const { user } = useAuth();
   const [title, setTitle] = useState(defaultTitle || 'Follow-up meeting');
@@ -92,13 +44,14 @@ export function FindATimeDialog({ open, onOpenChange, defaultTitle, attendees, d
   const [buffer, setBuffer] = useState(0);
   const [workHours, setWorkHours] = useState<[number, number]>([9, 18]);
   const [conferencing, setConferencing] = useState<ConferencingProvider>('google_meet');
-  const [loading, setLoading] = useState(false);
-  const [candidates, setCandidates] = useState<Slot[] | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
-  const [gcalConnected, setGcalConnected] = useState<boolean | null>(null);
-  const [gcalChecked, setGcalChecked] = useState(false);
+
+  const { loading, error, candidates, grouped, gcalConnected, load, reset } = useFreeSlots({
+    enabled: open, daysAhead, duration, buffer,
+    startHour: workHours[0], endHour: workHours[1],
+    tz: ET_TZ, logPrefix: '[FindATime]',
+  });
 
   // Zoom availability check (light): look for a row in user_integrations
   const [zoomConnected, setZoomConnected] = useState(false);
@@ -107,35 +60,10 @@ export function FindATimeDialog({ open, onOpenChange, defaultTitle, attendees, d
     if (open) {
       setTitle(defaultTitle || 'Follow-up meeting');
       setSelectedKey(null);
-      setCandidates(null);
-      setError(null);
-      setGcalChecked(false);
-      setGcalConnected(null);
+      reset();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, defaultTitle]);
-
-  useEffect(() => {
-    if (!open || gcalChecked) return;
-    let cancel = false;
-    (async () => {
-      try {
-        const now = new Date();
-        const horizon = new Date(now.getTime() + 24 * 60 * 60_000);
-        const { data, error: e } = await supabase.functions.invoke('calendar-events', {
-          body: { action: 'list', calendar_id: 'primary', time_min: now.toISOString(), time_max: horizon.toISOString(), max_results: 1 },
-        });
-        if (cancel) return;
-        if (e || data?.error) { setGcalConnected(false); console.error('[FindATime] gcal probe failed:', e?.message || data?.error); }
-        else setGcalConnected(true);
-      } catch (err: any) {
-        if (!cancel) setGcalConnected(false);
-        console.error('[FindATime] gcal probe threw:', err?.message || err);
-      } finally {
-        if (!cancel) setGcalChecked(true);
-      }
-    })();
-    return () => { cancel = true; };
-  }, [open, gcalChecked]);
 
   // Best-effort zoom check via user_integrations row (table may not exist yet)
   useEffect(() => {
@@ -154,40 +82,9 @@ export function FindATimeDialog({ open, onOpenChange, defaultTitle, attendees, d
   }, [open, user]);
 
   const loadAvailability = async () => {
-    setLoading(true); setError(null); setCandidates(null); setSelectedKey(null);
-    try {
-      const now = new Date();
-      const horizon = new Date(now); horizon.setDate(horizon.getDate() + Math.max(daysAhead * 2, 14));
-      const { data, error: e } = await supabase.functions.invoke('calendar-events', {
-        body: { action: 'list', calendar_id: 'primary', time_min: now.toISOString(), time_max: horizon.toISOString(), max_results: 200 },
-      });
-      if (e) { console.error('[FindATime] calendar-events failed:', e.message); throw e; }
-      if (data?.error) { console.error('[FindATime] calendar-events error:', data.error); throw new Error(data.error); }
-      const events = (data?.events || []) as Array<{ start: string; end: string; all_day?: boolean }>;
-      const busy = events.filter((x) => x.start && x.end && !x.all_day).map((x) => ({ start: new Date(x.start), end: new Date(x.end) }));
-      const all = buildCandidates({ daysAhead, startHour: workHours[0], endHour: workHours[1], durationMin: duration, bufferMin: buffer });
-      const free = filterBusy(all, busy, buffer).slice(0, 60);
-      setCandidates(free);
-    } catch (err: any) {
-      const msg = err?.message || 'Could not load availability';
-      console.error('[FindATime] loadAvailability:', msg);
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
+    setSelectedKey(null);
+    await load();
   };
-
-  const grouped = useMemo(() => {
-    if (!candidates) return [] as [string, Slot[]][];
-    const fmt = new Intl.DateTimeFormat('en-US', { timeZone: ET_TZ, weekday: 'long', month: 'short', day: 'numeric' });
-    const m = new Map<string, Slot[]>();
-    for (const s of candidates) {
-      const k = fmt.format(s.start);
-      if (!m.has(k)) m.set(k, []);
-      m.get(k)!.push(s);
-    }
-    return Array.from(m.entries());
-  }, [candidates]);
 
   const timeFmt = useMemo(() => new Intl.DateTimeFormat('en-US', { timeZone: ET_TZ, hour: 'numeric', minute: '2-digit', hour12: true }), []);
 
