@@ -359,7 +359,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         const entityResults = normalizeLenderEntities(preparedAction.params || {}).map((entity) => ({
           display_name: entity.display_name,
           master_lender_id: entity.master_lender_id,
-          status: entity.master_lender_id ? 'activity-only' : 'mismatch',
+          status: entity.master_lender_id ? ('activity-only' as const) : ('mismatch' as const),
           reason: entity.master_lender_id ? 'not_submitted' : 'invalid_lender_id',
         }));
         setVerifiedResult({ success: false, error: unresolvedError, entity_results: entityResults });
