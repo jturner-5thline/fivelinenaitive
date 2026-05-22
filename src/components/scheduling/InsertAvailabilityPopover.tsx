@@ -11,8 +11,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface Props {
-  /** Insert formatted block at cursor / append to body. */
-  onInsert: (text: string) => void;
+  /** Insert formatted HTML block at end of body. */
+  onInsert: (html: string) => void;
   /** Optional recipient + deal context to persist with the proposed slots. */
   recipientEmail?: string | null;
   dealId?: string | null;
@@ -207,9 +207,13 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
       return;
     }
     const chosen = candidates.filter((c) => selected.has(c.key));
-    const lines = chosen.map((s) => `  • ${formatSlotLine(s, tz)}`).join('\n');
+    const itemsHtml = chosen
+      .map((s) => `<li>${escapeHtml(formatSlotLine(s, tz))}</li>`)
+      .join('');
     const block =
-      `\n\nHere are a few times that work for me:\n${lines}\n\nLet me know what works and I'll send a calendar invite.\n`;
+      `<p>Here are a few times that work for me:</p>` +
+      `<ul>${itemsHtml}</ul>` +
+      `<p>Let me know what works and I'll send a calendar invite.</p>`;
     onInsert(block);
 
     // Persist as draft holds (best-effort, non-blocking)
@@ -232,6 +236,15 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
     setCandidates(null);
     setSelected(new Set());
   };
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
   const grouped = useMemo(() => {
     if (!candidates) return [];
