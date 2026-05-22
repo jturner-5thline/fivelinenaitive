@@ -1501,6 +1501,9 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   // then fetched text, then prop text/preview snippet.
   const resolvedHtml = fullData?.body_html || email.body_html || '';
   const resolvedText = fullData?.body_text || email.body_text || email.body_preview || '';
+  const trimmedResolvedText = resolvedText.trim();
+  const hasRenderableBody = !!resolvedHtml || trimmedResolvedText.length > 0;
+  const gmailThreadTarget = email.provider_thread_id || email.threadId || threadId;
 
   // For plain-text bodies, split off the quoted reply chain so we can show/hide it.
   const { main: textMain, quoted: textQuoted } = resolvedHtml
@@ -1528,6 +1531,18 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       setTimeout(() => messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     }
   };
+
+  useEffect(() => {
+    if (!expanded) return;
+    console.warn('[email.thread_render]', {
+      threadId: gmailThreadTarget,
+      messageId: email.id,
+      messageCount: threadEmails.length,
+      firstBodyLen: resolvedHtml ? resolvedHtml.length : trimmedResolvedText.length,
+      error: fullError,
+      loading: fullLoading,
+    });
+  }, [expanded, gmailThreadTarget, email.id, threadEmails.length, resolvedHtml, trimmedResolvedText, fullError, fullLoading]);
 
   return (
     <div ref={messageRef} className={cn(
@@ -1663,14 +1678,21 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                   attachments={fullData?.attachments}
                   fromEmail={email.from_email}
                 />
-              ) : (
+              ) : hasRenderableBody ? (
                 <EmailBodyRenderer text={textMain} />
+              ) : (
+                <EmailDetailStatusState
+                  title="Full message unavailable"
+                  description={email.snippet || email.body_preview || 'This message returned no readable body content.'}
+                  actionLabel="Retry"
+                  onAction={() => reloadFull()}
+                />
               )}
             </EmailPaneErrorBoundary>
           </EmailSelectionActionMenu>
 
           {/* Quoted text (only meaningful for plain text bodies) */}
-          {!resolvedHtml && textQuoted && (
+          {!resolvedHtml && hasRenderableBody && textQuoted && (
             <div className="mt-4">
               {!showQuoted ? (
                 <button
