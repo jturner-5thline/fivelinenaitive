@@ -4232,25 +4232,21 @@ export default function DealDetail() {
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
-                                    <div className="flex flex-col min-w-0">
+                                      <div className="flex flex-col min-w-0">
                                       <button 
                                         className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                                         onClick={() => setSelectedLenderName(lender.name)}
                                       >
                                         {lender.name}
                                       </button>
-                                       {(() => {
-                                         const stageCfg = configuredStages.find(s => s.id === lender.stage);
-                                         const stageLabel = (stageCfg?.label || '').toLowerCase();
-                                         const isTerminal = stageCfg?.group === 'passed' || stageCfg?.group === 'excluded' || lender.trackingStatus === 'passed' || stageLabel.includes('not a fit');
-                                         if (isTerminal) return null;
-                                        const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                        return timeInfo.text ? (
-                                          <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                            {timeInfo.text}
-                                          </span>
-                                        ) : null;
-                                      })()}
+                                        {renderLenderStatusDate(lender) ?? (() => {
+                                          const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                          return timeInfo.text ? (
+                                            <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
+                                              {timeInfo.text}
+                                            </span>
+                                          ) : null;
+                                        })()}
                                     </div>
                                   </div>
                                   <Select
@@ -4651,25 +4647,21 @@ export default function DealDetail() {
                                                 </AlertDialogFooter>
                                               </AlertDialogContent>
                                             </AlertDialog>
-                                            <div className="flex flex-col min-w-0">
+                                             <div className="flex flex-col min-w-0">
                                               <button 
                                                 className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                                                 onClick={() => setSelectedLenderName(lender.name)}
                                               >
                                                 {lender.name}
                                               </button>
-                                              {(() => {
-                                                const stageCfg = configuredStages.find(s => s.id === lender.stage);
-                                                const stageLabel = (stageCfg?.label || '').toLowerCase();
-                                                const isTerminal = stageCfg?.group === 'passed' || stageCfg?.group === 'excluded' || lender.trackingStatus === 'passed' || stageLabel.includes('not a fit');
-                                                if (isTerminal) return null;
-                                                const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                                return timeInfo.text ? (
-                                                  <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                                    {timeInfo.text}
-                                                  </span>
-                                                ) : null;
-                                              })()}
+                                               {renderLenderStatusDate(lender) ?? (() => {
+                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                                 return timeInfo.text ? (
+                                                   <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
+                                                     {timeInfo.text}
+                                                   </span>
+                                                 ) : null;
+                                               })()}
                                             </div>
                                           </div>
                                           <Select
