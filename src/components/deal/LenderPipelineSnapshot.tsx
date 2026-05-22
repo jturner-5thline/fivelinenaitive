@@ -4,6 +4,8 @@ import type { DealLender } from '@/types/deal';
 import type { LenderStageConfig } from '@/utils/dealExport';
 import { bucketLenders } from '@/lib/lenderStatusBuckets';
 import { LenderStageManageDialog } from './LenderStageManageDialog';
+import { getPrimaryStatusDate, formatShortDate, formatFullTimestamp } from '@/utils/lenderStatusDate';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
  * Shared Funding Source Pipeline Snapshot — the 4 stage cards (On Deck, In Review,
@@ -92,14 +94,36 @@ export function LenderPipelineSnapshot({
                 {list.length === 0 ? (
                   <p className="m-0 text-[11px] text-slate-500 italic">None</p>
                 ) : (
-                  list.map((l) => (
-                    <p
-                      key={l.id}
-                      className="m-0 text-[13px] font-semibold text-white leading-snug break-words"
-                    >
-                      {l.name}
-                    </p>
-                  ))
+                  list.map((l) => {
+                    const sd = getPrimaryStatusDate(l);
+                    const shortDate = formatShortDate(sd.iso);
+                    return (
+                      <div key={l.id} className="m-0 leading-snug">
+                        <p className="m-0 text-[13px] font-semibold text-white break-words">
+                          {l.name}
+                        </p>
+                        {shortDate && (
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span
+                                  className="text-[10px] text-white/70 font-medium tabular-nums"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {sd.approximate ? '~ ' : ''}{sd.label} {shortDate}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom" className="text-xs">
+                                {sd.approximate
+                                  ? 'Approximate (exact transition date not recorded for this legacy row)'
+                                  : formatFullTimestamp(sd.iso)}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    );
+                  })
                 )}
               </div>
             </button>

@@ -874,7 +874,7 @@ export default function DealDetail() {
     deal?.lenders?.map(l => l.name) || [], 
     [deal?.lenders]
   );
-  const [lenderSort, setLenderSort] = useState<'none' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest'>('none');
+  const [lenderSort, setLenderSort] = useState<'none' | 'updated-desc' | 'updated-asc' | 'stage-furthest' | 'stage-slowest' | 'submitted-desc' | 'status-changed-desc'>('none');
   const [lenderDropdownOpen, setLenderDropdownOpen] = useState(false);
   const pendingReorderTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [stableLenderSnapshot, setStableLenderSnapshot] = useState<DealLender[] | null>(null);
@@ -908,6 +908,18 @@ export default function DealDetail() {
         configuredStages.forEach((s, i) => { stageOrder[s.id] = i; });
         return lenders.sort((a, b) => (stageOrder[a.stage] ?? 999) - (stageOrder[b.stage] ?? 999));
       }
+      case 'submitted-desc':
+        return lenders.sort((a, b) => {
+          const aT = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+          const bT = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+          return bT - aT;
+        });
+      case 'status-changed-desc':
+        return lenders.sort((a, b) => {
+          const aT = a.lastStatusChangeAt ? new Date(a.lastStatusChangeAt).getTime() : (a.updatedAt ? new Date(a.updatedAt).getTime() : 0);
+          const bT = b.lastStatusChangeAt ? new Date(b.lastStatusChangeAt).getTime() : (b.updatedAt ? new Date(b.updatedAt).getTime() : 0);
+          return bT - aT;
+        });
       default:
         return lenders;
     }
@@ -4102,6 +4114,8 @@ export default function DealDetail() {
                               <DropdownMenuItem onSelect={() => setLenderSort('updated-asc')}>Last Updated: Oldest to Newest</DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => setLenderSort('stage-furthest')}>Stage: Furthest to Slowest</DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => setLenderSort('stage-slowest')}>Stage: Slowest to Furthest</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('submitted-desc')}>Most recently submitted</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('status-changed-desc')}>Most recently updated (status)</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                           <Button 

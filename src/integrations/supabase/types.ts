@@ -7654,54 +7654,69 @@ export type Database = {
       }
       deal_lenders: {
         Row: {
+          approved_at: string | null
           created_at: string
           deal_id: string
+          declined_at: string | null
           id: string
           last_contact_at: string | null
+          last_status_change_at: string | null
           name: string
           notes: string | null
           pass_reason: string | null
+          passed_at: string | null
           quote_amount: number | null
           quote_rate: number | null
           quote_term: string | null
           score: number | null
           stage: string
+          submitted_at: string | null
           substage: string | null
           tags: string[]
           tracking_status: string | null
           updated_at: string
         }
         Insert: {
+          approved_at?: string | null
           created_at?: string
           deal_id: string
+          declined_at?: string | null
           id?: string
           last_contact_at?: string | null
+          last_status_change_at?: string | null
           name: string
           notes?: string | null
           pass_reason?: string | null
+          passed_at?: string | null
           quote_amount?: number | null
           quote_rate?: number | null
           quote_term?: string | null
           score?: number | null
           stage?: string
+          submitted_at?: string | null
           substage?: string | null
           tags?: string[]
           tracking_status?: string | null
           updated_at?: string
         }
         Update: {
+          approved_at?: string | null
           created_at?: string
           deal_id?: string
+          declined_at?: string | null
           id?: string
           last_contact_at?: string | null
+          last_status_change_at?: string | null
           name?: string
           notes?: string | null
           pass_reason?: string | null
+          passed_at?: string | null
           quote_amount?: number | null
           quote_rate?: number | null
           quote_term?: string | null
           score?: number | null
           stage?: string
+          submitted_at?: string | null
           substage?: string | null
           tags?: string[]
           tracking_status?: string | null
@@ -23382,6 +23397,10 @@ export type Database = {
       }
     }
     Functions: {
+      _deal_lender_status_bucket: {
+        Args: { _stage: string; _substage: string; _tracking: string }
+        Returns: string
+      }
       admin_add_company_member: {
         Args: {
           _company_id: string

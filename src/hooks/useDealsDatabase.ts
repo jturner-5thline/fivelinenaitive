@@ -165,6 +165,14 @@ interface DbDealLender {
   updated_at: string;
 }
 
+type LenderTimestampFields = {
+  submitted_at: string | null;
+  approved_at: string | null;
+  passed_at: string | null;
+  declined_at: string | null;
+  last_status_change_at: string | null;
+};
+
 // Helper function to trigger workflows
 async function triggerWorkflow(
   triggerType: TriggerType,
@@ -268,6 +276,12 @@ export function useDealsDatabase() {
         passReason: l.pass_reason || undefined,
         score: (l as any).score ?? null,
         updatedAt: l.updated_at,
+        createdAt: l.created_at,
+        submittedAt: (l as any).submitted_at ?? null,
+        approvedAt: (l as any).approved_at ?? null,
+        passedAt: (l as any).passed_at ?? null,
+        declinedAt: (l as any).declined_at ?? null,
+        lastStatusChangeAt: (l as any).last_status_change_at ?? null,
         notesHistory: notesHistoryMap[l.id] || [],
       }));
 
