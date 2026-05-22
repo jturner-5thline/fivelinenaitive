@@ -221,7 +221,7 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
       onInsert(block);
       toast.success(`${chosen.length} slot${chosen.length === 1 ? '' : 's'} inserted and held until accepted`);
       setOpen(false);
-      setCandidates(null);
+      resetFreeSlots();
       setSelected(new Set());
     } finally {
       setInserting(false);
@@ -251,9 +251,8 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
       onOpenChange={(o) => {
         setOpen(o);
         if (!o) {
-          setCandidates(null);
+          resetFreeSlots();
           setSelected(new Set());
-          setError(null);
         }
       }}
     >
