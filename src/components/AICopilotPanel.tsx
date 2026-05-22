@@ -1693,7 +1693,13 @@ export function AICopilotPanel() {
               // Push the dropdown clearly below both the panel header
               // (HISTORY/Clear/Switch Context row) and the Context/Scope
               // badge row underneath, so it never visually overlaps either.
-              marginTop: 10,
+              // Push the dropdown below the panel header (HISTORY toolbar),
+              // PLUS the Context badge row (~36px) AND the Scope chip row
+              // (~32px) that render as siblings underneath, with a 16px
+              // breathing gap so the list never sits on top of the
+              // Context/Scope chrome. ~36 + ~32 + 16 ≈ 84; use 90 for
+              // safety against border + padding rounding.
+              marginTop: 90,
               maxHeight: 360,
               display: 'flex',
               flexDirection: 'column',
