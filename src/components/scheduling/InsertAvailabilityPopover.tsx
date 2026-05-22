@@ -27,6 +27,15 @@ interface Slot {
 const DURATIONS = [15, 30, 45, 60, 90];
 const BUFFERS = [0, 5, 10, 15];
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getUserTz(): string {
   try {
     return Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
