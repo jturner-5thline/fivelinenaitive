@@ -120,6 +120,15 @@ export function QuickCreateTaskDialog({
   const [dealQuery, setDealQuery] = useState('');
   const [debouncedTitle, setDebouncedTitle] = useState('');
 
+  // Active-deal predicate — mirrors the /deals board's "Active Deals" KPI:
+  // excludes closed/dead/on-hold stages and archived/on-hold statuses so the
+  // picker only surfaces deals still in the working pipeline.
+  const INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'dead', 'on-hold']);
+  const INACTIVE_STATUSES = new Set(['archived', 'on-hold']);
+  const isActiveDeal = (d: Deal) =>
+    !INACTIVE_STATUSES.has((d.status as string) || '') &&
+    !INACTIVE_STAGES.has((d.stage as string) || '');
+
   // Track open transitions so we only reset state on false→true. Previously
   // this effect re-ran whenever any `initial*` prop identity changed (e.g.
   // parents passing `initialDueDate={new Date()}` on every render), which
