@@ -107,22 +107,42 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
   const [maxPerDay, setMaxPerDay] = useState(4);
   const [workHours, setWorkHours] = useState<[number, number]>([9, 18]);
   const [tz, setTz] = useState(getUserTz());
-  const [loading, setLoading] = useState(false);
-  const [candidates, setCandidates] = useState<Slot[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [error, setError] = useState<string | null>(null);
   const [inserting, setInserting] = useState(false);
-
-  // Gcal connection probe state
-  const [gcalChecked, setGcalChecked] = useState(false);
-  const [gcalConnected, setGcalConnected] = useState<boolean | null>(null);
 
   // Teammate overlay state
   const [teammateOptions, setTeammateOptions] = useState<Teammate[]>([]);
   const [selectedTeammates, setSelectedTeammates] = useState<Teammate[]>([]);
-  const [teammateConnState, setTeammateConnState] = useState<Record<string, boolean>>({});
   const [teammateSearch, setTeammateSearch] = useState('');
   const [teammatePickerOpen, setTeammatePickerOpen] = useState(false);
+
+  // Shared free-slots fetch (mirrors FindATimeDialog code path)
+  const teammateIds = useMemo(() => selectedTeammates.map((t) => t.user_id), [selectedTeammates]);
+  const {
+    loading,
+    error,
+    candidates: rawCandidates,
+    gcalConnected,
+    teammateConnState,
+    load,
+    reset: resetFreeSlots,
+  } = useFreeSlots({
+    enabled: open,
+    daysAhead,
+    duration,
+    buffer,
+    startHour: workHours[0],
+    endHour: workHours[1],
+    teammateIds,
+    tz,
+    logPrefix: '[InsertAvailability]',
+  });
+
+  // Apply per-day cap on top of free slots returned by the hook.
+  const candidates = useMemo<Slot[] | null>(() => {
+    if (!rawCandidates) return null;
+    return pickPerDay(rawCandidates, maxPerDay, tz);
+  }, [rawCandidates, maxPerDay, tz]);
 
   // Load org teammates (excluding the current user) once on first open
   useEffect(() => {
@@ -138,140 +158,14 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
     })();
   }, [open, user, teammateOptions.length]);
 
-  // Probe Google Calendar connection on first open
-  useEffect(() => {
-    if (!open || gcalChecked) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const now = new Date();
-        const horizon = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-        const { data, error: probeErr } = await supabase.functions.invoke('calendar-events', {
-          body: {
-            action: 'list',
-            calendar_id: 'primary',
-            time_min: now.toISOString(),
-            time_max: horizon.toISOString(),
-            max_results: 1,
-          },
-        });
-        if (cancelled) return;
-        if (probeErr) {
-          console.error('[InsertAvailability] gcal probe error:', probeErr.message || probeErr);
-          const msg = String(probeErr.message || '').toLowerCase();
-          setGcalConnected(!(msg.includes('not connected') || msg.includes('unauthorized') || msg.includes('token')));
-        } else if (data?.error) {
-          console.error('[InsertAvailability] gcal probe payload error:', data.error);
-          setGcalConnected(false);
-        } else {
-          setGcalConnected(true);
-        }
-      } catch (e: any) {
-        console.error('[InsertAvailability] gcal probe threw:', e?.message || e);
-        if (!cancelled) setGcalConnected(false);
-      } finally {
-        if (!cancelled) setGcalChecked(true);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [open, gcalChecked]);
-
   const hasUnconnectedSelected = selectedTeammates.some(
     (t) => teammateConnState[t.user_id] === false,
   );
 
   const loadAvailability = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    setCandidates(null);
     setSelected(new Set());
-    try {
-      const now = new Date();
-      const horizon = new Date(now);
-      horizon.setDate(horizon.getDate() + Math.max(daysAhead * 2, 14));
-      const { data, error: fnErr } = await supabase.functions.invoke('calendar-events', {
-        body: {
-          action: 'list',
-          calendar_id: 'primary',
-          time_min: now.toISOString(),
-          time_max: horizon.toISOString(),
-          max_results: 200,
-        },
-      });
-      if (fnErr) {
-        console.error('[InsertAvailability] calendar-events failed:', fnErr.message || fnErr);
-        throw fnErr;
-      }
-      if (data?.error) {
-        console.error('[InsertAvailability] calendar-events payload error:', data.error);
-        throw new Error(data.error);
-      }
-      const events = (data?.events || []) as Array<{ start: string; end: string; all_day?: boolean }>;
-      const busy = events
-        .filter((e) => e.start && e.end && !e.all_day)
-        .map((e) => ({ start: new Date(e.start), end: new Date(e.end) }));
-
-      // Overlay teammate busy blocks (intersection of free time)
-      const connState: Record<string, boolean> = {};
-      if (selectedTeammates.length > 0) {
-        const { data: tmData, error: tmErr } = await supabase.functions.invoke(
-          'teammates-availability',
-          {
-            body: {
-              user_ids: selectedTeammates.map((t) => t.user_id),
-              time_min: now.toISOString(),
-              time_max: horizon.toISOString(),
-            },
-          },
-        );
-        if (tmErr) {
-          console.error('[InsertAvailability] teammate overlay failed:', tmErr.message);
-        } else {
-          const teammates = (tmData?.teammates || []) as Array<{
-            user_id: string;
-            connected: boolean;
-            busy: { start: string; end: string }[];
-          }>;
-          for (const tm of teammates) {
-            connState[tm.user_id] = tm.connected;
-            if (tm.connected) {
-              for (const b of tm.busy) {
-                busy.push({ start: new Date(b.start), end: new Date(b.end) });
-              }
-            }
-          }
-        }
-      }
-      setTeammateConnState(connState);
-
-      const all = buildCandidates({
-        daysAhead,
-        startHour: workHours[0],
-        endHour: workHours[1],
-        durationMin: duration,
-        bufferMin: buffer,
-      });
-      const free = filterBusy(all, busy, buffer);
-      const picked = pickPerDay(free, maxPerDay, tz);
-      setCandidates(picked);
-      if (picked.length === 0) {
-        console.warn('[InsertAvailability] zero slots returned for window');
-      }
-    } catch (e: any) {
-      const msg = e?.message || 'Could not load calendar availability.';
-      console.error('[InsertAvailability] loadAvailability failed:', msg);
-      setError(
-        msg.toLowerCase().includes('not connected')
-          ? 'Connect Google Calendar in Settings → Integrations to use Insert Availability.'
-          : msg,
-      );
-      if (msg.toLowerCase().includes('not connected') || msg.toLowerCase().includes('token')) {
-        setGcalConnected(false);
-      }
-    } finally {
-      setLoading(false);
-    }
-  }, [daysAhead, workHours, duration, buffer, maxPerDay, tz, selectedTeammates]);
+    await load();
+  }, [load]);
 
   const toggle = (key: string) => {
     setSelected((prev) => {
