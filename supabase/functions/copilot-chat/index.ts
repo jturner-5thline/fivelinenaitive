@@ -5434,6 +5434,108 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         params: { deal_id: params.deal_id, contact_id: params.contact_id },
       };
     }
+    case "add_lender_to_deal": {
+      const dealId = params.deal_id;
+      const lenderName = String(params.lender_name || "").trim();
+      if (!dealId || !lenderName) return { success: false, error: "deal_id and lender_name required" };
+      const { data: existing } = await supabase
+        .from("deal_lenders")
+        .select("id")
+        .eq("deal_id", dealId)
+        .ilike("name", lenderName)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        return { success: false, error: `${lenderName} is already on this deal` };
+      }
+      const { data: row, error: insErr } = await supabase
+        .from("deal_lenders")
+        .insert({ deal_id: dealId, name: lenderName, stage: "reviewing-drl", tracking_status: "active" })
+        .select("id, name")
+        .single();
+      if (insErr) return { success: false, error: insErr.message };
+      await supabase.from("activity_logs").insert({
+        deal_id: dealId,
+        activity_type: "lender_added",
+        description: `Lender "${lenderName}" added via AI Copilot`,
+        user_id: userId,
+      });
+      return {
+        success: true,
+        message: `Added ${lenderName}`,
+        actionType: "add_lender_to_deal",
+        params: { deal_id: dealId, lender_id: row?.id, lender_name: lenderName },
+        inserted: row ? [{ id: row.id, name: row.name }] : [],
+        skipped_existing: [],
+        failed: [],
+      };
+    }
+    case "add_lenders_to_deal": {
+      // Atomic multi-entity add. One Confirm card stands for N lenders;
+      // every row is written in a single INSERT statement so Postgres
+      // rolls back the whole batch on constraint violation. After the
+      // insert we re-read deal_lenders to verify each entity landed
+      // and surface a per-entity inserted/skipped/failed result so the
+      // UI can badge each row independently.
+      const dealId = params.deal_id;
+      const names: string[] = Array.isArray(params.lender_names) ? params.lender_names : [];
+      if (!dealId || names.length === 0) {
+        return { success: false, error: "deal_id and lender_names[] required" };
+      }
+      const uniq = Array.from(new Set(names.map((n) => String(n || "").trim()).filter(Boolean)));
+      const { data: alreadyOn } = await supabase
+        .from("deal_lenders")
+        .select("name")
+        .eq("deal_id", dealId);
+      const existingLower = new Set((alreadyOn || []).map((r: any) => (r.name || "").toLowerCase()));
+      const toInsert: Array<{ deal_id: string; name: string; stage: string; tracking_status: string }> = [];
+      const skipped: string[] = [];
+      for (const n of uniq) {
+        if (existingLower.has(n.toLowerCase())) skipped.push(n);
+        else toInsert.push({ deal_id: dealId, name: n, stage: "reviewing-drl", tracking_status: "active" });
+      }
+      let inserted: Array<{ id: string; name: string }> = [];
+      if (toInsert.length > 0) {
+        const { data, error: insErr } = await supabase
+          .from("deal_lenders")
+          .insert(toInsert)
+          .select("id, name");
+        if (insErr) return { success: false, error: insErr.message };
+        inserted = (data || []).map((r: any) => ({ id: r.id, name: r.name }));
+      }
+      // Post-write verification: re-read and compare.
+      const { data: after } = await supabase
+        .from("deal_lenders")
+        .select("name")
+        .eq("deal_id", dealId);
+      const afterLower = new Set((after || []).map((r: any) => (r.name || "").toLowerCase()));
+      const failed = uniq.filter((n) => !afterLower.has(n.toLowerCase()) && !skipped.includes(n));
+      for (const row of inserted) {
+        await supabase.from("activity_logs").insert({
+          deal_id: dealId,
+          activity_type: "lender_added",
+          description: `Lender "${row.name}" added via AI Copilot (batch)`,
+          user_id: userId,
+        });
+      }
+      const summary = [
+        inserted.length ? `${inserted.length} added` : null,
+        skipped.length ? `${skipped.length} already on deal` : null,
+        failed.length ? `${failed.length} failed` : null,
+      ].filter(Boolean).join(", ");
+      return {
+        success: failed.length === 0,
+        message: summary || "No changes",
+        error: failed.length > 0 ? `Failed to add: ${failed.join(", ")}` : undefined,
+        actionType: "add_lenders_to_deal",
+        params: { deal_id: dealId },
+        inserted,
+        skipped_existing: skipped,
+        failed,
+        requested_count: uniq.length,
+        inserted_count: inserted.length,
+        atomic: true,
+      };
+    }
     default:
       return { success: false, error: `Unknown action: ${actionType}` };
   }
@@ -6589,7 +6691,19 @@ RULES:
 15. EMPTY-STATE BREVITY: When a query returns no results (e.g. no overdue tasks, no recent activity, no matching deals), respond with a SINGLE concise sentence. Do NOT repeat the same statement in a second sentence — say it once. Example: "You have no overdue tasks at the moment." (do not also add "You have no overdue tasks assigned to you at this time.").
 16. NO REPEATED SECTIONS: Emit each piece of information ONCE per message. For pipeline summaries, render exactly ONE "Deals by Stage" / pipeline_summary section — never follow it with a "Pipeline Breakdown by Stage" or a re-listing of the same data under a new heading. For lender-add / task-create / milestone-add confirmations, emit exactly ONE intro paragraph ("I've prepared the updates below — please confirm.") and let the cards speak for themselves; do NOT add a second paraphrased intro.
 17. MONEY FORMATTING: Always use the double-M form for millions ($146.75MM, not $146.75M). Use $XXX,XXXK for thousands. Be consistent within a single response — never mix $146.75M and $146.75MM.
-18. MULTI-ENTITY ACTIONS: When the user's request names N entities (e.g. "Add Wells Fargo and CIT as lenders to Vispero", "assign these 3 tasks to Niki and Scott", "add milestones X, Y, and Z"), you MUST emit ONE confirmation card per entity OR call a batch tool (e.g. add_lenders_to_deal with lender_names: [...]) that produces a single combined card listing every entity. The count of cards (or entities listed in the combined card) MUST equal the number of entities the user selected. Never silently drop entities. If you cannot resolve one of them, surface it as a "needs disambiguation" line — do not omit it.
+18. MULTI-ENTITY ACTIONS: When the user's request names N entities (lenders, tasks, milestones, contacts, documents, mentions), you MUST emit a SINGLE batch confirmation card that lists every entity — NEVER drop entities, and NEVER emit only the first.
+    Preferred batch shapes:
+      - Add multiple lenders to a deal → ONE confirm card with action_type "add_lenders_to_deal" and params { deal_id, deal_name, lender_names: ["A", "B", ...] }. Do NOT emit N separate add_lender_to_deal cards — they collapse to one in the UI.
+      - Assign multiple tasks / one task to multiple owners → one create_task card per (task × owner) pair, all in the same response.
+      - Add multiple milestones → one add_milestone card per milestone, all in the same response.
+      - Link multiple contacts / tag multiple users in a note → one link_contact_to_deal / mention card per entity, all in the same response.
+    The count of entities the UI shows MUST equal the count the user named. After confirmation, your follow-up chips and summary text MUST reference EVERY entity acted on (e.g. "Draft outreach to Wells Fargo and CIT"), not just the first.
+    If one of the entities cannot be resolved, include it as a "needs disambiguation" line in the same response — never silently omit it.
+    FEW-SHOT — user says "Add Wells Fargo TMT and CIT (First Citizens) to Vispero":
+    \`\`\`json
+    { "action": "confirm", "action_type": "add_lenders_to_deal", "description": "Add 2 lenders to Vispero", "params": { "deal_id": "<uuid>", "deal_name": "Vispero", "lender_names": ["Wells Fargo Technology, Media & Telecom Group", "CIT (First Citizens)"] } }
+    \`\`\`
+    Follow-up chips for the response above MUST be e.g. ["Draft outreach to Wells Fargo and CIT", "Set both to Reviewing DRL", ...] — plural and naming both entities.
 
 DEAL MEMO & EMAIL WORKFLOW MODE:
 When the user pastes or forwards emails, memos, call notes, IC writeups, or other unstructured deal text asking for a summary, analysis, report, or memo, activate this workflow. Follow the PLAN → EXECUTE → SYNTHESIZE process internally, but present the output as polished, human-readable markdown — like a senior associate or VP at an advisory firm writing a deal brief for their MD.

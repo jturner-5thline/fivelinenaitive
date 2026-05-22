@@ -440,7 +440,24 @@ function CopilotAssistantContent({ content }: { content: string }) {
         // Don't render the raw JSON in chat.
       }
       else if (parsed.action === 'confirm' && parsed.action_type) {
-        const key = `confirm:${parsed.action_type}:${parsed.params?.deal_id || ''}:${parsed.params?.new_pipeline_id || parsed.params?.new_stage || ''}`;
+        // Dedup key MUST include an entity discriminator. Without it, two
+        // sibling cards (e.g. "Add Wells Fargo TMT" + "Add CIT") collapse
+        // into one and the user only sees the first lender. We include
+        // every common entity-identifying param so multi-entity prompts
+        // produce the right number of cards.
+        const p = parsed.params || {};
+        const discriminator = [
+          p.deal_id || '',
+          p.new_pipeline_id || p.new_stage || '',
+          p.lender_id || p.lender_name || '',
+          p.lender_names ? JSON.stringify(p.lender_names) : '',
+          p.milestone_id || p.milestone_name || '',
+          p.contact_id || p.contact_name || '',
+          p.assignee_user_id || p.owner_id || p.owner_label || '',
+          p.title || p.task_title || '',
+          p.item_id || p.outstanding_item_id || '',
+        ].join('|');
+        const key = `confirm:${parsed.action_type}:${discriminator}`;
         if (!seenActions.has(key)) {
           seenActions.add(key);
           segments.push({ type: 'confirm', value: parsed });
@@ -479,21 +496,80 @@ function CopilotAssistantContent({ content }: { content: string }) {
   if (lastIndex < displayContent.length) segments.push({ type: 'text', value: displayContent.slice(lastIndex) });
   if (segments.length === 0) segments.push({ type: 'text', value: displayContent });
 
-  // Coalesce consecutive 'confirm' segments that share the same action_type
-  // (and are not create_task, which has its own dedicated UI) into a single
-  // grouped segment so we can render an "Approve all (N)" bar.
-  const groupedSegments: Array<{ type: string; value: any }> = [];
+  // Pre-pass: merge consecutive single-entity add_lender_to_deal cards
+  // targeting the same deal into a SINGLE multi-entity add_lenders_to_deal
+  // card. This guarantees that when the LLM emits one card per lender for
+  // a multi-entity prompt, the UI still shows the user a single combined
+  // approval card with every lender listed, and the backend write happens
+  // atomically through the batch endpoint.
+  const mergedSegments: Array<{ type: string; value: any }> = [];
   for (let i = 0; i < segments.length; i++) {
     const seg = segments[i];
-    if (seg.type === 'confirm' && seg.value?.action_type && seg.value.action_type !== 'create_task') {
-      const batch = [seg.value];
+    if (
+      seg.type === 'confirm' &&
+      seg.value?.action_type === 'add_lender_to_deal' &&
+      seg.value.params?.deal_id
+    ) {
+      const dealId = seg.value.params.deal_id;
+      const names: string[] = [];
+      const pushName = (v: any) => {
+        const n = (v?.params?.lender_name || '').toString().trim();
+        if (n && !names.find((x) => x.toLowerCase() === n.toLowerCase())) names.push(n);
+      };
+      pushName(seg.value);
       let j = i + 1;
       while (
         j < segments.length &&
         segments[j].type === 'confirm' &&
-        segments[j].value?.action_type === seg.value.action_type
+        segments[j].value?.action_type === 'add_lender_to_deal' &&
+        segments[j].value.params?.deal_id === dealId
       ) {
-        batch.push(segments[j].value);
+        pushName(segments[j].value);
+        j++;
+      }
+      if (names.length >= 2) {
+        const dealName = seg.value.params.deal_name || '';
+        mergedSegments.push({
+          type: 'confirm',
+          value: {
+            action: 'confirm',
+            action_type: 'add_lenders_to_deal',
+            description: `Add ${names.length} lenders to ${dealName || 'deal'}`,
+            params: {
+              deal_id: dealId,
+              deal_name: dealName,
+              lender_names: names,
+            },
+          },
+        });
+        i = j - 1;
+        continue;
+      }
+    }
+    mergedSegments.push(seg);
+  }
+
+  // Coalesce consecutive 'confirm' segments that share the same action_type
+  // (and are not create_task or the multi-entity lender batch, which have
+  // their own dedicated UIs) into a single grouped segment so we can render
+  // an "Approve all (N)" bar.
+  const groupedSegments: Array<{ type: string; value: any }> = [];
+  for (let i = 0; i < mergedSegments.length; i++) {
+    const seg = mergedSegments[i];
+    if (
+      seg.type === 'confirm' &&
+      seg.value?.action_type &&
+      seg.value.action_type !== 'create_task' &&
+      seg.value.action_type !== 'add_lenders_to_deal'
+    ) {
+      const batch = [seg.value];
+      let j = i + 1;
+      while (
+        j < mergedSegments.length &&
+        mergedSegments[j].type === 'confirm' &&
+        mergedSegments[j].value?.action_type === seg.value.action_type
+      ) {
+        batch.push(mergedSegments[j].value);
         j++;
       }
       if (batch.length >= 2) {
@@ -1614,7 +1690,10 @@ export function AICopilotPanel() {
               top: '100%',
               left: 8,
               right: 8,
-              marginTop: 6,
+              // Push the dropdown clearly below both the panel header
+              // (HISTORY/Clear/Switch Context row) and the Context/Scope
+              // badge row underneath, so it never visually overlaps either.
+              marginTop: 10,
               maxHeight: 360,
               display: 'flex',
               flexDirection: 'column',

@@ -53,6 +53,8 @@ const ACTIVITY_LOGGED_ONLY = new Set<string>([
   "update_milestone",
   "update_lender_status",
   "delete_outstanding_item",
+  "add_lender_to_deal",
+  "add_lenders_to_deal",
 ]);
 
 function isEmpty(v: unknown): boolean {
@@ -232,6 +234,26 @@ export function deriveFieldDiffs(
           newValue: "—",
         },
       ];
+    case "add_lender_to_deal":
+      return [
+        {
+          field: "lender",
+          label: "Lender",
+          newValue: get("lender_name"),
+        },
+      ];
+    case "add_lenders_to_deal": {
+      // Render one row per entity so the post-Confirm status table
+      // can badge each lender independently (verified / skipped / failed).
+      const names = Array.isArray(get("lender_names"))
+        ? (get("lender_names") as unknown[])
+        : [];
+      return names.map((n, i) => ({
+        field: `lender_${i}`,
+        label: i === 0 ? "Lenders" : "",
+        newValue: n,
+      }));
+    }
     default:
       // Unknown action: best-effort — show every param that isn't
       // a structural field (deal_id / deal_name) so the user still
@@ -250,6 +272,12 @@ export interface VerifiedResult {
   error_code?: string;
   mismatches?: Array<{ field: string; expected?: unknown; actual?: unknown }>;
   audit?: { after?: Record<string, unknown> | null } | null;
+  // Returned by add_lenders_to_deal so the field table can badge each
+  // entity row independently.
+  inserted?: Array<{ id: string; name: string }>;
+  skipped_existing?: string[];
+  failed?: string[];
+  params?: Record<string, unknown>;
 }
 
 /**
@@ -298,6 +326,20 @@ export function computeFieldStatuses(
   }
 
   // Success path.
+  // Per-entity batch: map each lender row to verified / activity-only (skipped) / mismatch.
+  if (actionType === "add_lenders_to_deal") {
+    const insertedNames = new Set((result.inserted || []).map((r) => (r.name || "").toLowerCase()));
+    const skippedNames = new Set((result.skipped_existing || []).map((n) => (n || "").toLowerCase()));
+    const failedNames = new Set((result.failed || []).map((n) => (n || "").toLowerCase()));
+    for (const d of diffs) {
+      const name = typeof d.newValue === "string" ? d.newValue.toLowerCase() : "";
+      if (failedNames.has(name)) out[d.field] = "mismatch";
+      else if (skippedNames.has(name)) out[d.field] = "activity-only";
+      else if (insertedNames.has(name)) out[d.field] = "verified";
+      else out[d.field] = "activity-only";
+    }
+    return out;
+  }
   for (const d of diffs) {
     if (VERIFIED_THROUGH_HELPER.has(actionType)) {
       out[d.field] = "verified";
