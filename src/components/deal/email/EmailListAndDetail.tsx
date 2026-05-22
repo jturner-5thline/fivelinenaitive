@@ -163,6 +163,7 @@ import { cn } from '@/lib/utils';
 import { useDealMatchForEmail } from '@/hooks/useDealMatchForEmail';
 import { DealMatchBadge } from '@/components/dashboard/inbox/DealMatchBadge';
 import type { DraftMode } from './AiDraftReviewPanel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // ─── Sentiment badge ─────────────────────────────────────────
 function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }) {
@@ -838,6 +839,36 @@ export class EmailPaneErrorBoundary extends Component<{
 
     return this.props.children;
   }
+}
+
+function EmailDetailStatusState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex h-full min-h-[240px] w-full min-w-0 items-center justify-center p-6">
+      <div className="max-w-md rounded-lg border border-[hsl(var(--email-border))] bg-card/40 px-5 py-4 text-center">
+        <p className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]">{description}</p>
+        {actionLabel && onAction && (
+          <button
+            type="button"
+            onClick={onAction}
+            className="mt-3 inline-flex items-center justify-center rounded-md border border-[hsl(var(--email-border))] bg-card/60 px-3 py-1.5 text-xs font-medium text-[hsl(var(--email-text-primary))] hover:bg-card/80 transition-colors"
+          >
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 }
 
 // ─── Email List (threaded) ───────────────────────────────────
