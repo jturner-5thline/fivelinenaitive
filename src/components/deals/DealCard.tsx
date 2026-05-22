@@ -575,9 +575,11 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
           {/* ── ROW: Engagement + Deal Type pills ── */}
           {!compact && (
             <div className="flex items-center gap-3 flex-wrap min-w-0">
-              <span className="text-xs font-medium" style={{ color: 'rgba(205, 222, 245, 0.82)' }}>
-                {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
-              </span>
+              {deal.engagementType && ENGAGEMENT_TYPE_CONFIG[deal.engagementType] && (
+                <span className="text-xs font-medium" style={{ color: 'rgba(205, 222, 245, 0.82)' }}>
+                  {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+                </span>
+              )}
               {deal.exclusivity && EXCLUSIVITY_CONFIG[deal.exclusivity] && (
                 <Badge variant="outline" className="text-xs rounded-lg bg-primary/10 text-primary border-primary/20">
                   {EXCLUSIVITY_CONFIG[deal.exclusivity].label}
