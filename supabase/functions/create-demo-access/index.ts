@@ -208,8 +208,11 @@ const handler = async (req: Request): Promise<Response> => {
           //    Falls back to legacy send-invite if the transactional path errors.
           const acceptUrl = `${PLATFORM_URL}/accept-invite?token=${invitation.token}`;
           let sentBranded = false;
+          let brandedError: string | null = null;
           try {
             const { error: txErr } = await admin.functions.invoke("send-transactional-email", {
+              // verify_jwt=true on the receiver — forward the caller's JWT so it passes.
+              headers: { Authorization: authHeader },
               body: {
                 templateName: "demo-invite",
                 recipientEmail: email,
@@ -227,9 +230,15 @@ const handler = async (req: Request): Promise<Response> => {
             if (txErr) throw txErr;
             sentBranded = true;
           } catch (txErr) {
-            console.warn("[create-demo-access] branded invite failed, falling back", txErr);
+            brandedError = txErr instanceof Error ? txErr.message : String(txErr);
+            console.warn("[create-demo-access] branded invite failed, falling back", brandedError);
+          }
+
+          let sentFallback = false;
+          let fallbackError: string | null = null;
+          if (!sentBranded) {
             try {
-              await admin.functions.invoke("send-invite", {
+              const { error: fbErr } = await admin.functions.invoke("send-invite", {
                 body: {
                   invitationId: invitation.id,
                   email,
@@ -240,11 +249,24 @@ const handler = async (req: Request): Promise<Response> => {
                 },
                 headers: { Authorization: authHeader },
               });
+              if (fbErr) throw fbErr;
+              sentFallback = true;
             } catch (sendErr) {
-              console.warn("[create-demo-access] send-invite fallback failed", sendErr);
+              fallbackError = sendErr instanceof Error ? sendErr.message : String(sendErr);
+              console.error("[create-demo-access] send-invite fallback failed", fallbackError);
             }
           }
-          results.push({ email, ok: true, userId, invited: true });
+
+          const invited = sentBranded || sentFallback;
+          results.push({
+            email,
+            ok: true,
+            userId,
+            invited,
+            invitationId: invitation.id,
+            channel: sentBranded ? "branded" : sentFallback ? "fallback" : null,
+            reason: invited ? null : (brandedError ?? fallbackError ?? "Email send failed"),
+          });
         } else {
           results.push({ email, ok: true, userId, invited: false });
         }

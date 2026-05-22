@@ -106,12 +106,36 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
         },
       });
       if (error) throw error;
-      const failures = (data?.results ?? []).filter((r: { ok?: boolean }) => !r.ok);
-      const sent = (data?.results ?? []).filter((r: { invited?: boolean }) => r.invited).length;
-      toast.success(
-        `Demo access created for ${companyName}. ${sent} invite${sent === 1 ? "" : "s"} sent.` +
-          (failures.length ? ` (${failures.length} failed)` : ""),
-      );
+      const results = (data?.results ?? []) as Array<{
+        email?: string;
+        ok?: boolean;
+        invited?: boolean;
+        reason?: string | null;
+      }>;
+      const sent = results.filter((r) => r.invited).length;
+      const notSent = results.filter((r) => r.ok && !r.invited && sendWelcomeEmail);
+      const userFailures = results.filter((r) => !r.ok);
+
+      if (sent > 0) {
+        toast.success(
+          `Demo access created for ${companyName}. ${sent} invite${sent === 1 ? "" : "s"} sent.`,
+        );
+      } else {
+        toast.success(`Demo access created for ${companyName}.`);
+      }
+      if (notSent.length) {
+        for (const r of notSent) {
+          toast.error(
+            `Invite email failed for ${r.email}: ${r.reason || "unknown error"}. Use “Resend invites” on the company row.`,
+            { duration: 8000 },
+          );
+        }
+      }
+      if (userFailures.length) {
+        for (const r of userFailures) {
+          toast.error(`User ${r.email}: ${r.reason || "failed"}`);
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ["admin-companies"] });
       queryClient.invalidateQueries({ queryKey: ["admin-invitations"] });
       onOpenChange(false);
