@@ -78,57 +78,6 @@ function formatSlotLine(slot: Slot, tz: string): string {
 }
 
 // formatSlotLineET imported from useFreeSlots
-/** Build candidate weekday slots for the next N business days based on settings. */
-function buildCandidates(opts: {
-  daysAhead: number;
-  startHour: number;
-  endHour: number;
-  durationMin: number;
-  bufferMin: number;
-}): Slot[] {
-  const { daysAhead, startHour, endHour, durationMin, bufferMin } = opts;
-  const out: Slot[] = [];
-  const now = new Date();
-  const stepMs = (durationMin + bufferMin) * 60 * 1000;
-  let added = 0;
-  let dayOffset = 0;
-  while (added < daysAhead && dayOffset < 60) {
-    const day = new Date(now);
-    day.setDate(day.getDate() + dayOffset);
-    dayOffset += 1;
-    const dow = day.getDay();
-    if (dow === 0 || dow === 6) continue; // weekdays only
-    added += 1;
-    const dayStart = new Date(day);
-    dayStart.setHours(startHour, 0, 0, 0);
-    const dayEnd = new Date(day);
-    dayEnd.setHours(endHour, 0, 0, 0);
-    let cursor = dayStart.getTime();
-    // Skip slots in the past
-    const minStart = Math.max(cursor, now.getTime() + 15 * 60 * 1000);
-    cursor = Math.max(cursor, Math.ceil(minStart / (30 * 60 * 1000)) * (30 * 60 * 1000));
-    while (cursor + durationMin * 60 * 1000 <= dayEnd.getTime()) {
-      const s = new Date(cursor);
-      const e = new Date(cursor + durationMin * 60 * 1000);
-      out.push({ start: s, end: e, key: `${s.toISOString()}_${e.toISOString()}` });
-      cursor += stepMs;
-    }
-  }
-  return out;
-}
-
-function filterBusy(candidates: Slot[], busy: { start: Date; end: Date }[], bufferMin: number): Slot[] {
-  const bufMs = bufferMin * 60 * 1000;
-  return candidates.filter(
-    (c) =>
-      !busy.some(
-        (b) =>
-          c.start.getTime() < b.end.getTime() + bufMs &&
-          c.end.getTime() + bufMs > b.start.getTime(),
-      ),
-  );
-}
-
 function pickPerDay(slots: Slot[], maxPerDay: number, tz: string): Slot[] {
   const byDay = new Map<string, Slot[]>();
   const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' });
