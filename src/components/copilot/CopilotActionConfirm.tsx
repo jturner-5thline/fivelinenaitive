@@ -54,6 +54,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 type LenderEntity = {
   display_name: string;
   master_lender_id: string | null;
+  candidates?: Array<{ id: string; name: string }>;
 };
 
 function isLenderAddAction(actionType: string) {
@@ -70,6 +71,11 @@ function normalizeLenderEntities(params: Record<string, any>): LenderEntity[] {
           typeof entity?.master_lender_id === 'string' && UUID_RE.test(entity.master_lender_id)
             ? entity.master_lender_id
             : null,
+        candidates: Array.isArray(entity?.candidates)
+          ? entity.candidates
+              .map((c: any) => ({ id: String(c?.id || ''), name: String(c?.name || '') }))
+              .filter((c: any) => c.id && c.name)
+          : undefined,
       }))
       .filter((entity) => entity.display_name);
   }
@@ -85,44 +91,119 @@ function normalizeLenderEntities(params: Record<string, any>): LenderEntity[] {
     .filter((entity) => entity.display_name);
 }
 
+// Common acronym → expansion map for lender names. When an input
+// token matches a key, the value tokens are required (all-of) for
+// the alias bonus, letting "Wells Fargo TMT" resolve to
+// "Wells Fargo Technology, Media & Telecom Group".
+const LENDER_ACRONYMS: Record<string, string[]> = {
+  tmt: ['technology', 'media', 'telecom'],
+  cre: ['commercial', 'real', 'estate'],
+  abl: ['asset', 'based', 'lending'],
+  sba: ['small', 'business', 'administration'],
+};
+
+function normalizeLenderName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[*()\-_/.,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseLenderInput(displayName: string): { primary: string; alias: string | null } {
+  // "CIT (First Citizens)" → primary="CIT", alias="First Citizens"
+  const m = displayName.match(/^([^(]+)\(([^)]+)\)\s*$/);
+  if (m) return { primary: m[1].trim(), alias: m[2].trim() };
+  return { primary: displayName.trim(), alias: null };
+}
+
 async function resolveMasterLenderEntities(params: Record<string, any>): Promise<LenderEntity[]> {
   const entities = normalizeLenderEntities(params);
   return Promise.all(
     entities.map(async (entity) => {
       if (entity.master_lender_id) return entity;
 
-      const exactName = entity.display_name.replace(/[%,]/g, '').trim();
-      if (!exactName) return entity;
+      const { primary, alias } = parseLenderInput(entity.display_name);
+      const cleanPrimary = primary.replace(/[%_]/g, '').trim();
+      if (!cleanPrimary) return entity;
 
-      const { data: exactMatches } = await supabase
+      // Broad candidate pool: search on the first significant token
+      // so abbreviations like "Wells Fargo TMT" still surface
+      // "Wells Fargo Technology, Media & Telecom Group".
+      const firstToken = cleanPrimary.split(/\s+/)[0];
+      const { data } = await supabase
         .from('master_lenders')
         .select('id, name')
-        .ilike('name', exactName)
-        .limit(2);
+        .ilike('name', `%${firstToken}%`)
+        .limit(50);
 
-      const exact = (exactMatches || []).find(
-        (row: any) => String(row.name || '').trim().toLowerCase() === exactName.toLowerCase(),
-      );
-      if (exact) {
-        return { display_name: String(exact.name || entity.display_name), master_lender_id: exact.id };
+      const rows = ((data || []) as Array<{ id: string; name: string }>).filter(r => r.name);
+      if (rows.length === 0) return { ...entity, candidates: [] };
+
+      const normInput = normalizeLenderName(cleanPrimary);
+      const normAlias = alias ? normalizeLenderName(alias) : null;
+      const inputTokens = normInput.split(/\s+/).filter(t => t.length >= 2);
+      const expansionTokens = inputTokens
+        .filter(t => LENDER_ACRONYMS[t])
+        .flatMap(t => LENDER_ACRONYMS[t]);
+
+      const scored = rows.map(r => {
+        const n = normalizeLenderName(r.name);
+        let score = 0;
+        // (a) exact normalized match
+        if (n === normInput) score += 100;
+        // (b) prefix / contains
+        if (n.startsWith(normInput)) score += 25;
+        if (n.includes(normInput)) score += 10;
+        // per-token containment
+        for (const t of inputTokens) {
+          if (t === firstToken.toLowerCase()) continue;
+          if (n.includes(t)) score += 10;
+        }
+        // (c) acronym expansion — every expansion token must appear
+        if (expansionTokens.length > 0 && expansionTokens.every(e => n.includes(e))) {
+          score += 60;
+        }
+        // (d) parent-company / acquirer alias from parens
+        if (normAlias && n.includes(normAlias)) score += 50;
+        return { row: r, score, n };
+      }).sort((a, b) => b.score - a.score || a.row.name.length - b.row.name.length);
+
+      // Deduplicate by normalized name (master_lenders has duplicate
+      // rows with the same display name) — keep first/best per name.
+      const seenName = new Set<string>();
+      const unique = scored.filter(s => {
+        if (s.score <= 0) return false;
+        if (seenName.has(s.n)) return false;
+        seenName.add(s.n);
+        return true;
+      });
+
+      const top = unique[0];
+      const second = unique[1];
+      // Auto-resolve when (1) top is an exact match, (2) only one
+      // unique candidate survives, or (3) the top score is meaningfully
+      // higher than the runner-up (alias / acronym hit).
+      const canAutoResolve =
+        !!top &&
+        (
+          top.score >= 100 ||
+          unique.length === 1 ||
+          (!!second && top.score - second.score >= 30)
+        );
+
+      if (canAutoResolve) {
+        return {
+          display_name: top.row.name,
+          master_lender_id: top.row.id,
+        };
       }
-      if ((exactMatches || []).length === 1) {
-        const only = exactMatches![0] as any;
-        return { display_name: String(only.name || entity.display_name), master_lender_id: only.id };
-      }
 
-      const { data: fuzzyMatches } = await supabase
-        .from('master_lenders')
-        .select('id, name')
-        .ilike('name', `%${exactName}%`)
-        .limit(2);
-
-      if ((fuzzyMatches || []).length === 1) {
-        const only = fuzzyMatches![0] as any;
-        return { display_name: String(only.name || entity.display_name), master_lender_id: only.id };
-      }
-
-      return entity;
+      return {
+        ...entity,
+        candidates: unique.slice(0, 8).map(s => ({ id: s.row.id, name: s.row.name })),
+      };
     }),
   );
 }
