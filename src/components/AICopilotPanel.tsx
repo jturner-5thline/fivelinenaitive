@@ -440,7 +440,24 @@ function CopilotAssistantContent({ content }: { content: string }) {
         // Don't render the raw JSON in chat.
       }
       else if (parsed.action === 'confirm' && parsed.action_type) {
-        const key = `confirm:${parsed.action_type}:${parsed.params?.deal_id || ''}:${parsed.params?.new_pipeline_id || parsed.params?.new_stage || ''}`;
+        // Dedup key MUST include an entity discriminator. Without it, two
+        // sibling cards (e.g. "Add Wells Fargo TMT" + "Add CIT") collapse
+        // into one and the user only sees the first lender. We include
+        // every common entity-identifying param so multi-entity prompts
+        // produce the right number of cards.
+        const p = parsed.params || {};
+        const discriminator = [
+          p.deal_id || '',
+          p.new_pipeline_id || p.new_stage || '',
+          p.lender_id || p.lender_name || '',
+          p.lender_names ? JSON.stringify(p.lender_names) : '',
+          p.milestone_id || p.milestone_name || '',
+          p.contact_id || p.contact_name || '',
+          p.assignee_user_id || p.owner_id || p.owner_label || '',
+          p.title || p.task_title || '',
+          p.item_id || p.outstanding_item_id || '',
+        ].join('|');
+        const key = `confirm:${parsed.action_type}:${discriminator}`;
         if (!seenActions.has(key)) {
           seenActions.add(key);
           segments.push({ type: 'confirm', value: parsed });
