@@ -848,7 +848,7 @@ export default function Tasks() {
           horizontal scroll) so controls reflow on narrow widths instead of
           disappearing behind a scroll affordance.
         */}
-        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap pr-16" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
           {/* Search — far left, flexes to fill available space */}
           <div className="relative flex-1 min-w-[160px] max-w-[280px] order-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8a93a6' }} />
