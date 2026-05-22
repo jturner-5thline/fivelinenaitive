@@ -236,6 +236,63 @@ export default function Tasks() {
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
 
+  // ── URL query-param persistence ──────────────────────────────────────
+  // Sync status / due / priority / deal filters with the URL so links are
+  // shareable and refresh-safe. Read once on mount, then write on change.
+  const urlHydrated = useRef(false);
+  useEffect(() => {
+    if (urlHydrated.current) return;
+    urlHydrated.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get('status') as FilterStatus | null;
+    if (s && ['all','incomplete','complete','not_started','in_progress','blocked'].includes(s)) {
+      setFilterStatus(s);
+    }
+    const d = params.get('due') as FilterDueDate | null;
+    if (d && ['all','overdue','today','this_week','no_date'].includes(d)) {
+      setFilterDueDate(d);
+    }
+    const p = params.get('priority');
+    if (p) {
+      const valid = p.split(',').filter((v): v is TaskPriority =>
+        ['urgent','high','medium','low'].includes(v));
+      if (valid.length) setFilterPriorities(new Set(valid));
+    }
+    const deals = params.get('deal');
+    if (deals) {
+      const ids = deals.split(',').filter(Boolean);
+      if (ids.length) setFilterDealIds(new Set(ids));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!urlHydrated.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (filterStatus !== 'incomplete') params.set('status', filterStatus); else params.delete('status');
+    if (filterDueDate !== 'all') params.set('due', filterDueDate); else params.delete('due');
+    if (filterPriorities.size) params.set('priority', Array.from(filterPriorities).join(',')); else params.delete('priority');
+    if (filterDealIds.size) params.set('deal', Array.from(filterDealIds).join(',')); else params.delete('deal');
+    const qs = params.toString();
+    const next = window.location.pathname + (qs ? `?${qs}` : '');
+    window.history.replaceState({}, '', next);
+  }, [filterStatus, filterDueDate, filterPriorities, filterDealIds]);
+
+  const clearAllFilters = useCallback(() => {
+    setFilterStatus('incomplete');
+    setFilterDueDate('all');
+    setFilterPriorities(new Set());
+    setFilterDealIds(new Set());
+    setFilterLabelIds(new Set());
+    setFilterRecurring('all');
+  }, []);
+
+  const hasActiveFilters = filterStatus !== 'incomplete'
+    || filterDueDate !== 'all'
+    || filterPriorities.size > 0
+    || filterDealIds.size > 0
+    || filterLabelIds.size > 0
+    || filterRecurring !== 'all';
+
   // Single source of truth for "today" / "this week" boundaries — auto-rolls
   // at local midnight so overdue/today/upcoming stay correct without reload.
   const dueBoundaries = useDueBoundaries();
