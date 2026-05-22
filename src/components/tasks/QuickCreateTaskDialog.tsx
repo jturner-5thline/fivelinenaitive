@@ -859,7 +859,7 @@ export function QuickCreateTaskDialog({
                 <div className="max-h-[260px] overflow-y-auto py-1">
                   {dealSearchResults.length === 0 && (
                     <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
-                      No deals match your search.
+                      {dealQuery.trim() ? 'No active deals match your search.' : 'No active deals.'}
                     </div>
                   )}
                   {dealSearchResults.map(d => (
