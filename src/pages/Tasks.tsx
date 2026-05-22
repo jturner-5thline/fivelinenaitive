@@ -1163,6 +1163,54 @@ export default function Tasks() {
 
         {/* Main content */}
         <div className="flex-1 overflow-hidden">
+          {hasActiveFilters && (
+            <div
+              className="flex items-center gap-1.5 px-6 py-2 flex-wrap border-b"
+              style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.015)' }}
+              data-testid="applied-filters-row"
+            >
+              <span className="text-[10px] uppercase tracking-wide" style={{ color: '#8a93a6' }}>Active:</span>
+              {filterStatus !== 'incomplete' && (
+                <FilterChip label={`Status: ${STATUS_LABELS[filterStatus]}`} onClear={() => setFilterStatus('incomplete')} />
+              )}
+              {filterDueDate !== 'all' && (
+                <FilterChip label={DUE_LABELS[filterDueDate]} onClear={() => setFilterDueDate('all')} />
+              )}
+              {Array.from(filterPriorities).map(p => (
+                <FilterChip key={p} label={`Priority: ${PRIORITY_LABEL_MAP[p]}`} onClear={() => {
+                  setFilterPriorities(prev => { const n = new Set(prev); n.delete(p); return n; });
+                }} />
+              ))}
+              {Array.from(filterDealIds).map(id => {
+                const name = allDealOptions.find(([d]) => d === id)?.[1]
+                  || uniqueDeals.find(([d]) => d === id)?.[1] || 'Deal';
+                return (
+                  <FilterChip key={id} label={`Deal: ${name}`} onClear={() => {
+                    setFilterDealIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+                  }} />
+                );
+              })}
+              {Array.from(filterLabelIds).map(id => {
+                const lbl = labels.find(l => l.id === id);
+                return (
+                  <FilterChip key={id} label={`Label: ${lbl?.name || 'Label'}`} onClear={() => {
+                    setFilterLabelIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+                  }} />
+                );
+              })}
+              {filterRecurring !== 'all' && (
+                <FilterChip label={filterRecurring === 'recurring' ? 'Recurring only' : 'Paused only'} onClear={() => setFilterRecurring('all')} />
+              )}
+              <button
+                onClick={clearAllFilters}
+                className="ml-1 text-[11px] underline-offset-2 hover:underline"
+                style={{ color: '#ef8a8a' }}
+                data-testid="clear-all-filters"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
           <div className="overflow-auto h-full">
             {(viewMode === 'list' || viewMode === 'focus') && (
               <TaskListView
