@@ -72,25 +72,29 @@ export interface MonthBar { month: string; monthKey: string; amount: number }
 
 export function useFinServTotalRevenue(quarter: QuarterOption | null) {
   const { user } = useAuth();
+  const { company } = useCompany();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-total-revenue', user?.id, quarter?.value],
+    queryKey: ['finserv-total-revenue', user?.id, company?.id, quarter?.value],
     queryFn: async () => {
-      if (!quarter) return null;
+      if (!quarter || !company?.id) return null;
       const { data: rows, error: err } = await supabase
-        .from('quickbooks_invoices')
-        .select('txn_date, total_amt')
+        .from('qbo_pnl_snapshots')
+        .select('period_start, income_total')
+        .eq('company_id', company.id)
         .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', quarter.startDate)
-        .lte('txn_date', quarter.endDate);
+        .eq('accounting_method', 'Accrual')
+        .gte('period_start', quarter.startDate)
+        .lte('period_start', quarter.endDate)
+        .order('period_start', { ascending: true });
       if (err) throw err;
 
       const buckets = new Map<string, number>();
       for (const m of quarter.months) buckets.set(m.key, 0);
       for (const r of rows ?? []) {
-        if (!r.txn_date) continue;
-        const k = r.txn_date.slice(0, 7);
-        if (buckets.has(k)) buckets.set(k, (buckets.get(k) ?? 0) + (Number(r.total_amt) || 0));
+        if (!r.period_start) continue;
+        const k = r.period_start.slice(0, 7);
+        if (buckets.has(k)) buckets.set(k, Number(r.income_total) || 0);
       }
 
       const months: MonthBar[] = quarter.months.map(m => ({
@@ -100,7 +104,7 @@ export function useFinServTotalRevenue(quarter: QuarterOption | null) {
       }));
       return { months, total: months.reduce((s, m) => s + m.amount, 0) };
     },
-    enabled: !!user && !!quarter,
+    enabled: !!user && !!quarter && !!company?.id,
     staleTime: 30_000,
   });
 
