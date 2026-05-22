@@ -427,7 +427,7 @@ export function QuickCreateTaskDialog({
             <Input
               autoFocus
               value={title}
-              onChange={(e) => { setTitle(e.target.value); setWarning(''); setConfirmedJunk(false); }}
+              onChange={(e) => { userEditedTitleRef.current = true; setTitle(e.target.value); setWarning(''); setConfirmedJunk(false); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
