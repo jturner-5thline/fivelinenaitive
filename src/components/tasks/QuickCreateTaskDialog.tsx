@@ -374,21 +374,23 @@ export function QuickCreateTaskDialog({
         </DialogHeader>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Combo presets — one-click multi-field setup */}
+          {/* One-click shortcut — toggles Urgent + Today on/off */}
           <div className="flex flex-wrap gap-1.5">
-            {combos.map(c => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={c.apply}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors hover:brightness-110"
-                style={{ color: c.tone, borderColor: `${c.tone}33`, backgroundColor: `${c.tone}10` }}
-                title={`Apply "${c.label}" preset`}
-              >
-                {c.icon}
-                {c.label}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={toggleUrgent}
+              aria-pressed={urgentActive}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors hover:brightness-110"
+              style={{
+                color: urgentToday.tone,
+                borderColor: urgentActive ? `${urgentToday.tone}99` : `${urgentToday.tone}33`,
+                backgroundColor: urgentActive ? `${urgentToday.tone}26` : `${urgentToday.tone}10`,
+              }}
+              title={urgentActive ? 'Clear Urgent · Today' : 'Apply Urgent · Today'}
+            >
+              <Flame className="h-3 w-3" />
+              {urgentToday.label}
+            </button>
           </div>
 
           {/* Title */}
@@ -411,57 +413,6 @@ export function QuickCreateTaskDialog({
               style={{ backgroundColor: 'rgba(20,24,32,0.65)', border: '1px solid rgba(255,255,255,0.07)' }}
             />
             {warning && <p className="text-[11px]" style={{ color: '#e57373' }}>{warning}</p>}
-          </div>
-
-          {/* Quick priority + status pills */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Priority</label>
-              <div className="flex flex-wrap gap-1">
-                {priorityPresets.map(p => {
-                  const active = priority === p.value;
-                  return (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() => setPriority(p.value)}
-                      className="px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
-                      style={{
-                        color: active ? p.tone : '#9aa3b6',
-                        borderColor: active ? `${p.tone}66` : 'rgba(255,255,255,0.08)',
-                        backgroundColor: active ? `${p.tone}1f` : 'rgba(20,24,32,0.65)',
-                      }}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Status</label>
-              <div className="flex flex-wrap gap-1">
-                {statusPresets.map(s => {
-                  const active = status === s.value;
-                  return (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => setStatus(s.value)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
-                      style={{
-                        color: active ? s.tone : '#9aa3b6',
-                        borderColor: active ? `${s.tone}66` : 'rgba(255,255,255,0.08)',
-                        backgroundColor: active ? `${s.tone}1a` : 'rgba(20,24,32,0.65)',
-                      }}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.tone }} />
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
           {/* Quick due-date presets + full picker fallback */}
