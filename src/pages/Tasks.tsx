@@ -94,6 +94,25 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 ];
 const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
 
+const STATUS_LABELS: Record<FilterStatus, string> = {
+  all: 'All',
+  incomplete: 'Incomplete',
+  complete: 'Complete',
+  not_started: 'Not Started',
+  in_progress: 'In Progress',
+  blocked: 'Blocked',
+};
+const DUE_LABELS: Record<FilterDueDate, string> = {
+  all: 'Any due date',
+  overdue: 'Overdue',
+  today: 'Due today',
+  this_week: 'Due this week',
+  no_date: 'No due date',
+};
+const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
+  urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low',
+};
+
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
