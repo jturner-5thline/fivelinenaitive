@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import type { EmailAttachment } from './mockEmailData';
 
@@ -42,6 +42,24 @@ const messageCache = new Map<string, FullMessage>();
 const inflight = new Map<string, Promise<FullMessage>>();
 const MAX_CACHE = 200;
 
+/**
+ * Hard timeout for a single message-body fetch. Without this, a hung edge
+ * function or stalled network leaves the viewer spinning forever — the
+ * symptom Niki reported as "Email message not loading, refreshed multiple
+ * times."
+ */
+const FETCH_TIMEOUT_MS = 15_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
+
 function rememberMessage(id: string, msg: FullMessage) {
   if (messageCache.has(id)) messageCache.delete(id);
   messageCache.set(id, msg);
@@ -66,9 +84,15 @@ export function prefetchFullEmailMessage(messageId: string | undefined): void {
   if (!messageId || messageId.startsWith('mock-')) return;
   if (messageCache.has(messageId)) return;
   if (inflight.has(messageId)) return;
-  const p = fetchFullEmailMessage(messageId).catch(() => null as any);
-  inflight.set(messageId, p as Promise<FullMessage>);
-  void p.finally(() => inflight.delete(messageId));
+  // IMPORTANT: do NOT wrap with .catch() and re-assign `inflight` here.
+  // fetchFullEmailMessage already manages its own inflight de-dupe; wrapping
+  // it with `.catch(() => null)` and overwriting the inflight entry used to
+  // poison the cache — a subsequent click would await the wrapped promise
+  // and silently receive `null`, rendering a blank message body with no
+  // error and no spinner.
+  void fetchFullEmailMessage(messageId).catch(() => {
+    /* swallow — this is a best-effort prefetch */
+  });
 }
 
 export async function fetchFullEmailMessage(messageId: string): Promise<FullMessage> {
@@ -77,9 +101,13 @@ export async function fetchFullEmailMessage(messageId: string): Promise<FullMess
   if (existing) return existing;
 
   const p = (async () => {
-  const { data: resp, error: err } = await supabase.functions.invoke('gmail-messages', {
-    body: { action: 'get', message_id: messageId },
-  });
+  const { data: resp, error: err } = await withTimeout(
+    supabase.functions.invoke('gmail-messages', {
+      body: { action: 'get', message_id: messageId },
+    }),
+    FETCH_TIMEOUT_MS,
+    'gmail-messages get',
+  );
 
   if (err) {
     throw new Error(err.message || 'Failed to load message');
@@ -182,21 +210,23 @@ export function useFullEmailMessage(
   messageId: string,
   enabled: boolean,
   alreadyLoaded: boolean,
-): { data: FullMessage | null; loading: boolean; error: string | null } {
+): { data: FullMessage | null; loading: boolean; error: string | null; reload: () => void } {
   // Seed from the module cache so prefetched / previously-viewed messages
   // render their body on the first paint without a spinner.
   const cached = messageId ? getCachedFullEmailMessage(messageId) : null;
   const [data, setData] = useState<FullMessage | null>(cached);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reloadTick, setReloadTick] = useState(0);
   const fetchedMessageRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!enabled || alreadyLoaded) return;
     if (!messageId || messageId.startsWith('mock-')) return;
 
-    // Cache hit — surface immediately, skip refetch.
-    const hit = getCachedFullEmailMessage(messageId);
+    // Cache hit — surface immediately, skip refetch (unless caller asked to
+    // reload, in which case we always re-fetch from the network).
+    const hit = reloadTick === 0 ? getCachedFullEmailMessage(messageId) : null;
     if (hit) {
       fetchedMessageRef.current = messageId;
       setData(hit);
@@ -205,24 +235,46 @@ export function useFullEmailMessage(
       return;
     }
 
-    if (fetchedMessageRef.current === messageId) return;
+    if (reloadTick === 0 && fetchedMessageRef.current === messageId) return;
 
     fetchedMessageRef.current = messageId;
     setLoading(true);
+    setError(null);
+
+    // On manual reload, drop any cached or in-flight entry so we hit the
+    // edge function fresh.
+    if (reloadTick > 0) {
+      messageCache.delete(messageId);
+      inflight.delete(messageId);
+    }
 
     fetchFullEmailMessage(messageId)
       .then((message) => {
-        setData(message);
-        setError(null);
+        if (!message) {
+          // Defensive — should not happen now that prefetch no longer
+          // poisons the inflight cache, but guard anyway.
+          setData(null);
+          setError('Empty response from email service');
+        } else {
+          setData(message);
+          setError(null);
+        }
       })
       .catch((e: any) => {
-        setError(e?.message || 'Failed to load message');
+        const msg = e?.message || 'Failed to load message';
+        setError(msg);
         setData(null);
+        // eslint-disable-next-line no-console
+        console.warn('[email.load_failed]', { messageId, error: msg });
       })
       .finally(() => setLoading(false));
-  }, [messageId, enabled, alreadyLoaded]);
+  }, [messageId, enabled, alreadyLoaded, reloadTick]);
 
-  return { data, loading, error };
+  const reload = useCallback(() => {
+    setReloadTick((n) => n + 1);
+  }, []);
+
+  return { data, loading, error, reload };
 }
 
 /**

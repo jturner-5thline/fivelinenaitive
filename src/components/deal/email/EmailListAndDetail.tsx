@@ -1460,7 +1460,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
 
   // Lazy-load the full body + attachments when this message is expanded.
   const alreadyHasFullBody = !!(email.body_loaded || email.body_html || (email.body_text && email.body_text.length > 0));
-  const { data: fullData, loading: fullLoading } = useFullEmailMessage(
+  const { data: fullData, loading: fullLoading, error: fullError, reload: reloadFull } = useFullEmailMessage(
     email.id,
     expanded,
     alreadyHasFullBody,
@@ -1540,6 +1540,28 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
             <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Loading full message…</span>
+            </div>
+          )}
+
+          {!fullLoading && fullError && !resolvedHtml && !resolvedText && (
+            <div
+              className="my-2 flex items-start justify-between gap-3 rounded border border-[hsl(var(--email-border))] bg-[hsl(var(--destructive)/0.05)] px-3 py-2 text-xs text-[hsl(var(--email-text-secondary))]"
+              title={fullError}
+            >
+              <div className="min-w-0">
+                <div className="font-medium text-[hsl(var(--email-text-primary))]">
+                  Couldn’t load this message
+                </div>
+                <div className="mt-0.5 truncate text-[11px] text-muted-foreground">
+                  {fullError}
+                </div>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); reloadFull(); }}
+                className="shrink-0 inline-flex items-center gap-1 rounded border border-[hsl(var(--email-border))] bg-background px-2 py-1 text-[11px] font-medium hover:bg-[hsl(var(--foreground)/0.04)]"
+              >
+                Retry
+              </button>
             </div>
           )}
 
