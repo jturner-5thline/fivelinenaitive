@@ -125,7 +125,10 @@ export default function Tasks() {
     }
   }, [tasks]);
   const [search, setSearch] = useState('');
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('all');
+  // Default to incomplete — completed tasks would otherwise dominate the
+  // view and trigger the misleading "Xd overdue" badge on done rows.
+  // Subtask 5 of Asana 1215035328425908.
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>('incomplete');
   const [sortBy, setSortBy] = useState<SortBy>('due_date');
   const [groupBy, setGroupBy] = useState<GroupBy>('status');
   const [isCreating, setIsCreating] = useState(false);
@@ -136,6 +139,8 @@ export default function Tasks() {
   const newTaskRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
+  const [filterPriorities, setFilterPriorities] = useState<Set<TaskPriority>>(new Set());
+  const [showAllDeals, setShowAllDeals] = useState(false);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [filterRecurring, setFilterRecurring] = useState<FilterRecurring>('all');
@@ -198,10 +203,16 @@ export default function Tasks() {
     const merged = new Map<string, string>(fromTasks);
     allDeals.forEach(d => {
       if (d.status === 'archived') return;
+      // Default: only include deals on the active board (not closed/on-hold).
+      // Niki can flip "Show all deals" to surface dormant ones. Subtask 3.
+      if (!showAllDeals) {
+        if (d.status === 'on-hold') return;
+        if (typeof d.stage === 'string' && ACTIVE_DEAL_INACTIVE_STAGES.has(d.stage)) return;
+      }
       if (!merged.has(d.id)) merged.set(d.id, d.company || d.name);
     });
     return Array.from(merged.entries()).sort((a, b) => a[1].localeCompare(b[1]));
-  }, [allDeals, uniqueDeals]);
+  }, [allDeals, uniqueDeals, showAllDeals]);
   const [dealFilterQuery, setDealFilterQuery] = useState('');
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
