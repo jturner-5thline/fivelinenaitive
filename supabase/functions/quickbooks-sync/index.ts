@@ -69,7 +69,7 @@ serve(async (req) => {
     }
     const user = { id: userId } as { id: string };
 
-    const { syncType, realmId: targetRealmId, scopes, start_date, end_date } = await req.json();
+    const { syncType, realmId: targetRealmId, scopes, start_date, end_date, periods } = await req.json();
     const activeScopes: SyncScope[] = scopes && Array.isArray(scopes) ? scopes : [...ALL_SCOPES];
     console.log(`[QuickBooks Sync] Starting sync for user ${user.id}, realm: ${targetRealmId || "all"}, scopes: ${activeScopes.join(",")}`);
 
@@ -91,6 +91,50 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    const { data: memberships } = await supabase
+      .from("company_members")
+      .select("company_id")
+      .eq("user_id", user.id)
+      .limit(1);
+
+    const fallbackCompanyId = memberships?.[0]?.company_id ?? null;
+
+    const parseAmount = (value: unknown) => {
+      const parsed = Number(value ?? 0);
+      return Number.isFinite(parsed) ? parsed : 0;
+    };
+
+    const getPLSummaryValue = (report: any, targetGroups: string[], targetLabels: string[] = []) => {
+      const rows = report?.Rows?.Row;
+      if (!Array.isArray(rows)) return 0;
+      const normalizedGroups = targetGroups.map((group) => group.toLowerCase());
+      const normalizedLabels = targetLabels.map((label) => label.toLowerCase());
+
+      for (const row of rows) {
+        const group = String(row?.group ?? "").toLowerCase();
+        const label = String(row?.Summary?.ColData?.[0]?.value ?? row?.Header?.ColData?.[0]?.value ?? "").toLowerCase();
+        if ((group && normalizedGroups.includes(group)) || (label && normalizedLabels.includes(label))) {
+          return parseAmount(row?.Summary?.ColData?.[1]?.value);
+        }
+      }
+
+      return 0;
+    };
+
+    const buildProfitAndLossPeriods = () => {
+      if (Array.isArray(periods) && periods.length > 0) {
+        return periods
+          .filter((period) => period?.start_date && period?.end_date)
+          .map((period) => ({ start_date: period.start_date, end_date: period.end_date }));
+      }
+
+      if (start_date && end_date) {
+        return [{ start_date, end_date }];
+      }
+
+      return [null];
+    };
 
     const allResults: Record<string, Record<string, { synced: number; errors: number }>> = {};
 
@@ -370,17 +414,69 @@ serve(async (req) => {
         // ─── Reports: Profit & Loss ────────────────────────
         if (shouldSync("profit_and_loss")) {
           try {
-            const plParams: Record<string, string> = start_date && end_date
-              ? { start_date, end_date }
-              : { date_macro: "This Fiscal Year-to-date" };
-            const report = await fetchQBReport("ProfitAndLoss", plParams);
-            await supabase.from("quickbooks_reports").insert({
-              user_id: user.id, realm_id: realmId, report_type: "profit_and_loss",
-              report_date: new Date().toISOString().split("T")[0],
-              period_start: report.Header?.StartPeriod, period_end: report.Header?.EndPeriod,
-              report_data: report, metadata: { header: report.Header },
-            });
-            results.profit_and_loss = { synced: 1, errors: 0 };
+            const plPeriods = buildProfitAndLossPeriods();
+            let synced = 0;
+            let errors = 0;
+
+            for (const period of plPeriods) {
+              try {
+                const plParams: Record<string, string> = period
+                  ? {
+                      accounting_method: "Accrual",
+                      start_date: period.start_date,
+                      end_date: period.end_date,
+                    }
+                  : {
+                      accounting_method: "Accrual",
+                      date_macro: "This Fiscal Year-to-date",
+                    };
+
+                const report = await fetchQBReport("ProfitAndLoss", plParams);
+                const resolvedStart = period?.start_date ?? report.Header?.StartPeriod;
+                const resolvedEnd = period?.end_date ?? report.Header?.EndPeriod;
+                const reportDate = new Date().toISOString().split("T")[0];
+
+                await supabase.from("quickbooks_reports").insert({
+                  user_id: user.id, realm_id: realmId, report_type: "profit_and_loss",
+                  report_date: reportDate,
+                  period_start: resolvedStart, period_end: resolvedEnd,
+                  report_data: report, metadata: { header: report.Header, accounting_method: "Accrual" },
+                });
+
+                if (resolvedStart && resolvedEnd && fallbackCompanyId) {
+                  const incomeTotal = getPLSummaryValue(report, ["Income"], ["Total Income", "Total for Income"]);
+                  const cogsTotal = getPLSummaryValue(report, ["COGS"], ["Total Cost of Goods Sold"]);
+                  const grossProfit = getPLSummaryValue(report, ["GrossProfit"], ["Gross Profit"]);
+
+                  const { error: snapshotError } = await supabase
+                    .from("qbo_pnl_snapshots")
+                    .upsert({
+                      company_id: fallbackCompanyId,
+                      user_id: user.id,
+                      realm_id: realmId,
+                      period_start: resolvedStart,
+                      period_end: resolvedEnd,
+                      accounting_method: "Accrual",
+                      income_total: incomeTotal,
+                      cogs_total: cogsTotal,
+                      gross_profit: grossProfit,
+                      raw_response: report,
+                      fetched_at: new Date().toISOString(),
+                    }, { onConflict: "company_id,realm_id,period_start,period_end,accounting_method" });
+
+                  if (snapshotError) {
+                    throw snapshotError;
+                  }
+                }
+
+                synced += 1;
+              } catch (periodError) {
+                console.error("[QuickBooks Sync] P&L period sync error:", periodError);
+                errors += 1;
+              }
+            }
+
+            results.profit_and_loss = { synced, errors };
           } catch (e) {
             console.error("[QuickBooks Sync] P&L report sync error:", e);
             results.profit_and_loss = { synced: 0, errors: 1 };
