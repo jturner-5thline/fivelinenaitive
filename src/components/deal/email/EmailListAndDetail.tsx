@@ -1877,6 +1877,7 @@ interface EmailDetailProps {
 }
 
 export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, deepLinkMessageId, deepLinkSignal, pendingAction, onPendingActionConsumed }: EmailDetailProps & { pendingAction?: 'reply'|'replyAll'|'forward'|null; onPendingActionConsumed?: () => void }) {
+  const isMobile = useIsMobile();
   // Scroll-and-highlight the deep-linked message when present. Re-runs if
   // the user navigates between threads with consecutive priority signals.
   useEffect(() => {
@@ -1918,6 +1919,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // this account/company. Keeps downstream layout math (grid columns,
   // resize observers) honest when Assist is gated off.
   const showAiAssist = assistEnabled && showAiAssistPref;
+  const renderAiAssistColumn = showAiAssist && !isMobile;
   const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
   const messagePaneRef = useRef<HTMLDivElement | null>(null);
   const aiAssistPaneRef = useRef<HTMLDivElement | null>(null);
@@ -2783,6 +2785,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, [thread, onToggleLink, handleReply, assistEnabled]);
 
   const latest = thread.latestEmail;
+  if (!thread?.latestEmail || !Array.isArray(thread.emails) || thread.emails.length === 0) {
+    return (
+      <EmailDetailStatusState
+        title="Couldn't load this message"
+        description="This thread has no readable messages yet. Close and reopen the thread to retry."
+        actionLabel="Close"
+        onAction={onBack}
+      />
+    );
+  }
   const senderName = latest.from_name === 'You' ? latest.to_name : latest.from_name;
   const senderEmail = latest.from_name === 'You' ? latest.to_email : latest.from_email;
 
@@ -2797,7 +2809,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         <div
           className="relative grid h-full min-w-0 w-full overflow-hidden bg-transparent transition-[grid-template-columns] duration-200 ease-out"
         style={{
-          gridTemplateColumns: showAiAssist
+          gridTemplateColumns: renderAiAssistColumn
             ? 'minmax(0, 1fr) 360px'
             : 'minmax(0, 1fr)',
         }}
@@ -3325,7 +3337,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             so the grid collapses to a single column and the detail pane reclaims
             the full width. Below 1100px we collapse to slide-over to keep the
             detail column wide enough for body wrapping. */}
-        {showAiAssist && (
+        {renderAiAssistColumn && (
           <div
             ref={aiAssistPaneRef}
             data-inbox-surface-scope="assistant"
