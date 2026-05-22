@@ -15139,11 +15139,15 @@ export type Database = {
       }
       naitive_proposed_slots: {
         Row: {
+          conferencing_meeting_id: string | null
+          conferencing_provider: string | null
           created_at: string
           deal_id: string | null
           id: string
+          meeting_id: string | null
           metadata: Json
           recipient_email: string | null
+          recipient_emails: string[] | null
           slot_end: string
           slot_start: string
           status: string
@@ -15152,11 +15156,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          conferencing_meeting_id?: string | null
+          conferencing_provider?: string | null
           created_at?: string
           deal_id?: string | null
           id?: string
+          meeting_id?: string | null
           metadata?: Json
           recipient_email?: string | null
+          recipient_emails?: string[] | null
           slot_end: string
           slot_start: string
           status?: string
@@ -15165,11 +15173,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          conferencing_meeting_id?: string | null
+          conferencing_provider?: string | null
           created_at?: string
           deal_id?: string | null
           id?: string
+          meeting_id?: string | null
           metadata?: Json
           recipient_email?: string | null
+          recipient_emails?: string[] | null
           slot_end?: string
           slot_start?: string
           status?: string
