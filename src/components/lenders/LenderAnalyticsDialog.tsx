@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { CalendarRange, TrendingUp, Download, ArrowUpRight, ArrowDownRight, Minus, Search } from 'lucide-react';
+import { CalendarRange, TrendingUp, Download, Search } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { MasterLender } from '@/hooks/useMasterLenders';
