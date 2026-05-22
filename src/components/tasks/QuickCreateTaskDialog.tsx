@@ -120,9 +120,21 @@ export function QuickCreateTaskDialog({
   const [dealQuery, setDealQuery] = useState('');
   const [debouncedTitle, setDebouncedTitle] = useState('');
 
+  // Track open transitions so we only reset state on false→true. Previously
+  // this effect re-ran whenever any `initial*` prop identity changed (e.g.
+  // parents passing `initialDueDate={new Date()}` on every render), which
+  // wiped the user's typed task name mid-edit.
+  const prevOpenRef = useRef(false);
+  // Once the user edits the title, ignore any subsequent prop-driven resets
+  // until the dialog closes and reopens.
+  const userEditedTitleRef = useRef(false);
+
   useEffect(() => {
-    if (open) {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (open && !wasOpen) {
       setTitle(initialTitle || '');
+      userEditedTitleRef.current = false;
       setPriority('medium');
       setDueDate(initialDueDate || undefined);
       setStatus('not_started');
@@ -415,7 +427,7 @@ export function QuickCreateTaskDialog({
             <Input
               autoFocus
               value={title}
-              onChange={(e) => { setTitle(e.target.value); setWarning(''); setConfirmedJunk(false); }}
+              onChange={(e) => { userEditedTitleRef.current = true; setTitle(e.target.value); setWarning(''); setConfirmedJunk(false); }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
                   e.preventDefault();
