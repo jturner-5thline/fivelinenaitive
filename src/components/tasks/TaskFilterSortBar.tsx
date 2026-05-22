@@ -70,9 +70,9 @@ export function TaskFilterSortBar({ tasks, filters, onChange }: Props) {
     <div className="flex items-center gap-1.5 flex-wrap mb-2">
       <Filter className="h-3 w-3 text-muted-foreground" />
       <Select value={filters.status} onValueChange={(v) => onChange({ ...filters, status: v as TaskStatusFilter })}>
-        <SelectTrigger className="h-6 text-[10px] w-auto gap-1 px-2"><SelectValue /></SelectTrigger>
+        <SelectTrigger aria-label="Status: All" className="h-6 text-[10px] w-auto gap-1 px-2"><SelectValue placeholder="All" /></SelectTrigger>
         <SelectContent>
-          <SelectItem value="all">All statuses</SelectItem>
+          <SelectItem value="all">All</SelectItem>
           <SelectItem value="not_started">Not Started</SelectItem>
           <SelectItem value="in_progress">In Progress</SelectItem>
           <SelectItem value="blocked">Blocked</SelectItem>
