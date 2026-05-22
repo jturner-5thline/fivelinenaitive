@@ -28,6 +28,7 @@ import { useEmailContacts } from '@/hooks/useEmailContacts';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 import { SnippetPicker } from './SnippetPicker';
+import { InsertAvailabilityPopover } from '@/components/scheduling/InsertAvailabilityPopover';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { shouldShowSignatureGhost } from './signatureGhost';
@@ -1136,6 +1137,11 @@ export function EmailComposerCard(props: EmailComposerCardProps) {
                   </TooltipContent>
                 </Tooltip>
                 <SnippetPicker onInsert={insertAtCursor} tokenContext={tokenContext} />
+                <InsertAvailabilityPopover
+                  onInsert={(html) => onBodyChange((body || '') + html)}
+                  recipientEmail={recipients.to[0] || null}
+                  dealId={dealId || null}
+                />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
