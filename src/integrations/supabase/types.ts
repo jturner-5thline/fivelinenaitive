@@ -15137,6 +15137,48 @@ export type Database = {
         }
         Relationships: []
       }
+      naitive_proposed_slots: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          id: string
+          metadata: Json
+          recipient_email: string | null
+          slot_end: string
+          slot_start: string
+          status: string
+          timezone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          metadata?: Json
+          recipient_email?: string | null
+          slot_end: string
+          slot_start: string
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          id?: string
+          metadata?: Json
+          recipient_email?: string | null
+          slot_end?: string
+          slot_start?: string
+          status?: string
+          timezone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       naitive_stage_milestones: {
         Row: {
           completed: boolean
