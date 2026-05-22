@@ -64,6 +64,49 @@ function buildQuarterRange(count: number) {
   return quarters;
 }
 
+type SnapshotPeriod = {
+  start_date: string;
+  end_date: string;
+};
+
+async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
+  if (periods.length === 0) return [];
+
+  const startDates = periods.map((period) => period.start_date).sort();
+  const endDates = periods.map((period) => period.end_date).sort();
+  const requestedKeys = new Set(periods.map((period) => `${period.start_date}_${period.end_date}`));
+
+  const { data, error } = await supabase
+    .from('qbo_pnl_snapshots')
+    .select('period_start, period_end, income_total, cogs_total, gross_profit')
+    .eq('company_id', companyId)
+    .eq('realm_id', FINSERV_REALM_ID)
+    .eq('accounting_method', 'Accrual')
+    .gte('period_start', startDates[0])
+    .lte('period_start', startDates[startDates.length - 1])
+    .gte('period_end', endDates[0])
+    .lte('period_end', endDates[endDates.length - 1])
+    .order('period_start', { ascending: true });
+
+  if (error) throw error;
+
+  return (data ?? []).filter((row) => requestedKeys.has(`${row.period_start}_${row.period_end}`));
+}
+
+async function syncFinServPnlSnapshots(periods: SnapshotPeriod[]) {
+  if (periods.length === 0) return;
+
+  const { error } = await supabase.functions.invoke('quickbooks-sync', {
+    body: {
+      syncType: 'profit_and_loss',
+      realmId: FINSERV_REALM_ID,
+      periods,
+    },
+  });
+
+  if (error) throw error;
+}
+
 // ────────────────────────────────────────────────────────────
 // 1. Total Revenue (monthly bars for selected quarter)
 // ────────────────────────────────────────────────────────────
