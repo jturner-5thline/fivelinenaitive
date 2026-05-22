@@ -5528,20 +5528,18 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       });
       const { data: alreadyOn } = await supabase
         .from("deal_lenders")
-        .select("name, master_lender_id")
+        .select("name")
         .eq("deal_id", dealId);
       const existingNameLower = new Set((alreadyOn || []).map((r: any) => (r.name || "").toLowerCase()));
-      const existingIds = new Set((alreadyOn || []).map((r: any) => r.master_lender_id).filter(Boolean));
-      const toInsert: Array<{ deal_id: string; name: string; master_lender_id: string; stage: string; tracking_status: string }> = [];
+      const toInsert: Array<{ deal_id: string; name: string; stage: string; tracking_status: string }> = [];
       const skipped: InEntity[] = [];
       for (const e of uniq) {
-        if (existingIds.has(e.master_lender_id) || existingNameLower.has(e.display_name.toLowerCase())) {
+        if (existingNameLower.has(e.display_name.toLowerCase())) {
           skipped.push(e);
         } else {
           toInsert.push({
             deal_id: dealId,
             name: e.display_name,
-            master_lender_id: e.master_lender_id!,
             stage: "reviewing-drl",
             tracking_status: "active",
           });
@@ -5559,11 +5557,11 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       // Post-write verification: re-read and compare.
       const { data: after } = await supabase
         .from("deal_lenders")
-        .select("name, master_lender_id")
+        .select("name")
         .eq("deal_id", dealId);
-      const afterIds = new Set((after || []).map((r: any) => r.master_lender_id).filter(Boolean));
-      const skippedIds = new Set(skipped.map((e) => e.master_lender_id));
-      const failed = uniq.filter((e) => !afterIds.has(e.master_lender_id) && !skippedIds.has(e.master_lender_id));
+      const afterNamesLower = new Set((after || []).map((r: any) => (r.name || "").toLowerCase()));
+      const skippedNamesLower = new Set(skipped.map((e) => e.display_name.toLowerCase()));
+      const failed = uniq.filter((e) => !afterNamesLower.has(e.display_name.toLowerCase()) && !skippedNamesLower.has(e.display_name.toLowerCase()));
       for (const row of inserted) {
         await supabase.from("activity_logs").insert({
           deal_id: dealId,
@@ -5582,7 +5580,7 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
           if (insertedNamesLower.has(e.display_name.toLowerCase())) {
             return { display_name: e.display_name, master_lender_id: e.master_lender_id, status: "verified" as const };
           }
-          if (skippedIds.has(e.master_lender_id)) {
+          if (skippedNamesLower.has(e.display_name.toLowerCase())) {
             return { display_name: e.display_name, master_lender_id: e.master_lender_id, status: "activity-only" as const, reason: "already_on_deal" };
           }
           return { display_name: e.display_name, master_lender_id: e.master_lender_id, status: "mismatch" as const, reason: "not_persisted" };
