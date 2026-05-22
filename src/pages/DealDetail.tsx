@@ -4152,7 +4152,8 @@ export default function DealDetail() {
                               <DropdownMenuItem onSelect={() => setLenderSort('stage-furthest')}>Stage: Furthest to Slowest</DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => setLenderSort('stage-slowest')}>Stage: Slowest to Furthest</DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => setLenderSort('submitted-desc')}>Most recently submitted</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setLenderSort('status-changed-desc')}>Most recently updated (status)</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('updated-desc')}>Most recently updated</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('status-changed-desc')}>Most recently changed status</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                           <Button 
