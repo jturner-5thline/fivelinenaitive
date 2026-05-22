@@ -643,14 +643,49 @@ export function LenderAnalyticsDialog({
   );
 }
 
-function KpiCard({ label, value, hint, loading }: { label: string; value: number | string; hint?: string; loading?: boolean }) {
-  return (
-    <div className="rounded-lg border p-3" style={PANEL_STYLE}>
+function KpiCard({
+  label,
+  value,
+  hint,
+  loading,
+  onClick,
+  deltaDir,
+}: {
+  label: string;
+  value: number | string;
+  hint?: string;
+  loading?: boolean;
+  onClick?: () => void;
+  deltaDir?: 'up' | 'down' | 'flat';
+}) {
+  const hintColor =
+    deltaDir === 'up' ? 'text-emerald-400'
+    : deltaDir === 'down' ? 'text-rose-400'
+    : 'text-slate-500';
+  const Inner = (
+    <>
       <div className="text-[11px] uppercase tracking-wider text-slate-400">{label}</div>
       <div className="text-[22px] font-semibold tabular-nums text-slate-100 mt-0.5">
         {loading ? <span className="inline-block h-5 w-16 bg-slate-700/40 rounded animate-pulse" /> : value}
       </div>
-      {hint && <div className="text-[11px] text-slate-500 mt-0.5">{hint}</div>}
+      {hint && <div className={cn('text-[11px] mt-0.5', hintColor)}>{hint}</div>}
+    </>
+  );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="rounded-lg border p-3 text-left transition-colors hover:border-sky-500/40 focus:outline-none focus-visible:ring-2 focus-visible:ring-sky-500/60"
+        style={PANEL_STYLE}
+      >
+        {Inner}
+      </button>
+    );
+  }
+  return (
+    <div className="rounded-lg border p-3" style={PANEL_STYLE}>
+      {Inner}
     </div>
   );
 }
