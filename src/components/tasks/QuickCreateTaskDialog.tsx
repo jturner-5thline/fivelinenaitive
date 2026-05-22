@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee, Repeat, Briefcase, Search, X, Sparkles } from 'lucide-react';
+import { CalendarIcon, Loader2, UserCheck, Sun, Sunrise, CalendarDays, Flame, Repeat, Briefcase, Search, X, Sparkles } from 'lucide-react';
 import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 
 export interface QuickTaskInput {
   title: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'low' | 'medium' | 'high' | 'urgent' | null;
   due_date: string | null;
   status: 'not_started' | 'in_progress' | 'blocked' | 'complete';
   assigned_to: string;
