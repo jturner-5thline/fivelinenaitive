@@ -1,11 +1,11 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Calendar as CalendarIcon, Clock, Loader2, Check } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Loader2, Check, X, AlertTriangle, Users } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -22,6 +22,13 @@ interface Slot {
   start: Date;
   end: Date;
   key: string;
+}
+
+interface Teammate {
+  user_id: string;
+  email: string | null;
+  display_name: string | null;
+  connected?: boolean;
 }
 
 const DURATIONS = [15, 30, 45, 60, 90];
@@ -155,6 +162,31 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
 
+  // Teammate overlay state
+  const [teammateOptions, setTeammateOptions] = useState<Teammate[]>([]);
+  const [selectedTeammates, setSelectedTeammates] = useState<Teammate[]>([]);
+  const [teammateConnState, setTeammateConnState] = useState<Record<string, boolean>>({});
+  const [teammateSearch, setTeammateSearch] = useState('');
+  const [teammatePickerOpen, setTeammatePickerOpen] = useState(false);
+
+  // Load org teammates (excluding the current user) once on first open
+  useEffect(() => {
+    if (!open || !user || teammateOptions.length > 0) return;
+    (async () => {
+      const { data } = await supabase
+        .from('profiles')
+        .select('user_id, email, display_name')
+        .neq('user_id', user.id)
+        .order('display_name', { ascending: true })
+        .limit(200);
+      setTeammateOptions(((data || []) as Teammate[]).filter((t) => t.email));
+    })();
+  }, [open, user, teammateOptions.length]);
+
+  const hasUnconnectedSelected = selectedTeammates.some(
+    (t) => teammateConnState[t.user_id] === false,
+  );
+
   const loadAvailability = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -178,6 +210,40 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
       const busy = events
         .filter((e) => e.start && e.end && !e.all_day)
         .map((e) => ({ start: new Date(e.start), end: new Date(e.end) }));
+
+      // Overlay teammate busy blocks (intersection of free time)
+      const connState: Record<string, boolean> = {};
+      if (selectedTeammates.length > 0) {
+        const { data: tmData, error: tmErr } = await supabase.functions.invoke(
+          'teammates-availability',
+          {
+            body: {
+              user_ids: selectedTeammates.map((t) => t.user_id),
+              time_min: now.toISOString(),
+              time_max: horizon.toISOString(),
+            },
+          },
+        );
+        if (tmErr) {
+          console.warn('[InsertAvailability] teammate overlay failed:', tmErr.message);
+        } else {
+          const teammates = (tmData?.teammates || []) as Array<{
+            user_id: string;
+            connected: boolean;
+            busy: { start: string; end: string }[];
+          }>;
+          for (const tm of teammates) {
+            connState[tm.user_id] = tm.connected;
+            if (tm.connected) {
+              for (const b of tm.busy) {
+                busy.push({ start: new Date(b.start), end: new Date(b.end) });
+              }
+            }
+          }
+        }
+      }
+      setTeammateConnState(connState);
+
       const all = buildCandidates({
         daysAhead,
         startHour: workHours[0],
@@ -188,7 +254,13 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
       const free = filterBusy(all, busy, buffer);
       const picked = pickPerDay(free, maxPerDay, tz);
       setCandidates(picked);
-      if (picked.length === 0) setError('No free slots in the selected window.');
+      if (picked.length === 0) {
+        setError(
+          selectedTeammates.length > 0
+            ? 'No mutual free slots in the selected window. Try widening hours or removing teammates.'
+            : 'No free slots in the selected window.',
+        );
+      }
     } catch (e: any) {
       const msg = e?.message || 'Could not load calendar availability.';
       setError(
@@ -199,7 +271,7 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
     } finally {
       setLoading(false);
     }
-  }, [daysAhead, workHours, duration, buffer, maxPerDay, tz]);
+  }, [daysAhead, workHours, duration, buffer, maxPerDay, tz, selectedTeammates]);
 
   const toggle = (key: string) => {
     setSelected((prev) => {
@@ -213,6 +285,10 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
   const insert = async () => {
     if (!candidates || selected.size === 0) {
       toast.error('Pick at least one slot.');
+      return;
+    }
+    if (hasUnconnectedSelected) {
+      toast.error('Remove teammates without a connected calendar before inserting.');
       return;
     }
     const chosen = candidates.filter((c) => selected.has(c.key));
@@ -357,6 +433,110 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
             </div>
           </div>
 
+          {/* Teammate overlay picker */}
+          <div className="space-y-1.5">
+            <Label className="text-[11px] flex items-center gap-1">
+              <Users className="h-3 w-3" />
+              Find mutual time with teammates
+            </Label>
+            <div className="flex flex-wrap gap-1.5">
+              {selectedTeammates.map((t) => {
+                const conn = teammateConnState[t.user_id];
+                const isUnconnected = conn === false;
+                return (
+                  <span
+                    key={t.user_id}
+                    className={
+                      'inline-flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full border ' +
+                      (isUnconnected
+                        ? 'bg-yellow-500/15 border-yellow-500/40 text-yellow-700 dark:text-yellow-300'
+                        : 'bg-primary/10 border-primary/30 text-foreground')
+                    }
+                    title={
+                      isUnconnected
+                        ? `${t.email} has not connected Google Calendar — ask them to connect in Settings → Integrations`
+                        : t.email || ''
+                    }
+                  >
+                    {isUnconnected && <AlertTriangle className="h-2.5 w-2.5" />}
+                    {t.display_name || t.email}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setSelectedTeammates((prev) => prev.filter((p) => p.user_id !== t.user_id))
+                      }
+                      className="hover:text-destructive"
+                      aria-label={`Remove ${t.display_name || t.email}`}
+                    >
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  </span>
+                );
+              })}
+              <Popover open={teammatePickerOpen} onOpenChange={setTeammatePickerOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    className="text-[11px] px-2 py-0.5 rounded-full border border-dashed border-border text-muted-foreground hover:bg-accent"
+                  >
+                    + Add teammate
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[260px] p-2" sideOffset={4}>
+                  <Input
+                    autoFocus
+                    placeholder="Search by name or email…"
+                    value={teammateSearch}
+                    onChange={(e) => setTeammateSearch(e.target.value)}
+                    className="h-7 text-xs mb-2"
+                  />
+                  <div className="max-h-[200px] overflow-y-auto">
+                    {teammateOptions
+                      .filter(
+                        (t) =>
+                          !selectedTeammates.some((s) => s.user_id === t.user_id) &&
+                          (teammateSearch.trim() === '' ||
+                            (t.display_name || '')
+                              .toLowerCase()
+                              .includes(teammateSearch.toLowerCase()) ||
+                            (t.email || '')
+                              .toLowerCase()
+                              .includes(teammateSearch.toLowerCase())),
+                      )
+                      .slice(0, 30)
+                      .map((t) => (
+                        <button
+                          key={t.user_id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedTeammates((prev) => [...prev, t]);
+                            setTeammateSearch('');
+                            setTeammatePickerOpen(false);
+                          }}
+                          className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-accent"
+                        >
+                          <div className="font-medium truncate">{t.display_name || t.email}</div>
+                          {t.display_name && (
+                            <div className="text-[10px] text-muted-foreground truncate">{t.email}</div>
+                          )}
+                        </button>
+                      ))}
+                    {teammateOptions.length === 0 && (
+                      <div className="text-[11px] text-muted-foreground px-2 py-1">Loading…</div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            {hasUnconnectedSelected && (
+              <div className="text-[10px] text-yellow-700 dark:text-yellow-300 flex items-start gap-1">
+                <AlertTriangle className="h-3 w-3 mt-0.5 shrink-0" />
+                One or more teammates haven't connected Google Calendar. Their availability is unknown
+                — remove them or ask them to connect to compute mutual times.
+              </div>
+            )}
+          </div>
+
           <div>
             <Label className="text-[11px]">
               Working hours: {workHours[0]}:00 – {workHours[1]}:00
@@ -444,7 +624,7 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
             size="sm"
             className="h-7 text-xs"
             onClick={insert}
-            disabled={selected.size === 0}
+            disabled={selected.size === 0 || hasUnconnectedSelected}
           >
             Insert into email
           </Button>
