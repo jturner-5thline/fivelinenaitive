@@ -756,38 +756,131 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         showOldValues={isUpdateLikeAction}
         tone="pending"
       />
+      {!isPreparingAction && isLenderAddAction(preparedAction.action_type) && (() => {
+        const entities = normalizeLenderEntities(preparedAction.params || {});
+        const unresolvedIdx = entities
+          .map((e, i) => ({ e, i }))
+          .filter(({ e }) => !e.master_lender_id);
+        if (unresolvedIdx.length === 0) return null;
+        return (
+          <div style={{ marginTop: 8, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              Resolve lenders
+            </div>
+            {unresolvedIdx.map(({ e, i }) => (
+              <div
+                key={`unresolved-${i}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(234, 179, 8, 0.30)',
+                  background: 'rgba(234, 179, 8, 0.05)',
+                }}
+              >
+                <span style={{ fontSize: 12, minWidth: 0, flex: '0 0 auto', color: 'var(--foreground)' }}>
+                  {e.display_name}
+                </span>
+                <span style={{
+                  fontSize: 10,
+                  padding: '1px 6px',
+                  borderRadius: 999,
+                  color: 'hsl(var(--muted-foreground))',
+                  border: '1px solid var(--glass-border)',
+                }}>pending</span>
+                <select
+                  aria-label={`Pick a lender for ${e.display_name}`}
+                  defaultValue=""
+                  onChange={(ev) => {
+                    const chosenId = ev.target.value;
+                    if (!chosenId) return;
+                    const chosen = (e.candidates || []).find(c => c.id === chosenId);
+                    if (!chosen) return;
+                    setPreparedAction(prev => {
+                      const next = normalizeLenderEntities(prev.params || {});
+                      next[i] = {
+                        display_name: chosen.name,
+                        master_lender_id: chosen.id,
+                      };
+                      return {
+                        ...prev,
+                        params: {
+                          ...prev.params,
+                          entities: next,
+                          lender_names: next.map(en => en.display_name),
+                          lender_name: next[0]?.display_name || prev.params?.lender_name,
+                        },
+                      };
+                    });
+                  }}
+                  style={{
+                    marginLeft: 'auto',
+                    height: 28,
+                    minWidth: 220,
+                    maxWidth: 320,
+                    padding: '0 8px',
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'hsl(var(--background))',
+                    color: 'var(--foreground)',
+                    fontSize: 12,
+                  }}
+                >
+                  <option value="" disabled>
+                    {e.candidates && e.candidates.length > 0
+                      ? `Pick from ${e.candidates.length} candidate${e.candidates.length === 1 ? '' : 's'}…`
+                      : 'No candidates found'}
+                  </option>
+                  {(e.candidates || []).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={handleConfirm}
-          disabled={
-            status === 'loading' ||
-            isPreparingAction ||
-            (isLenderAddAction(preparedAction.action_type) &&
-              normalizeLenderEntities(preparedAction.params || {}).some((e) => !e.master_lender_id))
-          }
-          style={{
-            height: 32,
-            padding: '0 12px',
-            borderRadius: 8,
-            background: 'hsl(var(--primary))',
-            color: 'white',
-            border: 'none',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: status === 'loading' || isPreparingAction ? 'wait' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            opacity:
-              isLenderAddAction(preparedAction.action_type) &&
-              normalizeLenderEntities(preparedAction.params || {}).some((e) => !e.master_lender_id)
-                ? 0.5
-                : 1,
-          }}
-        >
-          {status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : null}
-          Confirm
-        </button>
+        {(() => {
+          const lenderAdd = isLenderAddAction(preparedAction.action_type);
+          const hasUnresolved =
+            lenderAdd && normalizeLenderEntities(preparedAction.params || {}).some(e => !e.master_lender_id);
+          const isDisabled = status === 'loading' || isPreparingAction || hasUnresolved;
+          const tooltip = hasUnresolved
+            ? 'Resolve all lenders to enable Confirm.'
+            : isPreparingAction
+              ? 'Resolving lenders…'
+              : '';
+          return (
+            <button
+              onClick={handleConfirm}
+              disabled={isDisabled}
+              aria-disabled={isDisabled}
+              title={tooltip || undefined}
+              className={isDisabled && (hasUnresolved || isPreparingAction) ? 'opacity-50 cursor-not-allowed' : ''}
+              style={{
+                height: 32,
+                padding: '0 12px',
+                borderRadius: 8,
+                background: 'hsl(var(--primary))',
+                color: 'white',
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                opacity: isDisabled ? 0.5 : 1,
+              }}
+            >
+              {status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : null}
+              Confirm
+            </button>
+          );
+        })()}
         <button
           onClick={() => setStatus('cancelled')}
           disabled={status === 'loading'}
