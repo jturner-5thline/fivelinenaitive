@@ -323,15 +323,17 @@ export function useFinServQuarterlyProfits(period: SnapshotPeriod | null, quarte
         const revenue = Number(row?.income_total ?? 0);
         const cogs = Number(row?.cogs_total ?? 0);
         const grossProfit = Number(row?.gross_profit ?? 0);
+        const operatingExpenses = Number(row?.operating_expenses ?? 0);
+        const operatingProfit = grossProfit - operatingExpenses;
         return {
           quarter: quarter.label,
           revenue,
           cogs,
           grossProfit,
           grossMargin: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
-          opex: 0,
-          operatingProfit: 0,
-          operatingMargin: 0,
+          opex: operatingExpenses,
+          operatingProfit,
+          operatingMargin: revenue > 0 ? (operatingProfit / revenue) * 100 : 0,
         };
       });
     },
@@ -428,78 +430,75 @@ export interface CashflowPoint { month: string; monthKey: string; value: number 
 
 export function useFinServCashflow() {
   const { user } = useAuth();
+  const { company } = useCompany();
   const buckets = useMemo(() => buildMonthRange(12), []);
   const startDate = buckets[0].start;
   const endDate = buckets[buckets.length - 1].end;
 
-  const { data: invoices, isLoading: l1 } = useQuery({
-    queryKey: ['finserv-cf-invoices', FINSERV_REALM_ID, startDate, endDate],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['finserv-cashflow-snapshots', user?.id, company?.id, startDate, endDate],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_invoices')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
+      if (!company?.id) return [] as FinServCashflowSnapshotRow[];
+
+      const readRows = async () => {
+        const { data: snapshotRows, error: snapshotError } = await supabase
+          .from('qbo_cashflow_snapshots')
+          .select('period_start, period_end, bucket_start, bucket_end, bucket_label, net_cash_flow')
+          .eq('company_id', company.id)
+          .eq('realm_id', FINSERV_REALM_ID)
+          .eq('accounting_method', 'Accrual')
+          .eq('period_start', startDate)
+          .eq('period_end', endDate)
+          .order('bucket_start', { ascending: true });
+
+        if (snapshotError) throw snapshotError;
+        return (snapshotRows ?? []) as FinServCashflowSnapshotRow[];
+      };
+
+      let snapshotRows = await readRows();
+      if (snapshotRows.length === 0) {
+        const request = {
+          syncType: 'cash_flow',
+          realmId: FINSERV_REALM_ID,
+          company_id: company.id,
+          accounting_method: 'Accrual',
+          start_date: startDate,
+          end_date: endDate,
+        };
+        console.info('[qbo.cashflow.fetch] request', request);
+
+        const { data: syncData, error: syncError } = await supabase.functions.invoke('quickbooks-sync', {
+          body: request,
+        });
+
+        console.info('[qbo.cashflow.fetch] response', { data: syncData, error: syncError?.message ?? null });
+        if (syncError) throw syncError;
+
+        snapshotRows = await readRows();
+      }
+
+      if (snapshotRows.length === 0) {
+        throw new Error(`QuickBooks cashflow snapshots still missing after sync for ${startDate}_${endDate}`);
+      }
+
+      return snapshotRows;
     },
-    enabled: !!user,
+    enabled: !!user && !!company?.id,
     staleTime: 30_000,
   });
-
-  const { data: expenses, isLoading: l2 } = useQuery({
-    queryKey: ['finserv-cf-expenses', FINSERV_REALM_ID, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_expenses')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-
-  const { data: bills, isLoading: l3 } = useQuery({
-    queryKey: ['finserv-cf-bills', FINSERV_REALM_ID, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_bills')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate)
-        .lte('txn_date', endDate);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user,
-    staleTime: 30_000,
-  });
-
-  const isLoading = l1 || l2 || l3;
 
   return useMemo(() => {
-    const points: CashflowPoint[] = buckets.map(b => ({ month: b.label, monthKey: b.key, value: 0 }));
-    const map = new Map(points.map(p => [p.monthKey, p]));
+    const points: CashflowPoint[] = buckets.map((bucket) => {
+      const row = (data ?? []).find((snapshot) => snapshot.bucket_start === bucket.start && snapshot.bucket_end === bucket.end);
+      return {
+        month: bucket.label,
+        monthKey: bucket.key,
+        value: Number(row?.net_cash_flow ?? 0),
+      };
+    });
 
-    for (const r of invoices ?? []) {
-      if (!r.txn_date) continue;
-      const p = map.get(r.txn_date.slice(0, 7));
-      if (p) p.value += Number(r.total_amt) || 0;
-    }
-
-    for (const r of [...(expenses ?? []), ...(bills ?? [])]) {
-      if (!r.txn_date) continue;
-      const p = map.get(r.txn_date.slice(0, 7));
-      if (p) p.value -= Number(r.total_amt) || 0;
-    }
-
-    return { points, isLoading };
-  }, [invoices, expenses, bills, buckets, isLoading]);
+    return { points, isLoading, error };
+  }, [data, buckets, isLoading, error]);
 }
 
 // ────────────────────────────────────────────────────────────
