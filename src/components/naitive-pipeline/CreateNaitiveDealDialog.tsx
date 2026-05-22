@@ -105,7 +105,6 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   // Hydrated baseline for the 5 protected text fields. We only send a field
   // to the DB when the current value differs from this baseline (true partial
   // PATCH). Prevents the dialog from nulling fields the user never touched.
-  const baselineProtectedRef = (typeof window !== 'undefined' ? (window as any) : {}) as any;
   const [baselineProtected, setBaselineProtected] = useState({
     painPoints: '', objections: '', competitors: '', keySignal: '', productGap: '',
   });
