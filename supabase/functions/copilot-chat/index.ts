@@ -5434,6 +5434,108 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         params: { deal_id: params.deal_id, contact_id: params.contact_id },
       };
     }
+    case "add_lender_to_deal": {
+      const dealId = params.deal_id;
+      const lenderName = String(params.lender_name || "").trim();
+      if (!dealId || !lenderName) return { success: false, error: "deal_id and lender_name required" };
+      const { data: existing } = await supabase
+        .from("deal_lenders")
+        .select("id")
+        .eq("deal_id", dealId)
+        .ilike("name", lenderName)
+        .limit(1);
+      if (existing && existing.length > 0) {
+        return { success: false, error: `${lenderName} is already on this deal` };
+      }
+      const { data: row, error: insErr } = await supabase
+        .from("deal_lenders")
+        .insert({ deal_id: dealId, name: lenderName, stage: "reviewing-drl", tracking_status: "active" })
+        .select("id, name")
+        .single();
+      if (insErr) return { success: false, error: insErr.message };
+      await supabase.from("activity_logs").insert({
+        deal_id: dealId,
+        activity_type: "lender_added",
+        description: `Lender "${lenderName}" added via AI Copilot`,
+        user_id: userId,
+      });
+      return {
+        success: true,
+        message: `Added ${lenderName}`,
+        actionType: "add_lender_to_deal",
+        params: { deal_id: dealId, lender_id: row?.id, lender_name: lenderName },
+        inserted: row ? [{ id: row.id, name: row.name }] : [],
+        skipped_existing: [],
+        failed: [],
+      };
+    }
+    case "add_lenders_to_deal": {
+      // Atomic multi-entity add. One Confirm card stands for N lenders;
+      // every row is written in a single INSERT statement so Postgres
+      // rolls back the whole batch on constraint violation. After the
+      // insert we re-read deal_lenders to verify each entity landed
+      // and surface a per-entity inserted/skipped/failed result so the
+      // UI can badge each row independently.
+      const dealId = params.deal_id;
+      const names: string[] = Array.isArray(params.lender_names) ? params.lender_names : [];
+      if (!dealId || names.length === 0) {
+        return { success: false, error: "deal_id and lender_names[] required" };
+      }
+      const uniq = Array.from(new Set(names.map((n) => String(n || "").trim()).filter(Boolean)));
+      const { data: alreadyOn } = await supabase
+        .from("deal_lenders")
+        .select("name")
+        .eq("deal_id", dealId);
+      const existingLower = new Set((alreadyOn || []).map((r: any) => (r.name || "").toLowerCase()));
+      const toInsert: Array<{ deal_id: string; name: string; stage: string; tracking_status: string }> = [];
+      const skipped: string[] = [];
+      for (const n of uniq) {
+        if (existingLower.has(n.toLowerCase())) skipped.push(n);
+        else toInsert.push({ deal_id: dealId, name: n, stage: "reviewing-drl", tracking_status: "active" });
+      }
+      let inserted: Array<{ id: string; name: string }> = [];
+      if (toInsert.length > 0) {
+        const { data, error: insErr } = await supabase
+          .from("deal_lenders")
+          .insert(toInsert)
+          .select("id, name");
+        if (insErr) return { success: false, error: insErr.message };
+        inserted = (data || []).map((r: any) => ({ id: r.id, name: r.name }));
+      }
+      // Post-write verification: re-read and compare.
+      const { data: after } = await supabase
+        .from("deal_lenders")
+        .select("name")
+        .eq("deal_id", dealId);
+      const afterLower = new Set((after || []).map((r: any) => (r.name || "").toLowerCase()));
+      const failed = uniq.filter((n) => !afterLower.has(n.toLowerCase()) && !skipped.includes(n));
+      for (const row of inserted) {
+        await supabase.from("activity_logs").insert({
+          deal_id: dealId,
+          activity_type: "lender_added",
+          description: `Lender "${row.name}" added via AI Copilot (batch)`,
+          user_id: userId,
+        });
+      }
+      const summary = [
+        inserted.length ? `${inserted.length} added` : null,
+        skipped.length ? `${skipped.length} already on deal` : null,
+        failed.length ? `${failed.length} failed` : null,
+      ].filter(Boolean).join(", ");
+      return {
+        success: failed.length === 0,
+        message: summary || "No changes",
+        error: failed.length > 0 ? `Failed to add: ${failed.join(", ")}` : undefined,
+        actionType: "add_lenders_to_deal",
+        params: { deal_id: dealId },
+        inserted,
+        skipped_existing: skipped,
+        failed,
+        requested_count: uniq.length,
+        inserted_count: inserted.length,
+        atomic: true,
+      };
+    }
     default:
       return { success: false, error: `Unknown action: ${actionType}` };
   }
