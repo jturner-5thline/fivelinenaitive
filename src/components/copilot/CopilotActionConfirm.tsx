@@ -342,11 +342,30 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     }
   };
 
+  const buildUnresolvedLenderError = () => {
+    const entities = normalizeLenderEntities(preparedAction.params || {});
+    const unresolved = entities.filter((entity) => !entity.master_lender_id);
+    if (unresolved.length === 0) return null;
+    return `Could not resolve ${unresolved.map((entity) => entity.display_name).join(', ')} to a lender record. Please pick from the disambiguation list.`;
+  };
+
   const handleConfirm = async () => {
     setStatus('loading');
     setErrorMessage(null);
     setVerifiedResult(null);
     try {
+      const unresolvedError = isLenderAddAction(preparedAction.action_type) ? buildUnresolvedLenderError() : null;
+      if (unresolvedError) {
+        const entityResults = normalizeLenderEntities(preparedAction.params || {}).map((entity) => ({
+          display_name: entity.display_name,
+          master_lender_id: entity.master_lender_id,
+          status: entity.master_lender_id ? 'activity-only' : 'mismatch',
+          reason: entity.master_lender_id ? 'not_submitted' : 'invalid_lender_id',
+        }));
+        setVerifiedResult({ success: false, error: unresolvedError, entity_results: entityResults });
+        throw new Error(unresolvedError);
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error('Not authenticated');
@@ -354,7 +373,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ confirmAction: action }),
+        body: JSON.stringify({ confirmAction: preparedAction }),
       });
 
       // Only flip to "done" once the backend acknowledges a 2xx response
@@ -369,24 +388,24 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       // badges in both the success and failure branches.
       setVerifiedResult(result as VerifiedResult);
       if (result.success) {
-        const dealId = result.params?.deal_id || action.params?.deal_id;
-        const dealName = result.params?.deal_name || action.params?.deal_name;
+        const dealId = result.params?.deal_id || preparedAction.params?.deal_id;
+        const dealName = result.params?.deal_name || preparedAction.params?.deal_name;
         setStatus('done');
         setCompletedAt(Date.now());
         setAuditId(result.audit?.id ?? null);
         setResolvedDealId(dealId ?? null);
         // Fix 6: Track mutation in conversation state
         addMutation({
-          type: action.action_type,
-          deal: action.params.deal_name || action.params.deal_id,
-          dealId: action.params.deal_id,
-          detail: result.message || action.description,
+          type: preparedAction.action_type,
+          deal: preparedAction.params.deal_name || preparedAction.params.deal_id,
+          dealId: preparedAction.params.deal_id,
+          detail: result.message || preparedAction.description,
           timestamp: new Date().toISOString(),
         });
         // Trigger UI refresh
-        invalidateRelatedQueries(result.actionType || action.action_type, result.params || action.params);
+        invalidateRelatedQueries(result.actionType || preparedAction.action_type, result.params || preparedAction.params);
         // Global event for any non-React-Query consumers
-        fireDealUpdated(dealId, result.audit?.after || action.params || {});
+        fireDealUpdated(dealId, result.audit?.after || preparedAction.params || {});
 
         // Toast with View deal + Undo (10s window)
         const before = result.audit?.before as Record<string, any> | undefined;
@@ -425,8 +444,8 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     confirm: handleConfirm,
     cancel: () => setStatus('cancelled'),
     getStatus: () => status,
-    getLabel: () => formattedDescription,
-    getActionType: () => action.action_type,
+      getLabel: () => formattedDescription,
+      getActionType: () => preparedAction.action_type,
   }));
 
   if (status === 'done') {
@@ -528,6 +547,16 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
                 {errorMessage}
               </div>
             )}
+            {verifiedResult?.entity_results?.length ? (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                {verifiedResult.entity_results.map((entity, index) => (
+                  <div key={`${entity.display_name}-${index}`}>
+                    {entity.status === 'verified' ? '✅' : entity.status === 'activity-only' ? '⚠️' : '❌'} {entity.display_name}
+                    {entity.reason ? ` (${entity.status === 'mismatch' ? `failed: ${entity.reason}` : entity.reason})` : ` (${entity.status})`}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         <FieldDiffTable
@@ -601,6 +630,11 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         <Icon size={16} style={{ color: 'hsl(var(--primary))' }} />
         <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{renderedDescription}</span>
       </div>
+      {isPreparingAction && (
+        <div style={{ marginBottom: 10, fontSize: 12, color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Loader2 size={12} className="animate-spin" /> Resolving lenders…
+        </div>
+      )}
       <FieldDiffTable
         diffs={fieldDiffs}
         statuses={fieldStatuses}
@@ -610,7 +644,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={handleConfirm}
-          disabled={status === 'loading'}
+          disabled={status === 'loading' || isPreparingAction}
           style={{
             height: 32,
             padding: '0 12px',
@@ -620,7 +654,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
             border: 'none',
             fontSize: 13,
             fontWeight: 500,
-            cursor: status === 'loading' ? 'wait' : 'pointer',
+            cursor: status === 'loading' || isPreparingAction ? 'wait' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
