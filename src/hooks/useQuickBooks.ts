@@ -65,17 +65,21 @@ export interface QuickBooksSyncHistory {
 }
 
 export function useQuickBooksStatus() {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
 
   return useQuery({
-    queryKey: ["quickbooks-status", user?.id],
+    queryKey: ["quickbooks-status", user?.id, session?.access_token],
     queryFn: async () => {
-      const { data: session } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+      if (!accessToken) {
+        throw new Error("Missing authenticated session for QuickBooks status check");
+      }
+
       const response = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/quickbooks-auth?action=status`,
         {
           headers: {
-            Authorization: `Bearer ${session.session?.access_token}`,
+            Authorization: `Bearer ${accessToken}`,
           },
         }
       );
@@ -89,7 +93,10 @@ export function useQuickBooksStatus() {
         lastSync?: string;
       }>;
     },
-    enabled: !!user,
+    enabled: !!user && !!session?.access_token,
+    retry: 1,
+    refetchOnMount: 'always',
+    staleTime: 0,
     refetchInterval: 60000,
   });
 }
