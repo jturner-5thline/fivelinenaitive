@@ -14,10 +14,10 @@ describe('lenderStatusDate', () => {
     expect(formatShortDate('2024-04-14T12:00:00Z')).toContain('2024');
   });
 
-  it('falls back to createdAt with approximate flag when no status timestamp', () => {
-    const r = getPrimaryStatusDate({ ...base, createdAt: '2026-01-01T00:00:00Z' });
+  it('falls back to updatedAt for active lenders with an approximate flag when no dedicated status timestamp exists', () => {
+    const r = getPrimaryStatusDate({ ...base, updatedAt: '2026-01-01T00:00:00Z' });
     expect(r.approximate).toBe(true);
-    expect(r.label).toBe('Added');
+    expect(r.label).toBe('Submitted');
   });
 
   it('prefers passedAt for a passed lender', () => {

@@ -43,6 +43,12 @@ export interface DealLender {
   passedAt?: string | null;
   /** Timestamp of explicit decline. */
   declinedAt?: string | null;
+  /** Timestamp when the lender was marked excluded. */
+  excludedAt?: string | null;
+  /** Timestamp when the lender was moved to on hold. */
+  onHoldAt?: string | null;
+  /** Timestamp when the lender was moved to on deck. */
+  onDeckAt?: string | null;
   /** Last time the status bucket changed. Used for "Most recently updated" sort. */
   lastStatusChangeAt?: string | null;
 }

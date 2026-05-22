@@ -207,6 +207,7 @@ import { StatusEmailFlowPicker, type StatusEmailFlowSelection } from '@/componen
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
+import { buildStatusTimeline, formatFullTimestamp, formatShortDate, getPrimaryStatusDate } from '@/utils/lenderStatusDate';
 import { Label } from '@/components/ui/label';
 import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 import { syncFinServValuePatch, warnIfFinServValueMismatch } from '@/lib/finservValue';
@@ -379,6 +380,33 @@ const getLenderTimeInfo = (updatedAt?: string) => {
   }
   
   return { text, highlightClass };
+};
+
+const renderLenderStatusDate = (lender: DealLender) => {
+  const statusDate = getPrimaryStatusDate(lender);
+  if (!statusDate.iso) return null;
+
+  const prefix = statusDate.approximate ? '~' : '';
+  const shortDate = formatShortDate(statusDate.iso);
+  if (!shortDate) return null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground w-fit cursor-default">
+          <span>{statusDate.label}</span>
+          <span aria-hidden>•</span>
+          <span>{`${prefix}${shortDate}`}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <div className="space-y-1">
+          <div>{formatFullTimestamp(statusDate.iso)}</div>
+          {statusDate.approximate && <div className="text-muted-foreground">approximate</div>}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 };
 
 interface EditHistory {
@@ -719,6 +747,15 @@ export default function DealDetail() {
           passReason: l.pass_reason || undefined,
           score: l.score ?? null,
           updatedAt: l.updated_at,
+          createdAt: l.created_at,
+          submittedAt: l.submitted_at ?? null,
+          approvedAt: l.approved_at ?? null,
+          passedAt: l.passed_at ?? null,
+          declinedAt: l.declined_at ?? null,
+          excludedAt: l.excluded_at ?? null,
+          onHoldAt: l.on_hold_at ?? null,
+          onDeckAt: l.on_deck_at ?? null,
+          lastStatusChangeAt: l.last_status_change_at ?? null,
           notesHistory: [],
         }));
 
@@ -4115,7 +4152,8 @@ export default function DealDetail() {
                               <DropdownMenuItem onSelect={() => setLenderSort('stage-furthest')}>Stage: Furthest to Slowest</DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => setLenderSort('stage-slowest')}>Stage: Slowest to Furthest</DropdownMenuItem>
                               <DropdownMenuItem onSelect={() => setLenderSort('submitted-desc')}>Most recently submitted</DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => setLenderSort('status-changed-desc')}>Most recently updated (status)</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('updated-desc')}>Most recently updated</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setLenderSort('status-changed-desc')}>Most recently changed status</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                           <Button 
@@ -4195,25 +4233,21 @@ export default function DealDetail() {
                                         </AlertDialogFooter>
                                       </AlertDialogContent>
                                     </AlertDialog>
-                                    <div className="flex flex-col min-w-0">
+                                      <div className="flex flex-col min-w-0">
                                       <button 
                                         className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                                         onClick={() => setSelectedLenderName(lender.name)}
                                       >
                                         {lender.name}
                                       </button>
-                                       {(() => {
-                                         const stageCfg = configuredStages.find(s => s.id === lender.stage);
-                                         const stageLabel = (stageCfg?.label || '').toLowerCase();
-                                         const isTerminal = stageCfg?.group === 'passed' || stageCfg?.group === 'excluded' || lender.trackingStatus === 'passed' || stageLabel.includes('not a fit');
-                                         if (isTerminal) return null;
-                                        const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                        return timeInfo.text ? (
-                                          <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                            {timeInfo.text}
-                                          </span>
-                                        ) : null;
-                                      })()}
+                                        {renderLenderStatusDate(lender) ?? (() => {
+                                          const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                          return timeInfo.text ? (
+                                            <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
+                                              {timeInfo.text}
+                                            </span>
+                                          ) : null;
+                                        })()}
                                     </div>
                                   </div>
                                   <Select
@@ -4614,25 +4648,21 @@ export default function DealDetail() {
                                                 </AlertDialogFooter>
                                               </AlertDialogContent>
                                             </AlertDialog>
-                                            <div className="flex flex-col min-w-0">
+                                             <div className="flex flex-col min-w-0">
                                               <button 
                                                 className="font-medium truncate text-left hover:text-primary hover:underline cursor-pointer"
                                                 onClick={() => setSelectedLenderName(lender.name)}
                                               >
                                                 {lender.name}
                                               </button>
-                                              {(() => {
-                                                const stageCfg = configuredStages.find(s => s.id === lender.stage);
-                                                const stageLabel = (stageCfg?.label || '').toLowerCase();
-                                                const isTerminal = stageCfg?.group === 'passed' || stageCfg?.group === 'excluded' || lender.trackingStatus === 'passed' || stageLabel.includes('not a fit');
-                                                if (isTerminal) return null;
-                                                const timeInfo = getLenderTimeInfo(lender.updatedAt);
-                                                return timeInfo.text ? (
-                                                  <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
-                                                    {timeInfo.text}
-                                                  </span>
-                                                ) : null;
-                                              })()}
+                                               {renderLenderStatusDate(lender) ?? (() => {
+                                                 const timeInfo = getLenderTimeInfo(lender.updatedAt);
+                                                 return timeInfo.text ? (
+                                                   <span className={`text-[10px] text-muted-foreground ${isPostSubmissionDealStage(deal?.stage) ? timeInfo.highlightClass : ''}`}>
+                                                     {timeInfo.text}
+                                                   </span>
+                                                 ) : null;
+                                               })()}
                                             </div>
                                           </div>
                                           <Select
@@ -5103,6 +5133,45 @@ export default function DealDetail() {
                   {/* Stage & Notes Editing */}
                   {dealLender && (
                     <>
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Status history</h4>
+                        {(() => {
+                          const timeline = buildStatusTimeline(dealLender);
+                          if (timeline.length === 0) {
+                            return <p className="text-sm text-muted-foreground italic">No recorded transitions</p>;
+                          }
+
+                          return (
+                            <div className="space-y-3">
+                              {timeline.map((event, index) => (
+                                <div key={`${event.kind}-${event.iso}-${index}`} className="flex gap-3">
+                                  <div className="flex flex-col items-center pt-1">
+                                    <span className="h-2 w-2 rounded-full bg-primary" />
+                                    {index < timeline.length - 1 && <span className="mt-1 h-8 w-px bg-border" />}
+                                  </div>
+                                  <div className="min-w-0 pb-1">
+                                    <div className="text-sm font-medium">{event.label}</div>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="text-xs text-muted-foreground cursor-default">
+                                          {event.approximate ? '~' : ''}{formatShortDate(event.iso)}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className="space-y-1">
+                                          <div>{formatFullTimestamp(event.iso)}</div>
+                                          {event.approximate && <div className="text-muted-foreground">approximate</div>}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
                       {/* Stage Selector */}
                       <div>
                         <h4 className="text-sm font-semibold mb-2">Stage</h4>

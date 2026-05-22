@@ -7,7 +7,7 @@ import type { DealLender } from '@/types/deal';
  * status-specific timestamp is recorded.
  */
 
-export type LenderStatusKind = 'submitted' | 'approved' | 'passed' | 'declined';
+export type LenderStatusKind = 'submitted' | 'approved' | 'passed' | 'declined' | 'excluded' | 'on_hold' | 'on_deck';
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -43,20 +43,32 @@ export function getPrimaryStatusDate(lender: DealLender): {
   const ts = (lender.trackingStatus || '').toLowerCase();
   const stage = (lender.stage || '').toLowerCase();
 
+  if (ts === 'excluded' || stage === 'excluded' || lender.excludedAt) {
+    return { label: 'Excluded', iso: lender.excludedAt ?? lender.updatedAt ?? null, approximate: !lender.excludedAt };
+  }
+
+  if (ts === 'on-hold' || ts === 'on hold' || stage === 'on-hold' || stage === 'on hold' || lender.onHoldAt) {
+    return { label: 'On Hold', iso: lender.onHoldAt ?? lender.updatedAt ?? null, approximate: !lender.onHoldAt };
+  }
+
+  if (ts === 'on-deck' || ts === 'on deck' || stage === 'on-deck' || stage === 'on deck' || lender.onDeckAt) {
+    return { label: 'On Deck', iso: lender.onDeckAt ?? lender.updatedAt ?? null, approximate: !lender.onDeckAt };
+  }
+
   if (lender.declinedAt || stage === 'declined') {
-    return { label: 'Declined', iso: lender.declinedAt ?? null, approximate: !lender.declinedAt };
+    return { label: 'Declined', iso: lender.declinedAt ?? lender.updatedAt ?? null, approximate: !lender.declinedAt };
   }
   if (ts === 'passed' || stage === 'passed' || stage === 'not-a-fit' || stage === 'unresponsive' || stage === 'no-go' || lender.passedAt) {
-    return { label: 'Passed', iso: lender.passedAt ?? null, approximate: !lender.passedAt };
+    return { label: 'Passed', iso: lender.passedAt ?? lender.updatedAt ?? null, approximate: !lender.passedAt };
   }
   if (stage.includes('term') || stage === 'closed-won' || ts === 'approved' || lender.approvedAt) {
-    return { label: 'Approved', iso: lender.approvedAt ?? null, approximate: !lender.approvedAt };
+    return { label: 'Approved', iso: lender.approvedAt ?? lender.updatedAt ?? null, approximate: !lender.approvedAt };
   }
-  if (lender.submittedAt) {
-    return { label: 'Submitted', iso: lender.submittedAt, approximate: false };
+  if (lender.submittedAt || ts === 'active' || ts === 'in review') {
+    return { label: 'Submitted', iso: lender.submittedAt ?? lender.updatedAt ?? null, approximate: !lender.submittedAt };
   }
   // Legacy/empty fallback
-  return { label: 'Added', iso: lender.createdAt ?? lender.updatedAt ?? null, approximate: true };
+  return { label: 'Updated', iso: lender.updatedAt ?? lender.createdAt ?? null, approximate: true };
 }
 
 export interface StatusTimelineEvent {
@@ -75,6 +87,12 @@ export function buildStatusTimeline(lender: DealLender): StatusTimelineEvent[] {
   if (lender.submittedAt) {
     events.push({ kind: 'submitted', label: 'Submitted', iso: lender.submittedAt, approximate: false });
   }
+  if (lender.onDeckAt) {
+    events.push({ kind: 'on_deck', label: 'On Deck', iso: lender.onDeckAt, approximate: false });
+  }
+  if (lender.onHoldAt) {
+    events.push({ kind: 'on_hold', label: 'On Hold', iso: lender.onHoldAt, approximate: false });
+  }
   if (lender.approvedAt) {
     events.push({ kind: 'approved', label: 'Terms issued / approved', iso: lender.approvedAt, approximate: false });
   }
@@ -83,6 +101,9 @@ export function buildStatusTimeline(lender: DealLender): StatusTimelineEvent[] {
   }
   if (lender.declinedAt) {
     events.push({ kind: 'declined', label: 'Declined', iso: lender.declinedAt, approximate: false });
+  }
+  if (lender.excludedAt) {
+    events.push({ kind: 'excluded', label: 'Excluded', iso: lender.excludedAt, approximate: false });
   }
   return events.sort((a, b) => new Date(b.iso).getTime() - new Date(a.iso).getTime());
 }
