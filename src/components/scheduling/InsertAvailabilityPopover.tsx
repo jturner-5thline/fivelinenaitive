@@ -237,15 +237,6 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
     setSelected(new Set());
   };
 
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
   const grouped = useMemo(() => {
     if (!candidates) return [];
     const fmt = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'long', month: 'short', day: 'numeric' });
