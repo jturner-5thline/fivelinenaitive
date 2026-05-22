@@ -355,6 +355,17 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     setVerifiedResult(null);
     try {
       const unresolvedError = isLenderAddAction(preparedAction.action_type) ? buildUnresolvedLenderError() : null;
+      if (import.meta.env.DEV && isLenderAddAction(preparedAction.action_type)) {
+        // Debug-only: surface the resolved entities[] payload right before
+        // the Confirm fetch fires so we can verify master_lender_id values
+        // are populated and not display-name strings.
+        // eslint-disable-next-line no-console
+        console.log('[Copilot] add_lenders_to_deal entities payload →', {
+          action_type: preparedAction.action_type,
+          entities: normalizeLenderEntities(preparedAction.params || {}),
+          deal_id: preparedAction.params?.deal_id,
+        });
+      }
       if (unresolvedError) {
         const entityResults = normalizeLenderEntities(preparedAction.params || {}).map((entity) => ({
           display_name: entity.display_name,
