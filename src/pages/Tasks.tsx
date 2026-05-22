@@ -899,6 +899,14 @@ export default function Tasks() {
                       <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterDealIds(new Set())}>Clear</button>
                     )}
                   </div>
+                  <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
+                    <Checkbox
+                      checked={showAllDeals}
+                      onCheckedChange={(c) => setShowAllDeals(!!c)}
+                      className="h-3.5 w-3.5"
+                    />
+                    Show all deals (incl. closed / on-hold)
+                  </label>
                   <Input
                     value={dealFilterQuery}
                     onChange={(e) => setDealFilterQuery(e.target.value)}
