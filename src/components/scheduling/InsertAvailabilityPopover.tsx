@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -77,27 +77,7 @@ function formatSlotLine(slot: Slot, tz: string): string {
   return `${day} — ${t1}–${t2} ${abbr}`;
 }
 
-/** Format a slot line in Eastern Time with explicit ET label, e.g. "Tue May 26 — 10:00–10:30 AM ET". */
-function formatSlotLineET(slot: Slot): string {
-  const fmtDay = new Intl.DateTimeFormat('en-US', {
-    timeZone: ET_TZ, weekday: 'short', month: 'short', day: 'numeric',
-  });
-  const fmtTime = new Intl.DateTimeFormat('en-US', {
-    timeZone: ET_TZ, hour: 'numeric', minute: '2-digit', hour12: true,
-  });
-  const day = fmtDay.format(slot.start);
-  const t1 = fmtTime.format(slot.start);
-  const t2 = fmtTime.format(slot.end);
-  // Collapse trailing AM/AM or AM/PM: "10:00 AM–10:30 AM" → "10:00–10:30 AM"
-  const m1 = t1.match(/^(.+?)\s(AM|PM)$/i);
-  const m2 = t2.match(/^(.+?)\s(AM|PM)$/i);
-  const compact =
-    m1 && m2 && m1[2] === m2[2]
-      ? `${m1[1]}–${m2[1]} ${m2[2]}`
-      : `${t1.replace(' ', '')}–${t2.replace(' ', '')}`;
-  return `${day} — ${compact} ET`;
-}
-
+// formatSlotLineET imported from useFreeSlots
 /** Build candidate weekday slots for the next N business days based on settings. */
 function buildCandidates(opts: {
   daysAhead: number;
