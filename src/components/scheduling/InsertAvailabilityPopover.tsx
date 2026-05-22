@@ -281,6 +281,26 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientE
         sideOffset={6}
         className="w-[420px] p-0 max-h-[560px] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
+        onPointerDownOutside={(e) => {
+          // Keep popover open when interacting with any portaled child
+          // (teammate sub-popover, native <select> options, tooltips, toasts).
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('[data-radix-popper-content-wrapper], [data-sonner-toast], [role="listbox"], [role="menu"]')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('[data-radix-popper-content-wrapper], [data-sonner-toast], [role="listbox"], [role="menu"]')) {
+            e.preventDefault();
+          }
+        }}
+        onFocusOutside={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest?.('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+        }}
       >
         <div className="px-4 py-3 border-b">
           <div className="text-sm font-semibold">Insert availability</div>
