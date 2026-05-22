@@ -94,6 +94,29 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 ];
 const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
 
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11px]"
+      style={{
+        backgroundColor: 'rgba(126,184,247,0.12)',
+        border: '1px solid rgba(126,184,247,0.28)',
+        color: '#cfe3ff',
+      }}
+    >
+      <span className="truncate max-w-[180px]">{label}</span>
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Clear ${label}`}
+        className="hover:text-white transition-colors -mr-1 p-0.5"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
 const STATUS_LABELS: Record<FilterStatus, string> = {
   all: 'All',
   incomplete: 'Incomplete',
