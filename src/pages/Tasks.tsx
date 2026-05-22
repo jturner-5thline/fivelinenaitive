@@ -686,13 +686,28 @@ export default function Tasks() {
               {ownerFilter === 'mine' ? 'My Tasks' : ownerFilter === 'others' ? "Others' Tasks" : 'All Tasks'}
             </h1>
             <p className="mt-1.5 text-[12px] tabular-nums" style={{ color: '#8a93a6' }}>
-              <span>{filtered.filter(t => t.status !== 'complete').length} open</span>
-              {overdueCount > 0 && (
-                <>
-                  <span className="mx-1.5 opacity-60">·</span>
-                  <span style={{ color: '#ef8a8a' }}>{overdueCount} overdue</span>
-                </>
-              )}
+              {(() => {
+                const openCount = filtered.filter(t => t.status !== 'complete').length;
+                const completedCount = filtered.filter(t => t.status === 'complete').length;
+                const showingCompleted = filterStatus === 'all' || filterStatus === 'complete';
+                return (
+                  <>
+                    <span>{openCount} open</span>
+                    {showingCompleted && completedCount > 0 && (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span style={{ color: '#7fc89a' }}>{completedCount} completed</span>
+                      </>
+                    )}
+                    {overdueCount > 0 && (
+                      <>
+                        <span className="mx-1.5 opacity-60">·</span>
+                        <span style={{ color: '#ef8a8a' }}>{overdueCount} overdue</span>
+                      </>
+                    )}
+                  </>
+                );
+              })()}
             </p>
           </div>
           <div className="shrink-0 flex items-center">
