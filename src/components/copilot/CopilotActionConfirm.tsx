@@ -54,6 +54,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-
 type LenderEntity = {
   display_name: string;
   master_lender_id: string | null;
+  candidates?: Array<{ id: string; name: string }>;
 };
 
 function isLenderAddAction(actionType: string) {
@@ -70,6 +71,11 @@ function normalizeLenderEntities(params: Record<string, any>): LenderEntity[] {
           typeof entity?.master_lender_id === 'string' && UUID_RE.test(entity.master_lender_id)
             ? entity.master_lender_id
             : null,
+        candidates: Array.isArray(entity?.candidates)
+          ? entity.candidates
+              .map((c: any) => ({ id: String(c?.id || ''), name: String(c?.name || '') }))
+              .filter((c: any) => c.id && c.name)
+          : undefined,
       }))
       .filter((entity) => entity.display_name);
   }
@@ -85,44 +91,119 @@ function normalizeLenderEntities(params: Record<string, any>): LenderEntity[] {
     .filter((entity) => entity.display_name);
 }
 
+// Common acronym → expansion map for lender names. When an input
+// token matches a key, the value tokens are required (all-of) for
+// the alias bonus, letting "Wells Fargo TMT" resolve to
+// "Wells Fargo Technology, Media & Telecom Group".
+const LENDER_ACRONYMS: Record<string, string[]> = {
+  tmt: ['technology', 'media', 'telecom'],
+  cre: ['commercial', 'real', 'estate'],
+  abl: ['asset', 'based', 'lending'],
+  sba: ['small', 'business', 'administration'],
+};
+
+function normalizeLenderName(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[*()\-_/.,]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseLenderInput(displayName: string): { primary: string; alias: string | null } {
+  // "CIT (First Citizens)" → primary="CIT", alias="First Citizens"
+  const m = displayName.match(/^([^(]+)\(([^)]+)\)\s*$/);
+  if (m) return { primary: m[1].trim(), alias: m[2].trim() };
+  return { primary: displayName.trim(), alias: null };
+}
+
 async function resolveMasterLenderEntities(params: Record<string, any>): Promise<LenderEntity[]> {
   const entities = normalizeLenderEntities(params);
   return Promise.all(
     entities.map(async (entity) => {
       if (entity.master_lender_id) return entity;
 
-      const exactName = entity.display_name.replace(/[%,]/g, '').trim();
-      if (!exactName) return entity;
+      const { primary, alias } = parseLenderInput(entity.display_name);
+      const cleanPrimary = primary.replace(/[%_]/g, '').trim();
+      if (!cleanPrimary) return entity;
 
-      const { data: exactMatches } = await supabase
+      // Broad candidate pool: search on the first significant token
+      // so abbreviations like "Wells Fargo TMT" still surface
+      // "Wells Fargo Technology, Media & Telecom Group".
+      const firstToken = cleanPrimary.split(/\s+/)[0];
+      const { data } = await supabase
         .from('master_lenders')
         .select('id, name')
-        .ilike('name', exactName)
-        .limit(2);
+        .ilike('name', `%${firstToken}%`)
+        .limit(50);
 
-      const exact = (exactMatches || []).find(
-        (row: any) => String(row.name || '').trim().toLowerCase() === exactName.toLowerCase(),
-      );
-      if (exact) {
-        return { display_name: String(exact.name || entity.display_name), master_lender_id: exact.id };
+      const rows = ((data || []) as Array<{ id: string; name: string }>).filter(r => r.name);
+      if (rows.length === 0) return { ...entity, candidates: [] };
+
+      const normInput = normalizeLenderName(cleanPrimary);
+      const normAlias = alias ? normalizeLenderName(alias) : null;
+      const inputTokens = normInput.split(/\s+/).filter(t => t.length >= 2);
+      const expansionTokens = inputTokens
+        .filter(t => LENDER_ACRONYMS[t])
+        .flatMap(t => LENDER_ACRONYMS[t]);
+
+      const scored = rows.map(r => {
+        const n = normalizeLenderName(r.name);
+        let score = 0;
+        // (a) exact normalized match
+        if (n === normInput) score += 100;
+        // (b) prefix / contains
+        if (n.startsWith(normInput)) score += 25;
+        if (n.includes(normInput)) score += 10;
+        // per-token containment
+        for (const t of inputTokens) {
+          if (t === firstToken.toLowerCase()) continue;
+          if (n.includes(t)) score += 10;
+        }
+        // (c) acronym expansion — every expansion token must appear
+        if (expansionTokens.length > 0 && expansionTokens.every(e => n.includes(e))) {
+          score += 60;
+        }
+        // (d) parent-company / acquirer alias from parens
+        if (normAlias && n.includes(normAlias)) score += 50;
+        return { row: r, score, n };
+      }).sort((a, b) => b.score - a.score || a.row.name.length - b.row.name.length);
+
+      // Deduplicate by normalized name (master_lenders has duplicate
+      // rows with the same display name) — keep first/best per name.
+      const seenName = new Set<string>();
+      const unique = scored.filter(s => {
+        if (s.score <= 0) return false;
+        if (seenName.has(s.n)) return false;
+        seenName.add(s.n);
+        return true;
+      });
+
+      const top = unique[0];
+      const second = unique[1];
+      // Auto-resolve when (1) top is an exact match, (2) only one
+      // unique candidate survives, or (3) the top score is meaningfully
+      // higher than the runner-up (alias / acronym hit).
+      const canAutoResolve =
+        !!top &&
+        (
+          top.score >= 100 ||
+          unique.length === 1 ||
+          (!!second && top.score - second.score >= 30)
+        );
+
+      if (canAutoResolve) {
+        return {
+          display_name: top.row.name,
+          master_lender_id: top.row.id,
+        };
       }
-      if ((exactMatches || []).length === 1) {
-        const only = exactMatches![0] as any;
-        return { display_name: String(only.name || entity.display_name), master_lender_id: only.id };
-      }
 
-      const { data: fuzzyMatches } = await supabase
-        .from('master_lenders')
-        .select('id, name')
-        .ilike('name', `%${exactName}%`)
-        .limit(2);
-
-      if ((fuzzyMatches || []).length === 1) {
-        const only = fuzzyMatches![0] as any;
-        return { display_name: String(only.name || entity.display_name), master_lender_id: only.id };
-      }
-
-      return entity;
+      return {
+        ...entity,
+        candidates: unique.slice(0, 8).map(s => ({ id: s.row.id, name: s.row.name })),
+      };
     }),
   );
 }
@@ -675,38 +756,131 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         showOldValues={isUpdateLikeAction}
         tone="pending"
       />
+      {!isPreparingAction && isLenderAddAction(preparedAction.action_type) && (() => {
+        const entities = normalizeLenderEntities(preparedAction.params || {});
+        const unresolvedIdx = entities
+          .map((e, i) => ({ e, i }))
+          .filter(({ e }) => !e.master_lender_id);
+        if (unresolvedIdx.length === 0) return null;
+        return (
+          <div style={{ marginTop: 8, marginBottom: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.3 }}>
+              Resolve lenders
+            </div>
+            {unresolvedIdx.map(({ e, i }) => (
+              <div
+                key={`unresolved-${i}`}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 10px',
+                  borderRadius: 6,
+                  border: '1px solid rgba(234, 179, 8, 0.30)',
+                  background: 'rgba(234, 179, 8, 0.05)',
+                }}
+              >
+                <span style={{ fontSize: 12, minWidth: 0, flex: '0 0 auto', color: 'var(--foreground)' }}>
+                  {e.display_name}
+                </span>
+                <span style={{
+                  fontSize: 10,
+                  padding: '1px 6px',
+                  borderRadius: 999,
+                  color: 'hsl(var(--muted-foreground))',
+                  border: '1px solid var(--glass-border)',
+                }}>pending</span>
+                <select
+                  aria-label={`Pick a lender for ${e.display_name}`}
+                  defaultValue=""
+                  onChange={(ev) => {
+                    const chosenId = ev.target.value;
+                    if (!chosenId) return;
+                    const chosen = (e.candidates || []).find(c => c.id === chosenId);
+                    if (!chosen) return;
+                    setPreparedAction(prev => {
+                      const next = normalizeLenderEntities(prev.params || {});
+                      next[i] = {
+                        display_name: chosen.name,
+                        master_lender_id: chosen.id,
+                      };
+                      return {
+                        ...prev,
+                        params: {
+                          ...prev.params,
+                          entities: next,
+                          lender_names: next.map(en => en.display_name),
+                          lender_name: next[0]?.display_name || prev.params?.lender_name,
+                        },
+                      };
+                    });
+                  }}
+                  style={{
+                    marginLeft: 'auto',
+                    height: 28,
+                    minWidth: 220,
+                    maxWidth: 320,
+                    padding: '0 8px',
+                    borderRadius: 6,
+                    border: '1px solid var(--glass-border)',
+                    background: 'hsl(var(--background))',
+                    color: 'var(--foreground)',
+                    fontSize: 12,
+                  }}
+                >
+                  <option value="" disabled>
+                    {e.candidates && e.candidates.length > 0
+                      ? `Pick from ${e.candidates.length} candidate${e.candidates.length === 1 ? '' : 's'}…`
+                      : 'No candidates found'}
+                  </option>
+                  {(e.candidates || []).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            ))}
+          </div>
+        );
+      })()}
       <div style={{ display: 'flex', gap: 8 }}>
-        <button
-          onClick={handleConfirm}
-          disabled={
-            status === 'loading' ||
-            isPreparingAction ||
-            (isLenderAddAction(preparedAction.action_type) &&
-              normalizeLenderEntities(preparedAction.params || {}).some((e) => !e.master_lender_id))
-          }
-          style={{
-            height: 32,
-            padding: '0 12px',
-            borderRadius: 8,
-            background: 'hsl(var(--primary))',
-            color: 'white',
-            border: 'none',
-            fontSize: 13,
-            fontWeight: 500,
-            cursor: status === 'loading' || isPreparingAction ? 'wait' : 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            opacity:
-              isLenderAddAction(preparedAction.action_type) &&
-              normalizeLenderEntities(preparedAction.params || {}).some((e) => !e.master_lender_id)
-                ? 0.5
-                : 1,
-          }}
-        >
-          {status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : null}
-          Confirm
-        </button>
+        {(() => {
+          const lenderAdd = isLenderAddAction(preparedAction.action_type);
+          const hasUnresolved =
+            lenderAdd && normalizeLenderEntities(preparedAction.params || {}).some(e => !e.master_lender_id);
+          const isDisabled = status === 'loading' || isPreparingAction || hasUnresolved;
+          const tooltip = hasUnresolved
+            ? 'Resolve all lenders to enable Confirm.'
+            : isPreparingAction
+              ? 'Resolving lenders…'
+              : '';
+          return (
+            <button
+              onClick={handleConfirm}
+              disabled={isDisabled}
+              aria-disabled={isDisabled}
+              title={tooltip || undefined}
+              className={isDisabled && (hasUnresolved || isPreparingAction) ? 'opacity-50 cursor-not-allowed' : ''}
+              style={{
+                height: 32,
+                padding: '0 12px',
+                borderRadius: 8,
+                background: 'hsl(var(--primary))',
+                color: 'white',
+                border: 'none',
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: isDisabled ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                opacity: isDisabled ? 0.5 : 1,
+              }}
+            >
+              {status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : null}
+              Confirm
+            </button>
+          );
+        })()}
         <button
           onClick={() => setStatus('cancelled')}
           disabled={status === 'loading'}
