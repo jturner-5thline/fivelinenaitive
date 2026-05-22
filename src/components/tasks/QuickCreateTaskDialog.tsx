@@ -13,6 +13,7 @@ import { type TeamMember } from '@/hooks/useTeamMembers';
 import { useAssigneeOpenTaskCounts } from '@/hooks/useAssigneeOpenTaskCounts';
 import { useDealsContext } from '@/contexts/DealsContext';
 import type { Deal } from '@/types/deal';
+import { isActiveDeal } from '@/lib/deals';
 import { toast } from 'sonner';
 
 export interface QuickTaskInput {
@@ -120,14 +121,8 @@ export function QuickCreateTaskDialog({
   const [dealQuery, setDealQuery] = useState('');
   const [debouncedTitle, setDebouncedTitle] = useState('');
 
-  // Active-deal predicate — mirrors the /deals board's "Active Deals" KPI:
-  // excludes closed/dead/on-hold stages and archived/on-hold statuses so the
-  // picker only surfaces deals still in the working pipeline.
-  const INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'dead', 'on-hold']);
-  const INACTIVE_STATUSES = new Set(['archived', 'on-hold']);
-  const isActiveDeal = (d: Deal) =>
-    !INACTIVE_STATUSES.has((d.status as string) || '') &&
-    !INACTIVE_STAGES.has((d.stage as string) || '');
+  // Active-deal predicate sourced from src/lib/deals.ts — same helper used by
+  // the /deals "Active Deals" KPI so both surfaces stay in lockstep.
 
   // Track open transitions so we only reset state on false→true. Previously
   // this effect re-ran whenever any `initial*` prop identity changed (e.g.
