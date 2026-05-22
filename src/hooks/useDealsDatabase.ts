@@ -165,6 +165,14 @@ interface DbDealLender {
   updated_at: string;
 }
 
+type LenderTimestampFields = {
+  submitted_at: string | null;
+  approved_at: string | null;
+  passed_at: string | null;
+  declined_at: string | null;
+  last_status_change_at: string | null;
+};
+
 // Helper function to trigger workflows
 async function triggerWorkflow(
   triggerType: TriggerType,
