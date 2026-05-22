@@ -85,6 +85,14 @@ type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'bloc
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 type FilterDueDate = 'all' | 'overdue' | 'today' | 'this_week' | 'no_date';
 type FilterRecurring = 'all' | 'recurring' | 'paused';
+type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
+const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+  { value: 'urgent', label: 'Urgent' },
+  { value: 'high', label: 'High' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'low', label: 'Low' },
+];
+const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
 
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
