@@ -163,6 +163,7 @@ import { cn } from '@/lib/utils';
 import { useDealMatchForEmail } from '@/hooks/useDealMatchForEmail';
 import { DealMatchBadge } from '@/components/dashboard/inbox/DealMatchBadge';
 import type { DraftMode } from './AiDraftReviewPanel';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 // ─── Sentiment badge ─────────────────────────────────────────
 function SentimentBadge({ sentiment }: { sentiment?: MockEmail['ai_sentiment'] }) {
@@ -840,6 +841,36 @@ export class EmailPaneErrorBoundary extends Component<{
   }
 }
 
+function EmailDetailStatusState({
+  title,
+  description,
+  actionLabel,
+  onAction,
+}: {
+  title: string;
+  description: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <div className="flex h-full min-h-[240px] w-full min-w-0 items-center justify-center p-6">
+      <div className="max-w-md rounded-lg border border-[hsl(var(--email-border))] bg-card/40 px-5 py-4 text-center">
+        <p className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]">{description}</p>
+        {actionLabel && onAction && (
+          <button
+            type="button"
+            onClick={onAction}
+            className="mt-3 inline-flex items-center justify-center rounded-md border border-[hsl(var(--email-border))] bg-card/60 px-3 py-1.5 text-xs font-medium text-[hsl(var(--email-text-primary))] hover:bg-card/80 transition-colors"
+          >
+            {actionLabel}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Email List (threaded) ───────────────────────────────────
 interface EmailListProps {
   emails: MockEmail[];
@@ -1470,6 +1501,9 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   // then fetched text, then prop text/preview snippet.
   const resolvedHtml = fullData?.body_html || email.body_html || '';
   const resolvedText = fullData?.body_text || email.body_text || email.body_preview || '';
+  const trimmedResolvedText = resolvedText.trim();
+  const hasRenderableBody = !!resolvedHtml || trimmedResolvedText.length > 0;
+  const gmailThreadTarget = email.provider_thread_id || email.threadId || threadId;
 
   // For plain-text bodies, split off the quoted reply chain so we can show/hide it.
   const { main: textMain, quoted: textQuoted } = resolvedHtml
@@ -1497,6 +1531,18 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       setTimeout(() => messageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     }
   };
+
+  useEffect(() => {
+    if (!expanded) return;
+    console.warn('[email.thread_render]', {
+      threadId: gmailThreadTarget,
+      messageId: email.id,
+      messageCount: threadEmails.length,
+      firstBodyLen: resolvedHtml ? resolvedHtml.length : trimmedResolvedText.length,
+      error: fullError,
+      loading: fullLoading,
+    });
+  }, [expanded, gmailThreadTarget, email.id, threadEmails.length, resolvedHtml, trimmedResolvedText, fullError, fullLoading]);
 
   return (
     <div ref={messageRef} className={cn(
@@ -1632,14 +1678,21 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                   attachments={fullData?.attachments}
                   fromEmail={email.from_email}
                 />
-              ) : (
+              ) : hasRenderableBody ? (
                 <EmailBodyRenderer text={textMain} />
+              ) : (
+                <EmailDetailStatusState
+                  title="Full message unavailable"
+                  description={email.snippet || email.body_preview || 'This message returned no readable body content.'}
+                  actionLabel="Retry"
+                  onAction={() => reloadFull()}
+                />
               )}
             </EmailPaneErrorBoundary>
           </EmailSelectionActionMenu>
 
           {/* Quoted text (only meaningful for plain text bodies) */}
-          {!resolvedHtml && textQuoted && (
+          {!resolvedHtml && hasRenderableBody && textQuoted && (
             <div className="mt-4">
               {!showQuoted ? (
                 <button
@@ -1824,6 +1877,7 @@ interface EmailDetailProps {
 }
 
 export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar, onSendReply, isExpanded, onToggleExpand, onDelete, onArchive, deepLinkMessageId, deepLinkSignal, pendingAction, onPendingActionConsumed }: EmailDetailProps & { pendingAction?: 'reply'|'replyAll'|'forward'|null; onPendingActionConsumed?: () => void }) {
+  const isMobile = useIsMobile();
   // Scroll-and-highlight the deep-linked message when present. Re-runs if
   // the user navigates between threads with consecutive priority signals.
   useEffect(() => {
@@ -1865,6 +1919,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // this account/company. Keeps downstream layout math (grid columns,
   // resize observers) honest when Assist is gated off.
   const showAiAssist = assistEnabled && showAiAssistPref;
+  const renderAiAssistColumn = showAiAssist && !isMobile;
   const aiAssistButtonRef = useRef<HTMLButtonElement | null>(null);
   const messagePaneRef = useRef<HTMLDivElement | null>(null);
   const aiAssistPaneRef = useRef<HTMLDivElement | null>(null);
@@ -2730,6 +2785,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, [thread, onToggleLink, handleReply, assistEnabled]);
 
   const latest = thread.latestEmail;
+  if (!thread?.latestEmail || !Array.isArray(thread.emails) || thread.emails.length === 0) {
+    return (
+      <EmailDetailStatusState
+        title="Couldn't load this message"
+        description="This thread has no readable messages yet. Close and reopen the thread to retry."
+        actionLabel="Close"
+        onAction={onBack}
+      />
+    );
+  }
   const senderName = latest.from_name === 'You' ? latest.to_name : latest.from_name;
   const senderEmail = latest.from_name === 'You' ? latest.to_email : latest.from_email;
 
@@ -2744,7 +2809,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         <div
           className="relative grid h-full min-w-0 w-full overflow-hidden bg-transparent transition-[grid-template-columns] duration-200 ease-out"
         style={{
-          gridTemplateColumns: showAiAssist
+          gridTemplateColumns: renderAiAssistColumn
             ? 'minmax(0, 1fr) 360px'
             : 'minmax(0, 1fr)',
         }}
@@ -3272,7 +3337,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             so the grid collapses to a single column and the detail pane reclaims
             the full width. Below 1100px we collapse to slide-over to keep the
             detail column wide enough for body wrapping. */}
-        {showAiAssist && (
+        {renderAiAssistColumn && (
           <div
             ref={aiAssistPaneRef}
             data-inbox-surface-scope="assistant"
