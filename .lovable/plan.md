@@ -1,151 +1,68 @@
-# Read-after-Write Verification for Deal Updates
+# Meeting Scheduler — Consolidated Fix Plan
 
-## Goal
+Five gaps to close from Asana 1215032669126149. Listed in build order. Zoom (part 3) requires you to create a Zoom OAuth app first; everything else I can ship without you.
 
-Every backend write to `public.deals` performs `.update(patch).eq('id', dealId).select(<written cols>).maybeSingle()`, then compares each written field against the returned row. Mismatches raise a structured `WriteNotPersistedError` that the copilot ask bar surfaces verbatim ("I tried to set X to A but the database still has B") instead of a generic "Done."
+---
 
-No UI changes in this pass — only handler logic, a shared helper, and the error type. UI surfacing of the new error format in the copilot is wired up in `copilot-chat` only (the ask bar already renders text from that function).
+## Part 1 — Fix "silent failure" on Find free slots (P1)
 
-## Scope
+The popover already has slot-list rendering, error states, and persistence wired. The "silent close" the reporter saw is almost certainly the form-submit problem: the popover lives inside the `EmailComposerCard`'s form, and the trigger `Button` defaults to `type="submit"`. Clicking it submits the form, the email dialog closes, the popover unmounts mid-fetch — looking like a no-op.
 
-In-scope edge functions (write to `deals`):
+Fix:
+- Audit every `<Button>` inside `InsertAvailabilityPopover` — all need `type="button"` (the inner Find/Insert buttons already have it; the trigger button does, but the Add-teammate button does not).
+- Stop event propagation on click of Find free slots so a parent form can't intercept.
+- Add explicit `[InsertAvailability]`-prefixed `console.error` on every catch + after each setError.
+- Slot list already renders grouped-by-day with checkboxes; add skeleton loader rows during fetch and clearer empty-state copy.
 
-```
-deal-operations          copilot-chat              claap-webhook
-agent-orchestrator       agent-chat                claap-suggest-matches
-execute-agent-graph      execute-workflow          claap-backfill
-wf-stage-trigger         weekly-hours-api          dashboard-chat
-hubspot-sync             hubspot-create-deal       hubspot-deal-stage-push
-smart-email-ai           deal-space-ai             slack-agent-gateway
-send-flex-reply          process-scheduled-actions process-followup-scheduled
-process-recurring-tasks  daily-crm-update-scan     classify-file
-compute-financial-metrics recommend-lenders        seed-sample-deal
-seed-demo-account        execute-agent-trigger     generate-scheduled-report
-send-ux-insights-email   create-demo-access
-```
+## Part 2 — Insert formatting + persistence polish (P1)
 
-Frontend hooks (`src/hooks/use*`) that call `.update()` directly on `deals` are **out of scope for this pass** — they show toasts client-side already and don't route through the ask bar. They will be addressed in a follow-up if the user wants.
+Existing flow already inserts HTML and writes to `naitive_proposed_slots`. Tighten:
+- Match copy exactly: "Here are a few times that work for me (all times Eastern): … Let me know what works and I'll send a calendar invite."
+- Force tz label to ET regardless of local tz in the body text (the model is "I propose Eastern times").
+- Add columns to `naitive_proposed_slots`: `recipient_emails text[]`, `meeting_id uuid`, `conferencing_provider text`, `conferencing_meeting_id text`. Keep existing `recipient_email` for back-compat.
+- Toast: "N slots inserted and held until accepted".
+- Close popover only after the DB insert resolves (currently it closes optimistically).
 
-## Design
+## Part 3 — Zoom OAuth (P1) — NEEDS YOUR ACTION FIRST
 
-### 1. Shared helper (new file)
+To build this I need you to:
+1. Create a Zoom OAuth app at https://marketplace.zoom.us/develop/create → General App → User-managed.
+2. Redirect URL: `https://tgkksvazruzbghssnxde.supabase.co/functions/v1/zoom-auth/callback`
+3. Scopes: `meeting:write:meeting`, `meeting:read:meeting`, `user:read:user`
+4. Send me **Client ID** and **Client Secret** via the secrets prompt I'll trigger.
 
-`supabase/functions/_shared/verifiedDealUpdate.ts`
+What I'll then ship:
+- Table `user_integrations` (provider, access_token, refresh_token, expires_at, scope, account_id).
+- Edge functions `zoom-auth` (init + callback + refresh) and `zoom-create-meeting`.
+- "Connect Zoom" card in Settings → Integrations.
+- Conferencing dropdown in popover footer + calendar dialog with greyed/tooltipped options based on which providers are connected (Google Meet default, Teams stub, Zoom, None, Phone).
+- On Send with one slot + Zoom: create meeting, inject Join Zoom block into email body, set conferencing fields on the slot row to 'booked'.
+- Multi-slot + Zoom: append "I'll send the Zoom link once we lock the time."
 
-```ts
-export class WriteNotPersistedError extends Error {
-  code = 'WRITE_NOT_PERSISTED' as const;
-  constructor(
-    public dealId: string,
-    public mismatches: Array<{ field: string; expected: unknown; actual: unknown }>,
-  ) {
-    super(
-      `Deal ${dealId} did not persist ${mismatches.length} field(s): ` +
-      mismatches.map(m => `${m.field} expected ${JSON.stringify(m.expected)} got ${JSON.stringify(m.actual)}`).join('; ')
-    );
-    this.name = 'WriteNotPersistedError';
-  }
-}
+**If you want me to skip Zoom again, say so and I'll ship parts 1, 2, 4, 5 only.**
 
-export async function verifiedDealUpdate(
-  client: SupabaseClient,
-  dealId: string,
-  patch: Record<string, unknown>,
-  opts?: { skipVerifyFields?: string[] }
-): Promise<Row> { /* ... */ }
-```
+## Part 4 — Wire "Schedule next" (P2)
 
-Behavior:
-- Builds `selectCols` = union of `Object.keys(patch)` + `['id', 'updated_at']`, minus any caller-specified `skipVerifyFields`.
-- Runs `.update(patch).eq('id', dealId).select(selectCols.join(',')).maybeSingle()`.
-- Throws if `error` or if row is `null` (row not found / RLS blocked) — both become `WriteNotPersistedError` with `mismatches: [{field: '__row__', expected: 'present', actual: 'null'}]`.
-- For each key in `patch`, normalizes both sides before compare:
-  - Dates (`closing_date`, `projected_close_date`, `contract_*_date`, `next_step_date`, `notes_updated_at`) → ISO date prefix `YYYY-MM-DD`.
-  - Numerics → `Number()` with `Number.EPSILON` tolerance.
-  - Arrays → sorted shallow compare.
-  - Strings → trim.
-  - JSONB → `JSON.stringify` of canonicalized object.
-- Collects mismatches into one `WriteNotPersistedError` (don't throw on the first — surface all so the AI can report them together).
+- New `src/components/scheduling/FindATimeDialog.tsx` — full-screen Dialog reusing the popover's controls/slot list, plus the conferencing dropdown (greys Zoom if part 3 isn't done yet).
+- "Send invite" CTA creates the Gcal event directly via the existing `calendar-events` edge function (no email composer flow).
+- Hook from End-of-Day meeting detail → Action Items → Schedule next button.
 
-### 2. Skip-verify list (necessary to avoid false positives)
+## Part 5 — Gcal connection guard (P2)
 
-The helper auto-skips these even if present in `patch`:
-- Generated columns: `total_fee`
-- Trigger-managed: `updated_at` (we always pass `now()` but trigger may overwrite)
-- Server-defaulted fields when caller passed `undefined`/`null` intentionally
+- On popover mount, call a small probe (cheap `calendar-events` list with `max_results=1`) and flip a `gcalConnected` flag.
+- If false: yellow chip at top with "Connect Google Calendar in Settings → Integrations" + "Connect now" button → `/settings/integrations`. Disable "Find free slots" until connected.
 
-Caller may pass extras via `opts.skipVerifyFields`.
+---
 
-### 3. Edge function changes (pattern)
+## Technical notes
 
-Replace every:
-```ts
-const { error } = await supabase.from('deals').update(patch).eq('id', dealId);
-if (error) throw error;
-```
+- Migration adds 4 columns to `naitive_proposed_slots` (additive, no breakage) and creates `user_integrations` only if you green-light Zoom.
+- Skipping Zoom: parts 1, 2, 4, 5 are pure frontend + tiny migration (~30 min of compute).
+- With Zoom: add ~1 edge function file + OAuth flow + Settings UI + dropdown wiring (~2x the work) and is gated on your Zoom app credentials.
 
-with:
+---
 
-```ts
-import { verifiedDealUpdate, WriteNotPersistedError } from '../_shared/verifiedDealUpdate.ts';
-const updated = await verifiedDealUpdate(supabase, dealId, patch);
-```
+## Two questions before I start
 
-And wrap the existing top-level try/catch so `WriteNotPersistedError` is serialized:
-
-```ts
-catch (err) {
-  if (err instanceof WriteNotPersistedError) {
-    return new Response(JSON.stringify({
-      ok: false,
-      error_code: 'WRITE_NOT_PERSISTED',
-      message: err.message,
-      mismatches: err.mismatches,
-      deal_id: err.dealId,
-    }), { status: 409, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
-  }
-  // existing fallthrough
-}
-```
-
-### 4. Copilot ask-bar wiring (`supabase/functions/copilot-chat/index.ts`)
-
-When the copilot calls a tool that performs a deal write and the response contains `error_code === 'WRITE_NOT_PERSISTED'`, prepend a system-level note to the model turn:
-
-> Tool reported the write did not persist. Tell the user verbatim: "I tried to set {field} to {expected} but the database still has {actual}." Do not say "Done." Do not retry silently.
-
-The streamed model output is what the ask bar already renders — no UI code change.
-
-### 5. Tests
-
-Add `supabase/functions/_shared/verifiedDealUpdate_test.ts` covering:
-- Happy path: returned row equals patch.
-- Mismatch on one field → throws with one entry.
-- Mismatch on multiple fields → throws with all entries.
-- Date normalization (string vs `Date` vs ISO).
-- Numeric tolerance.
-- RLS / row-not-found → throws with `__row__` mismatch.
-- Skip-list fields excluded from compare.
-
-## Caveats the user should know
-
-1. **False positives are the real risk.** DB triggers normalize values (e.g. `manager` may be trimmed, `closing_date` parsed via `to_date`, `stage` may be lower-cased by a trigger). The normalization layer in §2 covers the common ones, but each function we touch needs a spot-check that its patch doesn't include a field a trigger rewrites. If it does, that field goes in `skipVerifyFields`.
-
-2. **Generated/computed fields** (`total_fee`) can never be verified — auto-skipped.
-
-3. **RLS silent denials** are now loud — this is the *point*, but it means handlers that previously "succeeded" silently on permission failure will start returning 409s. We should grep for any function relying on that behavior (e.g., best-effort writes inside loops) and add explicit `skipVerifyFields: ['*']` opt-out or stop calling the helper for those.
-
-4. **`hubspot-sync` writes thousands of rows in a batch** — wrapping each in a read-after-write doubles the round trips and may push it past timeout. Recommend keeping `hubspot-sync` and `claap-backfill` on the *unverified* path (they have their own reconciliation). Confirm before excluding them.
-
-## Out of scope
-
-- Frontend `src/hooks/*` direct `.update()` calls on `deals`.
-- Writes to other tables (`tasks`, `claap_*`, etc.).
-- Retrying on mismatch (the user asked for surfacing, not retry).
-- UI changes in the ask bar component (the new message comes through naturally as model output).
-
-## Open questions before I start
-
-- Confirm `hubspot-sync` and `claap-backfill` are excluded (batch writers).
-- Confirm 409 status code is acceptable (vs 200 with `ok: false`).
-- For tools the copilot calls *speculatively* (e.g. `set_hours` with an unchanged value), should an unchanged-value write also be verified? (Current plan: yes, because the contract is "the DB now equals what we sent.")
+1. **Zoom: build it or skip it again?** Same answer as last time ("skip Zoom") is totally fine — parts 1/2/4/5 still close most of the bug report.
+2. The conferencing dropdown's "Microsoft Teams" option — there's no MS integration in the project today. OK to render it permanently greyed with "Microsoft 365 integration coming soon"?
