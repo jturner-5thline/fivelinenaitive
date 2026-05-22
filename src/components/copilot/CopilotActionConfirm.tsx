@@ -646,6 +646,29 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
           <Loader2 size={12} className="animate-spin" /> Resolving lenders…
         </div>
       )}
+      {(() => {
+        if (isPreparingAction) return null;
+        if (!isLenderAddAction(preparedAction.action_type)) return null;
+        const unresolved = normalizeLenderEntities(preparedAction.params || {}).filter((e) => !e.master_lender_id);
+        if (unresolved.length === 0) return null;
+        return (
+          <div
+            role="alert"
+            style={{
+              marginBottom: 10,
+              padding: '8px 10px',
+              borderRadius: 6,
+              background: 'rgba(234, 179, 8, 0.10)',
+              border: '1px solid rgba(234, 179, 8, 0.35)',
+              color: 'rgb(234, 179, 8)',
+              fontSize: 12,
+              lineHeight: 1.4,
+            }}
+          >
+            Could not resolve {unresolved.map((u) => u.display_name).join(', ')} to a lender record. Please pick from the disambiguation list.
+          </div>
+        );
+      })()}
       <FieldDiffTable
         diffs={fieldDiffs}
         statuses={fieldStatuses}
@@ -655,7 +678,12 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={handleConfirm}
-          disabled={status === 'loading' || isPreparingAction}
+          disabled={
+            status === 'loading' ||
+            isPreparingAction ||
+            (isLenderAddAction(preparedAction.action_type) &&
+              normalizeLenderEntities(preparedAction.params || {}).some((e) => !e.master_lender_id))
+          }
           style={{
             height: 32,
             padding: '0 12px',
@@ -669,6 +697,11 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
             display: 'flex',
             alignItems: 'center',
             gap: 6,
+            opacity:
+              isLenderAddAction(preparedAction.action_type) &&
+              normalizeLenderEntities(preparedAction.params || {}).some((e) => !e.master_lender_id)
+                ? 0.5
+                : 1,
           }}
         >
           {status === 'loading' ? <Loader2 size={14} className="animate-spin" /> : null}
