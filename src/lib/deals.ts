@@ -20,7 +20,7 @@ const INACTIVE_STAGE_KEYWORDS = [
   'not a fit',
   'archived',
 ];
-const INACTIVE_STATUSES = new Set(['archived', 'closed-lost', 'on-hold']);
+const INACTIVE_STATUSES = new Set(['archived', 'closed lost', 'on hold']);
 
 const normalize = (s: unknown) =>
   String(s ?? '').toLowerCase().replace(/[-_]+/g, ' ').replace(/\s+/g, ' ').trim();
