@@ -42,6 +42,7 @@ import { useGmail } from '@/hooks/useGmail';
 import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
+import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
@@ -1070,6 +1071,7 @@ function EventDetailPane({
   const [noteDraft, setNoteDraft] = useState('');
   const [dealQuery, setDealQuery] = useState('');
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
+  const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
 
   const matchingDeals = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
@@ -1317,11 +1319,26 @@ function EventDetailPane({
                 </div>
               </PopoverContent>
             </Popover>
-            <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs" disabled
-              title="Schedule next meeting — coming soon"
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 justify-start gap-2 text-xs"
+              onClick={() => setScheduleNextOpen(true)}
             >
               <CalendarIcon className="h-3.5 w-3.5" /> Schedule next
             </Button>
+            <FindATimeDialog
+              open={scheduleNextOpen}
+              onOpenChange={setScheduleNextOpen}
+              defaultTitle={`Follow-up: ${eventTitle}`}
+              attendees={externals
+                .filter((a) => a.email)
+                .map((a) => ({ email: a.email!, name: a.displayName || a.email }))}
+              onScheduled={() => {
+                toast.success('Calendar invite sent');
+                onEmailSent('Sent calendar invite (Schedule next)');
+              }}
+            />
             <Button
               size="sm"
               variant="outline"
