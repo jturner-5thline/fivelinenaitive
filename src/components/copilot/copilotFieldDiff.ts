@@ -53,6 +53,8 @@ const ACTIVITY_LOGGED_ONLY = new Set<string>([
   "update_milestone",
   "update_lender_status",
   "delete_outstanding_item",
+  "add_lender_to_deal",
+  "add_lenders_to_deal",
 ]);
 
 function isEmpty(v: unknown): boolean {
@@ -232,6 +234,26 @@ export function deriveFieldDiffs(
           newValue: "—",
         },
       ];
+    case "add_lender_to_deal":
+      return [
+        {
+          field: "lender",
+          label: "Lender",
+          newValue: get("lender_name"),
+        },
+      ];
+    case "add_lenders_to_deal": {
+      // Render one row per entity so the post-Confirm status table
+      // can badge each lender independently (verified / skipped / failed).
+      const names = Array.isArray(get("lender_names"))
+        ? (get("lender_names") as unknown[])
+        : [];
+      return names.map((n, i) => ({
+        field: `lender_${i}`,
+        label: i === 0 ? "Lenders" : "",
+        newValue: n,
+      }));
+    }
     default:
       // Unknown action: best-effort — show every param that isn't
       // a structural field (deal_id / deal_name) so the user still
