@@ -893,19 +893,6 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
-          <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
-            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
-              <CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">Any due date</SelectItem>
-              <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
-              <SelectItem value="today" className="text-xs">Due today</SelectItem>
-              <SelectItem value="this_week" className="text-xs">Due this week</SelectItem>
-              <SelectItem value="no_date" className="text-xs">No due date</SelectItem>
-            </SelectContent>
-          </Select>
-
           {/* Advanced filters collapsed behind a single entry point */}
           <Popover>
             <PopoverTrigger asChild>
@@ -914,24 +901,37 @@ export default function Tasks() {
                 size="sm"
                 className="h-8 text-[12px] gap-1.5"
                 style={{
-                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all')
+                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all')
                     ? 'rgba(126,184,247,0.35)'
                     : 'rgba(255,255,255,0.06)',
                   backgroundColor: 'rgba(255,255,255,0.025)',
-                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') ? '#cfe3ff' : '#b3bccc',
+                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') ? '#cfe3ff' : '#b3bccc',
                 }}
               >
                 <SlidersHorizontal className="h-3 w-3" />
                 Filters
-                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') && (
+                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') && (
                   <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
                     style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
-                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0)}
+                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0) + (filterDueDate !== 'all' ? 1 : 0)}
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[320px] p-3 space-y-3" align="end">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Due date</label>
+                <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
+                  <SelectTrigger className="h-8 text-xs"><CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">Any due date</SelectItem>
+                    <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
+                    <SelectItem value="today" className="text-xs">Due today</SelectItem>
+                    <SelectItem value="this_week" className="text-xs">Due this week</SelectItem>
+                    <SelectItem value="no_date" className="text-xs">No due date</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Sort by</label>
                 <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
