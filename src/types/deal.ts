@@ -34,6 +34,17 @@ export interface DealLender {
   notesHistory?: LenderNoteHistory[];
   savedNotes?: string;
   updatedAt?: string; // Last update timestamp for the lender
+  createdAt?: string;
+  /** First time this lender entered any active bucket (submitted/in-review/terms/passed/declined). */
+  submittedAt?: string | null;
+  /** Timestamp of first transition into terms-issued / approved. */
+  approvedAt?: string | null;
+  /** Timestamp of first transition into passed (pass / no-go / not-a-fit / unresponsive). */
+  passedAt?: string | null;
+  /** Timestamp of explicit decline. */
+  declinedAt?: string | null;
+  /** Last time the status bucket changed. Used for "Most recently updated" sort. */
+  lastStatusChangeAt?: string | null;
 }
 
 export type MilestoneStatus = 'on_track' | 'at_risk' | 'off_track';
