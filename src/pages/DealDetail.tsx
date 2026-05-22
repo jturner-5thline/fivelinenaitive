@@ -5133,6 +5133,45 @@ export default function DealDetail() {
                   {/* Stage & Notes Editing */}
                   {dealLender && (
                     <>
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Status history</h4>
+                        {(() => {
+                          const timeline = buildStatusTimeline(dealLender);
+                          if (timeline.length === 0) {
+                            return <p className="text-sm text-muted-foreground italic">No recorded transitions</p>;
+                          }
+
+                          return (
+                            <div className="space-y-3">
+                              {timeline.map((event, index) => (
+                                <div key={`${event.kind}-${event.iso}-${index}`} className="flex gap-3">
+                                  <div className="flex flex-col items-center pt-1">
+                                    <span className="h-2 w-2 rounded-full bg-primary" />
+                                    {index < timeline.length - 1 && <span className="mt-1 h-8 w-px bg-border" />}
+                                  </div>
+                                  <div className="min-w-0 pb-1">
+                                    <div className="text-sm font-medium">{event.label}</div>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <span className="text-xs text-muted-foreground cursor-default">
+                                          {event.approximate ? '~' : ''}{formatShortDate(event.iso)}
+                                        </span>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="top">
+                                        <div className="space-y-1">
+                                          <div>{formatFullTimestamp(event.iso)}</div>
+                                          {event.approximate && <div className="text-muted-foreground">approximate</div>}
+                                        </div>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+
                       {/* Stage Selector */}
                       <div>
                         <h4 className="text-sm font-semibold mb-2">Stage</h4>
