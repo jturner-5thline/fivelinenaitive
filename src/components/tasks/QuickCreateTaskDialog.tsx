@@ -311,7 +311,7 @@ export function QuickCreateTaskDialog({
   const suggestions = useMemo(() => {
     if (!debouncedTitle || debouncedTitle.trim().length < 3) return [];
     return allDeals
-      .filter(d => d.status !== 'archived')
+      .filter(isActiveDeal)
       .map(d => ({ deal: d, score: scoreDeal(d, debouncedTitle) }))
       .filter(x => x.score >= 25)
       .sort((a, b) => b.score - a.score)
@@ -333,7 +333,7 @@ export function QuickCreateTaskDialog({
 
   const dealSearchResults = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
-    const base = allDeals.filter(d => d.status !== 'archived');
+    const base = allDeals.filter(isActiveDeal);
     const ranked = base
       .map(d => ({
         deal: d,
