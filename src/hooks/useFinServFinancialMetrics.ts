@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from './useCompany';
 import { type QuarterOption } from './useQBQuarterlyRevenue';
 import { endOfMonth, endOfQuarter, format, startOfMonth, startOfQuarter, subQuarters } from 'date-fns';
+import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 
 const FINSERV_REALM_ID = '9341451968897660';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
