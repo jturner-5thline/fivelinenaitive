@@ -203,28 +203,31 @@ async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPer
 
 export interface MonthBar { month: string; monthKey: string; amount: number }
 
-export function useFinServTotalRevenue(period: SnapshotPeriod & { label: string } | null) {
+export function useFinServTotalRevenue(
+  period: SnapshotPeriod & { label: string } | null,
+  granularity: Granularity = 'monthly',
+) {
   const { user } = useAuth();
   const { company } = useCompany();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-total-revenue', user?.id, company?.id, period?.start_date, period?.end_date],
+    queryKey: ['finserv-total-revenue', user?.id, company?.id, period?.start_date, period?.end_date, granularity],
     queryFn: async () => {
       if (!period || !company?.id) return null;
 
+      const bucketPeriods = buildBuckets(period.start_date, period.end_date, granularity);
       const requestedPeriods = dedupePeriods([
         { start_date: period.start_date, end_date: period.end_date },
-        ...buildMonthlySnapshotPeriods(period.start_date, period.end_date),
+        ...bucketPeriods.map((b) => ({ start_date: b.start_date, end_date: b.end_date })),
       ]);
       const rows = await ensureFinServPnlSnapshots(company.id, requestedPeriods);
       const rowsByKey = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
       const periodRow = rowsByKey.get(periodKey(period));
-      const monthPeriods = buildMonthlySnapshotPeriods(period.start_date, period.end_date);
 
-      const months: MonthBar[] = monthPeriods.map((month) => ({
-        month: month.label,
-        monthKey: month.key,
-        amount: Number(rowsByKey.get(periodKey(month))?.income_total ?? 0),
+      const months: MonthBar[] = bucketPeriods.map((bucket) => ({
+        month: bucket.label,
+        monthKey: bucket.key,
+        amount: Number(rowsByKey.get(periodKey(bucket))?.income_total ?? 0),
       }));
 
       return {
