@@ -455,11 +455,7 @@ export function TaskListView({
                             </div>
                             {taskNameWarning && <p className="text-[11px] px-4 py-1" style={{ color: '#ff4d4d' }}>{taskNameWarning}</p>}
                           </>
-                        ) : (
-                          <button onClick={() => onNewTaskChange('')} className="w-full flex items-center gap-2 px-4 py-2 text-xs transition-colors" style={{ color: '#8b92a5' }}>
-                            <Plus className="h-3.5 w-3.5" /> Add task
-                          </button>
-                        )}
+                        ) : null /* bottom inline "+ Add task" removed — use top-right "+ Add Task" CTA */}
                       </>
                     )}
                   </div>
