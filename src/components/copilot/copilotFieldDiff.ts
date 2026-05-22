@@ -356,6 +356,14 @@ export function computeFieldStatuses(
     return out;
   }
 
+  if ((actionType === "add_lenders_to_deal" || actionType === "add_lender_to_deal") && Array.isArray(result.entity_results) && result.entity_results.length > 0) {
+    for (const [index, d] of diffs.entries()) {
+      const entity = result.entity_results[index];
+      out[d.field] = entity?.status ?? (result.success ? "activity-only" : "mismatch");
+    }
+    return out;
+  }
+
   // Generic failure (network / unknown error) — treat everything as
   // not-persisted; the audit row probably wasn't written either.
   if (!result.success) {
@@ -365,18 +373,14 @@ export function computeFieldStatuses(
 
   // Success path.
   // Per-entity batch: map each lender row to verified / activity-only (skipped) / mismatch.
-  if ((actionType === "add_lenders_to_deal" || actionType === "add_lender_to_deal") && Array.isArray(result.entity_results) && result.entity_results.length > 0) {
-    for (const [index, d] of diffs.entries()) {
-      const entity = result.entity_results[index];
-      out[d.field] = entity?.status ?? (result.success ? "activity-only" : "mismatch");
-    }
-    return out;
-  }
 
   if (actionType === "add_lenders_to_deal") {
     const insertedNames = new Set((result.inserted || []).map((r) => (r.name || "").toLowerCase()));
     const skippedNames = new Set((result.skipped_existing || []).map((n) => (n || "").toLowerCase()));
-    const failedNames = new Set((result.failed || []).map((n) => (n || "").toLowerCase()));
+    const failedNames = new Set((result.failed || []).map((n) => {
+      if (typeof n === "string") return n.toLowerCase();
+      return String(n?.display_name || n?.name || "").toLowerCase();
+    }));
     for (const d of diffs) {
       const name = typeof d.newValue === "string" ? d.newValue.toLowerCase() : "";
       if (failedNames.has(name)) out[d.field] = "mismatch";
