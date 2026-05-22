@@ -19,6 +19,7 @@ const INACTIVE_STAGE_KEYWORDS = [
   'churn',           // fs-churned
   'not a fit',
   'archived',
+  'passed',          // Blount Capital "Passed" terminal stage
 ];
 const INACTIVE_STATUSES = new Set(['archived', 'closed lost', 'on hold']);
 
@@ -36,5 +37,9 @@ export function isActiveDeal(deal: Pick<Deal, 'stage' | 'status'>): boolean {
   if (INACTIVE_STATUSES.has(status)) return false;
   const stage = normalize(deal.stage);
   if (!stage) return true;
+  // Exception: "Prospect - Unqualified" is an early intake stage, not a terminal
+  // dead-deal stage. Treat any "prospect ..." stage as active even if it
+  // contains the word "unqualified".
+  if (stage.startsWith('prospect')) return true;
   return !INACTIVE_STAGE_KEYWORDS.some(k => stage.includes(k));
 }
