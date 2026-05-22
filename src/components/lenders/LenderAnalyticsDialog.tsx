@@ -201,7 +201,7 @@ export function LenderAnalyticsDialog({
             if (startIso) q = q.gte('created_at', startIso);
             return q;
           })(),
-          supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at').limit(10000),
+          supabase.from('deals').select('id, company, company_id, deal_type, manager, created_at, value').limit(10000),
           supabase.from('lender_stage_configs').select('company_id, stages').limit(500),
         ]);
         if (cancelled) return;
