@@ -22,6 +22,9 @@
 
 export type FieldStatus = "verified" | "activity-only" | "mismatch" | "pending";
 
+const SHOW_DEBUG_LENDER_IDS = import.meta.env.MODE !== "production";
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
 export interface FieldDiff {
   /** Database column name (or synthetic key for non-column rows). */
   field: string;
@@ -59,6 +62,38 @@ const ACTIVITY_LOGGED_ONLY = new Set<string>([
 
 function isEmpty(v: unknown): boolean {
   return v === null || v === undefined || v === "";
+}
+
+function readLenderEntities(params: Record<string, unknown> = {}): Array<{ display_name: string; master_lender_id: string | null }> {
+  const entities = Array.isArray(params.entities) ? params.entities : [];
+  if (entities.length > 0) {
+    return entities
+      .map((entity) => {
+        const row = entity && typeof entity === "object" ? (entity as Record<string, unknown>) : {};
+        const display_name = String(row.display_name ?? row.lender_name ?? "").trim();
+        const rawId = row.master_lender_id;
+        const master_lender_id = typeof rawId === "string" && UUID_RE.test(rawId) ? rawId : null;
+        return { display_name, master_lender_id };
+      })
+      .filter((entity) => entity.display_name.length > 0);
+  }
+
+  const lenderNames = Array.isArray(params.lender_names)
+    ? (params.lender_names as unknown[])
+    : params.lender_name !== undefined
+      ? [params.lender_name]
+      : [];
+
+  return lenderNames
+    .map((value) => ({ display_name: String(value ?? "").trim(), master_lender_id: null }))
+    .filter((entity) => entity.display_name.length > 0);
+}
+
+function formatLenderEntityValue(entity: { display_name: string; master_lender_id: string | null }): string {
+  if (SHOW_DEBUG_LENDER_IDS && entity.master_lender_id) {
+    return `${entity.display_name} (id: ${entity.master_lender_id})`;
+  }
+  return entity.display_name;
 }
 
 /**
@@ -235,23 +270,17 @@ export function deriveFieldDiffs(
         },
       ];
     case "add_lender_to_deal":
-      return [
-        {
-          field: "lender",
-          label: "Lender",
-          newValue: get("lender_name"),
-        },
-      ];
+      return readLenderEntities(params).slice(0, 1).map((entity) => ({
+        field: "lender_0",
+        label: "Lender",
+        newValue: formatLenderEntityValue(entity),
+      }));
     case "add_lenders_to_deal": {
-      // Render one row per entity so the post-Confirm status table
-      // can badge each lender independently (verified / skipped / failed).
-      const names = Array.isArray(get("lender_names"))
-        ? (get("lender_names") as unknown[])
-        : [];
-      return names.map((n, i) => ({
+      const entities = readLenderEntities(params);
+      return entities.map((entity, i) => ({
         field: `lender_${i}`,
         label: i === 0 ? "Lenders" : "",
-        newValue: n,
+        newValue: formatLenderEntityValue(entity),
       }));
     }
     default:
@@ -272,12 +301,21 @@ export interface VerifiedResult {
   error_code?: string;
   mismatches?: Array<{ field: string; expected?: unknown; actual?: unknown }>;
   audit?: { after?: Record<string, unknown> | null } | null;
+  entity_results?: LenderEntityResult[];
   // Returned by add_lenders_to_deal so the field table can badge each
   // entity row independently.
   inserted?: Array<{ id: string; name: string }>;
   skipped_existing?: string[];
-  failed?: string[];
+  failed?: Array<string | { display_name?: string; name?: string; reason?: string; master_lender_id?: string | null }>;
   params?: Record<string, unknown>;
+}
+
+export interface LenderEntityResult {
+  display_name: string;
+  master_lender_id?: string | null;
+  inserted_deal_lender_id?: string | null;
+  status: Exclude<FieldStatus, "pending">;
+  reason?: string | null;
 }
 
 /**
@@ -327,6 +365,14 @@ export function computeFieldStatuses(
 
   // Success path.
   // Per-entity batch: map each lender row to verified / activity-only (skipped) / mismatch.
+  if ((actionType === "add_lenders_to_deal" || actionType === "add_lender_to_deal") && Array.isArray(result.entity_results) && result.entity_results.length > 0) {
+    for (const [index, d] of diffs.entries()) {
+      const entity = result.entity_results[index];
+      out[d.field] = entity?.status ?? (result.success ? "activity-only" : "mismatch");
+    }
+    return out;
+  }
+
   if (actionType === "add_lenders_to_deal") {
     const insertedNames = new Set((result.inserted || []).map((r) => (r.name || "").toLowerCase()));
     const skippedNames = new Set((result.skipped_existing || []).map((n) => (n || "").toLowerCase()));
