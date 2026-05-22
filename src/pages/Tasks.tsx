@@ -94,6 +94,48 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
 ];
 const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
 
+function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
+  return (
+    <span
+      className="inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11px]"
+      style={{
+        backgroundColor: 'rgba(126,184,247,0.12)',
+        border: '1px solid rgba(126,184,247,0.28)',
+        color: '#cfe3ff',
+      }}
+    >
+      <span className="truncate max-w-[180px]">{label}</span>
+      <button
+        type="button"
+        onClick={onClear}
+        aria-label={`Clear ${label}`}
+        className="hover:text-white transition-colors -mr-1 p-0.5"
+      >
+        <X className="h-3 w-3" />
+      </button>
+    </span>
+  );
+}
+
+const STATUS_LABELS: Record<FilterStatus, string> = {
+  all: 'All',
+  incomplete: 'Incomplete',
+  complete: 'Complete',
+  not_started: 'Not Started',
+  in_progress: 'In Progress',
+  blocked: 'Blocked',
+};
+const DUE_LABELS: Record<FilterDueDate, string> = {
+  all: 'Any due date',
+  overdue: 'Overdue',
+  today: 'Due today',
+  this_week: 'Due this week',
+  no_date: 'No due date',
+};
+const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
+  urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low',
+};
+
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
@@ -216,6 +258,63 @@ export default function Tasks() {
   const [dealFilterQuery, setDealFilterQuery] = useState('');
 
   const selectedTask = tasks.find(t => t.id === selectedTaskId) || null;
+
+  // ── URL query-param persistence ──────────────────────────────────────
+  // Sync status / due / priority / deal filters with the URL so links are
+  // shareable and refresh-safe. Read once on mount, then write on change.
+  const urlHydrated = useRef(false);
+  useEffect(() => {
+    if (urlHydrated.current) return;
+    urlHydrated.current = true;
+    const params = new URLSearchParams(window.location.search);
+    const s = params.get('status') as FilterStatus | null;
+    if (s && ['all','incomplete','complete','not_started','in_progress','blocked'].includes(s)) {
+      setFilterStatus(s);
+    }
+    const d = params.get('due') as FilterDueDate | null;
+    if (d && ['all','overdue','today','this_week','no_date'].includes(d)) {
+      setFilterDueDate(d);
+    }
+    const p = params.get('priority');
+    if (p) {
+      const valid = p.split(',').filter((v): v is TaskPriority =>
+        ['urgent','high','medium','low'].includes(v));
+      if (valid.length) setFilterPriorities(new Set(valid));
+    }
+    const deals = params.get('deal');
+    if (deals) {
+      const ids = deals.split(',').filter(Boolean);
+      if (ids.length) setFilterDealIds(new Set(ids));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!urlHydrated.current) return;
+    const params = new URLSearchParams(window.location.search);
+    if (filterStatus !== 'incomplete') params.set('status', filterStatus); else params.delete('status');
+    if (filterDueDate !== 'all') params.set('due', filterDueDate); else params.delete('due');
+    if (filterPriorities.size) params.set('priority', Array.from(filterPriorities).join(',')); else params.delete('priority');
+    if (filterDealIds.size) params.set('deal', Array.from(filterDealIds).join(',')); else params.delete('deal');
+    const qs = params.toString();
+    const next = window.location.pathname + (qs ? `?${qs}` : '');
+    window.history.replaceState({}, '', next);
+  }, [filterStatus, filterDueDate, filterPriorities, filterDealIds]);
+
+  const clearAllFilters = useCallback(() => {
+    setFilterStatus('incomplete');
+    setFilterDueDate('all');
+    setFilterPriorities(new Set());
+    setFilterDealIds(new Set());
+    setFilterLabelIds(new Set());
+    setFilterRecurring('all');
+  }, []);
+
+  const hasActiveFilters = filterStatus !== 'incomplete'
+    || filterDueDate !== 'all'
+    || filterPriorities.size > 0
+    || filterDealIds.size > 0
+    || filterLabelIds.size > 0
+    || filterRecurring !== 'all';
 
   // Single source of truth for "today" / "this week" boundaries — auto-rolls
   // at local midnight so overdue/today/upcoming stay correct without reload.
@@ -749,7 +848,7 @@ export default function Tasks() {
           horizontal scroll) so controls reflow on narrow widths instead of
           disappearing behind a scroll affordance.
         */}
-        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
+        <div className="flex items-center gap-1.5 px-6 py-2.5 border-y flex-wrap pr-16" style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'transparent' }}>
           {/* Search — far left, flexes to fill available space */}
           <div className="relative flex-1 min-w-[160px] max-w-[280px] order-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8a93a6' }} />
@@ -817,19 +916,6 @@ export default function Tasks() {
             </SelectContent>
           </Select>
 
-          <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
-            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
-              <CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">Any due date</SelectItem>
-              <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
-              <SelectItem value="today" className="text-xs">Due today</SelectItem>
-              <SelectItem value="this_week" className="text-xs">Due this week</SelectItem>
-              <SelectItem value="no_date" className="text-xs">No due date</SelectItem>
-            </SelectContent>
-          </Select>
-
           {/* Advanced filters collapsed behind a single entry point */}
           <Popover>
             <PopoverTrigger asChild>
@@ -838,24 +924,37 @@ export default function Tasks() {
                 size="sm"
                 className="h-8 text-[12px] gap-1.5"
                 style={{
-                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all')
+                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all')
                     ? 'rgba(126,184,247,0.35)'
                     : 'rgba(255,255,255,0.06)',
                   backgroundColor: 'rgba(255,255,255,0.025)',
-                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') ? '#cfe3ff' : '#b3bccc',
+                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') ? '#cfe3ff' : '#b3bccc',
                 }}
               >
                 <SlidersHorizontal className="h-3 w-3" />
                 Filters
-                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') && (
+                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') && (
                   <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
                     style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
-                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0)}
+                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0) + (filterDueDate !== 'all' ? 1 : 0)}
                   </span>
                 )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[320px] p-3 space-y-3" align="end">
+              <div className="space-y-1.5">
+                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Due date</label>
+                <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
+                  <SelectTrigger className="h-8 text-xs"><CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all" className="text-xs">Any due date</SelectItem>
+                    <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
+                    <SelectItem value="today" className="text-xs">Due today</SelectItem>
+                    <SelectItem value="this_week" className="text-xs">Due this week</SelectItem>
+                    <SelectItem value="no_date" className="text-xs">No due date</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Sort by</label>
                 <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
@@ -1087,6 +1186,54 @@ export default function Tasks() {
 
         {/* Main content */}
         <div className="flex-1 overflow-hidden">
+          {hasActiveFilters && (
+            <div
+              className="flex items-center gap-1.5 px-6 py-2 flex-wrap border-b"
+              style={{ borderColor: 'rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.015)' }}
+              data-testid="applied-filters-row"
+            >
+              <span className="text-[10px] uppercase tracking-wide" style={{ color: '#8a93a6' }}>Active:</span>
+              {filterStatus !== 'incomplete' && (
+                <FilterChip label={`Status: ${STATUS_LABELS[filterStatus]}`} onClear={() => setFilterStatus('incomplete')} />
+              )}
+              {filterDueDate !== 'all' && (
+                <FilterChip label={DUE_LABELS[filterDueDate]} onClear={() => setFilterDueDate('all')} />
+              )}
+              {Array.from(filterPriorities).map(p => (
+                <FilterChip key={p} label={`Priority: ${PRIORITY_LABEL_MAP[p]}`} onClear={() => {
+                  setFilterPriorities(prev => { const n = new Set(prev); n.delete(p); return n; });
+                }} />
+              ))}
+              {Array.from(filterDealIds).map(id => {
+                const name = allDealOptions.find(([d]) => d === id)?.[1]
+                  || uniqueDeals.find(([d]) => d === id)?.[1] || 'Deal';
+                return (
+                  <FilterChip key={id} label={`Deal: ${name}`} onClear={() => {
+                    setFilterDealIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+                  }} />
+                );
+              })}
+              {Array.from(filterLabelIds).map(id => {
+                const lbl = labels.find(l => l.id === id);
+                return (
+                  <FilterChip key={id} label={`Label: ${lbl?.name || 'Label'}`} onClear={() => {
+                    setFilterLabelIds(prev => { const n = new Set(prev); n.delete(id); return n; });
+                  }} />
+                );
+              })}
+              {filterRecurring !== 'all' && (
+                <FilterChip label={filterRecurring === 'recurring' ? 'Recurring only' : 'Paused only'} onClear={() => setFilterRecurring('all')} />
+              )}
+              <button
+                onClick={clearAllFilters}
+                className="ml-1 text-[11px] underline-offset-2 hover:underline"
+                style={{ color: '#ef8a8a' }}
+                data-testid="clear-all-filters"
+              >
+                Clear all
+              </button>
+            </div>
+          )}
           <div className="overflow-auto h-full">
             {(viewMode === 'list' || viewMode === 'focus') && (
               <TaskListView
