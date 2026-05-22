@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/u
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { CalendarIcon, Loader2, UserCheck, Zap, Sun, Sunrise, CalendarDays, Flame, Coffee, Repeat, Briefcase, Search, X, Sparkles } from 'lucide-react';
+import { CalendarIcon, Loader2, UserCheck, Sun, Sunrise, CalendarDays, Flame, Repeat, Briefcase, Search, X, Sparkles } from 'lucide-react';
 import { addDays, format, isSameDay, nextMonday } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
@@ -17,7 +17,7 @@ import { toast } from 'sonner';
 
 export interface QuickTaskInput {
   title: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent';
+  priority: 'low' | 'medium' | 'high' | 'urgent' | null;
   due_date: string | null;
   status: 'not_started' | 'in_progress' | 'blocked' | 'complete';
   assigned_to: string;
@@ -91,7 +91,7 @@ export function QuickCreateTaskDialog({
   initialDueDate,
 }: Props) {
   const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState<QuickTaskInput['priority']>('medium');
+  const [priority, setPriority] = useState<QuickTaskInput['priority']>(null);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<QuickTaskInput['status']>('not_started');
   const [assignedTo, setAssignedTo] = useState<string>(() => readLastAssignee(currentUserId));
@@ -135,7 +135,7 @@ export function QuickCreateTaskDialog({
     if (open && !wasOpen) {
       setTitle(initialTitle || '');
       userEditedTitleRef.current = false;
-      setPriority('medium');
+      setPriority(null);
       setDueDate(initialDueDate || undefined);
       setStatus('not_started');
       const remembered = readLastAssignee(currentUserId);
@@ -162,45 +162,29 @@ export function QuickCreateTaskDialog({
   // Combo presets snap several fields at once (priority + due + status).
   // Applying a combo also clears conflicting state: any prior recurrence
   // rule (the combo redefines the schedule) and stale validation warnings.
-  const applyCombo = (fn: () => void) => {
-    fn();
-    setRecurrence(null);
-    setStartFromDueDate(false);
-    setEndMode('never');
-    setEndDate(undefined);
+  // Single one-click shortcut. Toggles on/off: applying sets priority=urgent
+  // and due=today; re-clicking clears those two overrides.
+  const urgentToday = {
+    id: 'urgent_today',
+    label: 'Urgent · Today',
+    tone: '#e57373',
+  };
+  const urgentActive = priority === 'urgent' && !!dueDate && isSameDay(dueDate, new Date());
+  const toggleUrgent = () => {
+    if (urgentActive) {
+      setPriority(null);
+      setDueDate(undefined);
+    } else {
+      setPriority('urgent');
+      setDueDate(new Date());
+      setRecurrence(null);
+      setStartFromDueDate(false);
+      setEndMode('never');
+      setEndDate(undefined);
+    }
     setWarning('');
     setConfirmedJunk(false);
   };
-  const combos: { id: string; label: string; icon: React.ReactNode; tone: string; apply: () => void }[] = [
-    {
-      id: 'urgent_today',
-      label: 'Urgent · Today',
-      icon: <Flame className="h-3 w-3" />,
-      tone: '#e57373',
-      apply: () => applyCombo(() => { setPriority('urgent'); setDueDate(new Date()); setStatus('not_started'); }),
-    },
-    {
-      id: 'high_tomorrow',
-      label: 'High · Tomorrow',
-      icon: <Zap className="h-3 w-3" />,
-      tone: '#e89b6c',
-      apply: () => applyCombo(() => { setPriority('high'); setDueDate(addDays(new Date(), 1)); setStatus('not_started'); }),
-    },
-    {
-      id: 'this_week',
-      label: 'Medium · This week',
-      icon: <CalendarDays className="h-3 w-3" />,
-      tone: '#7eb8f7',
-      apply: () => applyCombo(() => { setPriority('medium'); setDueDate(addDays(new Date(), 5)); setStatus('not_started'); }),
-    },
-    {
-      id: 'quick_todo',
-      label: 'Quick todo',
-      icon: <Coffee className="h-3 w-3" />,
-      tone: '#9aa3b6',
-      apply: () => applyCombo(() => { setPriority('low'); setDueDate(undefined); setStatus('not_started'); }),
-    },
-  ];
 
   // Per-field due-date presets
   const datePresets = [
@@ -211,18 +195,6 @@ export function QuickCreateTaskDialog({
   ];
   const dateMatches = (preset: Date) => !!dueDate && isSameDay(dueDate, preset);
 
-  const priorityPresets: { value: QuickTaskInput['priority']; label: string; tone: string }[] = [
-    { value: 'urgent', label: 'Urgent', tone: '#e57373' },
-    { value: 'high',   label: 'High',   tone: '#e89b6c' },
-    { value: 'medium', label: 'Medium', tone: '#d4a45a' },
-    { value: 'low',    label: 'Low',    tone: '#7a8194' },
-  ];
-  const statusPresets: { value: QuickTaskInput['status']; label: string; tone: string }[] = [
-    { value: 'not_started', label: 'Not Started', tone: '#7a8194' },
-    { value: 'in_progress', label: 'In Progress', tone: '#7eb8f7' },
-    { value: 'blocked',     label: 'Blocked',     tone: '#e57373' },
-    { value: 'complete',    label: 'Complete',    tone: '#7fc89a' },
-  ];
 
   const handleSubmit = async () => {
     const trimmed = title.trim();
@@ -402,21 +374,23 @@ export function QuickCreateTaskDialog({
         </DialogHeader>
 
         <div className="px-5 py-4 space-y-4">
-          {/* Combo presets — one-click multi-field setup */}
+          {/* One-click shortcut — toggles Urgent + Today on/off */}
           <div className="flex flex-wrap gap-1.5">
-            {combos.map(c => (
-              <button
-                key={c.id}
-                type="button"
-                onClick={c.apply}
-                className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors hover:brightness-110"
-                style={{ color: c.tone, borderColor: `${c.tone}33`, backgroundColor: `${c.tone}10` }}
-                title={`Apply "${c.label}" preset`}
-              >
-                {c.icon}
-                {c.label}
-              </button>
-            ))}
+            <button
+              type="button"
+              onClick={toggleUrgent}
+              aria-pressed={urgentActive}
+              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors hover:brightness-110"
+              style={{
+                color: urgentToday.tone,
+                borderColor: urgentActive ? `${urgentToday.tone}99` : `${urgentToday.tone}33`,
+                backgroundColor: urgentActive ? `${urgentToday.tone}26` : `${urgentToday.tone}10`,
+              }}
+              title={urgentActive ? 'Clear Urgent · Today' : 'Apply Urgent · Today'}
+            >
+              <Flame className="h-3 w-3" />
+              {urgentToday.label}
+            </button>
           </div>
 
           {/* Title */}
@@ -439,57 +413,6 @@ export function QuickCreateTaskDialog({
               style={{ backgroundColor: 'rgba(20,24,32,0.65)', border: '1px solid rgba(255,255,255,0.07)' }}
             />
             {warning && <p className="text-[11px]" style={{ color: '#e57373' }}>{warning}</p>}
-          </div>
-
-          {/* Quick priority + status pills */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Priority</label>
-              <div className="flex flex-wrap gap-1">
-                {priorityPresets.map(p => {
-                  const active = priority === p.value;
-                  return (
-                    <button
-                      key={p.value}
-                      type="button"
-                      onClick={() => setPriority(p.value)}
-                      className="px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
-                      style={{
-                        color: active ? p.tone : '#9aa3b6',
-                        borderColor: active ? `${p.tone}66` : 'rgba(255,255,255,0.08)',
-                        backgroundColor: active ? `${p.tone}1f` : 'rgba(20,24,32,0.65)',
-                      }}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[10px] uppercase tracking-wide font-medium" style={{ color: '#7a8194' }}>Status</label>
-              <div className="flex flex-wrap gap-1">
-                {statusPresets.map(s => {
-                  const active = status === s.value;
-                  return (
-                    <button
-                      key={s.value}
-                      type="button"
-                      onClick={() => setStatus(s.value)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-[11px] font-medium border transition-colors"
-                      style={{
-                        color: active ? s.tone : '#9aa3b6',
-                        borderColor: active ? `${s.tone}66` : 'rgba(255,255,255,0.08)',
-                        backgroundColor: active ? `${s.tone}1a` : 'rgba(20,24,32,0.65)',
-                      }}
-                    >
-                      <span className="h-1.5 w-1.5 rounded-full" style={{ backgroundColor: s.tone }} />
-                      {s.label}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
           </div>
 
           {/* Quick due-date presets + full picker fallback */}
