@@ -49,6 +49,84 @@ const iconMap: Record<string, typeof ArrowRight> = {
   log_note: FileText,
 };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+type LenderEntity = {
+  display_name: string;
+  master_lender_id: string | null;
+};
+
+function isLenderAddAction(actionType: string) {
+  return actionType === 'add_lender_to_deal' || actionType === 'add_lenders_to_deal';
+}
+
+function normalizeLenderEntities(params: Record<string, any>): LenderEntity[] {
+  const rawEntities = Array.isArray(params.entities) ? params.entities : [];
+  if (rawEntities.length > 0) {
+    return rawEntities
+      .map((entity: any) => ({
+        display_name: String(entity?.display_name || entity?.lender_name || '').trim(),
+        master_lender_id:
+          typeof entity?.master_lender_id === 'string' && UUID_RE.test(entity.master_lender_id)
+            ? entity.master_lender_id
+            : null,
+      }))
+      .filter((entity) => entity.display_name);
+  }
+
+  const lenderNames = Array.isArray(params.lender_names)
+    ? params.lender_names
+    : params.lender_name
+      ? [params.lender_name]
+      : [];
+
+  return lenderNames
+    .map((name: unknown) => ({ display_name: String(name || '').trim(), master_lender_id: null }))
+    .filter((entity) => entity.display_name);
+}
+
+async function resolveMasterLenderEntities(params: Record<string, any>): Promise<LenderEntity[]> {
+  const entities = normalizeLenderEntities(params);
+  return Promise.all(
+    entities.map(async (entity) => {
+      if (entity.master_lender_id) return entity;
+
+      const exactName = entity.display_name.replace(/[%,]/g, '').trim();
+      if (!exactName) return entity;
+
+      const { data: exactMatches } = await supabase
+        .from('master_lenders')
+        .select('id, name')
+        .ilike('name', exactName)
+        .limit(2);
+
+      const exact = (exactMatches || []).find(
+        (row: any) => String(row.name || '').trim().toLowerCase() === exactName.toLowerCase(),
+      );
+      if (exact) {
+        return { display_name: String(exact.name || entity.display_name), master_lender_id: exact.id };
+      }
+      if ((exactMatches || []).length === 1) {
+        const only = exactMatches![0] as any;
+        return { display_name: String(only.name || entity.display_name), master_lender_id: only.id };
+      }
+
+      const { data: fuzzyMatches } = await supabase
+        .from('master_lenders')
+        .select('id, name')
+        .ilike('name', `%${exactName}%`)
+        .limit(2);
+
+      if ((fuzzyMatches || []).length === 1) {
+        const only = fuzzyMatches![0] as any;
+        return { display_name: String(only.name || entity.display_name), master_lender_id: only.id };
+      }
+
+      return entity;
+    }),
+  );
+}
+
 export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props>(function CopilotActionConfirm({ action }, ref) {
   // Unified human-approval card for all AI-proposed task drafts
   // (personal, deal-linked, and delegated all flow through here).
@@ -62,6 +140,8 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   const [completedAt, setCompletedAt] = useState<number | null>(null);
   const [auditId, setAuditId] = useState<string | null>(null);
   const [resolvedDealId, setResolvedDealId] = useState<string | null>(null);
+  const [preparedAction, setPreparedAction] = useState<ConfirmAction>(action);
+  const [isPreparingAction, setIsPreparingAction] = useState<boolean>(isLenderAddAction(action.action_type));
   // Store the raw verified-write response so the field table can render
   // per-field status badges after Confirm (✅ / ⚠️ / ❌). The backend
   // attaches `error_code` and `mismatches` for WriteNotPersistedError
@@ -91,13 +171,47 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
   // Field-by-field diff is rebuilt from the action's params and never
   // collapses into a one-line summary — that's the whole point of
   // this card.
-  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(action.action_type, action.params || {});
+  const fieldDiffs: FieldDiff[] = deriveFieldDiffs(preparedAction.action_type, preparedAction.params || {});
   const fieldStatuses = computeFieldStatuses(
-    action.action_type,
+    preparedAction.action_type,
     fieldDiffs,
     status === 'done' || status === 'failed' ? verifiedResult : null,
   );
   const isUpdateLikeAction = fieldDiffs.some((d) => d.oldValue !== undefined);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!isLenderAddAction(action.action_type)) {
+      setPreparedAction(action);
+      setIsPreparingAction(false);
+      return;
+    }
+
+    setIsPreparingAction(true);
+
+    resolveMasterLenderEntities(action.params || {})
+      .then((entities) => {
+        if (cancelled) return;
+        const nextParams = {
+          ...action.params,
+          entities,
+          lender_names: entities.map((entity) => entity.display_name),
+          lender_name: entities[0]?.display_name || action.params?.lender_name,
+        };
+        setPreparedAction({ ...action, params: nextParams });
+      })
+      .catch(() => {
+        if (!cancelled) setPreparedAction(action);
+      })
+      .finally(() => {
+        if (!cancelled) setIsPreparingAction(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [action]);
 
   // Re-render the "Updated Xs ago" label on a steady tick so the
   // timestamp on the Done card stays accurate without a heavy interval.
@@ -228,11 +342,30 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     }
   };
 
+  const buildUnresolvedLenderError = () => {
+    const entities = normalizeLenderEntities(preparedAction.params || {});
+    const unresolved = entities.filter((entity) => !entity.master_lender_id);
+    if (unresolved.length === 0) return null;
+    return `Could not resolve ${unresolved.map((entity) => entity.display_name).join(', ')} to a lender record. Please pick from the disambiguation list.`;
+  };
+
   const handleConfirm = async () => {
     setStatus('loading');
     setErrorMessage(null);
     setVerifiedResult(null);
     try {
+      const unresolvedError = isLenderAddAction(preparedAction.action_type) ? buildUnresolvedLenderError() : null;
+      if (unresolvedError) {
+        const entityResults = normalizeLenderEntities(preparedAction.params || {}).map((entity) => ({
+          display_name: entity.display_name,
+          master_lender_id: entity.master_lender_id,
+          status: entity.master_lender_id ? ('activity-only' as const) : ('mismatch' as const),
+          reason: entity.master_lender_id ? 'not_submitted' : 'invalid_lender_id',
+        }));
+        setVerifiedResult({ success: false, error: unresolvedError, entity_results: entityResults });
+        throw new Error(unresolvedError);
+      }
+
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
       if (!token) throw new Error('Not authenticated');
@@ -240,7 +373,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       const resp = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ confirmAction: action }),
+        body: JSON.stringify({ confirmAction: preparedAction }),
       });
 
       // Only flip to "done" once the backend acknowledges a 2xx response
@@ -255,24 +388,24 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       // badges in both the success and failure branches.
       setVerifiedResult(result as VerifiedResult);
       if (result.success) {
-        const dealId = result.params?.deal_id || action.params?.deal_id;
-        const dealName = result.params?.deal_name || action.params?.deal_name;
+        const dealId = result.params?.deal_id || preparedAction.params?.deal_id;
+        const dealName = result.params?.deal_name || preparedAction.params?.deal_name;
         setStatus('done');
         setCompletedAt(Date.now());
         setAuditId(result.audit?.id ?? null);
         setResolvedDealId(dealId ?? null);
         // Fix 6: Track mutation in conversation state
         addMutation({
-          type: action.action_type,
-          deal: action.params.deal_name || action.params.deal_id,
-          dealId: action.params.deal_id,
-          detail: result.message || action.description,
+          type: preparedAction.action_type,
+          deal: preparedAction.params.deal_name || preparedAction.params.deal_id,
+          dealId: preparedAction.params.deal_id,
+          detail: result.message || preparedAction.description,
           timestamp: new Date().toISOString(),
         });
         // Trigger UI refresh
-        invalidateRelatedQueries(result.actionType || action.action_type, result.params || action.params);
+        invalidateRelatedQueries(result.actionType || preparedAction.action_type, result.params || preparedAction.params);
         // Global event for any non-React-Query consumers
-        fireDealUpdated(dealId, result.audit?.after || action.params || {});
+        fireDealUpdated(dealId, result.audit?.after || preparedAction.params || {});
 
         // Toast with View deal + Undo (10s window)
         const before = result.audit?.before as Record<string, any> | undefined;
@@ -311,8 +444,8 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
     confirm: handleConfirm,
     cancel: () => setStatus('cancelled'),
     getStatus: () => status,
-    getLabel: () => formattedDescription,
-    getActionType: () => action.action_type,
+      getLabel: () => formattedDescription,
+      getActionType: () => preparedAction.action_type,
   }));
 
   if (status === 'done') {
@@ -414,6 +547,16 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
                 {errorMessage}
               </div>
             )}
+            {verifiedResult?.entity_results?.length ? (
+              <div style={{ marginTop: 6, display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12 }}>
+                {verifiedResult.entity_results.map((entity, index) => (
+                  <div key={`${entity.display_name}-${index}`}>
+                    {entity.status === 'verified' ? '✅' : entity.status === 'activity-only' ? '⚠️' : '❌'} {entity.display_name}
+                    {entity.reason ? ` (${entity.status === 'mismatch' ? `failed: ${entity.reason}` : entity.reason})` : ` (${entity.status})`}
+                  </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </div>
         <FieldDiffTable
@@ -487,6 +630,11 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
         <Icon size={16} style={{ color: 'hsl(var(--primary))' }} />
         <span style={{ fontSize: 13, color: 'var(--foreground)' }}>{renderedDescription}</span>
       </div>
+      {isPreparingAction && (
+        <div style={{ marginBottom: 10, fontSize: 12, color: 'hsl(var(--muted-foreground))', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <Loader2 size={12} className="animate-spin" /> Resolving lenders…
+        </div>
+      )}
       <FieldDiffTable
         diffs={fieldDiffs}
         statuses={fieldStatuses}
@@ -496,7 +644,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       <div style={{ display: 'flex', gap: 8 }}>
         <button
           onClick={handleConfirm}
-          disabled={status === 'loading'}
+          disabled={status === 'loading' || isPreparingAction}
           style={{
             height: 32,
             padding: '0 12px',
@@ -506,7 +654,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
             border: 'none',
             fontSize: 13,
             fontWeight: 500,
-            cursor: status === 'loading' ? 'wait' : 'pointer',
+            cursor: status === 'loading' || isPreparingAction ? 'wait' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
