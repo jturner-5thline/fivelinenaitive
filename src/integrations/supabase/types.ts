@@ -17027,6 +17027,57 @@ export type Database = {
         }
         Relationships: []
       }
+      qbo_pnl_snapshots: {
+        Row: {
+          accounting_method: string
+          cogs_total: number
+          company_id: string
+          created_at: string
+          fetched_at: string
+          gross_profit: number
+          id: string
+          income_total: number
+          period_end: string
+          period_start: string
+          raw_response: Json
+          realm_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accounting_method?: string
+          cogs_total?: number
+          company_id: string
+          created_at?: string
+          fetched_at?: string
+          gross_profit?: number
+          id?: string
+          income_total?: number
+          period_end: string
+          period_start: string
+          raw_response: Json
+          realm_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accounting_method?: string
+          cogs_total?: number
+          company_id?: string
+          created_at?: string
+          fetched_at?: string
+          gross_profit?: number
+          id?: string
+          income_total?: number
+          period_end?: string
+          period_start?: string
+          raw_response?: Json
+          realm_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       qir_comment_threads: {
         Row: {
           company_id: string
@@ -23586,6 +23637,10 @@ export type Database = {
         Returns: boolean
       }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
+      can_view_company_insights: {
+        Args: { _company_id: string }
+        Returns: boolean
+      }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       delete_email: {
         Args: { message_id: number; queue_name: string }
