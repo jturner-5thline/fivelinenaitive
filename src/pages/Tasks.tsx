@@ -804,11 +804,11 @@ export default function Tasks() {
             </SelectContent>
           </Select>
           <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
-            <SelectTrigger className="h-8 w-[130px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
+            <SelectTrigger aria-label="Status: All" className="h-8 w-[110px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all" className="text-xs">All statuses</SelectItem>
+              <SelectItem value="all" className="text-xs">All</SelectItem>
               <SelectItem value="incomplete" className="text-xs">Incomplete</SelectItem>
               <SelectItem value="complete" className="text-xs">Complete</SelectItem>
               <SelectItem value="not_started" className="text-xs">Not Started</SelectItem>
