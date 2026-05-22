@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from './useCompany';
 import { type QuarterOption } from './useQBQuarterlyRevenue';
+import { endOfMonth, endOfQuarter, format, startOfMonth, startOfQuarter, subQuarters } from 'date-fns';
 
 const FINSERV_REALM_ID = '9341451968897660';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
@@ -69,6 +70,80 @@ type SnapshotPeriod = {
   end_date: string;
 };
 
+type SnapshotPeriodWithMeta = SnapshotPeriod & {
+  key: string;
+  label: string;
+};
+
+type FinServSnapshotRow = {
+  period_start: string;
+  period_end: string;
+  income_total: number;
+  cogs_total: number;
+  gross_profit: number;
+};
+
+function periodKey(period: SnapshotPeriod) {
+  return `${period.start_date}_${period.end_date}`;
+}
+
+function dedupePeriods<T extends SnapshotPeriod>(periods: T[]) {
+  const map = new Map<string, T>();
+  periods.forEach((period) => map.set(periodKey(period), period));
+  return Array.from(map.values());
+}
+
+function toYmd(date: Date) {
+  return format(date, 'yyyy-MM-dd');
+}
+
+function buildMonthlySnapshotPeriods(start: string, end: string): SnapshotPeriodWithMeta[] {
+  const startDate = new Date(`${start}T00:00:00`);
+  const endDate = new Date(`${end}T00:00:00`);
+  const cursor = new Date(startDate.getFullYear(), startDate.getMonth(), 1);
+  const periods: SnapshotPeriodWithMeta[] = [];
+
+  while (cursor <= endDate) {
+    const monthStart = startOfMonth(cursor);
+    const monthEnd = endOfMonth(cursor);
+    const boundedStart = cursor.getMonth() === startDate.getMonth() && cursor.getFullYear() === startDate.getFullYear()
+      ? startDate
+      : monthStart;
+    const boundedEnd = cursor.getMonth() === endDate.getMonth() && cursor.getFullYear() === endDate.getFullYear()
+      ? endDate
+      : monthEnd;
+    periods.push({
+      start_date: toYmd(boundedStart),
+      end_date: toYmd(boundedEnd),
+      key: format(monthStart, 'yyyy-MM'),
+      label: format(monthStart, 'MMM'),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return periods;
+}
+
+function buildQuarterlySnapshotPeriods(end: string, count: number): SnapshotPeriodWithMeta[] {
+  const endDate = new Date(`${end}T00:00:00`);
+  return Array.from({ length: count }, (_, index) => {
+    const quarterDate = subQuarters(endDate, count - index - 1);
+    const quarterStart = startOfQuarter(quarterDate);
+    const quarterEnd = endOfQuarter(quarterDate);
+    const isCurrentQuarter =
+      quarterStart.getFullYear() === startOfQuarter(endDate).getFullYear() &&
+      quarterStart.getMonth() === startOfQuarter(endDate).getMonth();
+    const boundedEnd = isCurrentQuarter && endDate < quarterEnd ? endDate : quarterEnd;
+
+    return {
+      start_date: toYmd(quarterStart),
+      end_date: toYmd(boundedEnd),
+      key: `${quarterStart.getFullYear()}-Q${Math.floor(quarterStart.getMonth() / 3) + 1}`,
+      label: `Q${Math.floor(quarterStart.getMonth() / 3) + 1} ${quarterStart.getFullYear()}`,
+    };
+  });
+}
+
 async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
   if (periods.length === 0) return [];
 
@@ -90,7 +165,7 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
 
   if (error) throw error;
 
-  return (data ?? []).filter((row) => requestedKeys.has(`${row.period_start}_${row.period_end}`));
+  return ((data ?? []) as FinServSnapshotRow[]).filter((row) => requestedKeys.has(`${row.period_start}_${row.period_end}`));
 }
 
 async function syncFinServPnlSnapshots(periods: SnapshotPeriod[]) {
@@ -107,51 +182,71 @@ async function syncFinServPnlSnapshots(periods: SnapshotPeriod[]) {
   if (error) throw error;
 }
 
+async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
+  const requested = dedupePeriods(periods);
+  let rows = await fetchFinServPnlSnapshots(companyId, requested);
+  const found = new Set(rows.map((row) => `${row.period_start}_${row.period_end}`));
+  const missing = requested.filter((period) => !found.has(periodKey(period)));
+
+  if (missing.length > 0) {
+    await syncFinServPnlSnapshots(missing);
+    rows = await fetchFinServPnlSnapshots(companyId, requested);
+  }
+
+  return rows;
+}
+
 // ────────────────────────────────────────────────────────────
 // 1. Total Revenue (monthly bars for selected quarter)
 // ────────────────────────────────────────────────────────────
 
 export interface MonthBar { month: string; monthKey: string; amount: number }
 
-export function useFinServTotalRevenue(quarter: QuarterOption | null) {
+export function useFinServTotalRevenue(period: SnapshotPeriod & { label: string } | null) {
   const { user } = useAuth();
   const { company } = useCompany();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-total-revenue', user?.id, company?.id, quarter?.value],
+    queryKey: ['finserv-total-revenue', user?.id, company?.id, period?.start_date, period?.end_date],
     queryFn: async () => {
-      if (!quarter || !company?.id) return null;
-      const { data: rows, error: err } = await supabase
-        .from('qbo_pnl_snapshots')
-        .select('period_start, income_total')
-        .eq('company_id', company.id)
-        .eq('realm_id', FINSERV_REALM_ID)
-        .eq('accounting_method', 'Accrual')
-        .gte('period_start', quarter.startDate)
-        .lte('period_start', quarter.endDate)
-        .order('period_start', { ascending: true });
-      if (err) throw err;
+      if (!period || !company?.id) return null;
 
-      const buckets = new Map<string, number>();
-      for (const m of quarter.months) buckets.set(m.key, 0);
-      for (const r of rows ?? []) {
-        if (!r.period_start) continue;
-        const k = r.period_start.slice(0, 7);
-        if (buckets.has(k)) buckets.set(k, Number(r.income_total) || 0);
-      }
+      const requestedPeriods = dedupePeriods([
+        { start_date: period.start_date, end_date: period.end_date },
+        ...buildMonthlySnapshotPeriods(period.start_date, period.end_date),
+      ]);
+      const rows = await ensureFinServPnlSnapshots(company.id, requestedPeriods);
+      const rowsByKey = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
+      const periodRow = rowsByKey.get(periodKey(period));
+      const monthPeriods = buildMonthlySnapshotPeriods(period.start_date, period.end_date);
 
-      const months: MonthBar[] = quarter.months.map(m => ({
-        month: m.label,
-        monthKey: m.key,
-        amount: buckets.get(m.key) ?? 0,
+      const months: MonthBar[] = monthPeriods.map((month) => ({
+        month: month.label,
+        monthKey: month.key,
+        amount: Number(rowsByKey.get(periodKey(month))?.income_total ?? 0),
       }));
-      return { months, total: months.reduce((s, m) => s + m.amount, 0) };
+
+      return {
+        months,
+        total: Number(periodRow?.income_total ?? 0),
+        grossProfit: Number(periodRow?.gross_profit ?? 0),
+        grossMargin: Number(periodRow?.income_total)
+          ? (Number(periodRow?.gross_profit ?? 0) / Number(periodRow?.income_total ?? 0)) * 100
+          : null,
+      };
     },
-    enabled: !!user && !!quarter && !!company?.id,
+    enabled: !!user && !!period && !!company?.id,
     staleTime: 30_000,
   });
 
-  return { months: data?.months ?? [], total: data?.total ?? 0, isLoading, error };
+  return {
+    months: data?.months ?? [],
+    total: data?.total ?? 0,
+    grossProfit: data?.grossProfit ?? 0,
+    grossMargin: data?.grossMargin ?? null,
+    isLoading,
+    error,
+  };
 }
 
 // ────────────────────────────────────────────────────────────
@@ -170,159 +265,47 @@ export interface QuarterProfitBar {
   operatingMargin: number;
 }
 
-export function useFinServQuarterlyProfits(quartersBack = 4) {
+export function useFinServQuarterlyProfits(period: SnapshotPeriod | null, quartersBack = 4) {
   const { user } = useAuth();
-  const quarters = useMemo(() => buildQuarterRange(quartersBack * 3), [quartersBack]);
-  const startDate = quarters[0]?.start;
-  const endDate = quarters[quarters.length - 1]?.end;
+  const { company } = useCompany();
+  const quarterPeriods = useMemo(
+    () => (period ? buildQuarterlySnapshotPeriods(period.end_date, quartersBack) : []),
+    [period, quartersBack],
+  );
 
-  const { data: invoices, isLoading: l1 } = useQuery({
-    queryKey: ['finserv-q-invoices', FINSERV_REALM_ID, startDate, endDate],
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['finserv-quarterly-profits', user?.id, company?.id, period?.end_date, quartersBack],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_invoices')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate!)
-        .lte('txn_date', endDate!);
-      if (error) throw error;
-      return data ?? [];
+      if (!period || !company?.id) return [];
+      const rows = await ensureFinServPnlSnapshots(company.id, quarterPeriods);
+      const rowsByKey = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
+
+      return quarterPeriods.map((quarter): QuarterProfitBar => {
+        const row = rowsByKey.get(periodKey(quarter));
+        const revenue = Number(row?.income_total ?? 0);
+        const cogs = Number(row?.cogs_total ?? 0);
+        const grossProfit = Number(row?.gross_profit ?? 0);
+        return {
+          quarter: quarter.label,
+          revenue,
+          cogs,
+          grossProfit,
+          grossMargin: revenue > 0 ? (grossProfit / revenue) * 100 : 0,
+          opex: 0,
+          operatingProfit: 0,
+          operatingMargin: 0,
+        };
+      });
     },
-    enabled: !!user && !!startDate,
+    enabled: !!user && !!company?.id && !!period,
     staleTime: 30_000,
   });
 
-  const { data: expenses, isLoading: l2 } = useQuery({
-    queryKey: ['finserv-q-expenses', FINSERV_REALM_ID, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_expenses')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate!)
-        .lte('txn_date', endDate!);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!startDate,
-    staleTime: 30_000,
-  });
-
-  const { data: bills, isLoading: l3 } = useQuery({
-    queryKey: ['finserv-q-bills', FINSERV_REALM_ID, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_bills')
-        .select('txn_date, total_amt, line_items')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate!)
-        .lte('txn_date', endDate!);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!startDate,
-    staleTime: 30_000,
-  });
-
-  // COGS account IDs for this realm — needed to compute true Gross Profit.
-  // QuickBooks P&L for the FinServ realm does not return a GrossProfit/COGS
-  // section (no inventory accounts), so we derive COGS from line items whose
-  // account is classified as "Cost of Goods Sold".
-  const { data: cogsAccountIds, isLoading: l4 } = useQuery({
-    queryKey: ['finserv-cogs-accounts', FINSERV_REALM_ID],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_accounts')
-        .select('qb_id')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .eq('account_type', 'Cost of Goods Sold');
-      if (error) throw error;
-      return new Set((data ?? []).map(r => r.qb_id));
-    },
-    enabled: !!user,
-    staleTime: 5 * 60_000,
-  });
-
-  // Also pull line_items for expenses so we can split COGS vs opex.
-  const { data: expenseLines, isLoading: l5 } = useQuery({
-    queryKey: ['finserv-q-expense-lines', FINSERV_REALM_ID, startDate, endDate],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_expenses')
-        .select('txn_date, line_items')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', startDate!)
-        .lte('txn_date', endDate!);
-      if (error) throw error;
-      return data ?? [];
-    },
-    enabled: !!user && !!startDate,
-    staleTime: 30_000,
-  });
-
-  const isLoading = l1 || l2 || l3 || l4 || l5;
-
-  return useMemo(() => {
-    const qMap = new Map<string, { rev: number; exp: number; cogs: number }>();
-    for (const q of quarters) qMap.set(q.key, { rev: 0, exp: 0, cogs: 0 });
-
-    const assignToQuarter = (date: string) => {
-      const d = new Date(date + 'T00:00:00');
-      return quarterKey(d);
-    };
-
-    for (const r of invoices ?? []) {
-      if (!r.txn_date) continue;
-      const k = assignToQuarter(r.txn_date);
-      const b = qMap.get(k);
-      if (b) b.rev += Number(r.total_amt) || 0;
-    }
-
-    for (const r of [...(expenses ?? []), ...(bills ?? [])] as Array<{ txn_date: string | null; total_amt: number | null }>) {
-      if (!r.txn_date) continue;
-      const k = assignToQuarter(r.txn_date);
-      const b = qMap.get(k);
-      if (b) b.exp += Number(r.total_amt) || 0;
-    }
-
-    // Sum COGS from line items whose account is in the COGS set.
-    const cogsSet = cogsAccountIds ?? new Set<string>();
-    const sumCogs = (rows: Array<{ txn_date: string | null; line_items: unknown }> | undefined) => {
-      for (const r of rows ?? []) {
-        if (!r.txn_date || !Array.isArray(r.line_items)) continue;
-        const k = assignToQuarter(r.txn_date);
-        const bucket = qMap.get(k);
-        if (!bucket) continue;
-        for (const li of r.line_items as Array<Record<string, any>>) {
-          const acct = li?.AccountBasedExpenseLineDetail?.AccountRef?.value
-            ?? li?.ItemBasedExpenseLineDetail?.AccountRef?.value;
-          if (acct && cogsSet.has(String(acct))) {
-            bucket.cogs += Number(li.Amount) || 0;
-          }
-        }
-      }
-    };
-    sumCogs(expenseLines as any);
-    sumCogs(bills as any);
-
-    const result: QuarterProfitBar[] = quarters.map(q => {
-      const b = qMap.get(q.key)!;
-      const gp = b.rev - b.cogs;
-      const op = b.rev - b.exp;
-      return {
-        quarter: q.key,
-        revenue: b.rev,
-        cogs: b.cogs,
-        grossProfit: gp,
-        grossMargin: b.rev > 0 ? (gp / b.rev) * 100 : 0,
-        opex: b.exp,
-        operatingProfit: op,
-        operatingMargin: b.rev > 0 ? (op / b.rev) * 100 : 0,
-      };
-    });
-
-    return { quarters: result, isLoading };
-  }, [invoices, expenses, bills, cogsAccountIds, expenseLines, quarters, isLoading]);
+  return {
+    quarters: data ?? [],
+    isLoading,
+    error,
+  };
 }
 
 // ────────────────────────────────────────────────────────────
