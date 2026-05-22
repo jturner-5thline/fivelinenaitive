@@ -207,6 +207,7 @@ import { StatusEmailFlowPicker, type StatusEmailFlowSelection } from '@/componen
 import { formatCurrencyInputValue, parseCurrencyInputValue, formatAmountWithCommas } from '@/utils/currencyFormat';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { isPostSubmissionDealStage } from '@/utils/dealStageUtils';
+import { buildStatusTimeline, formatFullTimestamp, formatShortDate, getPrimaryStatusDate } from '@/utils/lenderStatusDate';
 import { Label } from '@/components/ui/label';
 import { useLenderLabelResolver } from '@/hooks/useLenderLabelResolver';
 import { syncFinServValuePatch, warnIfFinServValueMismatch } from '@/lib/finservValue';
@@ -379,6 +380,33 @@ const getLenderTimeInfo = (updatedAt?: string) => {
   }
   
   return { text, highlightClass };
+};
+
+const renderLenderStatusDate = (lender: DealLender) => {
+  const statusDate = getPrimaryStatusDate(lender);
+  if (!statusDate.iso) return null;
+
+  const prefix = statusDate.approximate ? '~' : '';
+  const shortDate = formatShortDate(statusDate.iso);
+  if (!shortDate) return null;
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground w-fit cursor-default">
+          <span>{statusDate.label}</span>
+          <span aria-hidden>•</span>
+          <span>{`${prefix}${shortDate}`}</span>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">
+        <div className="space-y-1">
+          <div>{formatFullTimestamp(statusDate.iso)}</div>
+          {statusDate.approximate && <div className="text-muted-foreground">approximate</div>}
+        </div>
+      </TooltipContent>
+    </Tooltip>
+  );
 };
 
 interface EditHistory {
