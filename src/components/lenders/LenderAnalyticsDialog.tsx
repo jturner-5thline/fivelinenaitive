@@ -517,7 +517,7 @@ export function LenderAnalyticsDialog({
 
         <div className="flex-1 min-h-0 overflow-auto px-6 py-5 space-y-5">
           {/* KPI cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <KpiCard label="Total Submitted" value={kpis.submitted} hint="Lender-deals that ever reached Sent DRL" loading={loading} />
             <KpiCard label="Total Terms Issued" value={kpis.terms} hint="Lender-deals that ever reached Terms Issued" loading={loading} />
             <KpiCard
@@ -527,6 +527,18 @@ export function LenderAnalyticsDialog({
               loading={loading}
             />
             <KpiCard label="Active Funding Sources in Pipeline" value={kpis.active} hint="Currently in active stages" loading={loading} />
+            <KpiCard
+              label="New Funding Sources"
+              value={newLenders.current.length}
+              hint={
+                newLenders.delta == null
+                  ? 'All time'
+                  : `${newLenders.delta >= 0 ? '↑' : '↓'} ${Math.abs(newLenders.delta)} vs prior ${DATE_LABEL[dateRange].toLowerCase()}`
+              }
+              deltaDir={newLenders.delta == null ? 'flat' : newLenders.delta > 0 ? 'up' : newLenders.delta < 0 ? 'down' : 'flat'}
+              loading={loading}
+              onClick={() => setShowNewLenders(true)}
+            />
           </div>
 
           {error && (
