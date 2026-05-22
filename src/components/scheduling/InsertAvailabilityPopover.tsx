@@ -4,18 +4,23 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Calendar as CalendarIcon, Clock, Loader2, Check, X, AlertTriangle, Users } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Loader2, Check, X, AlertTriangle, Users, RefreshCw, Link as LinkIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { Link as RouterLink } from 'react-router-dom';
 
 interface Props {
   /** Insert formatted HTML block at end of body. */
   onInsert: (html: string) => void;
-  /** Optional recipient + deal context to persist with the proposed slots. */
+  /** Optional recipient context to persist with the proposed slots (back-compat single). */
   recipientEmail?: string | null;
+  /** Optional full list of recipient emails. */
+  recipientEmails?: string[] | null;
   dealId?: string | null;
+  meetingId?: string | null;
 }
 
 interface Slot {
@@ -33,6 +38,7 @@ interface Teammate {
 
 const DURATIONS = [15, 30, 45, 60, 90];
 const BUFFERS = [0, 5, 10, 15];
+const ET_TZ = 'America/New_York';
 
 function escapeHtml(s: string): string {
   return s
@@ -75,6 +81,27 @@ function formatSlotLine(slot: Slot, tz: string): string {
   const t2 = fmtTime.format(slot.end).replace(' ', '');
   const abbr = tzAbbrev(tz, slot.start);
   return `${day} — ${t1}–${t2} ${abbr}`;
+}
+
+/** Format a slot line in Eastern Time with explicit ET label, e.g. "Tue May 26 — 10:00–10:30 AM ET". */
+function formatSlotLineET(slot: Slot): string {
+  const fmtDay = new Intl.DateTimeFormat('en-US', {
+    timeZone: ET_TZ, weekday: 'short', month: 'short', day: 'numeric',
+  });
+  const fmtTime = new Intl.DateTimeFormat('en-US', {
+    timeZone: ET_TZ, hour: 'numeric', minute: '2-digit', hour12: true,
+  });
+  const day = fmtDay.format(slot.start);
+  const t1 = fmtTime.format(slot.start);
+  const t2 = fmtTime.format(slot.end);
+  // Collapse trailing AM/AM or AM/PM: "10:00 AM–10:30 AM" → "10:00–10:30 AM"
+  const m1 = t1.match(/^(.+?)\s(AM|PM)$/i);
+  const m2 = t2.match(/^(.+?)\s(AM|PM)$/i);
+  const compact =
+    m1 && m2 && m1[2] === m2[2]
+      ? `${m1[1]}–${m2[1]} ${m2[2]}`
+      : `${t1.replace(' ', '')}–${t2.replace(' ', '')}`;
+  return `${day} — ${compact} ET`;
 }
 
 /** Build candidate weekday slots for the next N business days based on settings. */
@@ -148,7 +175,7 @@ function pickPerDay(slots: Slot[], maxPerDay: number, tz: string): Slot[] {
   return out.sort((a, b) => a.start.getTime() - b.start.getTime());
 }
 
-export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: Props) {
+export function InsertAvailabilityPopover({ onInsert, recipientEmail, recipientEmails, dealId, meetingId }: Props) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [daysAhead, setDaysAhead] = useState(7);
@@ -161,6 +188,11 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
   const [candidates, setCandidates] = useState<Slot[] | null>(null);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [inserting, setInserting] = useState(false);
+
+  // Gcal connection probe state
+  const [gcalChecked, setGcalChecked] = useState(false);
+  const [gcalConnected, setGcalConnected] = useState<boolean | null>(null);
 
   // Teammate overlay state
   const [teammateOptions, setTeammateOptions] = useState<Teammate[]>([]);
@@ -182,6 +214,44 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
       setTeammateOptions(((data || []) as Teammate[]).filter((t) => t.email));
     })();
   }, [open, user, teammateOptions.length]);
+
+  // Probe Google Calendar connection on first open
+  useEffect(() => {
+    if (!open || gcalChecked) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const now = new Date();
+        const horizon = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+        const { data, error: probeErr } = await supabase.functions.invoke('calendar-events', {
+          body: {
+            action: 'list',
+            calendar_id: 'primary',
+            time_min: now.toISOString(),
+            time_max: horizon.toISOString(),
+            max_results: 1,
+          },
+        });
+        if (cancelled) return;
+        if (probeErr) {
+          console.error('[InsertAvailability] gcal probe error:', probeErr.message || probeErr);
+          const msg = String(probeErr.message || '').toLowerCase();
+          setGcalConnected(!(msg.includes('not connected') || msg.includes('unauthorized') || msg.includes('token')));
+        } else if (data?.error) {
+          console.error('[InsertAvailability] gcal probe payload error:', data.error);
+          setGcalConnected(false);
+        } else {
+          setGcalConnected(true);
+        }
+      } catch (e: any) {
+        console.error('[InsertAvailability] gcal probe threw:', e?.message || e);
+        if (!cancelled) setGcalConnected(false);
+      } finally {
+        if (!cancelled) setGcalChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, gcalChecked]);
 
   const hasUnconnectedSelected = selectedTeammates.some(
     (t) => teammateConnState[t.user_id] === false,
@@ -205,7 +275,14 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
           max_results: 200,
         },
       });
-      if (fnErr) throw fnErr;
+      if (fnErr) {
+        console.error('[InsertAvailability] calendar-events failed:', fnErr.message || fnErr);
+        throw fnErr;
+      }
+      if (data?.error) {
+        console.error('[InsertAvailability] calendar-events payload error:', data.error);
+        throw new Error(data.error);
+      }
       const events = (data?.events || []) as Array<{ start: string; end: string; all_day?: boolean }>;
       const busy = events
         .filter((e) => e.start && e.end && !e.all_day)
@@ -225,7 +302,7 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
           },
         );
         if (tmErr) {
-          console.warn('[InsertAvailability] teammate overlay failed:', tmErr.message);
+          console.error('[InsertAvailability] teammate overlay failed:', tmErr.message);
         } else {
           const teammates = (tmData?.teammates || []) as Array<{
             user_id: string;
@@ -255,19 +332,19 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
       const picked = pickPerDay(free, maxPerDay, tz);
       setCandidates(picked);
       if (picked.length === 0) {
-        setError(
-          selectedTeammates.length > 0
-            ? 'No mutual free slots in the selected window. Try widening hours or removing teammates.'
-            : 'No free slots in the selected window.',
-        );
+        console.warn('[InsertAvailability] zero slots returned for window');
       }
     } catch (e: any) {
       const msg = e?.message || 'Could not load calendar availability.';
+      console.error('[InsertAvailability] loadAvailability failed:', msg);
       setError(
         msg.toLowerCase().includes('not connected')
           ? 'Connect Google Calendar in Settings → Integrations to use Insert Availability.'
           : msg,
       );
+      if (msg.toLowerCase().includes('not connected') || msg.toLowerCase().includes('token')) {
+        setGcalConnected(false);
+      }
     } finally {
       setLoading(false);
     }
@@ -291,35 +368,47 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
       toast.error('Remove teammates without a connected calendar before inserting.');
       return;
     }
-    const chosen = candidates.filter((c) => selected.has(c.key));
-    const itemsHtml = chosen
-      .map((s) => `<li>${escapeHtml(formatSlotLine(s, tz))}</li>`)
-      .join('');
-    const block =
-      `<p>Here are a few times that work for me:</p>` +
-      `<ul>${itemsHtml}</ul>` +
-      `<p>Let me know what works and I'll send a calendar invite.</p>`;
-    onInsert(block);
-
-    // Persist as draft holds (best-effort, non-blocking)
-    if (user) {
-      const rows = chosen.map((s) => ({
-        user_id: user.id,
-        recipient_email: recipientEmail || null,
-        deal_id: dealId || null,
-        slot_start: s.start.toISOString(),
-        slot_end: s.end.toISOString(),
-        timezone: tz,
-        status: 'proposed',
-      }));
-      const { error: insErr } = await supabase.from('naitive_proposed_slots').insert(rows);
-      if (insErr) console.warn('[InsertAvailability] persist failed:', insErr.message);
+    setInserting(true);
+    try {
+      const chosen = candidates.filter((c) => selected.has(c.key));
+      // Persist FIRST so the popover stays open if the write fails
+      if (user) {
+        const emails = (recipientEmails && recipientEmails.length > 0)
+          ? recipientEmails
+          : (recipientEmail ? [recipientEmail] : null);
+        const rows = chosen.map((s) => ({
+          user_id: user.id,
+          recipient_email: emails?.[0] || null,
+          recipient_emails: emails,
+          deal_id: dealId || null,
+          meeting_id: meetingId || null,
+          slot_start: s.start.toISOString(),
+          slot_end: s.end.toISOString(),
+          timezone: ET_TZ,
+          status: 'proposed',
+        }));
+        const { error: insErr } = await supabase.from('naitive_proposed_slots').insert(rows);
+        if (insErr) {
+          console.error('[InsertAvailability] persist failed:', insErr.message);
+          toast.error('Could not save proposed slots: ' + insErr.message);
+          return;
+        }
+      }
+      const itemsHtml = chosen
+        .map((s) => `<li>${escapeHtml(formatSlotLineET(s))}</li>`)
+        .join('');
+      const block =
+        `<p>Here are a few times that work for me (all times Eastern):</p>` +
+        `<ul>${itemsHtml}</ul>` +
+        `<p>Let me know what works and I'll send a calendar invite.</p>`;
+      onInsert(block);
+      toast.success(`${chosen.length} slot${chosen.length === 1 ? '' : 's'} inserted and held until accepted`);
+      setOpen(false);
+      setCandidates(null);
+      setSelected(new Set());
+    } finally {
+      setInserting(false);
     }
-
-    toast.success(`Inserted ${chosen.length} time${chosen.length === 1 ? '' : 's'} into the message`);
-    setOpen(false);
-    setCandidates(null);
-    setSelected(new Set());
   };
 
   const grouped = useMemo(() => {
@@ -375,6 +464,7 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
         align="start"
         sideOffset={6}
         className="w-[420px] p-0 max-h-[560px] overflow-hidden flex flex-col"
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="px-4 py-3 border-b">
           <div className="text-sm font-semibold">Insert availability</div>
@@ -384,6 +474,28 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
         </div>
 
         <div className="px-4 py-3 space-y-3 overflow-y-auto">
+          {gcalConnected === false && (
+            <div className="rounded-md border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-[11px] text-yellow-700 dark:text-yellow-300 space-y-1.5">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <div>
+                  Connect your Google Calendar in <strong>Settings → Integrations</strong> to pull your busy times.
+                </div>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 text-[11px] gap-1"
+                asChild
+              >
+                <RouterLink to="/settings/integrations" onClick={(e) => e.stopPropagation()}>
+                  <LinkIcon className="h-3 w-3" /> Connect now
+                </RouterLink>
+              </Button>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="text-[11px]">Days ahead (weekdays)</Label>
@@ -565,28 +677,63 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
             type="button"
             size="sm"
             className="w-full h-8 text-xs"
-            onClick={loadAvailability}
-            disabled={loading}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              loadAvailability();
+            }}
+            disabled={loading || gcalConnected === false}
           >
             {loading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
             {candidates ? 'Recompute slots' : 'Find free slots'}
           </Button>
 
-          {error && (
-            <div className="text-[11px] text-destructive bg-destructive/10 rounded px-2 py-1.5">
-              {error}
+          {loading && (
+            <div className="space-y-1.5" aria-label="Loading free slots">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-7 w-full" />
+              <Skeleton className="h-7 w-full" />
+              <Skeleton className="h-7 w-full" />
             </div>
           )}
 
-          {candidates && candidates.length > 0 && (
-            <div className="space-y-2">
-              <div className="text-[11px] text-muted-foreground">
-                {candidates.length} free slot{candidates.length === 1 ? '' : 's'} found — pick the ones to propose.
+          {error && !loading && (
+            <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-[11px] text-destructive space-y-1.5">
+              <div className="flex items-start gap-1.5">
+                <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                <div>{error}</div>
               </div>
-              <div className="space-y-2 max-h-[200px] overflow-y-auto pr-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-6 text-[11px] gap-1"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  loadAvailability();
+                }}
+              >
+                <RefreshCw className="h-3 w-3" /> Retry
+              </Button>
+            </div>
+          )}
+
+          {!loading && !error && candidates && candidates.length === 0 && (
+            <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+              No mutually free slots in this window. Try widening the date range or working hours.
+            </div>
+          )}
+
+          {!loading && candidates && candidates.length > 0 && (
+            <div className="space-y-2">
+              <div className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">
+                Free slots ({candidates.length})
+              </div>
+              <div className="space-y-2 max-h-[220px] overflow-y-auto pr-1">
                 {grouped.map(([day, slots]) => (
                   <div key={day}>
-                    <div className="text-[10px] font-medium uppercase text-muted-foreground mb-1">{day}</div>
+                    <div className="sticky top-0 z-10 bg-popover text-[10px] font-medium uppercase text-muted-foreground mb-1 py-0.5">{day}</div>
                     <div className="flex flex-wrap gap-1.5">
                       {slots.map((s) => {
                         const isSel = selected.has(s.key);
@@ -617,15 +764,16 @@ export function InsertAvailabilityPopover({ onInsert, recipientEmail, dealId }: 
 
         <div className="px-4 py-2.5 border-t flex items-center justify-between bg-muted/30">
           <div className="text-[11px] text-muted-foreground">
-            {selected.size > 0 ? `${selected.size} selected` : 'Pick at least one slot'}
+            {selected.size > 0 ? `${selected.size} slot${selected.size === 1 ? '' : 's'} selected` : 'Pick at least one slot'}
           </div>
           <Button
             type="button"
             size="sm"
             className="h-7 text-xs"
-            onClick={insert}
-            disabled={selected.size === 0 || hasUnconnectedSelected}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); insert(); }}
+            disabled={selected.size === 0 || hasUnconnectedSelected || inserting}
           >
+            {inserting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
             Insert into email
           </Button>
         </div>
