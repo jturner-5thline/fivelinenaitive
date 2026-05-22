@@ -1333,7 +1333,7 @@ function EventDetailPane({
               defaultTitle={`Follow-up: ${eventTitle}`}
               attendees={externals
                 .filter((a) => a.email)
-                .map((a) => ({ email: a.email!, name: a.displayName || a.email }))}
+                .map((a) => ({ email: a.email!, name: a.display_name || a.email }))}
               onScheduled={() => {
                 toast.success('Calendar invite sent');
                 onEmailSent('Sent calendar invite (Schedule next)');
