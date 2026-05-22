@@ -102,6 +102,13 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
   const [competitors, setCompetitors] = useState('');
   const [keySignal, setKeySignal] = useState('');
   const [productGap, setProductGap] = useState('');
+  // Hydrated baseline for the 5 protected text fields. We only send a field
+  // to the DB when the current value differs from this baseline (true partial
+  // PATCH). Prevents the dialog from nulling fields the user never touched.
+  const baselineProtectedRef = (typeof window !== 'undefined' ? (window as any) : {}) as any;
+  const [baselineProtected, setBaselineProtected] = useState({
+    painPoints: '', objections: '', competitors: '', keySignal: '', productGap: '',
+  });
 
   const reset = () => {
     setCompanyName(''); setContactName(''); setContactTitle('');
@@ -114,6 +121,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     setOutcome(''); setWhyNot([]);
     setAdvanceCategory(''); setAdvanceNotes('');
     setPainPoints(''); setObjections(''); setCompetitors(''); setKeySignal(''); setProductGap('');
+    setBaselineProtected({ painPoints: '', objections: '', competitors: '', keySignal: '', productGap: '' });
   };
 
   // Hydrate fields from existing deal when in edit mode and dialog opens.
@@ -135,11 +143,17 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
     setDmName(deal.dmName || '');
     setOutcome(deal.outcome || '');
     setWhyNot(Array.isArray(deal.whyNotMovingForward) ? deal.whyNotMovingForward : []);
-    setPainPoints(deal.painPointsConfirmed || '');
-    setObjections(deal.objectionsRaised || '');
-    setCompetitors(deal.competitorsMentioned || '');
-    setKeySignal(deal.keySignal || '');
-    setProductGap(deal.productGapFlagged || '');
+    const pp = deal.painPointsConfirmed || '';
+    const ob = deal.objectionsRaised || '';
+    const co = deal.competitorsMentioned || '';
+    const ks = deal.keySignal || '';
+    const pg = deal.productGapFlagged || '';
+    setPainPoints(pp);
+    setObjections(ob);
+    setCompetitors(co);
+    setKeySignal(ks);
+    setProductGap(pg);
+    setBaselineProtected({ painPoints: pp, objections: ob, competitors: co, keySignal: ks, productGap: pg });
   }, [open, isEdit, deal?.id]);
 
   const toggleWhyNot = (opt: string) => {
@@ -201,11 +215,6 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
         dm_name: dmName.trim() || null,
         outcome: outcome || null,
         why_not_moving_forward: NEEDS_REASON.has(outcome) ? whyNot : [],
-        pain_points_confirmed: painPoints.trim() || null,
-        objections_raised: objections.trim() || null,
-        competitors_mentioned: competitors.trim() || null,
-        key_signal: keySignal.trim() || null,
-        product_gap_flagged: productGap.trim() || null,
         pipeline_id: pipelineId,
         company_id: FIFTH_LINE_COMPANY_ID,
         deal_class: 'naitive',
@@ -213,6 +222,24 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
         value: 0,
         status: 'on-track',
       };
+
+      // Protected text fields: only include in payload when the user actually
+      // changed them this session (dirty-tracking against hydrated baseline).
+      // On create (no baseline), include only non-empty values.
+      const protectedPairs: Array<[string, string, string]> = [
+        ['pain_points_confirmed', painPoints.trim(), baselineProtected.painPoints],
+        ['objections_raised', objections.trim(), baselineProtected.objections],
+        ['competitors_mentioned', competitors.trim(), baselineProtected.competitors],
+        ['key_signal', keySignal.trim(), baselineProtected.keySignal],
+        ['product_gap_flagged', productGap.trim(), baselineProtected.productGap],
+      ];
+      for (const [col, current, baseline] of protectedPairs) {
+        if (isEdit) {
+          if (current !== baseline) payload[col] = current; // dirty → send
+        } else {
+          if (current) payload[col] = current; // create → only non-empty
+        }
+      }
 
       let dealId: string | undefined;
       if (isEdit) {
