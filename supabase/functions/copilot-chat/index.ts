@@ -5477,21 +5477,75 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       // and surface a per-entity inserted/skipped/failed result so the
       // UI can badge each row independently.
       const dealId = params.deal_id;
-      const names: string[] = Array.isArray(params.lender_names) ? params.lender_names : [];
-      if (!dealId || names.length === 0) {
-        return { success: false, error: "deal_id and lender_names[] required" };
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      type InEntity = { display_name: string; master_lender_id: string | null };
+      const rawEntities: InEntity[] = Array.isArray(params.entities)
+        ? params.entities.map((e: any) => ({
+            display_name: String(e?.display_name || e?.lender_name || "").trim(),
+            master_lender_id:
+              typeof e?.master_lender_id === "string" && UUID_RE.test(e.master_lender_id)
+                ? e.master_lender_id
+                : null,
+          })).filter((e: InEntity) => e.display_name)
+        : (Array.isArray(params.lender_names) ? params.lender_names : [])
+            .map((n: any) => ({ display_name: String(n || "").trim(), master_lender_id: null as string | null }))
+            .filter((e: InEntity) => e.display_name);
+      if (!dealId || rawEntities.length === 0) {
+        return { success: false, error: "deal_id and entities[] (or lender_names[]) required" };
       }
-      const uniq = Array.from(new Set(names.map((n) => String(n || "").trim()).filter(Boolean)));
+      // Defensive validation: any entity without a valid master_lender_id
+      // uuid is rejected up-front so a literal "undefined" can never reach
+      // the SQL layer.
+      const invalid = rawEntities.filter((e) => !e.master_lender_id);
+      const valid = rawEntities.filter((e) => !!e.master_lender_id);
+      const entityResultsPre = invalid.map((e) => ({
+        display_name: e.display_name,
+        master_lender_id: null,
+        status: "mismatch" as const,
+        reason: "invalid_lender_id",
+      }));
+      if (valid.length === 0) {
+        return {
+          success: false,
+          error: `Could not resolve ${invalid.map((e) => e.display_name).join(", ")} to a lender record.`,
+          actionType: "add_lenders_to_deal",
+          params: { deal_id: dealId },
+          inserted: [],
+          skipped_existing: [],
+          failed: invalid.map((e) => ({ display_name: e.display_name, reason: "invalid_lender_id" })),
+          entity_results: entityResultsPre,
+          requested_count: rawEntities.length,
+          inserted_count: 0,
+          atomic: true,
+        };
+      }
+      // Deduplicate by master_lender_id so the same lender isn't queued twice.
+      const seenIds = new Set<string>();
+      const uniq = valid.filter((e) => {
+        if (seenIds.has(e.master_lender_id!)) return false;
+        seenIds.add(e.master_lender_id!);
+        return true;
+      });
       const { data: alreadyOn } = await supabase
         .from("deal_lenders")
-        .select("name")
+        .select("name, master_lender_id")
         .eq("deal_id", dealId);
-      const existingLower = new Set((alreadyOn || []).map((r: any) => (r.name || "").toLowerCase()));
-      const toInsert: Array<{ deal_id: string; name: string; stage: string; tracking_status: string }> = [];
-      const skipped: string[] = [];
-      for (const n of uniq) {
-        if (existingLower.has(n.toLowerCase())) skipped.push(n);
-        else toInsert.push({ deal_id: dealId, name: n, stage: "reviewing-drl", tracking_status: "active" });
+      const existingNameLower = new Set((alreadyOn || []).map((r: any) => (r.name || "").toLowerCase()));
+      const existingIds = new Set((alreadyOn || []).map((r: any) => r.master_lender_id).filter(Boolean));
+      const toInsert: Array<{ deal_id: string; name: string; master_lender_id: string; stage: string; tracking_status: string }> = [];
+      const skipped: InEntity[] = [];
+      for (const e of uniq) {
+        if (existingIds.has(e.master_lender_id) || existingNameLower.has(e.display_name.toLowerCase())) {
+          skipped.push(e);
+        } else {
+          toInsert.push({
+            deal_id: dealId,
+            name: e.display_name,
+            master_lender_id: e.master_lender_id!,
+            stage: "reviewing-drl",
+            tracking_status: "active",
+          });
+        }
       }
       let inserted: Array<{ id: string; name: string }> = [];
       if (toInsert.length > 0) {
@@ -5505,10 +5559,11 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       // Post-write verification: re-read and compare.
       const { data: after } = await supabase
         .from("deal_lenders")
-        .select("name")
+        .select("name, master_lender_id")
         .eq("deal_id", dealId);
-      const afterLower = new Set((after || []).map((r: any) => (r.name || "").toLowerCase()));
-      const failed = uniq.filter((n) => !afterLower.has(n.toLowerCase()) && !skipped.includes(n));
+      const afterIds = new Set((after || []).map((r: any) => r.master_lender_id).filter(Boolean));
+      const skippedIds = new Set(skipped.map((e) => e.master_lender_id));
+      const failed = uniq.filter((e) => !afterIds.has(e.master_lender_id) && !skippedIds.has(e.master_lender_id));
       for (const row of inserted) {
         await supabase.from("activity_logs").insert({
           deal_id: dealId,
@@ -5517,21 +5572,42 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
           user_id: userId,
         });
       }
+      // Build per-entity results so the UI can render PER-ROW badges
+      // (✅ verified / ⚠️ activity-only / ❌ failed) for every entity,
+      // not just a collapsed message.
+      const insertedNamesLower = new Set(inserted.map((r) => r.name.toLowerCase()));
+      const entity_results = [
+        ...entityResultsPre,
+        ...uniq.map((e) => {
+          if (insertedNamesLower.has(e.display_name.toLowerCase())) {
+            return { display_name: e.display_name, master_lender_id: e.master_lender_id, status: "verified" as const };
+          }
+          if (skippedIds.has(e.master_lender_id)) {
+            return { display_name: e.display_name, master_lender_id: e.master_lender_id, status: "activity-only" as const, reason: "already_on_deal" };
+          }
+          return { display_name: e.display_name, master_lender_id: e.master_lender_id, status: "mismatch" as const, reason: "not_persisted" };
+        }),
+      ];
       const summary = [
         inserted.length ? `${inserted.length} added` : null,
         skipped.length ? `${skipped.length} already on deal` : null,
-        failed.length ? `${failed.length} failed` : null,
+        failed.length + invalid.length ? `${failed.length + invalid.length} failed` : null,
       ].filter(Boolean).join(", ");
+      const failedOut = [
+        ...invalid.map((e) => ({ display_name: e.display_name, reason: "invalid_lender_id" })),
+        ...failed.map((e) => ({ display_name: e.display_name, reason: "not_persisted" })),
+      ];
       return {
-        success: failed.length === 0,
+        success: failed.length === 0 && invalid.length === 0,
         message: summary || "No changes",
-        error: failed.length > 0 ? `Failed to add: ${failed.join(", ")}` : undefined,
+        error: failedOut.length > 0 ? `Failed to add: ${failedOut.map((f) => f.display_name).join(", ")}` : undefined,
         actionType: "add_lenders_to_deal",
         params: { deal_id: dealId },
         inserted,
-        skipped_existing: skipped,
-        failed,
-        requested_count: uniq.length,
+        skipped_existing: skipped.map((e) => e.display_name),
+        failed: failedOut,
+        entity_results,
+        requested_count: rawEntities.length,
         inserted_count: inserted.length,
         atomic: true,
       };
