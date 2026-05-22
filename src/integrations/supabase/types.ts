@@ -7658,11 +7658,14 @@ export type Database = {
           created_at: string
           deal_id: string
           declined_at: string | null
+          excluded_at: string | null
           id: string
           last_contact_at: string | null
           last_status_change_at: string | null
           name: string
           notes: string | null
+          on_deck_at: string | null
+          on_hold_at: string | null
           pass_reason: string | null
           passed_at: string | null
           quote_amount: number | null
@@ -7681,11 +7684,14 @@ export type Database = {
           created_at?: string
           deal_id: string
           declined_at?: string | null
+          excluded_at?: string | null
           id?: string
           last_contact_at?: string | null
           last_status_change_at?: string | null
           name: string
           notes?: string | null
+          on_deck_at?: string | null
+          on_hold_at?: string | null
           pass_reason?: string | null
           passed_at?: string | null
           quote_amount?: number | null
@@ -7704,11 +7710,14 @@ export type Database = {
           created_at?: string
           deal_id?: string
           declined_at?: string | null
+          excluded_at?: string | null
           id?: string
           last_contact_at?: string | null
           last_status_change_at?: string | null
           name?: string
           notes?: string | null
+          on_deck_at?: string | null
+          on_hold_at?: string | null
           pass_reason?: string | null
           passed_at?: string | null
           quote_amount?: number | null
