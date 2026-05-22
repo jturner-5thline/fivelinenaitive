@@ -20,7 +20,6 @@ import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
 } from '@/hooks/useQBStackedFinServRevenue';
-import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
 import { InsightsTimeRangeSelector, type InsightsTimeRangeValue } from '@/components/insights/InsightsTimeRangeSelector';
 import { loadPersistedRange, resolveRange, defaultGranularityForRange } from '@/lib/insightsTimeRange';
 import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
@@ -105,7 +104,6 @@ function VarianceIndicator({ value, suffix = '' }: { value: number; suffix?: str
 // ────────────────────────────────────────────────────────────
 
 export function FinServFinancialMetricsDashboard() {
-  const ctxTimeframe = useInsightsTimeframe();
   // Per-board time range selector — overrides the global context for this board.
   const initialPersisted = useMemo(() => loadPersistedRange('finserv-financial-metrics'), []);
   const initialResolved = useMemo(() => {
