@@ -375,6 +375,99 @@ export function LenderAnalyticsDialog({
 
   const fmtPct = (v: number) => `${(v * 100).toFixed(1)}%`;
 
+  // ─────────────────────────────────────────────────────────────────────────
+  // Widget state
+  // ─────────────────────────────────────────────────────────────────────────
+  const [showNewLenders, setShowNewLenders] = useState(false);
+  const [openLenderDeals, setOpenLenderDeals] = useState<string | null>(null);
+  const [openPassReason, setOpenPassReason] = useState<string | null>(null);
+  const [volumeSort, setVolumeSort] = useState<'volume' | 'count'>('volume');
+  const [showAllVolume, setShowAllVolume] = useState(false);
+  const [lenderDrawerSearch, setLenderDrawerSearch] = useState('');
+  const [reasonDrawerSearch, setReasonDrawerSearch] = useState('');
+
+  // Widget 1: New Funding Sources
+  const newLenders = useMemo(() => {
+    const start = rangeStart(dateRange);
+    if (!start) {
+      return { current: lenders.slice(), previous: [] as MasterLender[], delta: null as number | null };
+    }
+    const startMs = start.getTime();
+    const now = Date.now();
+    const windowMs = now - startMs;
+    const prevStart = startMs - windowMs;
+    const current: MasterLender[] = [];
+    const previous: MasterLender[] = [];
+    for (const l of lenders) {
+      const t = new Date(l.created_at).getTime();
+      if (isNaN(t)) continue;
+      if (t >= startMs && t <= now) current.push(l);
+      else if (t >= prevStart && t < startMs) previous.push(l);
+    }
+    return { current, previous, delta: current.length - previous.length };
+  }, [lenders, dateRange]);
+
+  // Widget 2: Deal Volume & Count by Funding Source
+  type FundingAgg = { name: string; volume: number; count: number; rows: Enriched[]; dealIds: Set<string> };
+  const byFundingSource: FundingAgg[] = useMemo(() => {
+    const m = new Map<string, FundingAgg>();
+    for (const r of rows) {
+      const key = (r.name || '').trim() || 'Unknown';
+      let agg = m.get(key);
+      if (!agg) { agg = { name: key, volume: 0, count: 0, rows: [], dealIds: new Set() }; m.set(key, agg); }
+      agg.rows.push(r);
+      if (!agg.dealIds.has(r.deal_id)) {
+        agg.dealIds.add(r.deal_id);
+        agg.count += 1;
+        agg.volume += Number(r.deal.value) || 0;
+      }
+    }
+    return Array.from(m.values());
+  }, [rows]);
+
+  const totalFundingVolume = useMemo(
+    () => byFundingSource.reduce((s, x) => s + x.volume, 0),
+    [byFundingSource],
+  );
+
+  const sortedFundingSources = useMemo(() => {
+    const arr = [...byFundingSource];
+    arr.sort((a, b) =>
+      volumeSort === 'volume'
+        ? b.volume - a.volume || b.count - a.count
+        : b.count - a.count || b.volume - a.volume,
+    );
+    return arr;
+  }, [byFundingSource, volumeSort]);
+
+  const visibleFundingSources = showAllVolume ? sortedFundingSources : sortedFundingSources.slice(0, 15);
+
+  // Widget 3: Most Common Pass Reasons
+  const passReasonsAgg = useMemo(() => {
+    const passed = rows.filter(r => r.terminal.passed);
+    const withReason = passed.filter(r => (r.pass_reason || '').trim().length > 0);
+    const m = new Map<string, { reason: string; key: string; count: number; rows: Enriched[] }>();
+    for (const r of withReason) {
+      const raw = (r.pass_reason || '').trim();
+      const key = raw.toLowerCase();
+      let agg = m.get(key);
+      if (!agg) { agg = { reason: raw, key, count: 0, rows: [] }; m.set(key, agg); }
+      agg.count++;
+      agg.rows.push(r);
+    }
+    const list = Array.from(m.values()).sort((a, b) => b.count - a.count);
+    const coverage = passed.length > 0 ? withReason.length / passed.length : 0;
+    return { list, totalPassed: passed.length, withReason: withReason.length, coverage };
+  }, [rows]);
+
+  const activePassReason = openPassReason
+    ? passReasonsAgg.list.find(p => p.key === openPassReason)
+    : null;
+
+  const activeLenderRows = openLenderDeals
+    ? byFundingSource.find(f => f.name === openLenderDeals)
+    : null;
+
   const isEmpty = !loading && !error && rows.length === 0;
 
   const subtitleParts = [
