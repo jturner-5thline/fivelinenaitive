@@ -272,6 +272,12 @@ export interface VerifiedResult {
   error_code?: string;
   mismatches?: Array<{ field: string; expected?: unknown; actual?: unknown }>;
   audit?: { after?: Record<string, unknown> | null } | null;
+  // Returned by add_lenders_to_deal so the field table can badge each
+  // entity row independently.
+  inserted?: Array<{ id: string; name: string }>;
+  skipped_existing?: string[];
+  failed?: string[];
+  params?: Record<string, unknown>;
 }
 
 /**
@@ -320,6 +326,20 @@ export function computeFieldStatuses(
   }
 
   // Success path.
+  // Per-entity batch: map each lender row to verified / activity-only (skipped) / mismatch.
+  if (actionType === "add_lenders_to_deal") {
+    const insertedNames = new Set((result.inserted || []).map((r) => (r.name || "").toLowerCase()));
+    const skippedNames = new Set((result.skipped_existing || []).map((n) => (n || "").toLowerCase()));
+    const failedNames = new Set((result.failed || []).map((n) => (n || "").toLowerCase()));
+    for (const d of diffs) {
+      const name = typeof d.newValue === "string" ? d.newValue.toLowerCase() : "";
+      if (failedNames.has(name)) out[d.field] = "mismatch";
+      else if (skippedNames.has(name)) out[d.field] = "activity-only";
+      else if (insertedNames.has(name)) out[d.field] = "verified";
+      else out[d.field] = "activity-only";
+    }
+    return out;
+  }
   for (const d of diffs) {
     if (VERIFIED_THROUGH_HELPER.has(actionType)) {
       out[d.field] = "verified";
