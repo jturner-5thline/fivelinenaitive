@@ -82,6 +82,16 @@ type FinServSnapshotRow = {
   income_total: number;
   cogs_total: number;
   gross_profit: number;
+  operating_expenses: number;
+};
+
+type FinServCashflowSnapshotRow = {
+  period_start: string;
+  period_end: string;
+  bucket_start: string;
+  bucket_end: string;
+  bucket_label: string;
+  net_cash_flow: number;
 };
 
 function periodKey(period: SnapshotPeriod) {
@@ -154,7 +164,7 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
 
   const { data, error } = await supabase
     .from('qbo_pnl_snapshots')
-    .select('period_start, period_end, income_total, cogs_total, gross_profit')
+    .select('period_start, period_end, income_total, cogs_total, gross_profit, operating_expenses')
     .eq('company_id', companyId)
     .eq('realm_id', FINSERV_REALM_ID)
     .eq('accounting_method', 'Accrual')
@@ -169,16 +179,26 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
   return ((data ?? []) as FinServSnapshotRow[]).filter((row) => requestedKeys.has(`${row.period_start}_${row.period_end}`));
 }
 
-async function syncFinServPnlSnapshots(periods: SnapshotPeriod[]) {
+async function syncFinServPnlSnapshots(companyId: string, periods: SnapshotPeriod[]) {
   if (periods.length === 0) return;
 
-  const { error } = await supabase.functions.invoke('quickbooks-sync', {
-    body: {
-      syncType: 'profit_and_loss',
-      realmId: FINSERV_REALM_ID,
-      periods,
-    },
+  const request = {
+    syncType: 'profit_and_loss',
+    realmId: FINSERV_REALM_ID,
+    company_id: companyId,
+    accounting_method: 'Accrual',
+    start_date: periods.length === 1 ? periods[0].start_date : undefined,
+    end_date: periods.length === 1 ? periods[0].end_date : undefined,
+    periods,
+  };
+
+  console.info('[qbo.pnl.fetch] request', request);
+
+  const { data, error } = await supabase.functions.invoke('quickbooks-sync', {
+    body: request,
   });
+
+  console.info('[qbo.pnl.fetch] response', { data, error: error?.message ?? null });
 
   if (error) throw error;
 }
@@ -190,8 +210,14 @@ async function ensureFinServPnlSnapshots(companyId: string, periods: SnapshotPer
   const missing = requested.filter((period) => !found.has(periodKey(period)));
 
   if (missing.length > 0) {
-    await syncFinServPnlSnapshots(missing);
+    await syncFinServPnlSnapshots(companyId, missing);
     rows = await fetchFinServPnlSnapshots(companyId, requested);
+  }
+
+  const refreshed = new Set(rows.map((row) => `${row.period_start}_${row.period_end}`));
+  const stillMissing = requested.filter((period) => !refreshed.has(periodKey(period)));
+  if (stillMissing.length > 0) {
+    throw new Error(`QuickBooks P&L snapshots still missing after sync for ${stillMissing.map(periodKey).join(', ')}`);
   }
 
   return rows;
@@ -234,8 +260,13 @@ export function useFinServTotalRevenue(
         months,
         total: Number(periodRow?.income_total ?? 0),
         grossProfit: Number(periodRow?.gross_profit ?? 0),
+        operatingExpenses: Number(periodRow?.operating_expenses ?? 0),
+        operatingProfit: Number(periodRow?.gross_profit ?? 0) - Number(periodRow?.operating_expenses ?? 0),
         grossMargin: Number(periodRow?.income_total)
           ? (Number(periodRow?.gross_profit ?? 0) / Number(periodRow?.income_total ?? 0)) * 100
+          : null,
+        operatingMargin: Number(periodRow?.income_total)
+          ? ((Number(periodRow?.gross_profit ?? 0) - Number(periodRow?.operating_expenses ?? 0)) / Number(periodRow?.income_total ?? 0)) * 100
           : null,
       };
     },
@@ -247,7 +278,10 @@ export function useFinServTotalRevenue(
     months: data?.months ?? [],
     total: data?.total ?? 0,
     grossProfit: data?.grossProfit ?? 0,
+    operatingExpenses: data?.operatingExpenses ?? 0,
+    operatingProfit: data?.operatingProfit ?? 0,
     grossMargin: data?.grossMargin ?? null,
+    operatingMargin: data?.operatingMargin ?? null,
     isLoading,
     error,
   };
