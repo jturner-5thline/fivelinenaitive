@@ -838,19 +838,19 @@ export default function Tasks() {
                 size="sm"
                 className="h-8 text-[12px] gap-1.5"
                 style={{
-                  borderColor: (filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all')
+                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all')
                     ? 'rgba(126,184,247,0.35)'
                     : 'rgba(255,255,255,0.06)',
                   backgroundColor: 'rgba(255,255,255,0.025)',
-                  color: (filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all') ? '#cfe3ff' : '#b3bccc',
+                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') ? '#cfe3ff' : '#b3bccc',
                 }}
               >
                 <SlidersHorizontal className="h-3 w-3" />
                 Filters
-                {(filterDealIds.size + filterLabelIds.size > 0 || filterRecurring !== 'all') && (
+                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all') && (
                   <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
                     style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
-                    {filterDealIds.size + filterLabelIds.size + (filterRecurring !== 'all' ? 1 : 0)}
+                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0)}
                   </span>
                 )}
               </Button>
