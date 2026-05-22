@@ -809,11 +809,19 @@ export function useDealsDatabase() {
         const v = (updates as any).whyNotMovingForward;
         (dbUpdates as any).why_not_moving_forward = Array.isArray(v) ? v : (v ? [v] : []);
       }
-      if ((updates as any).painPointsConfirmed !== undefined) (dbUpdates as any).pain_points_confirmed = (updates as any).painPointsConfirmed || null;
-      if ((updates as any).objectionsRaised !== undefined) (dbUpdates as any).objections_raised = (updates as any).objectionsRaised || null;
-      if ((updates as any).competitorsMentioned !== undefined) (dbUpdates as any).competitors_mentioned = (updates as any).competitorsMentioned || null;
-      if ((updates as any).keySignal !== undefined) (dbUpdates as any).key_signal = (updates as any).keySignal || null;
-      if ((updates as any).productGapFlagged !== undefined) (dbUpdates as any).product_gap_flagged = (updates as any).productGapFlagged || null;
+      // Protected text fields — pass the value through as-is (including empty
+      // string). A DB-level BEFORE UPDATE trigger (deals_prevent_protected_
+      // nullification) will restore the prior value if the client tries to
+      // null/blank a previously-set field. To intentionally clear one of these
+      // fields, callers must go through a dedicated RPC that sets
+      // `app.allow_clear = 'on'` for that transaction.
+      // NOTE: we keep the `!== undefined` guard so omitted keys are NOT sent —
+      // this guarantees a true partial PATCH.
+      if ((updates as any).painPointsConfirmed !== undefined) (dbUpdates as any).pain_points_confirmed = (updates as any).painPointsConfirmed ?? '';
+      if ((updates as any).objectionsRaised !== undefined) (dbUpdates as any).objections_raised = (updates as any).objectionsRaised ?? '';
+      if ((updates as any).competitorsMentioned !== undefined) (dbUpdates as any).competitors_mentioned = (updates as any).competitorsMentioned ?? '';
+      if ((updates as any).keySignal !== undefined) (dbUpdates as any).key_signal = (updates as any).keySignal ?? '';
+      if ((updates as any).productGapFlagged !== undefined) (dbUpdates as any).product_gap_flagged = (updates as any).productGapFlagged ?? '';
 
       const { error } = await supabase
         .from('deals')
