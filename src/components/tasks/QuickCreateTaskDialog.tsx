@@ -120,6 +120,15 @@ export function QuickCreateTaskDialog({
   const [dealQuery, setDealQuery] = useState('');
   const [debouncedTitle, setDebouncedTitle] = useState('');
 
+  // Active-deal predicate — mirrors the /deals board's "Active Deals" KPI:
+  // excludes closed/dead/on-hold stages and archived/on-hold statuses so the
+  // picker only surfaces deals still in the working pipeline.
+  const INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'dead', 'on-hold']);
+  const INACTIVE_STATUSES = new Set(['archived', 'on-hold']);
+  const isActiveDeal = (d: Deal) =>
+    !INACTIVE_STATUSES.has((d.status as string) || '') &&
+    !INACTIVE_STAGES.has((d.stage as string) || '');
+
   // Track open transitions so we only reset state on false→true. Previously
   // this effect re-ran whenever any `initial*` prop identity changed (e.g.
   // parents passing `initialDueDate={new Date()}` on every render), which
@@ -302,7 +311,7 @@ export function QuickCreateTaskDialog({
   const suggestions = useMemo(() => {
     if (!debouncedTitle || debouncedTitle.trim().length < 3) return [];
     return allDeals
-      .filter(d => d.status !== 'archived')
+      .filter(isActiveDeal)
       .map(d => ({ deal: d, score: scoreDeal(d, debouncedTitle) }))
       .filter(x => x.score >= 25)
       .sort((a, b) => b.score - a.score)
@@ -324,7 +333,7 @@ export function QuickCreateTaskDialog({
 
   const dealSearchResults = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
-    const base = allDeals.filter(d => d.status !== 'archived');
+    const base = allDeals.filter(isActiveDeal);
     const ranked = base
       .map(d => ({
         deal: d,
@@ -850,7 +859,7 @@ export function QuickCreateTaskDialog({
                 <div className="max-h-[260px] overflow-y-auto py-1">
                   {dealSearchResults.length === 0 && (
                     <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
-                      No deals match your search.
+                      {dealQuery.trim() ? 'No active deals match your search.' : 'No active deals.'}
                     </div>
                   )}
                   {dealSearchResults.map(d => (
