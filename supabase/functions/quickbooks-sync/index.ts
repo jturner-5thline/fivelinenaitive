@@ -83,21 +83,36 @@ serve(async (req) => {
     const memberCompanyIds = (memberships ?? []).map((row) => row.company_id).filter(Boolean);
     const effectiveCompanyId = requestedCompanyId ?? memberCompanyIds[0] ?? null;
 
-    let tokenQuery = supabase
-      .from("quickbooks_tokens")
-      .select("*");
+    let tokenRows: any[] | null = null;
+    let tokenError: any = null;
 
     if (effectiveCompanyId) {
-      tokenQuery = tokenQuery.eq("company_id", effectiveCompanyId);
-    } else {
-      tokenQuery = tokenQuery.eq("user_id", user.id);
+      const tokenByCompanyQuery = supabase
+        .from("quickbooks_tokens")
+        .select("*")
+        .eq("company_id", effectiveCompanyId);
+
+      const companyScoped = targetRealmId
+        ? await tokenByCompanyQuery.eq("realm_id", targetRealmId)
+        : await tokenByCompanyQuery;
+
+      tokenRows = companyScoped.data;
+      tokenError = companyScoped.error;
     }
 
-    if (targetRealmId) {
-      tokenQuery = tokenQuery.eq("realm_id", targetRealmId);
-    }
+    if (!tokenRows || tokenRows.length === 0) {
+      const tokenByUserQuery = supabase
+        .from("quickbooks_tokens")
+        .select("*")
+        .eq("user_id", user.id);
 
-    const { data: tokenRows, error: tokenError } = await tokenQuery;
+      const userScoped = targetRealmId
+        ? await tokenByUserQuery.eq("realm_id", targetRealmId)
+        : await tokenByUserQuery;
+
+      tokenRows = userScoped.data;
+      tokenError = tokenError ?? userScoped.error;
+    }
 
     if (tokenError || !tokenRows || tokenRows.length === 0) {
       return new Response(JSON.stringify({ error: "QuickBooks not connected" }), {
