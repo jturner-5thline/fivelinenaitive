@@ -69,6 +69,7 @@ interface DealRow {
   deal_type: string | null;
   manager: string | null;
   created_at: string;
+  value: number | null;
 }
 
 interface StageConfigRow {
