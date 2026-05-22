@@ -170,6 +170,9 @@ type LenderTimestampFields = {
   approved_at: string | null;
   passed_at: string | null;
   declined_at: string | null;
+  excluded_at: string | null;
+  on_hold_at: string | null;
+  on_deck_at: string | null;
   last_status_change_at: string | null;
 };
 
@@ -281,6 +284,9 @@ export function useDealsDatabase() {
         approvedAt: (l as any).approved_at ?? null,
         passedAt: (l as any).passed_at ?? null,
         declinedAt: (l as any).declined_at ?? null,
+        excludedAt: (l as any).excluded_at ?? null,
+        onHoldAt: (l as any).on_hold_at ?? null,
+        onDeckAt: (l as any).on_deck_at ?? null,
         lastStatusChangeAt: (l as any).last_status_change_at ?? null,
         notesHistory: notesHistoryMap[l.id] || [],
       }));
@@ -1246,6 +1252,15 @@ export function useDealsDatabase() {
         trackingStatus: 'active',
         notes: data.notes || undefined,
         updatedAt: data.updated_at,
+        createdAt: data.created_at,
+        submittedAt: (data as any).submitted_at ?? null,
+        approvedAt: (data as any).approved_at ?? null,
+        passedAt: (data as any).passed_at ?? null,
+        declinedAt: (data as any).declined_at ?? null,
+        excludedAt: (data as any).excluded_at ?? null,
+        onHoldAt: (data as any).on_hold_at ?? null,
+        onDeckAt: (data as any).on_deck_at ?? null,
+        lastStatusChangeAt: (data as any).last_status_change_at ?? null,
       };
 
       setDeals(prev =>
