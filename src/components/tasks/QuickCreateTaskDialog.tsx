@@ -91,7 +91,7 @@ export function QuickCreateTaskDialog({
   initialDueDate,
 }: Props) {
   const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState<QuickTaskInput['priority']>('medium');
+  const [priority, setPriority] = useState<QuickTaskInput['priority']>(null);
   const [dueDate, setDueDate] = useState<Date | undefined>(undefined);
   const [status, setStatus] = useState<QuickTaskInput['status']>('not_started');
   const [assignedTo, setAssignedTo] = useState<string>(() => readLastAssignee(currentUserId));
@@ -135,7 +135,7 @@ export function QuickCreateTaskDialog({
     if (open && !wasOpen) {
       setTitle(initialTitle || '');
       userEditedTitleRef.current = false;
-      setPriority('medium');
+      setPriority(null);
       setDueDate(initialDueDate || undefined);
       setStatus('not_started');
       const remembered = readLastAssignee(currentUserId);
@@ -162,45 +162,29 @@ export function QuickCreateTaskDialog({
   // Combo presets snap several fields at once (priority + due + status).
   // Applying a combo also clears conflicting state: any prior recurrence
   // rule (the combo redefines the schedule) and stale validation warnings.
-  const applyCombo = (fn: () => void) => {
-    fn();
-    setRecurrence(null);
-    setStartFromDueDate(false);
-    setEndMode('never');
-    setEndDate(undefined);
+  // Single one-click shortcut. Toggles on/off: applying sets priority=urgent
+  // and due=today; re-clicking clears those two overrides.
+  const urgentToday = {
+    id: 'urgent_today',
+    label: 'Urgent · Today',
+    tone: '#e57373',
+  };
+  const urgentActive = priority === 'urgent' && !!dueDate && isSameDay(dueDate, new Date());
+  const toggleUrgent = () => {
+    if (urgentActive) {
+      setPriority(null);
+      setDueDate(undefined);
+    } else {
+      setPriority('urgent');
+      setDueDate(new Date());
+      setRecurrence(null);
+      setStartFromDueDate(false);
+      setEndMode('never');
+      setEndDate(undefined);
+    }
     setWarning('');
     setConfirmedJunk(false);
   };
-  const combos: { id: string; label: string; icon: React.ReactNode; tone: string; apply: () => void }[] = [
-    {
-      id: 'urgent_today',
-      label: 'Urgent · Today',
-      icon: <Flame className="h-3 w-3" />,
-      tone: '#e57373',
-      apply: () => applyCombo(() => { setPriority('urgent'); setDueDate(new Date()); setStatus('not_started'); }),
-    },
-    {
-      id: 'high_tomorrow',
-      label: 'High · Tomorrow',
-      icon: <Zap className="h-3 w-3" />,
-      tone: '#e89b6c',
-      apply: () => applyCombo(() => { setPriority('high'); setDueDate(addDays(new Date(), 1)); setStatus('not_started'); }),
-    },
-    {
-      id: 'this_week',
-      label: 'Medium · This week',
-      icon: <CalendarDays className="h-3 w-3" />,
-      tone: '#7eb8f7',
-      apply: () => applyCombo(() => { setPriority('medium'); setDueDate(addDays(new Date(), 5)); setStatus('not_started'); }),
-    },
-    {
-      id: 'quick_todo',
-      label: 'Quick todo',
-      icon: <Coffee className="h-3 w-3" />,
-      tone: '#9aa3b6',
-      apply: () => applyCombo(() => { setPriority('low'); setDueDate(undefined); setStatus('not_started'); }),
-    },
-  ];
 
   // Per-field due-date presets
   const datePresets = [
@@ -211,18 +195,6 @@ export function QuickCreateTaskDialog({
   ];
   const dateMatches = (preset: Date) => !!dueDate && isSameDay(dueDate, preset);
 
-  const priorityPresets: { value: QuickTaskInput['priority']; label: string; tone: string }[] = [
-    { value: 'urgent', label: 'Urgent', tone: '#e57373' },
-    { value: 'high',   label: 'High',   tone: '#e89b6c' },
-    { value: 'medium', label: 'Medium', tone: '#d4a45a' },
-    { value: 'low',    label: 'Low',    tone: '#7a8194' },
-  ];
-  const statusPresets: { value: QuickTaskInput['status']; label: string; tone: string }[] = [
-    { value: 'not_started', label: 'Not Started', tone: '#7a8194' },
-    { value: 'in_progress', label: 'In Progress', tone: '#7eb8f7' },
-    { value: 'blocked',     label: 'Blocked',     tone: '#e57373' },
-    { value: 'complete',    label: 'Complete',    tone: '#7fc89a' },
-  ];
 
   const handleSubmit = async () => {
     const trimmed = title.trim();
