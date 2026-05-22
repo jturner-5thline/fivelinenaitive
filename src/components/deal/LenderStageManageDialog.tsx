@@ -7,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import type { DealLender } from '@/types/deal';
 import type { LenderStageConfig } from '@/utils/dealExport';
+import { buildStatusTimeline, formatShortDate, formatFullTimestamp } from '@/utils/lenderStatusDate';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
  * In-place lender management surface launched from the Status Report's
@@ -202,6 +204,9 @@ export function LenderStageManageDialog({
                     {row.saving ? 'Saving' : recentlySaved ? 'Saved' : 'Save'}
                   </Button>
                 </div>
+
+                {/* Status history timeline */}
+                <StatusHistory lender={l} />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
