@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,18 +20,7 @@ import {
   useQBStackedFinServRevenue,
   FINSERV_STACKED_CATEGORIES,
 } from '@/hooks/useQBStackedFinServRevenue';
-import {
-  buildQuarterOptions,
-  getCurrentQuarter,
-  type QuarterOption,
-} from '@/hooks/useQBQuarterlyRevenue';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { useInsightsTimeframe } from '@/contexts/InsightsTimeframeContext';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -46,7 +35,11 @@ const fmtCurrency = (v: number) => {
 const fmtCurrencyFull = (v: number) =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(v);
 
+const fmtCurrencyPrecise = (v: number) =>
+  new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v);
+
 const fmtPct = (v: number) => `${v.toFixed(1)}%`;
+const fmtPctPrecise = (v: number) => `${v.toFixed(2)}%`;
 
 // ────────────────────────────────────────────────────────────
 // Shared widget wrappers
@@ -109,13 +102,18 @@ function VarianceIndicator({ value, suffix = '' }: { value: number; suffix?: str
 // ────────────────────────────────────────────────────────────
 
 export function FinServFinancialMetricsDashboard() {
-  const quarterOpts = useMemo(() => buildQuarterOptions(8), []);
-  const [selectedQuarter, setSelectedQuarter] = useState<QuarterOption>(getCurrentQuarter());
+  const { selectedQuarter, timeframe } = useInsightsTimeframe();
   const [drill, setDrill] = useState<{
     context: DrilldownContext;
     columns: DrilldownColumn[];
     rows: Array<Record<string, unknown>>;
   } | null>(null);
+
+  const selectedPeriod = useMemo(() => ({
+    start_date: timeframe.start,
+    end_date: timeframe.end,
+    label: timeframe.label,
+  }), [timeframe.end, timeframe.label, timeframe.start]);
 
   const openSinglePoint = (
     sourceLabel: string,
@@ -140,8 +138,8 @@ export function FinServFinancialMetricsDashboard() {
   };
 
   // Data hooks
-  const totalRev = useFinServTotalRevenue(selectedQuarter);
-  const profits = useFinServQuarterlyProfits(6);
+  const totalRev = useFinServTotalRevenue(selectedPeriod);
+  const profits = useFinServQuarterlyProfits(selectedPeriod, 6);
   const revenueByClient = useFinServRevenueByClient(selectedQuarter, selectedQuarter.months.length - 1);
   const cashflow = useFinServCashflow();
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
@@ -150,24 +148,8 @@ export function FinServFinancialMetricsDashboard() {
   return (
     <>
     <div className="space-y-6">
-      {/* Quarter selector */}
       <div className="flex items-center gap-3">
-        <Select
-          value={selectedQuarter.value}
-          onValueChange={(v) => {
-            const q = quarterOpts.find(o => o.value === v);
-            if (q) setSelectedQuarter(q);
-          }}
-        >
-          <SelectTrigger className="w-[140px] h-8 text-xs">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {quarterOpts.map(q => (
-              <SelectItem key={q.value} value={q.value} className="text-xs">{q.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Badge variant="outline" className="w-fit text-xs">Period · {selectedPeriod.label}</Badge>
       </div>
 
       {/* ── Row 0: Active Clients KPI ── */}
@@ -196,9 +178,13 @@ export function FinServFinancialMetricsDashboard() {
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedQuarter.label}</Badge>
+          <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedPeriod.label}</Badge>
         </CardHeader>
         <CardContent>
+          <div className="mb-4">
+            <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.total)}</div>
+            <div className="text-xs text-muted-foreground">Total Income from QuickBooks P&amp;L</div>
+          </div>
           {totalRev.isLoading ? <WidgetLoading /> : totalRev.error ? <WidgetError /> : totalRev.months.every(m => m.amount === 0) ? <WidgetEmpty /> : (
             <div className="h-[220px]">
               <ResponsiveContainer width="100%" height="100%">
@@ -227,17 +213,27 @@ export function FinServFinancialMetricsDashboard() {
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Gross Profit $</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+            <Badge variant="outline" className="w-fit text-xs">Quarterly snapshot trend</Badge>
           </CardHeader>
           <CardContent>
-            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.grossProfit === 0) ? <WidgetEmpty /> : (
+            <div className="mb-4">
+              <div className="text-3xl font-semibold text-foreground">{fmtCurrencyPrecise(totalRev.grossProfit)}</div>
+              <div className="text-xs text-muted-foreground">Gross Profit from QuickBooks P&amp;L</div>
+            </div>
+            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.grossProfit === 0 && q.revenue === 0) ? <WidgetEmpty /> : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={profits.quarters}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis dataKey="quarter" tick={{ fontSize: 10 }} />
                     <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
-                    <Tooltip formatter={(v: number) => [fmtCurrencyFull(v), 'Gross Profit']} />
+                    <Tooltip formatter={(v: number, name: string) => [fmtCurrencyFull(v), name]} />
+                    <Bar
+                      dataKey="revenue"
+                      fill="hsl(var(--primary) / 0.35)"
+                      name="Revenue"
+                      shape={createGlassBarShape({ radius: 4 })}
+                    />
                     <Bar
                       dataKey="grossProfit"
                       fill="hsl(var(--chart-2))"
@@ -256,10 +252,16 @@ export function FinServFinancialMetricsDashboard() {
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Gross Profit Margin %</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+            <Badge variant="outline" className="w-fit text-xs">Selected period</Badge>
           </CardHeader>
           <CardContent>
-            {profits.isLoading ? <WidgetLoading /> : profits.quarters.every(q => q.grossMargin === 0) ? <WidgetEmpty /> : (
+            <div className="mb-4">
+              <div className="text-3xl font-semibold text-foreground">
+                {typeof totalRev.grossMargin === 'number' ? fmtPctPrecise(totalRev.grossMargin) : '—'}
+              </div>
+              <div className="text-xs text-muted-foreground">Gross Profit ÷ Revenue</div>
+            </div>
+            {profits.isLoading ? <WidgetLoading /> : profits.error ? <WidgetError /> : profits.quarters.every(q => q.grossMargin === 0) ? <WidgetEmpty /> : (
               <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={profits.quarters}>
