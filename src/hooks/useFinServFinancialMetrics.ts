@@ -166,7 +166,7 @@ export function useFinServQuarterlyProfits(quartersBack = 4) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quickbooks_bills')
-        .select('txn_date, total_amt')
+        .select('txn_date, total_amt, line_items')
         .eq('realm_id', FINSERV_REALM_ID)
         .gte('txn_date', startDate!)
         .lte('txn_date', endDate!);
@@ -177,11 +177,47 @@ export function useFinServQuarterlyProfits(quartersBack = 4) {
     staleTime: 30_000,
   });
 
-  const isLoading = l1 || l2 || l3;
+  // COGS account IDs for this realm — needed to compute true Gross Profit.
+  // QuickBooks P&L for the FinServ realm does not return a GrossProfit/COGS
+  // section (no inventory accounts), so we derive COGS from line items whose
+  // account is classified as "Cost of Goods Sold".
+  const { data: cogsAccountIds, isLoading: l4 } = useQuery({
+    queryKey: ['finserv-cogs-accounts', FINSERV_REALM_ID],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_accounts')
+        .select('qb_id')
+        .eq('realm_id', FINSERV_REALM_ID)
+        .eq('account_type', 'Cost of Goods Sold');
+      if (error) throw error;
+      return new Set((data ?? []).map(r => r.qb_id));
+    },
+    enabled: !!user,
+    staleTime: 5 * 60_000,
+  });
+
+  // Also pull line_items for expenses so we can split COGS vs opex.
+  const { data: expenseLines, isLoading: l5 } = useQuery({
+    queryKey: ['finserv-q-expense-lines', FINSERV_REALM_ID, startDate, endDate],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_expenses')
+        .select('txn_date, line_items')
+        .eq('realm_id', FINSERV_REALM_ID)
+        .gte('txn_date', startDate!)
+        .lte('txn_date', endDate!);
+      if (error) throw error;
+      return data ?? [];
+    },
+    enabled: !!user && !!startDate,
+    staleTime: 30_000,
+  });
+
+  const isLoading = l1 || l2 || l3 || l4 || l5;
 
   return useMemo(() => {
-    const qMap = new Map<string, { rev: number; exp: number }>();
-    for (const q of quarters) qMap.set(q.key, { rev: 0, exp: 0 });
+    const qMap = new Map<string, { rev: number; exp: number; cogs: number }>();
+    for (const q of quarters) qMap.set(q.key, { rev: 0, exp: 0, cogs: 0 });
 
     const assignToQuarter = (date: string) => {
       const d = new Date(date + 'T00:00:00');
@@ -195,21 +231,41 @@ export function useFinServQuarterlyProfits(quartersBack = 4) {
       if (b) b.rev += Number(r.total_amt) || 0;
     }
 
-    for (const r of [...(expenses ?? []), ...(bills ?? [])]) {
+    for (const r of [...(expenses ?? []), ...(bills ?? [])] as Array<{ txn_date: string | null; total_amt: number | null }>) {
       if (!r.txn_date) continue;
       const k = assignToQuarter(r.txn_date);
       const b = qMap.get(k);
       if (b) b.exp += Number(r.total_amt) || 0;
     }
 
+    // Sum COGS from line items whose account is in the COGS set.
+    const cogsSet = cogsAccountIds ?? new Set<string>();
+    const sumCogs = (rows: Array<{ txn_date: string | null; line_items: unknown }> | undefined) => {
+      for (const r of rows ?? []) {
+        if (!r.txn_date || !Array.isArray(r.line_items)) continue;
+        const k = assignToQuarter(r.txn_date);
+        const bucket = qMap.get(k);
+        if (!bucket) continue;
+        for (const li of r.line_items as Array<Record<string, any>>) {
+          const acct = li?.AccountBasedExpenseLineDetail?.AccountRef?.value
+            ?? li?.ItemBasedExpenseLineDetail?.AccountRef?.value;
+          if (acct && cogsSet.has(String(acct))) {
+            bucket.cogs += Number(li.Amount) || 0;
+          }
+        }
+      }
+    };
+    sumCogs(expenseLines as any);
+    sumCogs(bills as any);
+
     const result: QuarterProfitBar[] = quarters.map(q => {
       const b = qMap.get(q.key)!;
-      const gp = b.rev; // Gross profit ≈ revenue for services (no COGS in QB for this entity)
+      const gp = b.rev - b.cogs;
       const op = b.rev - b.exp;
       return {
         quarter: q.key,
         revenue: b.rev,
-        cogs: 0,
+        cogs: b.cogs,
         grossProfit: gp,
         grossMargin: b.rev > 0 ? (gp / b.rev) * 100 : 0,
         opex: b.exp,
@@ -219,7 +275,7 @@ export function useFinServQuarterlyProfits(quartersBack = 4) {
     });
 
     return { quarters: result, isLoading };
-  }, [invoices, expenses, bills, quarters, isLoading]);
+  }, [invoices, expenses, bills, cogsAccountIds, expenseLines, quarters, isLoading]);
 }
 
 // ────────────────────────────────────────────────────────────
