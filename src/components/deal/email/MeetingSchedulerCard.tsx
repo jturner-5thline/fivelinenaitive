@@ -359,6 +359,7 @@ export function MeetingSchedulerCard({
   dealId,
   thread,
   onInsert,
+  onSetSubject,
   onClose,
 }: Props) {
   const { user } = useAuth();
