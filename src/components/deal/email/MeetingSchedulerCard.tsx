@@ -19,6 +19,7 @@ import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
+import { InteractiveWeekCalendar } from './InteractiveWeekCalendar';
 import type { EmailThread } from './mockEmailData';
 
 /**
@@ -818,6 +819,11 @@ export function MeetingSchedulerCard({
           <X className="h-3.5 w-3.5" />
         </button>
       </div>
+
+      {/* Live, interactive week view of the user's connected Google Calendar
+          — replaces the previous static preview so users can actually scroll
+          through hours, jump between weeks, and click events for details. */}
+      <InteractiveWeekCalendar gridHeight={320} />
 
       {/* Availability Check — parses proposed times from the open thread,
           cross-references the user's connected calendar, and surfaces
