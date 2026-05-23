@@ -4965,6 +4965,12 @@ export default function DealDetail() {
                   </Card>
                 </TabsContent>
 
+                <TabsContent value="communications" className={cn("mt-6 min-w-0", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`communications-${tabDirection}`}>
+                  <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading communications…</div>}>
+                    <DealCommunicationsTab dealId={id!} />
+                  </Suspense>
+                </TabsContent>
+
                 <TabsContent value="crm-search" className={cn("mt-3", tabDirection === 'right' && "animate-slide-in-from-right", tabDirection === 'left' && "animate-slide-in-from-left")} key={`crm-search-${tabDirection}`}>
                   <Suspense fallback={<div className="text-sm text-muted-foreground p-4">Loading…</div>}>
                     <DealCrmSearch
