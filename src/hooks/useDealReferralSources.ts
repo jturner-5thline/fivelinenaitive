@@ -50,6 +50,7 @@ interface RawDealRow {
   stage: string;
   status: string;
   referred_by: string;
+  sourced_via: string | null;
   created_at: string;
   pipeline_id: string;
 }
@@ -173,7 +174,7 @@ export function useDealReferralSources(filters?: {
     queryFn: async () => {
       let query = supabase
         .from('deals')
-        .select('id, company, value, stage, status, referred_by, created_at, pipeline_id')
+        .select('id, company, value, stage, status, referred_by, sourced_via, created_at, pipeline_id')
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null)
         .neq('referred_by', '')
