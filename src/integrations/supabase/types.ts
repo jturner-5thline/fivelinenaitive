@@ -17,31 +17,67 @@ export type Database = {
       activity_logs: {
         Row: {
           activity_type: string
+          bcc_addresses: string[] | null
+          body: string | null
+          cc_addresses: string[] | null
           created_at: string
           deal_id: string
           description: string
+          direction: string | null
+          from_address: string | null
           id: string
+          in_reply_to: string | null
+          message_id: string | null
           metadata: Json | null
+          provider: string | null
+          sent_at: string | null
+          subject: string | null
+          thread_id: string | null
+          to_addresses: string[] | null
           user_display_name: string | null
           user_id: string | null
         }
         Insert: {
           activity_type: string
+          bcc_addresses?: string[] | null
+          body?: string | null
+          cc_addresses?: string[] | null
           created_at?: string
           deal_id: string
           description: string
+          direction?: string | null
+          from_address?: string | null
           id?: string
+          in_reply_to?: string | null
+          message_id?: string | null
           metadata?: Json | null
+          provider?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_addresses?: string[] | null
           user_display_name?: string | null
           user_id?: string | null
         }
         Update: {
           activity_type?: string
+          bcc_addresses?: string[] | null
+          body?: string | null
+          cc_addresses?: string[] | null
           created_at?: string
           deal_id?: string
           description?: string
+          direction?: string | null
+          from_address?: string | null
           id?: string
+          in_reply_to?: string | null
+          message_id?: string | null
           metadata?: Json | null
+          provider?: string | null
+          sent_at?: string | null
+          subject?: string | null
+          thread_id?: string | null
+          to_addresses?: string[] | null
           user_display_name?: string | null
           user_id?: string | null
         }
@@ -18117,6 +18153,111 @@ export type Database = {
           window_start?: string
         }
         Relationships: []
+      }
+      recognition_log: {
+        Row: {
+          candidates: Json
+          chosen_deal_id: string | null
+          confidence: number | null
+          created_at: string
+          id: string
+          inputs_hash: string | null
+          message_id: string | null
+          org_company_id: string | null
+          outcome: string
+          signals: Json
+          thread_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          candidates?: Json
+          chosen_deal_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          inputs_hash?: string | null
+          message_id?: string | null
+          org_company_id?: string | null
+          outcome?: string
+          signals?: Json
+          thread_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          candidates?: Json
+          chosen_deal_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          inputs_hash?: string | null
+          message_id?: string | null
+          org_company_id?: string | null
+          outcome?: string
+          signals?: Json
+          thread_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recognition_log_chosen_deal_id_fkey"
+            columns: ["chosen_deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_log_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recognition_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          domain: string | null
+          from_address: string | null
+          id: string
+          org_company_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          domain?: string | null
+          from_address?: string | null
+          id?: string
+          org_company_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          domain?: string | null
+          from_address?: string | null
+          id?: string
+          org_company_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recognition_overrides_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_overrides_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recurring_report_runs: {
         Row: {
