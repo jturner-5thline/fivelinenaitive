@@ -49,6 +49,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useCalendarEvents, usePrefetchAdjacentCalendarRanges } from '@/hooks/useCalendarEvents';
+import { List, type RowComponentProps } from 'react-window';
 import {
   Popover,
   PopoverContent,
@@ -733,6 +734,53 @@ function AgendaView({
     return Array.from(map.entries());
   }, [sorted]);
 
+  // Flatten into a row array so we can virtualize uniformly when the
+  // agenda gets long. Each row is either a day header, an event, or one
+  // of the trailing highlight (proposed-slot) rows. Below the threshold
+  // we fall through to the original block layout (cheap, no virtualizer
+  // overhead for small ranges).
+  type Row =
+    | { kind: 'day'; key: string; day: string }
+    | { kind: 'event'; key: string; event: CalEvent }
+    | { kind: 'hl-header'; key: string }
+    | { kind: 'hl'; key: string; slot: HighlightSlot };
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    for (const [day, items] of grouped) {
+      out.push({ kind: 'day', key: `d-${day}`, day });
+      for (let i = 0; i < items.length; i++) {
+        const ev = items[i];
+        out.push({ kind: 'event', key: ev.id ?? `e-${day}-${i}`, event: ev });
+      }
+    }
+    if ((highlightSlots ?? []).length > 0) {
+      out.push({ kind: 'hl-header', key: 'hl-header' });
+      (highlightSlots ?? []).forEach((slot, i) =>
+        out.push({ kind: 'hl', key: `hl-${i}`, slot }),
+      );
+    }
+    return out;
+  }, [grouped, highlightSlots]);
+
+  const VIRTUALIZE_THRESHOLD = 50;
+
+  if (rows.length > VIRTUALIZE_THRESHOLD) {
+    return (
+      <List
+        rowCount={rows.length}
+        rowHeight={(idx) => {
+          const r = rows[idx];
+          if (r.kind === 'day' || r.kind === 'hl-header') return 28;
+          return 36;
+        }}
+        rowProps={{ rows, onEventClick }}
+        rowComponent={AgendaVirtualRow}
+        style={{ height: 520 }}
+        className="divide-y divide-white/[0.05]"
+      />
+    );
+  }
+
   return (
     <ScrollArea style={{ height: 520 }}>
       <div className="divide-y divide-white/[0.05]">
@@ -781,6 +829,62 @@ function AgendaView({
         )}
       </div>
     </ScrollArea>
+  );
+}
+
+type AgendaRow =
+  | { kind: 'day'; key: string; day: string }
+  | { kind: 'event'; key: string; event: CalEvent }
+  | { kind: 'hl-header'; key: string }
+  | { kind: 'hl'; key: string; slot: HighlightSlot };
+
+function AgendaVirtualRow({
+  index,
+  style,
+  rows,
+  onEventClick,
+}: RowComponentProps<{ rows: AgendaRow[]; onEventClick: (ev: CalEvent) => void }>) {
+  const row = rows[index];
+  if (row.kind === 'day') {
+    return (
+      <div style={style} className="px-3 flex items-center text-[10px] uppercase tracking-wide text-muted-foreground">
+        {format(new Date(row.day), 'EEEE, MMM d')}
+      </div>
+    );
+  }
+  if (row.kind === 'hl-header') {
+    return (
+      <div style={style} className="px-3 flex items-center text-[10px] uppercase tracking-wide text-emerald-300">
+        Proposed slots
+      </div>
+    );
+  }
+  if (row.kind === 'hl') {
+    return (
+      <div style={style} className="px-3">
+        <div className="flex items-center gap-2 h-8 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2">
+          <span className="text-[10.5px] text-emerald-200 w-32 shrink-0">
+            {format(new Date(row.slot.start), 'EEE MMM d, h:mm a')}
+          </span>
+          <span className="text-[11.5px] text-foreground truncate">{row.slot.label || 'Proposed time'}</span>
+        </div>
+      </div>
+    );
+  }
+  const ev = row.event;
+  return (
+    <div style={style} className="px-3">
+      <button
+        type="button"
+        onClick={() => onEventClick(ev)}
+        className="w-full h-8 flex items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 text-left hover:bg-white/[0.05]"
+      >
+        <span className="text-[10.5px] text-muted-foreground w-20 shrink-0">
+          {ev.all_day ? 'All day' : format(new Date(ev.start), 'h:mm a')}
+        </span>
+        <span className="text-[11.5px] text-foreground truncate flex-1">{ev.title || 'Busy'}</span>
+      </button>
+    </div>
   );
 }
 

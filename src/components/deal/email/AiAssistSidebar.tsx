@@ -33,6 +33,7 @@ import { useEmailFollowupSuggestions } from '@/hooks/useEmailFollowupSuggestions
 import { DataRoomUploadSuggestionCard } from './DataRoomUploadSuggestionCard';
 import { DealContextCard } from './DealContextCard';
 import { UnmatchedEmailContextCard } from './UnmatchedEmailContextCard';
+import { RecognitionSuggestedLinkPill } from './RecognitionSuggestedLinkPill';
 import { EmailUnifiedAiAction } from './EmailUnifiedAiAction';
 import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
@@ -1097,7 +1098,14 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               suggestion / Link Deal fallback. Only renders when no deal is
               linked to the thread. */}
           {!dealId && !workflowAnalysis?.likely_deal?.id && (
-            <UnmatchedEmailContextCard
+            <>
+              <RecognitionSuggestedLinkPill
+                threadId={thread.threadId}
+                onLinkDeal={async (id, name) => {
+                  if (onLinkDeal) await onLinkDeal(id, name);
+                }}
+              />
+              <UnmatchedEmailContextCard
               email={{
                 from_email: thread.latestEmail.from_email,
                 from_name: thread.latestEmail.from_name,
@@ -1111,7 +1119,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               }}
               suggestedTasks={workflowAnalysis?.suggested_tasks || []}
               threadId={thread.threadId}
-            />
+              />
+            </>
           )}
 
           {/* The Ask-AI textbox lives in the sticky footer below the scroll
