@@ -1111,8 +1111,11 @@ export function MeetingSchedulerCard({
         </div>
       ) : (
         <div className="space-y-1.5">
-          <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
-            {stage === 'propose' ? 'Pick which slots to offer' : 'Pick the confirmed slot'}
+          <div className="flex items-center gap-2">
+            <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
+              {stage === 'propose' ? 'Pick which slots to offer' : 'Pick the confirmed slot'}
+            </div>
+            <VerifyPill state={verifyState} />
           </div>
           <SlotsWithAvailability
             slots={proposedSlots}
@@ -1393,8 +1396,15 @@ export function MeetingSchedulerCard({
                 size="sm"
                 className="h-7 text-[11px] flex-1"
                 onClick={insertProposal}
+                disabled={verifying}
               >
-                Insert proposal
+                {verifying ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" /> Verifying…
+                  </>
+                ) : (
+                  'Insert proposal'
+                )}
               </Button>
               <Button
                 size="sm"
