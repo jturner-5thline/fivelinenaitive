@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { useChannelPerformanceData, type ChannelTimePeriod, type AttributedDeal } from '@/hooks/useChannelPerformanceData';
+import { useChannelPerformanceData, type AttributedDeal } from '@/hooks/useChannelPerformanceData';
 import { ChannelDrilldownModal, type DrilldownContext } from './ChannelDrilldownModal';
 import { ChannelSourceDetailPanel, type SourceTarget } from './ChannelSourceDetailPanel';
 import { PartnersFunnelChart } from './PartnersFunnelChart';
@@ -23,15 +23,8 @@ import {
   INSIGHTS_AXIS_TICK,
   INSIGHTS_BAR_RADIUS,
 } from '@/components/metrics/liquidGlass';
-
-// ── Constants ──
-const TIME_PRESETS: { value: ChannelTimePeriod; label: string; short: string }[] = [
-  { value: 'last-30d', label: 'Last 30 Days', short: '30D' },
-  { value: 'qtd', label: 'Quarter to Date', short: 'QTD' },
-  { value: 'last-quarter', label: 'Last Quarter', short: 'Last Q' },
-  { value: 'last-6m', label: 'Last 6 Months', short: '6M' },
-  { value: 'last-12m', label: 'Last 12 Months', short: '12M' },
-];
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
+import { buildBuckets } from '@/lib/insightsTimeRange';
 
 const CHANNEL_OPTIONS = CHANNEL_TYPE_OPTIONS.map(o => ({ value: o.value, label: o.label }));
 
@@ -157,19 +150,18 @@ function MultiSelectFilter({ label, options, selected, onChange }: {
 
 // ── Main ──
 export function ChannelsDashboard() {
-  const [timePeriod, setTimePeriod] = useState<ChannelTimePeriod>('last-12m');
+  const dateCtx = useOptionalSalesBdDateRange();
+  const range = dateCtx?.range;
   const [channelTypeFilters, setChannelTypeFilters] = useState<string[]>([]);
   const [sourceFilters, setSourceFilters] = useState<string[]>([]);
   const [chartGroupBy, setChartGroupBy] = useState<ChartGroupBy>('channel');
   const [drilldown, setDrilldown] = useState<DrilldownContext | null>(null);
   const [sourceTarget, setSourceTarget] = useState<SourceTarget | null>(null);
 
-  const { channelSources, attributedDeals, performanceRows, kpis, isLoading } = useChannelPerformanceData(
-    timePeriod, channelTypeFilters, sourceFilters,
-  );
+  const { channelSources, attributedDeals, performanceRows, kpis, isLoading } = useChannelPerformanceData(channelTypeFilters, sourceFilters);
 
-  const hasActiveFilters = channelTypeFilters.length > 0 || sourceFilters.length > 0 || timePeriod !== 'last-12m';
-  const clearAll = () => { setTimePeriod('last-12m'); setChannelTypeFilters([]); setSourceFilters([]); };
+  const hasActiveFilters = channelTypeFilters.length > 0 || sourceFilters.length > 0;
+  const clearAll = () => { setChannelTypeFilters([]); setSourceFilters([]); };
 
   // Source options filtered by selected channels
   const sourceOptions = useMemo(() => {
@@ -213,30 +205,45 @@ export function ChannelsDashboard() {
   }, [attributedDeals, openDrilldown]);
 
   // ── Chart data ──
+  const bucketPeriods = useMemo(() => {
+    if (!range) return [];
+    return buildBuckets(range.resolved.start, range.resolved.end, range.granularity);
+  }, [range]);
+  const bucketKeyForDate = useCallback((iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return null;
+    if (range?.granularity === 'quarterly') {
+      return `${d.getFullYear()}-Q${Math.floor(d.getMonth() / 3) + 1}`;
+    }
+    if (range?.granularity === 'yearly') {
+      return String(d.getFullYear());
+    }
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }, [range?.granularity]);
   const channelGroupedDeals = useMemo(() => {
-    const map = new Map<string, { name: string; added: number; proposalIssued: number; finalCredit: number; funded: number }>();
-    for (const row of performanceRows) {
-      const key = row.channelType;
-      const label = key === 'M&A and Investment Bankers' ? 'M&A / IB' : key;
-      const existing = map.get(key) || { name: label, added: 0, proposalIssued: 0, finalCredit: 0, funded: 0 };
-      existing.added += row.added.count; existing.proposalIssued += row.proposalIssued.count;
-      existing.finalCredit += row.finalCreditItems.count; existing.funded += row.fundedInvoiced.count;
-      map.set(key, existing);
-    }
-    return Array.from(map.values()).filter(r => r.added > 0).sort((a, b) => b.funded - a.funded);
-  }, [performanceRows]);
+    return bucketPeriods.map((bucket) => {
+      const base: Record<string, string | number> = { name: bucket.label };
+      for (const row of performanceRows) {
+        const bucketDeals = row.deals.filter((deal) => bucketKeyForDate(deal.created_at) === bucket.key);
+        const label = row.channelType === 'M&A and Investment Bankers' ? 'M&A / IB' : row.channelType;
+        base[label] = bucketDeals.length;
+      }
+      return base;
+    }).filter((row) => Object.entries(row).some(([key, value]) => key !== 'name' && Number(value) > 0));
+  }, [bucketPeriods, performanceRows, bucketKeyForDate]);
   const channelGroupedVolume = useMemo(() => {
-    const map = new Map<string, { name: string; added: number; proposalIssued: number; finalCredit: number; funded: number }>();
-    for (const row of performanceRows) {
-      const key = row.channelType;
-      const label = key === 'M&A and Investment Bankers' ? 'M&A / IB' : key;
-      const existing = map.get(key) || { name: label, added: 0, proposalIssued: 0, finalCredit: 0, funded: 0 };
-      existing.added += row.added.volume / 1e6; existing.proposalIssued += row.proposalIssued.volume / 1e6;
-      existing.finalCredit += row.finalCreditItems.volume / 1e6; existing.funded += row.fundedInvoiced.volume / 1e6;
-      map.set(key, existing);
-    }
-    return Array.from(map.values()).filter(r => r.added > 0).sort((a, b) => b.funded - a.funded);
-  }, [performanceRows]);
+    return bucketPeriods.map((bucket) => {
+      const base: Record<string, string | number> = { name: bucket.label };
+      for (const row of performanceRows) {
+        const bucketValue = row.deals
+          .filter((deal) => bucketKeyForDate(deal.created_at) === bucket.key)
+          .reduce((sum, deal) => sum + (deal.value || 0), 0);
+        const label = row.channelType === 'M&A and Investment Bankers' ? 'M&A / IB' : row.channelType;
+        base[label] = bucketValue / 1e6;
+      }
+      return base;
+    }).filter((row) => Object.entries(row).some(([key, value]) => key !== 'name' && Number(value) > 0));
+  }, [bucketPeriods, performanceRows, bucketKeyForDate]);
   const sourceGroupedDeals = useMemo(() => performanceRows.filter(r => r.added.count > 0).slice(0, 10).map(r => ({
     name: r.channelName.length > 18 ? r.channelName.slice(0, 16) + '…' : r.channelName,
     Added: r.added.count, 'Proposal Issued': r.proposalIssued.count, 'Final Credit': r.finalCreditItems.count, Funded: r.fundedInvoiced.count,
