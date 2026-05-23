@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +14,20 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
-import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import {
+  InsightsTimeRangeSelector,
+  type InsightsTimeRangeValue,
+} from '@/components/insights/InsightsTimeRangeSelector';
+import {
+  defaultGranularityForRange,
+  loadPersistedRange,
+  resolveRange,
+} from '@/lib/insightsTimeRange';
+import {
+  DrilldownProvider,
+  useDrilldown,
+  type DrilldownRequest,
+} from '@/components/insights/ChartDrilldown';
 import { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
 import { resolveQboClientLabel } from '@/lib/qboClientName';
 
@@ -30,6 +44,9 @@ const CREDIT_CARD_ACCOUNTS = [
   { qbName: 'Wells Fargo CC #5758', displayName: 'Wells Fargo 5758',   realm_id: '9130350272677286' },
 ];
 
+const QBO_CHART_OF_ACCOUNTS_URL = 'https://qbo.intuit.com/app/chartofaccounts';
+const QBO_CUSTOMERS_URL = 'https://qbo.intuit.com/app/customers';
+
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
   if (Math.abs(value) >= 1_000) return `$${(value / 1_000).toFixed(0)}k`;
@@ -42,19 +59,18 @@ const formatCurrencyFull = (value: number) =>
 const truncateLabel = (label: string, maxLen = 14) =>
   label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
 
-/* ─── Revenue-by-Client hook ─── */
-function useRevenueByClient(realmId: string) {
+/* ─── Revenue-by-Client hook (period-aware) ─── */
+function useRevenueByClient(realmId: string, period: { start: string; end: string }) {
   return useQuery({
-    queryKey: ['controller-revenue-by-client', realmId],
+    queryKey: ['controller-revenue-by-client', realmId, period.start, period.end],
     queryFn: async () => {
-      // Pull invoices and the customer directory for this realm so we can
-      // resolve every line to its COMPANY name (not the person/guarantor
-      // listed as the QBO customer). See src/lib/qboClientName.ts.
       const [invoiceRes, customerRes] = await Promise.all([
         supabase
           .from('quickbooks_invoices')
-          .select('customer_id, customer_name, total_amt')
-          .eq('realm_id', realmId),
+          .select('customer_id, customer_name, total_amt, txn_date')
+          .eq('realm_id', realmId)
+          .gte('txn_date', period.start)
+          .lte('txn_date', period.end),
         supabase
           .from('quickbooks_customers')
           .select('qb_id, display_name, company_name')
@@ -84,7 +100,7 @@ function useRevenueByClient(realmId: string) {
   });
 }
 
-/* ─── Credit Card Balances hook ─── */
+/* ─── Credit Card Balances hook (current snapshot) ─── */
 function useCreditCardBalances() {
   return useQuery({
     queryKey: ['controller-credit-card-balances'],
@@ -92,7 +108,7 @@ function useCreditCardBalances() {
       const allRealms = [...new Set(CREDIT_CARD_ACCOUNTS.map((a) => a.realm_id))];
       const { data, error } = await supabase
         .from('quickbooks_accounts')
-        .select('name, current_balance, realm_id')
+        .select('name, current_balance, realm_id, updated_at')
         .eq('account_type', 'Credit Card')
         .in('realm_id', allRealms);
 
@@ -100,11 +116,13 @@ function useCreditCardBalances() {
 
       return CREDIT_CARD_ACCOUNTS.map((acc) => {
         const match = (data ?? []).find(
-          (row) => row.name === acc.qbName && row.realm_id === acc.realm_id
+          (row) => row.name === acc.qbName && row.realm_id === acc.realm_id,
         );
         return {
           name: acc.displayName,
           balance: Math.abs(Number(match?.current_balance) || 0),
+          realm_id: acc.realm_id,
+          updated_at: match?.updated_at ?? null,
         };
       });
     },
@@ -118,7 +136,7 @@ function useFirmLiquidity() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quickbooks_accounts')
-        .select('name, current_balance, realm_id')
+        .select('name, current_balance, realm_id, updated_at')
         .eq('account_type', 'Bank')
         .or('name.ilike.%chase%,name.ilike.%m&t%,name.ilike.%m & t%');
 
@@ -128,6 +146,8 @@ function useFirmLiquidity() {
         .map((row) => ({
           name: row.name,
           balance: Number(row.current_balance) || 0,
+          realm_id: row.realm_id,
+          updated_at: row.updated_at ?? null,
         }))
         .sort((a, b) => b.balance - a.balance);
     },
@@ -138,6 +158,7 @@ function useFirmLiquidity() {
 function ChartCard({
   title,
   subtitle,
+  badge,
   isLoading,
   isError,
   isEmpty,
@@ -145,6 +166,7 @@ function ChartCard({
 }: {
   title: string;
   subtitle?: string;
+  badge?: string;
   isLoading: boolean;
   isError: boolean;
   isEmpty: boolean;
@@ -152,9 +174,18 @@ function ChartCard({
 }) {
   return (
     <Card className="glass-module">
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
-        {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+      <CardHeader className="pb-2 space-y-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="space-y-0.5">
+            <CardTitle className="text-sm font-medium">{title}</CardTitle>
+            {subtitle && <p className="text-xs text-muted-foreground">{subtitle}</p>}
+          </div>
+          {badge && (
+            <Badge variant="outline" className="text-[10px] shrink-0">
+              {badge}
+            </Badge>
+          )}
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -193,61 +224,116 @@ function CurrencyTooltip({ active, payload, label }: any) {
   );
 }
 
-/* ─── Main dashboard ─── */
-export function ControllerDashboard() {
-  const finservRevenue = useRevenueByClient(FINSERV_REALM_ID);
-  const debtRevenue = useRevenueByClient(DEBT_REALM_ID);
-  const firmLiquidity = useFirmLiquidity();
-  const creditCards = useCreditCardBalances();
+/* ─── Inner shell (uses useDrilldown — must live under DrilldownProvider) ─── */
+function ControllerDashboardInner() {
+  // ── Shared time-range selector (parity with FinServ board) ──────────────
+  const initialPersisted = useMemo(() => loadPersistedRange('controller-dashboard'), []);
+  const initialResolved = useMemo(() => {
+    const id = initialPersisted?.presetId ?? 'ytd';
+    return resolveRange(id, {
+      custom: initialPersisted?.custom,
+      includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
+    });
+  }, [initialPersisted]);
+  const [range, setRange] = useState<InsightsTimeRangeValue>(() => ({
+    presetId: initialPersisted?.presetId ?? 'ytd',
+    granularity:
+      initialPersisted?.granularity ?? defaultGranularityForRange(initialResolved.start, initialResolved.end),
+    custom: initialPersisted?.custom,
+    includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
+    resolved: initialResolved,
+  }));
 
-  // Universal drilldown state
-  const [drill, setDrill] = useState<{
-    context: DrilldownContext;
-    columns: DrilldownColumn[];
-    rows: Array<Record<string, unknown>>;
-  } | null>(null);
+  const granularityLabel =
+    range.granularity === 'monthly' ? 'Monthly' :
+    range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
+  const periodBadge = `${granularityLabel} · ${range.resolved.label}`;
+  const snapshotBadge = `Snapshot · today · ${range.resolved.label}`;
 
-  const openClientDrill = (label: string, sourceLabel: string, value: number) => {
-    setDrill({
-      context: { sourceId: 'controller:client-revenue', sourceLabel, selection: label },
-      columns: [
-        { key: 'metric', label: 'Field' },
-        { key: 'value', label: 'Value', align: 'right' },
-      ],
+  const period = useMemo(
+    () => ({ start: range.resolved.start, end: range.resolved.end, label: range.resolved.label }),
+    [range.resolved.start, range.resolved.end, range.resolved.label],
+  );
+
+  // Data — every period-bound hook resubscribes when the selector changes.
+  const finservRevenue = useRevenueByClient(FINSERV_REALM_ID, period);
+  const debtRevenue    = useRevenueByClient(DEBT_REALM_ID, period);
+  const firmLiquidity  = useFirmLiquidity();
+  const creditCards    = useCreditCardBalances();
+
+  // ── Drilldown wiring ────────────────────────────────────────────────────
+  const { open: openDrill } = useDrilldown();
+
+  const openClientDrill = (
+    label: string,
+    sourceLabel: string,
+    realm: string,
+    revenueInPeriod: number,
+  ) => {
+    const req: DrilldownRequest = {
+      kind: 'client-series',
+      sourceLabel,
+      selection: label,
+      period,
+      granularity: range.granularity,
+      client: label,
+      realm,
+      externalLink: { href: QBO_CUSTOMERS_URL, label: 'View customer in QuickBooks' },
       rows: [
         { metric: 'Client', value: label },
-        { metric: 'Total Revenue (TTM)', value: formatCurrencyFull(value) },
+        { metric: 'Revenue in period', value: formatCurrencyFull(revenueInPeriod) },
       ],
-    });
+    };
+    openDrill(req);
   };
 
-  const openAccountDrill = (label: string, sourceLabel: string, value: number) => {
-    setDrill({
-      context: { sourceId: 'controller:account-balance', sourceLabel, selection: label },
-      columns: [
-        { key: 'metric', label: 'Field' },
-        { key: 'value', label: 'Value', align: 'right' },
-      ],
+  const openAccountDrill = (
+    label: string,
+    sourceLabel: string,
+    value: number,
+    extras: Array<{ metric: string; value: string }> = [],
+  ) => {
+    openDrill({
+      kind: 'value',
+      sourceLabel,
+      selection: label,
+      period,
+      granularity: range.granularity,
+      externalLink: { href: QBO_CHART_OF_ACCOUNTS_URL, label: 'View account in QuickBooks' },
       rows: [
         { metric: 'Account', value: label },
         { metric: 'Current Balance', value: formatCurrencyFull(value) },
+        ...extras,
       ],
     });
   };
 
   return (
-    <>
     <div className="space-y-6">
+      {/* Shared time-range selector (parity with FinServ board) */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <InsightsTimeRangeSelector
+          boardId="controller-dashboard"
+          defaultPresetId="ytd"
+          defaultGranularity="monthly"
+          onChange={setRange}
+        />
+        {(finservRevenue.isLoading || debtRevenue.isLoading) && (
+          <Badge variant="outline" className="text-xs animate-pulse">Loading from QuickBooks…</Badge>
+        )}
+      </div>
+
       {/* Revenue by client: FinServ + Debt side-by-side */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <ChartCard
           title="FinServ Revenue by Client"
           subtitle="5th Line Financial Services, LLC"
+          badge={periodBadge}
           isLoading={finservRevenue.isLoading}
           isError={finservRevenue.isError}
           isEmpty={!finservRevenue.data?.length}
         >
-          <div className="h-[300px]">
+          <div className="h-[300px]" role="group" aria-label="FinServ revenue by client">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={finservRevenue.data} margin={{ bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
@@ -269,7 +355,8 @@ export function ControllerDashboard() {
                   fill="hsl(var(--primary))"
                   shape={createGlassBarShape({ radius: 3 })}
                   cursor="pointer"
-                  onClick={(d: any) => openClientDrill(d?.name, 'FinServ Revenue by Client', Number(d?.revenue) || 0)}
+                  aria-label="Click a client bar to open drilldown"
+                  onClick={(d: any) => openClientDrill(d?.name, 'FinServ Revenue by Client', FINSERV_REALM_ID, Number(d?.revenue) || 0)}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -279,11 +366,12 @@ export function ControllerDashboard() {
         <ChartCard
           title="Debt Revenue by Client"
           subtitle="5th Line Capital Advisors, LLC"
+          badge={periodBadge}
           isLoading={debtRevenue.isLoading}
           isError={debtRevenue.isError}
           isEmpty={!debtRevenue.data?.length}
         >
-          <div className="h-[300px]">
+          <div className="h-[300px]" role="group" aria-label="Debt revenue by client">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={debtRevenue.data} margin={{ bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
@@ -305,7 +393,8 @@ export function ControllerDashboard() {
                   fill="hsl(var(--chart-2))"
                   shape={createGlassBarShape({ radius: 3 })}
                   cursor="pointer"
-                  onClick={(d: any) => openClientDrill(d?.name, 'Debt Revenue by Client', Number(d?.revenue) || 0)}
+                  aria-label="Click a client bar to open drilldown"
+                  onClick={(d: any) => openClientDrill(d?.name, 'Debt Revenue by Client', DEBT_REALM_ID, Number(d?.revenue) || 0)}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -313,15 +402,16 @@ export function ControllerDashboard() {
         </ChartCard>
       </div>
 
-      {/* Credit Card Balances */}
+      {/* Credit Card Balances — current snapshot (QBO doesn't keep balance history). */}
       <ChartCard
         title="Credit Card Balances"
-        subtitle="All Connected Entities"
+        subtitle="All connected entities · current snapshot"
+        badge={snapshotBadge}
         isLoading={creditCards.isLoading}
         isError={creditCards.isError}
         isEmpty={!creditCards.data?.length}
       >
-        <div className="h-[260px] max-w-2xl">
+        <div className="h-[260px] max-w-2xl" role="group" aria-label="Credit card balances">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={creditCards.data}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
@@ -339,22 +429,32 @@ export function ControllerDashboard() {
                 fill="hsl(var(--chart-3))"
                 shape={createGlassBarShape({ radius: 3 })}
                 cursor="pointer"
-                onClick={(d: any) => openAccountDrill(d?.name, 'Credit Card Balances', Number(d?.balance) || 0)}
+                aria-label="Click a card bar to open drilldown"
+                onClick={(d: any) => openAccountDrill(
+                  d?.name,
+                  'Credit Card Balances',
+                  Number(d?.balance) || 0,
+                  [
+                    { metric: 'QBO Realm', value: String(d?.realm_id ?? '') },
+                    { metric: 'Last sync', value: d?.updated_at ? new Date(d.updated_at).toLocaleString() : '—' },
+                  ],
+                )}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </ChartCard>
 
-      {/* Firm Liquidity */}
+      {/* Firm Liquidity — current snapshot. */}
       <ChartCard
         title="Firm Liquidity"
-        subtitle="All Connected Entities"
+        subtitle="All connected entities · current snapshot"
+        badge={snapshotBadge}
         isLoading={firmLiquidity.isLoading}
         isError={firmLiquidity.isError}
         isEmpty={!firmLiquidity.data?.length}
       >
-        <div className="h-[280px]">
+        <div className="h-[280px]" role="group" aria-label="Firm liquidity bank accounts">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={firmLiquidity.data} margin={{ bottom: 60 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border/40" />
@@ -376,36 +476,49 @@ export function ControllerDashboard() {
                 fill="hsl(var(--chart-4))"
                 shape={createGlassBarShape({ radius: 3 })}
                 cursor="pointer"
-                onClick={(d: any) => openAccountDrill(d?.name, 'Firm Liquidity', Number(d?.balance) || 0)}
+                aria-label="Click an account bar to open drilldown"
+                onClick={(d: any) => openAccountDrill(
+                  d?.name,
+                  'Firm Liquidity',
+                  Number(d?.balance) || 0,
+                  [
+                    { metric: 'QBO Realm', value: String(d?.realm_id ?? '') },
+                    { metric: 'Last sync', value: d?.updated_at ? new Date(d.updated_at).toLocaleString() : '—' },
+                  ],
+                )}
               />
             </BarChart>
           </ResponsiveContainer>
         </div>
       </ChartCard>
-    </div>
-    <InsightsDrilldownDrawer
-      open={!!drill}
-      onClose={() => setDrill(null)}
-      context={drill?.context ?? null}
-      columns={drill?.columns ?? []}
-      rows={drill?.rows ?? []}
-      emptyHint="No detail records available."
-    />
-    {/*
-      QuickBooks Financial tiles — merged in from the standalone
-      "QuickBooks Financial" dashboard so the Controller Dashboard is the
-      single source of truth for QBO-driven financial reporting.
-      Preserves the original data sources, configs, filters, and drilldowns.
-    */}
-    <div className="mt-8 space-y-3">
-      <div>
-        <h3 className="text-base font-semibold text-foreground">QuickBooks Financial</h3>
-        <p className="text-xs text-muted-foreground">
-          P&amp;L, A/R, payments, and customer-level reporting across connected QuickBooks entities.
-        </p>
+
+      {/*
+        QuickBooks Financial tiles — merged in from the standalone
+        "QuickBooks Financial" dashboard so the Controller Dashboard is the
+        single source of truth for QBO-driven financial reporting. The whole
+        section subscribes to the shared selector via the `period`/`periodBadge`
+        props (revenue, payments, expenses, bills, top customers, invoice
+        status — A/R, A/P, aging & overdue remain current snapshots since QBO
+        doesn't keep balance history).
+      */}
+      <div className="mt-8 space-y-3">
+        <div>
+          <h3 className="text-base font-semibold text-foreground">QuickBooks Financial</h3>
+          <p className="text-xs text-muted-foreground">
+            P&amp;L, A/R, payments, and customer-level reporting across connected QuickBooks entities.
+          </p>
+        </div>
+        <QuickBooksFinancialDashboard period={period} periodBadge={periodBadge} />
       </div>
-      <QuickBooksFinancialDashboard />
     </div>
-    </>
+  );
+}
+
+/* ─── Public wrapper provides the shared drilldown drawer for every chart ─── */
+export function ControllerDashboard() {
+  return (
+    <DrilldownProvider>
+      <ControllerDashboardInner />
+    </DrilldownProvider>
   );
 }
