@@ -48,7 +48,7 @@ import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import { useCalendarEvents } from '@/hooks/useCalendarEvents';
+import { useCalendarEvents, usePrefetchAdjacentCalendarRanges } from '@/hooks/useCalendarEvents';
 import {
   Popover,
   PopoverContent,
@@ -276,6 +276,8 @@ export function NaitiveCalendar({
     tz,
     enabled: !externalEvents,
   });
+  // Prefetch the previous + next range so prev/next nav is instant.
+  usePrefetchAdjacentCalendarRanges({ range, tz, enabled: !externalEvents });
   const events = externalEvents ?? fetched ?? [];
 
   // Attendee free/busy overlay — only fires when attendees are passed.

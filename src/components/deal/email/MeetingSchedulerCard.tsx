@@ -100,6 +100,10 @@ interface Props {
   onSetSubject?: (subject: string) => void;
   /** Closes the scheduler back to the chip row. */
   onClose: () => void;
+  /** Reply context — when true the scheduler will NOT push a new subject
+   *  up via onSetSubject (replies must keep the existing "Re: …" subject
+   *  or the threading breaks). Insert/confirm flows still work normally. */
+  isReply?: boolean;
 }
 
 /** Default meeting length when no preference is persisted. */
@@ -369,6 +373,7 @@ export function MeetingSchedulerCard({
   onInsert,
   onSetSubject,
   onClose,
+  isReply = false,
 }: Props) {
   const { user } = useAuth();
   const teamMembers = useTeamMembers();
@@ -896,7 +901,7 @@ export function MeetingSchedulerCard({
     onInsert(block);
     // Stage-driven subject suggestion (fix #3) — keeps the round-trip
     // email subject and calendar invite title aligned.
-    if (onSetSubject && dealId) {
+    if (onSetSubject && dealId && !isReply) {
       const t = renderTitle().trim();
       if (t) onSetSubject(t);
     }
@@ -942,7 +947,7 @@ export function MeetingSchedulerCard({
       const summary = renderedTitle
         || (dealName ? `${dealName} — Intro call` : threadSubject ? `Re: ${threadSubject}` : 'Intro call');
       // Keep email subject in lock-step with calendar invite title.
-      if (onSetSubject && summary) onSetSubject(summary);
+      if (onSetSubject && summary && !isReply) onSetSubject(summary);
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',
@@ -1170,6 +1175,28 @@ export function MeetingSchedulerCard({
                     </div>
                   )}
                 </div>
+                {/* Per-slot status dot — green=all free, amber=limited
+                    visibility on at least one attendee, rose=conflict. */}
+                {summary && summary.total > 0 && (
+                  <span
+                    aria-hidden
+                    title={
+                      hasConflict
+                        ? 'Conflict on at least one calendar'
+                        : summary.limited > 0
+                          ? 'Limited visibility on some calendars'
+                          : 'All attendees free'
+                    }
+                    className={cn(
+                      'inline-block h-2 w-2 rounded-full shrink-0',
+                      hasConflict
+                        ? 'bg-rose-400'
+                        : summary.limited > 0
+                          ? 'bg-amber-300'
+                          : 'bg-emerald-400',
+                    )}
+                  />
+                )}
               </label>
             );
             }}
