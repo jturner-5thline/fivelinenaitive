@@ -33,6 +33,7 @@ import { AgreementTemplatesSettings } from '@/components/agreement/AgreementTemp
 import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSettings';
 import { AICopilotSettings } from '@/components/settings/AICopilotSettings';
+import { MeetingTitleSettings } from '@/components/settings/MeetingTitleSettings';
 import { OutboundEmailTemplatesSettings } from '@/components/settings/OutboundEmailTemplatesSettings';
 import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSettings';
 import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSettings';
@@ -80,6 +81,7 @@ const SETTINGS_SECTIONS = [
   { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
   { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
   { id: 'ai-configuration', keywords: ['ai', 'claude', 'anthropic', 'artificial', 'intelligence', 'model', 'temperature', 'tokens', 'chatbot'] },
+  { id: 'meeting-titles', keywords: ['meeting', 'titles', 'title', 'calendar', 'invite', 'event', 'subject', 'template', 'ai', 'assistant', 'stage'] },
   { id: 'partner-rules', keywords: ['sales', 'bd', 'partner', 'partners', 'tier', 'tiers', 'rules', 'definitions', 'channel', 'channels', 'criteria'] },
   { id: 'contact-types', keywords: ['contact', 'types', 'type', 'banker', 'lender', 'client', 'prospect', 'crm', 'dropdown', 'options'] },
 ];
@@ -341,6 +343,9 @@ export default function Settings() {
                     <AIConfigurationSettings isAdmin={isAdmin} />
                   )}
                   <AICopilotSettings />
+                  {isVisible('meeting-titles') && (
+                    <MeetingTitleSettings isAdmin={isAdmin} />
+                  )}
                 </TabsContent>
 
                 {/* Sales & BD Tab */}
