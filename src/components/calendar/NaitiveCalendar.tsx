@@ -833,6 +833,7 @@ function AgendaView({
 }
 
 function EventDetail({ event, tz }: { event: CalEvent; tz: string }) {
+  // Render function (declared below) handled separately; see AgendaVirtualRow.
   return (
     <>
       <SheetHeader>
