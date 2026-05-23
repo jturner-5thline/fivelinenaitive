@@ -14,7 +14,6 @@ import { usePartners } from "@/hooks/usePartnersPipeline";
 import { ChannelsBoard } from "@/components/channels/ChannelsBoard";
 import { ChannelsDashboard } from "@/components/channels/ChannelsDashboard";
 import { ReferralSourcesView } from "@/components/channels/ReferralSourcesView";
-import { SalesBdFunnelChart } from "@/components/channels/SalesBdFunnelChart";
 import { DashboardPage } from "@/components/layout/DashboardPage";
 import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
