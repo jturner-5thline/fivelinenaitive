@@ -34,6 +34,7 @@ import { KPICardSettings } from '@/components/settings/KPICardSettings';
 import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSettings';
 import { AICopilotSettings } from '@/components/settings/AICopilotSettings';
 import { MeetingTitleSettings } from '@/components/settings/MeetingTitleSettings';
+import { WorkingHoursSettings } from '@/components/settings/WorkingHoursSettings';
 import { OutboundEmailTemplatesSettings } from '@/components/settings/OutboundEmailTemplatesSettings';
 import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSettings';
 import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSettings';
@@ -346,6 +347,7 @@ export default function Settings() {
                   {isVisible('meeting-titles') && (
                     <MeetingTitleSettings isAdmin={isAdmin} />
                   )}
+                  <WorkingHoursSettings />
                 </TabsContent>
 
                 {/* Sales & BD Tab */}
