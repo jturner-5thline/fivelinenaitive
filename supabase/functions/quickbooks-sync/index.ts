@@ -569,38 +569,61 @@ serve(async (req) => {
                 if (resolvedStart && resolvedEnd && fallbackCompanyId) {
                   const rows = Array.isArray(report?.Rows?.Row) ? report.Rows.Row : [];
                   const columns = Array.isArray(report?.Columns?.Column) ? report.Columns.Column : [];
+                  // Only keep real month columns (skip "Total"/non-date titles).
+                  const MONTH_TITLE = /^([A-Za-z]{3})\s+(\d{4})$/;
                   const monthColumns = columns
                     .map((column: any, index: number) => ({ column, index }))
-                    .filter(({ index, column }) => index > 0 && column?.ColType === "Money" && column?.ColTitle);
+                    .filter(({ index, column }) =>
+                      index > 0 &&
+                      column?.ColType === "Money" &&
+                      MONTH_TITLE.test(String(column?.ColTitle ?? "").trim()),
+                    );
 
-                  const netRow = extractReportRows(rows).find((row: any) => String(row?.group ?? "").toLowerCase() === "netcashprovidedbyoperatingactivities")
-                    ?? extractReportRows(rows).find((row: any) => String(row?.Summary?.ColData?.[0]?.value ?? row?.Header?.ColData?.[0]?.value ?? "").toLowerCase().includes("net change in cash"))
-                    ?? extractReportRows(rows).find((row: any) => String(row?.Summary?.ColData?.[0]?.value ?? row?.Header?.ColData?.[0]?.value ?? "").toLowerCase().includes("net cash provided by operating activities"));
+                  // QBO Statement of Cash Flows: bottom-line "NET CASH INCREASE FOR PERIOD" is group "CashIncrease".
+                  const allRows = extractReportRows(rows);
+                  const netRow =
+                    allRows.find((row: any) => String(row?.group ?? "").toLowerCase() === "cashincrease")
+                    ?? allRows.find((row: any) => {
+                      const label = String(
+                        row?.Summary?.ColData?.[0]?.value ?? row?.Header?.ColData?.[0]?.value ?? "",
+                      ).toLowerCase();
+                      return label.includes("net cash increase") || label.includes("net change in cash");
+                    })
+                    ?? allRows.find((row: any) => String(row?.group ?? "").toLowerCase() === "netcashprovidedbyoperatingactivities");
 
-                  const upsertRows = monthColumns.map(({ column, index }: any) => {
-                    const title = String(column?.ColTitle ?? "").trim();
-                    const start = title ? `${title}-01` : resolvedStart;
-                    const date = new Date(`${start}T00:00:00`);
-                    const bucketStart = Number.isNaN(date.getTime()) ? resolvedStart : `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-01`;
-                    const bucketEndDate = Number.isNaN(date.getTime()) ? new Date(`${resolvedEnd}T00:00:00`) : new Date(date.getFullYear(), date.getMonth() + 1, 0);
-                    const bucketEnd = `${bucketEndDate.getFullYear()}-${String(bucketEndDate.getMonth() + 1).padStart(2, '0')}-${String(bucketEndDate.getDate()).padStart(2, '0')}`;
-                    const value = parseAmount(netRow?.Summary?.ColData?.[index]?.value ?? netRow?.ColData?.[index]?.value);
+                  const seen = new Set<string>();
+                  const upsertRows = monthColumns
+                    .map(({ column, index }: any) => {
+                      const title = String(column?.ColTitle ?? "").trim();
+                      const m = title.match(MONTH_TITLE)!;
+                      const monthIdx = new Date(`${m[1]} 1, ${m[2]}`).getMonth();
+                      const year = Number(m[2]);
+                      const bucketStart = `${year}-${String(monthIdx + 1).padStart(2, '0')}-01`;
+                      const lastDay = new Date(year, monthIdx + 1, 0).getDate();
+                      const bucketEnd = `${year}-${String(monthIdx + 1).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+                      if (seen.has(bucketStart)) return null;
+                      seen.add(bucketStart);
+                      const value = parseAmount(
+                        netRow?.Summary?.ColData?.[index]?.value ?? netRow?.ColData?.[index]?.value,
+                      );
+                      return {
+                        company_id: fallbackCompanyId,
+                        user_id: user.id,
+                        realm_id: realmId,
+                        period_start: resolvedStart,
+                        period_end: resolvedEnd,
+                        accounting_method: accounting_method || "Accrual",
+                        bucket_start: bucketStart,
+                        bucket_end: bucketEnd,
+                        bucket_label: title,
+                        net_cash_flow: value,
+                        raw_response: report,
+                        fetched_at: new Date().toISOString(),
+                      };
+                    })
+                    .filter((r: any) => r !== null);
 
-                    return {
-                      company_id: fallbackCompanyId,
-                      user_id: user.id,
-                      realm_id: realmId,
-                      period_start: resolvedStart,
-                      period_end: resolvedEnd,
-                      accounting_method: accounting_method || "Accrual",
-                      bucket_start: bucketStart,
-                      bucket_end: bucketEnd,
-                      bucket_label: title || bucketStart,
-                      net_cash_flow: value,
-                      raw_response: report,
-                      fetched_at: new Date().toISOString(),
-                    };
-                  });
+                  console.log(`[QuickBooks Sync] [qbo.cashflow.fetch] ${realmId} ${resolvedStart}..${resolvedEnd} buckets=${upsertRows.length} netRowFound=${!!netRow}`);
 
                   if (upsertRows.length > 0) {
                     const { error: cashflowSnapshotError } = await supabase
