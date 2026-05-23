@@ -86,16 +86,34 @@ function toSlug(s: string): string {
   return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
+const FIRM_KEYWORDS = [
+  'capital', 'bank', 'partners', 'group', 'advisors', 'advisory', 'ventures',
+  'fund', 'finance', 'financial', 'lending', 'credit', 'holdings', 'asset',
+  'investments', 'securities', 'wealth',
+];
+
 /** "Rob at SaaS Capital" → "SaaS Capital"; "Jamie @ Meriwether" → "Meriwether";
- *  "Nicole Gessl - Comerica Bank" → "Comerica Bank". Returns null when no firm
- *  separator is present. */
+ *  "Nicole Gessl - Comerica Bank" → "Comerica Bank";
+ *  "Cliff Sentelypress Growth Capital" → "Sentelypress Growth Capital"
+ *  (heuristic: drop a leading single first-name token when remaining tokens
+ *  include a firm keyword). Returns null when nothing recognisable is found. */
 function parseFirmFromReferrer(raw: string): string | null {
-  const m = raw.match(/\s*(?:@|\bat\b|\s-\s)\s*(.+)$/i);
-  if (!m) return null;
-  const firm = m[1].trim();
-  // Drop trailing parens / percentages like "Nabil - 15%"
-  if (/^\d/.test(firm)) return null;
-  return firm.length >= 2 ? firm : null;
+  const sepMatch = raw.match(/\s*(?:@|\bat\b|\s-\s)\s*(.+)$/i);
+  if (sepMatch) {
+    const firm = sepMatch[1].trim();
+    if (firm.length >= 2 && !/^\d/.test(firm)) return firm;
+  }
+  // Heuristic: "Firstname Firm Name with Keyword" — keep everything after the
+  // first token if a firm keyword is present further along.
+  const tokens = raw.trim().split(/\s+/);
+  if (tokens.length >= 3) {
+    const lower = tokens.map(t => t.toLowerCase().replace(/[^a-z]/g, ''));
+    const kwIdx = lower.findIndex(t => FIRM_KEYWORDS.includes(t));
+    if (kwIdx >= 2) {
+      return tokens.slice(1, kwIdx + 1).join(' ');
+    }
+  }
+  return null;
 }
 
 /** Map a deal.sourced_via string to one of the canonical channel labels used
