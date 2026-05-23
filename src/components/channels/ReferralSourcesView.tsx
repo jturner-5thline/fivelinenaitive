@@ -172,7 +172,11 @@ export function ReferralSourcesView() {
 
   const getTier = (entry: DealReferralSourceEntry): string | null => {
     const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
-    return tierLookup.get(norm(entry.referredBy)) || null;
+    // Prefer manual override from referral_sources table; otherwise use the
+    // hook's computed tier (sales_bd_rules-driven).
+    const manual = tierLookup.get(norm(entry.referredBy));
+    if (manual) return manual;
+    return entry.tier ? `Tier ${entry.tier}` : null;
   };
 
   const [companyFilter, setCompanyFilter] = useState<string[]>([]);
