@@ -20,6 +20,8 @@
 export type SignalKind =
   | "explicit_link"
   | "user_override"
+  | "in_reply_to"
+  | "recognition_override"
   | "subject_alias"
   | "participant_contact"
   | "participant_domain"
@@ -53,6 +55,12 @@ export interface ClassifierThread {
   linked_deal_id: string | null;
   /** Manual override from the user (always wins). */
   user_override_clients_deals: boolean | null;
+  /**
+   * Deal inferred via In-Reply-To chain: if any earlier message in the
+   * thread (or referenced by in_reply_to) is already linked to a deal,
+   * pass that deal id here. Treated as a high-confidence short-circuit.
+   */
+  in_reply_to_deal_id?: string | null;
 }
 
 export interface ClassifierDealContact {
@@ -80,6 +88,16 @@ export interface ClassifierContext {
   internal_domains: string[];
   /** Active, non-archived deals visible to the user. */
   deals: ClassifierDeal[];
+  /**
+   * Learned associations: { from_address, domain } → deal_id. Populated by
+   * earlier user overrides. Contributes a strong (+0.5) signal when an
+   * external participant matches.
+   */
+  recognition_overrides?: {
+    from_address: string | null;
+    domain: string | null;
+    deal_id: string;
+  }[];
 }
 
 export interface ClassificationResult {
@@ -97,6 +115,8 @@ export interface ClassificationResult {
 const W = {
   EXPLICIT_LINK: 1.0,
   USER_OVERRIDE_ON: 1.0,
+  IN_REPLY_TO: 0.99,
+  RECOGNITION_OVERRIDE: 0.5,
   SUBJECT_ALIAS: 0.7,
   PARTICIPANT_CONTACT: 0.7,
   PARTICIPANT_DOMAIN: 0.7,
@@ -203,6 +223,22 @@ export function classifyThread(
     };
   }
 
+  // In-Reply-To chain: if a previous message in the thread is already
+  // linked to a deal, inherit that link with near-certain confidence.
+  if (thread.in_reply_to_deal_id) {
+    return {
+      matched_deal_id: thread.in_reply_to_deal_id,
+      match_confidence: W.IN_REPLY_TO,
+      match_signals: [{
+        kind: "in_reply_to",
+        weight: W.IN_REPLY_TO,
+        deal_id: thread.in_reply_to_deal_id,
+        detail: "Reply in a thread already linked to this deal.",
+      }],
+      is_clients_deals: true,
+    };
+  }
+
   // Score each candidate deal independently — pick the highest-scoring deal
   // as the match. Internal-only threads are scored against subject/url only,
   // not against participant signals (an internal CC is not evidence of a deal).
@@ -221,6 +257,31 @@ export function classifyThread(
   for (const deal of ctx.deals) {
     const signals: MatchSignal[] = [];
     let score = 0;
+
+    // 0) Learned recognition override — if any external participant matches
+    //    a stored (from_address|domain → deal) override, credit +0.5.
+    if (!internalOnly && ctx.recognition_overrides && ctx.recognition_overrides.length > 0) {
+      const externalEmails = thread.participants
+        .map((p) => p.email.toLowerCase())
+        .filter((e) => !internalSet.has(domainOfEmail(e)));
+      const overrideHit = ctx.recognition_overrides.find((ov) => {
+        if (ov.deal_id !== deal.id) return false;
+        if (ov.from_address && externalEmails.includes(ov.from_address.toLowerCase())) return true;
+        if (ov.domain && externalEmails.some((e) => domainOfEmail(e) === ov.domain!.toLowerCase())) return true;
+        return false;
+      });
+      if (overrideHit) {
+        score += W.RECOGNITION_OVERRIDE;
+        signals.push({
+          kind: "recognition_override",
+          weight: W.RECOGNITION_OVERRIDE,
+          deal_id: deal.id,
+          detail: overrideHit.from_address
+            ? `User previously linked ${overrideHit.from_address} to this deal.`
+            : `User previously linked the @${overrideHit.domain} domain to this deal.`,
+        });
+      }
+    }
 
     // 1) Subject contains alias — STRONG
     const subjHit = aliasMatchesAny(subject, deal.aliases);
