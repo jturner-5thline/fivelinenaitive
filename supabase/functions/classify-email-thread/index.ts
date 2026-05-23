@@ -100,16 +100,60 @@ serve(async (req) => {
           : result.match_confidence >= 0.3
             ? "suggested"
             : "unlinked";
+        // Latest message in the thread — surfaces on /debug/recognition.
+        const latestMessageId = thread.thread_id
+          ? (await supabase
+              .from("email_cache")
+              .select("gmail_message_id")
+              .eq("user_id", user.id)
+              .eq("thread_id", tid)
+              .order("received_at", { ascending: false })
+              .limit(1)
+              .maybeSingle()).data?.gmail_message_id ?? null
+          : null;
         await supabase.from("recognition_log").insert({
           user_id: user.id,
-          message_id: null,
+          message_id: latestMessageId,
           thread_id: tid,
           chosen_deal_id: result.matched_deal_id,
           confidence: result.match_confidence,
           signals: result.match_signals,
-          candidates: [],
+          candidates: result.candidates ?? [],
           outcome,
         });
+
+        // #5b — inbound writer side. When a thread auto-links to a deal,
+        // mirror each cached message into activity_logs as a first-class
+        // email row. Idempotent via the unique partial index on message_id.
+        if (result.matched_deal_id && outcome === "auto") {
+          const { data: msgs } = await supabase
+            .from("email_cache")
+            .select("gmail_message_id, subject, body_text, snippet, from_email, to_emails, cc_emails, received_at")
+            .eq("user_id", user.id)
+            .eq("thread_id", tid)
+            .order("received_at", { ascending: false })
+            .limit(20);
+          for (const m of msgs ?? []) {
+            if (!m.gmail_message_id) continue;
+            await supabase.from("activity_logs").insert({
+              deal_id: result.matched_deal_id,
+              user_id: user.id,
+              activity_type: "email",
+              direction: "inbound",
+              subject: m.subject ?? null,
+              body: m.body_text ?? m.snippet ?? null,
+              from_address: m.from_email ?? null,
+              to_addresses: m.to_emails ?? [],
+              cc_addresses: m.cc_emails ?? [],
+              sent_at: m.received_at ?? null,
+              message_id: m.gmail_message_id,
+              thread_id: tid,
+              provider: "gmail",
+              description: (m.subject ?? m.snippet ?? "Email").slice(0, 240),
+              metadata: { source: "classify-email-thread", confidence: result.match_confidence },
+            }).then(() => {}, () => {}); // swallow unique-conflict
+          }
+        }
       } catch (_e) {
         // swallow — telemetry must never break the path
       }
