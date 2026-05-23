@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuickBooksInvoices, useQuickBooksCustomers, useQuickBooksPayments } from '@/hooks/useQuickBooks';
 import { useQuickBooksExpanded } from '@/hooks/useQuickBooksExpanded';
 import { format, subMonths, startOfMonth } from 'date-fns';
+import { resolveQboClientLabel } from '@/lib/qboClientName';
 
 export function useQuickBooksMetrics(realmId?: string) {
   const { data: invoices = [], isLoading: invoicesLoading } = useQuickBooksInvoices(realmId);
@@ -92,10 +93,19 @@ export function useQuickBooksMetrics(realmId?: string) {
       });
     }
 
-    // Top customers by revenue
+    // Top customers by revenue — bucket by COMPANY name (falls back to display
+    // name only when QBO has no company set). See src/lib/qboClientName.ts.
+    const customerById = new Map<string, { company_name: string | null; display_name: string | null }>();
+    customers.forEach((c: any) => {
+      if (!c.qb_id) return;
+      customerById.set(c.qb_id, { company_name: c.company_name ?? null, display_name: c.display_name ?? null });
+    });
     const customerRevenue: Record<string, { name: string; revenue: number; balance: number; invoiceCount: number }> = {};
-    invoices.forEach(inv => {
-      const name = inv.customer_name || 'Unknown';
+    invoices.forEach((inv: any) => {
+      const name = resolveQboClientLabel(
+        inv.customer_name,
+        inv.customer_id ? customerById.get(inv.customer_id) : undefined,
+      );
       if (!customerRevenue[name]) {
         customerRevenue[name] = { name, revenue: 0, balance: 0, invoiceCount: 0 };
       }
