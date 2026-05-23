@@ -138,6 +138,10 @@ export function useSavePartnerRules() {
       qc.invalidateQueries({ queryKey: ['partner_pipeline_rules'] });
       qc.invalidateQueries({ queryKey: ['partner_pipeline_rules_audit'] });
       qc.invalidateQueries({ queryKey: ['partner_promotion_criteria'] });
+      // Force every PartnerTierBadge on the Sales & BD pipeline to recompute
+      // against the freshly-saved thresholds (queryKey already embeds rules,
+      // but invalidating drops stale cache immediately).
+      qc.invalidateQueries({ queryKey: ['partner_tier'] });
       toast.success('Rules updated');
     },
     onError: (e: any) => toast.error(e.message || 'Failed to update rules'),
