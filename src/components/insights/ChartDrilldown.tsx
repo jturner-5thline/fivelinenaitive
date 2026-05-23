@@ -613,16 +613,34 @@ function AvgRevenueView({ req }: { req: DrilldownRequest }) {
 
 function ClientSeriesView({ req }: { req: DrilldownRequest }) {
   const clientName = req.client ?? '';
+  const realm = req.realm ?? FINSERV_REALM_ID;
   const { data, isLoading } = useQuery({
-    queryKey: ['drilldown-client-series', clientName],
+    queryKey: ['drilldown-client-series', realm, clientName, req.period.start, req.period.end],
     enabled: !!clientName,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // Resolve every QBO customer in this realm whose company_name OR
+      // display_name matches the clicked label (post-company-name relabel,
+      // a single bar can roll up multiple QBO customers).
+      const { data: customers, error: cErr } = await supabase
+        .from('quickbooks_customers')
+        .select('qb_id, display_name, company_name')
+        .eq('realm_id', realm)
+        .or(`company_name.eq.${clientName},display_name.eq.${clientName}`);
+      if (cErr) throw cErr;
+      const ids = (customers ?? []).map(c => c.qb_id).filter(Boolean) as string[];
+
+      let query = supabase
         .from('quickbooks_invoices')
-        .select('txn_date, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .eq('customer_name', clientName)
+        .select('txn_date, total_amt, customer_name')
+        .eq('realm_id', realm)
         .order('txn_date', { ascending: true });
+      // Match by resolved customer_ids when we found any; otherwise fall back
+      // to the legacy customer_name match (covers labels that already equal
+      // the QBO display name).
+      query = ids.length > 0
+        ? query.in('customer_id', ids)
+        : query.eq('customer_name', clientName);
+      const { data, error } = await query;
       if (error) throw error;
       const monthly: Record<string, number> = {};
       for (const r of data ?? []) {
@@ -652,6 +670,11 @@ function ClientSeriesView({ req }: { req: DrilldownRequest }) {
         <div style={{ fontSize: 12, color: 'rgba(180,200,230,0.75)' }}>
           {clientName} · monthly invoiced revenue (QuickBooks)
         </div>
+        {req.externalLink && (
+          <div style={{ marginTop: 8 }}>
+            <ExternalLinkBtn href={req.externalLink.href} label={req.externalLink.label} />
+          </div>
+        )}
       </div>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
         <thead>
