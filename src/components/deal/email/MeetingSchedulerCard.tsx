@@ -787,6 +787,8 @@ export function MeetingSchedulerCard({
       const renderedTitle = dealId ? renderTitle().trim() : '';
       const summary = renderedTitle
         || (dealName ? `${dealName} — Intro call` : threadSubject ? `Re: ${threadSubject}` : 'Intro call');
+      // Keep email subject in lock-step with calendar invite title.
+      if (onSetSubject && summary) onSetSubject(summary);
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',
