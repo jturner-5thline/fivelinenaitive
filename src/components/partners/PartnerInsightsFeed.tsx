@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Checkbox } from '@/components/ui/checkbox';
 import { PartnerReportBuilder } from './PartnerReportBuilder';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 
 type InsightType = 'stage_move' | 'new_deal' | 'memo_update' | 'new_partner' | 'stale_alert';
 type TimePeriod = '7d' | '30d' | '90d';
@@ -43,15 +44,18 @@ export type InsightsSource = 'all' | 'partners' | 'referrals';
 export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: InsightsSource } = {}) {
   const { company } = useCompany();
   const { user } = useAuth();
-  const { data: partners = [] } = usePartners();
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
+  const granularity = dateCtx?.range.granularity ?? null;
+  const { data: partners = [] } = usePartners({ start: rangeStart, end: rangeEnd, granularity });
   const { data: stages = [] } = usePipelineStages();
-  const [period, setPeriod] = useState<TimePeriod>('30d');
   const [activeTypes, setActiveTypes] = useState<Set<InsightType>>(
     new Set(['stage_move', 'new_deal', 'memo_update', 'new_partner', 'stale_alert'])
   );
   const [showReport, setShowReport] = useState(false);
 
-  const cutoff = useMemo(() => subDays(new Date(), PERIOD_DAYS[period]).toISOString(), [period]);
+  const cutoff = rangeStart?.toISOString() ?? subDays(new Date(), 30).toISOString();
   const stageMap = useMemo(() => new Map(stages.map(s => [s.id, s.name])), [stages]);
   const partnerMap = useMemo(() => new Map(partners.map(p => [p.id, p.name])), [partners]);
 
@@ -71,7 +75,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
 
   // Stage moves
   const { data: stageMoves = [] } = useQuery({
-    queryKey: ['insights-stage-moves', company?.id, cutoff],
+    queryKey: ['insights-stage-moves', company?.id, cutoff, rangeEnd?.toISOString() ?? null, granularity],
     enabled: !!company?.id,
     queryFn: async () => {
       const { data } = await supabase
@@ -87,7 +91,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
 
   // Memo updates
   const { data: memoUpdates = [] } = useQuery({
-    queryKey: ['insights-memo-updates', company?.id, cutoff],
+    queryKey: ['insights-memo-updates', company?.id, cutoff, rangeEnd?.toISOString() ?? null, granularity],
     enabled: !!company?.id,
     queryFn: async () => {
       const { data } = await supabase
@@ -103,7 +107,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
 
   // New deals referred
   const { data: newDeals = [] } = useQuery({
-    queryKey: ['insights-new-deals', company?.id, cutoff],
+    queryKey: ['insights-new-deals', company?.id, cutoff, rangeEnd?.toISOString() ?? null, granularity],
     enabled: !!company?.id,
     queryFn: async () => {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
@@ -113,6 +117,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
         .select('id, company, value, referred_by, sourced_via, created_at, pipeline_id')
         .eq('company_id', company!.id)
         .gte('created_at', cutoff)
+        .lte('created_at', rangeEnd?.toISOString() ?? new Date().toISOString())
         .not('referred_by', 'is', null)
         .order('created_at', { ascending: false })
         .limit(50);
@@ -233,23 +238,6 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
           <Badge variant="secondary" className="text-xs">{insights.length}</Badge>
         </div>
         <div className="flex items-center gap-2">
-          {/* Time period */}
-          <div className="flex rounded-lg border border-border overflow-hidden">
-            {(Object.entries(PERIOD_LABELS) as [TimePeriod, string][]).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setPeriod(key)}
-                className={`px-3 py-1.5 text-xs font-medium transition-colors ${
-                  period === key
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-card text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
           {/* Type filter */}
           <Popover>
             <PopoverTrigger asChild>
@@ -315,7 +303,7 @@ export function PartnerInsightsFeed({ sourceFilter = 'all' }: { sourceFilter?: I
           open={showReport}
           onClose={() => setShowReport(false)}
           insights={insights}
-          period={period}
+          period={(dateCtx?.range.presetId === 'ttm' ? '90d' : '30d') as TimePeriod}
         />
       )}
     </div>
