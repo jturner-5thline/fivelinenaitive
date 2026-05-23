@@ -1063,6 +1063,7 @@ CRITICAL RULES:
           subject: draft.subject,
           body: plainTextFallback,
           body_html: draft.bodyHtml,
+          deal_id: dealId,
         },
       });
       if (error) throw new Error(error.message || 'Send failed');

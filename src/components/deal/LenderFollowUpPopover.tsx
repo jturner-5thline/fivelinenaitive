@@ -325,6 +325,7 @@ export function LenderFollowUpPopover({
           subject: effectiveSubject || subject.trim(),
           body: body,
           ...(selectedThread ? { reply_to_message_id: selectedThread.latest_message_id } : {}),
+          deal_id: dealId,
         },
       });
       if (sendErr) throw sendErr;

@@ -304,6 +304,7 @@ export function CopilotEmailDraft({ draft }: { draft: EmailDraftValue }) {
           to: to.map((r) => r.email), cc: cc.map((r) => r.email), bcc: bcc.map((r) => r.email),
           subject, body_html: body.includes('<') ? body : `<p>${body.replace(/\n/g, '<br/>')}</p>`,
           body, attachments,
+          deal_id: draft.deal_id ?? null,
         },
       });
       if (error || !data?.success) throw new Error(data?.error || error?.message || 'Send failed');

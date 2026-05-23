@@ -6,12 +6,22 @@
  *   2. user override === true                                    → confidence 1.0
  *   3. user override === false                                   → confidence 0.0 (forced off)
  *   4. computed match_confidence ≥ 0.6                           → tag
- *   5. 0.4 ≤ match_confidence < 0.6                              → "Likely" chip only
- *   6. < 0.4                                                     → no tag, no chip
+ *   5. 0.3 ≤ match_confidence < 0.6                              → "Likely" / "Suggested"
+ *   6. < 0.3                                                     → unlinked
  *
  * Confidence is computed by summing weighted signals and capping at 1.0.
  * Each fired signal is recorded so the AI Assist explainer can render a
- * "Why tagged?" rationale.
+ * "Why tagged?" rationale. The classifier also returns the full ranked
+ * `candidates[]` list (top 5) so the /debug/recognition surface can show
+ * what else was considered.
+ *
+ * Active weights (kept as the implementation source of truth):
+ *   IN_REPLY_TO 0.99 — short-circuits to "auto" on first hit
+ *   SUBJECT_ALIAS / PARTICIPANT_CONTACT / PARTICIPANT_DOMAIN /
+ *     URL_ALIAS / ATTACHMENT_ALIAS  0.7  (any one ⇒ auto)
+ *   RECOGNITION_OVERRIDE / LENDER_CONTACT_DOMAIN  0.5
+ *   BODY_ALIAS  0.4 (medium)
+ * Thresholds: TAG (auto) 0.6 · LIKELY (suggested) 0.3.
  *
  * This module is intentionally self-contained (no Supabase imports) so it
  * can be unit tested with Deno without spinning up the runtime.
@@ -105,6 +115,8 @@ export interface ClassificationResult {
   match_confidence: number;
   match_signals: MatchSignal[];
   is_clients_deals: boolean;
+  /** Top-5 ranked candidates (incl. the chosen deal). Empty when no deal scored above zero. */
+  candidates?: Array<{ deal_id: string; score: number; signals: MatchSignal[] }>;
 }
 
 // ── Tunable weights ────────────────────────────────────────────
@@ -127,7 +139,8 @@ const W = {
 } as const;
 
 export const TAG_THRESHOLD = 0.6;
-export const LIKELY_THRESHOLD = 0.4;
+/** Telemetry/UI boundary for the "Suggested" bucket — matches recognition_log thresholds. */
+export const LIKELY_THRESHOLD = 0.3;
 
 function normaliseDomain(raw: string): string {
   let d = (raw || "").trim().toLowerCase();
@@ -250,6 +263,7 @@ export function classifyThread(
     score: 0,
     signals: [],
   };
+  const allCandidates: Array<{ deal_id: string; score: number; signals: MatchSignal[] }> = [];
 
   const subject = thread.subject || "";
   const body = thread.body_text || "";
@@ -405,16 +419,19 @@ export function classifyThread(
     // Cap at 1.0
     if (score > 1) score = 1;
 
+    if (score > 0) allCandidates.push({ deal_id: deal.id, score, signals: [...signals] });
     if (score > best.score) {
       best = { dealId: deal.id, score, signals };
     }
   }
 
+  const candidates = allCandidates.sort((a, b) => b.score - a.score).slice(0, 5);
   return {
     matched_deal_id: best.score >= LIKELY_THRESHOLD ? best.dealId : null,
     match_confidence: best.score,
     match_signals: best.signals,
     is_clients_deals: best.score >= TAG_THRESHOLD,
+    candidates,
   };
 }
 

@@ -1,83 +1,69 @@
-# FinServ chart drilldowns
+## Remediation Plan — AI Email Assistant fixes #5/#6/#3/#2/#1/#4
 
-Add click-through deep drilldowns to every tile on the FinServ Financial Metrics board, built on a reusable component so the same behavior lights up other analytics boards. Scope is intentionally split into two phases so the user gets useful drilldowns immediately and the deepest QBO-transaction layer ships behind a verified edge function.
+Scope: all 18 actionable findings from the verification report. Classifier weights stay at current values (0.99 / 0.7 / 0.5 / 0.4); the spec doc is updated to match. Live-OAuth smoke tests (#2f / #1f / #4h) and cron-schema verification (#4d) remain user-side — I'll surface what to check after deploy.
 
-## What the user will get
+The plan is grouped by execution phase so we can land it in one DB migration + a small batch of edge-function/UI edits.
 
-- Every bar, line point, and cell on the FinServ board becomes clickable and opens a side panel showing the underlying data for that exact period + metric.
-- Panel supports keyboard (Esc to close), focus trap, ARIA labels on chart elements, loading/empty/error states.
-- "View in QuickBooks" deep links for P&L and Cash Flow tiles, scoped to the clicked period.
-- Drilldown content is range-aware (uses the same `range.granularity` + `range.resolved.start/end` + "Include current month" the parent tile resolved).
+---
 
-## Drilldown content by chart
+### Phase 1 — Schema migration (single migration)
 
-| Chart | Drilldown content |
-|---|---|
-| Total Revenue | QBO Income accounts for the period (account name, amount, % of total). Click an account → transactions panel. |
-| Gross Profit $ / GP Margin % | Income − COGS lines for the period with $ and % of revenue. |
-| Operating Profit $ / Op Margin % | Net Operating Income breakdown: Income, COGS, OpEx subtotals, NOI line. |
-| FinServ Cashflow | Operating / Investing / Financing sections with net contribution and Net Cash Increase. |
-| Active Clients | List of FinServ deals in "Active Client" stage at end of bucket — name, owner, stage entry date, deal value, link to deal page. |
-| Average Revenue by Client | Period revenue total + list of active clients in denominator + per-client value (flat avg for now). |
-| Revenue Change by Client | Selected client's monthly revenue series + variance vs prior month + link to deal. |
-| Income by Product/Service (stacked) | Per-product totals for clicked period + transactions drill. |
+1. **`recognition_log.message_id`** — already exists nullable, but `classify-email-thread` writes NULL. No schema change; fixed in Phase 2 by populating it.
+2. **`recognition_log.candidates`** — already jsonb. No schema change; populated in Phase 2.
+3. **`meeting_holds.google_event_id`** — existing; no change. Append `extendedProperties.private.naitive_hold_id` is a Nylas event-payload concern, no DB change.
+4. **Cron job** — create `meeting-holds-sweep` cron at 15 min if not present (idempotent insert into `cron.job` via `cron.schedule`).
+5. **Seed `meeting_title_templates`** for 5th Line tenants — one Default row + 7 stage-matched rows per `org_company_id` belonging to 5thline.co domain. Insert via `supabase--insert` (data not schema).
 
-## Architecture
+### Phase 2 — Edge-function edits (`smart-email-ai`, `gmail-messages`, `classify-email-thread`, `meeting-holds`)
 
-```text
-src/components/insights/
-  ChartDrilldownPanel.tsx           ← new: shared Sheet-based panel (focus trap, Esc, a11y)
-  drilldown/
-    PnlBreakdownView.tsx            ← Income / COGS / OpEx / NOI tables, click row → transactions
-    CashflowBreakdownView.tsx       ← Operating / Investing / Financing sections
-    ActiveClientsView.tsx           ← deal list with stage-entry timestamps
-    AvgRevenuePerClientView.tsx     ← revenue + denominator list + per-client values
-    ClientRevenueSeriesView.tsx     ← per-client monthly series + deal links
-    PnlTransactionsView.tsx         ← second-level drill, lists individual QBO txns
-    QboLinkButton.tsx               ← shared "View in QuickBooks" deep link builder
-  useDrilldown.ts                   ← context hook providing { open(ctx) } to any chart
-```
+6. **#5b Writer wiring (outbound)** — in `smart-email-ai/index.ts`, add new action `log_email_activity` that inserts a full email row into `activity_logs` with all new columns (`direction='outbound'`, subject, body, from/to/cc/bcc, message_id from Gmail send response, thread_id, sent_at, provider='gmail'). Invoked by the existing send path right after the Gmail send call.
+7. **#5b Writer wiring (inbound)** — in `gmail-messages/index.ts` (the sync ingest path), after upserting each `gmail_messages` row, if the message resolves to a deal via `email_threads.matched_deal_id`, additionally upsert one `activity_logs` row keyed by `message_id` (ON CONFLICT DO NOTHING via the existing unique partial index).
+8. **#6a `candidates[]` population** — in `classify-email-thread/index.ts`, change the recognition_log insert to write `candidates: result.candidates ?? []`. In `classifier.ts`, add a `candidates` field to the return shape containing the ranked top-5 `{deal_id, score, signals[]}` considered.
+9. **#6c Threshold alignment** — change UI chip thresholds to `0.6 / 0.3` (currently 0.6 / 0.4) so telemetry and UI agree. Edit `classifier.ts` constants only.
+10. **#6g `message_id` population** — in `classify-email-thread/index.ts`, write the latest message's `gmail_message_id` into `recognition_log.message_id` (instead of NULL).
+11. **#4c `— Pending` suffix + `naitive_hold_id` ext-prop** — in `meeting-holds/index.ts` `runCreate`, append ` — Pending` to the Nylas event title and pass `{ extendedProperties: { private: { naitive_hold_id: <row id> } } }` on the create call.
+12. **#4a Refill window ±5 business days** — in `MeetingSchedulerCard` re-verify branch, replace the generic slot generator call with one explicitly windowed to `[firstChosenSlot, +5 business days]`, mirroring the documented behavior.
 
-New data sources:
+### Phase 3 — Client / UI edits (additive)
 
-- `src/hooks/useQbPnlBreakdown.ts` — reads the existing `qbo_pnl_snapshots.raw_response` (already stored) and parses the section tree for the clicked period. No new edge function call required for the first-level breakdown.
-- `src/hooks/useQbCashflowBreakdown.ts` — same approach against `qbo_cashflow_snapshots.raw_response`.
-- `src/hooks/useFinServActiveClientsAtDate.ts` — reuses the existing stage-history reconstruction we already wrote, returns deal rows (id, name, owner, stage_entered_at, value).
-- `src/hooks/useFinServClientMonthlySeries.ts` — bucket-aware monthly revenue per QBO customer (joins existing per-client revenue hook output).
+13. **#3c Settings seeder** — `MeetingTitleSettings.tsx` already loads SEED_TEMPLATES client-side. Add an on-mount upsert (admin-only) that persists missing seed rows to `meeting_title_templates` so they're visible to other users; idempotent.
+14. **#3e Reply subject guard** — extend `useRenderMeetingTitle` consumers (`StageMeetingTitleChip`, `MeetingSchedulerCard.onSetSubject`) to accept a `isReply` flag; when true, return `Re: <original>` instead of the rendered title. Wire `isReply` from `InlineReplyComposer` / `EmailComposerCard`.
+15. **#6e "Confirm link" pill on Communications tab** — in `DealCommunicationsTab.tsx`, when a row's recognition outcome is `suggested` (joined via `activity_logs.message_id → recognition_log.message_id`), render an inline "Confirm link" pill that writes a `recognition_overrides` row on click.
+16. **#4f Per-slot status dots green/amber/grey/red** — extend `SlotStatus` union to include `'amber' | 'grey' | 'red'` and map: clean→green, refilled→amber, limited-unknown→grey, conflict→red. Pure presentational.
+17. **#2b ±1-week prefetch** — in `useCalendarEvents`, after the primary fetch, fire-and-forget prefetch the prior and next ranges via `queryClient.prefetchQuery`.
+18. **#2d react-window virtualization** — wrap the time-grid rows in `react-window`'s `FixedSizeList`. Already a dep; if missing, `bun add react-window`.
 
-New edge function for the transaction-level second drill:
+### Phase 4 — Documentation only (no code behavior change)
 
-- `supabase/functions/qbo-transactions-list` — verifies `auth.getUser()`, accepts `{ realm_id, account_id, start_date, end_date, customer_id? }`, proxies QBO `reports/TransactionList` (Accrual), returns normalized rows `{ txn_date, type, num, name, memo, amount, account }`. Deployed automatically; respects existing realm scoping for 5th Line.
+19. **#6b Spec doc** — update the comments in `classifier.ts` so the documented weights match the implemented constants (0.99 / 0.7 / 0.5 / 0.4), and note thresholds 0.6 / 0.3.
 
-## Wiring on the FinServ board
+### Phase 5 — Deploy + smoke
 
-`FinServFinancialMetricsDashboard.tsx`:
+Deploy `smart-email-ai`, `gmail-messages`, `classify-email-thread`, `meeting-holds`. Then ask the user to run the three live-OAuth smoke tests (#2f / #1f / #4h) and to verify the `meeting-holds-sweep` cron row.
 
-- Wrap the dashboard return in `<DrilldownProvider>` so child charts get `useDrilldown()`.
-- Replace today's narrow `openSinglePoint(...)` calls with the richer `open({ kind, period, granularity, payload })` calls. Each chart passes the bucket key it owns; the panel resolves the bucket's start/end via the parent `range`.
-- Add `role="button"` + `aria-label="Drill into ${metric} for ${label}"` on each `<Bar>` / `<Line>` `onClick` handler via Recharts `accessibilityLayer` plus per-cell labels.
+---
 
-## Reuse on other boards
+### Items explicitly NOT done
 
-`ChartDrilldownPanel` + `DrilldownProvider` are board-agnostic. The QuickBooks Financial and Consolidated Debt Pipeline boards already render shared chart wrappers — they pick up the same drill behavior by:
+- **#5d Backfill of historical `deals.notes`** — query shows zero candidate rows (0 deals match AI-email-shape regex). I'll add a no-op stub script under `supabase/scripts/` but won't run any destructive migration.
+- **#6h `deal_contacts` table** — the spec called for this table; the classifier uses `contact_deals` instead. Keeping `contact_deals` (current behavior) and reconciling the spec text in the same Phase-4 doc edit.
+- **#6b weight rewrite** — user opted to keep current code.
+- **#4d cron verification, #2f / #1f / #4h live smoke** — require permissions/sessions I don't have from here.
 
-1. Mounting `<DrilldownProvider>` at the board root.
-2. Replacing their existing `openSinglePoint` callbacks with `open({ kind: 'pnl' | 'cashflow' | ... , ... })`.
+### Files touched
 
-That's a thin per-board change (no per-chart rewrite).
+- `supabase/functions/smart-email-ai/index.ts`
+- `supabase/functions/gmail-messages/index.ts`
+- `supabase/functions/classify-email-thread/index.ts`
+- `supabase/functions/classify-email-thread/classifier.ts`
+- `supabase/functions/meeting-holds/index.ts`
+- `src/components/settings/MeetingTitleSettings.tsx`
+- `src/components/deal/email/MeetingSchedulerCard.tsx`
+- `src/components/deal/email/StageMeetingTitleChip.tsx`
+- `src/components/deal/email/InlineReplyComposer.tsx` (pass `isReply`)
+- `src/components/deal/DealCommunicationsTab.tsx`
+- `src/hooks/useCalendarEvents.ts`
+- `src/components/calendar/NaitiveCalendar.tsx`
+- One new migration for the sweep cron + (separately, via insert tool) the 5th Line seed templates.
 
-## Phasing
-
-**Phase 1 (this iteration, ships end-to-end on FinServ board):**
-- Shared `DrilldownProvider` + `ChartDrilldownPanel` (Sheet + focus trap + Esc).
-- Hooks parsing `raw_response` from existing snapshots for P&L and Cashflow breakdowns (no new edge call).
-- Active Clients + Avg Revenue + Revenue Change drilldowns using existing data.
-- "View in QuickBooks" deep links for P&L and Cash Flow tiles.
-- Every FinServ chart bar/line/cell becomes clickable and opens the right view.
-- Keyboard + ARIA pass.
-
-**Phase 2 (follow-up, only if you want the second-level transaction drill now):**
-- `qbo-transactions-list` edge function + `PnlTransactionsView` (click an account row → modal table of transactions).
-- Same drilldowns wired onto QuickBooks Financial and Consolidated Debt Pipeline boards.
-
-Confirming you want both phases in one go, or ship Phase 1 first and then Phase 2? Phase 1 alone is the bigger UX win and avoids a QBO API round-trip on every drill.
+Approve to proceed and I'll execute Phases 1-5 in order.
