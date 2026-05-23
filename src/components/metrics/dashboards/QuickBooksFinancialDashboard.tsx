@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useQuickBooksMetrics } from '@/hooks/useQuickBooksMetrics';
+import { useQuickBooksMetrics, type QuickBooksMetricsPeriod } from '@/hooks/useQuickBooksMetrics';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
@@ -30,9 +30,19 @@ const formatCurrency = (value: number) => {
   return `$${value.toFixed(0)}`;
 };
 
-export function QuickBooksFinancialDashboard() {
+interface Props {
+  /** Optional period filter for flow-based metrics (revenue/payments/etc). */
+  period?: QuickBooksMetricsPeriod & { label: string };
+  /** Optional text rendered as a Badge on each tile header (e.g. "Monthly · 2026 YTD"). */
+  periodBadge?: string;
+}
+
+export function QuickBooksFinancialDashboard({ period, periodBadge }: Props = {}) {
   const { data: status } = useQuickBooksStatus();
-  const { data: metrics, isLoading } = useQuickBooksMetrics();
+  const { data: metrics, isLoading } = useQuickBooksMetrics(
+    undefined,
+    period ? { start: period.start, end: period.end } : undefined,
+  );
   const [drill, setDrill] = useState<{
     context: DrilldownContext;
     columns: DrilldownColumn[];
@@ -105,6 +115,12 @@ export function QuickBooksFinancialDashboard() {
     <>
     <div className="space-y-6">
       {/* Stat Cards */}
+      {periodBadge && (
+        <div className="flex items-center gap-2">
+          <Badge variant="outline" className="text-xs">{periodBadge}</Badge>
+          <span className="text-[11px] text-muted-foreground">A/R, A/P, aging &amp; overdue are current snapshots</span>
+        </div>
+      )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         {statCards.map((card) => (
           <Card key={card.title} onClick={card.onClick} className="cursor-pointer hover:border-primary/40 transition-colors">
