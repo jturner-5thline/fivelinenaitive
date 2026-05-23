@@ -25,6 +25,29 @@ function err(msg: string, status = 400) {
   });
 }
 
+/**
+ * Heuristic guardrail: detects when a "note" payload is actually an email
+ * body — keeps the AI from polluting deals.notes with email content.
+ */
+function looksLikeEmailBody(text: string | null | undefined): boolean {
+  if (!text || text.length < 40) return false;
+  const t = text.toLowerCase();
+  let hits = 0;
+  // Subject: header at line start
+  if (/^\s*subject\s*:/m.test(text)) hits += 2;
+  // From:/To:/Cc: headers
+  if (/^\s*(from|to|cc|bcc)\s*:/m.test(text)) hits += 2;
+  // Greeting line ("Hi Name," / "Hello Name," / "Dear Name,")
+  if (/^\s*(hi|hello|dear|hey)\b[^\n]{0,40},\s*$/m.test(text)) hits += 1;
+  // Sign-off ("Best,", "Best regards,", "Cheers,", "Sincerely,", "Thanks,")
+  if (/^\s*(best( regards)?|kind regards|warm regards|cheers|sincerely|regards|thanks(,| again)?|talk soon|speak soon)[,.]?\s*$/im.test(text)) hits += 1;
+  // Embedded email address (bare token)
+  if (/[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}/i.test(text)) hits += 1;
+  // "Sent from my iPhone" / forwarded-message marker
+  if (/sent from my (iphone|android|blackberry)|-+\s*forwarded message\s*-+|on .{0,30} wrote:/i.test(text)) hits += 2;
+  return hits >= 3;
+}
+
 // Dice coefficient for fuzzy matching
 function dice(a: string, b: string): number {
   const s1 = a.toLowerCase().trim();
