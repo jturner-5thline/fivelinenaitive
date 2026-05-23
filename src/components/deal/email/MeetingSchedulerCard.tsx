@@ -19,7 +19,7 @@ import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
-import { InteractiveWeekCalendar } from './InteractiveWeekCalendar';
+import { NaitiveCalendar } from '@/components/calendar/NaitiveCalendar';
 import type { EmailThread } from './mockEmailData';
 import { useRenderMeetingTitle } from '@/hooks/useRenderMeetingTitle';
 
