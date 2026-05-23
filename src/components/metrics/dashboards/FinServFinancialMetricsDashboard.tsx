@@ -109,13 +109,17 @@ export function FinServFinancialMetricsDashboard() {
   const initialPersisted = useMemo(() => loadPersistedRange('finserv-financial-metrics'), []);
   const initialResolved = useMemo(() => {
     const id = initialPersisted?.presetId ?? 'ytd';
-    return resolveRange(id, initialPersisted?.custom);
+    return resolveRange(id, {
+      custom: initialPersisted?.custom,
+      includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
+    });
   }, [initialPersisted]);
   const [range, setRange] = useState<InsightsTimeRangeValue>(() => ({
     presetId: initialPersisted?.presetId ?? 'ytd',
     granularity:
       initialPersisted?.granularity ?? defaultGranularityForRange(initialResolved.start, initialResolved.end),
     custom: initialPersisted?.custom,
+    includeCurrentMonth: initialPersisted?.includeCurrentMonth ?? true,
     resolved: initialResolved,
   }));
 
