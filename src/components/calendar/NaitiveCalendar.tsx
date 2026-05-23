@@ -443,49 +443,55 @@ interface TimeGridProps {
   onEventClick: (ev: CalEvent) => void;
   onSlotClick: (start: Date) => void;
   compact: boolean;
+  tz: string;
+  workingHours: WorkingHours | null;
+  onHoverChange?: (dayIdx: number | null, minutes: number | null) => void;
 }
 
 function TimeGridView({
   view, anchor, events, highlightSlots, now, hourHeight, scrollRef, onEventClick, onSlotClick, compact,
+  tz, workingHours, onHoverChange,
 }: TimeGridProps) {
   const days = view === 'day' ? [startOfDay(anchor)] : getWeekDays(anchor);
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const slotsPerHour = 60 / SLOT_MINUTES;
 
+  // Bucket events into the day column they fall on *in the active TZ*.
+  const dayKeys = days.map((d) => tzDayKey(d, tz));
   const eventsByDay = useMemo(() => {
     const map: Record<number, CalEvent[]> = {};
-    for (let i = 0; i < days.length; i++) map[i] = [];
+    for (let i = 0; i < dayKeys.length; i++) map[i] = [];
     for (const ev of events) {
       if (ev.all_day) continue;
-      const s = new Date(ev.start);
-      const idx = days.findIndex((d) => isSameDay(d, s));
+      const k = tzDayKey(new Date(ev.start), tz);
+      const idx = dayKeys.indexOf(k);
       if (idx >= 0) map[idx].push(ev);
     }
     return map;
-  }, [events, days]);
+  }, [events, dayKeys.join('|'), tz]);
 
   const allDayByDay = useMemo(() => {
     const map: Record<number, CalEvent[]> = {};
-    for (let i = 0; i < days.length; i++) map[i] = [];
+    for (let i = 0; i < dayKeys.length; i++) map[i] = [];
     for (const ev of events) {
       if (!ev.all_day) continue;
-      const s = new Date(ev.start);
-      const idx = days.findIndex((d) => isSameDay(d, s));
+      const k = tzDayKey(new Date(ev.start), tz);
+      const idx = dayKeys.indexOf(k);
       if (idx >= 0) map[idx].push(ev);
     }
     return map;
-  }, [events, days]);
+  }, [events, dayKeys.join('|'), tz]);
 
   const highlightByDay = useMemo(() => {
     const map: Record<number, HighlightSlot[]> = {};
-    for (let i = 0; i < days.length; i++) map[i] = [];
+    for (let i = 0; i < dayKeys.length; i++) map[i] = [];
     for (const slot of highlightSlots ?? []) {
-      const s = new Date(slot.start);
-      const idx = days.findIndex((d) => isSameDay(d, s));
+      const k = tzDayKey(new Date(slot.start), tz);
+      const idx = dayKeys.indexOf(k);
       if (idx >= 0) map[idx].push(slot);
     }
     return map;
-  }, [highlightSlots, days]);
+  }, [highlightSlots, dayKeys.join('|'), tz]);
 
   const gridCols = view === 'day' ? '44px 1fr' : '44px repeat(7,1fr)';
 
@@ -570,6 +576,8 @@ function TimeGridView({
                         aria-label={`${format(d, 'EEE')} ${h}:${String(s * SLOT_MINUTES).padStart(2, '0')}`}
                         className="absolute left-0 right-0 hover:bg-white/[0.04]"
                         style={{ top: h * hourHeight + (s * hourHeight) / slotsPerHour, height: hourHeight / slotsPerHour }}
+                        onMouseEnter={() => onHoverChange?.(dayIdx, h * 60 + s * SLOT_MINUTES)}
+                        onMouseLeave={() => onHoverChange?.(null, null)}
                       />
                     )),
                   )}
@@ -583,12 +591,53 @@ function TimeGridView({
                     />
                   ))}
 
+                  {/* Working-hours dim band (outside-of-hours subtly darker). */}
+                  {workingHours && (() => {
+                    // Day-of-week in the user's TZ
+                    const dowKey = (tzFmt(d, tz, 'EEE').toLowerCase().slice(0, 3) as DayOfWeek);
+                    const wh = workingHours[dowKey];
+                    if (!wh) {
+                      return (
+                        <div
+                          className="pointer-events-none absolute left-0 right-0 bg-foreground/[0.05]"
+                          style={{ top: 0, height: hours.length * hourHeight }}
+                          aria-hidden
+                        />
+                      );
+                    }
+                    const [sh, sm] = wh.start.split(':').map((x) => parseInt(x, 10));
+                    const [eh, em] = wh.end.split(':').map((x) => parseInt(x, 10));
+                    const startMin = sh * 60 + sm;
+                    const endMin = eh * 60 + em;
+                    return (
+                      <>
+                        {startMin > 0 && (
+                          <div
+                            className="pointer-events-none absolute left-0 right-0 bg-foreground/[0.05]"
+                            style={{ top: 0, height: (startMin / 60) * hourHeight }}
+                            aria-hidden
+                          />
+                        )}
+                        {endMin < 24 * 60 && (
+                          <div
+                            className="pointer-events-none absolute left-0 right-0 bg-foreground/[0.05]"
+                            style={{
+                              top: (endMin / 60) * hourHeight,
+                              height: ((24 * 60 - endMin) / 60) * hourHeight,
+                            }}
+                            aria-hidden
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
+
                   {/* Highlight slots (e.g. proposed meeting times) */}
                   {dayHighlights.map((slot, i) => {
                     const s = new Date(slot.start);
                     const e = new Date(slot.end);
-                    const top = (differenceInMinutes(s, startOfDay(d)) / 60) * hourHeight;
-                    const height = Math.max(12, (differenceInMinutes(e, s) / 60) * hourHeight - 2);
+                    const top = (tzMinutesFromMidnight(s, tz) / 60) * hourHeight;
+                    const height = Math.max(12, ((tzMinutesFromMidnight(e, tz) - tzMinutesFromMidnight(s, tz)) / 60) * hourHeight - 2);
                     return (
                       <div
                         key={`h-${i}`}
@@ -605,7 +654,7 @@ function TimeGridView({
 
                   {/* Now indicator */}
                   {today && (() => {
-                    const mins = differenceInMinutes(now, startOfDay(d));
+                    const mins = tzMinutesFromMidnight(now, tz);
                     const top = (mins / 60) * hourHeight;
                     if (top < 0 || top > hours.length * hourHeight) return null;
                     return (
@@ -620,8 +669,8 @@ function TimeGridView({
                   {dayEvents.map((ev, i) => {
                     const s = new Date(ev.start);
                     const e = new Date(ev.end);
-                    const top = (differenceInMinutes(s, startOfDay(d)) / 60) * hourHeight;
-                    const height = Math.max(14, (differenceInMinutes(e, s) / 60) * hourHeight - 2);
+                    const top = (tzMinutesFromMidnight(s, tz) / 60) * hourHeight;
+                    const height = Math.max(14, ((tzMinutesFromMidnight(e, tz) - tzMinutesFromMidnight(s, tz)) / 60) * hourHeight - 2);
                     const accent = ev.color
                       ? { borderColor: ev.color, backgroundColor: `${ev.color}26` }
                       : undefined;
@@ -630,7 +679,7 @@ function TimeGridView({
                         key={ev.id ?? `${ev.start}-${i}`}
                         type="button"
                         onClick={() => onEventClick(ev)}
-                        aria-label={`${ev.title || 'Busy'} at ${format(s, 'h:mm a')}`}
+                        aria-label={`${ev.title || 'Busy'} at ${tzFmt(s, tz, 'h:mm a')}`}
                         className={cn(
                           'absolute left-1 right-1 z-10 overflow-hidden rounded-sm border px-1.5 py-0.5 text-left',
                           !accent && 'border-primary/40 bg-primary/15',
@@ -641,7 +690,7 @@ function TimeGridView({
                         <div className="truncate text-[10px] font-medium leading-tight">{ev.title || 'Busy'}</div>
                         {height > 28 && (
                           <div className="truncate text-[9px] text-muted-foreground leading-tight">
-                            {format(s, 'h:mm')}–{format(e, 'h:mm a')}
+                            {tzFmt(s, tz, 'h:mm')}–{tzFmt(e, tz, 'h:mm a')}
                           </div>
                         )}
                       </button>
@@ -661,10 +710,12 @@ function AgendaView({
   events,
   highlightSlots,
   onEventClick,
+  tz,
 }: {
   events: CalEvent[];
   highlightSlots?: HighlightSlot[];
   onEventClick: (ev: CalEvent) => void;
+  tz: string;
 }) {
   const sorted = useMemo(
     () => [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()),
