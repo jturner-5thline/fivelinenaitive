@@ -483,6 +483,36 @@ serve(async (req: Request): Promise<Response> => {
         });
       }
 
+      case "create_calendar": {
+        if (!body.calendar_name) {
+          return new Response(JSON.stringify({ error: "calendar_name required" }), {
+            status: 400,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        const response = await fetch(`${baseUrl}/calendars`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            name: body.calendar_name,
+            description: body.calendar_description ?? null,
+            timezone: body.timezone ?? null,
+          }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+          console.error("Nylas create calendar error:", data);
+          return new Response(JSON.stringify({ error: data.message || "Failed to create calendar" }), {
+            status: response.status,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        return new Response(
+          JSON.stringify({ id: data?.data?.id, name: data?.data?.name }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
       default:
         return new Response(JSON.stringify({ error: "Invalid action" }), {
           status: 400,
