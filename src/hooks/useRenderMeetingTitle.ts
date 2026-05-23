@@ -8,10 +8,8 @@ import { renderMeetingTitle, type MeetingTitleDeal } from '@/lib/renderMeetingTi
 interface DealRow {
   id: string;
   company: string | null;
-  stage_id: string | null;
-  lender_name?: string | null;
-  partner_name?: string | null;
-  referral_source?: string | null;
+  stage: string | null;
+  referral_source: string | null;
 }
 
 /**
@@ -37,10 +35,10 @@ export function useRenderMeetingTitle(dealId?: string | null) {
     (async () => {
       const { data } = await supabase
         .from('deals')
-        .select('id, company, stage_id, lender_name, partner_name, referral_source')
+        .select('id, company, stage, referral_source')
         .eq('id', dealId)
         .maybeSingle();
-      if (!cancelled) setDeal((data as DealRow) ?? null);
+      if (!cancelled) setDeal((data as unknown as DealRow) ?? null);
       if (!cancelled) setIsLoadingDeal(false);
     })();
     return () => { cancelled = true; };
@@ -56,14 +54,19 @@ export function useRenderMeetingTitle(dealId?: string | null) {
   }, [user]);
 
   const render = useCallback((overrides?: Partial<MeetingTitleDeal>) => {
-    const stage = deal?.stage_id ? stages.find((s) => s.id === deal.stage_id) : undefined;
+    // deals.stage stores the stage label/id as text; try to resolve to a
+    // configured stage row either by id or by case-insensitive label match.
+    const rawStage = deal?.stage ?? null;
+    const stage = rawStage
+      ? stages.find((s) => s.id === rawStage || s.label.toLowerCase() === rawStage.toLowerCase())
+      : undefined;
     const dealForRender: MeetingTitleDeal = {
       company_name: deal?.company ?? null,
       name: deal?.company ?? null,
-      stage_id: deal?.stage_id ?? null,
-      stage_label: stage?.label ?? null,
-      lender_name: deal?.lender_name ?? null,
-      partner_name: deal?.partner_name ?? null,
+      stage_id: stage?.id ?? rawStage,
+      stage_label: stage?.label ?? rawStage,
+      lender_name: null,
+      partner_name: null,
       referrer_name: deal?.referral_source ?? null,
       ...overrides,
     };
