@@ -36,6 +36,10 @@ export interface DrilldownRequest {
   /** Per-kind extras. */
   metric?: 'revenue' | 'gross_profit' | 'gross_margin' | 'operating_profit' | 'operating_margin';
   client?: string;
+  /** QuickBooks realm id (defaults to FinServ when omitted). */
+  realm?: string;
+  /** Optional QBO deep link rendered above the body. */
+  externalLink?: { href: string; label: string };
   /** Optional generic rows for kind='value'. */
   rows?: Array<{ metric: string; value: string }>;
 }
