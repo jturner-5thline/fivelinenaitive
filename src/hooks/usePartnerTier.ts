@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { usePartnerRules, DEFAULT_PARTNER_RULES } from '@/hooks/usePartnerRules';
+import { filterDealsForPartner } from '@/lib/partnerNameMatch';
 
 const SIGNED_STAGES = ['final-credit-items', 'closed-won', 'funded-invoiced', 'terms-issued', 'agreement-pending'];
 
@@ -52,17 +53,27 @@ export function usePartnerTier(partner: {
       const win12 = new Date(now - 12 * 30 * MS_PER_DAY).toISOString();
       const win3 = new Date(now - 3 * 30 * MS_PER_DAY).toISOString();
 
+      // Pull all deals for the company that have a referral source set, then
+      // match client-side. The previous `.or(referred_by.ilike.${name},...)`
+      // required an EXACT case-insensitive match (no wildcards), so partner
+      // names like "Dorian Meza @ Truist Bank" never matched referred_by
+      // values like "Dorian Meza" → every partner collapsed to Tier 4 / 3.
       const { data: deals } = await supabase
         .from('deals')
         .select('id, stage, referred_by, sourced_via, created_at, closing_date')
         .eq('company_id', company!.id)
-        .or(`referred_by.ilike.${name},sourced_via.ilike.${name}`);
+        .or('referred_by.not.is.null,sourced_via.not.is.null');
 
-      const rows = (deals || []) as Array<{
-        stage: string | null;
-        created_at: string;
-        closing_date: string | null;
-      }>;
+      const rows = filterDealsForPartner(
+        (deals || []) as Array<{
+          stage: string | null;
+          referred_by: string | null;
+          sourced_via: string | null;
+          created_at: string;
+          closing_date: string | null;
+        }>,
+        partner!.name || '',
+      );
 
       const qualifiedTrailingT1 = rows.filter(
         d => d.stage && qualifiedStages.includes(d.stage) && d.created_at >= winT1,
