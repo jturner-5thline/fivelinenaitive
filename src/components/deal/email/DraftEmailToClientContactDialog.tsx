@@ -311,6 +311,7 @@ export function DraftEmailToClientContactDialog({
           body_html: body,
           attachments: encodedAttachments,
           reply_to_message_id: selectedThread?.latestMessageId,
+          deal_id: dealId ?? null,
         },
       });
       if (error) throw error;
