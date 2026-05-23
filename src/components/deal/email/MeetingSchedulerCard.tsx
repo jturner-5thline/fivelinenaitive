@@ -84,6 +84,12 @@ interface Props {
   thread?: EmailThread;
   /** Inserts text into the composer body. */
   onInsert: (text: string) => void;
+  /** Optional — when provided, the rendered stage-driven meeting title is
+   *  pushed up as the suggested email subject when the user inserts a
+   *  proposal or confirms a slot. Composer decides whether to overwrite
+   *  an existing subject (typically: only if blank or unchanged from
+   *  thread default). */
+  onSetSubject?: (subject: string) => void;
   /** Closes the scheduler back to the chip row. */
   onClose: () => void;
 }
