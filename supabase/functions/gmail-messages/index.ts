@@ -717,6 +717,37 @@ serve(async (req: Request): Promise<Response> => {
             sent_at: new Date().toISOString(),
           });
 
+        // #5b — first-class outbound activity row. Only writes when the
+        // caller supplied a deal_id (otherwise nothing to attach to). The
+        // unique partial index on activity_logs.message_id makes this
+        // idempotent if the function is retried.
+        if (deal_id && sentMsg.id) {
+          try {
+            const senderEmail = (sentMsg.from?.[0]?.email as string | undefined) ?? null;
+            await supabase.from("activity_logs").insert({
+              deal_id,
+              user_id: user.id,
+              activity_type: "email",
+              direction: "outbound",
+              subject: subject ?? null,
+              body: body_html || body || null,
+              from_address: senderEmail,
+              to_addresses: toList,
+              cc_addresses: ccList,
+              bcc_addresses: bccList,
+              sent_at: new Date().toISOString(),
+              message_id: sentMsg.id,
+              thread_id: sentMsg.thread_id ?? hintThreadId ?? null,
+              in_reply_to: reply_to_message_id ?? null,
+              provider: "gmail",
+              description: (subject ?? "Email").slice(0, 240),
+              metadata: { source: "gmail-messages-send" },
+            });
+          } catch (logErr) {
+            console.warn("[gmail-messages.send] activity_log insert failed", logErr);
+          }
+        }
+
         console.log(`Email sent via Nylas: ${sentMsg.id}`);
         return new Response(JSON.stringify({ success: true, message_id: sentMsg.id }), {
           status: 200,
