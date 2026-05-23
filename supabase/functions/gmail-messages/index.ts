@@ -577,7 +577,7 @@ serve(async (req: Request): Promise<Response> => {
       }
 
       case "send": {
-        const { to, cc, bcc, subject, body, body_html, attachments, reply_to_message_id } = requestData;
+        const { to, cc, bcc, subject, body, body_html, attachments, reply_to_message_id, deal_id, thread_id: hintThreadId } = requestData;
 
         // Defensive recipient normalization — Nylas v3 rejects comma-joined
         // strings (e.g. "a@x.co, b@x.co"). Always coerce to a clean string[]
