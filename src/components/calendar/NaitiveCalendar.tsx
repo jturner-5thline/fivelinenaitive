@@ -49,6 +49,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
+import { usePrefetchAdjacentCalendarRanges } from '@/hooks/useCalendarEvents';
 import {
   Popover,
   PopoverContent,
