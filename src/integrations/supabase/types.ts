@@ -23946,6 +23946,7 @@ export type Database = {
         | "Investors"
         | "Advisors"
         | "Other"
+        | "Lenders"
       claap_meeting_status:
         | "pending_review"
         | "routed"
@@ -24205,6 +24206,7 @@ export const Constants = {
         "Investors",
         "Advisors",
         "Other",
+        "Lenders",
       ],
       claap_meeting_status: [
         "pending_review",
