@@ -734,6 +734,53 @@ function AgendaView({
     return Array.from(map.entries());
   }, [sorted]);
 
+  // Flatten into a row array so we can virtualize uniformly when the
+  // agenda gets long. Each row is either a day header, an event, or one
+  // of the trailing highlight (proposed-slot) rows. Below the threshold
+  // we fall through to the original block layout (cheap, no virtualizer
+  // overhead for small ranges).
+  type Row =
+    | { kind: 'day'; key: string; day: string }
+    | { kind: 'event'; key: string; event: CalEvent }
+    | { kind: 'hl-header'; key: string }
+    | { kind: 'hl'; key: string; slot: HighlightSlot };
+  const rows = useMemo<Row[]>(() => {
+    const out: Row[] = [];
+    for (const [day, items] of grouped) {
+      out.push({ kind: 'day', key: `d-${day}`, day });
+      for (let i = 0; i < items.length; i++) {
+        const ev = items[i];
+        out.push({ kind: 'event', key: ev.id ?? `e-${day}-${i}`, event: ev });
+      }
+    }
+    if ((highlightSlots ?? []).length > 0) {
+      out.push({ kind: 'hl-header', key: 'hl-header' });
+      (highlightSlots ?? []).forEach((slot, i) =>
+        out.push({ kind: 'hl', key: `hl-${i}`, slot }),
+      );
+    }
+    return out;
+  }, [grouped, highlightSlots]);
+
+  const VIRTUALIZE_THRESHOLD = 50;
+
+  if (rows.length > VIRTUALIZE_THRESHOLD) {
+    return (
+      <List
+        rowCount={rows.length}
+        rowHeight={(idx) => {
+          const r = rows[idx];
+          if (r.kind === 'day' || r.kind === 'hl-header') return 28;
+          return 36;
+        }}
+        rowProps={{ rows, onEventClick }}
+        rowComponent={AgendaVirtualRow}
+        style={{ height: 520 }}
+        className="divide-y divide-white/[0.05]"
+      />
+    );
+  }
+
   return (
     <ScrollArea style={{ height: 520 }}>
       <div className="divide-y divide-white/[0.05]">
