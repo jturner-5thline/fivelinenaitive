@@ -1,0 +1,1 @@
+ALTER TABLE public.meeting_holds ADD COLUMN IF NOT EXISTS calendar_id text;

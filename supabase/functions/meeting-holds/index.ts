@@ -58,10 +58,11 @@ interface CreateBody {
   email_message_id?: string | null;
   org_company_id?: string | null;
   expires_at?: string;
+  calendar_id?: string;
 }
 
-interface ConfirmBody { action: "confirm"; hold_id: string; final_title?: string }
-interface ReleaseBody { action: "release"; hold_id?: string; hold_group_id?: string }
+interface ConfirmBody { action: "confirm"; hold_id: string; final_title?: string; calendar_id?: string }
+interface ReleaseBody { action: "release"; hold_id?: string; hold_group_id?: string; calendar_id?: string }
 interface SweepBody { action: "sweep" }
 
 type Body = CreateBody | ConfirmBody | ReleaseBody | SweepBody;
@@ -112,6 +113,7 @@ async function runCreate(svc: any, userId: string, body: CreateBody): Promise<Re
   const grantId = await getGrantId(svc, userId);
   if (!grantId) return ok({ error: "Calendar not connected", code: "no_grant" }, 401);
 
+  const calendarId = body.calendar_id || "primary";
   const groupId = crypto.randomUUID();
   const expiresAt = body.expires_at
     ? new Date(body.expires_at)
@@ -137,7 +139,7 @@ async function runCreate(svc: any, userId: string, body: CreateBody): Promise<Re
     let eventId: string | null = null;
     try {
       const url = new URL(`${baseUrl}/events`);
-      url.searchParams.set("calendar_id", "primary");
+      url.searchParams.set("calendar_id", calendarId);
       const res = await fetch(url.toString(), {
         method: "POST",
         headers: nylasHeaders(),
@@ -174,6 +176,7 @@ async function runCreate(svc: any, userId: string, body: CreateBody): Promise<Re
       attendees: body.attendees ?? [],
       state: "held",
       expires_at: expiresAt.toISOString(),
+      calendar_id: calendarId === "primary" ? null : calendarId,
     });
   }
 
@@ -186,10 +189,10 @@ async function runCreate(svc: any, userId: string, body: CreateBody): Promise<Re
   return ok({ hold_group_id: groupId, holds: rows });
 }
 
-async function deleteNylasEvent(grantId: string, eventId: string): Promise<void> {
+async function deleteNylasEvent(grantId: string, eventId: string, calendarId = "primary"): Promise<void> {
   try {
     const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events/${eventId}`);
-    url.searchParams.set("calendar_id", "primary");
+    url.searchParams.set("calendar_id", calendarId);
     await fetch(url.toString(), { method: "DELETE", headers: nylasHeaders() });
   } catch (e) {
     console.warn("[meeting-holds] nylas delete failed", e);
@@ -197,7 +200,7 @@ async function deleteNylasEvent(grantId: string, eventId: string): Promise<void>
 }
 
 async function runRelease(svc: any, userId: string, body: ReleaseBody): Promise<Response> {
-  const q = svc.from("meeting_holds").select("id, user_id, google_event_id, hold_group_id, state").eq("state", "held");
+  const q = svc.from("meeting_holds").select("id, user_id, google_event_id, hold_group_id, state, calendar_id").eq("state", "held");
   if (body.hold_id) q.eq("id", body.hold_id);
   else if (body.hold_group_id) q.eq("hold_group_id", body.hold_group_id);
   else return ok({ error: "hold_id or hold_group_id required" }, 400);
@@ -209,7 +212,7 @@ async function runRelease(svc: any, userId: string, body: ReleaseBody): Promise<
 
   const grantId = (await getGrantId(svc, userId)) || "";
   for (const r of mine) {
-    if (grantId && r.google_event_id) await deleteNylasEvent(grantId, r.google_event_id);
+    if (grantId && r.google_event_id) await deleteNylasEvent(grantId, r.google_event_id, r.calendar_id || "primary");
   }
   await svc.from("meeting_holds").update({ state: "released", released_at: new Date().toISOString() }).in("id", mine.map((r: any) => r.id));
   return ok({ released: mine.length });
@@ -225,10 +228,11 @@ async function runConfirm(svc: any, userId: string, body: ConfirmBody): Promise<
   if (error || !hold) return ok({ error: "hold not found" }, 404);
 
   const grantId = (await getGrantId(svc, userId)) || "";
+  const calendarId = hold.calendar_id || "primary";
   if (grantId && hold.google_event_id) {
     try {
       const url = new URL(`${NYLAS_API_URI}/v3/grants/${grantId}/events/${hold.google_event_id}`);
-      url.searchParams.set("calendar_id", "primary");
+      url.searchParams.set("calendar_id", calendarId);
       await fetch(url.toString(), {
         method: "PUT",
         headers: nylasHeaders(),
@@ -248,13 +252,13 @@ async function runConfirm(svc: any, userId: string, body: ConfirmBody): Promise<
   // Release siblings in the same group.
   const { data: siblings } = await svc
     .from("meeting_holds")
-    .select("id, google_event_id")
+    .select("id, google_event_id, calendar_id")
     .eq("hold_group_id", hold.hold_group_id)
     .eq("user_id", userId)
     .eq("state", "held")
     .neq("id", hold.id);
   for (const s of siblings ?? []) {
-    if (grantId && s.google_event_id) await deleteNylasEvent(grantId, s.google_event_id);
+    if (grantId && s.google_event_id) await deleteNylasEvent(grantId, s.google_event_id, s.calendar_id || "primary");
   }
   if ((siblings ?? []).length > 0) {
     await svc
@@ -270,14 +274,14 @@ async function runSweep(svc: any): Promise<Response> {
   const nowIso = new Date().toISOString();
   const { data: stale } = await svc
     .from("meeting_holds")
-    .select("id, user_id, google_event_id")
+    .select("id, user_id, google_event_id, calendar_id")
     .eq("state", "held")
     .lt("expires_at", nowIso)
     .limit(500);
   let removed = 0;
   for (const row of stale ?? []) {
     const grantId = await getGrantId(svc, row.user_id);
-    if (grantId && row.google_event_id) await deleteNylasEvent(grantId, row.google_event_id);
+    if (grantId && row.google_event_id) await deleteNylasEvent(grantId, row.google_event_id, row.calendar_id || "primary");
     removed += 1;
   }
   if ((stale ?? []).length > 0) {

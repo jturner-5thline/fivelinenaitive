@@ -14698,6 +14698,7 @@ export type Database = {
       meeting_holds: {
         Row: {
           attendees: Json
+          calendar_id: string | null
           created_at: string
           deal_id: string | null
           email_message_id: string | null
@@ -14715,6 +14716,7 @@ export type Database = {
         }
         Insert: {
           attendees?: Json
+          calendar_id?: string | null
           created_at?: string
           deal_id?: string | null
           email_message_id?: string | null
@@ -14732,6 +14734,7 @@ export type Database = {
         }
         Update: {
           attendees?: Json
+          calendar_id?: string | null
           created_at?: string
           deal_id?: string | null
           email_message_id?: string | null
