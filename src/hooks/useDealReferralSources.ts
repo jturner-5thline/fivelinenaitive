@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
+import { partnerMatches } from '@/lib/partnerNameMatch';
 
 export interface DealReferralSourceEntry {
   /** The raw referred_by value (deduplicated key) */
@@ -36,6 +37,10 @@ export interface DealReferralSourceEntry {
   channelType: string | null;
   /** Linked company name from channel_entries if matched */
   companyName: string | null;
+  /** Computed tier (1|2|3) using sales_bd_rules thresholds, or null when no data */
+  tier: 1 | 2 | 3 | null;
+  /** Alternate channels seen (for tooltip) when the modal is mixed */
+  alternateChannels: string[];
 }
 
 interface RawDealRow {
@@ -47,6 +52,63 @@ interface RawDealRow {
   referred_by: string;
   created_at: string;
   pipeline_id: string;
+}
+
+interface AllDealRow {
+  id: string;
+  value: number | null;
+  stage: string | null;
+  referred_by: string | null;
+  sourced_via: string | null;
+  closing_date: string | null;
+  created_at: string;
+  company: string | null;
+}
+
+interface SalesBdRules {
+  tier1_qualified_deals: number;
+  tier1_trailing_months: number;
+  tier1_signed_clients: number;
+  tier2_qualified_deals_min: number;
+  tier2_qualified_deals_max: number;
+  tier2_trailing_months: number;
+  tier2_deals_on_board: number;
+  tier3_deals_per_quarter: number;
+  qualified_deal_stages: string[];
+}
+
+const SIGNED_STAGE_SLUGS = new Set([
+  'final-credit-items', 'closed-won', 'funded-invoiced', 'terms-issued', 'agreement-pending',
+]);
+
+function toSlug(s: string): string {
+  return s.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+}
+
+/** "Rob at SaaS Capital" → "SaaS Capital"; "Jamie @ Meriwether" → "Meriwether";
+ *  "Nicole Gessl - Comerica Bank" → "Comerica Bank". Returns null when no firm
+ *  separator is present. */
+function parseFirmFromReferrer(raw: string): string | null {
+  const m = raw.match(/\s*(?:@|\bat\b|\s-\s)\s*(.+)$/i);
+  if (!m) return null;
+  const firm = m[1].trim();
+  // Drop trailing parens / percentages like "Nabil - 15%"
+  if (/^\d/.test(firm)) return null;
+  return firm.length >= 2 ? firm : null;
+}
+
+/** Map a deal.sourced_via string to one of the canonical channel labels used
+ *  on the Channels chart. Returns null when the value is non-referral. */
+function sourcedViaToChannel(sv: string | null | undefined): string | null {
+  if (!sv) return null;
+  const l = sv.toLowerCase();
+  if (l.includes('bank')) return 'Banks';
+  if (l.includes('lender')) return 'Lenders';
+  if (l.includes('service provider')) return 'Service Providers';
+  if (l.includes('investor') || l.includes('m&a') || l.includes('investment bank')) return 'M&A and Investment Bankers';
+  if (l.includes('advisor')) return 'Advisors';
+  if (l.includes('client') || l.includes('personal')) return 'Other';
+  return null;
 }
 
 interface PipelineRow {
@@ -143,6 +205,38 @@ export function useDealReferralSources(filters?: {
     },
   });
 
+  // All deals (any date) used purely to compute tier inputs against trailing
+  // windows defined by sales_bd_rules. We intentionally don't filter by the
+  // header range here — the trailing window is independent.
+  const { data: allDeals = [] } = useQuery({
+    queryKey: ['deal_referral_all_deals', company?.id],
+    enabled: !!company?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('deals')
+        .select('id, value, stage, referred_by, sourced_via, closing_date, created_at, company')
+        .eq('company_id', company!.id)
+        .not('referred_by', 'is', null)
+        .neq('referred_by', '');
+      if (error) throw error;
+      return (data || []) as AllDealRow[];
+    },
+  });
+
+  const { data: rules } = useQuery({
+    queryKey: ['sales_bd_rules_global'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('sales_bd_rules')
+        .select('tier1_qualified_deals, tier1_trailing_months, tier1_signed_clients, tier2_qualified_deals_min, tier2_qualified_deals_max, tier2_trailing_months, tier2_deals_on_board, tier3_deals_per_quarter, qualified_deal_stages')
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return (data || null) as SalesBdRules | null;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
   const referralSources = useMemo(() => {
     const normalize = (s: string) => s.trim().toLowerCase().replace(/\s+/g, ' ');
 
@@ -168,6 +262,16 @@ export function useDealReferralSources(filters?: {
       }
     }
 
+    // Pre-compute tier-relevant windows once.
+    const now = Date.now();
+    const ms = (months: number) => months * 30 * 24 * 60 * 60 * 1000;
+    const qualifiedSlugs = new Set((rules?.qualified_deal_stages || []).map(toSlug));
+    const t1Months = rules?.tier1_trailing_months ?? 3;
+    const t2Months = rules?.tier2_trailing_months ?? 3;
+    const winT1 = now - ms(t1Months);
+    const winT2 = now - ms(t2Months);
+    const win12 = now - ms(12);
+
     const entries: DealReferralSourceEntry[] = [];
     for (const [key, { raw, deals: groupDeals }] of grouped) {
       const sorted = [...groupDeals].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -175,6 +279,59 @@ export function useDealReferralSources(filters?: {
       const latest = sorted[0];
 
       const match = channelLookup.get(key);
+
+      // === Derive company ===
+      let derivedCompany: string | null = match?.companyName || null;
+      if (!derivedCompany) {
+        derivedCompany = parseFirmFromReferrer(raw);
+      }
+      if (!derivedCompany) {
+        // Modal deals.company across this referrer's deals
+        const counts = new Map<string, number>();
+        for (const d of groupDeals) {
+          if (d.company) counts.set(d.company, (counts.get(d.company) || 0) + 1);
+        }
+        let best: string | null = null;
+        let bestN = 0;
+        for (const [c, n] of counts) {
+          if (n > bestN) { best = c; bestN = n; }
+        }
+        // Only use modal company if it occurs in 2+ deals (otherwise it's just
+        // "the one company they sourced", which is noisy).
+        derivedCompany = bestN >= 2 ? best : null;
+      }
+
+      // === Derive channel from modal sourced_via across this referrer's deals ===
+      const channelCounts = new Map<string, number>();
+      for (const d of groupDeals) {
+        const c = sourcedViaToChannel((d as any).sourced_via ?? null);
+        if (c) channelCounts.set(c, (channelCounts.get(c) || 0) + 1);
+      }
+      let modalChannel: string | null = match?.channelType || null;
+      const alternateChannels: string[] = [];
+      if (!modalChannel && channelCounts.size > 0) {
+        const sortedC = [...channelCounts.entries()].sort((a, b) => b[1] - a[1]);
+        modalChannel = sortedC[0][0];
+        for (let i = 1; i < sortedC.length; i++) alternateChannels.push(sortedC[i][0]);
+      }
+
+      // === Compute tier from all-time deals matched by partnerMatches() ===
+      let tier: 1 | 2 | 3 | null = null;
+      if (rules) {
+        const matched = allDeals.filter(d => partnerMatches(raw, d.referred_by) || partnerMatches(raw, d.sourced_via));
+        const qualifiedT1 = matched.filter(d => d.stage && qualifiedSlugs.has(toSlug(d.stage)) && new Date(d.created_at).getTime() >= winT1).length;
+        const qualifiedT2 = matched.filter(d => d.stage && qualifiedSlugs.has(toSlug(d.stage)) && new Date(d.created_at).getTime() >= winT2).length;
+        const signedT1 = matched.filter(d => d.stage && SIGNED_STAGE_SLUGS.has(toSlug(d.stage)) && new Date(d.closing_date || d.created_at).getTime() >= winT1).length;
+        const addedT2 = matched.filter(d => new Date(d.created_at).getTime() >= winT2).length;
+        const addedT12 = matched.filter(d => new Date(d.created_at).getTime() >= win12).length;
+        if (qualifiedT1 >= rules.tier1_qualified_deals || signedT1 >= rules.tier1_signed_clients) {
+          tier = 1;
+        } else if ((qualifiedT2 >= rules.tier2_qualified_deals_min && qualifiedT2 <= rules.tier2_qualified_deals_max) || addedT2 >= rules.tier2_deals_on_board) {
+          tier = 2;
+        } else if (addedT12 >= rules.tier3_deals_per_quarter * 4 || matched.length > 0) {
+          tier = 3;
+        }
+      }
 
       entries.push({
         referredBy: raw,
@@ -199,8 +356,10 @@ export function useDealReferralSources(filters?: {
           pipelineName: pipelineMap.get(d.pipeline_id) || 'Unknown',
           pipelineId: d.pipeline_id,
         })),
-        channelType: match?.channelType || null,
-        companyName: match?.companyName || null,
+        channelType: modalChannel,
+        companyName: derivedCompany,
+        tier,
+        alternateChannels,
       });
     }
 
@@ -216,7 +375,7 @@ export function useDealReferralSources(filters?: {
     filtered.sort((a, b) => b.totalVolume - a.totalVolume);
 
     return filtered;
-  }, [deals, channelEntries, pipelineMap, filters?.channelFilter, filters?.companyFilter]);
+  }, [deals, channelEntries, pipelineMap, filters?.channelFilter, filters?.companyFilter, allDeals, rules]);
 
   // Unique companies for filter options
   const companyOptions = useMemo(() => {
