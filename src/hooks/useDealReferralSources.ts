@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 
 export interface DealReferralSourceEntry {
   /** The raw referred_by value (deduplicated key) */
@@ -60,6 +61,10 @@ export function useDealReferralSources(filters?: {
   pipelineFilter?: 'all' | 'active' | 'in-development';
 }) {
   const { company } = useCompany();
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
+  const granularity = dateCtx?.range.granularity ?? null;
 
   const { data: pipelines = [] } = useQuery({
     queryKey: ['deal_referral_pipelines', company?.id],
@@ -101,16 +106,21 @@ export function useDealReferralSources(filters?: {
   }, [pipelines]);
 
   const { data: deals = [], isLoading: dealsLoading } = useQuery({
-    queryKey: ['deal_referral_deals', company?.id, targetPipelineIds],
+    queryKey: ['deal_referral_deals', company?.id, targetPipelineIds, rangeStart?.toISOString() ?? null, rangeEnd?.toISOString() ?? null, granularity],
     enabled: !!company?.id && targetPipelineIds.length > 0,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('deals')
         .select('id, company, value, stage, status, referred_by, created_at, pipeline_id')
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null)
         .neq('referred_by', '')
         .in('pipeline_id', targetPipelineIds);
+
+      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
+      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as RawDealRow[];
     },
