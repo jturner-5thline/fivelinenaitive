@@ -961,8 +961,12 @@ export function MeetingSchedulerCard({
           <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
             {stage === 'propose' ? 'Pick which slots to offer' : 'Pick the confirmed slot'}
           </div>
-          {proposedSlots.map((slot, i) => {
+          <SlotsWithAvailability
+            slots={proposedSlots}
+            attendeeEmails={finalAttendees.map((r) => r.email)}
+            render={(slot, i, summary) => {
             const checked = stage === 'propose' ? selectedSlotIdx.has(i) : confirmedIdx === i;
+            const hasConflict = summary?.conflicts && summary.conflicts > 0;
             return (
               <label
                 key={i}
@@ -970,6 +974,7 @@ export function MeetingSchedulerCard({
                   'flex items-center gap-2 rounded-md border px-2 py-1.5 cursor-pointer text-[11.5px]',
                   'border-white/10 bg-white/5 hover:bg-white/[0.08] transition-colors',
                   checked && 'border-primary/40 bg-primary/10',
+                  hasConflict && !checked && 'opacity-60',
                 )}
               >
                 {stage === 'propose' ? (
@@ -998,10 +1003,21 @@ export function MeetingSchedulerCard({
                       Your local time: {fmtSlotTimeOnly(slot, BROWSER_TZ)}
                     </div>
                   )}
+                  {summary && summary.total > 0 && (
+                    <div className={cn(
+                      'text-[10px] mt-0.5 truncate',
+                      hasConflict ? 'text-rose-300' : 'text-muted-foreground/80',
+                    )}>
+                      {summary.free} of {summary.total} free
+                      {summary.limited > 0 && ` · ${summary.limited} limited`}
+                      {hasConflict && ` · ${summary.conflicts} conflict${summary.conflicts === 1 ? '' : 's'}`}
+                    </div>
+                  )}
                 </div>
               </label>
             );
-          })}
+            }}
+          />
         </div>
       )}
 
