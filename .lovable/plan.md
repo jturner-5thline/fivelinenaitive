@@ -1,60 +1,83 @@
-# Lender status timestamps — end-to-end
+# FinServ chart drilldowns
 
-## Goal
-Make every status transition on `deal_lenders` (Submitted, Passed, Declined, Approved) write a dated timestamp the UI can show on lender cards, in the lender pop-up, and as a sort key. Backfill historical rows best-effort from `deal_activity_log`.
+Add click-through deep drilldowns to every tile on the FinServ Financial Metrics board, built on a reusable component so the same behavior lights up other analytics boards. Scope is intentionally split into two phases so the user gets useful drilldowns immediately and the deepest QBO-transaction layer ships behind a verified edge function.
 
-## Phase 1 — Data layer (migration)
+## What the user will get
 
-**1. Schema** — `ALTER TABLE public.deal_lenders ADD COLUMN`:
-- `submitted_at timestamptz`
-- `passed_at timestamptz`
-- `declined_at timestamptz`
-- `approved_at timestamptz`
-- `last_status_change_at timestamptz`
+- Every bar, line point, and cell on the FinServ board becomes clickable and opens a side panel showing the underlying data for that exact period + metric.
+- Panel supports keyboard (Esc to close), focus trap, ARIA labels on chart elements, loading/empty/error states.
+- "View in QuickBooks" deep links for P&L and Cash Flow tiles, scoped to the clicked period.
+- Drilldown content is range-aware (uses the same `range.granularity` + `range.resolved.start/end` + "Include current month" the parent tile resolved).
 
-Indexes on `(deal_id, submitted_at desc)` and `(deal_id, last_status_change_at desc)` to back the new sort options.
+## Drilldown content by chart
 
-**2. Trigger** — `BEFORE UPDATE OR INSERT` function `public.deal_lenders_set_status_timestamps()`:
-- Resolve a normalized status from `NEW.tracking_status` / `NEW.stage` / `NEW.substage` using the same mapping `bucketLenders` uses (`onDeck | inReview | termsIssued | passed | declined | approved | submitted`).
-- On INSERT: if the resolved status is one of submitted/passed/declined/approved, set the matching `*_at = now()` and `last_status_change_at = now()`.
-- On UPDATE: if the resolved status changed vs OLD, set the matching `*_at = now()` (only when the column is currently NULL or the status is re-entering) and always bump `last_status_change_at = now()`. Never null-out an existing `*_at`.
-- Honors the existing `app.allow_clear = 'on'` GUC escape hatch (consistent with the persistence safeguards from the earlier deals migration).
+| Chart | Drilldown content |
+|---|---|
+| Total Revenue | QBO Income accounts for the period (account name, amount, % of total). Click an account → transactions panel. |
+| Gross Profit $ / GP Margin % | Income − COGS lines for the period with $ and % of revenue. |
+| Operating Profit $ / Op Margin % | Net Operating Income breakdown: Income, COGS, OpEx subtotals, NOI line. |
+| FinServ Cashflow | Operating / Investing / Financing sections with net contribution and Net Cash Increase. |
+| Active Clients | List of FinServ deals in "Active Client" stage at end of bucket — name, owner, stage entry date, deal value, link to deal page. |
+| Average Revenue by Client | Period revenue total + list of active clients in denominator + per-client value (flat avg for now). |
+| Revenue Change by Client | Selected client's monthly revenue series + variance vs prior month + link to deal. |
+| Income by Product/Service (stacked) | Per-product totals for clicked period + transactions drill. |
 
-**3. Backfill** — one-shot block in the same migration:
-- For each `deal_lenders` row, scan `deal_activity_log` where `entity_type='deal_lender'` (or `metadata->>'lender_id'` matches) for transitions whose new status maps to submitted/passed/declined/approved. Take the earliest matching event per status and write its `created_at` into the column.
-- If no log entry exists, leave NULL (UI falls back to `created_at` with `~`).
-- Set `last_status_change_at = COALESCE(greatest of *_at, updated_at)`.
+## Architecture
 
-**4. RLS** — confirmed already company-scoped via the deal's `company_id`. The new columns inherit the same policy; no change needed.
+```text
+src/components/insights/
+  ChartDrilldownPanel.tsx           ← new: shared Sheet-based panel (focus trap, Esc, a11y)
+  drilldown/
+    PnlBreakdownView.tsx            ← Income / COGS / OpEx / NOI tables, click row → transactions
+    CashflowBreakdownView.tsx       ← Operating / Investing / Financing sections
+    ActiveClientsView.tsx           ← deal list with stage-entry timestamps
+    AvgRevenuePerClientView.tsx     ← revenue + denominator list + per-client values
+    ClientRevenueSeriesView.tsx     ← per-client monthly series + deal links
+    PnlTransactionsView.tsx         ← second-level drill, lists individual QBO txns
+    QboLinkButton.tsx               ← shared "View in QuickBooks" deep link builder
+  useDrilldown.ts                   ← context hook providing { open(ctx) } to any chart
+```
 
-## Phase 2 — UI
+New data sources:
 
-**A. Lender row / card (`LenderPipelineSnapshot`, lender list rows in Lender Matching & Sourcing)**
-- Next to the status pill, render `formatStatusDate(lender)` → e.g. `Submitted Apr 14`, `Passed May 2`. Year shown only when not current (2026).
-- Empty/legacy: when the matching `*_at` is NULL, fall back to `created_at` rendered as `~ Apr 14` with tooltip "approximate (legacy row, exact transition date not recorded)".
-- Wrap in `<Tooltip>` showing full timestamp + time + user's local TZ via `Intl.DateTimeFormat(..., { timeZoneName: 'short' })`.
+- `src/hooks/useQbPnlBreakdown.ts` — reads the existing `qbo_pnl_snapshots.raw_response` (already stored) and parses the section tree for the clicked period. No new edge function call required for the first-level breakdown.
+- `src/hooks/useQbCashflowBreakdown.ts` — same approach against `qbo_cashflow_snapshots.raw_response`.
+- `src/hooks/useFinServActiveClientsAtDate.ts` — reuses the existing stage-history reconstruction we already wrote, returns deal rows (id, name, owner, stage_entered_at, value).
+- `src/hooks/useFinServClientMonthlySeries.ts` — bucket-aware monthly revenue per QBO customer (joins existing per-client revenue hook output).
 
-**B. Lender pop-up (`LenderStageManageDialog`)**
-- New "Status history" section above notes. Vertical timeline of events sorted desc: Submitted → (In review) → Passed/Approved/Declined, each with date + tooltip-on-hover full timestamp.
-- Items derived from the `*_at` columns. If all NULL, show "No recorded transitions — created {date}".
+New edge function for the transaction-level second drill:
 
-**C. Sort dropdown on /deals Lender Matching & Sourcing**
-- Append two options to existing sort menu: `Most recently submitted` (order by `submitted_at desc nulls last`) and `Most recently updated` (order by `last_status_change_at desc nulls last`).
-- Persist selection via the existing sort-pref store.
+- `supabase/functions/qbo-transactions-list` — verifies `auth.getUser()`, accepts `{ realm_id, account_id, start_date, end_date, customer_id? }`, proxies QBO `reports/TransactionList` (Accrual), returns normalized rows `{ txn_date, type, num, name, memo, amount, account }`. Deployed automatically; respects existing realm scoping for 5th Line.
 
-## Phase 3 — Tests / verification
+## Wiring on the FinServ board
 
-- Unit test for `formatStatusDate` (year hiding rule, `~` fallback, TZ tooltip string).
-- Trigger smoke test via `supabase--read_query`: update a test lender's status and assert the matching `*_at` populated and `last_status_change_at` bumped.
-- Manual checklist: load Worthy and SG / Alignment under 5th Line, screenshot pill + tooltip + pop-up timeline.
-- Permissions QA: re-fetch as jmoffitt@5thline.co (member, canSeeInsights=true) to confirm columns visible.
+`FinServFinancialMetricsDashboard.tsx`:
 
-## Technical notes
+- Wrap the dashboard return in `<DrilldownProvider>` so child charts get `useDrilldown()`.
+- Replace today's narrow `openSinglePoint(...)` calls with the richer `open({ kind, period, granularity, payload })` calls. Each chart passes the bucket key it owns; the panel resolves the bucket's start/end via the parent `range`.
+- Add `role="button"` + `aria-label="Drill into ${metric} for ${label}"` on each `<Bar>` / `<Line>` `onClick` handler via Recharts `accessibilityLayer` plus per-cell labels.
 
-- Status normalization helper goes in `src/lib/lenderStatusBuckets.ts` (already used by `LenderPipelineSnapshot`) so trigger + UI stay aligned. Trigger uses an inline SQL mapping that mirrors it.
-- `formatStatusDate` lives in `src/utils/formatLenderCurrency.ts`-adjacent new file `src/utils/lenderStatusDate.ts` to keep concerns small.
-- All updates respect existing `updated_at` optimistic concurrency check shipped in the persistence migration.
-- No new deps; uses existing Tooltip, date-fns, recharts not needed for timeline (CSS-only).
+## Reuse on other boards
 
-## Deliverable
-A PR-style summary at the end with: migration filename, trigger code excerpt, list of UI files touched, backfill row count for the 5th Line tenant, and screenshots of Worthy + SG / Alignment.
+`ChartDrilldownPanel` + `DrilldownProvider` are board-agnostic. The QuickBooks Financial and Consolidated Debt Pipeline boards already render shared chart wrappers — they pick up the same drill behavior by:
+
+1. Mounting `<DrilldownProvider>` at the board root.
+2. Replacing their existing `openSinglePoint` callbacks with `open({ kind: 'pnl' | 'cashflow' | ... , ... })`.
+
+That's a thin per-board change (no per-chart rewrite).
+
+## Phasing
+
+**Phase 1 (this iteration, ships end-to-end on FinServ board):**
+- Shared `DrilldownProvider` + `ChartDrilldownPanel` (Sheet + focus trap + Esc).
+- Hooks parsing `raw_response` from existing snapshots for P&L and Cashflow breakdowns (no new edge call).
+- Active Clients + Avg Revenue + Revenue Change drilldowns using existing data.
+- "View in QuickBooks" deep links for P&L and Cash Flow tiles.
+- Every FinServ chart bar/line/cell becomes clickable and opens the right view.
+- Keyboard + ARIA pass.
+
+**Phase 2 (follow-up, only if you want the second-level transaction drill now):**
+- `qbo-transactions-list` edge function + `PnlTransactionsView` (click an account row → modal table of transactions).
+- Same drilldowns wired onto QuickBooks Financial and Consolidated Debt Pipeline boards.
+
+Confirming you want both phases in one go, or ship Phase 1 first and then Phase 2? Phase 1 alone is the bigger UX win and avoids a QBO API round-trip on every drill.

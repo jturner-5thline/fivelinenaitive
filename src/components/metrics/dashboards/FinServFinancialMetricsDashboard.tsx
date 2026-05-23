@@ -23,6 +23,8 @@ import {
 import { InsightsTimeRangeSelector, type InsightsTimeRangeValue } from '@/components/insights/InsightsTimeRangeSelector';
 import { loadPersistedRange, resolveRange, defaultGranularityForRange } from '@/lib/insightsTimeRange';
 import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
+import { DrilldownProvider, useDrilldown, type DrilldownRequest } from '@/components/insights/ChartDrilldown';
+import { buildBuckets } from '@/lib/insightsTimeRange';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -105,6 +107,14 @@ function VarianceIndicator({ value, suffix = '' }: { value: number; suffix?: str
 // ────────────────────────────────────────────────────────────
 
 export function FinServFinancialMetricsDashboard() {
+  return (
+    <DrilldownProvider>
+      <FinServFinancialMetricsDashboardInner />
+    </DrilldownProvider>
+  );
+}
+
+function FinServFinancialMetricsDashboardInner() {
   // Per-board time range selector — overrides the global context for this board.
   const initialPersisted = useMemo(() => loadPersistedRange('finserv-financial-metrics'), []);
   const initialResolved = useMemo(() => {
@@ -177,6 +187,25 @@ export function FinServFinancialMetricsDashboard() {
     range.granularity === 'monthly' ? 'Monthly' :
     range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
   const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
+
+  // Resolve a clicked bucket label/monthKey to its actual start/end ymd.
+  const { open: openDrill } = useDrilldown();
+  const bucketIndex = useMemo(() => {
+    const map = new Map<string, { start: string; end: string; label: string }>();
+    const buckets = buildBuckets(range.resolved.start, range.resolved.end, range.granularity);
+    for (const b of buckets) {
+      map.set(b.key, { start: b.start_date, end: b.end_date, label: b.label });
+      map.set(b.label, { start: b.start_date, end: b.end_date, label: b.label });
+    }
+    return map;
+  }, [range.resolved.start, range.resolved.end, range.granularity]);
+  const resolveBucket = (keyOrLabel: string | undefined): DrilldownRequest['period'] => {
+    if (keyOrLabel) {
+      const hit = bucketIndex.get(keyOrLabel);
+      if (hit) return hit;
+    }
+    return { start: range.resolved.start, end: range.resolved.end, label: range.resolved.label };
+  };
 
   // ── Derived: Average Revenue by Client per bucket = revenue / active-clients-at-end-of-period
   const avgRevenueByClient = useMemo(() => {
@@ -307,7 +336,13 @@ export function FinServFinancialMetricsDashboard() {
                     name="Revenue"
                     shape={createGlassBarShape({ radius: 4 })}
                     cursor="pointer"
-                    onClick={(d: any) => openSinglePoint('Total Revenue', d?.month, 'Revenue', Number(d?.amount) || 0, fmtCurrencyFull)}
+                    onClick={(d: any) => openDrill({
+                      kind: 'pnl', metric: 'revenue',
+                      sourceLabel: 'Total Revenue',
+                      selection: d?.month ?? '',
+                      period: resolveBucket(d?.monthKey ?? d?.month),
+                      granularity: range.granularity,
+                    })}
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -500,7 +535,13 @@ export function FinServFinancialMetricsDashboard() {
                     name="Cash Flow"
                     shape={createGlassBarShape({ radius: 4 })}
                     cursor="pointer"
-                    onClick={(d: any) => openSinglePoint('FinServ Cashflow', d?.month, 'Free Cash Flow', Number(d?.value) || 0, fmtCurrencyFull)}
+                    onClick={(d: any) => openDrill({
+                      kind: 'cashflow',
+                      sourceLabel: 'FinServ Cashflow',
+                      selection: d?.month ?? '',
+                      period: resolveBucket(d?.monthKey ?? d?.month),
+                      granularity: range.granularity,
+                    })}
                   >
                     {cashflow.points.map((entry, i) => (
                       <Cell key={i} fill={entry.value >= 0 ? 'hsl(var(--primary))' : 'hsl(var(--destructive))'} />
@@ -538,7 +579,13 @@ export function FinServFinancialMetricsDashboard() {
                     name="Active Clients"
                     shape={createGlassBarShape({ radius: 4 })}
                     cursor="pointer"
-                    onClick={(d: any) => openSinglePoint('Active Clients', d?.month, 'Active Clients', Number(d?.count) || 0, (v) => `${v}`)}
+                    onClick={(d: any) => openDrill({
+                      kind: 'active-clients',
+                      sourceLabel: 'Active Clients',
+                      selection: d?.month ?? '',
+                      period: resolveBucket(d?.monthKey ?? d?.month),
+                      granularity: range.granularity,
+                    })}
                   />
                   <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={{ r: 3 }} name="Trend" />
                 </ComposedChart>
@@ -639,19 +686,13 @@ export function FinServFinancialMetricsDashboard() {
                     name="Avg Revenue / Client"
                     shape={createGlassBarShape({ radius: 4 })}
                     cursor="pointer"
-                    onClick={(d: any) => openSinglePoint(
-                      'Average Revenue by Client',
-                      d?.month,
-                      'Avg Revenue / Client',
-                      Number(d?.avg) || 0,
-                      fmtCurrencyFull,
-                      [
-                        { metric: 'Revenue', value: fmtCurrencyFull(Number(d?.revenue) || 0) },
-                        { metric: 'Active Clients', value: String(d?.clients ?? 0) },
-                        { metric: 'Δ vs prior ($)', value: d?.varianceDollars == null ? '—' : `${d.varianceDollars >= 0 ? '+' : ''}${fmtCurrencyFull(d.varianceDollars)}` },
-                        { metric: 'Δ vs prior (%)', value: d?.variancePct == null ? '—' : `${d.variancePct >= 0 ? '+' : ''}${d.variancePct.toFixed(1)}%` },
-                      ],
-                    )}
+                    onClick={(d: any) => openDrill({
+                      kind: 'avg-revenue',
+                      sourceLabel: 'Average Revenue by Client',
+                      selection: d?.month ?? '',
+                      period: resolveBucket(d?.monthKey ?? d?.month),
+                      granularity: range.granularity,
+                    })}
                   >
                     <LabelList
                       dataKey="varianceDollars"
@@ -735,34 +776,26 @@ export function FinServFinancialMetricsDashboard() {
                     name={revenueByClient.selectedMonthLabel}
                     shape={createGlassBarShape({ radius: 4, topSegmentKey: 'current', dataKey: 'current' })}
                     cursor="pointer"
-                    onClick={(d: any) => openSinglePoint(
-                      'Revenue Change by Client',
-                      d?.client,
-                      revenueByClient.selectedMonthLabel,
-                      Number(d?.current) || 0,
-                      fmtCurrencyFull,
-                      [
-                        { metric: revenueByClient.priorMonthLabel, value: fmtCurrencyFull(Number(d?.prior) || 0) },
-                        { metric: 'Variance', value: fmtCurrencyFull(Number(d?.variance) || 0) },
-                      ],
-                    )}
+                    onClick={(d: any) => openDrill({
+                      kind: 'client-series',
+                      sourceLabel: 'Revenue Change by Client',
+                      selection: d?.client ?? '',
+                      period: { start: range.resolved.start, end: range.resolved.end, label: range.resolved.label },
+                      client: d?.client,
+                    })}
                   />
                   <Bar
                     dataKey="variance"
                     name="Variance"
                     shape={createGlassBarShape({ radius: 4 })}
                     cursor="pointer"
-                    onClick={(d: any) => openSinglePoint(
-                      'Revenue Change by Client',
-                      d?.client,
-                      'Variance',
-                      Number(d?.variance) || 0,
-                      fmtCurrencyFull,
-                      [
-                        { metric: revenueByClient.selectedMonthLabel, value: fmtCurrencyFull(Number(d?.current) || 0) },
-                        { metric: revenueByClient.priorMonthLabel, value: fmtCurrencyFull(Number(d?.prior) || 0) },
-                      ],
-                    )}
+                    onClick={(d: any) => openDrill({
+                      kind: 'client-series',
+                      sourceLabel: 'Revenue Change by Client',
+                      selection: d?.client ?? '',
+                      period: { start: range.resolved.start, end: range.resolved.end, label: range.resolved.label },
+                      client: d?.client,
+                    })}
                   >
                     {revenueByClient.clients.slice(0, 15).map((entry, i) => (
                       <Cell key={i} fill={entry.variance >= 0 ? 'hsl(160, 65%, 50%)' : 'hsl(var(--destructive))'} />

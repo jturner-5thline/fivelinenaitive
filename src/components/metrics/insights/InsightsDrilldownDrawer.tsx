@@ -34,6 +34,10 @@ interface Props<T = any> {
   rowHref?: (row: T) => string | null;
   /** Optional summary metrics rendered above the table. */
   summary?: React.ReactNode;
+  /** Optional full body override. When provided, renders instead of the columns/rows table. */
+  body?: React.ReactNode;
+  /** Optional loading flag — when true, shows a spinner instead of the table/body. */
+  loading?: boolean;
 }
 
 const PANEL_BG = 'rgba(10,18,36,0.97)';
@@ -44,7 +48,7 @@ const BORDER = 'rgba(120,170,255,0.2)';
  * Renders a contextual table of records that explain a clicked KPI / chart point.
  */
 export function InsightsDrilldownDrawer<T = any>({
-  open, onClose, context, columns, rows, emptyHint, rowHref, summary,
+  open, onClose, context, columns, rows, emptyHint, rowHref, summary, body, loading,
 }: Props<T>) {
   useEffect(() => {
     if (!open) return;
@@ -121,8 +125,19 @@ export function InsightsDrilldownDrawer<T = any>({
         )}
 
         {/* Body */}
-        <div style={{ flex: 1, overflow: 'auto', padding: rows.length === 0 ? 0 : '8px 0' }}>
-          {rows.length === 0 ? (
+        <div style={{ flex: 1, overflow: 'auto', padding: body ? 0 : (rows.length === 0 ? 0 : '8px 0') }}>
+          {loading ? (
+            <div style={{
+              height: '100%', display: 'flex', flexDirection: 'column',
+              alignItems: 'center', justifyContent: 'center', gap: 10,
+              padding: 32, color: 'rgba(180,200,230,0.65)', textAlign: 'center',
+            }}>
+              <div className="h-6 w-6 rounded-full border-2 border-current border-t-transparent animate-spin" style={{ opacity: 0.6 }} />
+              <div style={{ fontSize: 12 }}>Loading details…</div>
+            </div>
+          ) : body ? (
+            body
+          ) : rows.length === 0 ? (
             <div style={{
               height: '100%', display: 'flex', flexDirection: 'column',
               alignItems: 'center', justifyContent: 'center', gap: 10,
