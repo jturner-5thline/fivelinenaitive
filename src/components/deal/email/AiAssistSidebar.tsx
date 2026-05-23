@@ -38,6 +38,7 @@ import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
+import { StageMeetingTitleChip } from './StageMeetingTitleChip';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { OpenAvailabilityCard } from './OpenAvailabilityCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
