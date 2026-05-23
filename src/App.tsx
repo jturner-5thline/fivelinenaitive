@@ -343,6 +343,7 @@ const App = () => (
                             <Route path="/finserv" element={<FinServ />} />
                             <Route path="/email-intelligence" element={<EmailIntelligencePage />} />
                             <Route path="/operations" element={<Operations />} />
+                            <Route path="/debug/recognition" element={<DebugRecognition />} />
                             <Route path="/settings" element={<Settings />} />
                             <Route path="/account" element={<Account />} />
                             <Route path="/lenders" element={<Lenders />} />
