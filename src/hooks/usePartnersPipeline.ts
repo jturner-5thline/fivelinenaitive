@@ -117,18 +117,32 @@ export function useSavePipelineStages() {
   });
 }
 
-export function usePartners() {
+export function usePartners(filters?: {
+  start?: Date | null;
+  end?: Date | null;
+  granularity?: string;
+}) {
   const { company } = useCompany();
 
   return useQuery({
-    queryKey: ['partners', company?.id],
+    queryKey: [
+      'partners',
+      company?.id,
+      filters?.start?.toISOString() ?? null,
+      filters?.end?.toISOString() ?? null,
+      filters?.granularity ?? null,
+    ],
     enabled: !!company?.id,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('partners' as any)
         .select('*')
-        .eq('company_id', company!.id)
-        .order('sort_order_in_stage');
+        .eq('company_id', company!.id);
+
+      if (filters?.start) query = query.gte('created_at', filters.start.toISOString());
+      if (filters?.end) query = query.lte('created_at', filters.end.toISOString());
+
+      const { data, error } = await query.order('sort_order_in_stage');
       if (error) throw error;
       return (data || []) as unknown as Partner[];
     },
