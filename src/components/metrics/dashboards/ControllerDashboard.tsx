@@ -108,7 +108,7 @@ function useCreditCardBalances() {
       const allRealms = [...new Set(CREDIT_CARD_ACCOUNTS.map((a) => a.realm_id))];
       const { data, error } = await supabase
         .from('quickbooks_accounts')
-        .select('name, current_balance, realm_id, updated_at')
+        .select('name, current_balance, realm_id, synced_at')
         .eq('account_type', 'Credit Card')
         .in('realm_id', allRealms);
 
@@ -122,7 +122,7 @@ function useCreditCardBalances() {
           name: acc.displayName,
           balance: Math.abs(Number(match?.current_balance) || 0),
           realm_id: acc.realm_id,
-          updated_at: match?.updated_at ?? null,
+          updated_at: match?.synced_at ?? null,
         };
       });
     },
@@ -136,7 +136,7 @@ function useFirmLiquidity() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quickbooks_accounts')
-        .select('name, current_balance, realm_id, updated_at')
+        .select('name, current_balance, realm_id, synced_at')
         .eq('account_type', 'Bank')
         .or('name.ilike.%chase%,name.ilike.%m&t%,name.ilike.%m & t%');
 
@@ -147,7 +147,7 @@ function useFirmLiquidity() {
           name: row.name,
           balance: Number(row.current_balance) || 0,
           realm_id: row.realm_id,
-          updated_at: row.updated_at ?? null,
+          updated_at: row.synced_at ?? null,
         }))
         .sort((a, b) => b.balance - a.balance);
     },
