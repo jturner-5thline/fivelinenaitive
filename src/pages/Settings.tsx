@@ -95,7 +95,7 @@ const TABS = [
   { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'email-signature', 'email-templates-outbound', 'email-style-guide', 'email-cadence', 'distribution-stats'] },
   { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
   { id: 'crm', label: 'CRM', sectionIds: ['field-layout', 'contact-types'] },
-  { id: 'ai', label: 'AI', sectionIds: ['ai-configuration'] },
+  { id: 'ai', label: 'AI', sectionIds: ['ai-configuration', 'meeting-titles'] },
   { id: 'sales-bd', label: 'Sales & BD', sectionIds: ['partner-rules'] },
 ];
 
