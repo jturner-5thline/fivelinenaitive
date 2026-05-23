@@ -181,16 +181,68 @@ export function FinServFinancialMetricsDashboard() {
   // ── Derived: Average Revenue by Client per bucket = revenue / active-clients-at-end-of-period
   const avgRevenueByClient = useMemo(() => {
     const countByKey = new Map(activeClients.trend.map(t => [t.monthKey, t.count]));
-    const points = totalRev.months.map(m => {
+    const base = totalRev.months.map(m => {
       const clients = countByKey.get(m.monthKey) ?? 0;
       const avg = clients > 0 ? m.amount / clients : null;
       return { month: m.month, monthKey: m.monthKey, revenue: m.amount, clients, avg };
     });
+    // Per-bucket variance vs prior valid bucket (signed).
+    let prevAvg: number | null = null;
+    const withVariance = base.map(p => {
+      let varianceDollars: number | null = null;
+      let variancePct: number | null = null;
+      if (p.avg != null && prevAvg != null) {
+        varianceDollars = p.avg - prevAvg;
+        variancePct = prevAvg !== 0 ? ((p.avg - prevAvg) / prevAvg) * 100 : null;
+      }
+      if (p.avg != null) prevAvg = p.avg;
+      return { ...p, varianceDollars, variancePct };
+    });
+
+    // Linear regression best-fit across visible buckets (x = bucket index).
+    const fitInputs = withVariance
+      .map((p, i) => ({ x: i, y: p.avg }))
+      .filter((p): p is { x: number; y: number } => p.y != null);
+    let slope = 0;
+    let intercept = 0;
+    if (fitInputs.length >= 2) {
+      const n = fitInputs.length;
+      const sumX = fitInputs.reduce((s, p) => s + p.x, 0);
+      const sumY = fitInputs.reduce((s, p) => s + p.y, 0);
+      const sumXY = fitInputs.reduce((s, p) => s + p.x * p.y, 0);
+      const sumXX = fitInputs.reduce((s, p) => s + p.x * p.x, 0);
+      const denom = n * sumXX - sumX * sumX;
+      if (denom !== 0) {
+        slope = (n * sumXY - sumX * sumY) / denom;
+        intercept = (sumY - slope * sumX) / n;
+      } else {
+        intercept = sumY / n;
+      }
+    } else if (fitInputs.length === 1) {
+      intercept = fitInputs[0].y;
+    }
+
+    const points = withVariance.map((p, i) => ({
+      ...p,
+      trend: fitInputs.length >= 1 ? intercept + slope * i : null,
+    }));
+
     const valid = points.filter(p => p.avg !== null) as Array<{ avg: number }>;
     const headline = valid.length > 0
       ? valid.reduce((s, p) => s + p.avg, 0) / valid.length
       : 0;
-    return { points, headline, hasAny: valid.length > 0 };
+
+    // Headline trend = first → last valid bucket.
+    const firstValid = points.find(p => p.avg != null) ?? null;
+    const lastValid = [...points].reverse().find(p => p.avg != null) ?? null;
+    let headlineDelta: number | null = null;
+    let headlinePct: number | null = null;
+    if (firstValid && lastValid && firstValid !== lastValid && firstValid.avg != null && lastValid.avg != null) {
+      headlineDelta = lastValid.avg - firstValid.avg;
+      headlinePct = firstValid.avg !== 0 ? (headlineDelta / firstValid.avg) * 100 : null;
+    }
+
+    return { points, headline, hasAny: valid.length > 0, headlineDelta, headlinePct };
   }, [totalRev.months, activeClients.trend]);
 
   return (
