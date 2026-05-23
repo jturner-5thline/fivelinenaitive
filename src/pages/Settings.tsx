@@ -35,6 +35,7 @@ import { AIConfigurationSettings } from '@/components/settings/AIConfigurationSe
 import { AICopilotSettings } from '@/components/settings/AICopilotSettings';
 import { MeetingTitleSettings } from '@/components/settings/MeetingTitleSettings';
 import { WorkingHoursSettings } from '@/components/settings/WorkingHoursSettings';
+import { AvailabilityVerificationSettings } from '@/components/settings/AvailabilityVerificationSettings';
 import { OutboundEmailTemplatesSettings } from '@/components/settings/OutboundEmailTemplatesSettings';
 import { EmailWorkflowsSettings } from '@/components/settings/EmailWorkflowsSettings';
 import { EmailStyleGuideSettings } from '@/components/settings/EmailStyleGuideSettings';
@@ -348,6 +349,7 @@ export default function Settings() {
                     <MeetingTitleSettings isAdmin={isAdmin} />
                   )}
                   <WorkingHoursSettings />
+                  <AvailabilityVerificationSettings />
                 </TabsContent>
 
                 {/* Sales & BD Tab */}

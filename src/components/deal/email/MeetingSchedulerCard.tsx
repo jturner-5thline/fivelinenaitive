@@ -21,6 +21,13 @@ import { toast } from 'sonner';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { NaitiveCalendar } from '@/components/calendar/NaitiveCalendar';
 import { useAttendeeFreeBusy } from '@/hooks/useAttendeeFreeBusy';
+import {
+  useActiveMeetingHolds,
+  createMeetingHolds,
+  useInvalidateHolds,
+  type MeetingHoldRow,
+} from '@/hooks/useMeetingHolds';
+import { CheckCircle2, ShieldAlert, ShieldCheck, RefreshCw } from 'lucide-react';
 import type { EmailThread } from './mockEmailData';
 import { useRenderMeetingTitle } from '@/hooks/useRenderMeetingTitle';
 
@@ -416,6 +423,19 @@ export function MeetingSchedulerCard({
   const [loadingBusy, setLoadingBusy] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [proposedSlots, setProposedSlots] = useState<Slot[]>([]);
+
+  // ── Pre-send verification state (fix #4) ───────────────────────────────
+  type SlotStatus = 'clean' | 'refilled' | 'conflict' | 'held';
+  type VerifyState =
+    | { kind: 'idle' }
+    | { kind: 'verifying' }
+    | { kind: 'clean'; at: number; slotStatuses: SlotStatus[] }
+    | { kind: 'refilled'; at: number; slotStatuses: SlotStatus[]; refilledCount: number }
+    | { kind: 'insufficient'; at: number; slotStatuses: SlotStatus[]; openCount: number };
+  const [verifyState, setVerifyState] = useState<VerifyState>({ kind: 'idle' });
+  const [verifying, setVerifying] = useState(false);
+  const activeHoldsQ = useActiveMeetingHolds();
+  const invalidateHolds = useInvalidateHolds();
   // Hydrate the slot-index preference from localStorage; default to the
   // first three positions (matches the previous behaviour). The preference
   // is intersected with the freshly proposed slot count once the calendar
@@ -508,7 +528,15 @@ export function MeetingSchedulerCard({
           title: e.title || e.summary || e.subject || null,
         }));
         const candidates = buildCandidateSlots(now, timezone, durationMinutes);
-        const free = filterFreeSlots(candidates, events);
+        // Collision prevention (fix #4 §4): treat the user's active soft-holds
+        // as busy so two parallel drafts can't propose the same time.
+        const holdBusy: BusyEvent[] = (activeHoldsQ.data ?? []).map((h) => ({
+          start: h.slot_start_at,
+          end: h.slot_end_at,
+          all_day: false,
+          title: 'Naitive soft-hold',
+        }));
+        const free = filterFreeSlots(candidates, [...events, ...holdBusy]);
         const picked = pickThreeSpread(free);
         // Capture conflict metadata for the explanation panel BEFORE we
         // narrow down to the picked top-3 — we want to explain blockers
@@ -536,7 +564,7 @@ export function MeetingSchedulerCard({
     // Re-run whenever the user changes timezone or duration — both shift
     // the wall-clock anchors / slot length, so the proposed list must
     // rebuild to match what the recipient will actually see.
-  }, [timezone, durationMinutes]);
+  }, [timezone, durationMinutes, activeHoldsQ.data]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
@@ -730,13 +758,137 @@ export function MeetingSchedulerCard({
   }, [partiesMode, extraMembers]);
 
   // ── Stage 1: insert "here are 3 times" proposal text ────────────────────
-  const insertProposal = useCallback(() => {
+  const insertProposal = useCallback(async () => {
     const chosen = proposedSlots.filter((_, i) => selectedSlotIdx.has(i));
     if (chosen.length === 0) {
       toast.error('Pick at least one slot to offer.');
       return;
     }
-    const lines = chosen.map((s) => `• ${fmtSlot(s, timezone)}`).join('\n');
+
+    // Re-verify availability via freeBusy for the user + attendees.
+    setVerifying(true);
+    setVerifyState({ kind: 'verifying' });
+    let finalChosen = chosen;
+    let refilledCount = 0;
+    try {
+      const attendeeEmails = finalAttendees.map((a) => a.email.toLowerCase());
+      // Pull the user's own free/busy (events list) over the window of chosen slots.
+      const minStart = new Date(Math.min(...chosen.map((s) => s.start.getTime())));
+      const maxEnd = new Date(Math.max(...chosen.map((s) => s.end.getTime())) + 3600_000);
+      const { data: ev } = await supabase.functions.invoke('calendar-events', {
+        body: { action: 'list', time_min: minStart.toISOString(), time_max: maxEnd.toISOString(), max_results: 200, timezone },
+      });
+      const userBusy: { s: number; e: number }[] = ((ev?.events ?? []) as any[])
+        .filter((e) => !e.all_day)
+        .map((e) => ({ s: new Date(e.start).getTime(), e: new Date(e.end).getTime() }));
+
+      let teammateBusy: { s: number; e: number }[] = [];
+      if (attendeeEmails.length > 0) {
+        const { data: fb } = await supabase.functions.invoke('calendar-freebusy', {
+          body: { time_min: minStart.toISOString(), time_max: maxEnd.toISOString(), emails: attendeeEmails },
+        });
+        const shared = ((fb?.results ?? []) as any[]).filter((r) => r.visibility === 'shared');
+        teammateBusy = shared.flatMap((r) =>
+          (r.busy ?? []).map((b: any) => ({ s: new Date(b.start).getTime(), e: new Date(b.end).getTime() })),
+        );
+      }
+
+      const conflict = (slot: Slot) => {
+        const s = slot.start.getTime();
+        const e = slot.end.getTime();
+        return [...userBusy, ...teammateBusy].some((b) => s < b.e && e > b.s);
+      };
+
+      const keep: Slot[] = [];
+      const dropped: Slot[] = [];
+      for (const slot of chosen) (conflict(slot) ? dropped : keep).push(slot);
+
+      if (dropped.length > 0) {
+        // Refill from the next best free candidates within the same window.
+        const candidates = buildCandidateSlots(new Date(), timezone, durationMinutes);
+        const holdBusyEv: BusyEvent[] = (activeHoldsQ.data ?? []).map((h) => ({
+          start: h.slot_start_at,
+          end: h.slot_end_at,
+          all_day: false,
+          title: 'Naitive soft-hold',
+        }));
+        const freshFree = filterFreeSlots(
+          candidates,
+          [
+            ...holdBusyEv,
+            ...userBusy.map((b) => ({ start: new Date(b.s).toISOString(), end: new Date(b.e).toISOString(), all_day: false })),
+            ...teammateBusy.map((b) => ({ start: new Date(b.s).toISOString(), end: new Date(b.e).toISOString(), all_day: false })),
+          ],
+        );
+        const alreadyKeys = new Set(keep.map((s) => s.start.getTime()));
+        for (const cand of freshFree) {
+          if (keep.length >= chosen.length) break;
+          if (!alreadyKeys.has(cand.start.getTime())) {
+            keep.push(cand);
+            refilledCount += 1;
+          }
+        }
+        keep.sort((a, b) => a.start.getTime() - b.start.getTime());
+      }
+
+      // Read the per-user min_required_slots preference; default 3.
+      const { data: prefs } = await supabase
+        .from('user_email_ai_preferences')
+        .select('min_required_slots, place_soft_holds, verify_on_send, hold_expiration_hours')
+        .eq('user_id', user?.id ?? '')
+        .maybeSingle();
+      const minSlots = prefs?.min_required_slots ?? 3;
+      const placeHolds = prefs?.place_soft_holds ?? true;
+      const holdHours = prefs?.hold_expiration_hours ?? 72;
+
+      const statuses: SlotStatus[] = keep.map((s) =>
+        chosen.some((c) => c.start.getTime() === s.start.getTime()) ? 'clean' : 'refilled',
+      );
+
+      if (keep.length < Math.min(minSlots, chosen.length)) {
+        setVerifyState({ kind: 'insufficient', at: Date.now(), slotStatuses: statuses, openCount: keep.length });
+        toast.error(`Only ${keep.length} of ${chosen.length} proposed times are still open — review before sending.`);
+        return;
+      }
+
+      finalChosen = keep;
+      if (refilledCount > 0) {
+        setVerifyState({ kind: 'refilled', at: Date.now(), slotStatuses: statuses, refilledCount });
+      } else {
+        setVerifyState({ kind: 'clean', at: Date.now(), slotStatuses: statuses });
+      }
+
+      // Place soft-holds for every final slot (best-effort — failure here
+      // does not block the send).
+      if (placeHolds && finalChosen.length > 0) {
+        try {
+          const title = (dealId ? renderTitle().trim() : '') || (dealName ? `${dealName} — Intro call` : 'Proposed meeting');
+          const expires = new Date(Math.min(
+            Math.max(...finalChosen.map((s) => s.start.getTime())) + 6 * 3600_000,
+            Date.now() + holdHours * 3600_000,
+          ));
+          await createMeetingHolds({
+            slots: finalChosen.map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString() })),
+            title,
+            description: dealName ? `Discussion re: ${dealName}` : undefined,
+            attendees: finalAttendees.filter((a) => a.role !== 'me').map((a) => ({ email: a.email, name: a.name })),
+            timezone,
+            deal_id: dealId ?? null,
+            expires_at: expires.toISOString(),
+          });
+          invalidateHolds();
+        } catch (e: any) {
+          console.warn('[MeetingScheduler] place soft-holds failed', e);
+        }
+      }
+    } catch (e: any) {
+      console.error('[MeetingScheduler] verify failed', e);
+      toast.error('Verification failed — proceeding without re-check.');
+    } finally {
+      setVerifying(false);
+    }
+
+    const lines = finalChosen.map((s) => `• ${fmtSlot(s, timezone)}`).join('\n');
     const block =
       `${partiesLine === 'I' ? 'I have' : `${partiesLine} have`} the following times available:\n` +
       `${lines}\n\n` +
@@ -748,8 +900,9 @@ export function MeetingSchedulerCard({
       const t = renderTitle().trim();
       if (t) onSetSubject(t);
     }
-    toast.success('Proposed times added to your reply.');
-  }, [proposedSlots, selectedSlotIdx, partiesLine, timezone, onInsert, onSetSubject, dealId, renderTitle]);
+    if (refilledCount === 0) toast.success('Proposed times added to your reply.');
+    else toast.success(`Refilled ${refilledCount} slot${refilledCount === 1 ? '' : 's'} — review before sending.`);
+  }, [proposedSlots, selectedSlotIdx, partiesLine, timezone, onInsert, onSetSubject, dealId, renderTitle, finalAttendees, activeHoldsQ.data, durationMinutes, dealName, user?.id, invalidateHolds]);
 
   // ── Stage 2: confirm one slot → create the calendar event ──────────────
   const confirmAndCreate = useCallback(async () => {
@@ -958,8 +1111,11 @@ export function MeetingSchedulerCard({
         </div>
       ) : (
         <div className="space-y-1.5">
-          <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
-            {stage === 'propose' ? 'Pick which slots to offer' : 'Pick the confirmed slot'}
+          <div className="flex items-center gap-2">
+            <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
+              {stage === 'propose' ? 'Pick which slots to offer' : 'Pick the confirmed slot'}
+            </div>
+            <VerifyPill state={verifyState} />
           </div>
           <SlotsWithAvailability
             slots={proposedSlots}
@@ -1240,8 +1396,15 @@ export function MeetingSchedulerCard({
                 size="sm"
                 className="h-7 text-[11px] flex-1"
                 onClick={insertProposal}
+                disabled={verifying}
               >
-                Insert proposal
+                {verifying ? (
+                  <>
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" /> Verifying…
+                  </>
+                ) : (
+                  'Insert proposal'
+                )}
               </Button>
               <Button
                 size="sm"
@@ -1352,5 +1515,40 @@ function SlotsWithAvailability({
         return render(slot, i, summary);
       })}
     </>
+  );
+}
+
+/* ---------- Verification pill ---------- */
+
+function VerifyPill({ state }: { state: any }) {
+  if (state.kind === 'idle') return null;
+  if (state.kind === 'verifying') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground">
+        <Loader2 className="h-2.5 w-2.5 animate-spin" /> Verifying…
+      </span>
+    );
+  }
+  if (state.kind === 'clean') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">
+        <ShieldCheck className="h-2.5 w-2.5" />
+        Verified just now · {state.slotStatuses.length} slot{state.slotStatuses.length === 1 ? '' : 's'} open
+      </span>
+    );
+  }
+  if (state.kind === 'refilled') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-300">
+        <RefreshCw className="h-2.5 w-2.5" />
+        Refilled {state.refilledCount} slot{state.refilledCount === 1 ? '' : 's'} · review changes
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/40 bg-rose-400/10 px-2 py-0.5 text-[10px] text-rose-300">
+      <ShieldAlert className="h-2.5 w-2.5" />
+      Only {state.openCount} open — update draft
+    </span>
   );
 }

@@ -14695,6 +14695,60 @@ export type Database = {
           },
         ]
       }
+      meeting_holds: {
+        Row: {
+          attendees: Json
+          created_at: string
+          deal_id: string | null
+          email_message_id: string | null
+          expires_at: string
+          google_event_id: string | null
+          hold_group_id: string
+          id: string
+          org_company_id: string | null
+          released_at: string | null
+          slot_end_at: string
+          slot_start_at: string
+          state: Database["public"]["Enums"]["meeting_hold_state"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attendees?: Json
+          created_at?: string
+          deal_id?: string | null
+          email_message_id?: string | null
+          expires_at: string
+          google_event_id?: string | null
+          hold_group_id: string
+          id?: string
+          org_company_id?: string | null
+          released_at?: string | null
+          slot_end_at: string
+          slot_start_at: string
+          state?: Database["public"]["Enums"]["meeting_hold_state"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attendees?: Json
+          created_at?: string
+          deal_id?: string | null
+          email_message_id?: string | null
+          expires_at?: string
+          google_event_id?: string | null
+          hold_group_id?: string
+          id?: string
+          org_company_id?: string | null
+          released_at?: string | null
+          slot_end_at?: string
+          slot_start_at?: string
+          state?: Database["public"]["Enums"]["meeting_hold_state"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meeting_title_templates: {
         Row: {
           created_at: string
@@ -21158,27 +21212,39 @@ export type Database = {
           auto_commit_high_confidence_pass: boolean
           calendar_tz: string | null
           created_at: string
+          hold_expiration_hours: number
+          min_required_slots: number
+          place_soft_holds: boolean
           recent_tz: string[]
           updated_at: string
           user_id: string
+          verify_on_send: boolean
           working_hours: Json
         }
         Insert: {
           auto_commit_high_confidence_pass?: boolean
           calendar_tz?: string | null
           created_at?: string
+          hold_expiration_hours?: number
+          min_required_slots?: number
+          place_soft_holds?: boolean
           recent_tz?: string[]
           updated_at?: string
           user_id: string
+          verify_on_send?: boolean
           working_hours?: Json
         }
         Update: {
           auto_commit_high_confidence_pass?: boolean
           calendar_tz?: string | null
           created_at?: string
+          hold_expiration_hours?: number
+          min_required_slots?: number
+          place_soft_holds?: boolean
           recent_tz?: string[]
           updated_at?: string
           user_id?: string
+          verify_on_send?: boolean
           working_hours?: Json
         }
         Relationships: []
@@ -24185,6 +24251,7 @@ export type Database = {
         | "diligence"
         | "closed_won"
         | "closed_lost"
+      meeting_hold_state: "held" | "confirmed" | "released" | "expired"
       notification_category:
         | "deals"
         | "tasks"
@@ -24452,6 +24519,7 @@ export const Constants = {
         "closed_won",
         "closed_lost",
       ],
+      meeting_hold_state: ["held", "confirmed", "released", "expired"],
       notification_category: [
         "deals",
         "tasks",
