@@ -11,6 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import {
   Granularity,
@@ -27,6 +28,7 @@ export interface InsightsTimeRangeValue {
   presetId: TimeRangePresetId;
   granularity: Granularity;
   custom?: { start: string; end: string };
+  includeCurrentMonth: boolean;
   resolved: ResolvedRange;
 }
 
@@ -53,6 +55,7 @@ export function InsightsTimeRangeSelector({
   const [presetId, setPresetId] = useState<TimeRangePresetId>(persisted?.presetId ?? defaultPresetId);
   const [granularity, setGranularity] = useState<Granularity>(persisted?.granularity ?? defaultGranularity);
   const [custom, setCustom] = useState<{ start: string; end: string } | undefined>(persisted?.custom);
+  const [includeCurrentMonth, setIncludeCurrentMonth] = useState<boolean>(persisted?.includeCurrentMonth ?? true);
   const [customOpen, setCustomOpen] = useState(false);
   const [customStart, setCustomStart] = useState<Date | undefined>(
     persisted?.custom?.start ? new Date(persisted.custom.start + 'T00:00:00') : undefined,
@@ -61,13 +64,16 @@ export function InsightsTimeRangeSelector({
     persisted?.custom?.end ? new Date(persisted.custom.end + 'T00:00:00') : undefined,
   );
 
-  const resolved = useMemo(() => resolveRange(presetId, custom), [presetId, custom]);
+  const resolved = useMemo(
+    () => resolveRange(presetId, { custom, includeCurrentMonth }),
+    [presetId, custom, includeCurrentMonth],
+  );
 
   useEffect(() => {
-    onChange({ presetId, granularity, custom, resolved });
-    savePersistedRange(boardId, { presetId, granularity, custom });
+    onChange({ presetId, granularity, custom, includeCurrentMonth, resolved });
+    savePersistedRange(boardId, { presetId, granularity, custom, includeCurrentMonth });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presetId, granularity, custom, resolved.start, resolved.end]);
+  }, [presetId, granularity, custom, includeCurrentMonth, resolved.start, resolved.end]);
 
   const handlePreset = (id: TimeRangePresetId) => {
     if (id === 'custom') {
@@ -116,6 +122,27 @@ export function InsightsTimeRangeSelector({
           <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setCustomOpen(true); }}>
             Custom range…
           </DropdownMenuItem>
+          {presetId === 'ytd' && (
+            <>
+              <DropdownMenuSeparator />
+              <div
+                className="flex items-center gap-2 px-2 py-1.5 text-xs"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Checkbox
+                  id="ytd-include-current-month"
+                  checked={includeCurrentMonth}
+                  onCheckedChange={(v) => setIncludeCurrentMonth(v !== false)}
+                />
+                <label
+                  htmlFor="ytd-include-current-month"
+                  className="cursor-pointer select-none text-xs text-foreground"
+                >
+                  Include current month
+                </label>
+              </div>
+            </>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
 

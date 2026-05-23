@@ -58,7 +58,21 @@ export interface ResolvedRange {
   label: string;
 }
 
-export function resolveRange(id: TimeRangePresetId, custom?: { start: string; end: string }): ResolvedRange {
+export interface ResolveOptions {
+  custom?: { start: string; end: string };
+  includeCurrentMonth?: boolean; // applies to YTD only; default true
+}
+
+export function resolveRange(
+  id: TimeRangePresetId,
+  customOrOptions?: { start: string; end: string } | ResolveOptions,
+): ResolvedRange {
+  // Back-compat: second arg may be either custom range or options object.
+  const options: ResolveOptions = (customOrOptions && 'custom' in (customOrOptions as ResolveOptions))
+    ? (customOrOptions as ResolveOptions)
+    : { custom: customOrOptions as { start: string; end: string } | undefined };
+  const custom = options.custom;
+  const includeCurrentMonth = options.includeCurrentMonth ?? true;
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -97,7 +111,22 @@ export function resolveRange(id: TimeRangePresetId, custom?: { start: string; en
       return { id, start: ymd(s), end: ymd(e), label: `Q${q} ${s.getFullYear()}` };
     }
     case 'ytd': {
-      return { id, start: ymd(startOfYear(today)), end: ymd(today), label: `${today.getFullYear()} YTD` };
+      const start = startOfYear(today);
+      if (includeCurrentMonth) {
+        return { id, start: ymd(start), end: ymd(today), label: `${today.getFullYear()} YTD` };
+      }
+      // Exclude current month: end on last day of prior completed month.
+      const priorEnd = endOfMonth(subMonths(today, 1));
+      // Guard: if today is in January, prior month would be last year — fall back to today
+      if (priorEnd < start) {
+        return { id, start: ymd(start), end: ymd(today), label: `${today.getFullYear()} YTD` };
+      }
+      return {
+        id,
+        start: ymd(start),
+        end: ymd(priorEnd),
+        label: `${today.getFullYear()} YTD (thru ${format(priorEnd, 'MMM')})`,
+      };
     }
     case 'ttm': {
       const s = subMonths(today, 12);
@@ -203,6 +232,7 @@ export interface PersistedTimeRange {
   presetId: TimeRangePresetId;
   granularity: Granularity;
   custom?: { start: string; end: string };
+  includeCurrentMonth?: boolean;
 }
 
 export function loadPersistedRange(boardId: string): PersistedTimeRange | null {
