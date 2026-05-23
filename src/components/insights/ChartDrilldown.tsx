@@ -713,6 +713,11 @@ function ValueRowsView({ req }: { req: DrilldownRequest }) {
   }
   return (
     <div>
+      {req.externalLink && (
+        <div style={sectionStyle}>
+          <ExternalLinkBtn href={req.externalLink.href} label={req.externalLink.label} />
+        </div>
+      )}
       <Table rows={req.rows.map(r => ({ label: r.metric, value: r.value }))} />
     </div>
   );
