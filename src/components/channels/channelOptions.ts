@@ -13,6 +13,7 @@ export const CHANNEL_TYPE_OPTIONS: { value: ChannelTypeValue; label: string; col
   { value: 'Service Providers', label: 'Service Providers', color: '#f59e0b' },
   { value: 'Investors', label: 'Investors', color: '#10b981' },
   { value: 'Advisors', label: 'Advisors', color: '#ec4899' },
+  { value: 'Lenders' as ChannelTypeValue, label: 'Lenders', color: '#14b8a6' },
   { value: 'Other', label: 'Other', color: '#64748b' },
 ];
 
