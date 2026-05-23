@@ -12,6 +12,8 @@ import { SortableHeader } from '@/components/ui/sortable-header';
 import { format } from 'date-fns';
 import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
 
 interface DealRow {
   id: string;
@@ -73,7 +75,21 @@ export function PartnerSourcedDeals() {
   }, [deals, partnerNames]);
 
   const totalValue = matchedDeals.reduce((sum, d) => sum + (d.value || 0), 0);
-  const conversionRate = deals.length > 0 ? Math.round((matchedDeals.length / deals.length) * 100) : 0;
+
+  // Conversion Rate is TTM and independent of the header date filter.
+  // Denominator mirrors the "partner-sourced" definition used by Total Referred:
+  // a deal whose referred_by matches a known partner name.
+  const partnerNamesList = useMemo(() => partners.map(p => p.name), [partners]);
+  const ttm = useTtmActivePipelineConversion({
+    kind: 'partner',
+    partnerNames: partnerNamesList,
+    enabled: partnerNamesList.length > 0,
+  });
+  const conversionRateLabel = ttm.label;
+
+  if (typeof window !== 'undefined') {
+    (window as any).__salesBdPartnerTtm = ttm;
+  }
 
   const sorted = useMemo(() => {
     if (!sortCol || !sortDir) return matchedDeals;
@@ -121,12 +137,24 @@ export function PartnerSourcedDeals() {
             {totalValue >= 1_000_000_000 ? `$${(totalValue / 1_000_000_000).toFixed(2)}B` : totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(2)}MM` : totalValue >= 1_000 ? `$${(totalValue / 1_000).toFixed(2)}K` : `$${totalValue.toFixed(2)}`}
           </span>
         </div>
-        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
-          </div>
-          <span className="text-2xl font-bold text-foreground">{conversionRate}%</span>
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={`${liquidGlassKPI} p-4 flex flex-col items-center cursor-help`}>
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                  <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
+                  <span className="ml-1 rounded-full border border-border/60 bg-muted/40 px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+                    TTM
+                  </span>
+                </div>
+                <span className="text-2xl font-bold text-foreground">{conversionRateLabel}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+              Trailing-12-month conversion rate: deals added to active pipeline sourced via Partner that reached the Final Credit Items stage, divided by all deals added to active pipeline sourced via Partner in the trailing 12 months. Independent of the header date filter.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <Collapsible open={showDetails} onOpenChange={setShowDetails}>
