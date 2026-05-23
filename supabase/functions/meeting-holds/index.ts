@@ -80,7 +80,9 @@ serve(async (req: Request): Promise<Response> => {
     // Sweep allows service-role JWT (cron) — short-circuit auth check.
     if (body?.action === "sweep") {
       const isService = token === SUPABASE_SERVICE_ROLE_KEY;
-      if (!isService) {
+      const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY");
+      const isCron = !!SUPABASE_ANON_KEY && token === SUPABASE_ANON_KEY;
+      if (!isService && !isCron) {
         const { data: claims } = await svc.auth.getClaims(token);
         if (!claims?.claims?.sub) return ok({ error: "Invalid token" }, 401);
       }
