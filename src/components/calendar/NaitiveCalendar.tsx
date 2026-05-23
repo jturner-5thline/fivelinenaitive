@@ -30,6 +30,7 @@ import {
   startOfDay,
   endOfDay,
 } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import {
   ChevronLeft,
   ChevronRight,
@@ -39,12 +40,23 @@ import {
   Users,
   ExternalLink,
   Video,
+  Globe,
+  Check,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { useUserCalendarPrefs, type WorkingHours, type DayOfWeek } from '@/hooks/useUserCalendarPrefs';
+import { useAttendeeFreeBusy, type AttendeeFreeBusy } from '@/hooks/useAttendeeFreeBusy';
 
 export interface CalEvent {
   id?: string;
@@ -68,6 +80,12 @@ export interface HighlightSlot {
   label?: string;
 }
 
+export interface CalendarAttendee {
+  email: string;
+  displayName?: string;
+  accessHint?: 'shared' | 'limited' | 'unknown';
+}
+
 interface Props {
   view?: CalendarView;
   events?: CalEvent[];
@@ -82,6 +100,14 @@ interface Props {
   className?: string;
   /** Default scroll target hour (0-23). Defaults to 7. */
   scrollToHour?: number;
+  /** Attendees to overlay free/busy for (signed-in user is always first). */
+  attendees?: CalendarAttendee[];
+  /** Persist TZ changes to user_email_ai_preferences. Default false. */
+  persistTz?: boolean;
+  /** Show working-hours dim band on the grid. Default true. */
+  showWorkingHours?: boolean;
+  /** Called when the user changes the TZ chip. */
+  onTzChange?: (tz: string) => void;
 }
 
 const HOUR_HEIGHT_NORMAL = 44;
@@ -103,11 +129,71 @@ function fmtHourLabel(h: number): string {
   return `${h - 12} PM`;
 }
 
+/** Current UTC offset string for an IANA zone, e.g. "UTC−4". */
+function tzOffsetLabel(tz: string, ref = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(ref);
+    const off = parts.find((p) => p.type === 'timeZoneName')?.value || '';
+    return off.replace('GMT', 'UTC').replace('-', '−');
+  } catch {
+    return 'UTC';
+  }
+}
+
+/** Minutes from midnight in `tz` for a given Date. */
+function tzMinutesFromMidnight(d: Date, tz: string): number {
+  try {
+    const hm = formatInTimeZone(d, tz, 'H:m').split(':');
+    return parseInt(hm[0], 10) * 60 + parseInt(hm[1] || '0', 10);
+  } catch {
+    return d.getHours() * 60 + d.getMinutes();
+  }
+}
+
+/** YYYY-MM-DD in `tz`. */
+function tzDayKey(d: Date, tz: string): string {
+  try {
+    return formatInTimeZone(d, tz, 'yyyy-MM-dd');
+  } catch {
+    return format(d, 'yyyy-MM-dd');
+  }
+}
+
+function tzFmt(d: Date, tz: string, pattern: string): string {
+  try {
+    return formatInTimeZone(d, tz, pattern);
+  } catch {
+    return format(d, pattern);
+  }
+}
+
+const DAY_KEYS: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+/** Most-used IANA zones grouped by region for the picker. */
+const TZ_GROUPS: Array<{ label: string; zones: string[] }> = [
+  {
+    label: 'Americas',
+    zones: ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo'],
+  },
+  {
+    label: 'Europe',
+    zones: ['Europe/London', 'Europe/Dublin', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid', 'Europe/Amsterdam', 'Europe/Zurich'],
+  },
+  {
+    label: 'Asia / Pacific',
+    zones: ['Asia/Dubai', 'Asia/Singapore', 'Asia/Hong_Kong', 'Asia/Tokyo', 'Asia/Kolkata', 'Australia/Sydney'],
+  },
+  { label: 'UTC', zones: ['UTC'] },
+];
+
 export function NaitiveCalendar({
   view: viewProp = 'week',
   events: externalEvents,
   selectedDate,
-  tz = BROWSER_TZ,
+  tz: tzProp,
   onRangeChange,
   onEventClick,
   onSlotClick,
@@ -116,9 +202,37 @@ export function NaitiveCalendar({
   compact = false,
   className,
   scrollToHour = 7,
+  attendees,
+  persistTz = false,
+  showWorkingHours = true,
+  onTzChange,
 }: Props) {
   const [view, setView] = useState<CalendarView>(viewProp);
   useEffect(() => setView(viewProp), [viewProp]);
+
+  const prefs = useUserCalendarPrefs();
+
+  // Effective TZ: explicit prop > saved pref > browser. Local state lets the
+  // user switch via the chip without round-tripping to the DB first.
+  const initialTz = tzProp || (persistTz && prefs.tz) || BROWSER_TZ;
+  const [tz, setTzState] = useState<string>(initialTz);
+  useEffect(() => {
+    if (tzProp) {
+      setTzState(tzProp);
+    } else if (persistTz && prefs.isLoaded && prefs.tz && prefs.tz !== tz) {
+      setTzState(prefs.tz);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tzProp, persistTz, prefs.isLoaded, prefs.tz]);
+
+  const handleTzPick = useCallback(
+    (next: string) => {
+      setTzState(next);
+      onTzChange?.(next);
+      if (persistTz) void prefs.setTz(next);
+    },
+    [onTzChange, persistTz, prefs],
+  );
 
   const [anchor, setAnchor] = useState<Date>(() => selectedDate ?? new Date());
   useEffect(() => {
@@ -128,6 +242,8 @@ export function NaitiveCalendar({
   const [selected, setSelected] = useState<CalEvent | null>(null);
   const [now, setNow] = useState<Date>(() => new Date());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [hoverMin, setHoverMin] = useState<number | null>(null);
+  const [hoverDayIdx, setHoverDayIdx] = useState<number | null>(null);
 
   // Tick "now" every minute for the live indicator.
   useEffect(() => {
@@ -161,6 +277,14 @@ export function NaitiveCalendar({
     enabled: !externalEvents,
   });
   const events = externalEvents ?? fetched ?? [];
+
+  // Attendee free/busy overlay — only fires when attendees are passed.
+  const attendeeEmails = useMemo(() => (attendees ?? []).map((a) => a.email.toLowerCase()), [attendees]);
+  const { data: freeBusy } = useAttendeeFreeBusy({
+    range,
+    emails: attendeeEmails,
+    enabled: !!attendees && attendees.length > 0,
+  });
 
   // Auto-scroll to scrollToHour on mount or week change.
   useEffect(() => {
@@ -222,6 +346,11 @@ export function NaitiveCalendar({
         <span className="text-[11.5px] font-medium text-foreground">{headerLabel}</span>
         {isFetching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         <div className="ml-auto flex items-center gap-1">
+          <TzChip
+            tz={tz}
+            recent={prefs.recentTz}
+            onPick={handleTzPick}
+          />
           {/* Segmented view switch */}
           <div className="hidden sm:flex items-center rounded-md border border-white/10 overflow-hidden mr-1">
             {(['day', 'week', 'agenda'] as CalendarView[]).map((v) => (
@@ -255,6 +384,7 @@ export function NaitiveCalendar({
           events={events}
           highlightSlots={highlightSlots}
           onEventClick={handleEventClick}
+          tz={tz}
         />
       ) : (
         <TimeGridView
@@ -268,6 +398,25 @@ export function NaitiveCalendar({
           onEventClick={handleEventClick}
           onSlotClick={handleSlotClick}
           compact={compact}
+          tz={tz}
+          workingHours={showWorkingHours ? prefs.workingHours : null}
+          onHoverChange={(d, m) => {
+            setHoverDayIdx(d);
+            setHoverMin(m);
+          }}
+        />
+      )}
+
+      {/* Attendee free/busy strip — only when attendees are passed. */}
+      {view !== 'agenda' && attendees && attendees.length > 0 && (
+        <AttendeeStrip
+          anchor={anchor}
+          view={view as 'day' | 'week'}
+          attendees={attendees}
+          freeBusy={freeBusy ?? []}
+          tz={tz}
+          hoverDayIdx={hoverDayIdx}
+          hoverMin={hoverMin}
         />
       )}
 
