@@ -92,6 +92,27 @@ serve(async (req) => {
         }, { onConflict: "user_id,thread_id" });
 
       if (!upErr) classified += 1;
+
+      // Fire-and-forget telemetry — never blocks classification.
+      try {
+        const outcome = result.match_confidence >= 0.6
+          ? "auto"
+          : result.match_confidence >= 0.3
+            ? "suggested"
+            : "unlinked";
+        await supabase.from("recognition_log").insert({
+          user_id: user.id,
+          message_id: null,
+          thread_id: tid,
+          chosen_deal_id: result.matched_deal_id,
+          confidence: result.match_confidence,
+          signals: result.match_signals,
+          candidates: [],
+          outcome,
+        });
+      } catch (_e) {
+        // swallow — telemetry must never break the path
+      }
     }
 
     return new Response(JSON.stringify({ classified }), {
@@ -115,7 +136,7 @@ async function buildContext(
   // Internal domains: derive from the user's company website_url.
   const { data: companyRow } = await supabase
     .from("company_members")
-    .select("companies(website_url)")
+    .select("company_id, companies(website_url)")
     .eq("user_id", userId)
     .limit(1)
     .maybeSingle();
@@ -125,6 +146,7 @@ async function buildContext(
     const d = url.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0].toLowerCase();
     if (d) internalDomains.push(d);
   }
+  const orgCompanyId: string | null = companyRow?.company_id ?? null;
 
   // Active, non-archived deals visible to this user (RLS handles scoping).
   const { data: deals } = await supabase
@@ -212,7 +234,26 @@ async function buildContext(
     }
   }
 
-  return { internal_domains: internalDomains, deals: dealList };
+  // Learned recognition overrides for this org
+  let recognitionOverrides: NonNullable<ClassifierContext["recognition_overrides"]> = [];
+  if (orgCompanyId) {
+    const { data: ovRows } = await supabase
+      .from("recognition_overrides")
+      .select("from_address, domain, deal_id")
+      .eq("org_company_id", orgCompanyId)
+      .limit(2000);
+    recognitionOverrides = (ovRows ?? []).map((r: any) => ({
+      from_address: r.from_address ? String(r.from_address).toLowerCase() : null,
+      domain: r.domain ? String(r.domain).toLowerCase() : null,
+      deal_id: r.deal_id,
+    }));
+  }
+
+  return {
+    internal_domains: internalDomains,
+    deals: dealList,
+    recognition_overrides: recognitionOverrides,
+  };
 }
 
 async function loadThread(
@@ -259,6 +300,24 @@ async function loadThread(
     if (deLinks && deLinks.length > 0) linkedDealId = deLinks[0].deal_id;
   }
 
+  // In-Reply-To chain: look for prior email activities (activity_logs rows
+  // of type='email' with matching thread_id or message_id) already linked
+  // to a deal. Cheaper proxy than parsing RFC 5322 headers from raw mime.
+  let inReplyToDealId: string | null = null;
+  if (!linkedDealId) {
+    const { data: priorActivity } = await supabase
+      .from("activity_logs")
+      .select("deal_id")
+      .eq("activity_type", "email")
+      .eq("thread_id", threadId)
+      .not("deal_id", "is", null)
+      .order("sent_at", { ascending: false, nullsFirst: false })
+      .limit(1);
+    if (priorActivity && priorActivity.length > 0) {
+      inReplyToDealId = priorActivity[0].deal_id;
+    }
+  }
+
   // User override + previous classification
   const { data: existing } = await supabase
     .from("email_threads")
@@ -275,6 +334,7 @@ async function loadThread(
     urls,
     attachment_names: [],
     linked_deal_id: linkedDealId,
+    in_reply_to_deal_id: inReplyToDealId,
     user_override_clients_deals: existing?.user_override_clients_deals ?? null,
   };
 }
