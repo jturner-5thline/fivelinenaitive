@@ -178,6 +178,21 @@ export function FinServFinancialMetricsDashboard() {
     range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
   const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
 
+  // ── Derived: Average Revenue by Client per bucket = revenue / active-clients-at-end-of-period
+  const avgRevenueByClient = useMemo(() => {
+    const countByKey = new Map(activeClients.trend.map(t => [t.monthKey, t.count]));
+    const points = totalRev.months.map(m => {
+      const clients = countByKey.get(m.monthKey) ?? 0;
+      const avg = clients > 0 ? m.amount / clients : null;
+      return { month: m.month, monthKey: m.monthKey, revenue: m.amount, clients, avg };
+    });
+    const valid = points.filter(p => p.avg !== null) as Array<{ avg: number }>;
+    const headline = valid.length > 0
+      ? valid.reduce((s, p) => s + p.avg, 0) / valid.length
+      : 0;
+    return { points, headline, hasAny: valid.length > 0 };
+  }, [totalRev.months, activeClients.trend]);
+
   return (
     <>
     <div className="space-y-6">
@@ -475,6 +490,67 @@ export function FinServFinancialMetricsDashboard() {
                   />
                   <Line type="monotone" dataKey="count" stroke="hsl(var(--chart-2))" strokeWidth={1} dot={{ r: 3 }} name="Trend" />
                 </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Row 6: Revenue Change by Client ── */}
+      {/* ── Row 5b: Average Revenue by Client ── */}
+      <Card className="glass-module">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium">Average Revenue by Client</CardTitle>
+          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-4">
+            <div className="text-3xl font-semibold text-foreground">
+              {avgRevenueByClient.hasAny ? fmtCurrencyPrecise(avgRevenueByClient.headline) : '—'}
+            </div>
+            <div className="text-xs text-muted-foreground">
+              Simple average of per-period (Revenue ÷ Active Clients)
+            </div>
+          </div>
+          {totalRev.isLoading || activeClients.isLoading ? <WidgetLoading /> :
+            totalRev.error || activeClients.error ? <WidgetError /> :
+            !avgRevenueByClient.hasAny ? <WidgetEmpty /> : (
+            <div className="h-[220px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={avgRevenueByClient.points}>
+                  <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                  <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
+                  <Tooltip
+                    formatter={(v: any, _name: string, item: any) => {
+                      if (v == null) return ['No active clients', 'Avg / Client'];
+                      const clients = item?.payload?.clients ?? 0;
+                      const revenue = item?.payload?.revenue ?? 0;
+                      return [
+                        `${fmtCurrencyFull(Number(v))}  (${fmtCurrencyFull(revenue)} ÷ ${clients})`,
+                        'Avg / Client',
+                      ];
+                    }}
+                  />
+                  <Bar
+                    dataKey="avg"
+                    fill="hsl(var(--primary))"
+                    name="Avg Revenue / Client"
+                    shape={createGlassBarShape({ radius: 4 })}
+                    cursor="pointer"
+                    onClick={(d: any) => openSinglePoint(
+                      'Average Revenue by Client',
+                      d?.month,
+                      'Avg Revenue / Client',
+                      Number(d?.avg) || 0,
+                      fmtCurrencyFull,
+                      [
+                        { metric: 'Revenue', value: fmtCurrencyFull(Number(d?.revenue) || 0) },
+                        { metric: 'Active Clients', value: String(d?.clients ?? 0) },
+                      ],
+                    )}
+                  />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           )}
