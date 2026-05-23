@@ -163,11 +163,16 @@ export function FinServFinancialMetricsDashboard() {
 
   // Data hooks
   const totalRev = useFinServTotalRevenue(selectedPeriod, range.granularity);
-  const profits = useFinServQuarterlyProfits(selectedPeriod, 6);
+  const profits = useFinServQuarterlyProfits(selectedPeriod, range.granularity);
   const revenueByClient = useFinServRevenueByClient(selectedQuarter, selectedQuarter.months.length - 1);
-  const cashflow = useFinServCashflow();
+  const cashflow = useFinServCashflow(selectedPeriod, range.granularity);
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
   const activeClients = useFinServActiveClients();
+
+  const granularityLabel =
+    range.granularity === 'monthly' ? 'Monthly' :
+    range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
+  const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
 
   return (
     <>
@@ -210,7 +215,7 @@ export function FinServFinancialMetricsDashboard() {
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedPeriod.label}</Badge>
+          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
         </CardHeader>
         <CardContent>
           <div className="mb-4">
@@ -245,7 +250,7 @@ export function FinServFinancialMetricsDashboard() {
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Gross Profit $</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Quarterly snapshot trend</Badge>
+            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -284,7 +289,7 @@ export function FinServFinancialMetricsDashboard() {
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Gross Profit Margin %</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Selected period</Badge>
+            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -322,7 +327,7 @@ export function FinServFinancialMetricsDashboard() {
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Operating Profit $</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -364,7 +369,7 @@ export function FinServFinancialMetricsDashboard() {
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Operating Margin %</CardTitle>
-            <Badge variant="outline" className="w-fit text-xs">Quarterly</Badge>
+            <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
           </CardHeader>
           <CardContent>
             <div className="mb-4">
@@ -406,7 +411,7 @@ export function FinServFinancialMetricsDashboard() {
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">FinServ Cashflow</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">Monthly · Last 12 months</Badge>
+          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
         </CardHeader>
         <CardContent>
           {cashflow.isLoading ? <WidgetLoading /> : cashflow.error ? <WidgetError message={cashflow.error instanceof Error ? cashflow.error.message : 'Failed to load cashflow'} /> : cashflow.points.every(p => p.value === 0) ? <WidgetEmpty /> : (
@@ -551,7 +556,7 @@ export function FinServFinancialMetricsDashboard() {
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Income by Product/Service</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">Monthly · {selectedQuarter.label} · Excl. null customers</Badge>
+          <Badge variant="outline" className="w-fit text-xs">{periodBadge} · Excl. null customers</Badge>
         </CardHeader>
         <CardContent>
           {stacked.isLoading ? <WidgetLoading /> : stacked.months.every(m => m.totalRevenue === 0) ? <WidgetEmpty /> : (
