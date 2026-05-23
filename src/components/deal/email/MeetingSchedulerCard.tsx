@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { InteractiveWeekCalendar } from './InteractiveWeekCalendar';
 import type { EmailThread } from './mockEmailData';
+import { useRenderMeetingTitle } from '@/hooks/useRenderMeetingTitle';
 
 /**
  * MeetingSchedulerCard
@@ -74,6 +75,9 @@ interface Props {
   threadSubject?: string;
   /** Matched deal name, woven into the meeting title when available. */
   dealName?: string;
+  /** Deal id — when provided, the stage-driven title template is used for
+   *  both the calendar event summary and the meeting-suggestion subject. */
+  dealId?: string | null;
   /** Full email thread — when provided, an Availability Check section is
    *  rendered at the top to parse proposed times and cross-reference the
    *  user's calendar. */
