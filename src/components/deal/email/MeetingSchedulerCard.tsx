@@ -741,8 +741,14 @@ export function MeetingSchedulerCard({
       `${lines}\n\n` +
       `Please reply with your preference and I will send a formal invite.`;
     onInsert(block);
+    // Stage-driven subject suggestion (fix #3) — keeps the round-trip
+    // email subject and calendar invite title aligned.
+    if (onSetSubject && dealId) {
+      const t = renderTitle().trim();
+      if (t) onSetSubject(t);
+    }
     toast.success('Proposed times added to your reply.');
-  }, [proposedSlots, selectedSlotIdx, partiesLine, timezone, onInsert]);
+  }, [proposedSlots, selectedSlotIdx, partiesLine, timezone, onInsert, onSetSubject, dealId, renderTitle]);
 
   // ── Stage 2: confirm one slot → create the calendar event ──────────────
   const confirmAndCreate = useCallback(async () => {
