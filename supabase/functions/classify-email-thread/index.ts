@@ -92,6 +92,27 @@ serve(async (req) => {
         }, { onConflict: "user_id,thread_id" });
 
       if (!upErr) classified += 1;
+
+      // Fire-and-forget telemetry — never blocks classification.
+      try {
+        const outcome = result.match_confidence >= 0.6
+          ? "auto"
+          : result.match_confidence >= 0.3
+            ? "suggested"
+            : "unlinked";
+        await supabase.from("recognition_log").insert({
+          user_id: user.id,
+          message_id: null,
+          thread_id: tid,
+          chosen_deal_id: result.matched_deal_id,
+          confidence: result.match_confidence,
+          signals: result.match_signals,
+          candidates: [],
+          outcome,
+        });
+      } catch (_e) {
+        // swallow — telemetry must never break the path
+      }
     }
 
     return new Response(JSON.stringify({ classified }), {
