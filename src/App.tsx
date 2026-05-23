@@ -99,6 +99,7 @@ const Insights = lazy(lazyRetry(() => import("./pages/Insights")));
 const SalesBD = lazy(lazyRetry(() => import("./pages/SalesBD")));
 const HR = lazy(lazyRetry(() => import("./pages/HR")));
 const Operations = lazy(lazyRetry(() => import("./pages/Operations")));
+const DebugRecognition = lazy(lazyRetry(() => import("./pages/DebugRecognition")));
 const Database = lazy(lazyRetry(() => import("./pages/Database")));
 const Workflows = lazy(lazyRetry(() => import("./pages/Workflows")));
 const Tasks = lazy(lazyRetry(() => import("./pages/Tasks")));
