@@ -4,7 +4,14 @@ import { useQuickBooksExpanded } from '@/hooks/useQuickBooksExpanded';
 import { format, subMonths, startOfMonth } from 'date-fns';
 import { resolveQboClientLabel } from '@/lib/qboClientName';
 
-export function useQuickBooksMetrics(realmId?: string) {
+export interface QuickBooksMetricsPeriod {
+  /** Inclusive ymd start. */
+  start: string;
+  /** Inclusive ymd end. */
+  end: string;
+}
+
+export function useQuickBooksMetrics(realmId?: string, period?: QuickBooksMetricsPeriod) {
   const { data: invoices = [], isLoading: invoicesLoading } = useQuickBooksInvoices(realmId);
   const { data: customers = [], isLoading: customersLoading } = useQuickBooksCustomers(realmId);
   const { data: payments = [], isLoading: paymentsLoading } = useQuickBooksPayments(realmId);
@@ -16,26 +23,41 @@ export function useQuickBooksMetrics(realmId?: string) {
   const isLoading = invoicesLoading || customersLoading || paymentsLoading || expandedLoading;
 
   const metrics = useMemo(() => {
-    // Total revenue (sum of all invoice totals)
-    const totalRevenue = invoices.reduce((sum, inv) => sum + (inv.total_amt || 0), 0);
+    // When a period is provided, scope flow-based facts (revenue, payments,
+    // expenses, bills, customer aggregates) to invoices/payments/expenses/bills
+    // whose txn_date sits inside [start,end]. Stock metrics (current A/R, open
+    // bills, active customers, aging buckets) remain "as of today" snapshots —
+    // QBO doesn't keep balance history per row.
+    const inPeriod = (dateStr: string | null | undefined) => {
+      if (!period) return true;
+      if (!dateStr) return false;
+      return dateStr >= period.start && dateStr <= period.end;
+    };
+    const periodInvoices = period ? invoices.filter(i => inPeriod(i.txn_date)) : invoices;
+    const periodPayments = period ? payments.filter(p => inPeriod(p.txn_date)) : payments;
+    const periodExpenses = period ? expenses.filter(e => inPeriod(e.txn_date)) : expenses;
+    const periodBills    = period ? bills.filter(b => inPeriod(b.txn_date)) : bills;
 
-    // Outstanding AR (sum of all invoice balances)
+    // Total revenue (sum of all invoice totals)
+    const totalRevenue = periodInvoices.reduce((sum, inv) => sum + (inv.total_amt || 0), 0);
+
+    // Outstanding A/R — always evaluated against current balance, not period.
     const totalAR = invoices.reduce((sum, inv) => sum + (inv.balance || 0), 0);
 
-    // Total payments received
-    const totalPayments = payments.reduce((sum, p) => sum + (p.total_amt || 0), 0);
+    // Total payments received (in period)
+    const totalPayments = periodPayments.reduce((sum, p) => sum + (p.total_amt || 0), 0);
 
     // Active customers
     const activeCustomers = customers.filter(c => c.active).length;
     const totalCustomers = customers.length;
 
-    // Average invoice size
-    const avgInvoiceSize = invoices.length > 0 ? totalRevenue / invoices.length : 0;
+    // Average invoice size (in period)
+    const avgInvoiceSize = periodInvoices.length > 0 ? totalRevenue / periodInvoices.length : 0;
 
     // Collection rate
     const collectionRate = totalRevenue > 0 ? ((totalRevenue - totalAR) / totalRevenue) * 100 : 0;
 
-    // Overdue invoices (due_date < today and balance > 0)
+    // Overdue invoices (due_date < today and balance > 0) — current snapshot.
     const now = new Date();
     const overdueInvoices = invoices.filter(inv => 
       inv.due_date && inv.balance && inv.balance > 0 && new Date(inv.due_date) < now
@@ -44,13 +66,13 @@ export function useQuickBooksMetrics(realmId?: string) {
 
     // --- Expanded metrics ---
 
-    // Total expenses
-    const totalExpenses = expenses.reduce((sum, e) => sum + (e.total_amt || 0), 0);
+    // Total expenses (in period)
+    const totalExpenses = periodExpenses.reduce((sum, e) => sum + (e.total_amt || 0), 0);
 
-    // Total bills
-    const totalBills = bills.reduce((sum, b) => sum + (b.total_amt || 0), 0);
+    // Total bills (in period)
+    const totalBills = periodBills.reduce((sum, b) => sum + (b.total_amt || 0), 0);
 
-    // Outstanding AP (unpaid bills)
+    // Outstanding A/P — current snapshot.
     const totalAP = bills.reduce((sum, b) => sum + (b.balance || 0), 0);
 
     // Total estimates
@@ -66,13 +88,23 @@ export function useQuickBooksMetrics(realmId?: string) {
     // Net income proxy (revenue - expenses)
     const netIncome = totalRevenue - totalExpenses;
 
-    // Monthly revenue trend (last 12 months)
+    // Monthly revenue trend — buckets the active period when one is supplied,
+    // otherwise falls back to the legacy "rolling 12 months from today" view.
     const monthlyRevenue: { month: string; revenue: number; payments: number; expenses: number; invoiceCount: number }[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const monthDate = subMonths(now, i);
+    const trendEnd = period ? new Date(period.end + 'T00:00:00') : now;
+    const trendStart = period
+      ? new Date(period.start + 'T00:00:00')
+      : subMonths(now, 11);
+    const monthsToRender = Math.max(
+      1,
+      (trendEnd.getFullYear() - trendStart.getFullYear()) * 12 +
+        (trendEnd.getMonth() - trendStart.getMonth()) + 1,
+    );
+    for (let i = monthsToRender - 1; i >= 0; i--) {
+      const monthDate = subMonths(trendEnd, i);
       const monthStr = format(monthDate, 'MMM-yy');
       const monthStart = startOfMonth(monthDate);
-      const nextMonthStart = startOfMonth(subMonths(now, i - 1));
+      const nextMonthStart = startOfMonth(subMonths(trendEnd, i - 1));
 
       const inRange = (dateStr: string | null) => {
         if (!dateStr) return false;
@@ -94,14 +126,14 @@ export function useQuickBooksMetrics(realmId?: string) {
     }
 
     // Top customers by revenue — bucket by COMPANY name (falls back to display
-    // name only when QBO has no company set). See src/lib/qboClientName.ts.
+    // name only when QBO has no company set). Period-aware. See src/lib/qboClientName.ts.
     const customerById = new Map<string, { company_name: string | null; display_name: string | null }>();
     customers.forEach((c: any) => {
       if (!c.qb_id) return;
       customerById.set(c.qb_id, { company_name: c.company_name ?? null, display_name: c.display_name ?? null });
     });
     const customerRevenue: Record<string, { name: string; revenue: number; balance: number; invoiceCount: number }> = {};
-    invoices.forEach((inv: any) => {
+    periodInvoices.forEach((inv: any) => {
       const name = resolveQboClientLabel(
         inv.customer_name,
         inv.customer_id ? customerById.get(inv.customer_id) : undefined,
@@ -117,15 +149,15 @@ export function useQuickBooksMetrics(realmId?: string) {
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 10);
 
-    // Top vendors by spend
+    // Top vendors by spend (in period)
     const vendorSpend: Record<string, { name: string; spend: number; count: number }> = {};
-    expenses.forEach(e => {
+    periodExpenses.forEach(e => {
       const name = e.vendor_ref_name || 'Unknown';
       if (!vendorSpend[name]) vendorSpend[name] = { name, spend: 0, count: 0 };
       vendorSpend[name].spend += e.total_amt || 0;
       vendorSpend[name].count += 1;
     });
-    bills.forEach(b => {
+    periodBills.forEach(b => {
       const name = b.vendor_ref_name || 'Unknown';
       if (!vendorSpend[name]) vendorSpend[name] = { name, spend: 0, count: 0 };
       vendorSpend[name].spend += b.total_amt || 0;
@@ -135,9 +167,9 @@ export function useQuickBooksMetrics(realmId?: string) {
       .sort((a, b) => b.spend - a.spend)
       .slice(0, 10);
 
-    // Invoice status breakdown
+    // Invoice status breakdown (in period)
     const statusBreakdown: Record<string, { status: string; count: number; value: number }> = {};
-    invoices.forEach(inv => {
+    periodInvoices.forEach(inv => {
       const status = inv.status || 'Unknown';
       if (!statusBreakdown[status]) {
         statusBreakdown[status] = { status, count: 0, value: 0 };
@@ -146,9 +178,9 @@ export function useQuickBooksMetrics(realmId?: string) {
       statusBreakdown[status].value += inv.total_amt || 0;
     });
 
-    // Payment methods breakdown
+    // Payment methods breakdown (in period)
     const paymentMethods: Record<string, { method: string; count: number; value: number }> = {};
-    payments.forEach(p => {
+    periodPayments.forEach(p => {
       const method = p.payment_method || 'Other';
       if (!paymentMethods[method]) {
         paymentMethods[method] = { method, count: 0, value: 0 };
@@ -157,9 +189,9 @@ export function useQuickBooksMetrics(realmId?: string) {
       paymentMethods[method].value += p.total_amt || 0;
     });
 
-    // Expense by category (account)
+    // Expense by category (in period)
     const expenseByCategory: Record<string, { category: string; amount: number; count: number }> = {};
-    expenses.forEach(e => {
+    periodExpenses.forEach(e => {
       const cat = e.account_ref_name || 'Uncategorized';
       if (!expenseByCategory[cat]) expenseByCategory[cat] = { category: cat, amount: 0, count: 0 };
       expenseByCategory[cat].amount += e.total_amt || 0;
@@ -237,7 +269,7 @@ export function useQuickBooksMetrics(realmId?: string) {
       apAgingData,
       accountTypeData: Object.values(accountTypes).sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)),
     };
-  }, [invoices, customers, payments, expenses, bills, vendors, accounts, estimates, creditMemos]);
+  }, [invoices, customers, payments, expenses, bills, vendors, accounts, estimates, creditMemos, period?.start, period?.end]);
 
   return { data: metrics, isLoading, rawInvoices: invoices, rawPayments: payments, rawExpenses: expenses };
 }
