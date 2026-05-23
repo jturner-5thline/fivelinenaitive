@@ -842,10 +842,25 @@ export function MeetingSchedulerCard({
         </button>
       </div>
 
-      {/* Live, interactive week view of the user's connected Google Calendar
-          — replaces the previous static preview so users can actually scroll
-          through hours, jump between weeks, and click events for details. */}
-      <InteractiveWeekCalendar gridHeight={320} />
+      {/* Canonical NaitiveCalendar embedded in compact mode, with the
+          auto-proposed slots highlighted so the user can see them in
+          context against their real Google Calendar week. */}
+      <NaitiveCalendar
+        view="week"
+        compact
+        highlightSlots={proposedSlots.map((s, i) => ({
+          start: s.start,
+          end: s.end,
+          label: `Option ${i + 1}`,
+        }))}
+        onSlotClick={(slot) => {
+          // Seed point for fix #4 — empty slot taps will become
+          // "Suggest this time" once that workstream lands. For now we
+          // surface the picked moment so the team can verify the
+          // contract is wired end-to-end.
+          console.log('[NaitiveCalendar] onSlotClick', slot);
+        }}
+      />
 
       {/* Availability Check — parses proposed times from the open thread,
           cross-references the user's connected calendar, and surfaces
