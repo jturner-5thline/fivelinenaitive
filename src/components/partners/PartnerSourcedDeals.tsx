@@ -11,6 +11,7 @@ import { useTriStateSort } from '@/hooks/useTriStateSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { format } from 'date-fns';
 import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 
 interface DealRow {
   id: string;
@@ -26,6 +27,10 @@ interface DealRow {
 export function PartnerSourcedDeals() {
   const { company } = useCompany();
   const { data: partners = [] } = usePartners();
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
+  const granularity = dateCtx?.range.granularity ?? null;
   
   const [showDetails, setShowDetails] = useState(false);
   const { sortField: sortCol, sortDir, handleSort } = useTriStateSort({
@@ -40,7 +45,7 @@ export function PartnerSourcedDeals() {
   );
 
   const { data: deals = [] } = useQuery({
-    queryKey: ['partner_referred_deals', company?.id],
+    queryKey: ['partner_referred_deals', company?.id, rangeStart?.toISOString() ?? null, rangeEnd?.toISOString() ?? null, granularity],
     enabled: !!company?.id,
     queryFn: async () => {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
@@ -51,6 +56,8 @@ export function PartnerSourcedDeals() {
         .eq('company_id', company!.id)
         .not('referred_by', 'is', null);
       if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
+      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
+      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as DealRow[];
