@@ -12,8 +12,11 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface EventsRequest {
-  action: "list" | "get" | "list_calendars" | "sync_all" | "create" | "update" | "delete";
+  action: "list" | "get" | "list_calendars" | "sync_all" | "create" | "update" | "delete" | "create_calendar";
   calendar_id?: string;
+  // create_calendar
+  calendar_name?: string;
+  calendar_description?: string;
   event_id?: string;
   time_min?: string;
   time_max?: string;
