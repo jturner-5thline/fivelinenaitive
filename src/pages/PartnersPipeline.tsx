@@ -24,6 +24,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 
 
 
@@ -108,8 +109,12 @@ function StageColumn({
 }
 
 export default function PartnersPipeline() {
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
+  const granularity = dateCtx?.range.granularity ?? null;
   const { data: stages = [], isLoading: stagesLoading } = usePipelineStages();
-  const { data: partners = [], isLoading: partnersLoading } = usePartners();
+  const { data: partners = [], isLoading: partnersLoading } = usePartners({ start: rangeStart, end: rangeEnd, granularity });
   const teamMembers = useTeamMembers();
   const updatePartner = useUpdatePartner();
   const { user } = useAuth();

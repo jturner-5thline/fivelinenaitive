@@ -4,12 +4,7 @@ import { useChannelEntries } from '@/hooks/useChannelEntries';
 import { liquidGlassCard, LIQUID_GLASS_SERIES } from '@/components/metrics/liquidGlass';
 import { CHANNEL_TYPE_OPTIONS, channelLabel } from './channelOptions';
 import { Filter } from 'lucide-react';
-
-type Period = '30d' | 'qtd' | '6m' | '12m';
-
-const PERIOD_DAYS: Record<Period, number> = {
-  '30d': 30, 'qtd': 90, '6m': 180, '12m': 365,
-};
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 
 const STAGE_ORDER_HINTS = ['On Hold', 'Identified', 'Added to Ecosystem', 'Contacted', 'In Discussion', 'Nurturing', 'Agreement', 'Trial', 'Active Partner', 'Dormant'];
 
@@ -19,11 +14,14 @@ function orderStages(stages: PipelineStage[]): PipelineStage[] {
 }
 
 export function PartnersFunnelChart() {
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
+  const granularity = dateCtx?.range.granularity ?? null;
   const { data: stages = [] } = usePipelineStages();
-  const { data: partners = [] } = usePartners();
+  const { data: partners = [] } = usePartners({ start: rangeStart, end: rangeEnd, granularity });
   const { data: channelEntries = [] } = useChannelEntries();
 
-  const [period, setPeriod] = useState<Period>('12m');
   const [channelType, setChannelType] = useState<string>('all');
 
   // Map partner name (lowercased) -> channel_type from channel_entries
@@ -39,16 +37,14 @@ export function PartnersFunnelChart() {
   }, [channelEntries]);
 
   const filtered = useMemo<Partner[]>(() => {
-    const cutoff = Date.now() - PERIOD_DAYS[period] * 24 * 60 * 60 * 1000;
     return partners.filter(p => {
-      if (new Date(p.created_at).getTime() < cutoff) return false;
       if (channelType !== 'all') {
         const c = nameToChannel.get((p.name || '').toLowerCase().trim());
         if (c !== channelType) return false;
       }
       return true;
     });
-  }, [partners, period, channelType, nameToChannel]);
+  }, [partners, channelType, nameToChannel]);
 
   const orderedStages = useMemo(() => orderStages(stages), [stages]);
   const stageCounts = useMemo(() => {
@@ -74,21 +70,6 @@ export function PartnersFunnelChart() {
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center bg-card border border-border rounded-lg p-0.5 gap-0.5">
-            {(['30d', 'qtd', '6m', '12m'] as Period[]).map(p => (
-              <button
-                key={p}
-                onClick={() => setPeriod(p)}
-                className={`px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors ${
-                  period === p
-                    ? 'bg-primary/15 text-primary border border-primary/25'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {p.toUpperCase()}
-              </button>
-            ))}
-          </div>
           <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
             <Filter className="h-3 w-3" />
             <select
@@ -141,7 +122,7 @@ export function PartnersFunnelChart() {
       )}
 
       <p className="text-[10px] text-muted-foreground">
-        {filtered.length} partner{filtered.length === 1 ? '' : 's'} added in last {period.toUpperCase()}
+        {filtered.length} partner{filtered.length === 1 ? '' : 's'} in selected period
         {channelType !== 'all' && ` · ${channelLabel(channelType)}`}
       </p>
     </div>
