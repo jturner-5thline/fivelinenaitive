@@ -84,6 +84,12 @@ interface Props {
   thread?: EmailThread;
   /** Inserts text into the composer body. */
   onInsert: (text: string) => void;
+  /** Optional — when provided, the rendered stage-driven meeting title is
+   *  pushed up as the suggested email subject when the user inserts a
+   *  proposal or confirms a slot. Composer decides whether to overwrite
+   *  an existing subject (typically: only if blank or unchanged from
+   *  thread default). */
+  onSetSubject?: (subject: string) => void;
   /** Closes the scheduler back to the chip row. */
   onClose: () => void;
 }
@@ -353,6 +359,7 @@ export function MeetingSchedulerCard({
   dealId,
   thread,
   onInsert,
+  onSetSubject,
   onClose,
 }: Props) {
   const { user } = useAuth();
@@ -734,8 +741,14 @@ export function MeetingSchedulerCard({
       `${lines}\n\n` +
       `Please reply with your preference and I will send a formal invite.`;
     onInsert(block);
+    // Stage-driven subject suggestion (fix #3) — keeps the round-trip
+    // email subject and calendar invite title aligned.
+    if (onSetSubject && dealId) {
+      const t = renderTitle().trim();
+      if (t) onSetSubject(t);
+    }
     toast.success('Proposed times added to your reply.');
-  }, [proposedSlots, selectedSlotIdx, partiesLine, timezone, onInsert]);
+  }, [proposedSlots, selectedSlotIdx, partiesLine, timezone, onInsert, onSetSubject, dealId, renderTitle]);
 
   // ── Stage 2: confirm one slot → create the calendar event ──────────────
   const confirmAndCreate = useCallback(async () => {
@@ -774,6 +787,8 @@ export function MeetingSchedulerCard({
       const renderedTitle = dealId ? renderTitle().trim() : '';
       const summary = renderedTitle
         || (dealName ? `${dealName} — Intro call` : threadSubject ? `Re: ${threadSubject}` : 'Intro call');
+      // Keep email subject in lock-step with calendar invite title.
+      if (onSetSubject && summary) onSetSubject(summary);
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',

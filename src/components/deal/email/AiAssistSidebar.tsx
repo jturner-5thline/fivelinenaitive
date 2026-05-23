@@ -38,6 +38,7 @@ import { SaveToDealCard } from './SaveToDealCard';
 import { LenderDataAnswerCard } from './LenderDataAnswerCard';
 import { OutstandingItemMatchCard } from './OutstandingItemMatchCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
+import { StageMeetingTitleChip } from './StageMeetingTitleChip';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { OpenAvailabilityCard } from './OpenAvailabilityCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
@@ -1450,9 +1451,19 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               recipientName={thread.latestEmail?.from_name || undefined}
               threadSubject={thread.subject}
               dealName={dealName}
+              dealId={dealId}
               thread={thread}
               onInsert={(text) => onInsertDraft(text)}
               onClose={() => setSchedulerOpen(false)}
+            />
+          )}
+          {/* Fix #3 — surface a stage-change nudge when the linked deal
+              moved stages in the last week. Lets the user copy the new
+              canonical meeting title (or jump into the scheduler). */}
+          {dealId && (
+            <StageMeetingTitleChip
+              dealId={dealId}
+              onOpenScheduler={() => setSchedulerOpen(true)}
             />
           )}
 
