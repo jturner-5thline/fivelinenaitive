@@ -44,7 +44,7 @@ export function PartnersFunnelChart() {
       }
       return true;
     });
-  }, [partners, period, channelType, nameToChannel]);
+  }, [partners, channelType, nameToChannel]);
 
   const orderedStages = useMemo(() => orderStages(stages), [stages]);
   const stageCounts = useMemo(() => {
