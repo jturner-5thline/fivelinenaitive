@@ -36,6 +36,7 @@ import { InsightsTimeframeProvider, useInsightsTimeframe } from "@/contexts/Insi
 import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { IncomeYTDCard } from "@/components/insights/IncomeYTDCard";
+import { MyWeekCalendarCard } from "@/components/insights/MyWeekCalendarCard";
 import { ClientCountMoMCard } from "@/components/insights/ClientCountMoMCard";
 import { FinServTopCustomersCard } from "@/components/insights/FinServTopCustomersCard";
 import { IncomeYTDMoMVarianceCard } from "@/components/insights/IncomeYTDMoMVarianceCard";
@@ -2589,6 +2590,13 @@ function MetricsInner() {
 
           {/* Dashboard Content - always show pre-built dashboards */}
           <EditableDashboardWrapper isEditMode={isEditMode} onCardEdit={() => { /* edit only via explicit pencil button */ }}>
+            {/* My Week — canonical NaitiveCalendar surface on /insights
+                (Fix #2). Reads the signed-in user's primary Google Calendar
+                and shares the same component instance used by the AI Email
+                Assistant availability picker. */}
+            <div className="mb-6">
+              <MyWeekCalendarCard />
+            </div>
             {selectedDashboard === 'management-snapshot' && (
               <WeeklyRundownCarousel
                 page1={
