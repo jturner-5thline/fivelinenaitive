@@ -20,10 +20,23 @@ import { CrmUpdateQueueButton } from "@/components/crm/CrmUpdateQueueButton";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { useCanEditPartnerRules } from "@/hooks/usePartnerRules";
+import { SalesBdDateRangeProvider, useSalesBdDateRange } from "@/contexts/SalesBdDateRangeContext";
+import { InsightsTimeRangeSelector } from "@/components/insights/InsightsTimeRangeSelector";
 
 const PartnersPipeline = lazy(() => import("./PartnersPipeline"));
 
-export default function SalesBD() {
+function SalesBdHeaderRangeSelector() {
+  const { setRange } = useSalesBdDateRange();
+  return (
+    <InsightsTimeRangeSelector
+      boardId="sales-bd"
+      defaultPresetId="ytd"
+      onChange={setRange}
+    />
+  );
+}
+
+function SalesBDInner() {
   const [activeTab, setActiveTab] = useState("overview");
   const [channelsSubView, setChannelsSubView] = useState<"channels" | "companies" | "referral-sources">("channels");
   const [viewPartnerId, setViewPartnerId] = useState<string | null>(null);
@@ -53,6 +66,7 @@ export default function SalesBD() {
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
+                  <SalesBdHeaderRangeSelector />
                   {canEditPartnerRules && (
                     <Button asChild variant="outline" size="sm" className="gap-1.5">
                       <Link to="/settings?tab=sales-bd" title="Configure tiers, stage criteria, and channel definitions">
@@ -179,5 +193,13 @@ export default function SalesBD() {
 
       <PartnerDetailPanel partner={viewPartner} onClose={() => setViewPartnerId(null)} />
     </>
+  );
+}
+
+export default function SalesBD() {
+  return (
+    <SalesBdDateRangeProvider>
+      <SalesBDInner />
+    </SalesBdDateRangeProvider>
   );
 }
