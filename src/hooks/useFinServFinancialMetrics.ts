@@ -9,7 +9,9 @@ import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 
 const FINSERV_REALM_ID = '9341451968897660';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
-const ACTIVE_CLIENT_STAGE = 'fs-active-client';
+// Canonical "Active Client" stage id in the FinServ pipeline.
+// (Stage labelled "Active Client" in deal_pipelines is persisted as `fs-closed-won`.)
+const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
 
 // ────────────────────────────────────────────────────────────
 // Helpers
