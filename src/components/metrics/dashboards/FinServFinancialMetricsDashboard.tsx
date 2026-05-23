@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine,
+  LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine, LabelList,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
@@ -181,16 +181,68 @@ export function FinServFinancialMetricsDashboard() {
   // ── Derived: Average Revenue by Client per bucket = revenue / active-clients-at-end-of-period
   const avgRevenueByClient = useMemo(() => {
     const countByKey = new Map(activeClients.trend.map(t => [t.monthKey, t.count]));
-    const points = totalRev.months.map(m => {
+    const base = totalRev.months.map(m => {
       const clients = countByKey.get(m.monthKey) ?? 0;
       const avg = clients > 0 ? m.amount / clients : null;
       return { month: m.month, monthKey: m.monthKey, revenue: m.amount, clients, avg };
     });
+    // Per-bucket variance vs prior valid bucket (signed).
+    let prevAvg: number | null = null;
+    const withVariance = base.map(p => {
+      let varianceDollars: number | null = null;
+      let variancePct: number | null = null;
+      if (p.avg != null && prevAvg != null) {
+        varianceDollars = p.avg - prevAvg;
+        variancePct = prevAvg !== 0 ? ((p.avg - prevAvg) / prevAvg) * 100 : null;
+      }
+      if (p.avg != null) prevAvg = p.avg;
+      return { ...p, varianceDollars, variancePct };
+    });
+
+    // Linear regression best-fit across visible buckets (x = bucket index).
+    const fitInputs = withVariance
+      .map((p, i) => ({ x: i, y: p.avg }))
+      .filter((p): p is { x: number; y: number } => p.y != null);
+    let slope = 0;
+    let intercept = 0;
+    if (fitInputs.length >= 2) {
+      const n = fitInputs.length;
+      const sumX = fitInputs.reduce((s, p) => s + p.x, 0);
+      const sumY = fitInputs.reduce((s, p) => s + p.y, 0);
+      const sumXY = fitInputs.reduce((s, p) => s + p.x * p.y, 0);
+      const sumXX = fitInputs.reduce((s, p) => s + p.x * p.x, 0);
+      const denom = n * sumXX - sumX * sumX;
+      if (denom !== 0) {
+        slope = (n * sumXY - sumX * sumY) / denom;
+        intercept = (sumY - slope * sumX) / n;
+      } else {
+        intercept = sumY / n;
+      }
+    } else if (fitInputs.length === 1) {
+      intercept = fitInputs[0].y;
+    }
+
+    const points = withVariance.map((p, i) => ({
+      ...p,
+      trend: fitInputs.length >= 1 ? intercept + slope * i : null,
+    }));
+
     const valid = points.filter(p => p.avg !== null) as Array<{ avg: number }>;
     const headline = valid.length > 0
       ? valid.reduce((s, p) => s + p.avg, 0) / valid.length
       : 0;
-    return { points, headline, hasAny: valid.length > 0 };
+
+    // Headline trend = first → last valid bucket.
+    const firstValid = points.find(p => p.avg != null) ?? null;
+    const lastValid = [...points].reverse().find(p => p.avg != null) ?? null;
+    let headlineDelta: number | null = null;
+    let headlinePct: number | null = null;
+    if (firstValid && lastValid && firstValid !== lastValid && firstValid.avg != null && lastValid.avg != null) {
+      headlineDelta = lastValid.avg - firstValid.avg;
+      headlinePct = firstValid.avg !== 0 ? (headlineDelta / firstValid.avg) * 100 : null;
+    }
+
+    return { points, headline, hasAny: valid.length > 0, headlineDelta, headlinePct };
   }, [totalRev.months, activeClients.trend]);
 
   return (
@@ -505,8 +557,28 @@ export function FinServFinancialMetricsDashboard() {
         </CardHeader>
         <CardContent>
           <div className="mb-4">
-            <div className="text-3xl font-semibold text-foreground">
-              {avgRevenueByClient.hasAny ? fmtCurrencyPrecise(avgRevenueByClient.headline) : '—'}
+            <div className="flex items-end gap-3 flex-wrap">
+              <div className="text-3xl font-semibold text-foreground">
+                {avgRevenueByClient.hasAny ? fmtCurrencyPrecise(avgRevenueByClient.headline) : '—'}
+              </div>
+              {avgRevenueByClient.headlineDelta != null && (
+                <span
+                  className={`text-xs font-medium ${
+                    avgRevenueByClient.headlineDelta > 0
+                      ? 'text-green-500'
+                      : avgRevenueByClient.headlineDelta < 0
+                      ? 'text-red-500'
+                      : 'text-muted-foreground'
+                  }`}
+                >
+                  Trend: {avgRevenueByClient.headlineDelta >= 0 ? '+' : ''}
+                  {avgRevenueByClient.headlinePct != null ? `${avgRevenueByClient.headlinePct.toFixed(1)}%` : '—'}
+                  {' / '}
+                  {avgRevenueByClient.headlineDelta >= 0 ? '+' : ''}
+                  {fmtCurrencyFull(avgRevenueByClient.headlineDelta)}
+                  <span className="text-muted-foreground font-normal"> vs start of period</span>
+                </span>
+              )}
             </div>
             <div className="text-xs text-muted-foreground">
               Simple average of per-period (Revenue ÷ Active Clients)
@@ -515,21 +587,50 @@ export function FinServFinancialMetricsDashboard() {
           {totalRev.isLoading || activeClients.isLoading ? <WidgetLoading /> :
             totalRev.error || activeClients.error ? <WidgetError /> :
             !avgRevenueByClient.hasAny ? <WidgetEmpty /> : (
-            <div className="h-[220px]">
+            <div className="h-[260px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={avgRevenueByClient.points}>
+                <ComposedChart data={avgRevenueByClient.points} margin={{ top: 28, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                   <YAxis tickFormatter={fmtCurrency} tick={{ fontSize: 10 }} />
                   <Tooltip
-                    formatter={(v: any, _name: string, item: any) => {
-                      if (v == null) return ['No active clients', 'Avg / Client'];
-                      const clients = item?.payload?.clients ?? 0;
-                      const revenue = item?.payload?.revenue ?? 0;
-                      return [
-                        `${fmtCurrencyFull(Number(v))}  (${fmtCurrencyFull(revenue)} ÷ ${clients})`,
-                        'Avg / Client',
-                      ];
+                    content={({ active, payload, label }: any) => {
+                      if (!active || !payload?.length) return null;
+                      const p = payload[0]?.payload ?? {};
+                      if (p.avg == null) {
+                        return (
+                          <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow">
+                            <div className="font-medium mb-1">{label}</div>
+                            <div className="text-muted-foreground">No active clients</div>
+                          </div>
+                        );
+                      }
+                      const varCls =
+                        p.varianceDollars == null
+                          ? 'text-muted-foreground'
+                          : p.varianceDollars > 0
+                          ? 'text-green-500'
+                          : p.varianceDollars < 0
+                          ? 'text-red-500'
+                          : 'text-muted-foreground';
+                      return (
+                        <div className="rounded-md border border-border bg-popover px-3 py-2 text-xs shadow space-y-1">
+                          <div className="font-medium">{label}</div>
+                          <div>Avg / Client: <span className="font-medium">{fmtCurrencyFull(p.avg)}</span></div>
+                          <div className="text-muted-foreground">
+                            {fmtCurrencyFull(p.revenue)} ÷ {p.clients}
+                          </div>
+                          <div className={varCls}>
+                            Δ vs prior: {p.varianceDollars == null ? '—' : `${p.varianceDollars >= 0 ? '+' : ''}${fmtCurrencyFull(p.varianceDollars)}`}
+                            {p.variancePct != null && (
+                              <> ({p.variancePct >= 0 ? '+' : ''}{p.variancePct.toFixed(1)}%)</>
+                            )}
+                          </div>
+                          {p.trend != null && (
+                            <div className="text-muted-foreground">Trend line: {fmtCurrencyFull(p.trend)}</div>
+                          )}
+                        </div>
+                      );
                     }}
                   />
                   <Bar
@@ -547,10 +648,52 @@ export function FinServFinancialMetricsDashboard() {
                       [
                         { metric: 'Revenue', value: fmtCurrencyFull(Number(d?.revenue) || 0) },
                         { metric: 'Active Clients', value: String(d?.clients ?? 0) },
+                        { metric: 'Δ vs prior ($)', value: d?.varianceDollars == null ? '—' : `${d.varianceDollars >= 0 ? '+' : ''}${fmtCurrencyFull(d.varianceDollars)}` },
+                        { metric: 'Δ vs prior (%)', value: d?.variancePct == null ? '—' : `${d.variancePct >= 0 ? '+' : ''}${d.variancePct.toFixed(1)}%` },
                       ],
                     )}
+                  >
+                    <LabelList
+                      dataKey="varianceDollars"
+                      position="top"
+                      content={(props: any) => {
+                        const { x, y, width, index } = props;
+                        const point = avgRevenueByClient.points[index];
+                        if (!point || point.varianceDollars == null) return null;
+                        const dollars = point.varianceDollars;
+                        const pct = point.variancePct;
+                        const color =
+                          dollars > 0 ? 'hsl(142 71% 45%)' :
+                          dollars < 0 ? 'hsl(0 72% 51%)' :
+                          'hsl(var(--muted-foreground))';
+                        const sign = dollars >= 0 ? '+' : '';
+                        const pctText = pct != null ? `${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%` : '—';
+                        const cx = (x ?? 0) + (width ?? 0) / 2;
+                        return (
+                          <g>
+                            <text x={cx} y={(y ?? 0) - 14} textAnchor="middle" fontSize={10} fontWeight={600} fill={color}>
+                              {pctText}
+                            </text>
+                            <text x={cx} y={(y ?? 0) - 4} textAnchor="middle" fontSize={9} fill={color}>
+                              {sign}{fmtCurrency(dollars)}
+                            </text>
+                          </g>
+                        );
+                      }}
+                    />
+                  </Bar>
+                  <Line
+                    type="monotone"
+                    dataKey="trend"
+                    stroke="hsl(142 71% 45%)"
+                    strokeWidth={2}
+                    strokeDasharray="4 3"
+                    dot={false}
+                    activeDot={false}
+                    name="Best-fit trend"
+                    isAnimationActive={false}
                   />
-                </BarChart>
+                </ComposedChart>
               </ResponsiveContainer>
             </div>
           )}
