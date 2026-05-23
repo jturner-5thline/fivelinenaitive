@@ -11,12 +11,8 @@ import { SortableHeader } from '@/components/ui/sortable-header';
 import { format } from 'date-fns';
 import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
 import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
-
-// Same closed-won / funded stage definition used elsewhere in the app
-// (see src/utils/dealStageUtils.ts POST_SUBMISSION_STAGES).
-const WON_STAGES = new Set(['closed-won', 'funded-invoiced']);
-const isWonStage = (stage?: string | null) =>
-  !!stage && WON_STAGES.has(stage.toLowerCase());
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useTtmActivePipelineConversion } from '@/lib/salesBdActivePipelineConversion';
 
 interface DealRow {
   id: string;
@@ -68,12 +64,16 @@ export function ReferralSourceDeals() {
 
   // All deals in the result set already match sourced_via ~ 'Referral%'.
   const matchedDeals = deals;
-  const wonDeals = useMemo(() => matchedDeals.filter(d => isWonStage(d.stage)), [matchedDeals]);
-
   const totalValue = matchedDeals.reduce((sum, d) => sum + (d.value || 0), 0);
-  const conversionRateLabel = matchedDeals.length > 0
-    ? `${((wonDeals.length / matchedDeals.length) * 100).toFixed(1)}%`
-    : '—';
+
+  // Conversion Rate is TTM (trailing 12 months) and INDEPENDENT of the header
+  // date filter — see useTtmActivePipelineConversion for the exact formula.
+  const ttm = useTtmActivePipelineConversion({ kind: 'referral' });
+  const conversionRateLabel = ttm.label;
+
+  if (typeof window !== 'undefined') {
+    (window as any).__salesBdReferralTtm = ttm;
+  }
 
   const sorted = useMemo(() => {
     if (!sortCol || !sortDir) return matchedDeals;
@@ -121,12 +121,24 @@ export function ReferralSourceDeals() {
             {totalValue >= 1_000_000_000 ? `$${(totalValue / 1_000_000_000).toFixed(2)}B` : totalValue >= 1_000_000 ? `$${(totalValue / 1_000_000).toFixed(2)}MM` : totalValue >= 1_000 ? `$${(totalValue / 1_000).toFixed(2)}K` : `$${totalValue.toFixed(2)}`}
           </span>
         </div>
-        <div className={`${liquidGlassKPI} p-4 flex flex-col items-center`}>
-          <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
-            <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
-          </div>
-          <span className="text-2xl font-bold text-foreground">{conversionRateLabel}</span>
-        </div>
+        <TooltipProvider delayDuration={200}>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className={`${liquidGlassKPI} p-4 flex flex-col items-center cursor-help`}>
+                <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
+                  <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
+                  <span className="ml-1 rounded-full border border-border/60 bg-muted/40 px-1.5 py-px text-[10px] font-medium text-muted-foreground">
+                    TTM
+                  </span>
+                </div>
+                <span className="text-2xl font-bold text-foreground">{conversionRateLabel}</span>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="max-w-xs text-xs leading-relaxed">
+              Trailing-12-month conversion rate: deals added to active pipeline sourced via Referral that reached the Final Credit Items stage, divided by all deals added to active pipeline sourced via Referral in the trailing 12 months. Independent of the header date filter.
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       <Collapsible open={showDetails} onOpenChange={setShowDetails}>
