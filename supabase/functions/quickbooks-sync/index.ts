@@ -570,7 +570,8 @@ serve(async (req) => {
                   const rows = Array.isArray(report?.Rows?.Row) ? report.Rows.Row : [];
                   const columns = Array.isArray(report?.Columns?.Column) ? report.Columns.Column : [];
                   // Only keep real month columns (skip "Total"/non-date titles).
-                  const MONTH_TITLE = /^([A-Za-z]{3})\s+(\d{4})$/;
+                  // Match both whole-month ("May 2026") and partial-month ("May 1-23, 2026") titles.
+                  const MONTH_TITLE = /^([A-Za-z]{3})[^0-9]*\d*[-–]?\d*,?\s*(\d{4})$/;
                   const monthColumns = columns
                     .map((column: any, index: number) => ({ column, index }))
                     .filter(({ index, column }) =>
