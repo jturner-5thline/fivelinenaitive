@@ -188,6 +188,25 @@ function FinServFinancialMetricsDashboardInner() {
     range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly';
   const periodBadge = `${granularityLabel} · ${selectedPeriod.label}`;
 
+  // Resolve a clicked bucket label/monthKey to its actual start/end ymd.
+  const { open: openDrill } = useDrilldown();
+  const bucketIndex = useMemo(() => {
+    const map = new Map<string, { start: string; end: string; label: string }>();
+    const buckets = buildBuckets(range.resolved.start, range.resolved.end, range.granularity);
+    for (const b of buckets) {
+      map.set(b.key, { start: b.start_date, end: b.end_date, label: b.label });
+      map.set(b.label, { start: b.start_date, end: b.end_date, label: b.label });
+    }
+    return map;
+  }, [range.resolved.start, range.resolved.end, range.granularity]);
+  const resolveBucket = (keyOrLabel: string | undefined): DrilldownRequest['period'] => {
+    if (keyOrLabel) {
+      const hit = bucketIndex.get(keyOrLabel);
+      if (hit) return hit;
+    }
+    return { start: range.resolved.start, end: range.resolved.end, label: range.resolved.label };
+  };
+
   // ── Derived: Average Revenue by Client per bucket = revenue / active-clients-at-end-of-period
   const avgRevenueByClient = useMemo(() => {
     const countByKey = new Map(activeClients.trend.map(t => [t.monthKey, t.count]));
