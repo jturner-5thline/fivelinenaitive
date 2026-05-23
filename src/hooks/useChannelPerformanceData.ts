@@ -2,9 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { subDays, subMonths, startOfQuarter, subQuarters } from 'date-fns';
-
-export type ChannelTimePeriod = 'last-30d' | 'qtd' | 'last-quarter' | 'last-6m' | 'last-12m' | 'custom';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
 
 export interface ChannelDeal {
   id: string;
@@ -66,21 +64,6 @@ function stageReached(classification: string | null): string[] {
   return STAGE_ORDER.slice(0, idx + 1);
 }
 
-export function getTimePeriodRange(period: ChannelTimePeriod): { start: Date; end: Date } | null {
-  const now = new Date();
-  switch (period) {
-    case 'last-30d': return { start: subDays(now, 30), end: now };
-    case 'qtd': return { start: startOfQuarter(now), end: now };
-    case 'last-quarter': {
-      const prev = subQuarters(now, 1);
-      return { start: startOfQuarter(prev), end: startOfQuarter(now) };
-    }
-    case 'last-6m': return { start: subMonths(now, 6), end: now };
-    case 'last-12m': return { start: subMonths(now, 12), end: now };
-    default: return null;
-  }
-}
-
 function fuzzyMatch(referredBy: string, name: string): boolean {
   if (!referredBy || !name) return false;
   const ref = referredBy.toLowerCase().trim();
@@ -99,11 +82,14 @@ function fuzzyMatch(referredBy: string, name: string): boolean {
 }
 
 export function useChannelPerformanceData(
-  timePeriod: ChannelTimePeriod = 'last-12m',
   channelTypeFilters: string[] = [],
   channelEntryFilters: string[] = [],
 ) {
   const { company } = useCompany();
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
+  const granularity = dateCtx?.range.granularity ?? null;
 
   const { data: channelEntries = [], isLoading: channelsLoading } = useQuery({
     queryKey: ['channel_perf_entries', company?.id],
@@ -124,15 +110,20 @@ export function useChannelPerformanceData(
   });
 
   const { data: deals = [], isLoading: dealsLoading } = useQuery({
-    queryKey: ['channel_perf_deals', company?.id],
+    queryKey: ['channel_perf_deals', company?.id, rangeStart?.toISOString() ?? null, rangeEnd?.toISOString() ?? null, granularity],
     enabled: !!company?.id,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('deals')
         .select('id, company, value, stage, status, referred_by, sourced_via, crm_company_id, created_at, total_fee')
         .eq('company_id', company!.id)
         .neq('status', 'archived');
+
+      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
+      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
+
+      const { data, error } = await query;
       if (error) throw error;
       return (data || []) as ChannelDeal[];
     },
@@ -151,15 +142,7 @@ export function useChannelPerformanceData(
   }, [channelEntries]);
 
   const { attributedDeals, performanceRows, kpis } = useMemo(() => {
-    const timeRange = getTimePeriodRange(timePeriod);
-    
-    let filteredDeals = deals;
-    if (timeRange) {
-      filteredDeals = deals.filter(d => {
-        const dt = new Date(d.created_at);
-        return dt >= timeRange.start && dt <= timeRange.end;
-      });
-    }
+    const filteredDeals = deals;
 
     const attributed: AttributedDeal[] = [];
     const usedDealIds = new Set<string>();
@@ -267,7 +250,7 @@ export function useChannelPerformanceData(
     }
 
     return { attributedDeals: filtered, performanceRows: rows, kpis };
-  }, [deals, channelSources, channelEntries, timePeriod, channelTypeFilters, channelEntryFilters]);
+  }, [deals, channelSources, channelEntries, channelTypeFilters, channelEntryFilters]);
 
   return {
     channelSources,
