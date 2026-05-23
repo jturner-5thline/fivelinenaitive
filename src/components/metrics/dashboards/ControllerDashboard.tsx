@@ -15,6 +15,7 @@ import {
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 import { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
+import { resolveQboClientLabel } from '@/lib/qboClientName';
 
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
@@ -46,18 +47,35 @@ function useRevenueByClient(realmId: string) {
   return useQuery({
     queryKey: ['controller-revenue-by-client', realmId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('quickbooks_invoices')
-        .select('customer_name, total_amt')
-        .eq('realm_id', realmId);
+      // Pull invoices and the customer directory for this realm so we can
+      // resolve every line to its COMPANY name (not the person/guarantor
+      // listed as the QBO customer). See src/lib/qboClientName.ts.
+      const [invoiceRes, customerRes] = await Promise.all([
+        supabase
+          .from('quickbooks_invoices')
+          .select('customer_id, customer_name, total_amt')
+          .eq('realm_id', realmId),
+        supabase
+          .from('quickbooks_customers')
+          .select('qb_id, display_name, company_name')
+          .eq('realm_id', realmId),
+      ]);
 
-      if (error) throw error;
+      if (invoiceRes.error) throw invoiceRes.error;
+      if (customerRes.error) throw customerRes.error;
+
+      const customerById = new Map<string, { company_name: string | null; display_name: string | null }>();
+      for (const c of customerRes.data ?? []) {
+        if (!c.qb_id) continue;
+        customerById.set(c.qb_id, { company_name: c.company_name, display_name: c.display_name });
+      }
 
       const map: Record<string, number> = {};
-      (data ?? []).forEach((inv) => {
-        const name = inv.customer_name || 'Unknown';
-        map[name] = (map[name] || 0) + (Number(inv.total_amt) || 0);
-      });
+      for (const inv of invoiceRes.data ?? []) {
+        const customer = inv.customer_id ? customerById.get(inv.customer_id) : undefined;
+        const label = resolveQboClientLabel(inv.customer_name, customer);
+        map[label] = (map[label] || 0) + (Number(inv.total_amt) || 0);
+      }
 
       return Object.entries(map)
         .map(([name, revenue]) => ({ name, revenue }))
