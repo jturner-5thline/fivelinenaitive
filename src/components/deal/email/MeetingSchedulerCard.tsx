@@ -350,12 +350,14 @@ export function MeetingSchedulerCard({
   recipientName,
   threadSubject,
   dealName,
+  dealId,
   thread,
   onInsert,
   onClose,
 }: Props) {
   const { user } = useAuth();
   const teamMembers = useTeamMembers();
+  const { render: renderTitle } = useRenderMeetingTitle(dealId ?? null);
 
   // ── Timezone preference ───────────────────────────────────────────────
   // Persisted in localStorage so the user's choice sticks across sessions
@@ -766,11 +768,12 @@ export function MeetingSchedulerCard({
         seenOut.add(a.key);
         attendees.push({ email: a.email, name: a.name });
       }
-      const summary = dealName
-        ? `${dealName} — Intro call`
-        : threadSubject
-          ? `Re: ${threadSubject}`
-          : 'Intro call';
+      // Stage-driven title (fix #3). Falls back to legacy behaviour when no
+      // deal context is available (e.g. composer launched from a stray
+      // thread with no matched deal).
+      const renderedTitle = dealId ? renderTitle().trim() : '';
+      const summary = renderedTitle
+        || (dealName ? `${dealName} — Intro call` : threadSubject ? `Re: ${threadSubject}` : 'Intro call');
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',
