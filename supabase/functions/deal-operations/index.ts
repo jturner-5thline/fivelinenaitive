@@ -246,6 +246,18 @@ serve(async (req) => {
         const { data: current } = await supabase.from("deals").select("company, notes").eq("id", deal_id).single();
         if (!current) return err("Deal not found");
 
+        // Guardrail: notes are for user-authored context. Email bodies belong
+        // in the Communications timeline (activity_logs type='email'), not in
+        // the free-text notes field. If the AI tries to paste an email here,
+        // refuse and instruct it to use the email path instead.
+        if (looksLikeEmailBody(note_text)) {
+          return err(
+            "This text looks like an email body (subject line, greeting, signature, or recipient address detected). " +
+              "Don't write emails into the notes field — use the email composer / Communications timeline. " +
+              "If this really is a note, rewrite it without email scaffolding (no 'Subject:', 'Hi <name>,', 'Best,' signature, or bare email addresses).",
+          );
+        }
+
         const timestamp = new Date().toISOString().split("T")[0];
         const { data: profile } = await supabase.from("profiles").select("display_name").eq("user_id", user.id).single();
         const author = profile?.display_name || "AI Assistant";
