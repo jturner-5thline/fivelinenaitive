@@ -832,6 +832,62 @@ function AgendaView({
   );
 }
 
+type AgendaRow =
+  | { kind: 'day'; key: string; day: string }
+  | { kind: 'event'; key: string; event: CalEvent }
+  | { kind: 'hl-header'; key: string }
+  | { kind: 'hl'; key: string; slot: HighlightSlot };
+
+function AgendaVirtualRow({
+  index,
+  style,
+  rows,
+  onEventClick,
+}: RowComponentProps<{ rows: AgendaRow[]; onEventClick: (ev: CalEvent) => void }>) {
+  const row = rows[index];
+  if (row.kind === 'day') {
+    return (
+      <div style={style} className="px-3 flex items-center text-[10px] uppercase tracking-wide text-muted-foreground">
+        {format(new Date(row.day), 'EEEE, MMM d')}
+      </div>
+    );
+  }
+  if (row.kind === 'hl-header') {
+    return (
+      <div style={style} className="px-3 flex items-center text-[10px] uppercase tracking-wide text-emerald-300">
+        Proposed slots
+      </div>
+    );
+  }
+  if (row.kind === 'hl') {
+    return (
+      <div style={style} className="px-3">
+        <div className="flex items-center gap-2 h-8 rounded-md border border-emerald-400/30 bg-emerald-400/10 px-2">
+          <span className="text-[10.5px] text-emerald-200 w-32 shrink-0">
+            {format(new Date(row.slot.start), 'EEE MMM d, h:mm a')}
+          </span>
+          <span className="text-[11.5px] text-foreground truncate">{row.slot.label || 'Proposed time'}</span>
+        </div>
+      </div>
+    );
+  }
+  const ev = row.event;
+  return (
+    <div style={style} className="px-3">
+      <button
+        type="button"
+        onClick={() => onEventClick(ev)}
+        className="w-full h-8 flex items-center gap-2 rounded-md border border-white/[0.06] bg-white/[0.02] px-2 text-left hover:bg-white/[0.05]"
+      >
+        <span className="text-[10.5px] text-muted-foreground w-20 shrink-0">
+          {ev.all_day ? 'All day' : format(new Date(ev.start), 'h:mm a')}
+        </span>
+        <span className="text-[11.5px] text-foreground truncate flex-1">{ev.title || 'Busy'}</span>
+      </button>
+    </div>
+  );
+}
+
 function EventDetail({ event, tz }: { event: CalEvent; tz: string }) {
   return (
     <>
