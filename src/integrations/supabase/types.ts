@@ -14695,6 +14695,44 @@ export type Database = {
           },
         ]
       }
+      meeting_title_templates: {
+        Row: {
+          created_at: string
+          id: string
+          org_company_id: string
+          stage_id: string | null
+          template: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          org_company_id: string
+          stage_id?: string | null
+          template: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          org_company_id?: string
+          stage_id?: string | null
+          template?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_title_templates_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       microsoft_tokens: {
         Row: {
           access_token: string

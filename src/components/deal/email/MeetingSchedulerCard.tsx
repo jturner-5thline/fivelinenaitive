@@ -21,6 +21,7 @@ import { toast } from 'sonner';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { InteractiveWeekCalendar } from './InteractiveWeekCalendar';
 import type { EmailThread } from './mockEmailData';
+import { useRenderMeetingTitle } from '@/hooks/useRenderMeetingTitle';
 
 /**
  * MeetingSchedulerCard
@@ -74,6 +75,9 @@ interface Props {
   threadSubject?: string;
   /** Matched deal name, woven into the meeting title when available. */
   dealName?: string;
+  /** Deal id — when provided, the stage-driven title template is used for
+   *  both the calendar event summary and the meeting-suggestion subject. */
+  dealId?: string | null;
   /** Full email thread — when provided, an Availability Check section is
    *  rendered at the top to parse proposed times and cross-reference the
    *  user's calendar. */
@@ -346,12 +350,14 @@ export function MeetingSchedulerCard({
   recipientName,
   threadSubject,
   dealName,
+  dealId,
   thread,
   onInsert,
   onClose,
 }: Props) {
   const { user } = useAuth();
   const teamMembers = useTeamMembers();
+  const { render: renderTitle } = useRenderMeetingTitle(dealId ?? null);
 
   // ── Timezone preference ───────────────────────────────────────────────
   // Persisted in localStorage so the user's choice sticks across sessions
@@ -762,11 +768,12 @@ export function MeetingSchedulerCard({
         seenOut.add(a.key);
         attendees.push({ email: a.email, name: a.name });
       }
-      const summary = dealName
-        ? `${dealName} — Intro call`
-        : threadSubject
-          ? `Re: ${threadSubject}`
-          : 'Intro call';
+      // Stage-driven title (fix #3). Falls back to legacy behaviour when no
+      // deal context is available (e.g. composer launched from a stray
+      // thread with no matched deal).
+      const renderedTitle = dealId ? renderTitle().trim() : '';
+      const summary = renderedTitle
+        || (dealName ? `${dealName} — Intro call` : threadSubject ? `Re: ${threadSubject}` : 'Intro call');
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',
