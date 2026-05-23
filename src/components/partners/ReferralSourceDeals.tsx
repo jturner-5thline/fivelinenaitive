@@ -2,7 +2,6 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { usePartners } from '@/hooks/usePartnersPipeline';
 
 import { ChevronDown, ChevronRight, DollarSign, Hash, TrendingUp } from 'lucide-react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -11,6 +10,13 @@ import { useTriStateSort } from '@/hooks/useTriStateSort';
 import { SortableHeader } from '@/components/ui/sortable-header';
 import { format } from 'date-fns';
 import { liquidGlassCard, liquidGlassKPI, liquidGlassSectionTitle } from '@/components/metrics/liquidGlass';
+import { useOptionalSalesBdDateRange } from '@/contexts/SalesBdDateRangeContext';
+
+// Same closed-won / funded stage definition used elsewhere in the app
+// (see src/utils/dealStageUtils.ts POST_SUBMISSION_STAGES).
+const WON_STAGES = new Set(['closed-won', 'funded-invoiced']);
+const isWonStage = (stage?: string | null) =>
+  !!stage && WON_STAGES.has(stage.toLowerCase());
 
 interface DealRow {
   id: string;
@@ -25,7 +31,9 @@ interface DealRow {
 
 export function ReferralSourceDeals() {
   const { company } = useCompany();
-  const { data: partners = [] } = usePartners();
+  const dateCtx = useOptionalSalesBdDateRange();
+  const rangeStart = dateCtx?.start ?? null;
+  const rangeEnd = dateCtx?.end ?? null;
 
   const [showDetails, setShowDetails] = useState(false);
   const { sortField: sortCol, sortDir, handleSort } = useTriStateSort({
@@ -33,13 +41,13 @@ export function ReferralSourceDeals() {
     direction: 'desc',
   });
 
-  const partnerNames = useMemo(
-    () => new Set(partners.map(p => p.name.toLowerCase())),
-    [partners]
-  );
-
   const { data: deals = [] } = useQuery({
-    queryKey: ['referral_source_deals', company?.id],
+    queryKey: [
+      'referral_source_deals',
+      company?.id,
+      rangeStart?.toISOString() ?? null,
+      rangeEnd?.toISOString() ?? null,
+    ],
     enabled: !!company?.id,
     queryFn: async () => {
       const { getNaitivePipelineId } = await import('@/utils/naitivePipelineExclusion');
@@ -48,25 +56,24 @@ export function ReferralSourceDeals() {
         .from('deals')
         .select('id, company, value, stage, referred_by, sourced_via, created_at, closing_date, pipeline_id')
         .eq('company_id', company!.id)
-        .not('referred_by', 'is', null);
+        .ilike('sourced_via', 'referral%');
       if (naitivePipelineId) query = query.neq('pipeline_id', naitivePipelineId);
+      if (rangeStart) query = query.gte('created_at', rangeStart.toISOString());
+      if (rangeEnd) query = query.lte('created_at', rangeEnd.toISOString());
       const { data, error } = await query;
       if (error) throw error;
       return (data || []) as DealRow[];
     },
   });
 
-  // Referral-source deals: have a referred_by value but it does NOT match a known partner name.
-  const matchedDeals = useMemo(() => {
-    return deals.filter(d => {
-      const ref = (d.referred_by || d.sourced_via || '').trim().toLowerCase();
-      if (!ref) return false;
-      return !partnerNames.has(ref);
-    });
-  }, [deals, partnerNames]);
+  // All deals in the result set already match sourced_via ~ 'Referral%'.
+  const matchedDeals = deals;
+  const wonDeals = useMemo(() => matchedDeals.filter(d => isWonStage(d.stage)), [matchedDeals]);
 
   const totalValue = matchedDeals.reduce((sum, d) => sum + (d.value || 0), 0);
-  const conversionRate = deals.length > 0 ? Math.round((matchedDeals.length / deals.length) * 100) : 0;
+  const conversionRateLabel = matchedDeals.length > 0
+    ? `${((wonDeals.length / matchedDeals.length) * 100).toFixed(1)}%`
+    : '—';
 
   const sorted = useMemo(() => {
     if (!sortCol || !sortDir) return matchedDeals;
@@ -118,7 +125,7 @@ export function ReferralSourceDeals() {
           <div className="flex items-center gap-2 text-muted-foreground text-xs mb-1">
             <TrendingUp className="h-3.5 w-3.5" /> Conversion Rate
           </div>
-          <span className="text-2xl font-bold text-foreground">{conversionRate}%</span>
+          <span className="text-2xl font-bold text-foreground">{conversionRateLabel}</span>
         </div>
       </div>
 
