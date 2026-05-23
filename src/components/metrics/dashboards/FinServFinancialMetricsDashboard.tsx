@@ -5,7 +5,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertCircle, TrendingUp, TrendingDown, Minus, Clock } from 'lucide-react';
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid,
-  LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine,
+  LineChart, Line, ComposedChart, Legend, Cell, ReferenceLine, LabelList,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
