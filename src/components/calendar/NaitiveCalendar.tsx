@@ -839,3 +839,209 @@ function EventDetail({ event, tz }: { event: CalEvent; tz: string }) {
 }
 
 export default NaitiveCalendar;
+
+/* ---------- TZ chip + picker ---------- */
+
+function TzChip({
+  tz,
+  recent,
+  onPick,
+}: {
+  tz: string;
+  recent: string[];
+  onPick: (tz: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const offset = tzOffsetLabel(tz);
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return TZ_GROUPS.map((g) => ({
+      label: g.label,
+      zones: g.zones.filter((z) => !term || z.toLowerCase().includes(term)),
+    })).filter((g) => g.zones.length > 0);
+  }, [q]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 text-[10.5px] text-muted-foreground hover:text-foreground hover:bg-white/[0.04] mr-1"
+          aria-label={`Time zone: ${tz} ${offset}`}
+          title={`${tz} · ${offset}`}
+        >
+          <Globe className="h-3 w-3" />
+          <span className="hidden md:inline">{tz}</span>
+          <span className="md:hidden">{tz.split('/').pop()}</span>
+          <span className="opacity-70">· {offset}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0" align="end">
+        <div className="p-2 border-b border-white/10">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+            <Input
+              autoFocus
+              placeholder="Search IANA zone…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="h-7 pl-7 text-[11.5px]"
+            />
+          </div>
+        </div>
+        <ScrollArea className="max-h-80">
+          {recent.length > 0 && !q && (
+            <div className="py-1">
+              <div className="px-2 text-[9.5px] uppercase tracking-wide text-muted-foreground">Recent</div>
+              {recent.map((z) => (
+                <TzRow key={`r-${z}`} zone={z} active={z === tz} onPick={(zz) => { onPick(zz); setOpen(false); }} />
+              ))}
+            </div>
+          )}
+          {filtered.map((g) => (
+            <div key={g.label} className="py-1">
+              <div className="px-2 text-[9.5px] uppercase tracking-wide text-muted-foreground">{g.label}</div>
+              {g.zones.map((z) => (
+                <TzRow key={z} zone={z} active={z === tz} onPick={(zz) => { onPick(zz); setOpen(false); }} />
+              ))}
+            </div>
+          ))}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function TzRow({ zone, active, onPick }: { zone: string; active: boolean; onPick: (z: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(zone)}
+      className={cn(
+        'w-full flex items-center justify-between px-2 py-1 text-left text-[11.5px] hover:bg-white/[0.05]',
+        active && 'text-primary',
+      )}
+    >
+      <span>{zone}</span>
+      <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+        {tzOffsetLabel(zone)}
+        {active && <Check className="h-3 w-3 text-primary" />}
+      </span>
+    </button>
+  );
+}
+
+/* ---------- Attendee free/busy strip ---------- */
+
+function AttendeeStrip({
+  anchor,
+  view,
+  attendees,
+  freeBusy,
+  tz,
+  hoverDayIdx,
+  hoverMin,
+}: {
+  anchor: Date;
+  view: 'day' | 'week';
+  attendees: CalendarAttendee[];
+  freeBusy: AttendeeFreeBusy[];
+  tz: string;
+  hoverDayIdx: number | null;
+  hoverMin: number | null;
+}) {
+  const days = view === 'day' ? [startOfDay(anchor)] : getWeekDays(anchor);
+  const dayKeys = days.map((d) => tzDayKey(d, tz));
+  const COL_HEIGHT = 18;
+  const gridCols = view === 'day' ? '120px 1fr' : '120px repeat(7,1fr)';
+
+  const byEmail = useMemo(() => {
+    const map = new Map<string, AttendeeFreeBusy>();
+    for (const r of freeBusy) map.set(r.email.toLowerCase(), r);
+    return map;
+  }, [freeBusy]);
+
+  return (
+    <div className="border-t border-white/[0.06] bg-white/[0.015]">
+      <div className="px-2 py-1 text-[9.5px] uppercase tracking-wide text-muted-foreground/80 flex items-center gap-2">
+        <Users className="h-3 w-3" /> Attendees free/busy <span className="text-[9px] opacity-60">({tz})</span>
+      </div>
+      <div className="grid" style={{ gridTemplateColumns: gridCols }}>
+        <div />
+        {days.map((d, i) => (
+          <div key={i} className="text-center text-[9.5px] text-muted-foreground/70 py-0.5">
+            {tzFmt(d, tz, 'EEE d')}
+          </div>
+        ))}
+      </div>
+      <div className="divide-y divide-white/[0.04]">
+        {attendees.map((a, rowIdx) => {
+          const row = byEmail.get(a.email.toLowerCase());
+          const limited = !row || row.visibility === 'limited';
+          return (
+            <div key={a.email} className="grid items-center" style={{ gridTemplateColumns: gridCols }}>
+              <div className="px-2 py-1 text-[10.5px] truncate flex items-center gap-1.5" title={a.email}>
+                <span className={cn('inline-block h-1.5 w-1.5 rounded-full', limited ? 'bg-amber-400' : 'bg-emerald-400')} />
+                <span className="truncate">{a.displayName || a.email}</span>
+                {rowIdx === 0 && <span className="text-[9px] text-muted-foreground">(you)</span>}
+              </div>
+              {days.map((d, dayIdx) => (
+                <div
+                  key={dayIdx}
+                  className={cn(
+                    'relative border-l border-white/[0.04]',
+                    limited &&
+                      'bg-[repeating-linear-gradient(45deg,transparent_0_4px,rgba(251,191,36,0.18)_4px_8px)]',
+                  )}
+                  style={{ height: COL_HEIGHT }}
+                  title={limited ? 'Visibility limited' : undefined}
+                >
+                  {limited && rowIdx > 0 && dayIdx === 0 && (
+                    <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[8.5px] text-amber-300 whitespace-nowrap pointer-events-none">
+                      Visibility limited
+                    </span>
+                  )}
+                  {!limited &&
+                    (row?.busy ?? [])
+                      .filter((b) => tzDayKey(new Date(b.start), tz) === dayKeys[dayIdx])
+                      .map((b, bi) => {
+                        const startMin = tzMinutesFromMidnight(new Date(b.start), tz);
+                        const endMin = tzMinutesFromMidnight(new Date(b.end), tz);
+                        const dayMin = 24 * 60;
+                        const left = (startMin / dayMin) * 100;
+                        const width = Math.max(1, ((endMin - startMin) / dayMin) * 100);
+                        const conflict =
+                          hoverDayIdx === dayIdx &&
+                          hoverMin !== null &&
+                          hoverMin >= startMin &&
+                          hoverMin < endMin;
+                        return (
+                          <div
+                            key={bi}
+                            className={cn(
+                              'absolute top-1 bottom-1 rounded-[2px]',
+                              conflict ? 'bg-rose-500/70' : 'bg-primary/40',
+                            )}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                            title={`${tzFmt(new Date(b.start), tz, 'h:mm a')} – ${tzFmt(new Date(b.end), tz, 'h:mm a')}`}
+                          />
+                        );
+                      })}
+                  {/* Hover vertical guide */}
+                  {hoverDayIdx === dayIdx && hoverMin !== null && (
+                    <div
+                      className="pointer-events-none absolute top-0 bottom-0 w-px bg-primary/70"
+                      style={{ left: `${(hoverMin / (24 * 60)) * 100}%` }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
