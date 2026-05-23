@@ -1517,3 +1517,38 @@ function SlotsWithAvailability({
     </>
   );
 }
+
+/* ---------- Verification pill ---------- */
+
+function VerifyPill({ state }: { state: any }) {
+  if (state.kind === 'idle') return null;
+  if (state.kind === 'verifying') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[10px] text-muted-foreground">
+        <Loader2 className="h-2.5 w-2.5 animate-spin" /> Verifying…
+      </span>
+    );
+  }
+  if (state.kind === 'clean') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-2 py-0.5 text-[10px] text-emerald-300">
+        <ShieldCheck className="h-2.5 w-2.5" />
+        Verified just now · {state.slotStatuses.length} slot{state.slotStatuses.length === 1 ? '' : 's'} open
+      </span>
+    );
+  }
+  if (state.kind === 'refilled') {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] text-amber-300">
+        <RefreshCw className="h-2.5 w-2.5" />
+        Refilled {state.refilledCount} slot{state.refilledCount === 1 ? '' : 's'} · review changes
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-rose-400/40 bg-rose-400/10 px-2 py-0.5 text-[10px] text-rose-300">
+      <ShieldAlert className="h-2.5 w-2.5" />
+      Only {state.openCount} open — update draft
+    </span>
+  );
+}
