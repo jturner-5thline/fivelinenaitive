@@ -36,6 +36,7 @@ import { InsightsTimeframeProvider, useInsightsTimeframe } from "@/contexts/Insi
 import { StickyDashboardHeader } from "@/components/layout/StickyDashboardHeader";
 import { EditableDashboardWrapper } from "@/components/metrics/EditableDashboardWrapper";
 import { IncomeYTDCard } from "@/components/insights/IncomeYTDCard";
+import { MyWeekCalendarCard } from "@/components/insights/MyWeekCalendarCard";
 import { ClientCountMoMCard } from "@/components/insights/ClientCountMoMCard";
 import { FinServTopCustomersCard } from "@/components/insights/FinServTopCustomersCard";
 import { IncomeYTDMoMVarianceCard } from "@/components/insights/IncomeYTDMoMVarianceCard";
