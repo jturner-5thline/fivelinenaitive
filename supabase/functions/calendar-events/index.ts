@@ -488,6 +488,8 @@ serve(async (req: Request): Promise<Response> => {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
+
+      // (case must precede default — keeping it below for diff locality)
     }
   } catch (error: unknown) {
     console.error("Calendar events error:", error);
