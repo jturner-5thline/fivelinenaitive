@@ -20,6 +20,7 @@ import {
 import { toast } from 'sonner';
 import { EmailRichTextEditor } from './email/EmailRichTextEditor';
 import { RecipientField } from './email/RecipientField';
+import { DealLinkPicker } from './DealLinkPicker';
 import { useEmailContacts } from '@/hooks/useEmailContacts';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
@@ -117,6 +118,7 @@ export function DraftAndSendDialog({
   const [isSending, setIsSending] = useState(false);
   const [threads, setThreads] = useState<ThreadOption[]>([]);
   const [selectedThreadId, setSelectedThreadId] = useState<string>('new');
+  const [linkedDealId, setLinkedDealId] = useState<string | null>(null);
   const seededRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -141,6 +143,7 @@ export function DraftAndSendDialog({
     setBody(sigHtml ? `${bodyHtml}<p><br/></p>${sigHtml}` : bodyHtml);
     setFiles(initial.attachments ?? []);
     setSelectedThreadId(initial.initialThreadId ?? 'new');
+    setLinkedDealId(initial.dealId ?? null);
   }, [open, initial, signature]);
 
   // Load relevant threads for this deal so the user can reply into an existing one.
@@ -286,6 +289,14 @@ export function DraftAndSendDialog({
         <div className="flex-1 min-h-0 flex flex-col">
           {/* Recipients */}
           <div className="px-5 pt-3 space-y-2">
+            {/* Linked-to-deal pill: shows which deal this email is associated with
+                (drives recognition for future inbound mail). Editing writes a
+                recognition_overrides row keyed on the first recipient. */}
+            <DealLinkPicker
+              dealId={linkedDealId}
+              recipients={to}
+              onLinkedDealChange={(newDealId) => setLinkedDealId(newDealId)}
+            />
             {threads.length > 0 && (
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground w-12 flex items-center gap-1">
