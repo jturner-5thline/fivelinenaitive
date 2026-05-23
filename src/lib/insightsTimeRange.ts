@@ -18,7 +18,10 @@ export type Granularity = 'monthly' | 'quarterly' | 'yearly';
 export type TimeRangePresetId =
   | 'this_month'
   | 'last_month'
+  | 'last_30_days'
   | 'last_3_months'
+  | 'last_6_months'
+  | 'last_12_months'
   | 'last_90_days'
   | 'qtd'
   | 'this_quarter'
@@ -36,7 +39,10 @@ export interface TimeRangePreset {
 export const TIME_RANGE_PRESETS: TimeRangePreset[] = [
   { id: 'this_month', label: 'This Month' },
   { id: 'last_month', label: 'Last Month' },
+  { id: 'last_30_days', label: '30D' },
   { id: 'last_3_months', label: 'Last 3 Months' },
+  { id: 'last_6_months', label: '6M' },
+  { id: 'last_12_months', label: '12M' },
   { id: 'last_90_days', label: 'Last 90 Days' },
   { id: 'qtd', label: 'Quarter to Date' },
   { id: 'this_quarter', label: 'This Quarter' },
@@ -85,10 +91,24 @@ export function resolveRange(
       const prev = subMonths(today, 1);
       return { id, start: ymd(startOfMonth(prev)), end: ymd(endOfMonth(prev)), label: format(prev, 'MMM yyyy') };
     }
+    case 'last_30_days': {
+      const s = subDays(today, 29);
+      return { id, start: ymd(s), end: ymd(today), label: 'Last 30 Days' };
+    }
     case 'last_3_months': {
       const s = startOfMonth(subMonths(today, 2));
       const e = endOfMonth(today);
       return { id, start: ymd(s), end: ymd(e), label: 'Last 3 Months' };
+    }
+    case 'last_6_months': {
+      const s = subMonths(today, 6);
+      s.setDate(s.getDate() + 1);
+      return { id, start: ymd(s), end: ymd(today), label: 'Last 6 Months' };
+    }
+    case 'last_12_months': {
+      const s = subMonths(today, 12);
+      s.setDate(s.getDate() + 1);
+      return { id, start: ymd(s), end: ymd(today), label: 'Last 12 Months' };
     }
     case 'last_90_days': {
       const s = subDays(today, 89);
