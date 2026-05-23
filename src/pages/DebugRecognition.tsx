@@ -34,7 +34,7 @@ const FILTERS: Array<{ id: 'all' | 'auto' | 'suggested' | 'unlinked'; label: str
 ];
 
 export default function DebugRecognition() {
-  const { user, loading } = useAuth();
+  const { user, isLoading: authLoading } = useAuth();
   const [rows, setRows] = useState<Row[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'auto' | 'suggested' | 'unlinked'>('all');
@@ -71,7 +71,7 @@ export default function DebugRecognition() {
     return () => { cancelled = true; };
   }, [filter]);
 
-  if (loading) return null;
+  if (authLoading) return null;
   if (!user?.email || !INTERNAL_EMAILS.has(user.email)) {
     return <Navigate to="/" replace />;
   }
