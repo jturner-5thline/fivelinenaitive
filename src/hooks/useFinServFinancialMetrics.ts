@@ -83,6 +83,7 @@ type FinServSnapshotRow = {
   cogs_total: number;
   gross_profit: number;
   operating_expenses: number;
+  net_operating_income: number | null;
 };
 
 type FinServCashflowSnapshotRow = {
@@ -164,7 +165,7 @@ async function fetchFinServPnlSnapshots(companyId: string, periods: SnapshotPeri
 
   const { data, error } = await supabase
     .from('qbo_pnl_snapshots')
-    .select('period_start, period_end, income_total, cogs_total, gross_profit, operating_expenses')
+    .select('period_start, period_end, income_total, cogs_total, gross_profit, operating_expenses, net_operating_income')
     .eq('company_id', companyId)
     .eq('realm_id', FINSERV_REALM_ID)
     .eq('accounting_method', 'Accrual')
@@ -256,18 +257,20 @@ export function useFinServTotalRevenue(
         amount: Number(rowsByKey.get(periodKey(bucket))?.income_total ?? 0),
       }));
 
+      const income = Number(periodRow?.income_total ?? 0);
+      const noi = periodRow?.net_operating_income != null
+        ? Number(periodRow.net_operating_income)
+        : Number(periodRow?.gross_profit ?? 0) - Number(periodRow?.operating_expenses ?? 0);
       return {
         months,
-        total: Number(periodRow?.income_total ?? 0),
+        total: income,
         grossProfit: Number(periodRow?.gross_profit ?? 0),
         operatingExpenses: Number(periodRow?.operating_expenses ?? 0),
-        operatingProfit: Number(periodRow?.gross_profit ?? 0) - Number(periodRow?.operating_expenses ?? 0),
-        grossMargin: Number(periodRow?.income_total)
-          ? (Number(periodRow?.gross_profit ?? 0) / Number(periodRow?.income_total ?? 0)) * 100
+        operatingProfit: noi,
+        grossMargin: income
+          ? (Number(periodRow?.gross_profit ?? 0) / income) * 100
           : null,
-        operatingMargin: Number(periodRow?.income_total)
-          ? ((Number(periodRow?.gross_profit ?? 0) - Number(periodRow?.operating_expenses ?? 0)) / Number(periodRow?.income_total ?? 0)) * 100
-          : null,
+        operatingMargin: income ? (noi / income) * 100 : null,
       };
     },
     enabled: !!user && !!period && !!company?.id,
@@ -340,7 +343,9 @@ export function useFinServQuarterlyProfits(
         const cogs = Number(row?.cogs_total ?? 0);
         const grossProfit = Number(row?.gross_profit ?? 0);
         const operatingExpenses = Number(row?.operating_expenses ?? 0);
-        const operatingProfit = grossProfit - operatingExpenses;
+        const operatingProfit = row?.net_operating_income != null
+          ? Number(row.net_operating_income)
+          : grossProfit - operatingExpenses;
         return {
           quarter: bucket.label,
           revenue,

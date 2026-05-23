@@ -17094,6 +17094,7 @@ export type Database = {
           gross_profit: number
           id: string
           income_total: number
+          net_operating_income: number | null
           operating_expenses: number
           period_end: string
           period_start: string
@@ -17111,6 +17112,7 @@ export type Database = {
           gross_profit?: number
           id?: string
           income_total?: number
+          net_operating_income?: number | null
           operating_expenses?: number
           period_end: string
           period_start: string
@@ -17128,6 +17130,7 @@ export type Database = {
           gross_profit?: number
           id?: string
           income_total?: number
+          net_operating_income?: number | null
           operating_expenses?: number
           period_end?: string
           period_start?: string

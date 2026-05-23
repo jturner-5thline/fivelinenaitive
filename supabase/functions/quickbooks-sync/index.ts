@@ -485,12 +485,14 @@ serve(async (req) => {
                   const cogsTotal = getPLSummaryValue(report, ["COGS"], ["Total Cost of Goods Sold"]);
                   const grossProfit = getPLSummaryValue(report, ["GrossProfit"], ["Gross Profit"]);
                   const operatingExpenses = getPLSummaryValue(report, ["Expenses"], ["Total Expenses"]);
+                  const netOperatingIncome = getPLSummaryValue(report, ["NetOperatingIncome"], ["Net Operating Income"]);
                   console.log(`[QuickBooks Sync] [qbo.pnl.fetch] ${realmId} ${resolvedStart}..${resolvedEnd}`, JSON.stringify({
                     params: plParams,
                     incomeTotal,
                     cogsTotal,
                     grossProfit,
                     operatingExpenses,
+                    netOperatingIncome,
                     header: report?.Header,
                   }));
 
@@ -507,6 +509,7 @@ serve(async (req) => {
                       cogs_total: cogsTotal,
                       gross_profit: grossProfit,
                       operating_expenses: operatingExpenses,
+                      net_operating_income: netOperatingIncome,
                       raw_response: report,
                       fetched_at: new Date().toISOString(),
                     }, { onConflict: "company_id,realm_id,period_start,period_end,accounting_method" });
