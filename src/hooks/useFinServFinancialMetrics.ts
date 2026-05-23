@@ -444,12 +444,15 @@ export function useFinServRevenueByClient(quarter: QuarterOption | null, monthIn
 
 export interface CashflowPoint { month: string; monthKey: string; value: number }
 
-export function useFinServCashflow() {
+export function useFinServCashflow(
+  period: (SnapshotPeriod & { label?: string }) | null = null,
+  granularity: Granularity = 'monthly',
+) {
   const { user } = useAuth();
   const { company } = useCompany();
-  const buckets = useMemo(() => buildMonthRange(12), []);
-  const startDate = buckets[0].start;
-  const endDate = buckets[buckets.length - 1].end;
+  const fallback = useMemo(() => buildMonthRange(12), []);
+  const startDate = period?.start_date ?? fallback[0].start;
+  const endDate = period?.end_date ?? fallback[fallback.length - 1].end;
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['finserv-cashflow-snapshots', user?.id, company?.id, startDate, endDate],
@@ -504,17 +507,19 @@ export function useFinServCashflow() {
   });
 
   return useMemo(() => {
-    const points: CashflowPoint[] = buckets.map((bucket) => {
-      const row = (data ?? []).find((snapshot) => snapshot.bucket_start === bucket.start && snapshot.bucket_end === bucket.end);
-      return {
-        month: bucket.label,
-        monthKey: bucket.key,
-        value: Number(row?.net_cash_flow ?? 0),
-      };
+    const aggBuckets = buildBuckets(startDate, endDate, granularity);
+    const rows = data ?? [];
+    const points: CashflowPoint[] = aggBuckets.map((bucket) => {
+      const bStart = new Date(bucket.start_date + 'T00:00:00').getTime();
+      const bEnd = new Date(bucket.end_date + 'T00:00:00').getTime();
+      const value = rows.reduce((sum, row) => {
+        const rs = new Date(row.bucket_start + 'T00:00:00').getTime();
+        return rs >= bStart && rs <= bEnd ? sum + Number(row.net_cash_flow ?? 0) : sum;
+      }, 0);
+      return { month: bucket.label, monthKey: bucket.key, value };
     });
-
     return { points, isLoading, error };
-  }, [data, buckets, isLoading, error]);
+  }, [data, startDate, endDate, granularity, isLoading, error]);
 }
 
 // ────────────────────────────────────────────────────────────
