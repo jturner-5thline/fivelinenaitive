@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { NaitiveCalendar } from '@/components/calendar/NaitiveCalendar';
+import { useAttendeeFreeBusy } from '@/hooks/useAttendeeFreeBusy';
 import type { EmailThread } from './mockEmailData';
 import { useRenderMeetingTitle } from '@/hooks/useRenderMeetingTitle';
 
@@ -848,6 +849,11 @@ export function MeetingSchedulerCard({
       <NaitiveCalendar
         view="week"
         compact
+        persistTz
+        attendees={finalAttendees.map((r) => ({
+          email: r.email,
+          displayName: r.name,
+        }))}
         highlightSlots={proposedSlots.map((s, i) => ({
           start: s.start,
           end: s.end,
@@ -955,8 +961,12 @@ export function MeetingSchedulerCard({
           <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
             {stage === 'propose' ? 'Pick which slots to offer' : 'Pick the confirmed slot'}
           </div>
-          {proposedSlots.map((slot, i) => {
+          <SlotsWithAvailability
+            slots={proposedSlots}
+            attendeeEmails={finalAttendees.map((r) => r.email)}
+            render={(slot, i, summary) => {
             const checked = stage === 'propose' ? selectedSlotIdx.has(i) : confirmedIdx === i;
+            const hasConflict = summary?.conflicts && summary.conflicts > 0;
             return (
               <label
                 key={i}
@@ -964,6 +974,7 @@ export function MeetingSchedulerCard({
                   'flex items-center gap-2 rounded-md border px-2 py-1.5 cursor-pointer text-[11.5px]',
                   'border-white/10 bg-white/5 hover:bg-white/[0.08] transition-colors',
                   checked && 'border-primary/40 bg-primary/10',
+                  hasConflict && !checked && 'opacity-60',
                 )}
               >
                 {stage === 'propose' ? (
@@ -992,10 +1003,21 @@ export function MeetingSchedulerCard({
                       Your local time: {fmtSlotTimeOnly(slot, BROWSER_TZ)}
                     </div>
                   )}
+                  {summary && summary.total > 0 && (
+                    <div className={cn(
+                      'text-[10px] mt-0.5 truncate',
+                      hasConflict ? 'text-rose-300' : 'text-muted-foreground/80',
+                    )}>
+                      {summary.free} of {summary.total} free
+                      {summary.limited > 0 && ` · ${summary.limited} limited`}
+                      {hasConflict && ` · ${summary.conflicts} conflict${summary.conflicts === 1 ? '' : 's'}`}
+                    </div>
+                  )}
                 </div>
               </label>
             );
-          })}
+            }}
+          />
         </div>
       )}
 
@@ -1265,5 +1287,70 @@ export function MeetingSchedulerCard({
         </>
       )}
     </div>
+  );
+}
+
+/**
+ * SlotsWithAvailability — wraps `useAttendeeFreeBusy` so each candidate
+ * slot can render a compact "{free} of {total} free · {limited} limited"
+ * summary, and we don't spam the API by querying on every slot.
+ */
+interface SlotAvailability {
+  free: number;
+  conflicts: number;
+  limited: number;
+  total: number; // shared attendees only
+}
+
+function SlotsWithAvailability({
+  slots,
+  attendeeEmails,
+  render,
+}: {
+  slots: { start: Date | string; end: Date | string }[];
+  attendeeEmails: string[];
+  render: (slot: any, i: number, summary: (SlotAvailability & { limitedTotal: number }) | null) => React.ReactNode;
+}) {
+  const range = useMemo(() => {
+    if (slots.length === 0) return { start: new Date(), end: new Date(Date.now() + 7 * 86_400_000) };
+    const starts = slots.map((s) => new Date(s.start).getTime());
+    const ends = slots.map((s) => new Date(s.end).getTime());
+    return { start: new Date(Math.min(...starts)), end: new Date(Math.max(...ends) + 86_400_000) };
+  }, [slots]);
+
+  const { data: fb } = useAttendeeFreeBusy({
+    range,
+    emails: attendeeEmails,
+    enabled: attendeeEmails.length > 0 && slots.length > 0,
+  });
+
+  const limitedTotal = (fb ?? []).filter((r) => r.visibility === 'limited').length;
+  const shared = (fb ?? []).filter((r) => r.visibility === 'shared');
+
+  return (
+    <>
+      {slots.map((slot, i) => {
+        if (!fb || attendeeEmails.length === 0) return render(slot, i, null);
+        const ss = new Date(slot.start).getTime();
+        const se = new Date(slot.end).getTime();
+        let conflicts = 0;
+        for (const r of shared) {
+          const hit = r.busy.some((b) => {
+            const bs = new Date(b.start).getTime();
+            const be = new Date(b.end).getTime();
+            return bs < se && be > ss;
+          });
+          if (hit) conflicts += 1;
+        }
+        const summary: SlotAvailability & { limitedTotal: number } = {
+          total: shared.length,
+          free: Math.max(0, shared.length - conflicts),
+          conflicts,
+          limited: limitedTotal,
+          limitedTotal,
+        };
+        return render(slot, i, summary);
+      })}
+    </>
   );
 }

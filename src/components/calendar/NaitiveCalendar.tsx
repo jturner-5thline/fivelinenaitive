@@ -30,6 +30,7 @@ import {
   startOfDay,
   endOfDay,
 } from 'date-fns';
+import { formatInTimeZone } from 'date-fns-tz';
 import {
   ChevronLeft,
   ChevronRight,
@@ -39,12 +40,23 @@ import {
   Users,
   ExternalLink,
   Video,
+  Globe,
+  Check,
+  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { useCalendarEvents } from '@/hooks/useCalendarEvents';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
+import { Input } from '@/components/ui/input';
+import { useUserCalendarPrefs, type WorkingHours, type DayOfWeek } from '@/hooks/useUserCalendarPrefs';
+import { useAttendeeFreeBusy, type AttendeeFreeBusy } from '@/hooks/useAttendeeFreeBusy';
 
 export interface CalEvent {
   id?: string;
@@ -68,6 +80,12 @@ export interface HighlightSlot {
   label?: string;
 }
 
+export interface CalendarAttendee {
+  email: string;
+  displayName?: string;
+  accessHint?: 'shared' | 'limited' | 'unknown';
+}
+
 interface Props {
   view?: CalendarView;
   events?: CalEvent[];
@@ -82,6 +100,14 @@ interface Props {
   className?: string;
   /** Default scroll target hour (0-23). Defaults to 7. */
   scrollToHour?: number;
+  /** Attendees to overlay free/busy for (signed-in user is always first). */
+  attendees?: CalendarAttendee[];
+  /** Persist TZ changes to user_email_ai_preferences. Default false. */
+  persistTz?: boolean;
+  /** Show working-hours dim band on the grid. Default true. */
+  showWorkingHours?: boolean;
+  /** Called when the user changes the TZ chip. */
+  onTzChange?: (tz: string) => void;
 }
 
 const HOUR_HEIGHT_NORMAL = 44;
@@ -103,11 +129,71 @@ function fmtHourLabel(h: number): string {
   return `${h - 12} PM`;
 }
 
+/** Current UTC offset string for an IANA zone, e.g. "UTC−4". */
+function tzOffsetLabel(tz: string, ref = new Date()): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: tz,
+      timeZoneName: 'shortOffset',
+    }).formatToParts(ref);
+    const off = parts.find((p) => p.type === 'timeZoneName')?.value || '';
+    return off.replace('GMT', 'UTC').replace('-', '−');
+  } catch {
+    return 'UTC';
+  }
+}
+
+/** Minutes from midnight in `tz` for a given Date. */
+function tzMinutesFromMidnight(d: Date, tz: string): number {
+  try {
+    const hm = formatInTimeZone(d, tz, 'H:m').split(':');
+    return parseInt(hm[0], 10) * 60 + parseInt(hm[1] || '0', 10);
+  } catch {
+    return d.getHours() * 60 + d.getMinutes();
+  }
+}
+
+/** YYYY-MM-DD in `tz`. */
+function tzDayKey(d: Date, tz: string): string {
+  try {
+    return formatInTimeZone(d, tz, 'yyyy-MM-dd');
+  } catch {
+    return format(d, 'yyyy-MM-dd');
+  }
+}
+
+function tzFmt(d: Date, tz: string, pattern: string): string {
+  try {
+    return formatInTimeZone(d, tz, pattern);
+  } catch {
+    return format(d, pattern);
+  }
+}
+
+const DAY_KEYS: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+
+/** Most-used IANA zones grouped by region for the picker. */
+const TZ_GROUPS: Array<{ label: string; zones: string[] }> = [
+  {
+    label: 'Americas',
+    zones: ['America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles', 'America/Toronto', 'America/Mexico_City', 'America/Sao_Paulo'],
+  },
+  {
+    label: 'Europe',
+    zones: ['Europe/London', 'Europe/Dublin', 'Europe/Paris', 'Europe/Berlin', 'Europe/Madrid', 'Europe/Amsterdam', 'Europe/Zurich'],
+  },
+  {
+    label: 'Asia / Pacific',
+    zones: ['Asia/Dubai', 'Asia/Singapore', 'Asia/Hong_Kong', 'Asia/Tokyo', 'Asia/Kolkata', 'Australia/Sydney'],
+  },
+  { label: 'UTC', zones: ['UTC'] },
+];
+
 export function NaitiveCalendar({
   view: viewProp = 'week',
   events: externalEvents,
   selectedDate,
-  tz = BROWSER_TZ,
+  tz: tzProp,
   onRangeChange,
   onEventClick,
   onSlotClick,
@@ -116,9 +202,37 @@ export function NaitiveCalendar({
   compact = false,
   className,
   scrollToHour = 7,
+  attendees,
+  persistTz = false,
+  showWorkingHours = true,
+  onTzChange,
 }: Props) {
   const [view, setView] = useState<CalendarView>(viewProp);
   useEffect(() => setView(viewProp), [viewProp]);
+
+  const prefs = useUserCalendarPrefs();
+
+  // Effective TZ: explicit prop > saved pref > browser. Local state lets the
+  // user switch via the chip without round-tripping to the DB first.
+  const initialTz = tzProp || (persistTz && prefs.tz) || BROWSER_TZ;
+  const [tz, setTzState] = useState<string>(initialTz);
+  useEffect(() => {
+    if (tzProp) {
+      setTzState(tzProp);
+    } else if (persistTz && prefs.isLoaded && prefs.tz && prefs.tz !== tz) {
+      setTzState(prefs.tz);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tzProp, persistTz, prefs.isLoaded, prefs.tz]);
+
+  const handleTzPick = useCallback(
+    (next: string) => {
+      setTzState(next);
+      onTzChange?.(next);
+      if (persistTz) void prefs.setTz(next);
+    },
+    [onTzChange, persistTz, prefs],
+  );
 
   const [anchor, setAnchor] = useState<Date>(() => selectedDate ?? new Date());
   useEffect(() => {
@@ -128,6 +242,8 @@ export function NaitiveCalendar({
   const [selected, setSelected] = useState<CalEvent | null>(null);
   const [now, setNow] = useState<Date>(() => new Date());
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const [hoverMin, setHoverMin] = useState<number | null>(null);
+  const [hoverDayIdx, setHoverDayIdx] = useState<number | null>(null);
 
   // Tick "now" every minute for the live indicator.
   useEffect(() => {
@@ -161,6 +277,14 @@ export function NaitiveCalendar({
     enabled: !externalEvents,
   });
   const events = externalEvents ?? fetched ?? [];
+
+  // Attendee free/busy overlay — only fires when attendees are passed.
+  const attendeeEmails = useMemo(() => (attendees ?? []).map((a) => a.email.toLowerCase()), [attendees]);
+  const { data: freeBusy } = useAttendeeFreeBusy({
+    range,
+    emails: attendeeEmails,
+    enabled: !!attendees && attendees.length > 0,
+  });
 
   // Auto-scroll to scrollToHour on mount or week change.
   useEffect(() => {
@@ -222,6 +346,11 @@ export function NaitiveCalendar({
         <span className="text-[11.5px] font-medium text-foreground">{headerLabel}</span>
         {isFetching && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
         <div className="ml-auto flex items-center gap-1">
+          <TzChip
+            tz={tz}
+            recent={prefs.recentTz}
+            onPick={handleTzPick}
+          />
           {/* Segmented view switch */}
           <div className="hidden sm:flex items-center rounded-md border border-white/10 overflow-hidden mr-1">
             {(['day', 'week', 'agenda'] as CalendarView[]).map((v) => (
@@ -255,6 +384,7 @@ export function NaitiveCalendar({
           events={events}
           highlightSlots={highlightSlots}
           onEventClick={handleEventClick}
+          tz={tz}
         />
       ) : (
         <TimeGridView
@@ -268,6 +398,25 @@ export function NaitiveCalendar({
           onEventClick={handleEventClick}
           onSlotClick={handleSlotClick}
           compact={compact}
+          tz={tz}
+          workingHours={showWorkingHours ? prefs.workingHours : null}
+          onHoverChange={(d, m) => {
+            setHoverDayIdx(d);
+            setHoverMin(m);
+          }}
+        />
+      )}
+
+      {/* Attendee free/busy strip — only when attendees are passed. */}
+      {view !== 'agenda' && attendees && attendees.length > 0 && (
+        <AttendeeStrip
+          anchor={anchor}
+          view={view as 'day' | 'week'}
+          attendees={attendees}
+          freeBusy={freeBusy ?? []}
+          tz={tz}
+          hoverDayIdx={hoverDayIdx}
+          hoverMin={hoverMin}
         />
       )}
 
@@ -294,49 +443,55 @@ interface TimeGridProps {
   onEventClick: (ev: CalEvent) => void;
   onSlotClick: (start: Date) => void;
   compact: boolean;
+  tz: string;
+  workingHours: WorkingHours | null;
+  onHoverChange?: (dayIdx: number | null, minutes: number | null) => void;
 }
 
 function TimeGridView({
   view, anchor, events, highlightSlots, now, hourHeight, scrollRef, onEventClick, onSlotClick, compact,
+  tz, workingHours, onHoverChange,
 }: TimeGridProps) {
   const days = view === 'day' ? [startOfDay(anchor)] : getWeekDays(anchor);
   const hours = Array.from({ length: 24 }, (_, i) => i);
   const slotsPerHour = 60 / SLOT_MINUTES;
 
+  // Bucket events into the day column they fall on *in the active TZ*.
+  const dayKeys = days.map((d) => tzDayKey(d, tz));
   const eventsByDay = useMemo(() => {
     const map: Record<number, CalEvent[]> = {};
-    for (let i = 0; i < days.length; i++) map[i] = [];
+    for (let i = 0; i < dayKeys.length; i++) map[i] = [];
     for (const ev of events) {
       if (ev.all_day) continue;
-      const s = new Date(ev.start);
-      const idx = days.findIndex((d) => isSameDay(d, s));
+      const k = tzDayKey(new Date(ev.start), tz);
+      const idx = dayKeys.indexOf(k);
       if (idx >= 0) map[idx].push(ev);
     }
     return map;
-  }, [events, days]);
+  }, [events, dayKeys.join('|'), tz]);
 
   const allDayByDay = useMemo(() => {
     const map: Record<number, CalEvent[]> = {};
-    for (let i = 0; i < days.length; i++) map[i] = [];
+    for (let i = 0; i < dayKeys.length; i++) map[i] = [];
     for (const ev of events) {
       if (!ev.all_day) continue;
-      const s = new Date(ev.start);
-      const idx = days.findIndex((d) => isSameDay(d, s));
+      const k = tzDayKey(new Date(ev.start), tz);
+      const idx = dayKeys.indexOf(k);
       if (idx >= 0) map[idx].push(ev);
     }
     return map;
-  }, [events, days]);
+  }, [events, dayKeys.join('|'), tz]);
 
   const highlightByDay = useMemo(() => {
     const map: Record<number, HighlightSlot[]> = {};
-    for (let i = 0; i < days.length; i++) map[i] = [];
+    for (let i = 0; i < dayKeys.length; i++) map[i] = [];
     for (const slot of highlightSlots ?? []) {
-      const s = new Date(slot.start);
-      const idx = days.findIndex((d) => isSameDay(d, s));
+      const k = tzDayKey(new Date(slot.start), tz);
+      const idx = dayKeys.indexOf(k);
       if (idx >= 0) map[idx].push(slot);
     }
     return map;
-  }, [highlightSlots, days]);
+  }, [highlightSlots, dayKeys.join('|'), tz]);
 
   const gridCols = view === 'day' ? '44px 1fr' : '44px repeat(7,1fr)';
 
@@ -421,6 +576,8 @@ function TimeGridView({
                         aria-label={`${format(d, 'EEE')} ${h}:${String(s * SLOT_MINUTES).padStart(2, '0')}`}
                         className="absolute left-0 right-0 hover:bg-white/[0.04]"
                         style={{ top: h * hourHeight + (s * hourHeight) / slotsPerHour, height: hourHeight / slotsPerHour }}
+                        onMouseEnter={() => onHoverChange?.(dayIdx, h * 60 + s * SLOT_MINUTES)}
+                        onMouseLeave={() => onHoverChange?.(null, null)}
                       />
                     )),
                   )}
@@ -434,12 +591,53 @@ function TimeGridView({
                     />
                   ))}
 
+                  {/* Working-hours dim band (outside-of-hours subtly darker). */}
+                  {workingHours && (() => {
+                    // Day-of-week in the user's TZ
+                    const dowKey = (tzFmt(d, tz, 'EEE').toLowerCase().slice(0, 3) as DayOfWeek);
+                    const wh = workingHours[dowKey];
+                    if (!wh) {
+                      return (
+                        <div
+                          className="pointer-events-none absolute left-0 right-0 bg-foreground/[0.05]"
+                          style={{ top: 0, height: hours.length * hourHeight }}
+                          aria-hidden
+                        />
+                      );
+                    }
+                    const [sh, sm] = wh.start.split(':').map((x) => parseInt(x, 10));
+                    const [eh, em] = wh.end.split(':').map((x) => parseInt(x, 10));
+                    const startMin = sh * 60 + sm;
+                    const endMin = eh * 60 + em;
+                    return (
+                      <>
+                        {startMin > 0 && (
+                          <div
+                            className="pointer-events-none absolute left-0 right-0 bg-foreground/[0.05]"
+                            style={{ top: 0, height: (startMin / 60) * hourHeight }}
+                            aria-hidden
+                          />
+                        )}
+                        {endMin < 24 * 60 && (
+                          <div
+                            className="pointer-events-none absolute left-0 right-0 bg-foreground/[0.05]"
+                            style={{
+                              top: (endMin / 60) * hourHeight,
+                              height: ((24 * 60 - endMin) / 60) * hourHeight,
+                            }}
+                            aria-hidden
+                          />
+                        )}
+                      </>
+                    );
+                  })()}
+
                   {/* Highlight slots (e.g. proposed meeting times) */}
                   {dayHighlights.map((slot, i) => {
                     const s = new Date(slot.start);
                     const e = new Date(slot.end);
-                    const top = (differenceInMinutes(s, startOfDay(d)) / 60) * hourHeight;
-                    const height = Math.max(12, (differenceInMinutes(e, s) / 60) * hourHeight - 2);
+                    const top = (tzMinutesFromMidnight(s, tz) / 60) * hourHeight;
+                    const height = Math.max(12, ((tzMinutesFromMidnight(e, tz) - tzMinutesFromMidnight(s, tz)) / 60) * hourHeight - 2);
                     return (
                       <div
                         key={`h-${i}`}
@@ -456,7 +654,7 @@ function TimeGridView({
 
                   {/* Now indicator */}
                   {today && (() => {
-                    const mins = differenceInMinutes(now, startOfDay(d));
+                    const mins = tzMinutesFromMidnight(now, tz);
                     const top = (mins / 60) * hourHeight;
                     if (top < 0 || top > hours.length * hourHeight) return null;
                     return (
@@ -471,8 +669,8 @@ function TimeGridView({
                   {dayEvents.map((ev, i) => {
                     const s = new Date(ev.start);
                     const e = new Date(ev.end);
-                    const top = (differenceInMinutes(s, startOfDay(d)) / 60) * hourHeight;
-                    const height = Math.max(14, (differenceInMinutes(e, s) / 60) * hourHeight - 2);
+                    const top = (tzMinutesFromMidnight(s, tz) / 60) * hourHeight;
+                    const height = Math.max(14, ((tzMinutesFromMidnight(e, tz) - tzMinutesFromMidnight(s, tz)) / 60) * hourHeight - 2);
                     const accent = ev.color
                       ? { borderColor: ev.color, backgroundColor: `${ev.color}26` }
                       : undefined;
@@ -481,7 +679,7 @@ function TimeGridView({
                         key={ev.id ?? `${ev.start}-${i}`}
                         type="button"
                         onClick={() => onEventClick(ev)}
-                        aria-label={`${ev.title || 'Busy'} at ${format(s, 'h:mm a')}`}
+                        aria-label={`${ev.title || 'Busy'} at ${tzFmt(s, tz, 'h:mm a')}`}
                         className={cn(
                           'absolute left-1 right-1 z-10 overflow-hidden rounded-sm border px-1.5 py-0.5 text-left',
                           !accent && 'border-primary/40 bg-primary/15',
@@ -492,7 +690,7 @@ function TimeGridView({
                         <div className="truncate text-[10px] font-medium leading-tight">{ev.title || 'Busy'}</div>
                         {height > 28 && (
                           <div className="truncate text-[9px] text-muted-foreground leading-tight">
-                            {format(s, 'h:mm')}–{format(e, 'h:mm a')}
+                            {tzFmt(s, tz, 'h:mm')}–{tzFmt(e, tz, 'h:mm a')}
                           </div>
                         )}
                       </button>
@@ -512,10 +710,12 @@ function AgendaView({
   events,
   highlightSlots,
   onEventClick,
+  tz,
 }: {
   events: CalEvent[];
   highlightSlots?: HighlightSlot[];
   onEventClick: (ev: CalEvent) => void;
+  tz: string;
 }) {
   const sorted = useMemo(
     () => [...events].sort((a, b) => new Date(a.start).getTime() - new Date(b.start).getTime()),
@@ -639,3 +839,209 @@ function EventDetail({ event, tz }: { event: CalEvent; tz: string }) {
 }
 
 export default NaitiveCalendar;
+
+/* ---------- TZ chip + picker ---------- */
+
+function TzChip({
+  tz,
+  recent,
+  onPick,
+}: {
+  tz: string;
+  recent: string[];
+  onPick: (tz: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [q, setQ] = useState('');
+  const offset = tzOffsetLabel(tz);
+
+  const filtered = useMemo(() => {
+    const term = q.trim().toLowerCase();
+    return TZ_GROUPS.map((g) => ({
+      label: g.label,
+      zones: g.zones.filter((z) => !term || z.toLowerCase().includes(term)),
+    })).filter((g) => g.zones.length > 0);
+  }, [q]);
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-md border border-white/10 px-1.5 py-0.5 text-[10.5px] text-muted-foreground hover:text-foreground hover:bg-white/[0.04] mr-1"
+          aria-label={`Time zone: ${tz} ${offset}`}
+          title={`${tz} · ${offset}`}
+        >
+          <Globe className="h-3 w-3" />
+          <span className="hidden md:inline">{tz}</span>
+          <span className="md:hidden">{tz.split('/').pop()}</span>
+          <span className="opacity-70">· {offset}</span>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-72 p-0" align="end">
+        <div className="p-2 border-b border-white/10">
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+            <Input
+              autoFocus
+              placeholder="Search IANA zone…"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              className="h-7 pl-7 text-[11.5px]"
+            />
+          </div>
+        </div>
+        <ScrollArea className="max-h-80">
+          {recent.length > 0 && !q && (
+            <div className="py-1">
+              <div className="px-2 text-[9.5px] uppercase tracking-wide text-muted-foreground">Recent</div>
+              {recent.map((z) => (
+                <TzRow key={`r-${z}`} zone={z} active={z === tz} onPick={(zz) => { onPick(zz); setOpen(false); }} />
+              ))}
+            </div>
+          )}
+          {filtered.map((g) => (
+            <div key={g.label} className="py-1">
+              <div className="px-2 text-[9.5px] uppercase tracking-wide text-muted-foreground">{g.label}</div>
+              {g.zones.map((z) => (
+                <TzRow key={z} zone={z} active={z === tz} onPick={(zz) => { onPick(zz); setOpen(false); }} />
+              ))}
+            </div>
+          ))}
+        </ScrollArea>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function TzRow({ zone, active, onPick }: { zone: string; active: boolean; onPick: (z: string) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onPick(zone)}
+      className={cn(
+        'w-full flex items-center justify-between px-2 py-1 text-left text-[11.5px] hover:bg-white/[0.05]',
+        active && 'text-primary',
+      )}
+    >
+      <span>{zone}</span>
+      <span className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+        {tzOffsetLabel(zone)}
+        {active && <Check className="h-3 w-3 text-primary" />}
+      </span>
+    </button>
+  );
+}
+
+/* ---------- Attendee free/busy strip ---------- */
+
+function AttendeeStrip({
+  anchor,
+  view,
+  attendees,
+  freeBusy,
+  tz,
+  hoverDayIdx,
+  hoverMin,
+}: {
+  anchor: Date;
+  view: 'day' | 'week';
+  attendees: CalendarAttendee[];
+  freeBusy: AttendeeFreeBusy[];
+  tz: string;
+  hoverDayIdx: number | null;
+  hoverMin: number | null;
+}) {
+  const days = view === 'day' ? [startOfDay(anchor)] : getWeekDays(anchor);
+  const dayKeys = days.map((d) => tzDayKey(d, tz));
+  const COL_HEIGHT = 18;
+  const gridCols = view === 'day' ? '120px 1fr' : '120px repeat(7,1fr)';
+
+  const byEmail = useMemo(() => {
+    const map = new Map<string, AttendeeFreeBusy>();
+    for (const r of freeBusy) map.set(r.email.toLowerCase(), r);
+    return map;
+  }, [freeBusy]);
+
+  return (
+    <div className="border-t border-white/[0.06] bg-white/[0.015]">
+      <div className="px-2 py-1 text-[9.5px] uppercase tracking-wide text-muted-foreground/80 flex items-center gap-2">
+        <Users className="h-3 w-3" /> Attendees free/busy <span className="text-[9px] opacity-60">({tz})</span>
+      </div>
+      <div className="grid" style={{ gridTemplateColumns: gridCols }}>
+        <div />
+        {days.map((d, i) => (
+          <div key={i} className="text-center text-[9.5px] text-muted-foreground/70 py-0.5">
+            {tzFmt(d, tz, 'EEE d')}
+          </div>
+        ))}
+      </div>
+      <div className="divide-y divide-white/[0.04]">
+        {attendees.map((a, rowIdx) => {
+          const row = byEmail.get(a.email.toLowerCase());
+          const limited = !row || row.visibility === 'limited';
+          return (
+            <div key={a.email} className="grid items-center" style={{ gridTemplateColumns: gridCols }}>
+              <div className="px-2 py-1 text-[10.5px] truncate flex items-center gap-1.5" title={a.email}>
+                <span className={cn('inline-block h-1.5 w-1.5 rounded-full', limited ? 'bg-amber-400' : 'bg-emerald-400')} />
+                <span className="truncate">{a.displayName || a.email}</span>
+                {rowIdx === 0 && <span className="text-[9px] text-muted-foreground">(you)</span>}
+              </div>
+              {days.map((d, dayIdx) => (
+                <div
+                  key={dayIdx}
+                  className={cn(
+                    'relative border-l border-white/[0.04]',
+                    limited &&
+                      'bg-[repeating-linear-gradient(45deg,transparent_0_4px,rgba(251,191,36,0.18)_4px_8px)]',
+                  )}
+                  style={{ height: COL_HEIGHT }}
+                  title={limited ? 'Visibility limited' : undefined}
+                >
+                  {limited && rowIdx > 0 && dayIdx === 0 && (
+                    <span className="absolute left-1 top-1/2 -translate-y-1/2 text-[8.5px] text-amber-300 whitespace-nowrap pointer-events-none">
+                      Visibility limited
+                    </span>
+                  )}
+                  {!limited &&
+                    (row?.busy ?? [])
+                      .filter((b) => tzDayKey(new Date(b.start), tz) === dayKeys[dayIdx])
+                      .map((b, bi) => {
+                        const startMin = tzMinutesFromMidnight(new Date(b.start), tz);
+                        const endMin = tzMinutesFromMidnight(new Date(b.end), tz);
+                        const dayMin = 24 * 60;
+                        const left = (startMin / dayMin) * 100;
+                        const width = Math.max(1, ((endMin - startMin) / dayMin) * 100);
+                        const conflict =
+                          hoverDayIdx === dayIdx &&
+                          hoverMin !== null &&
+                          hoverMin >= startMin &&
+                          hoverMin < endMin;
+                        return (
+                          <div
+                            key={bi}
+                            className={cn(
+                              'absolute top-1 bottom-1 rounded-[2px]',
+                              conflict ? 'bg-rose-500/70' : 'bg-primary/40',
+                            )}
+                            style={{ left: `${left}%`, width: `${width}%` }}
+                            title={`${tzFmt(new Date(b.start), tz, 'h:mm a')} – ${tzFmt(new Date(b.end), tz, 'h:mm a')}`}
+                          />
+                        );
+                      })}
+                  {/* Hover vertical guide */}
+                  {hoverDayIdx === dayIdx && hoverMin !== null && (
+                    <div
+                      className="pointer-events-none absolute top-0 bottom-0 w-px bg-primary/70"
+                      style={{ left: `${(hoverMin / (24 * 60)) * 100}%` }}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

@@ -21156,21 +21156,30 @@ export type Database = {
       user_email_ai_preferences: {
         Row: {
           auto_commit_high_confidence_pass: boolean
+          calendar_tz: string | null
           created_at: string
+          recent_tz: string[]
           updated_at: string
           user_id: string
+          working_hours: Json
         }
         Insert: {
           auto_commit_high_confidence_pass?: boolean
+          calendar_tz?: string | null
           created_at?: string
+          recent_tz?: string[]
           updated_at?: string
           user_id: string
+          working_hours?: Json
         }
         Update: {
           auto_commit_high_confidence_pass?: boolean
+          calendar_tz?: string | null
           created_at?: string
+          recent_tz?: string[]
           updated_at?: string
           user_id?: string
+          working_hours?: Json
         }
         Relationships: []
       }
