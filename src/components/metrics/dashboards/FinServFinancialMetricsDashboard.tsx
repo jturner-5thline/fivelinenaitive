@@ -171,7 +171,7 @@ export function FinServFinancialMetricsDashboard() {
   const revenueByClient = useFinServRevenueByClient(selectedQuarter, selectedQuarter.months.length - 1);
   const cashflow = useFinServCashflow(selectedPeriod, range.granularity);
   const stacked = useQBStackedFinServRevenue(selectedQuarter);
-  const activeClients = useFinServActiveClients();
+  const activeClients = useFinServActiveClients(selectedPeriod, range.granularity);
 
   const granularityLabel =
     range.granularity === 'monthly' ? 'Monthly' :
@@ -451,7 +451,7 @@ export function FinServFinancialMetricsDashboard() {
       <Card className="glass-module">
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium">Active Clients</CardTitle>
-          <Badge variant="outline" className="w-fit text-xs">Monthly · Past 6 months</Badge>
+          <Badge variant="outline" className="w-fit text-xs">{periodBadge}</Badge>
         </CardHeader>
         <CardContent>
           {activeClients.isLoading ? <WidgetLoading /> : activeClients.error ? <WidgetError /> : activeClients.trend.every(t => t.count === 0) ? <WidgetEmpty message="No active FinServ clients yet" /> : (

@@ -9,7 +9,9 @@ import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 
 const FINSERV_REALM_ID = '9341451968897660';
 const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
-const ACTIVE_CLIENT_STAGE = 'fs-active-client';
+// Canonical "Active Client" stage id in the FinServ pipeline.
+// (Stage labelled "Active Client" in deal_pipelines is persisted as `fs-closed-won`.)
+const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
 
 // ────────────────────────────────────────────────────────────
 // Helpers
@@ -544,59 +546,105 @@ export interface ActiveClientMonth {
   variance: number;
 }
 
-export function useFinServActiveClients() {
+export function useFinServActiveClients(
+  period?: { start_date: string; end_date: string; label: string } | null,
+  granularity: Granularity = 'monthly',
+) {
   const { user } = useAuth();
   const { company } = useCompany();
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-active-clients', user?.id, company?.id],
+    queryKey: [
+      'finserv-active-clients',
+      user?.id,
+      company?.id,
+      period?.start_date,
+      period?.end_date,
+      granularity,
+    ],
     queryFn: async () => {
       if (!company?.id) return null;
 
-      // Get all deals ever in the FinServ pipeline with stage = active client
-      // For simplicity, count current active clients and use created_at for trend
-      const { data: deals, error: err } = await supabase
+      // Fetch every FinServ deal + its stage history so we can reconstruct the
+      // "stage at point in time" for each deal at the end of each bucket.
+      const { data: deals, error: dealsErr } = await supabase
         .from('deals')
         .select('id, stage, created_at, updated_at')
         .eq('company_id', company.id)
         .eq('pipeline_id', FINSERV_PIPELINE_ID);
-      if (err) throw err;
+      if (dealsErr) throw dealsErr;
 
-      // Current active count
-      const activeDeals = (deals ?? []).filter(d => d.stage === ACTIVE_CLIENT_STAGE);
-      const currentCount = activeDeals.length;
+      const dealList = deals ?? [];
 
-      // Build 6-month trend (approximate: count deals that were active by end of each month)
-      const months = buildMonthRange(6);
-      const monthBars: ActiveClientMonth[] = months.map((m, i) => {
-        // Count deals that have stage = active-client and were created before end of month
-        const endOfMonth = new Date(m.end + 'T23:59:59Z');
-        const count = (deals ?? []).filter(d => {
-          if (d.stage !== ACTIVE_CLIENT_STAGE) return false;
-          const created = new Date(d.created_at);
-          return created <= endOfMonth;
-        }).length;
-        return {
-          month: m.label,
-          monthKey: m.key,
-          count,
-          variance: 0,
-        };
-      });
+      const { data: history, error: histErr } = await supabase
+        .from('deal_stage_history')
+        .select('deal_id, to_stage, changed_at')
+        .eq('company_id', company.id)
+        .eq('pipeline_id', FINSERV_PIPELINE_ID)
+        .order('changed_at', { ascending: true });
+      if (histErr) throw histErr;
 
-      // Calculate MoM variance
-      for (let i = 1; i < monthBars.length; i++) {
-        monthBars[i].variance = monthBars[i].count - monthBars[i - 1].count;
+      // Index history by deal_id (already ordered ascending)
+      const historyByDeal = new Map<string, Array<{ to_stage: string | null; changed_at: string }>>();
+      for (const h of history ?? []) {
+        const arr = historyByDeal.get(h.deal_id) ?? [];
+        arr.push({ to_stage: h.to_stage, changed_at: h.changed_at });
+        historyByDeal.set(h.deal_id, arr);
       }
 
-      const priorCount = monthBars.length >= 2 ? monthBars[monthBars.length - 2].count : 0;
-
-      return {
-        currentCount,
-        priorCount,
-        variance: currentCount - priorCount,
-        trend: monthBars,
+      // Returns the stage of `deal` at the given timestamp `t`, or null if the
+      // deal did not yet exist.
+      const stageAt = (
+        deal: { id: string; stage: string | null; created_at: string },
+        t: Date,
+      ): string | null => {
+        const created = new Date(deal.created_at);
+        if (created > t) return null;
+        const hist = historyByDeal.get(deal.id);
+        if (hist && hist.length > 0) {
+          let last: string | null = null;
+          for (const h of hist) {
+            if (new Date(h.changed_at) <= t) last = h.to_stage;
+            else break;
+          }
+          if (last !== null) return last;
+          // No history entry <= t — fall through to current stage assumption.
+        }
+        // No (applicable) history rows — assume the deal has been in its
+        // current stage since creation.
+        return deal.stage ?? null;
       };
+
+      // Current count = deals whose stage is currently "Active Client".
+      const currentCount = dealList.filter(d => d.stage === ACTIVE_CLIENT_STAGE).length;
+
+      // Build buckets from the selected range/granularity, falling back to the
+      // last 6 months if no period is supplied.
+      const buckets = period
+        ? buildBuckets(period.start_date, period.end_date, granularity)
+        : buildMonthRange(6).map(m => ({
+            start_date: m.start,
+            end_date: m.end,
+            key: m.key,
+            label: m.label,
+          }));
+
+      const today = new Date();
+      const bars: ActiveClientMonth[] = buckets.map(b => {
+        const bucketEnd = new Date(b.end_date + 'T23:59:59');
+        const effectiveEnd = bucketEnd > today ? today : bucketEnd;
+        const count = dealList.filter(d => stageAt(d, effectiveEnd) === ACTIVE_CLIENT_STAGE).length;
+        return { month: b.label, monthKey: b.key, count, variance: 0 };
+      });
+
+      for (let i = 1; i < bars.length; i++) {
+        bars[i].variance = bars[i].count - bars[i - 1].count;
+      }
+
+      const priorCount = bars.length >= 2 ? bars[bars.length - 2].count : 0;
+      const variance = currentCount - priorCount;
+
+      return { currentCount, priorCount, variance, trend: bars };
     },
     enabled: !!user && !!company?.id,
     staleTime: 30_000,
