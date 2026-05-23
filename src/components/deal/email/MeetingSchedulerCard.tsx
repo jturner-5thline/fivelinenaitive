@@ -1307,9 +1307,9 @@ function SlotsWithAvailability({
   attendeeEmails,
   render,
 }: {
-  slots: { start: string; end: string }[];
+  slots: { start: Date | string; end: Date | string }[];
   attendeeEmails: string[];
-  render: (slot: { start: string; end: string }, i: number, summary: (SlotAvailability & { limitedTotal: number }) | null) => React.ReactNode;
+  render: (slot: any, i: number, summary: (SlotAvailability & { limitedTotal: number }) | null) => React.ReactNode;
 }) {
   const range = useMemo(() => {
     if (slots.length === 0) return { start: new Date(), end: new Date(Date.now() + 7 * 86_400_000) };
