@@ -19,8 +19,7 @@ interface Props {
 
 interface DealRow {
   id: string;
-  deal_name: string;
-  company: string | null;
+  company: string;
 }
 
 /**
@@ -42,8 +41,8 @@ export function DealLinkPicker({ dealId, recipients, onLinkedDealChange }: Props
     let cancelled = false;
     (async () => {
       if (!dealId) { setLabel(''); return; }
-      const { data } = await supabase.from('deals').select('id, deal_name, company').eq('id', dealId).maybeSingle();
-      if (!cancelled && data) setLabel(data.deal_name || data.company || 'Untitled deal');
+      const { data } = await supabase.from('deals').select('id, company').eq('id', dealId).maybeSingle();
+      if (!cancelled && data) setLabel(data.company || 'Untitled deal');
     })();
     return () => { cancelled = true; };
   }, [dealId]);
@@ -58,11 +57,11 @@ export function DealLinkPicker({ dealId, recipients, onLinkedDealChange }: Props
         const term = q.trim();
         let query = supabase
           .from('deals')
-          .select('id, deal_name, company')
+          .select('id, company')
           .order('updated_at', { ascending: false })
           .limit(15);
         if (term.length > 0) {
-          query = query.or(`deal_name.ilike.%${term}%,company.ilike.%${term}%`);
+          query = query.ilike('company', `%${term}%`);
         }
         const { data } = await query;
         if (!cancelled) setResults((data ?? []) as DealRow[]);
@@ -103,7 +102,7 @@ export function DealLinkPicker({ dealId, recipients, onLinkedDealChange }: Props
           created_by: user.id,
         });
       }
-      onLinkedDealChange(row.id, row.deal_name || row.company || 'Untitled deal');
+      onLinkedDealChange(row.id, row.company || 'Untitled deal');
       toast.success('Recognition override saved');
       setOpen(false);
     } catch (e: any) {
@@ -152,10 +151,7 @@ export function DealLinkPicker({ dealId, recipients, onLinkedDealChange }: Props
                   onClick={() => choose(r)}
                   className="w-full text-left px-3 py-2 hover:bg-muted/60 transition-colors flex flex-col gap-0.5"
                 >
-                  <span className="text-sm truncate">{r.deal_name || 'Untitled deal'}</span>
-                  {r.company && (
-                    <span className="text-[11px] text-muted-foreground truncate">{r.company}</span>
-                  )}
+                  <span className="text-sm truncate">{r.company || 'Untitled deal'}</span>
                 </button>
               ))
             )}
