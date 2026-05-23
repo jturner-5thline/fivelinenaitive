@@ -263,6 +263,7 @@ export function classifyThread(
     score: 0,
     signals: [],
   };
+  const allCandidates: Array<{ deal_id: string; score: number; signals: MatchSignal[] }> = [];
 
   const subject = thread.subject || "";
   const body = thread.body_text || "";
@@ -418,16 +419,19 @@ export function classifyThread(
     // Cap at 1.0
     if (score > 1) score = 1;
 
+    if (score > 0) allCandidates.push({ deal_id: deal.id, score, signals: [...signals] });
     if (score > best.score) {
       best = { dealId: deal.id, score, signals };
     }
   }
 
+  const candidates = allCandidates.sort((a, b) => b.score - a.score).slice(0, 5);
   return {
     matched_deal_id: best.score >= LIKELY_THRESHOLD ? best.dealId : null,
     match_confidence: best.score,
     match_signals: best.signals,
     is_clients_deals: best.score >= TAG_THRESHOLD,
+    candidates,
   };
 }
 
