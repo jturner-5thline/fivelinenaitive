@@ -121,7 +121,6 @@ import {
   ControllerDashboard,
   ExecutiveDashboard,
   FinServFinancialMetricsDashboard,
-  QuickBooksFinancialDashboard,
   ManagementReviewCarousel,
 } from "@/components/metrics/dashboards";
 import { WeeklyRundownCarousel } from "@/components/metrics/dashboards/WeeklyRundownCarousel";
@@ -148,7 +147,6 @@ const DASHBOARD_OPTIONS = [
   { id: 'finserv-financial-metrics', name: 'FinServ Financial Metrics', isFavorite: false, folder: null },
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
-  { id: 'quickbooks-financial', name: 'QuickBooks Financial', isFavorite: false, folder: 'financial' as const },
   { id: 'management-review', name: 'Insights Dashboard', isFavorite: false, folder: 'management-insights' as const },
 ];
 
@@ -167,7 +165,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'financial',
     name: 'Financial',
-    dashboardIds: ['revenue-customers', 'controller-dashboard', 'quickbooks-financial'],
+    dashboardIds: ['revenue-customers', 'controller-dashboard'],
   },
   {
     id: 'sales-bd',
@@ -1432,6 +1430,15 @@ function MetricsInner() {
     }
   }, [searchParams]);
 
+  // Legacy redirect: QuickBooks Financial dashboard was merged into the
+  // Controller Dashboard. Any deep links or persisted selections pointing
+  // at the old id are transparently routed to its replacement.
+  useEffect(() => {
+    if (selectedDashboard === 'quickbooks-financial') {
+      setSelectedDashboard('controller-dashboard');
+    }
+  }, [selectedDashboard]);
+
   // Ctrl/Cmd+Z while in Edit Layout mode undoes most recent widget/section deletion
   useEffect(() => {
     if (!isEditMode) return;
@@ -2679,7 +2686,6 @@ function MetricsInner() {
             )}
             {selectedDashboard === 'controller-dashboard' && <ControllerDashboard />}
             {selectedDashboard === 'finserv-financial-metrics' && <FinServFinancialMetricsDashboard />}
-            {selectedDashboard === 'quickbooks-financial' && <QuickBooksFinancialDashboard />}
             {selectedDashboard === 'management-review' && <ManagementReviewCarousel />}
 
             {/* Custom user-created dashboards */}

@@ -14,6 +14,7 @@ import {
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
+import { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
 
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
@@ -372,6 +373,21 @@ export function ControllerDashboard() {
       rows={drill?.rows ?? []}
       emptyHint="No detail records available."
     />
+    {/*
+      QuickBooks Financial tiles — merged in from the standalone
+      "QuickBooks Financial" dashboard so the Controller Dashboard is the
+      single source of truth for QBO-driven financial reporting.
+      Preserves the original data sources, configs, filters, and drilldowns.
+    */}
+    <div className="mt-8 space-y-3">
+      <div>
+        <h3 className="text-base font-semibold text-foreground">QuickBooks Financial</h3>
+        <p className="text-xs text-muted-foreground">
+          P&amp;L, A/R, payments, and customer-level reporting across connected QuickBooks entities.
+        </p>
+      </div>
+      <QuickBooksFinancialDashboard />
+    </div>
     </>
   );
 }
