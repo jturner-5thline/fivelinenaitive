@@ -303,30 +303,46 @@ export interface QuarterProfitBar {
   operatingMargin: number;
 }
 
-export function useFinServQuarterlyProfits(period: SnapshotPeriod | null, quartersBack = 4) {
+export function useFinServQuarterlyProfits(
+  period: SnapshotPeriod | null,
+  granularity: Granularity = 'quarterly',
+) {
   const { user } = useAuth();
   const { company } = useCompany();
-  const quarterPeriods = useMemo(
-    () => (period ? buildQuarterlySnapshotPeriods(period.end_date, quartersBack) : []),
-    [period, quartersBack],
+  const bucketPeriods = useMemo(
+    () => (period ? buildBuckets(period.start_date, period.end_date, granularity) : []),
+    [period?.start_date, period?.end_date, granularity],
   );
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['finserv-quarterly-profits', user?.id, company?.id, period?.end_date, quartersBack],
+    queryKey: [
+      'finserv-profit-buckets',
+      user?.id,
+      company?.id,
+      period?.start_date,
+      period?.end_date,
+      granularity,
+    ],
     queryFn: async () => {
       if (!period || !company?.id) return [];
-      const rows = await ensureFinServPnlSnapshots(company.id, quarterPeriods);
-      const rowsByKey = new Map(rows.map((row) => [`${row.period_start}_${row.period_end}`, row]));
+      const reqPeriods = bucketPeriods.map((b) => ({
+        start_date: b.start_date,
+        end_date: b.end_date,
+      }));
+      const rows = await ensureFinServPnlSnapshots(company.id, reqPeriods);
+      const rowsByKey = new Map(
+        rows.map((row) => [`${row.period_start}_${row.period_end}`, row]),
+      );
 
-      return quarterPeriods.map((quarter): QuarterProfitBar => {
-        const row = rowsByKey.get(periodKey(quarter));
+      return bucketPeriods.map((bucket): QuarterProfitBar => {
+        const row = rowsByKey.get(`${bucket.start_date}_${bucket.end_date}`);
         const revenue = Number(row?.income_total ?? 0);
         const cogs = Number(row?.cogs_total ?? 0);
         const grossProfit = Number(row?.gross_profit ?? 0);
         const operatingExpenses = Number(row?.operating_expenses ?? 0);
         const operatingProfit = grossProfit - operatingExpenses;
         return {
-          quarter: quarter.label,
+          quarter: bucket.label,
           revenue,
           cogs,
           grossProfit,
