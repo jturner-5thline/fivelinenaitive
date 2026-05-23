@@ -1,0 +1,1 @@
+DELETE FROM public.qbo_cashflow_snapshots WHERE realm_id='9341451968897660';
