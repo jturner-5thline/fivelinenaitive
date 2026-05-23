@@ -1175,6 +1175,28 @@ export function MeetingSchedulerCard({
                     </div>
                   )}
                 </div>
+                {/* Per-slot status dot — green=all free, amber=limited
+                    visibility on at least one attendee, rose=conflict. */}
+                {summary && summary.total > 0 && (
+                  <span
+                    aria-hidden
+                    title={
+                      hasConflict
+                        ? 'Conflict on at least one calendar'
+                        : summary.limited > 0
+                          ? 'Limited visibility on some calendars'
+                          : 'All attendees free'
+                    }
+                    className={cn(
+                      'inline-block h-2 w-2 rounded-full shrink-0',
+                      hasConflict
+                        ? 'bg-rose-400'
+                        : summary.limited > 0
+                          ? 'bg-amber-300'
+                          : 'bg-emerald-400',
+                    )}
+                  />
+                )}
               </label>
             );
             }}
