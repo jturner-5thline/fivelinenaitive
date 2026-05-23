@@ -23,6 +23,8 @@ import {
 import { InsightsTimeRangeSelector, type InsightsTimeRangeValue } from '@/components/insights/InsightsTimeRangeSelector';
 import { loadPersistedRange, resolveRange, defaultGranularityForRange } from '@/lib/insightsTimeRange';
 import { buildCustomPeriod } from '@/hooks/useQBQuarterlyRevenue';
+import { DrilldownProvider, useDrilldown, type DrilldownRequest } from '@/components/insights/ChartDrilldown';
+import { buildBuckets } from '@/lib/insightsTimeRange';
 
 // ────────────────────────────────────────────────────────────
 // Formatters
@@ -105,6 +107,14 @@ function VarianceIndicator({ value, suffix = '' }: { value: number; suffix?: str
 // ────────────────────────────────────────────────────────────
 
 export function FinServFinancialMetricsDashboard() {
+  return (
+    <DrilldownProvider>
+      <FinServFinancialMetricsDashboardInner />
+    </DrilldownProvider>
+  );
+}
+
+function FinServFinancialMetricsDashboardInner() {
   // Per-board time range selector — overrides the global context for this board.
   const initialPersisted = useMemo(() => loadPersistedRange('finserv-financial-metrics'), []);
   const initialResolved = useMemo(() => {
