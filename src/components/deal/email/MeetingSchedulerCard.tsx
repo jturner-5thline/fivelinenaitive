@@ -20,6 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { NaitiveCalendar } from '@/components/calendar/NaitiveCalendar';
+import { useAttendeeFreeBusy } from '@/hooks/useAttendeeFreeBusy';
 import type { EmailThread } from './mockEmailData';
 import { useRenderMeetingTitle } from '@/hooks/useRenderMeetingTitle';
 
@@ -848,6 +849,11 @@ export function MeetingSchedulerCard({
       <NaitiveCalendar
         view="week"
         compact
+        persistTz
+        attendees={finalAttendees.map((r) => ({
+          email: r.email,
+          displayName: r.name,
+        }))}
         highlightSlots={proposedSlots.map((s, i) => ({
           start: s.start,
           end: s.end,
