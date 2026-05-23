@@ -298,25 +298,14 @@ export function ChannelsDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* ── Filters: Time pills + multi-select + clear ── */}
+      {/* ── Filters: shared page range + multi-select + clear ── */}
       <div className="space-y-2">
         <div className="flex items-center gap-2 flex-wrap">
-          {/* Time pills */}
-          <div className="flex items-center bg-card border border-border rounded-lg p-0.5 gap-0.5">
-            {TIME_PRESETS.map(p => (
-              <button
-                key={p.value}
-                onClick={() => setTimePeriod(p.value)}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${
-                  timePeriod === p.value
-                    ? 'bg-primary/15 text-primary border border-primary/25'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
-              >
-                {p.short}
-              </button>
-            ))}
-          </div>
+          {range && (
+            <div className="text-[11px] text-muted-foreground px-1">
+              {range.granularity === 'monthly' ? 'Monthly' : range.granularity === 'quarterly' ? 'Quarterly' : 'Yearly'} · {range.resolved.label}
+            </div>
+          )}
 
           <div className="h-4 w-px bg-border" />
 
