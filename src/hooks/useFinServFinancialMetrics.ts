@@ -6,6 +6,7 @@ import { useCompany } from './useCompany';
 import { type QuarterOption } from './useQBQuarterlyRevenue';
 import { endOfMonth, endOfQuarter, format, startOfMonth, startOfQuarter, subQuarters } from 'date-fns';
 import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
+import { resolveQboClientLabel } from '@/lib/qboClientName';
 
 export const FINSERV_REALM_ID = '9341451968897660';
 export const FINSERV_PIPELINE_ID = 'eb9db15a-62cc-4b99-adcf-24e57a2a46ce';
@@ -401,13 +402,28 @@ export function useFinServRevenueByClient(quarter: QuarterOption | null, monthIn
     queryFn: async () => {
       if (!selectedMonth || !priorStart || !priorEnd) return null;
 
-      const { data: rows, error: err } = await supabase
-        .from('quickbooks_invoices')
-        .select('txn_date, customer_name, total_amt')
-        .eq('realm_id', FINSERV_REALM_ID)
-        .gte('txn_date', priorStart)
-        .lte('txn_date', selectedMonth.end);
+      // Resolve every invoice to its COMPANY label (not the person listed as
+      // the QBO customer). See src/lib/qboClientName.ts.
+      const [{ data: rows, error: err }, { data: customers, error: cErr }] = await Promise.all([
+        supabase
+          .from('quickbooks_invoices')
+          .select('txn_date, customer_id, customer_name, total_amt')
+          .eq('realm_id', FINSERV_REALM_ID)
+          .gte('txn_date', priorStart)
+          .lte('txn_date', selectedMonth.end),
+        supabase
+          .from('quickbooks_customers')
+          .select('qb_id, display_name, company_name')
+          .eq('realm_id', FINSERV_REALM_ID),
+      ]);
       if (err) throw err;
+      if (cErr) throw cErr;
+
+      const customerById = new Map<string, { company_name: string | null; display_name: string | null }>();
+      for (const c of customers ?? []) {
+        if (!c.qb_id) continue;
+        customerById.set(c.qb_id, { company_name: c.company_name, display_name: c.display_name });
+      }
 
       const currentMap: Record<string, number> = {};
       const priorMap: Record<string, number> = {};
@@ -416,10 +432,14 @@ export function useFinServRevenueByClient(quarter: QuarterOption | null, monthIn
         if (!r.txn_date || !r.customer_name) continue;
         const k = r.txn_date.slice(0, 7);
         const amt = Number(r.total_amt) || 0;
+        const label = resolveQboClientLabel(
+          r.customer_name,
+          r.customer_id ? customerById.get(r.customer_id) : undefined,
+        );
         if (k === selectedMonth.key) {
-          currentMap[r.customer_name] = (currentMap[r.customer_name] ?? 0) + amt;
+          currentMap[label] = (currentMap[label] ?? 0) + amt;
         } else if (k === priorKey) {
-          priorMap[r.customer_name] = (priorMap[r.customer_name] ?? 0) + amt;
+          priorMap[label] = (priorMap[label] ?? 0) + amt;
         }
       }
 
