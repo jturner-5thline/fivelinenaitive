@@ -58,15 +58,32 @@ export function useStaleStatusNoteContext(
       //   3. email_threads subject ILIKE %companyName% (fallback for the
       //      common case where the classifier has not yet linked threads —
       //      see Czerlonka: 18 plainly-named threads with matched_deal_id NULL)
-      type RowWithIso = StatusNudgeContext['recentClientEmails'][number] & { _iso: string | null };
+      type RowWithIso = StatusNudgeContext['recentClientEmails'][number] & {
+        _iso: string | null;
+        _threadId?: string | null;
+        _gmailId?: string | null;
+      };
       const collected: RowWithIso[] = [];
       const seenKeys = new Set<string>();
       const threadIdsToEnrich = new Set<string>();
       const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
-      const pushRow = (key: string, direction: 'in' | 'out', subject: string | null, atISO: string | null) => {
+      const pushRow = (
+        key: string,
+        direction: 'in' | 'out',
+        subject: string | null,
+        atISO: string | null,
+        refs?: { threadId?: string | null; gmailId?: string | null },
+      ) => {
         if (!key || seenKeys.has(key)) return;
         seenKeys.add(key);
-        collected.push({ direction, subject, at: fmtDate(atISO), _iso: atISO || null });
+        collected.push({
+          direction,
+          subject,
+          at: fmtDate(atISO),
+          _iso: atISO || null,
+          _threadId: refs?.threadId || null,
+          _gmailId: refs?.gmailId || null,
+        });
       };
       const directionFromSubject = (s: string | null | undefined): 'in' | 'out' => {
         if (!s) return 'out';
@@ -96,7 +113,10 @@ export function useStaleStatusNoteContext(
             const fromE = (m.from_email || '').toLowerCase();
             const direction: 'in' | 'out' =
               contact && fromE && contact.includes(fromE) ? 'in' : 'out';
-            pushRow(`gm:${m.gmail_message_id}`, direction, m.subject || null, m.received_at);
+            pushRow(`gm:${m.gmail_message_id}`, direction, m.subject || null, m.received_at, {
+              gmailId: m.gmail_message_id,
+              threadId: (m as any).thread_id || null,
+            });
           }
         }
       } catch {/* swallow */}
@@ -110,7 +130,7 @@ export function useStaleStatusNoteContext(
           .order('latest_message_at', { ascending: false })
           .limit(10);
         for (const t of linkedThreads || []) {
-          pushRow(`th:${t.thread_id}`, directionFromSubject(t.subject), t.subject || null, t.latest_message_at);
+          pushRow(`th:${t.thread_id}`, directionFromSubject(t.subject), t.subject || null, t.latest_message_at, { threadId: t.thread_id });
           if (t.thread_id) threadIdsToEnrich.add(t.thread_id);
         }
       } catch {/* swallow */}
@@ -129,7 +149,7 @@ export function useStaleStatusNoteContext(
             .order('latest_message_at', { ascending: false })
             .limit(15);
           for (const t of subjectThreads || []) {
-            pushRow(`th:${t.thread_id}`, directionFromSubject(t.subject), t.subject || null, t.latest_message_at);
+            pushRow(`th:${t.thread_id}`, directionFromSubject(t.subject), t.subject || null, t.latest_message_at, { threadId: t.thread_id });
             if (t.thread_id) threadIdsToEnrich.add(t.thread_id);
           }
         }
@@ -148,12 +168,16 @@ export function useStaleStatusNoteContext(
       // (Czerlonka 5/22 CSG reply). Best-effort; degrade silently.
       const enrichByThread = new Map<string, { from: string | null; snippet: string | null }>();
       try {
-        const ids = Array.from(threadIdsToEnrich).slice(0, 20);
-        if (ids.length) {
+        // Restrict the enrichment lookup to threads that actually surface in
+        // the top-10 (saves bandwidth on busy deals).
+        const topThreadIds = Array.from(
+          new Set(top.map((r) => r._threadId).filter(Boolean) as string[]),
+        ).slice(0, 20);
+        if (topThreadIds.length) {
           const { data: msgs } = await supabase
             .from('gmail_messages')
             .select('thread_id, from_email, from_name, snippet, received_at')
-            .in('thread_id', ids)
+            .in('thread_id', topThreadIds)
             .order('received_at', { ascending: false })
             .limit(200);
           for (const m of (msgs || []) as any[]) {
@@ -166,17 +190,15 @@ export function useStaleStatusNoteContext(
       } catch {/* swallow */}
 
       const recentClientEmails: StatusNudgeContext['recentClientEmails'] = top.map((r) => {
-        // _iso recovered from key would be lossy; instead re-derive thread_id from seenKeys order.
-        // Use subject+at match: enrich via the threadId stored on the key (we set it during pushRow).
-        return { direction: r.direction, subject: r.subject, at: r.at };
+        const e = r._threadId ? enrichByThread.get(r._threadId) : undefined;
+        return {
+          direction: r.direction,
+          subject: r.subject,
+          at: r.at,
+          from: e?.from || null,
+          snippet: e?.snippet || null,
+        };
       });
-      // Map enrichment back: walk collected (which has subject+_iso) alongside top; we use a parallel
-      // index by matching on subject+_iso to a thread_id we tracked.
-      // Simpler: re-walk the top items and look up by the same subject in the thread fixtures we stored.
-      // To avoid an additional lookup table, re-do the join here: for each top row, find a thread_id whose
-      // enriched data subject matches; since multiple threads can share subjects, we instead enrich by
-      // iterating threads we know about. We already have enrichByThread keyed by thread_id, but top rows
-      // don't carry thread_id. Refactor: keep thread_id on RowWithIso.
 
       const currentNote = stripHtml(deal.notes || '').slice(0, 600) || null;
 
