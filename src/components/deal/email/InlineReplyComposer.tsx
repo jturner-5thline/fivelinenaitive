@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { toast } from 'sonner';
 import { emailStringToArray, emailArrayToString } from './RecipientField';
 import { MockEmail } from './mockEmailData';
@@ -10,6 +10,17 @@ import type { TokenContext } from '@/hooks/useEmailSnippets';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import { dispatchComposeBody } from './scheduleIntent';
 import { SuggestedReplyCards, type SuggestedReply } from './SuggestedReplyCards';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { Sparkles } from 'lucide-react';
 
 // Re-export the public draft contract so callers/PopOutComposer keep working.
 export interface ReplyDraft {
@@ -49,6 +60,14 @@ interface InlineReplyComposerProps {
    */
   suggestedReplies?: SuggestedReply[];
   onRegenerateSuggestions?: () => void;
+  /**
+   * Card id (typically `tone-balanced`) whose body should auto-populate the
+   * empty composer body once it resolves. Honors a dirty-edit guard — if the
+   * user has typed anything we never overwrite without confirmation.
+   */
+  recommendedSuggestionId?: string;
+  /** Per-card retry — forwarded to SuggestedReplyCards. */
+  onRetrySuggestion?: (toneKey: 'concise' | 'balanced') => void;
 }
 
 export function InlineReplyComposer({
@@ -66,6 +85,8 @@ export function InlineReplyComposer({
   signature,
   suggestedReplies,
   onRegenerateSuggestions,
+  recommendedSuggestionId,
+  onRetrySuggestion,
 }: InlineReplyComposerProps) {
   // Recipients are arrays internally; persisted in ReplyDraft as comma strings.
   const [recipients, setRecipients] = useState<ComposerRecipients>(() => ({
@@ -78,21 +99,64 @@ export function InlineReplyComposer({
   const [attachments, setAttachments] = useState<string[]>(initialDraft?.attachments ?? []);
   const [files, setFiles] = useState<File[]>([]);
   const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
+  const userTouchedRef = useRef<boolean>(!!initialDraft?.body);
+  const autoSeededRef = useRef<boolean>(false);
+  const [pendingSwap, setPendingSwap] = useState<{ id: string; body: string } | null>(null);
+
+  const applySuggestion = useCallback((id: string, suggBody: string) => {
+    setSelectedSuggestionId(id);
+    setBody(suggBody);
+    // Treat AI-applied content as "untouched" so the next AI swap is clean
+    // unless the user actually edits.
+    userTouchedRef.current = false;
+  }, []);
+
   const handleSelectSuggestion = useCallback(
     (id: string) => {
       const s = (suggestedReplies || []).find((x) => x.id === id);
-      if (!s) return;
-      setSelectedSuggestionId(id);
-      setBody(s.body);
+      if (!s || !s.body) return;
+      // Dirty-edit guard: only prompt if the user has typed AND the body
+      // is non-empty AND the swap would actually change content.
+      const trimmed = (body || '').trim();
+      if (userTouchedRef.current && trimmed !== '' && trimmed !== s.body.trim()) {
+        setPendingSwap({ id, body: s.body });
+        return;
+      }
+      applySuggestion(id, s.body);
     },
-    [suggestedReplies],
+    [suggestedReplies, body, applySuggestion],
   );
   const handleBodyChange = useCallback((next: string) => {
     // Manual edits clear the suggestion selection so the card no longer
     // appears as the active choice (but the cards remain visible).
     setSelectedSuggestionId(null);
+    userTouchedRef.current = true;
     setBody(next);
   }, []);
+
+  // ── Auto-populate textarea with the Recommended draft on first resolve.
+  //    Strictly guarded: only fires when the body is empty, the user has not
+  //    typed anything, and we haven't already seeded once for this mount.
+  useEffect(() => {
+    if (autoSeededRef.current) return;
+    if (userTouchedRef.current) return;
+    if ((body || '').trim() !== '') return;
+    const targetId = recommendedSuggestionId || 'tone-balanced';
+    const rec = (suggestedReplies || []).find((s) => s.id === targetId && !s.loading && !s.error && s.body);
+    if (!rec) return;
+    autoSeededRef.current = true;
+    applySuggestion(rec.id, rec.body);
+  }, [suggestedReplies, recommendedSuggestionId, body, applySuggestion]);
+
+  // "Drafting…" indicator visibility — shown while the recommended card is
+  // pending and the textarea hasn't been seeded or edited yet.
+  const draftingPending = useMemo(() => {
+    if (autoSeededRef.current || userTouchedRef.current) return false;
+    if ((body || '').trim() !== '') return false;
+    const targetId = recommendedSuggestionId || 'tone-balanced';
+    const rec = (suggestedReplies || []).find((s) => s.id === targetId);
+    return !!rec?.loading;
+  }, [suggestedReplies, recommendedSuggestionId, body]);
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
     to: emailArrayToString(recipients.to),
@@ -192,7 +256,18 @@ export function InlineReplyComposer({
           selectedId={selectedSuggestionId}
           onSelect={handleSelectSuggestion}
           onRegenerate={onRegenerateSuggestions}
+          onRetry={onRetrySuggestion}
         />
+      )}
+      {draftingPending && (
+        <div
+          data-testid="drafting-indicator"
+          className="flex items-center gap-2 px-4 py-2 text-[11px] italic text-muted-foreground border-b border-[hsl(var(--email-border))] bg-muted/10"
+          aria-live="polite"
+        >
+          <Sparkles className="h-3 w-3 animate-pulse" />
+          Drafting…
+        </div>
       )}
       <EmailComposerCard
         replyToName={replyTo.to_name}
@@ -226,6 +301,30 @@ export function InlineReplyComposer({
         onAddAttachment={() => { clearPreSendAlert(); handleAddAttachment(); }}
         onAddSubject={() => { clearPreSendAlert(); }}
       />
+      <AlertDialog open={!!pendingSwap} onOpenChange={(open) => !open && setPendingSwap(null)}>
+        <AlertDialogContent data-testid="swap-confirm-dialog">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Replace your edits?</AlertDialogTitle>
+            <AlertDialogDescription>
+              You've already started writing. Using this suggested reply will
+              replace what you typed. This can't be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPendingSwap(null)}>
+              Keep my draft
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (pendingSwap) applySuggestion(pendingSwap.id, pendingSwap.body);
+                setPendingSwap(null);
+              }}
+            >
+              Replace with suggestion
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

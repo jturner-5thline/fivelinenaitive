@@ -110,6 +110,8 @@ interface DraftOption {
   body: string;
   toneLabel: string;          // "Concise" | "Balanced"
   toneKey: ToneKey;           // canonical key
+  /** Set when this tone's generation failed. Renders Retry on the card. */
+  error?: boolean;
 }
 
 type ToneKey = 'concise' | 'balanced';
@@ -664,15 +666,43 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           writeCache(next);
           return next;
         });
+        // A successful tone clears any stale "all-tones-failed" banner.
+        setError(null);
 
         const elapsed = Date.now() - startAt;
         console.log(`[AiAssist] draft complete tone=${tone} latency=${elapsed}ms tokens(out)≈${(body.length / 4) | 0}`);
       } catch (err: any) {
         const isTimeout = /timed out/i.test(err?.message || '');
         console.error(`[AiAssist] draft error tone=${tone}:`, err?.message || err);
-        setError(isTimeout
-          ? 'Taking longer than expected. Tap Retry to try a different model.'
-          : (err?.message || 'Failed to generate draft.'));
+        // Record a per-tone error sentinel so the inline composer's
+        // SuggestedReplyCards can render a per-card Retry instead of
+        // staying stuck in a loading state. The global banner only fires
+        // when EVERY tone has failed (see check below) — a single-tone
+        // failure must not block the inline draft path.
+        setResult((prev) => {
+          const errOpt: DraftOption = {
+            index: 1,
+            toneKey: tone,
+            toneLabel: TONE_LABELS[tone],
+            body: '',
+            error: true,
+          };
+          const nextOptions = { ...(prev?.options || {}), [tone]: errOpt };
+          const allErrored = TONE_ORDER.every((t) => nextOptions[t]?.error);
+          if (allErrored) {
+            setError(isTimeout
+              ? 'Taking longer than expected. Tap Retry to try a different model.'
+              : (err?.message || 'Failed to generate draft.'));
+          }
+          return {
+            detected_intent: prev?.detected_intent,
+            confidence: prev?.confidence,
+            used_deal_context: prev?.used_deal_context,
+            recommended_tone: prev?.recommended_tone || 'balanced',
+            cited_context_sources: prev?.cited_context_sources || [],
+            options: nextOptions,
+          };
+        });
       } finally {
         setLoadingTones((s) => ({ ...s, [tone]: false }));
         inflight.current[tone] = null;
@@ -828,15 +858,30 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       const opt = DRAFT_INTENT_OPTIONS.find((o) => o.key === detail?.key);
       if (opt) void applyIntent(opt);
     };
+    const onRetryTone = (e: Event) => {
+      const detail = (e as CustomEvent<{ tone: ToneKey }>).detail;
+      if (!detail?.tone) return;
+      // Clear the per-tone error sentinel so the card flips back to a
+      // loading state while the retry is in flight.
+      setResult((prev) => {
+        if (!prev?.options?.[detail.tone]?.error) return prev;
+        const { [detail.tone]: _drop, ...rest } = prev.options;
+        return { ...prev, options: rest };
+      });
+      setError(null);
+      void generateTone(detail.tone, { regenerate: true });
+    };
     window.addEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
     window.addEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
     window.addEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+    window.addEventListener('naitive:ai-assist:retry-tone', onRetryTone as EventListener);
     return () => {
       window.removeEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
       window.removeEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
       window.removeEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+      window.removeEventListener('naitive:ai-assist:retry-tone', onRetryTone as EventListener);
     };
-  }, [handleSelectTone, regenerateSelected, applyIntent]);
+  }, [handleSelectTone, regenerateSelected, applyIntent, generateTone]);
 
   // Stream draft body + loading state to the popout whenever they change.
   useEffect(() => {
@@ -866,7 +911,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         toneKey: tone,
         label: TONE_LABELS[tone],
         body: opt?.body ?? '',
-        loading: !opt?.body && !!loadingTones[tone],
+        loading: !opt?.body && !opt?.error && !!loadingTones[tone],
+        error: !!opt?.error && !opt?.body,
       };
     });
     onInsertSuggestions(suggestions);
