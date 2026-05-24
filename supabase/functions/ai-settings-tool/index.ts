@@ -35,11 +35,11 @@ async function isFlagOn(adminSb: ReturnType<typeof createClient>, companyId: str
   if (FEATURE_FLAG_ALLOWLIST.has(companyId)) return true;
   const { data } = await adminSb
     .from("company_settings")
-    .select("value")
+    .select("feature_flags")
     .eq("company_id", companyId)
     .maybeSingle();
-  const v: any = (data?.value as any) ?? {};
-  return v?.feature_flags?.ai_settings_mutations === true;
+  const f: any = (data as any)?.feature_flags ?? {};
+  return f?.ai_settings_mutations === true;
 }
 
 async function rateLimitDryRun(adminSb: ReturnType<typeof createClient>, userId: string): Promise<boolean> {
