@@ -292,6 +292,11 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
             !isUser && !isBriefing && !isIntelBrief
               ? extractCopilotAction(msg.content)
               : { action: null, cleanedContent: msg.content };
+          // Extract any embedded settings_proposal block (admin-scope mutations).
+          const { proposal: settingsProposal, cleanedContent: cleanedAfterSettings } =
+            !isUser && !isBriefing && !isIntelBrief
+              ? extractSettingsProposal(cleanedAssistantContent)
+              : { proposal: null, cleanedContent: cleanedAssistantContent };
 
           // Extract optional AI summary from briefing message
           const briefingAiSummary = isBriefing
