@@ -1,356 +1,220 @@
-# Prompt 4 — Phase 1 Plan: Server Intent Router + Tool Registry + RLS
+# Prompt 5 — Smoke + Audit Verification Plan (PLAN ONLY)
 
-**Status:** PLAN ONLY. No code written. No migrations executed. No production data touched.
-
----
-
-## 1. Intent Router — `ai-settings-tool`
-
-### File paths
-
-| Kind | Path | Purpose |
-|---|---|---|
-| New | `supabase/functions/ai-settings-tool/index.ts` | Classifier + dry-run emitter |
-| New | `supabase/functions/ai-settings-tool/registry.ts` | Allow-listed tool registry (shared with `ai-settings-apply`) |
-| New | `supabase/functions/ai-settings-tool/denyList.ts` | Hard-coded deny patterns |
-| New | `supabase/functions/ai-settings-apply/index.ts` | Commit + undo (called by `useSettingsMutation` hook) |
-| New | `supabase/functions/ai-settings-apply/registry.ts` | Re-exports from `../ai-settings-tool/registry.ts` (Deno-style relative import) |
-| Touched | `supabase/functions/copilot-chat/index.ts` | Single dispatch hook — see §1.3 |
-
-No other files touched. AskNaitiveBar, SettingsMutationCard, useSettingsMutation, AICopilotPanel, ChatMessageList remain untouched.
-
-### 1.1 Request / response shape
-
-```text
-POST /functions/v1/ai-settings-tool
-Headers: Authorization: Bearer <user JWT>
-Body: {
-  prompt: string,            // raw user text from Ask-AI bar
-  company_id: string,        // resolved client-side from useCompany
-  context?: { route?: string, deal_id?: string }
-}
-
-200 OK (proposal):
-{
-  ok: true,
-  proposal: {
-    diff_id: string,         // uuid; binds to audit_log row
-    tool_name: string,       // e.g. "settings.update_company_name"
-    human_name: string,      // "Company name"
-    description: string,
-    settings_tab: string,    // deep-link tab
-    target_table: string,
-    target_column: string,
-    scope: "company" | "user",
-    current_value: unknown,
-    proposed_value: unknown,
-    args: Record<string, unknown>,
-    json_schema: object,     // for the Edit textarea validator
-    source_prompt: string,
-    requires_role: "company_admin",
-    confidence: number       // 0..1
-  }
-}
-
-200 OK (refusal — low confidence OR deny-list OR non-admin):
-{
-  ok: true,
-  refusal: {
-    reason: "low_confidence" | "deny_listed" | "not_admin" | "unknown_setting",
-    explainer: string,       // plain English, rendered as markdown text
-    deep_link?: string       // "/settings?tab=integrations" when tab is known
-  }
-}
-
-401 Unauthorized | 403 not_admin (defense in depth) | 429 rate_limited | 400 invalid
-```
-
-The shape of `proposal` matches the `SettingsProposal` interface already shipped in `src/hooks/useSettingsMutation.ts` and consumed by `SettingsMutationCard.tsx` — zero client changes required.
-
-### 1.2 Output contract — segment serialization
-
-`copilot-chat` emits the proposal into the assistant message as a fenced JSON block already detected by the Prompt-3 dispatchers:
-
-```json
-{
-  "responseType": "settings_proposal",
-  "data": { /* proposal */ }
-}
-```
-
-Detection sites already shipped:
-- `src/components/AICopilotPanel.tsx` — `parsed.responseType === 'settings_proposal'` branch (line ~432) → `<SettingsMutationCard>`.
-- `src/components/dashboard/chat/ChatMessageList.tsx` — `extractSettingsProposal()` helper → `<SettingsMutationCard>` below markdown.
-
-### 1.3 Where it plugs in
-
-Existing pipeline:
-
-```text
-AskNaitiveBar ─► copilotStore.openPanelWithPrompt
-              └► AICopilotPanel ─POST─► supabase/functions/copilot-chat
-                                            │
-                                            ├─ tool registry (read-only today)
-                                            └─ OpenAI/Lovable-AI function calling
-```
-
-Touched dispatch point: `supabase/functions/copilot-chat/index.ts` — exactly one new step in the pre-LLM router. Pseudocode (~20 lines, no business logic relocated):
-
-```text
-// Pre-LLM router (additive, behind ff_ai_settings_mutations)
-if (looksLikeSettingsIntent(prompt)) {
-  const out = await fetch(SUPABASE_URL + '/functions/v1/ai-settings-tool', {
-    headers: { Authorization: req.headers.get('Authorization')! },
-    body: JSON.stringify({ prompt, company_id, context })
-  });
-  const { proposal, refusal } = await out.json();
-  if (proposal) emitSegment({ responseType: 'settings_proposal', data: proposal });
-  else if (refusal) emitMarkdown(refusal.explainer + linkTo(refusal.deep_link));
-  return; // short-circuit; do NOT call the generic agent loop
-}
-// else: existing copilot-chat behavior, unchanged
-```
-
-`looksLikeSettingsIntent()` = cheap regex + verb list ("rename", "set", "change", "turn off/on", "enable/disable", "update my", "switch to") AND noun must hit registry alias map. Anything that doesn't match falls through to today's pipeline. No existing route is rerouted.
-
-### 1.4 NL → structured classification
-
-Two-step inside `ai-settings-tool`:
-
-1. **Cheap keyword + alias match** against `registry.aliases` (e.g. `"timezone" → settings.update_company_timezone`). If unique hit and value is parsable by the tool's `validator`, emit proposal with `confidence: 0.95`.
-2. **LLM fallback** (Lovable-AI `google/gemini-2.5-flash-lite`, JSON mode, registry passed as enum). Output: `{ tool_name, args, confidence }`. Hard-fail if `tool_name` not in registry. Soft-fail if `confidence < 0.6` → `refusal{reason:'low_confidence'}`.
-
-Examples:
-| Prompt | tool_name | proposed_value |
-|---|---|---|
-| "rename my company to 5th Line Financial LLC" | `settings.update_company_name` | `"5th Line Financial LLC"` |
-| "turn off the slack digest" | `settings.toggle_slack_digest` | `false` |
-| "set timezone to America/New_York" | `settings.update_company_timezone` | `"America/New_York"` |
-| "change my password to hunter2" | refusal `deny_listed` | — |
-| "make jturner an admin" | refusal `deny_listed` | — |
-| "what's my pipeline?" | falls through to existing agent | — |
-
-### 1.5 Confidence threshold
-
-- `confidence ≥ 0.85` → proposal emitted.
-- `0.60 ≤ confidence < 0.85` → proposal with `confidence` field present; card still renders (user reviews the diff anyway — humans-in-the-loop is the safety net).
-- `confidence < 0.60` → refusal `low_confidence`, plain text suggestion with deep link to the best-guess tab.
+Verification-only pass. No source edits, no migrations, no new functions. All apply ops are round-tripped via Undo so net delta on settings tables = 0. Scope strictly limited to the 5th Line tenant with `ff_ai_settings_mutations=ON`, acting as `jturner@5thline.co` for admin paths.
 
 ---
 
-## 2. Tool Registry (allow-list)
+## 0. Pre-flight (read-only)
 
-### Path
-`supabase/functions/ai-settings-tool/registry.ts`
-
-### Entry schema
-
-```ts
-type ToolEntry = {
-  key: string;               // "settings.update_company_name"
-  human_name: string;
-  description: string;
-  settings_tab: string;      // matches /settings?tab=
-  scope: "company" | "user";
-  target_table: string;
-  target_column: string;     // dotted path supported for JSONB ("company_settings.value.timezone")
-  aliases: string[];         // for cheap classifier
-  validator: ZodSchema;      // server-side input validation
-  json_schema: object;       // shipped to client for the Edit textarea
-  dry_run_query: (sb, ctx)        => Promise<{ current_value: unknown }>;
-  apply_mutation: (sb, ctx, val)  => Promise<{ undo_token: string; old: unknown; new: unknown }>;
-  undo_mutation: (sb, ctx, token) => Promise<{ ok: true }>;
-  audit_event: string;       // "company.name.update"
-};
-```
-
-### Initial allow-list (10 keys for 5th Line launch)
-
-| Key | Table.Column | Scope | Validator |
-|---|---|---|---|
-| `settings.update_company_name` | `companies.name` | company | `z.string().min(1).max(120)` |
-| `settings.update_company_timezone` | `company_settings.value->>timezone` | company | IANA tz enum |
-| `settings.update_user_theme` | `user_ui_preferences.value->>theme` | user | `'light' \| 'dark' \| 'system'` |
-| `settings.update_notification_email` | `profiles.notification_email` | user | `z.string().email()` |
-| `settings.update_digest_frequency` | `company_settings.value->>digest_frequency` | company | `'daily' \| 'weekly' \| 'off'` |
-| `settings.toggle_ai_assistant` | `company_settings.value->>ai_assistant_enabled` | company | `z.boolean()` |
-| `settings.toggle_ai_draft_autosend` | `company_settings.value->>ai_draft_autosend` | company | `z.boolean()` — **default false** |
-| `settings.update_email_signature` | `user_email_signatures.signature_html` | user | `z.string().max(8000)` |
-| `settings.toggle_slack_digest` | `company_settings.value->>integrations.slack_digest_enabled` | company | `z.boolean()` |
-| `settings.update_gcal_default_calendar_id` | `company_settings.value->>integrations.gcal_default_calendar_id` | company | `z.string().regex(/^[\w.@+-]+$/)` |
-
-### Deny-list (hard refusal — never reach LLM)
-
-`supabase/functions/ai-settings-tool/denyList.ts` — regex + keyword list:
-
-- `password`, `passwd`, `mfa`, `2fa`, `totp`, `recovery code`
-- `api[\s_-]?key`, `api[\s_-]?token`, `secret`, `bearer`, `client[\s_-]?secret`
-- `oauth`, `refresh[\s_-]?token`, `access[\s_-]?token`, `service[\s_-]?role`
-- `billing`, `card`, `stripe`, `invoice`, `payment method`, `subscription`
-- `rls`, `policy`, `grant`, `revoke`, `role[\s_-]?assign`, `make .* admin`, `promote .* to`, `demote`
-- `webhook secret`, `signing secret`, `hmac`, `cert`, `private key`
-- Any prompt whose proposed target_column begins with `auth.`, `vault.`, `pgsodium.`, `secrets.`, `storage.policies`, or matches `*_role*`.
-
-Deny-list match → `refusal{reason:'deny_listed', explainer: "<setting> is not editable from the AI bar for security reasons. Open Settings ▸ <best-guess-tab>."}` and one `action='deny'` audit row.
-
----
-
-## 3. RLS + Audit migrations (DDL for review — NOT executed)
-
-### 3.1 `settings_audit_log` (new table)
+Before executing any step, confirm baseline state and snapshot originals so Undo can be verified:
 
 ```sql
-CREATE TYPE public.settings_audit_action AS ENUM ('dry_run','apply','undo','deny');
+-- Resolve 5th Line tenant + actor
+SELECT id AS company_id FROM companies WHERE name ILIKE '5th Line%' LIMIT 1;
+SELECT id AS user_id FROM auth.users WHERE email = 'jturner@5thline.co';
 
-CREATE TABLE public.settings_audit_log (
-  id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  company_id      uuid NOT NULL,
-  actor_user_id   uuid NOT NULL,
-  tool_key        text NOT NULL,
-  target_table    text,
-  target_column   text,
-  diff_id         uuid,                    -- groups dry_run→apply→undo
-  old_value       jsonb,
-  new_value       jsonb,
-  action          public.settings_audit_action NOT NULL,
-  reason          text,                    -- denial reason, error message, etc.
-  source_prompt   text,
-  confidence      numeric(4,3),
-  undo_token      text,
-  applied_at      timestamptz,             -- NULL except for action='apply'
-  created_at      timestamptz NOT NULL DEFAULT now()
-);
+-- Snapshot current values that the smoke trio will touch
+SELECT id, name, timezone, feature_flags, ai_settings
+FROM company_settings WHERE company_id = :company_id;
 
-CREATE INDEX idx_sal_company_created ON public.settings_audit_log (company_id, created_at DESC);
-CREATE INDEX idx_sal_diff            ON public.settings_audit_log (diff_id);
-CREATE INDEX idx_sal_actor           ON public.settings_audit_log (actor_user_id, created_at DESC);
+SELECT user_id, digest_frequency
+FROM user_preferences WHERE user_id = :user_id;
 
-ALTER TABLE public.settings_audit_log ENABLE ROW LEVEL SECURITY;
+SELECT key, value FROM company_settings
+WHERE company_id = :company_id AND key IN ('slack_digest_enabled');
 
--- SELECT: same-company admins only
-CREATE POLICY "sal_select_company_admins"
-  ON public.settings_audit_log
-  FOR SELECT
-  TO authenticated
-  USING (public.is_company_admin(auth.uid(), company_id));
-
--- INSERT: service-role only (edge function uses service-role client for the write)
-CREATE POLICY "sal_insert_service_only"
-  ON public.settings_audit_log
-  FOR INSERT
-  TO service_role
-  WITH CHECK (true);
-
--- No UPDATE / DELETE policies → append-only.
+-- Baseline audit row count for delta math
+SELECT count(*) AS baseline_audit_count
+FROM settings_audit_log
+WHERE company_id = :company_id;
 ```
 
-Migration touches **zero existing rows** (DDL + RLS only).
+Pass bar: all three reads succeed; baseline values recorded in the final report appendix.
 
-### 3.2 Allow-listed column policy audit
+---
 
-Per-tool RLS gap check (review only — **no changes in Prompt 4 unless flagged**):
+## 1. Smoke trio (Apply → Undo, net delta = 0)
 
-| Tool | Table | Admin-only UPDATE exists? | Action needed |
+Run sequentially through the Ask-Naitive bar in `/settings` (already on this route). For each run, capture:
+- Raw `settings_proposal` JSON returned by `ai-settings-tool`
+- Card screenshot showing Current → Proposed diff
+- `ai-settings-apply` HTTP 200 response (apply + undo)
+- 3 `settings_audit_log` rows (`dry_run`, `apply`, `undo`)
+- Post-Undo SELECT proving original value restored
+
+| # | Exact prompt typed into Ask-Naitive bar | Tool expected | Target table.column |
 |---|---|---|---|
-| company.name | `companies` | ✅ admin-only | none |
-| company.timezone | `company_settings` | ✅ admin-only | none |
-| user.theme | `user_ui_preferences` | ✅ self-owned | none |
-| notification_email | `profiles` | ✅ self-owned | none |
-| digest_frequency | `company_settings` | ✅ admin-only | none |
-| ai_assistant_enabled | `company_settings` | ✅ admin-only | none |
-| ai_draft_autosend | `company_settings` | ✅ admin-only | none |
-| email_signature | `user_email_signatures` | ⚠️ verify in Phase 2 | confirm policy or add admin override |
-| slack_digest_enabled | `company_settings` | ✅ admin-only | none |
-| gcal_default_calendar_id | `company_settings` | ✅ admin-only | none |
+| 1a | `set my company timezone to America/New_York` | `settings.update_company_timezone` | `company_settings.timezone` |
+| 1b | `change my digest frequency to weekly` | `settings.update_digest_frequency` | `user_preferences.digest_frequency` |
+| 1c | `turn off the Slack digest` | `settings.toggle_slack_digest` | `company_settings.feature_flags->>slack_digest_enabled` |
 
-Defense-in-depth: `ai-settings-apply` uses **user-scoped** Supabase client (forwards user JWT) for the actual UPDATE — so even if a registry entry were misconfigured, the underlying table RLS still gates the write.
+Per-run verification SQL (parameterized by `:diff_id`):
+```sql
+SELECT action, actor_user_id, source, before_value, after_value, created_at
+FROM settings_audit_log
+WHERE diff_id = :diff_id ORDER BY created_at;
+-- expect exactly 3 rows: dry_run → apply → undo
+```
 
-### 3.3 Rate-limit plan
+Then re-read the snapshot query from §0 and assert equality with baseline.
 
-Implemented in-process inside `ai-settings-apply` (per the `no-backend-rate-limiting` guidance this is the lightweight ad-hoc form, scoped to one edge function):
-
-- 10 `apply` per minute per `company_id` → returns **429** → `useSettingsMutation` already surfaces the friendly "Rate limit reached" string (T4 test green).
-- 60 `dry_run` per minute per `actor_user_id` → returns **429** from `ai-settings-tool` → router falls back to plain markdown reply.
-
-Counters: sliding-window in `settings_audit_log` (cheap COUNT on `created_at > now() - interval '1 minute'` filtered by company/actor + action). No new table. No Redis.
+Pass bar (per run): 3 audit rows present, apply row has non-null `before_value`, undo row's `after_value` == original baseline, Undo button clicked within the 30s window, and post-state SELECT matches §0.
 
 ---
 
-## 4. Admin gating + audit chain
+## 2. Deny-list refusal trio (zero mutation)
 
-- **Client gate (already shipped):** `useCompany().isAdmin` disables Accept.
-- **Server re-check (Prompt 4):** both edge functions call `is_company_admin(auth.uid(), company_id)` via user-scoped supabase client. Non-admin → 403 + audit row `action='deny', reason='not_admin'`.
-- **Per-action audit rows:**
-  - `dry_run` written by `ai-settings-tool` on every proposal emit.
-  - `apply` written by `ai-settings-apply` on successful UPDATE (transactional with the UPDATE — same `diff_id`).
-  - `undo` written by `ai-settings-apply` on successful revert.
-  - `deny` written on deny-list hit, non-admin, validator failure, or rate-limit reject.
-- **30s undo window (server):** `apply` rows store `applied_at`; `undo` rejected with **410 Gone** if `now() - applied_at > interval '30 seconds'`. `useSettingsMutation` already hides the Undo button at t=30s; this is the server backstop.
+Submit each prompt; assert the response is the deny explainer (no `SettingsMutationCard` rendered) with a link to `/settings`.
 
----
-
-## 5. Phase-2 test plan
-
-### Unit (Deno, `supabase/functions/ai-settings-tool/router.test.ts`)
-
-8 classification fixtures:
-
-| # | Prompt | Expected |
+| # | Exact prompt | Expected deny reason |
 |---|---|---|
-| 1 | "rename my company to 5th Line Financial LLC" | `settings.update_company_name`, `"5th Line Financial LLC"` |
-| 2 | "set timezone to America/New_York" | `settings.update_company_timezone`, `"America/New_York"` |
-| 3 | "turn off slack digest" | `settings.toggle_slack_digest`, `false` |
-| 4 | "switch theme to dark" | `settings.update_user_theme`, `"dark"` |
-| 5 | "update notification email to ops@5thline.co" | `settings.update_notification_email`, `"ops@5thline.co"` |
-| 6 | "change my password to hunter2" | refusal `deny_listed` |
-| 7 | "rotate the openai api key" | refusal `deny_listed` |
-| 8 | "make jturner an admin" | refusal `deny_listed` |
+| 2a | `change my OpenAI API key to sk-test-123` | secret / api_key |
+| 2b | `make jmoffitt@5thline.co a company admin` | role_elevation |
+| 2c | `update the Slack bot token` | secret |
 
-### Unit — registry validators (`registry.test.ts`)
-- IANA tz: accept `America/New_York`, reject `EST`, `Foo/Bar`.
-- email: accept `a@b.co`, reject `notanemail`.
-- boolean coercion: `"off" → false`, `"on" → true`.
-- gcal id regex.
+Verification SQL:
+```sql
+SELECT action, tool_name, deny_reason, source_prompt, created_at
+FROM settings_audit_log
+WHERE company_id = :company_id
+  AND action = 'deny'
+  AND created_at > :run_start
+ORDER BY created_at;
+-- expect exactly 3 rows
+```
 
-### Integration (Supabase **test project**, never prod)
-- `dry_run → apply → undo` produces exactly 3 `settings_audit_log` rows sharing one `diff_id`.
-- Non-admin caller → 403, one `action='deny',reason='not_admin'` row.
-- Deny-listed prompt → no UPDATE, one `action='deny',reason='deny_listed'` row.
-- 11th apply in 60s → 429, no UPDATE, one `deny` row with `reason='rate_limited'`.
-- 31s-old undo → 410 Gone, audit row `action='deny',reason='undo_expired'`.
+Mutation-proof query (no target rows changed since `:run_start`):
+```sql
+SELECT updated_at FROM company_settings WHERE company_id = :company_id;
+-- updated_at must equal baseline updated_at
+```
 
-### Playwright E2E (`tests/e2e/ai-settings-mutation.spec.ts`)
-- Login as 5th Line admin (`jturner@5thline.co`).
-- Type "rename my company to 5th Line Financial LLC" in Ask-Naitive bar.
-- Expect `[data-testid=settings-mutation-card]` with Current=`5th Line` Proposed=`5th Line Financial LLC`.
-- Click Accept → expect "Applied" + Undo countdown.
-- Click Undo within 30s → expect "Change reverted" + DB row reverted (verified via direct query).
-
-### Live screenshot
-After successful Playwright E2E pass, captured on the 5th Line admin account and attached to the Phase-2 deliverable for sign-off.
+Pass bar: 3 deny rows written, 0 rows mutated in `company_settings` / `user_preferences` / any secrets table.
 
 ---
 
-## 6. Risk + rollback
+## 3. Non-admin negative path
 
-- **Feature flag** `ff_ai_settings_mutations`, persisted in `company_settings.value->>feature_flags->>ai_settings_mutations`. Default **OFF for all tenants** except 5th Line (`company_id IN (allow-list)`).
-- Both edge functions short-circuit to refusal `{reason:'feature_off'}` when flag is OFF — card never renders.
-- **Rollback** = flip flag OFF; no schema rollback needed. Every `apply` has an audit row + `undo_token` so manual revert is possible past the 30s window via DB.
-- **No impact** to calendar smoke-test guardrails: `create_calendar` / `calendar_id` / `GCAL_SMOKETEST_CALENDAR_ID` are unrelated code paths and remain default-off. No edge function in this prompt touches `meeting-holds`, `calendar-events`, `send-pipeline`, NOTES, Draft Reply, Stale Status Nudge, Availability Check, deal recognition, calendar render, email ingestion, or classifier.
+Switch to a non-admin fixture user (read-only collaborator) in the 5th Line tenant. Submit prompt 1a (`set my company timezone to America/New_York`).
+
+Capture:
+- Screenshot: deep-link explainer to `/settings?tab=general`, no `data-testid="settings-mutation-card"` in DOM
+- Network log: `ai-settings-tool` returns `mode: "explainer"` or equivalent, `ai-settings-apply` direct curl returns **403**
+- SQL: `SELECT count(*) FROM settings_audit_log WHERE actor_user_id = :nonadmin_id AND created_at > :run_start` → expect 0
+
+Direct edge-function probe (curl, with non-admin JWT):
+```
+POST /functions/v1/ai-settings-apply
+body: { tool_name: "settings.update_company_timezone", proposed_value: "America/New_York", diff_id: "<fake>" }
+expect: 403 + body { error: "admin_required" }
+```
+
+Pass bar: card not rendered, 403 on direct apply, 0 audit rows from this user.
 
 ---
 
-## Scope summary
+## 4. Rate-limit verification
 
-**NEW files:**
-- `supabase/functions/ai-settings-tool/{index.ts, registry.ts, denyList.ts, router.test.ts, registry.test.ts}`
-- `supabase/functions/ai-settings-apply/{index.ts, apply.test.ts}`
-- `supabase/migrations/<ts>_settings_audit_log.sql`
-- `tests/e2e/ai-settings-mutation.spec.ts`
+Drive bursts via scripted `supabase.functions.invoke` from the browser console as `jturner@5thline.co`:
+- 11× dry_run (`ai-settings-tool`) in <60s on one user → 11th returns **429** with friendly message; card shows "Rate limit reached — try again in a few minutes."
+- 11× apply (`ai-settings-apply`) in <60s on one company → 11th returns **429**; ensure the 10 that succeed are each Undone before continuing.
 
-**TOUCHED files:**
-- `supabase/functions/copilot-chat/index.ts` — single additive pre-LLM router hook (~20 lines, flag-gated).
+Capture both 429 response bodies (with `Retry-After` header if present) and one card screenshot showing the rate-limit error state.
 
-**UNTOUCHED:** AskNaitiveBar, SettingsMutationCard, useSettingsMutation, AICopilotPanel, ChatMessageList, copilotStore, all CopilotXxx cards, and every system in the code freeze list.
+Audit annotation check:
+```sql
+SELECT count(*) FILTER (WHERE metadata->>'rate_limited' = 'true') AS rl_count
+FROM settings_audit_log
+WHERE company_id = :company_id AND created_at > :run_start;
+-- expect ≥ 2 (one dry_run, one apply)
+```
 
-**STOP.** Awaiting "approved" before Phase 2 (writing code, migration, tests, live screenshot).
+Pass bar: HTTP 429 observed on the 11th of each burst, card surfaces the friendly throttle copy, ≥2 rate-limit-annotated audit rows, and net data delta on settings tables = 0 after all Undos.
+
+---
+
+## 5. Audit chain integrity (read-only SQL)
+
+```sql
+-- (a) action counts in the last hour
+SELECT action, count(*)
+FROM settings_audit_log
+WHERE company_id = :company_id
+  AND created_at > now() - interval '1 hour'
+GROUP BY action;
+-- expected: dry_run=14, apply=12 (10 succeed in §4 + 2 from §1; 1 blocked by 429), undo=13, deny=3
+-- NOTE: exact counts will be reconciled to the actual §4 success count in the final report.
+
+-- (b) last 20 rows have full provenance
+SELECT id, tool_name, before_value, after_value, source, actor_user_id, company_id
+FROM settings_audit_log
+ORDER BY created_at DESC LIMIT 20;
+-- every row: actor_user_id NOT NULL, company_id NOT NULL, source='ai_assistant';
+-- every action='apply' row: before_value NOT NULL.
+
+-- (c) RLS isolation: as a non-admin role token via PostgREST
+SELECT count(*) FROM settings_audit_log;
+-- expected: 0 (RLS hides all rows from non-admins)
+```
+
+Pass bar: all three queries match expectations; any deviation logged in §8(vi) and STOP.
+
+---
+
+## 6. Non-regression suites
+
+Re-run and paste pass counts only — no edits:
+
+| Suite | Command | Pass bar |
+|---|---|---|
+| Prompt 3 RTL | `bunx vitest run src/components/copilot/__tests__/SettingsMutationCard.test.tsx` | 6/6 |
+| Prompt 4 Deno unit | `supabase--test_edge_functions functions=["ai-settings-tool"]` | 12/12 |
+| Prompt 4 Playwright | `bunx playwright test settings-mutation` | 2/2 (admin happy + non-admin deep-link) |
+| Smart Status Note | `bunx vitest run src/services/__tests__/smartStatusNoteSuggestion.*` | 30/30 |
+| Calendar guardrails | grep `create_calendar`, `calendar_id`, `GCAL_SMOKETEST_CALENDAR_ID` defaults | all default-off; no GCal writes in scope |
+
+Pass bar: every suite green at its declared count; any red → §8(vi) and STOP.
+
+---
+
+## 7. Feature-flag rollback drill (documentation only — DO NOT FLIP)
+
+Document for `ff_ai_settings_mutations`:
+- Server read site: `supabase/functions/copilot-chat/index.ts` — cite exact line of the `ff_ai_settings_mutations` gate added in Prompt 4.
+- Client read site: `src/components/copilot/SettingsMutationCard.tsx` (or its parent render branch in `AICopilotPanel.tsx` / `ChatMessageList.tsx`) — cite line where the flag suppresses card rendering.
+- Toggle path: `company_settings.feature_flags->>ai_settings_mutations` set to `false` via admin UI / direct UPDATE.
+- Expected OFF behavior (assertion only, not executed):
+  - `ai-settings-tool` returns `{ status: "feature_disabled", message: "..." }` — no proposal, no audit row.
+  - Card never renders; user sees plain-text fallback in the bar.
+  - Zero rows added to `settings_audit_log` for that company while OFF.
+
+Pass bar: file + line citations correct; no actual flag flip performed.
+
+---
+
+## 8. Final sign-off deliverable
+
+A single Markdown report saved to `/mnt/documents/ai-settings-mutation-signoff-5thline.md` containing:
+
+1. All screenshots (smoke trio diffs, deny explainer, non-admin deep-link, 429 throttle card)
+2. All audit SQL outputs (verbatim)
+3. All HTTP responses captured (200 / 403 / 410 if undo expires / 429)
+4. Test pass counts table from §6
+5. **GO / NO-GO recommendation** for enabling `ff_ai_settings_mutations` on additional tenants
+6. Follow-ups for Prompt 6+ (e.g., bulk settings diff, multi-tool composition, per-tool throttles) — documented only, not implemented
+
+A `<presentation-artifact>` tag will be emitted so the user can download the report.
+
+---
+
+## Freeze acknowledgments
+
+- No source files will be modified.
+- No migrations.
+- No new edge functions or components.
+- Calendar / Schedule Meeting / NOTES / Draft Reply / Stale Status Nudge / Availability Check / deal recognition / email ingestion are untouched.
+- `create_calendar`, `calendar_id`, `GCAL_SMOKETEST_CALENDAR_ID` remain default-off; no Google Calendar resources will be touched.
+- Every Apply is paired with an Undo inside the 30s window. If any Undo fails or expires, the bug is logged in §8(vi) and execution STOPS (the row is left for manual reconciliation; no compensating UPDATE will be issued).
+- 5th Line tenant only.
+
+Awaiting `approved` before executing any step.
