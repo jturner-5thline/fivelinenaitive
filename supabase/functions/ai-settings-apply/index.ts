@@ -12,11 +12,13 @@ const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 interface ApplyBody {
-  mode: "apply" | "undo";
+  // Hook contract (shipped): { undo, diff_id, tool_name, proposed_value, source_prompt }
+  undo?: boolean;
+  mode?: "apply" | "undo"; // server-side callers can use this; UI uses `undo`.
   diff_id: string;
   tool_name: string;
-  company_id: string;
-  proposed_value?: unknown; // required for apply
+  company_id?: string;     // optional from UI; resolved from dry_run row when missing.
+  proposed_value?: unknown;
   source_prompt?: string;
 }
 
@@ -60,31 +62,46 @@ Deno.serve(async (req) => {
   } catch {
     return json({ error: "invalid json" }, 400);
   }
-  if (!body?.mode || !body.diff_id || !body.tool_name || !body.company_id) {
+  if (!body?.diff_id || !body?.tool_name) {
     return json({ error: "missing fields" }, 400);
   }
+  const mode: "apply" | "undo" = body.mode ?? (body.undo ? "undo" : "apply");
 
   const tool = REGISTRY_BY_KEY[body.tool_name];
   if (!tool) return json({ error: "unknown tool" }, 400);
 
+  // Resolve company_id from the original dry-run row when the client didn't send one.
+  let company_id = body.company_id;
+  if (!company_id) {
+    const { data: dryRow } = await adminSb
+      .from("settings_audit_log")
+      .select("company_id")
+      .eq("diff_id", body.diff_id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    company_id = (dryRow as any)?.company_id ?? undefined;
+  }
+  if (!company_id) return json({ error: "company_id could not be resolved" }, 400);
+
   // Server admin re-check.
   const { data: isAdmin } = await adminSb.rpc("is_company_admin", {
     _user_id: userId,
-    _company_id: body.company_id,
+    _company_id: company_id,
   });
   if (!isAdmin) {
     await adminSb.from("settings_audit_log").insert({
-      company_id: body.company_id, actor_user_id: userId, tool_key: tool.key,
+      company_id, actor_user_id: userId, tool_key: tool.key,
       diff_id: body.diff_id, action: "deny", reason: "not_admin",
     });
     return json({ error: "admin required" }, 403);
   }
 
-  if (body.mode === "apply") {
+  if (mode === "apply") {
     // Rate limit.
-    if (await applyRateLimitHit(adminSb, body.company_id)) {
+    if (await applyRateLimitHit(adminSb, company_id)) {
       await adminSb.from("settings_audit_log").insert({
-        company_id: body.company_id, actor_user_id: userId, tool_key: tool.key,
+        company_id, actor_user_id: userId, tool_key: tool.key,
         diff_id: body.diff_id, action: "deny", reason: "rate_limited",
       });
       return json({ error: "rate_limited" }, 429);
@@ -93,19 +110,19 @@ Deno.serve(async (req) => {
     const validation = tool.validator(body.proposed_value);
     if (!validation.ok) {
       await adminSb.from("settings_audit_log").insert({
-        company_id: body.company_id, actor_user_id: userId, tool_key: tool.key,
+        company_id, actor_user_id: userId, tool_key: tool.key,
         diff_id: body.diff_id, action: "deny", reason: `invalid_value:${validation.error}`,
       });
       return json({ error: `invalid value: ${validation.error}` }, 400);
     }
     try {
       const result = await tool.apply_mutation(
-        { sb: userSb, company_id: body.company_id, user_id: userId },
+        { sb: userSb, company_id, user_id: userId },
         validation.value,
       );
       const undo_token = crypto.randomUUID();
       await adminSb.from("settings_audit_log").insert({
-        company_id: body.company_id,
+        company_id,
         actor_user_id: userId,
         tool_key: tool.key,
         target_table: tool.target_table,
@@ -121,14 +138,14 @@ Deno.serve(async (req) => {
       return json({ ok: true, undo_token, old: result.old, new: result.new });
     } catch (e) {
       await adminSb.from("settings_audit_log").insert({
-        company_id: body.company_id, actor_user_id: userId, tool_key: tool.key,
+        company_id, actor_user_id: userId, tool_key: tool.key,
         diff_id: body.diff_id, action: "deny", reason: `apply_failed:${(e as Error).message}`,
       });
       return json({ error: (e as Error).message }, 500);
     }
   }
 
-  if (body.mode === "undo") {
+  if (mode === "undo") {
     // Find the most recent apply for this diff_id.
     const { data: applyRow } = await adminSb
       .from("settings_audit_log")
@@ -142,7 +159,7 @@ Deno.serve(async (req) => {
     const appliedAt = applyRow.applied_at ? new Date(applyRow.applied_at as string).getTime() : 0;
     if (Date.now() - appliedAt > 30_000) {
       await adminSb.from("settings_audit_log").insert({
-        company_id: body.company_id, actor_user_id: userId, tool_key: tool.key,
+        company_id, actor_user_id: userId, tool_key: tool.key,
         diff_id: body.diff_id, action: "deny", reason: "undo_expired",
       });
       return json({ error: "undo window expired" }, 410);
@@ -150,11 +167,11 @@ Deno.serve(async (req) => {
     const oldVal = (applyRow.old_value as any)?.value ?? null;
     try {
       const result = await tool.apply_mutation(
-        { sb: userSb, company_id: body.company_id, user_id: userId },
+        { sb: userSb, company_id, user_id: userId },
         oldVal,
       );
       await adminSb.from("settings_audit_log").insert({
-        company_id: body.company_id,
+        company_id,
         actor_user_id: userId,
         tool_key: tool.key,
         target_table: tool.target_table,
