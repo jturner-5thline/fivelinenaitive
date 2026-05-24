@@ -3079,7 +3079,17 @@ export default function DealDetail() {
               </div>
               
               <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-t border-border mt-4 pt-4">
-                <div className="w-full sm:w-[93%] flex flex-col gap-1">
+                <div className="relative w-full sm:w-[93%] flex flex-col gap-1">
+                  <StaleStatusNudge
+                    deal={deal}
+                    onSave={(value) => {
+                      const oldNotes = deal.notes || '';
+                      updateDeal('notes', value);
+                      if (oldNotes && oldNotes.trim() && oldNotes !== '<p></p>' && value !== oldNotes) {
+                        addStatusNote(oldNotes.trim());
+                      }
+                    }}
+                  />
                   <div className="flex items-start gap-2">
                     <RichTextInlineEdit
                       value={deal.notes || ''}
