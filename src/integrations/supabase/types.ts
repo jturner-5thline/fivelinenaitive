@@ -19224,6 +19224,63 @@ export type Database = {
           },
         ]
       }
+      settings_audit_log: {
+        Row: {
+          action: Database["public"]["Enums"]["settings_audit_action"]
+          actor_user_id: string
+          applied_at: string | null
+          company_id: string
+          confidence: number | null
+          created_at: string
+          diff_id: string | null
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          reason: string | null
+          source_prompt: string | null
+          target_column: string | null
+          target_table: string | null
+          tool_key: string
+          undo_token: string | null
+        }
+        Insert: {
+          action: Database["public"]["Enums"]["settings_audit_action"]
+          actor_user_id: string
+          applied_at?: string | null
+          company_id: string
+          confidence?: number | null
+          created_at?: string
+          diff_id?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          reason?: string | null
+          source_prompt?: string | null
+          target_column?: string | null
+          target_table?: string | null
+          tool_key: string
+          undo_token?: string | null
+        }
+        Update: {
+          action?: Database["public"]["Enums"]["settings_audit_action"]
+          actor_user_id?: string
+          applied_at?: string | null
+          company_id?: string
+          confidence?: number | null
+          created_at?: string
+          diff_id?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          reason?: string | null
+          source_prompt?: string | null
+          target_column?: string | null
+          target_table?: string | null
+          tool_key?: string
+          undo_token?: string | null
+        }
+        Relationships: []
+      }
       sheet_cell_config: {
         Row: {
           cell_type: string
@@ -24264,6 +24321,7 @@ export type Database = {
         | "system"
       notification_channel_type: "in_app" | "email" | "slack" | "sms" | "push"
       notification_instance_status: "pending" | "sent" | "failed" | "skipped"
+      settings_audit_action: "dry_run" | "apply" | "undo" | "deny"
       wf_agreement_type: "nda" | "engagement" | "amendment" | "other"
       wf_deal_stage:
         | "nda_needs_list_sent"
@@ -24533,6 +24591,7 @@ export const Constants = {
       ],
       notification_channel_type: ["in_app", "email", "slack", "sms", "push"],
       notification_instance_status: ["pending", "sent", "failed", "skipped"],
+      settings_audit_action: ["dry_run", "apply", "undo", "deny"],
       wf_agreement_type: ["nda", "engagement", "amendment", "other"],
       wf_deal_stage: [
         "nda_needs_list_sent",
