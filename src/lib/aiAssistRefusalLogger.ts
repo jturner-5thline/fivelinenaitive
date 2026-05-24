@@ -40,7 +40,7 @@ export async function logUpdateLenderRefused(args: LogArgs): Promise<void> {
         contact_id: args.contactId ?? undefined,
         actor_user_id: user.id,
         company_id: companyId as string,
-        metadata: args.metadata ?? {},
+        metadata: (args.metadata ?? {}) as Record<string, string | number | boolean | null>,
       },
     ]);
   } catch (err) {
