@@ -124,7 +124,7 @@ const SECTIONS: SectionDef[] = [
   { id: "settings",            label: "Settings",            icon: Cog,         subPages: settingsSubPages },
   { id: "product-enhancement", label: "Product Enhancement", icon: Lightbulb,   subPages: productEnhancementSubPages },
   { id: "support",             label: "Support",             icon: MonitorPlay, subPages: supportSubPages },
-  { id: "usage-analytics",     label: "Usage Analytics",     icon: BarChart3,   subPages: usageAnalyticsSubPages },
+  { id: "usage-analytics",     label: "Analytics",           icon: BarChart3,   subPages: usageAnalyticsSubPages },
   { id: "blog",                label: "Blog",                icon: Newspaper,   subPages: blogSubPages },
 ];
 

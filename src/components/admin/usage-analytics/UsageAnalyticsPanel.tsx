@@ -145,7 +145,7 @@ export function UsageAnalyticsPanel() {
       r.agents_run, r.data_room_actions, r.total_ai_calls,
       r.token_usage, r.est_cost.toFixed(4), r.tier,
     ]);
-    const filename = `usage-analytics_${range.start.toISOString().slice(0,10)}_${range.end.toISOString().slice(0,10)}.csv`;
+    const filename = `analytics_${range.start.toISOString().slice(0,10)}_${range.end.toISOString().slice(0,10)}.csv`;
     downloadCsv(filename, [header, ...body]);
   };
 
@@ -183,7 +183,7 @@ export function UsageAnalyticsPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <BarChart3 className="h-4 w-4 text-primary" />
-            Usage Analytics
+            Analytics
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap items-end gap-3">
