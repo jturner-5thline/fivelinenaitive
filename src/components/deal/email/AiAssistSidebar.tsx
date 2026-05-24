@@ -110,6 +110,8 @@ interface DraftOption {
   body: string;
   toneLabel: string;          // "Concise" | "Balanced"
   toneKey: ToneKey;           // canonical key
+  /** Set when this tone's generation failed. Renders Retry on the card. */
+  error?: boolean;
 }
 
 type ToneKey = 'concise' | 'balanced';
