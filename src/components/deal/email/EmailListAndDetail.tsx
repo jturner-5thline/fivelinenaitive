@@ -62,6 +62,7 @@ import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
 import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
 import { PopOutComposer } from './PopOutComposer';
+import type { SuggestedReply } from './SuggestedReplyCards';
 import { useEmailDraft, useUnsavedDraftGuard } from '@/hooks/useEmailDraft';
 import { detectBareEmailsInDraft } from '@/lib/detectDraftEmails';
 import { detectThreadQAndA, buildQADedupKey, type ThreadMessageLite } from '@/lib/detectThreadQAndA';
