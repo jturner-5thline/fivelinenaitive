@@ -12,8 +12,8 @@ describe('businessDaysBetween', () => {
   });
 
   it('skips weekends', () => {
-    // Fri May 22 -> Mon May 25: 1 business day
-    expect(businessDaysBetween(new Date('2026-05-22'), new Date('2026-05-25'))).toBe(1);
+    // Fri May 1 2026 -> Mon May 4 2026: skips Sat/Sun -> 1 business day
+    expect(businessDaysBetween(new Date('2026-05-01'), new Date('2026-05-04'))).toBe(1);
   });
 
   it('skips US federal holidays (Memorial Day Mon May 25 2026)', () => {
