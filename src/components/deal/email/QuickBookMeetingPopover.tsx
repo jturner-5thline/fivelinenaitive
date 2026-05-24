@@ -440,7 +440,28 @@ export function QuickBookMeetingPopover({
   const [title, setTitle] = useState<string>(initialTitle);
   const [attendees, setAttendees] = useState<Attendee[]>(initialAttendees);
   const [newAttendee, setNewAttendee] = useState('');
-  const [description, setDescription] = useState<string>(() => seedAgenda(thread));
+  const [description, setDescription] = useState<string>(() =>
+    initialNotes({ thread, dealName, tz: timezone, topic: null }),
+  );
+  // Track if user has manually edited NOTES so the auto-refresh effects
+  // don't clobber their changes.
+  const descriptionTouchedRef = useRef(false);
+  const setDescriptionUserEdit = useCallback((v: string) => {
+    descriptionTouchedRef.current = true;
+    setDescription(v);
+  }, []);
+  // Topic line — async-resolved via smart-email-ai summarize_thread.
+  const [aiTopic, setAiTopic] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const topic = await summarizeThreadTopic({ dealId, thread });
+      if (!cancelled && topic) setAiTopic(topic);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dealId, thread]);
   const [useMeet, setUseMeet] = useState(true);
   const [customLocation, setCustomLocation] = useState('');
   const [moreOpen, setMoreOpen] = useState(false);
