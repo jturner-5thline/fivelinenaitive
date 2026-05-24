@@ -67,8 +67,12 @@ export function useStaleStatusNoteContext(
         seenKeys.add(key);
         collected.push({ direction, subject, at: fmtDate(atISO), _iso: atISO || null });
       };
-      const directionFromSubject = (s: string | null | undefined): 'in' | 'out' =>
-        s && /^\s*(Re:|Fwd:|FW:)/i.test(s) ? 'in' : 'out';
+      const directionFromSubject = (s: string | null | undefined): 'in' | 'out' => {
+        if (!s) return 'out';
+        // "Re:" / "Fwd:" / "FW:" anywhere in the first ~30 chars (covers
+        // "Out of Office Re: …", "Auto: Re: …", and standard reply prefixes).
+        return /\b(Re:|Fwd:|FW:)/i.test(s.slice(0, 30)) ? 'in' : 'out';
+      };
 
       try {
         const { data: dealEmails } = await supabase
