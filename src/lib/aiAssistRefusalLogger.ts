@@ -32,15 +32,17 @@ export async function logUpdateLenderRefused(args: LogArgs): Promise<void> {
       .rpc('get_user_company_id', { _user_id: user.id });
     if (companyErr || !companyId) return;
 
-    await supabase.from('ai_action_log').insert({
-      action: 'update_lender_refused',
-      reason: args.reason,
-      thread_id: args.threadId ?? null,
-      contact_id: args.contactId ?? null,
-      actor_user_id: user.id,
-      company_id: companyId as string,
-      metadata: args.metadata ?? {},
-    });
+    await supabase.from('ai_action_log').insert([
+      {
+        action: 'update_lender_refused',
+        reason: args.reason,
+        thread_id: args.threadId ?? undefined,
+        contact_id: args.contactId ?? undefined,
+        actor_user_id: user.id,
+        company_id: companyId as string,
+        metadata: args.metadata ?? {},
+      },
+    ]);
   } catch (err) {
     // Telemetry must never block UX.
     console.warn('[aiAssistRefusalLogger] insert failed', err);
