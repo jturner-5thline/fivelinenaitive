@@ -894,7 +894,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         toneKey: tone,
         label: TONE_LABELS[tone],
         body: opt?.body ?? '',
-        loading: !opt?.body && !!loadingTones[tone],
+        loading: !opt?.body && !opt?.error && !!loadingTones[tone],
+        error: !!opt?.error && !opt?.body,
       };
     });
     onInsertSuggestions(suggestions);
