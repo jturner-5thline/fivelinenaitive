@@ -9,7 +9,13 @@ export interface StatusNudgeContext {
   currentNote?: string | null;
   lendersSent: Array<{ name: string; sentAt?: string | null }>;
   lendersPassed: Array<{ name: string; passedAt?: string | null; reason?: string | null }>;
-  recentClientEmails: Array<{ direction: 'in' | 'out'; subject?: string | null; at?: string | null }>;
+  recentClientEmails: Array<{
+    direction: 'in' | 'out';
+    subject?: string | null;
+    at?: string | null;
+    from?: string | null;
+    snippet?: string | null;
+  }>;
   lastMeetingSummary?: { at?: string | null; summary?: string | null } | null;
   outstandingItems?: Array<{ title: string; status?: string | null }>;
 }
@@ -27,18 +33,29 @@ function buildPrompt(ctx: StatusNudgeContext): string {
   const lines: string[] = [];
   lines.push(`Deal: ${ctx.companyName || 'Unknown'}`);
   if (ctx.stageLabel) lines.push(`Stage: ${ctx.stageLabel}${ctx.daysInStage != null ? ` (${ctx.daysInStage} days in stage)` : ''}`);
-  if (ctx.currentNote) lines.push(`Current status note: ${ctx.currentNote}`);
+  // Recent emails FIRST — these are the most current signal. The previous
+  // status note appears after, framed as potentially stale, so the LLM
+  // supersedes it when activity has moved on (root cause of the Czerlonka
+  // case where the model paraphrased a 5/18 note despite 5/20–5/22 emails).
+  if (ctx.recentClientEmails.length) {
+    const rows = ctx.recentClientEmails.slice(0, 6).map(e => {
+      const date = e.at ? `${e.at} ` : '';
+      const dir = e.direction === 'in' ? 'inbound' : 'outbound';
+      const fromBit = e.from ? ` from ${e.from}` : '';
+      const subj = e.subject || '(no subject)';
+      const snip = e.snippet ? ` — ${e.snippet}` : '';
+      return `${date}${dir}${fromBit}: ${subj}${snip}`;
+    });
+    lines.push(`Recent emails (last 14d):\n  - ${rows.join('\n  - ')}`);
+  }
+  if (ctx.currentNote) {
+    lines.push(`Previous status note (may be stale — supersede if recent emails contradict): ${ctx.currentNote}`);
+  }
   if (ctx.lendersSent.length) {
     lines.push(`Lenders sent (${ctx.lendersSent.length}): ${ctx.lendersSent.map(l => `${l.name}${l.sentAt ? ` ${l.sentAt}` : ''}`).join(', ')}`);
   }
   if (ctx.lendersPassed.length) {
     lines.push(`Lenders passed (${ctx.lendersPassed.length}): ${ctx.lendersPassed.map(l => `${l.name}${l.reason ? ` — ${l.reason}` : ''}`).join(', ')}`);
-  }
-  if (ctx.recentClientEmails.length) {
-    const last = ctx.recentClientEmails.slice(0, 6)
-      .map(e => `${e.at ? `${e.at} ` : ''}${e.direction === 'in' ? 'inbound' : 'outbound'}: ${e.subject || '(no subject)'}`)
-      .join('; ');
-    lines.push(`Recent emails (last 14d): ${last}`);
   }
   if (ctx.lastMeetingSummary?.summary) {
     lines.push(`Last meeting${ctx.lastMeetingSummary.at ? ` (${ctx.lastMeetingSummary.at})` : ''}: ${ctx.lastMeetingSummary.summary}`);
@@ -54,7 +71,14 @@ const SYSTEM_PROMPT =
   'Strict constraints: maximum 280 characters total, plain prose, no headers, no bullets, ' +
   'no "Topic:"/"Status:" prefix, no signature, no quoted email. Reference at least one ' +
   'concrete datum (lender name, email date, meeting takeaway, or outstanding item). ' +
-  'If activity is contradictory, prefer the most recent. Output only the update text.';
+  'Prioritize the MOST RECENT email or meeting event. Cite a date (e.g. 5/22) and an ' +
+  'actor (lender or contact name) drawn from the Recent emails section. If the previous ' +
+  'status note is older than the most recent email, SUPERSEDE it — do not paraphrase the ' +
+  'previous note. ' +
+  'Example — given Recent emails: "5/22 inbound from CSG: Re: Acme — request list received" ' +
+  'and Previous status note: "Pershing meeting 5/18", a good update is: ' +
+  '"5/22 — CSG responded with request list; gathering materials before circulating to Pershing." ' +
+  'Output only the update text.';
 
 /**
  * Returns a sanitized 1–2 sentence status update. Returns ok=false when

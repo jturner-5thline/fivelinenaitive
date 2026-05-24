@@ -48,4 +48,33 @@ describe('buildPrompt recent-emails section', () => {
     });
     expect(out.join(' ')).toContain('2 recent client emails');
   });
+
+  it('orders Recent emails BEFORE Previous status note and labels note as stale', async () => {
+    invoke.mockClear();
+    await suggestStatusNoteUpdate({
+      dealId: 'd1',
+      companyName: 'Czerlonka',
+      stageLabel: 'terms-issued',
+      currentNote: 'Pershing meeting 5/18',
+      lendersSent: [],
+      lendersPassed: [],
+      recentClientEmails: [
+        { direction: 'in', subject: 'Re: Czerlonka | CSG', at: 'May 22', from: 'CSG', snippet: 'Request list received' },
+      ],
+      lastMeetingSummary: null,
+      outstandingItems: [],
+    });
+    const userPrompt: string = invoke.mock.calls[0][1].body.userPrompt;
+    const recentIdx = userPrompt.indexOf('Recent emails (last 14d):');
+    const noteIdx = userPrompt.indexOf('Previous status note');
+    expect(recentIdx).toBeGreaterThanOrEqual(0);
+    expect(noteIdx).toBeGreaterThan(recentIdx);
+    expect(userPrompt).toContain('may be stale — supersede if recent emails contradict');
+    // Enriched format: includes from + snippet
+    expect(userPrompt).toContain('May 22 inbound from CSG: Re: Czerlonka | CSG — Request list received');
+    // System prompt carries the supersession instruction
+    const sys: string = invoke.mock.calls[0][1].body.systemPrompt;
+    expect(sys).toMatch(/SUPERSEDE/);
+    expect(sys).toMatch(/MOST RECENT/);
+  });
 });
