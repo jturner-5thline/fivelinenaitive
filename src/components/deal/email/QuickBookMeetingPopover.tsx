@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { EmailThread } from './mockEmailData';
+import { buildScheduleNotes } from '@/lib/scheduleMeetingNotes';
+import { summarizeThreadTopic } from '@/services/smartEmailTopic';
 
 /**
  * QuickBookMeetingPopover
@@ -198,19 +200,34 @@ function seedAttendees(
   return out;
 }
 
-/** Naive agenda generation from the latest message snippet. */
-function seedAgenda(thread: EmailThread): string {
-  const subj = thread.subject || 'Discussion';
-  const snippet =
-    thread.latestEmail?.snippet ||
-    thread.latestEmail?.body_text?.slice(0, 240) ||
-    '';
-  const lines = [
-    `Topic: ${subj}.`,
-    snippet ? `Context: ${snippet.replace(/\s+/g, ' ').slice(0, 200).trim()}…` : null,
-    `Agenda: review status, align on next steps, action items.`,
-  ].filter(Boolean) as string[];
-  return lines.join('\n');
+/** Build the initial NOTES block from structured thread + slot context.
+ *  Replaces the legacy `seedAgenda` which dumped the raw email body. */
+function initialNotes(args: {
+  thread: EmailThread;
+  dealName?: string | null;
+  tz: string;
+  topic?: string | null;
+}): string {
+  const latest = args.thread.latestEmail;
+  const receivedAt = latest?.received_at ? new Date(latest.received_at) : null;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return buildScheduleNotes({
+    dealName: args.dealName ?? null,
+    sender: {
+      name: latest?.from_name ?? null,
+      email: latest?.from_email ?? null,
+      receivedAt,
+    },
+    proposedStart: null,
+    proposedEnd: null,
+    attendeeTimezones: [args.tz],
+    freeBusyVerified: false,
+    topic: args.topic ?? null,
+    fallbackSubject: args.thread.subject ?? null,
+    threadId: args.thread.provider_thread_id || args.thread.threadId,
+    origin,
+    userTz: args.tz,
+  });
 }
 
 /** Compute the first 3 free slots after `from` of `durationMin` length,
@@ -423,7 +440,28 @@ export function QuickBookMeetingPopover({
   const [title, setTitle] = useState<string>(initialTitle);
   const [attendees, setAttendees] = useState<Attendee[]>(initialAttendees);
   const [newAttendee, setNewAttendee] = useState('');
-  const [description, setDescription] = useState<string>(() => seedAgenda(thread));
+  const [description, setDescription] = useState<string>(() =>
+    initialNotes({ thread, dealName, tz: timezone, topic: null }),
+  );
+  // Track if user has manually edited NOTES so the auto-refresh effects
+  // don't clobber their changes.
+  const descriptionTouchedRef = useRef(false);
+  const setDescriptionUserEdit = useCallback((v: string) => {
+    descriptionTouchedRef.current = true;
+    setDescription(v);
+  }, []);
+  // Topic line — async-resolved via smart-email-ai summarize_thread.
+  const [aiTopic, setAiTopic] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const topic = await summarizeThreadTopic({ dealId, thread });
+      if (!cancelled && topic) setAiTopic(topic);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [dealId, thread]);
   const [useMeet, setUseMeet] = useState(true);
   const [customLocation, setCustomLocation] = useState('');
   const [moreOpen, setMoreOpen] = useState(false);
@@ -477,6 +515,45 @@ export function QuickBookMeetingPopover({
       busy.find((b) => selectedStart < b.end && selectedEnd > b.start) || null
     );
   }, [busy, selectedStart, selectedEnd]);
+
+  /* ----- auto-recompose NOTES when slot/topic resolve (unless user edited). */
+  useEffect(() => {
+    if (descriptionTouchedRef.current) return;
+    const latest = thread.latestEmail;
+    const receivedAt = latest?.received_at ? new Date(latest.received_at) : null;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const tzs = Array.from(
+      new Set(attendees.map(() => timezone)),
+    );
+    const next = buildScheduleNotes({
+      dealName: dealName ?? null,
+      sender: {
+        name: latest?.from_name ?? null,
+        email: latest?.from_email ?? null,
+        receivedAt,
+      },
+      proposedStart: selectedStart,
+      proposedEnd: selectedEnd,
+      attendeeTimezones: tzs,
+      freeBusyVerified: !!selectedStart && !busyLoading && !conflict,
+      topic: aiTopic,
+      fallbackSubject: thread.subject ?? null,
+      threadId: thread.provider_thread_id || thread.threadId,
+      origin,
+      userTz: timezone,
+    });
+    setDescription(next);
+  }, [
+    aiTopic,
+    selectedStart,
+    selectedEnd,
+    conflict,
+    busyLoading,
+    timezone,
+    dealName,
+    thread,
+    attendees,
+  ]);
 
   /* ----- attendee chip handlers */
   const addAttendee = useCallback(() => {
@@ -876,7 +953,7 @@ export function QuickBookMeetingPopover({
         <FieldRow label="Notes">
           <Textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => setDescriptionUserEdit(e.target.value)}
             rows={3}
             className="text-[12px] min-h-[60px] resize-none"
           />
