@@ -85,16 +85,17 @@ const vGcalId = (raw: unknown): ValidationResult => {
 };
 
 // ---------- shared helpers ----------
+// AI-managed company settings live in `company_settings.ai_settings` JSONB.
 async function getCompanySettingsValue(
   ctx: ToolContext,
   path: string[],
 ): Promise<unknown> {
   const { data } = await ctx.sb
     .from("company_settings")
-    .select("value")
+    .select("ai_settings")
     .eq("company_id", ctx.company_id)
     .maybeSingle();
-  let cur: any = data?.value ?? {};
+  let cur: any = (data as any)?.ai_settings ?? {};
   for (const seg of path) cur = cur?.[seg];
   return cur ?? null;
 }
@@ -106,10 +107,10 @@ async function setCompanySettingsValue(
 ): Promise<{ old: unknown; new: unknown }> {
   const { data: existing } = await ctx.sb
     .from("company_settings")
-    .select("value")
+    .select("ai_settings")
     .eq("company_id", ctx.company_id)
     .maybeSingle();
-  const base = (existing?.value as Record<string, unknown> | null) ?? {};
+  const base = ((existing as any)?.ai_settings as Record<string, unknown> | null) ?? {};
   const cloned: any = JSON.parse(JSON.stringify(base));
   let cursor = cloned;
   for (let i = 0; i < path.length - 1; i++) {
@@ -121,7 +122,7 @@ async function setCompanySettingsValue(
   cursor[leaf] = newValue;
   const { error } = await ctx.sb
     .from("company_settings")
-    .upsert({ company_id: ctx.company_id, value: cloned }, { onConflict: "company_id" });
+    .upsert({ company_id: ctx.company_id, ai_settings: cloned }, { onConflict: "company_id" });
   if (error) throw new Error(error.message);
   return { old, new: newValue };
 }
