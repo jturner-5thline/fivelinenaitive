@@ -672,9 +672,35 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       } catch (err: any) {
         const isTimeout = /timed out/i.test(err?.message || '');
         console.error(`[AiAssist] draft error tone=${tone}:`, err?.message || err);
-        setError(isTimeout
-          ? 'Taking longer than expected. Tap Retry to try a different model.'
-          : (err?.message || 'Failed to generate draft.'));
+        // Record a per-tone error sentinel so the inline composer's
+        // SuggestedReplyCards can render a per-card Retry instead of
+        // staying stuck in a loading state. The global banner only fires
+        // when EVERY tone has failed (see check below) — a single-tone
+        // failure must not block the inline draft path.
+        setResult((prev) => {
+          const errOpt: DraftOption = {
+            index: 1,
+            toneKey: tone,
+            toneLabel: TONE_LABELS[tone],
+            body: '',
+            error: true,
+          };
+          const nextOptions = { ...(prev?.options || {}), [tone]: errOpt };
+          const allErrored = TONE_ORDER.every((t) => nextOptions[t]?.error);
+          if (allErrored) {
+            setError(isTimeout
+              ? 'Taking longer than expected. Tap Retry to try a different model.'
+              : (err?.message || 'Failed to generate draft.'));
+          }
+          return {
+            detected_intent: prev?.detected_intent,
+            confidence: prev?.confidence,
+            used_deal_context: prev?.used_deal_context,
+            recommended_tone: prev?.recommended_tone || 'balanced',
+            cited_context_sources: prev?.cited_context_sources || [],
+            options: nextOptions,
+          };
+        });
       } finally {
         setLoadingTones((s) => ({ ...s, [tone]: false }));
         inflight.current[tone] = null;
