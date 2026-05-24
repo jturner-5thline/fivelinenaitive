@@ -886,6 +886,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_action_log: {
+        Row: {
+          action: string
+          actor_user_id: string
+          company_id: string
+          contact_id: string | null
+          created_at: string
+          id: string
+          metadata: Json
+          reason: string
+          thread_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_user_id: string
+          company_id: string
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason: string
+          thread_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_user_id?: string
+          company_id?: string
+          contact_id?: string | null
+          created_at?: string
+          id?: string
+          metadata?: Json
+          reason?: string
+          thread_id?: string | null
+        }
+        Relationships: []
+      }
       ai_action_queue: {
         Row: {
           action_type: string

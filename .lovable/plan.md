@@ -1,220 +1,216 @@
-# Prompt 5 — Smoke + Audit Verification Plan (PLAN ONLY)
+# Prompt 6 — FIX Plan (PHASE 1, awaiting "approved")
 
-Verification-only pass. No source edits, no migrations, no new functions. All apply ops are round-tripped via Undo so net delta on settings tables = 0. Scope strictly limited to the 5th Line tenant with `ff_ai_settings_mutations=ON`, acting as `jturner@5thline.co` for admin paths.
+Scope: 3 defects on the AI Assist "Update Lender …" surface. Strictly additive. No Prompt 1–5 artifact touched. No scheduler / calendar / draft / nudge / send-pipeline code touched. 5th Line tenant verification only.
 
 ---
 
-## 0. Pre-flight (read-only)
+## 1. Files touched vs new
 
-Before executing any step, confirm baseline state and snapshot originals so Undo can be verified:
+### NEW (3 files)
+- `src/lib/newsletterSenderDetection.ts` — pure helper. Exports `NEWSLETTER_DENY_DOMAINS`, `isNewsletterSender({ fromEmail, headers })`, `hasListUnsubscribe(headers)`. ~50 LOC.
+- `src/lib/__tests__/newsletterSenderDetection.test.ts` — unit tests (matrix below).
+- `supabase/migrations/<ts>_ai_action_log.sql` — new `ai_action_log` table + RLS (DDL below). Additive; touches no existing tables.
+
+### TOUCHED (2 files, minimal additive diffs)
+- `src/hooks/useThreadWorkflowAnalysis.ts` — after the existing 5th-Line internal-firm suppression block (lines ~321–355), append a second suppression block that nulls `likely_lender_firm` when:
+  - sender domain ∈ `NEWSLETTER_DENY_DOMAINS`, OR
+  - thread headers contain `List-Unsubscribe` / `List-Id` (read from `thread.latestEmail.headers` if present, otherwise no-op), OR
+  - `result.likely_lender_firm.confidence === 'low'` AND no `recommended_update.lender_id`.
+  Same shape as existing internal-firm block — sets `likely_lender_firm = { id:'', name:'', confidence:'low', reasoning:'newsletter_sender' | 'low_confidence' | 'list_unsubscribe_header' }` and downgrades `recommended_update.kind` to `'none'` if it was `lender_status`. No other field touched.
+- `src/components/deal/email/EmailQuickActionsToolbar.tsx` — wrap the `lender` pill's `AIAssistActionButton` in a `Tooltip` when `!dealId && !fallbackDealId`, pass `disabled` + visual `aria-disabled` props, and add an inline `Info` icon. Click handler short-circuits to a `logRefusal('no_deal_match')` call (new helper in `src/lib/aiAssistRefusalLogger.ts` — listed as TOUCHED-adjacent NEW below) instead of opening the inline card. The existing "Link this email to a deal …" copy in `UpdateLenderStatusInlineCard` is left untouched (additive guidance preserved).
+
+### NEW (logger helper, 1 file)
+- `src/lib/aiAssistRefusalLogger.ts` — thin client wrapper around `supabase.from('ai_action_log').insert(...)`. Resolves `actor_user_id` from auth, `company_id` from active company context. ~30 LOC. Exports `logUpdateLenderRefused({ reason, threadId, contactId })`.
+
+Total: 4 new files, 2 touched files. No edge functions. No changes to settings tables, ff_ai_settings_mutations, SettingsMutationCard, useSettingsMutation, AICopilotPanel, ChatMessageList, ai-settings-tool, ai-settings-apply, settings_audit_log, MeetingScheduler*, calendar-events, send-pipeline, or email ingestion classifier outside the additive `likely_lender_firm` suppression block.
+
+---
+
+## 2. NEWSLETTER_DENY_DOMAINS constant
+
+Location: `src/lib/newsletterSenderDetection.ts`
+
+```ts
+export const NEWSLETTER_DENY_DOMAINS: ReadonlySet<string> = new Set([
+  'substack.com',
+  'mailchimp.com',
+  'beehiiv.com',
+  'convertkit.com',
+  'ghost.io',
+  'medium.com',
+  'linkedin.com',
+  'twitter.com',
+  'x.com',
+  'reddit.com',
+  'youtube.com',
+  'googlegroups.com',
+  'mailgun.org',
+  'sendgrid.net',
+]);
+```
+
+Helpers:
+- `isNewsletterSender(fromEmail)` — extracts domain via existing `domainOf()` from `src/lib/internalDomains.ts` pattern, returns `true` if in set.
+- `hasListUnsubscribe(headers)` — case-insensitive lookup for `list-unsubscribe` or `list-id` keys in the optional headers map; returns `false` if headers absent.
+
+Reused by `useThreadWorkflowAnalysis.ts` only. Not exported elsewhere.
+
+---
+
+## 3. DDL — `ai_action_log` (new table, additive)
 
 ```sql
--- Resolve 5th Line tenant + actor
-SELECT id AS company_id FROM companies WHERE name ILIKE '5th Line%' LIMIT 1;
-SELECT id AS user_id FROM auth.users WHERE email = 'jturner@5thline.co';
+-- New table only. No ALTER on existing tables. Zero existing rows mutated.
+CREATE TABLE public.ai_action_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  action text NOT NULL,                      -- e.g. 'update_lender_refused'
+  reason text NOT NULL,                      -- 'no_deal_match' | 'low_confidence' | 'newsletter_sender'
+  thread_id text,
+  contact_id uuid,
+  actor_user_id uuid NOT NULL,
+  company_id uuid NOT NULL,
+  metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 
--- Snapshot current values that the smoke trio will touch
-SELECT id, name, timezone, feature_flags, ai_settings
-FROM company_settings WHERE company_id = :company_id;
+CREATE INDEX idx_ai_action_log_company_created
+  ON public.ai_action_log (company_id, created_at DESC);
+CREATE INDEX idx_ai_action_log_action_reason
+  ON public.ai_action_log (action, reason);
 
-SELECT user_id, digest_frequency
-FROM user_preferences WHERE user_id = :user_id;
+ALTER TABLE public.ai_action_log ENABLE ROW LEVEL SECURITY;
 
-SELECT key, value FROM company_settings
-WHERE company_id = :company_id AND key IN ('slack_digest_enabled');
+-- Admin-only SELECT (uses existing has_role pattern from user_roles).
+CREATE POLICY "ai_action_log_admin_select"
+  ON public.ai_action_log
+  FOR SELECT
+  TO authenticated
+  USING (public.has_role(auth.uid(), 'admin'));
 
--- Baseline audit row count for delta math
-SELECT count(*) AS baseline_audit_count
-FROM settings_audit_log
-WHERE company_id = :company_id;
+-- Authenticated insert restricted to own user + own company (client writes
+-- happen under the user's JWT; service role bypasses RLS as usual).
+CREATE POLICY "ai_action_log_self_insert"
+  ON public.ai_action_log
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    actor_user_id = auth.uid()
+    AND company_id IN (SELECT company_id FROM public.profiles WHERE user_id = auth.uid())
+  );
 ```
 
-Pass bar: all three reads succeed; baseline values recorded in the final report appendix.
+No UPDATE / DELETE policies → append-only. No triggers attached to reserved schemas. Verified `has_role` + `profiles.company_id` exist in current schema before submitting migration.
 
 ---
 
-## 1. Smoke trio (Apply → Undo, net delta = 0)
+## 4. Disabled-button JSX snippet
 
-Run sequentially through the Ask-Naitive bar in `/settings` (already on this route). For each run, capture:
-- Raw `settings_proposal` JSON returned by `ai-settings-tool`
-- Card screenshot showing Current → Proposed diff
-- `ai-settings-apply` HTTP 200 response (apply + undo)
-- 3 `settings_audit_log` rows (`dry_run`, `apply`, `undo`)
-- Post-Undo SELECT proving original value restored
+In `EmailQuickActionsToolbar.tsx`, around the `actions.map((a) => …)` block, special-case `a.key === 'lender'`:
 
-| # | Exact prompt typed into Ask-Naitive bar | Tool expected | Target table.column |
-|---|---|---|---|
-| 1a | `set my company timezone to America/New_York` | `settings.update_company_timezone` | `company_settings.timezone` |
-| 1b | `change my digest frequency to weekly` | `settings.update_digest_frequency` | `user_preferences.digest_frequency` |
-| 1c | `turn off the Slack digest` | `settings.toggle_slack_digest` | `company_settings.feature_flags->>slack_digest_enabled` |
+```tsx
+if (a.key === 'lender') {
+  const hasDeal = !!(dealId || fallbackDealId);
+  const btn = (
+    <AIAssistActionButton
+      key={a.key}
+      label={a.label}
+      icon={
+        <span className="inline-flex items-center gap-1">
+          {a.icon}
+          {!hasDeal && <Info className="h-3 w-3 opacity-60" aria-hidden />}
+        </span>
+      }
+      iconClass={a.iconClass}
+      isActive={isActive}
+      aria-disabled={!hasDeal}
+      className={cn(!hasDeal && 'opacity-50 cursor-not-allowed')}
+      onClick={() => {
+        if (!hasDeal) {
+          void logUpdateLenderRefused({
+            reason: 'no_deal_match',
+            threadId: thread.threadId,
+            contactId: contactId ?? null,
+          });
+          return;
+        }
+        handleClick(a.key);
+      }}
+    />
+  );
+  return hasDeal ? btn : (
+    <Tooltip key={a.key}>
+      <TooltipTrigger asChild>{btn}</TooltipTrigger>
+      <TooltipContent side="top">Link a deal first to update lender stage</TooltipContent>
+    </Tooltip>
+  );
+}
+```
 
-Per-run verification SQL (parameterized by `:diff_id`):
+`UpdateLenderStatusInlineCard`'s existing "Link this email to a deal…" copy is left fully intact — the disabled button is an additive guardrail, not a replacement.
+
+---
+
+## 5. Unit test matrix (`newsletterSenderDetection.test.ts`)
+
+| # | Case | Input | Expected |
+|---|------|-------|----------|
+| 1 | substack.com sender | `samfjacobs@substack.com` | `isNewsletterSender == true` |
+| 2 | linkedin.com sender | `noreply@linkedin.com` | `isNewsletterSender == true` |
+| 3 | legitimate lender domain | `vp@founders-first.com` | `isNewsletterSender == false` |
+| 4 | subdomain of substack | `bounce@email.substack.com` | `isNewsletterSender == true` (subdomain trim) |
+| 5 | empty / missing | `undefined`, `''`, `'no-at'` | `false` (no throw) |
+| 6 | List-Unsubscribe header lowercase | `{ 'list-unsubscribe': '<mailto:…>' }` | `hasListUnsubscribe == true` |
+| 7 | List-ID header mixed case | `{ 'List-Id': '<…>' }` | `hasListUnsubscribe == true` |
+| 8 | no headers | `undefined` | `hasListUnsubscribe == false` |
+
+No tests added for `useThreadWorkflowAnalysis` (existing hook has no test file; additive suppression block is mechanically identical to the internal-firm block already there). No tests added for the React toolbar change (visual-only) — verified via live step §6.
+
+---
+
+## 6. Live verification steps (5th Line tenant, jturner@5thline.co)
+
+Pre-state SQL:
 ```sql
-SELECT action, actor_user_id, source, before_value, after_value, created_at
-FROM settings_audit_log
-WHERE diff_id = :diff_id ORDER BY created_at;
--- expect exactly 3 rows: dry_run → apply → undo
+SELECT count(*) FROM public.ai_action_log
+WHERE company_id = '<5thline company_id>' AND action = 'update_lender_refused';
 ```
 
-Then re-read the snapshot query from §0 and assert equality with baseline.
+### V1 — Defect 1 (classifier)
+1. Navigate `/sales-bd` → open thread "Sundays with Sam #20: Non-Public Material".
+2. Wait for AI Assist sidebar to finish loading.
+3. **PASS bar**: the `Lender: Substack` chip in the Deal/Contact/Lender chip row is **absent**. The Lender pill on the toolbar is in the disabled state (because no deal is linked). Screenshot the chip row + the disabled pill.
 
-Pass bar (per run): 3 audit rows present, apply row has non-null `before_value`, undo row's `after_value` == original baseline, Undo button clicked within the 30s window, and post-state SELECT matches §0.
+### V2 — Defect 2 (UX affordance)
+1. Same thread (no deal linked).
+2. Hover the "Update Lender Stage" pill.
+3. **PASS bar**: tooltip reads exactly "Link a deal first to update lender stage". Inline ⓘ icon visible. Cursor is `not-allowed`. Pill does not expand the inline card. Screenshot tooltip.
+4. Open any thread that IS linked to a deal (e.g. an existing PFG / Founders First thread) — confirm the pill is fully active (no tooltip, no ⓘ, click expands the inline card normally). Screenshot.
 
----
-
-## 2. Deny-list refusal trio (zero mutation)
-
-Submit each prompt; assert the response is the deny explainer (no `SettingsMutationCard` rendered) with a link to `/settings`.
-
-| # | Exact prompt | Expected deny reason |
-|---|---|---|
-| 2a | `change my OpenAI API key to sk-test-123` | secret / api_key |
-| 2b | `make jmoffitt@5thline.co a company admin` | role_elevation |
-| 2c | `update the Slack bot token` | secret |
-
-Verification SQL:
+### V3 — Defect 3 (telemetry)
+1. From step V2.2, click the disabled pill once.
+2. Run:
 ```sql
-SELECT action, tool_name, deny_reason, source_prompt, created_at
-FROM settings_audit_log
-WHERE company_id = :company_id
-  AND action = 'deny'
-  AND created_at > :run_start
-ORDER BY created_at;
--- expect exactly 3 rows
+SELECT id, action, reason, thread_id, actor_user_id, company_id, created_at
+FROM public.ai_action_log
+WHERE company_id = '<5thline company_id>'
+ORDER BY created_at DESC
+LIMIT 3;
 ```
+3. **PASS bar**: exactly one new row with `action='update_lender_refused'`, `reason='no_deal_match'` (or `'newsletter_sender'` if the Substack thread short-circuits there first), `thread_id` matches the Sundays-with-Sam thread, `actor_user_id` = jturner profile UUID, `company_id` = 5th Line UUID. Screenshot the SQL result.
 
-Mutation-proof query (no target rows changed since `:run_start`):
-```sql
-SELECT updated_at FROM company_settings WHERE company_id = :company_id;
--- updated_at must equal baseline updated_at
-```
-
-Pass bar: 3 deny rows written, 0 rows mutated in `company_settings` / `user_preferences` / any secrets table.
+### V4 — Non-regression smokes (lightweight, no mutations)
+- Open a real lender thread on a linked deal → confirm `Lender: <name>` chip still appears AND the toolbar pill is fully active. Screenshot.
+- Open Settings → AI Settings → confirm SettingsMutationCard renders unchanged (Prompt 1–5 surface untouched). Screenshot.
+- `SELECT count(*) FROM public.settings_audit_log;` before vs after entire verification → must be unchanged (=0 delta).
 
 ---
 
-## 3. Non-admin negative path
-
-Switch to a non-admin fixture user (read-only collaborator) in the 5th Line tenant. Submit prompt 1a (`set my company timezone to America/New_York`).
-
-Capture:
-- Screenshot: deep-link explainer to `/settings?tab=general`, no `data-testid="settings-mutation-card"` in DOM
-- Network log: `ai-settings-tool` returns `mode: "explainer"` or equivalent, `ai-settings-apply` direct curl returns **403**
-- SQL: `SELECT count(*) FROM settings_audit_log WHERE actor_user_id = :nonadmin_id AND created_at > :run_start` → expect 0
-
-Direct edge-function probe (curl, with non-admin JWT):
-```
-POST /functions/v1/ai-settings-apply
-body: { tool_name: "settings.update_company_timezone", proposed_value: "America/New_York", diff_id: "<fake>" }
-expect: 403 + body { error: "admin_required" }
-```
-
-Pass bar: card not rendered, 403 on direct apply, 0 audit rows from this user.
+## 7. Hard guarantees
+- No migrations modify or drop any existing column/table.
+- No rows in any existing table mutated by the verification run (only INSERTs into the brand-new `ai_action_log`).
+- Frozen surfaces (SettingsMutationCard, useSettingsMutation, AICopilotPanel, ChatMessageList, ai-settings-tool, ai-settings-apply, settings_audit_log, ff_ai_settings_mutations, Schedule Meeting / NOTES / Draft Reply / Stale Status Nudge / Availability Check / calendar render / meeting-holds / calendar-events / send-pipeline / non-lender ingestion classifier / create_calendar / GCAL_SMOKETEST_CALENDAR_ID) — not opened, not edited, not imported by any new file.
+- Feature flag: none introduced; behavior is universally safer than current (refuses junk lender pills, prevents click-then-refuse).
 
 ---
 
-## 4. Rate-limit verification
-
-Drive bursts via scripted `supabase.functions.invoke` from the browser console as `jturner@5thline.co`:
-- 11× dry_run (`ai-settings-tool`) in <60s on one user → 11th returns **429** with friendly message; card shows "Rate limit reached — try again in a few minutes."
-- 11× apply (`ai-settings-apply`) in <60s on one company → 11th returns **429**; ensure the 10 that succeed are each Undone before continuing.
-
-Capture both 429 response bodies (with `Retry-After` header if present) and one card screenshot showing the rate-limit error state.
-
-Audit annotation check:
-```sql
-SELECT count(*) FILTER (WHERE metadata->>'rate_limited' = 'true') AS rl_count
-FROM settings_audit_log
-WHERE company_id = :company_id AND created_at > :run_start;
--- expect ≥ 2 (one dry_run, one apply)
-```
-
-Pass bar: HTTP 429 observed on the 11th of each burst, card surfaces the friendly throttle copy, ≥2 rate-limit-annotated audit rows, and net data delta on settings tables = 0 after all Undos.
-
----
-
-## 5. Audit chain integrity (read-only SQL)
-
-```sql
--- (a) action counts in the last hour
-SELECT action, count(*)
-FROM settings_audit_log
-WHERE company_id = :company_id
-  AND created_at > now() - interval '1 hour'
-GROUP BY action;
--- expected: dry_run=14, apply=12 (10 succeed in §4 + 2 from §1; 1 blocked by 429), undo=13, deny=3
--- NOTE: exact counts will be reconciled to the actual §4 success count in the final report.
-
--- (b) last 20 rows have full provenance
-SELECT id, tool_name, before_value, after_value, source, actor_user_id, company_id
-FROM settings_audit_log
-ORDER BY created_at DESC LIMIT 20;
--- every row: actor_user_id NOT NULL, company_id NOT NULL, source='ai_assistant';
--- every action='apply' row: before_value NOT NULL.
-
--- (c) RLS isolation: as a non-admin role token via PostgREST
-SELECT count(*) FROM settings_audit_log;
--- expected: 0 (RLS hides all rows from non-admins)
-```
-
-Pass bar: all three queries match expectations; any deviation logged in §8(vi) and STOP.
-
----
-
-## 6. Non-regression suites
-
-Re-run and paste pass counts only — no edits:
-
-| Suite | Command | Pass bar |
-|---|---|---|
-| Prompt 3 RTL | `bunx vitest run src/components/copilot/__tests__/SettingsMutationCard.test.tsx` | 6/6 |
-| Prompt 4 Deno unit | `supabase--test_edge_functions functions=["ai-settings-tool"]` | 12/12 |
-| Prompt 4 Playwright | `bunx playwright test settings-mutation` | 2/2 (admin happy + non-admin deep-link) |
-| Smart Status Note | `bunx vitest run src/services/__tests__/smartStatusNoteSuggestion.*` | 30/30 |
-| Calendar guardrails | grep `create_calendar`, `calendar_id`, `GCAL_SMOKETEST_CALENDAR_ID` defaults | all default-off; no GCal writes in scope |
-
-Pass bar: every suite green at its declared count; any red → §8(vi) and STOP.
-
----
-
-## 7. Feature-flag rollback drill (documentation only — DO NOT FLIP)
-
-Document for `ff_ai_settings_mutations`:
-- Server read site: `supabase/functions/copilot-chat/index.ts` — cite exact line of the `ff_ai_settings_mutations` gate added in Prompt 4.
-- Client read site: `src/components/copilot/SettingsMutationCard.tsx` (or its parent render branch in `AICopilotPanel.tsx` / `ChatMessageList.tsx`) — cite line where the flag suppresses card rendering.
-- Toggle path: `company_settings.feature_flags->>ai_settings_mutations` set to `false` via admin UI / direct UPDATE.
-- Expected OFF behavior (assertion only, not executed):
-  - `ai-settings-tool` returns `{ status: "feature_disabled", message: "..." }` — no proposal, no audit row.
-  - Card never renders; user sees plain-text fallback in the bar.
-  - Zero rows added to `settings_audit_log` for that company while OFF.
-
-Pass bar: file + line citations correct; no actual flag flip performed.
-
----
-
-## 8. Final sign-off deliverable
-
-A single Markdown report saved to `/mnt/documents/ai-settings-mutation-signoff-5thline.md` containing:
-
-1. All screenshots (smoke trio diffs, deny explainer, non-admin deep-link, 429 throttle card)
-2. All audit SQL outputs (verbatim)
-3. All HTTP responses captured (200 / 403 / 410 if undo expires / 429)
-4. Test pass counts table from §6
-5. **GO / NO-GO recommendation** for enabling `ff_ai_settings_mutations` on additional tenants
-6. Follow-ups for Prompt 6+ (e.g., bulk settings diff, multi-tool composition, per-tool throttles) — documented only, not implemented
-
-A `<presentation-artifact>` tag will be emitted so the user can download the report.
-
----
-
-## Freeze acknowledgments
-
-- No source files will be modified.
-- No migrations.
-- No new edge functions or components.
-- Calendar / Schedule Meeting / NOTES / Draft Reply / Stale Status Nudge / Availability Check / deal recognition / email ingestion are untouched.
-- `create_calendar`, `calendar_id`, `GCAL_SMOKETEST_CALENDAR_ID` remain default-off; no Google Calendar resources will be touched.
-- Every Apply is paired with an Undo inside the 30s window. If any Undo fails or expires, the bug is logged in §8(vi) and execution STOPS (the row is left for manual reconciliation; no compensating UPDATE will be issued).
-- 5th Line tenant only.
-
-Awaiting `approved` before executing any step.
+STOP. Awaiting **approved** before writing any code or running the migration.
