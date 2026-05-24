@@ -1,84 +1,60 @@
-## Draft Reply UX — route through Inline Reply composer with suggested options
+# Draft Reply — Auto-Draft Into Textarea (Plan, Phase 1)
 
-### 1. Current Draft Reply path (the pop-up)
+Scope is strictly additive to the Draft Reply inline composer flow. **Code freeze otherwise remains in place.** Previously-shipped `create_calendar` action, `calendar_id` column, and `GCAL_SMOKETEST_CALENDAR_ID` env stay default-off in production (`calendar_id` resolves to `"primary"` when null; smoketest env unset in prod).
 
-- **Trigger:** `EmailQuickActionsToolbar.tsx` → "Draft Reply" pill → `onOpenDraft` prop.
-- **Handler:** `src/components/deal/email/AiAssistSidebar.tsx` L1019–1038 — `onOpenDraft` dispatches the `naitive:ai-assist:open-popout-draft` CustomEvent (and a fallback effect at L850–861 does the same once a draft body resolves).
-- **Mount target:** `src/components/deal/email/EmailListAndDetail.tsx` L2573–2597 listens for that event and calls `setPopOutDraft({ ... })`, which mounts `<PopOutComposer />` at L3423–3437 (`src/components/deal/email/PopOutComposer.tsx`).
-  - PopOutComposer is the full pop-up surface (To / Subject / formatting toolbar / signature / Polish / Attach / Snippets / Insert availability / Draft with AI).
-- The per-thread toolbar "Reply" button (`handleReply`, L2255) already mounts `<InlineReplyComposer />` inline (L3316–3333). Visually heavy (`h-[min(92vh,980px)]`) but it is the in-place composer, not a modal. Draft Reply will be aligned with this same surface.
+---
 
-### 2. Inline Reply + Suggested Replies today
+## 1. Current data path (files quoted)
 
-- **Inline composer:** `src/components/deal/email/InlineReplyComposer.tsx`, mounted at `EmailListAndDetail.tsx` L3316 with props `replyTo`, `initialDraft`, `onSend`, `onDiscard`, `onPopOut`, `onDraftChange`, `onFieldBlur`, `saveStatus`, `tokenContext`, `dealId`, `dealName`, `signature`.
-- **Suggestions engine (single source of truth):** `smart-email-ai` edge function, action `generate_draft_options`, invoked from `AiAssistSidebar.generateTone()` (L569–660). Returns one body per tone (`concise`, `balanced`). Stored in `result.options[tone].body`. **Do not fork prompts.**
-- **AI Assist → Inline bridge already exists:** `AiAssistSidebar` `onInsertDraft` (prop wired in `EmailListAndDetail.tsx` L3393–3414) sets `setReplyTo(target)` + `setInlineDraft({ ... body })` — i.e. populates the inline composer. This is the path Draft Reply will reuse.
+**Mount of the inline composer on Draft Reply click**
+- `src/components/deal/email/AiAssistSidebar.tsx` L1046: the Draft Reply pill dispatches `naitive:ai-assist:open-inline-draft` with `{ threadId }` and kicks `generateTone('balanced')` / `generateTone('concise')`.
+- `src/components/deal/email/EmailListAndDetail.tsx` L2587–2590: listener calls `setReplyTo(getReplyTarget())`, leaving `inlineDraft` null.
+- `EmailListAndDetail.tsx` L3325: `<InlineReplyComposer suggestedReplies={inlineSuggestions} ... />`.
 
-### 3. Minimal refactor
+**Card data path**
+- `AiAssistSidebar.tsx` L860–876 `useEffect`: re-emits `TONE_ORDER.map(...)` into `onInsertSuggestions(...)` on every change to `result` / `loadingTones`. Bodies are empty strings while loading.
+- `EmailListAndDetail.tsx` L3410 `onInsertSuggestions` writes to `setInlineSuggestions`.
+- `InlineReplyComposer.tsx` L80–95: `selectedSuggestionId` + `handleSelectSuggestion` set body when a card is clicked. There is **no effect that auto-populates `body` on mount or when the recommended draft resolves** — that is the root cause of BAD #1.
 
-Strictly additive. Reuses existing components and the existing `generate_draft_options` engine.
+## 2. Why the textarea is empty
 
-| File | Change |
-|---|---|
-| `src/components/deal/email/AiAssistSidebar.tsx` | Replace `onOpenDraft` body (L1019–1038): stop dispatching `naitive:ai-assist:open-popout-draft`. Instead: (a) set `draftOpen=true`, (b) ensure both tones are queued via `generateTone('concise')` + `generateTone('balanced')`, (c) dispatch a new `naitive:ai-assist:open-inline-draft` CustomEvent `{ threadId }` so the parent opens the InlineReplyComposer in-place with no prefilled body yet. Also delete the L850–861 "pop-out pending tone" effect (or no-op it) so a generated draft never auto-opens PopOutComposer from Draft Reply. PopOutComposer remains reachable from the InlineReplyComposer "pop-out" affordance only. |
-| `src/components/deal/email/EmailListAndDetail.tsx` | Add listener for `naitive:ai-assist:open-inline-draft` (mirrors L2573–2597 but calls `setReplyTo(getReplyTarget())` + `setInlineDraft(null)` instead of `setPopOutDraft`). Remove or guard the existing `open-popout-draft` listener so Draft Reply no longer triggers the pop-up (PopOutComposer stays mounted only when the user hits InlineReplyComposer's `onPopOut`). |
-| `src/components/deal/email/InlineReplyComposer.tsx` | Add an optional `suggestedReplies?: Array<{ id: string; toneKey: 'concise'\|'balanced'; label: string; body: string; loading?: boolean }>` prop, plus `onSelectSuggestion?(id)` + `onRegenerateSuggestions?()`. When non-empty AND the body textarea is empty (or user hasn't manually edited), render a new `SuggestedReplyCards` section above the body textarea: 2–3 radio cards (Concise / Balanced / +Custom-regenerate). Selecting a card fills the body via existing `onChange` path and records `selectedSuggestionId` locally. Once user types into the textarea, mark "touched" so re-selecting won't clobber edits without confirmation. |
-| `src/components/deal/email/SuggestedReplyCards.tsx` *(new, presentational only)* | Radio-card list. Skeleton state while `loading`. No network calls — pure props. |
-| `src/components/deal/email/AiAssistSidebar.tsx` (cont.) | Pass `result.options` → InlineReplyComposer via a new `onInsertDraftSuggestions(options)` callback that hits the same `onInsertDraft` channel but with a structured payload. Implementation: extend the existing `onInsertDraft` prop signature to accept `{ body?: string; suggestions?: SuggestedReply[] }` (backward-compatible — current callers pass a string, new caller passes object). Parent (`EmailListAndDetail.tsx` L3393–3414) routes `suggestions` into the `<InlineReplyComposer />` `suggestedReplies` prop via a new `inlineSuggestions` state, and continues to handle `body` as today. |
+- `InlineReplyComposer.tsx` L77: `const [body, setBody] = useState(initialDraft?.body ?? '')` — initialized empty.
+- There is no `useEffect` watching `suggestedReplies` that seeds `body` once the Recommended (`balanced`) option resolves. Cards render correctly but nothing fills the textarea unless the user clicks a card.
 
-No prompt fork: suggestions come from the same `generateTone(tone)` call already used for Draft Reply (which itself calls `generate_draft_options`). The third "+Custom" card simply re-invokes `generateTone('balanced', { regenerate: true, customInstructions })` with the existing path.
+## 3. Why the sidebar shows "Taking longer than expected"
 
-### 4. Out of scope (untouched)
+- `AiAssistSidebar.tsx` L579–683 `generateTone`: 30s `AbortController` timeout, `fastModel: true` by default, calls edge function `smart-email-ai` with `action: 'generate_draft_options'`, `singleTone`.
+- On timeout / error, L673–675 sets `setError('Taking longer than expected. Tap Retry to try a different model.')`. The sidebar renders this banner and skeletons remain.
+- **Coupling problem:** the cards in the inline composer are fed from the same `result` + `loadingTones` (L860–876). When generation fails, `loadingTones[tone]` flips false but `result.options[tone]` is never set, so the suggestion stays `{ body: '', loading: false }` forever — cards become permanently empty/disabled and the textarea also stays empty.
+- The sidebar "Suggested Update" analyzer is a separate query (`workflowAnalysis` / `dealContextSummary`); confirmed it is not what feeds the cards. Only `generateTone` failures starve the cards.
 
-Schedule Meeting flow, NOTES generator (`scheduleMeetingNotes.ts`, `QuickBookMeetingPopover.tsx`), Availability Check, deal recognition, calendar rendering, all edge functions (no prompt or model changes), the send pipeline (`handleSendFromComposer`), `meeting-holds/*`, `calendar-events/*`, `create_calendar` action, `calendar_id` column, `GCAL_SMOKETEST_CALENDAR_ID` env var.
+## 4. Minimal change set
 
-### 5. Test plan
+| # | File | Change |
+|---|------|--------|
+| a | `InlineReplyComposer.tsx` | Add `recommendedSuggestionId?: string` prop (parent passes `tone-balanced`). New `useEffect`: when `body === ''` and `!userTouched` and a non-loading recommended suggestion arrives, call `handleSelectSuggestion(recommendedSuggestionId)` to seed textarea. Track `userTouched` via `handleBodyChange` (already clears `selectedSuggestionId` — extend to set `userTouchedRef.current = true`). |
+| b | `InlineReplyComposer.tsx` | On card click when `userTouchedRef.current && body.trim() !== ''` and selected body differs, render a small `AlertDialog` confirm ("Replace your edits with this suggestion?"). Confirm → swap; cancel → no-op. Uses existing `@/components/ui/alert-dialog`. |
+| c | `InlineReplyComposer.tsx` | While the recommended suggestion is `loading` and `body === ''`, render an italic muted `Drafting…` placeholder via `EmailComposerCard`'s existing `placeholder` (or a thin overlay if the prop isn't surfaced — small additive prop `bodyPlaceholder`). Cleared once body is populated. Send button stays enabled per existing rules. |
+| d | `AiAssistSidebar.tsx` | Decouple failure: in the `generateTone` catch block, also write a sentinel `DraftOption { body: '', error: true }` into `setResult` so the suggestions effect L860 emits `{ loading: false, error: true }` for failed tones. The inline composer then renders the failed card as a "Retry" affordance instead of permanent spinner. Cards for the successful tone still populate normally — single-tone failure no longer starves the other. |
+| e | `AiAssistSidebar.tsx` | Move the sidebar's `setError(...)` banner state behind a check that ONLY both tones failed. Single-tone failure no longer shows the global "Taking longer than expected" banner — that banner today fires on the first failure and is what the user observed even though Concise may still resolve. Per-card retry replaces it. |
+| f | `SuggestedReplyCards.tsx` | Accept `error?: boolean` on a card and render a tiny "Retry" link that calls `onRegenerate` for that tone. |
 
-New file: `src/components/deal/email/__tests__/draftReplyInline.test.tsx` (Vitest + RTL).
+No edits to: `smart-email-ai` edge function, scheduling, NOTES generator, availability check, deal recognition, calendar render, send pipeline, `meeting-holds/*`, `calendar-events/*`, `create_calendar`, `calendar_id`, `GCAL_SMOKETEST_CALENDAR_ID`.
 
-1. Mount `<EmailListAndDetail />` with a fixture thread (Project Vista) and AI Assist toggled on. Stub `supabase.functions.invoke('smart-email-ai', …)` to return two fake options.
-2. Click the "Draft Reply" pill in `EmailQuickActionsToolbar`.
-3. Assertions:
-   - **(a)** `screen.queryByTestId('popout-composer')` is `null` (PopOutComposer NOT mounted).
-   - **(b)** `screen.getByTestId('inline-reply-composer')` is in the DOM.
-   - **(c)** `screen.findAllByRole('radio', { name: /concise|balanced/i })` returns ≥ 2 cards.
-   - **(d)** Click a card → the `<textarea>` `value` equals that option's body.
-   - **(e)** "Send" button is rendered. Disabled until either a card is selected or the textarea has non-empty text. Enabled after step (d).
-4. Negative test: clicking the per-thread toolbar "Reply" button does NOT mount PopOutComposer (only InlineReplyComposer).
+## 5. Test plan (Vitest + RTL, extending `draftReplyInline.test.tsx`)
 
-(Add `data-testid="popout-composer"` to PopOutComposer root and `data-testid="inline-reply-composer"` to InlineReplyComposer root as part of this PR — both purely additive.)
+1. **Auto-populate on mount** — mount `<InlineReplyComposer suggestedReplies={[balancedReady, conciseReady]} recommendedSuggestionId="tone-balanced" />`; assert `screen.getByRole('textbox', { name: /body/i }).value` equals `balancedReady.body` within 2s (`waitFor`).
+2. **Swap on card click (clean)** — click `Shorter`; assert textarea becomes `conciseReady.body`, no confirm dialog.
+3. **Dirty-edit guard** — type into textarea, then click another card; assert `AlertDialog` opens; confirm → body replaced; cancel → original edit preserved.
+4. **Drafting… placeholder** — mount with `[{loading:true, body:''}, {loading:true, body:''}]`; assert textarea placeholder text `Drafting…`; rerender with resolved balanced; assert textarea now contains resolved body and placeholder gone.
+5. **Sidebar failure does not block inline (decoupled)** — mock `supabase.functions.invoke` for `singleTone:'balanced'` → reject 504, `singleTone:'concise'` → resolve. Mount `<AiAssistSidebar>` + capture `onInsertSuggestions`; assert eventually two suggestions emitted with `tone-balanced` carrying `error:true` and `tone-concise` carrying a real body; assert global error banner NOT shown when at least one tone resolved.
+6. **No popout regression** — re-assert `popout-composer` testid not in DOM (existing test extended).
 
-### 6. Before / after DOM sketch (Project Vista thread)
+## 6. Phase 2
 
-```text
-BEFORE  (current Draft Reply)
-EmailListAndDetail
-├─ ThreadDetail (Project Vista)
-│  └─ ScrollArea (messages)
-├─ AiAssistSidebar
-│  └─ EmailQuickActionsToolbar [Draft Reply] ─click──┐
-└─ PopOutComposer  ◄──────────────── modal pop-up ───┘
-   (To / Subject / Toolbar / Signature / Polish / …)
+After "approved":
+- Implement (a)–(f).
+- Run `bunx vitest run src/components/deal/email/__tests__/draftReplyInline.test.tsx` and paste output.
+- Re-render Project Vista Draft Reply flow; paste textarea-populated screenshot + `data-testid="inline-reply-composer"` DOM snapshot showing populated `<textarea>` and `aria-checked="true"` on Recommended card.
 
-AFTER   (Draft Reply → inline)
-EmailListAndDetail
-├─ ThreadDetail (Project Vista)
-│  └─ ScrollArea (messages)
-├─ InlineReplyComposer  ◄─── opened in place at thread bottom
-│  ├─ SuggestedReplyCards
-│  │   (•) Concise   ( ) Balanced   ( ) + Custom
-│  ├─ <textarea> (populated when card selected)
-│  └─ [Send] [Discard] [Pop out]
-└─ AiAssistSidebar
-   └─ EmailQuickActionsToolbar [Draft Reply] (no longer dispatches popout event)
-```
-
-### Phase 2 (after approval)
-
-Implement per above, run the Vitest, paste pass/fail counts, then re-render Project Vista's Draft Reply flow and paste a DOM-tree snapshot for sign-off.
-
-### Code freeze restatement
-
-The code freeze otherwise remains in place. The previously-shipped `create_calendar` action, the nullable `meeting_holds.calendar_id` column, and the `GCAL_SMOKETEST_CALENDAR_ID` env hook are still default-off in production: `calendar_id` defaults to `"primary"`, `create_calendar` has zero client call-sites, and the smoke-test env var is not set in prod.
-
-**STOP. Awaiting "approved" before Phase 2.**
+Awaiting **approved** to begin Phase 2.
