@@ -16,6 +16,8 @@ import { EmailDraftCard, extractEmailDraft } from './EmailDraftCard';
 import { MorningBriefing, isBriefingMessage, BRIEFING_MARKER } from './MorningBriefing';
 import { MorningIntelligenceBrief, isIntelBriefMessage, INTEL_BRIEF_MARKER } from './MorningIntelligenceBrief';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { SettingsMutationCard } from '@/components/copilot/SettingsMutationCard';
+import type { SettingsProposal } from '@/hooks/useSettingsMutation';
 
 interface Props {
   messages: ChatMessage[];
@@ -86,6 +88,39 @@ function extractCopilotAction(content: string): {
       .replace(/\{(?:[^{}]|\{[^{}]*\})*"action"\s*:\s*"[^"]+"(?:[^{}]|\{[^{}]*\})*\}/g, '');
   }
   return { action: found, cleanedContent: cleaned.trim() };
+}
+
+/**
+ * Extract a `settings_proposal` payload emitted by the copilot when it wants
+ * the user to apply an admin-scope settings change. Strips the fenced block
+ * from the markdown body so the card renders cleanly below.
+ */
+function extractSettingsProposal(content: string): {
+  proposal: SettingsProposal | null;
+  cleanedContent: string;
+} {
+  if (!content) return { proposal: null, cleanedContent: content };
+  const fence = /```json\s*\n([\s\S]*?)\n```/g;
+  let match;
+  let found: SettingsProposal | null = null;
+  let foundRaw = '';
+  while ((match = fence.exec(content)) !== null) {
+    try {
+      const parsed = JSON.parse(match[1]);
+      if (
+        parsed &&
+        parsed.responseType === 'settings_proposal' &&
+        parsed.data?.diff_id &&
+        parsed.data?.tool_name
+      ) {
+        found = parsed.data as SettingsProposal;
+        foundRaw = match[0];
+        break;
+      }
+    } catch { /* skip */ }
+  }
+  const cleaned = found ? content.replace(foundRaw, '').trim() : content;
+  return { proposal: found, cleanedContent: cleaned };
 }
 
 /**
@@ -257,6 +292,11 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
             !isUser && !isBriefing && !isIntelBrief
               ? extractCopilotAction(msg.content)
               : { action: null, cleanedContent: msg.content };
+          // Extract any embedded settings_proposal block (admin-scope mutations).
+          const { proposal: settingsProposal, cleanedContent: cleanedAfterSettings } =
+            !isUser && !isBriefing && !isIntelBrief
+              ? extractSettingsProposal(cleanedAssistantContent)
+              : { proposal: null, cleanedContent: cleanedAssistantContent };
 
           // Extract optional AI summary from briefing message
           const briefingAiSummary = isBriefing
@@ -344,9 +384,12 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                           th: ({ children }) => <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{children}</th>,
                           td: ({ children }) => <td className="px-2 py-1.5">{children}</td>,
                         }}
-                      >{cleanedAssistantContent}</ReactMarkdown>
+                      >{cleanedAfterSettings}</ReactMarkdown>
                       {copilotAction && (
                         <CopilotActionConfirm action={copilotAction} />
+                      )}
+                      {settingsProposal && (
+                        <SettingsMutationCard proposal={settingsProposal} />
                       )}
                     </div>
                   ) : msg.content}
