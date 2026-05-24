@@ -3323,6 +3323,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 dealName={effectiveDealName ?? null}
                 signature={composerSignature}
                 suggestedReplies={inlineSuggestions}
+                recommendedSuggestionId="tone-balanced"
+                onRetrySuggestion={(toneKey) => {
+                  try {
+                    window.dispatchEvent(new CustomEvent('naitive:ai-assist:retry-tone', {
+                      detail: { tone: toneKey },
+                    }));
+                  } catch {}
+                }}
               />
             </div>
           )}
