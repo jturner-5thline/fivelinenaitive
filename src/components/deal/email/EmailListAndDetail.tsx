@@ -2572,36 +2572,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     } catch {}
   }, [popOutDraft]);
 
-  // ── AI Assist → pop-out compose bridge ──────────────────────────────
+  // ── AI Assist → inline compose bridge ───────────────────────────────
   // The AI Assist sidebar's "Draft Reply" quick action dispatches
-  // `naitive:ai-assist:open-popout-draft` with the generated body. We
-  // open the Outlook-style PopOutComposer pre-filled with that draft,
-  // resolved recipients, and the thread subject (Re: …).
+  // `naitive:ai-assist:open-inline-draft` (no pop-up). We open the
+  // InlineReplyComposer in place — the suggested-reply radio cards are
+  // populated separately via `onInsertSuggestions` once the AI engine
+  // returns the generated bodies.
   useEffect(() => {
-    const onOpenPopOutDraft = (e: Event) => {
-      const detail = (e as CustomEvent<{ body: string; threadId?: string }>).detail;
-      if (!detail?.body) return;
-      if (detail.threadId && detail.threadId !== thread.threadId) return;
-      const target = getReplyTarget();
-      const subject = thread.subject?.startsWith('Re:')
-        ? thread.subject
-        : `Re: ${thread.subject || ''}`;
-      setReplyTo(null);
-      setInlineDraft(null);
-      setPopOutDraft({
-        to: target.to_email,
-        toName: target.to_name,
-        subject,
-        body: detail.body,
-        cc: '',
-        bcc: '',
-        attachments: [],
-        threadId: thread.threadId,
-      });
+    const onOpenInlineDraft = (e: Event) => {
+      const detail = (e as CustomEvent<{ threadId?: string }>).detail;
+      if (detail?.threadId && detail.threadId !== thread.threadId) return;
+      setPopOutDraft(null);
+      // Do NOT clear inlineDraft if user already has a draft going.
+      setReplyTo(getReplyTarget());
     };
-    window.addEventListener('naitive:ai-assist:open-popout-draft', onOpenPopOutDraft as EventListener);
-    return () => window.removeEventListener('naitive:ai-assist:open-popout-draft', onOpenPopOutDraft as EventListener);
-  }, [getReplyTarget, thread.subject, thread.threadId]);
+    window.addEventListener('naitive:ai-assist:open-inline-draft', onOpenInlineDraft as EventListener);
+    return () => window.removeEventListener('naitive:ai-assist:open-inline-draft', onOpenInlineDraft as EventListener);
+  }, [getReplyTarget, thread.threadId]);
 
   // ─── Thread collapse/expand state ────────────────────────────
   const VISIBLE_RECENT = 3;
