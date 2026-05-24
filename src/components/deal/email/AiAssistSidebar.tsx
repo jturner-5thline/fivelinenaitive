@@ -858,15 +858,30 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       const opt = DRAFT_INTENT_OPTIONS.find((o) => o.key === detail?.key);
       if (opt) void applyIntent(opt);
     };
+    const onRetryTone = (e: Event) => {
+      const detail = (e as CustomEvent<{ tone: ToneKey }>).detail;
+      if (!detail?.tone) return;
+      // Clear the per-tone error sentinel so the card flips back to a
+      // loading state while the retry is in flight.
+      setResult((prev) => {
+        if (!prev?.options?.[detail.tone]?.error) return prev;
+        const { [detail.tone]: _drop, ...rest } = prev.options;
+        return { ...prev, options: rest };
+      });
+      setError(null);
+      void generateTone(detail.tone, { regenerate: true });
+    };
     window.addEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
     window.addEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
     window.addEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+    window.addEventListener('naitive:ai-assist:retry-tone', onRetryTone as EventListener);
     return () => {
       window.removeEventListener('naitive:ai-assist:popout-select-tone', onSelectTone as EventListener);
       window.removeEventListener('naitive:ai-assist:popout-regenerate', onRegenerate);
       window.removeEventListener('naitive:ai-assist:popout-apply-intent', onApplyIntent as EventListener);
+      window.removeEventListener('naitive:ai-assist:retry-tone', onRetryTone as EventListener);
     };
-  }, [handleSelectTone, regenerateSelected, applyIntent]);
+  }, [handleSelectTone, regenerateSelected, applyIntent, generateTone]);
 
   // Stream draft body + loading state to the popout whenever they change.
   useEffect(() => {
