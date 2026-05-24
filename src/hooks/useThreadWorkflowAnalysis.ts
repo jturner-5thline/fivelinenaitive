@@ -359,6 +359,45 @@ export function useThreadWorkflowAnalysis({
         // non-fatal
       }
 
+      // ─── Newsletter / low-confidence lender suppression ──────────────
+      // Newsletter and mailing-list senders (Substack, LinkedIn, etc.) are
+      // not lenders. Also refuse to assign a Lender pill when the AI's
+      // own confidence is low and no concrete deal_lender id matched —
+      // surface "No lender match" instead of a junk pill. Additive: same
+      // suppression shape as the 5th Line internal-firm block above.
+      try {
+        const senderEmail = latestInbound?.from_email as string | undefined;
+        const headers = (latestInbound?.headers || latestInbound?.gmail_headers) as HeaderMap;
+        const newsletter = isNewsletterSender(senderEmail);
+        const listMail = hasListUnsubscribe(headers);
+        const lowConfNoLender =
+          result.likely_lender_firm?.confidence === 'low' &&
+          !result.recommended_update?.lender_id;
+        const refuseReason = newsletter
+          ? 'newsletter_sender'
+          : listMail
+            ? 'list_unsubscribe_header'
+            : lowConfNoLender
+              ? 'low_confidence'
+              : null;
+        if (refuseReason) {
+          result.likely_lender_firm = {
+            id: '',
+            name: '',
+            confidence: 'low',
+            reasoning: refuseReason,
+          };
+          if (result.recommended_update?.kind === 'lender_status') {
+            result.recommended_update = {
+              ...result.recommended_update,
+              kind: 'none',
+            };
+          }
+        }
+      } catch {
+        // non-fatal
+      }
+
       setAnalysis(result);
 
       // Fire prefill analytics event so we can track AI suggestion quality.
