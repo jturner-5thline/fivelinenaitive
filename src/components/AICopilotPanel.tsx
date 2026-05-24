@@ -595,6 +595,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
         if (seg.type === 'lender') return <CopilotLenderCard key={i} lender={seg.value} />;
         if (seg.type === 'task') return <CopilotTaskCard key={i} task={seg.value} />;
         if (seg.type === 'pipeline') return <CopilotPipelineSummary key={i} data={seg.value} />;
+        if (seg.type === 'settings_proposal') return <SettingsMutationCard key={i} proposal={seg.value} />;
         return (
           <ReactMarkdown
             key={i}
