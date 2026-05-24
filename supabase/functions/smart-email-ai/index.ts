@@ -571,6 +571,59 @@ ${financialsBlock ? "- When the recipient asks about financials, deal size, ARR/
 
     // ─── Route by action ────────────────────────────────────────
     switch (action) {
+      case "suggest_status_update": {
+        // Self-contained route: makes its own gateway call and returns early
+        // so we never fall through to the heavy draft pipeline. Always
+        // returns HTTP 200; failures are reported via `error_kind` in the
+        // body so the client never triggers the global error toast.
+        const sys: string = typeof requestBody?.systemPrompt === "string" ? requestBody.systemPrompt : "";
+        const usr: string = typeof requestBody?.userPrompt === "string" ? requestBody.userPrompt : "";
+        if (!sys || !usr) {
+          return new Response(
+            JSON.stringify({ result: { text: "" }, error_kind: "bad_request", message: "Missing systemPrompt/userPrompt" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+        try {
+          const gw = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${LOVABLE_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: requestBody?.fastModel === false ? "google/gemini-2.5-flash" : "google/gemini-2.5-flash-lite",
+              messages: [
+                { role: "system", content: sys },
+                { role: "user", content: usr },
+              ],
+              temperature: 0.3,
+              max_tokens: 220,
+            }),
+          });
+          if (!gw.ok) {
+            const detail = await gw.text().catch(() => "");
+            console.warn(`[smart-email-ai] suggest_status_update gateway ${gw.status}: ${detail.slice(0, 200)}`);
+            return new Response(
+              JSON.stringify({ result: { text: "" }, error_kind: "llm_error", message: `Gateway ${gw.status}` }),
+              { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+            );
+          }
+          const gwData = await gw.json();
+          const raw: string = (gwData?.choices?.[0]?.message?.content ?? "").toString().trim();
+          return new Response(
+            JSON.stringify({ result: { text: raw } }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        } catch (e) {
+          console.error("[smart-email-ai] suggest_status_update error:", e);
+          return new Response(
+            JSON.stringify({ result: { text: "" }, error_kind: "llm_error", message: e instanceof Error ? e.message : "unknown" }),
+            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      }
+
       case "generate_draft_options": {
         // Determine draft type
         const effectiveDraftType = draftType || "reply";
