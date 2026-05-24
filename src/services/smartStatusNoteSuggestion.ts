@@ -19,6 +19,8 @@ export interface StatusSuggestionResult {
   ok: boolean;
   raw?: string;
   sources: string[];
+  errorKind?: 'empty' | 'llm_error' | 'invoke_error' | 'bad_request';
+  detail?: string;
 }
 
 function buildPrompt(ctx: StatusNudgeContext): string {
@@ -70,8 +72,14 @@ export async function suggestStatusNoteUpdate(ctx: StatusNudgeContext): Promise<
         userPrompt,
         fastModel: true,
       },
+      headers: { 'x-suppress-error-toast': '1' },
     });
-    if (error) return { text: '', ok: false, sources };
+    if (error) {
+      return { text: '', ok: false, sources, errorKind: 'invoke_error', detail: String((error as any)?.message || error) };
+    }
+    if (data?.error_kind) {
+      return { text: '', ok: false, sources, errorKind: data.error_kind, detail: data?.message };
+    }
     const raw: string | undefined =
       data?.result?.text ||
       data?.result?.summary ||
@@ -79,11 +87,16 @@ export async function suggestStatusNoteUpdate(ctx: StatusNudgeContext): Promise<
       data?.text ||
       data?.summary ||
       (typeof data === 'string' ? data : undefined);
-    if (!raw || typeof raw !== 'string') return { text: '', ok: false, sources };
+    if (!raw || typeof raw !== 'string') {
+      return { text: '', ok: false, sources, errorKind: 'empty' };
+    }
     const sanitized = sanitizeStatusSuggestion(raw);
-    return { text: sanitized.text, ok: sanitized.ok, raw, sources };
-  } catch {
-    return { text: '', ok: false, sources };
+    if (!sanitized.ok) {
+      return { text: sanitized.text, ok: false, raw, sources, errorKind: 'empty' };
+    }
+    return { text: sanitized.text, ok: true, raw, sources };
+  } catch (e) {
+    return { text: '', ok: false, sources, errorKind: 'invoke_error', detail: e instanceof Error ? e.message : String(e) };
   }
 }
 

@@ -72,28 +72,47 @@ export function StaleStatusNudge({ deal, onSave, now }: StaleStatusNudgeProps) {
   const [editValue, setEditValue] = useState('');
   const [generated, setGenerated] = useState(false);
   const [insufficient, setInsufficient] = useState(false);
+  const [errorKind, setErrorKind] = useState<string | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
 
   const generate = useCallback(async () => {
     if (!ctxQuery.data) return;
     setLoading(true);
     setGenerated(false);
     setInsufficient(false);
+    setErrorKind(null);
+    setErrorDetail(null);
     try {
       if (!hasSufficientActivity(ctxQuery.data)) {
         setInsufficient(true);
         setSuggestion('');
         return;
       }
-      const result = await suggestStatusNoteUpdate(ctxQuery.data);
-      if (!result.ok) {
-        // single retry attempt
-        const retry = await suggestStatusNoteUpdate(ctxQuery.data);
-        setSuggestion(retry.text || result.text || '');
-        setGenerated(true);
-      } else {
+      let result = await suggestStatusNoteUpdate(ctxQuery.data).catch((e) => ({
+        text: '', ok: false as const, sources: [], errorKind: 'invoke_error' as const, detail: e?.message,
+      }));
+      if (!result.ok && (result as any).errorKind === 'empty') {
+        // one silent retry for transient empty
+        const retry = await suggestStatusNoteUpdate(ctxQuery.data).catch(() => result);
+        if (retry.ok) result = retry;
+      }
+      if (result.ok) {
         setSuggestion(result.text);
         setGenerated(true);
+      } else if ((result as any).errorKind === 'empty') {
+        setSuggestion('');
+        setGenerated(true);
+      } else {
+        setErrorKind((result as any).errorKind || 'llm_error');
+        setErrorDetail((result as any).detail || null);
+        setGenerated(true);
       }
+    } catch (e) {
+      // Defensive: never let this throw to the global boundary.
+      console.warn('[StaleStatusNudge] generate failed', e);
+      setErrorKind('invoke_error');
+      setErrorDetail(e instanceof Error ? e.message : String(e));
+      setGenerated(true);
     } finally {
       setLoading(false);
     }
@@ -101,12 +120,18 @@ export function StaleStatusNudge({ deal, onSave, now }: StaleStatusNudgeProps) {
 
   // Kick off generation when popover opens and context is ready
   const handleOpenChange = useCallback(async (next: boolean) => {
-    setOpen(next);
-    if (next) {
-      setEditing(false);
-      setSuggestion('');
-      setGenerated(false);
-      setInsufficient(false);
+    try {
+      setOpen(next);
+      if (next) {
+        setEditing(false);
+        setSuggestion('');
+        setGenerated(false);
+        setInsufficient(false);
+        setErrorKind(null);
+        setErrorDetail(null);
+      }
+    } catch (e) {
+      console.warn('[StaleStatusNudge] open change failed', e);
     }
   }, []);
 
@@ -198,6 +223,16 @@ export function StaleStatusNudge({ deal, onSave, now }: StaleStatusNudgeProps) {
             <p className="text-xs text-muted-foreground">
               Not enough recent activity to suggest an update — please update manually.
             </p>
+          ) : errorKind ? (
+            <div className="text-xs text-muted-foreground space-y-1" data-testid="stale-status-error">
+              <p className="text-amber-300/90">Failed to generate — retry.</p>
+              {errorDetail && (
+                <details>
+                  <summary className="cursor-pointer select-none">Show details</summary>
+                  <pre className="mt-1 whitespace-pre-wrap break-words text-[10px] opacity-80">{errorDetail}</pre>
+                </details>
+              )}
+            </div>
           ) : editing ? (
             <Textarea
               value={editValue}
