@@ -58,13 +58,14 @@ export function useStaleStatusNoteContext(
       //   3. email_threads subject ILIKE %companyName% (fallback for the
       //      common case where the classifier has not yet linked threads —
       //      see Czerlonka: 18 plainly-named threads with matched_deal_id NULL)
-      const recentClientEmails: StatusNudgeContext['recentClientEmails'] = [];
+      type RowWithIso = StatusNudgeContext['recentClientEmails'][number] & { _iso: string | null };
+      const collected: RowWithIso[] = [];
       const seenKeys = new Set<string>();
       const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
       const pushRow = (key: string, direction: 'in' | 'out', subject: string | null, atISO: string | null) => {
         if (!key || seenKeys.has(key)) return;
         seenKeys.add(key);
-        recentClientEmails.push({ direction, subject, at: fmtDate(atISO) });
+        collected.push({ direction, subject, at: fmtDate(atISO), _iso: atISO || null });
       };
       const directionFromSubject = (s: string | null | undefined): 'in' | 'out' =>
         s && /^\s*(Re:|Fwd:|FW:)/i.test(s) ? 'in' : 'out';
@@ -127,13 +128,15 @@ export function useStaleStatusNoteContext(
         }
       } catch {/* swallow */}
 
-      // Sort desc by date and cap at 10
-      recentClientEmails.sort((a, b) => {
-        const av = a.at ? new Date(`${a.at}, ${new Date().getFullYear()}`).getTime() : 0;
-        const bv = b.at ? new Date(`${b.at}, ${new Date().getFullYear()}`).getTime() : 0;
+      // Sort desc by source ISO date and cap at 10
+      collected.sort((a, b) => {
+        const av = a._iso ? Date.parse(a._iso) : 0;
+        const bv = b._iso ? Date.parse(b._iso) : 0;
         return bv - av;
       });
-      recentClientEmails.splice(10);
+      const recentClientEmails: StatusNudgeContext['recentClientEmails'] = collected
+        .slice(0, 10)
+        .map(({ direction, subject, at }) => ({ direction, subject, at }));
 
       const currentNote = stripHtml(deal.notes || '').slice(0, 600) || null;
 
