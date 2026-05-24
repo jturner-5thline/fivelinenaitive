@@ -1027,24 +1027,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
             fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
             onOpenDraft={() => {
-              // Draft Reply now opens the Outlook-style pop-out compose
-              // modal pre-filled with the AI draft. We still keep the
-              // inline draft module open for users who want to keep
-              // iterating in the sidebar.
+              // Draft Reply routes through the SAME inline composer used by
+              // the per-thread "Reply" button — no separate pop-up modal.
+              // We open the inline composer in place and queue both tones
+              // so the user gets 2 suggested-reply radio cards (Recommended
+              // + Shorter). The cards re-use the existing
+              // `generate_draft_options` engine — no prompt fork.
               setDraftOpen(true);
-              const existing = result?.options[selected]?.body;
-              if (existing) {
+              if (onOpenInlineReply) {
+                onOpenInlineReply();
+              } else {
                 try {
-                  window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-popout-draft', {
-                    detail: { body: existing, threadId: thread.threadId },
+                  window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-inline-draft', {
+                    detail: { threadId: thread.threadId },
                   }));
                 } catch {}
-                return;
               }
-              popOutPendingTone.current = selected;
-              if (!loadingTones[selected]) {
-                void generateTone(selected);
-              }
+              // Ensure both tones are generated so the radio cards populate.
+              TONE_ORDER.forEach((tone) => {
+                if (!result?.options[tone] && !loadingTones[tone]) {
+                  void generateTone(tone);
+                }
+              });
             }}
             onInsertDraft={onInsertDraft}
           />
