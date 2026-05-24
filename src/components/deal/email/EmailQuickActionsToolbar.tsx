@@ -217,6 +217,50 @@ export function EmailQuickActionsToolbar({
       >
         {actions.map((a) => {
           const isActive = active === a.key;
+          if (a.key === 'lender') {
+            const hasDeal = !!(dealId || fallbackDealId);
+            const btn = (
+              <AIAssistActionButton
+                label={a.label}
+                icon={
+                  <span className="inline-flex items-center gap-1">
+                    {a.icon}
+                    {!hasDeal && (
+                      <Info className="h-3 w-3 opacity-60" aria-hidden />
+                    )}
+                  </span>
+                }
+                iconClass={a.iconClass}
+                isActive={isActive}
+                aria-disabled={!hasDeal || undefined}
+                className={cn(
+                  !hasDeal && 'opacity-50 cursor-not-allowed hover:bg-white/[0.03] hover:border-white/10 hover:text-foreground/90',
+                )}
+                onClick={() => {
+                  if (!hasDeal) {
+                    void logUpdateLenderRefused({
+                      reason: 'no_deal_match',
+                      threadId: thread.threadId,
+                      contactId: contactId ?? null,
+                    });
+                    return;
+                  }
+                  handleClick(a.key);
+                }}
+              />
+            );
+            if (hasDeal) return <div key={a.key}>{btn}</div>;
+            return (
+              <Tooltip key={a.key}>
+                <TooltipTrigger asChild>
+                  <div>{btn}</div>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Link a deal first to update lender stage
+                </TooltipContent>
+              </Tooltip>
+            );
+          }
           if (a.key === 'meeting') {
             return (
               <AIAssistActionButton
