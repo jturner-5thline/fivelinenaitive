@@ -1,69 +1,84 @@
-## Remediation Plan — AI Email Assistant fixes #5/#6/#3/#2/#1/#4
+## Draft Reply UX — route through Inline Reply composer with suggested options
 
-Scope: all 18 actionable findings from the verification report. Classifier weights stay at current values (0.99 / 0.7 / 0.5 / 0.4); the spec doc is updated to match. Live-OAuth smoke tests (#2f / #1f / #4h) and cron-schema verification (#4d) remain user-side — I'll surface what to check after deploy.
+### 1. Current Draft Reply path (the pop-up)
 
-The plan is grouped by execution phase so we can land it in one DB migration + a small batch of edge-function/UI edits.
+- **Trigger:** `EmailQuickActionsToolbar.tsx` → "Draft Reply" pill → `onOpenDraft` prop.
+- **Handler:** `src/components/deal/email/AiAssistSidebar.tsx` L1019–1038 — `onOpenDraft` dispatches the `naitive:ai-assist:open-popout-draft` CustomEvent (and a fallback effect at L850–861 does the same once a draft body resolves).
+- **Mount target:** `src/components/deal/email/EmailListAndDetail.tsx` L2573–2597 listens for that event and calls `setPopOutDraft({ ... })`, which mounts `<PopOutComposer />` at L3423–3437 (`src/components/deal/email/PopOutComposer.tsx`).
+  - PopOutComposer is the full pop-up surface (To / Subject / formatting toolbar / signature / Polish / Attach / Snippets / Insert availability / Draft with AI).
+- The per-thread toolbar "Reply" button (`handleReply`, L2255) already mounts `<InlineReplyComposer />` inline (L3316–3333). Visually heavy (`h-[min(92vh,980px)]`) but it is the in-place composer, not a modal. Draft Reply will be aligned with this same surface.
 
----
+### 2. Inline Reply + Suggested Replies today
 
-### Phase 1 — Schema migration (single migration)
+- **Inline composer:** `src/components/deal/email/InlineReplyComposer.tsx`, mounted at `EmailListAndDetail.tsx` L3316 with props `replyTo`, `initialDraft`, `onSend`, `onDiscard`, `onPopOut`, `onDraftChange`, `onFieldBlur`, `saveStatus`, `tokenContext`, `dealId`, `dealName`, `signature`.
+- **Suggestions engine (single source of truth):** `smart-email-ai` edge function, action `generate_draft_options`, invoked from `AiAssistSidebar.generateTone()` (L569–660). Returns one body per tone (`concise`, `balanced`). Stored in `result.options[tone].body`. **Do not fork prompts.**
+- **AI Assist → Inline bridge already exists:** `AiAssistSidebar` `onInsertDraft` (prop wired in `EmailListAndDetail.tsx` L3393–3414) sets `setReplyTo(target)` + `setInlineDraft({ ... body })` — i.e. populates the inline composer. This is the path Draft Reply will reuse.
 
-1. **`recognition_log.message_id`** — already exists nullable, but `classify-email-thread` writes NULL. No schema change; fixed in Phase 2 by populating it.
-2. **`recognition_log.candidates`** — already jsonb. No schema change; populated in Phase 2.
-3. **`meeting_holds.google_event_id`** — existing; no change. Append `extendedProperties.private.naitive_hold_id` is a Nylas event-payload concern, no DB change.
-4. **Cron job** — create `meeting-holds-sweep` cron at 15 min if not present (idempotent insert into `cron.job` via `cron.schedule`).
-5. **Seed `meeting_title_templates`** for 5th Line tenants — one Default row + 7 stage-matched rows per `org_company_id` belonging to 5thline.co domain. Insert via `supabase--insert` (data not schema).
+### 3. Minimal refactor
 
-### Phase 2 — Edge-function edits (`smart-email-ai`, `gmail-messages`, `classify-email-thread`, `meeting-holds`)
+Strictly additive. Reuses existing components and the existing `generate_draft_options` engine.
 
-6. **#5b Writer wiring (outbound)** — in `smart-email-ai/index.ts`, add new action `log_email_activity` that inserts a full email row into `activity_logs` with all new columns (`direction='outbound'`, subject, body, from/to/cc/bcc, message_id from Gmail send response, thread_id, sent_at, provider='gmail'). Invoked by the existing send path right after the Gmail send call.
-7. **#5b Writer wiring (inbound)** — in `gmail-messages/index.ts` (the sync ingest path), after upserting each `gmail_messages` row, if the message resolves to a deal via `email_threads.matched_deal_id`, additionally upsert one `activity_logs` row keyed by `message_id` (ON CONFLICT DO NOTHING via the existing unique partial index).
-8. **#6a `candidates[]` population** — in `classify-email-thread/index.ts`, change the recognition_log insert to write `candidates: result.candidates ?? []`. In `classifier.ts`, add a `candidates` field to the return shape containing the ranked top-5 `{deal_id, score, signals[]}` considered.
-9. **#6c Threshold alignment** — change UI chip thresholds to `0.6 / 0.3` (currently 0.6 / 0.4) so telemetry and UI agree. Edit `classifier.ts` constants only.
-10. **#6g `message_id` population** — in `classify-email-thread/index.ts`, write the latest message's `gmail_message_id` into `recognition_log.message_id` (instead of NULL).
-11. **#4c `— Pending` suffix + `naitive_hold_id` ext-prop** — in `meeting-holds/index.ts` `runCreate`, append ` — Pending` to the Nylas event title and pass `{ extendedProperties: { private: { naitive_hold_id: <row id> } } }` on the create call.
-12. **#4a Refill window ±5 business days** — in `MeetingSchedulerCard` re-verify branch, replace the generic slot generator call with one explicitly windowed to `[firstChosenSlot, +5 business days]`, mirroring the documented behavior.
+| File | Change |
+|---|---|
+| `src/components/deal/email/AiAssistSidebar.tsx` | Replace `onOpenDraft` body (L1019–1038): stop dispatching `naitive:ai-assist:open-popout-draft`. Instead: (a) set `draftOpen=true`, (b) ensure both tones are queued via `generateTone('concise')` + `generateTone('balanced')`, (c) dispatch a new `naitive:ai-assist:open-inline-draft` CustomEvent `{ threadId }` so the parent opens the InlineReplyComposer in-place with no prefilled body yet. Also delete the L850–861 "pop-out pending tone" effect (or no-op it) so a generated draft never auto-opens PopOutComposer from Draft Reply. PopOutComposer remains reachable from the InlineReplyComposer "pop-out" affordance only. |
+| `src/components/deal/email/EmailListAndDetail.tsx` | Add listener for `naitive:ai-assist:open-inline-draft` (mirrors L2573–2597 but calls `setReplyTo(getReplyTarget())` + `setInlineDraft(null)` instead of `setPopOutDraft`). Remove or guard the existing `open-popout-draft` listener so Draft Reply no longer triggers the pop-up (PopOutComposer stays mounted only when the user hits InlineReplyComposer's `onPopOut`). |
+| `src/components/deal/email/InlineReplyComposer.tsx` | Add an optional `suggestedReplies?: Array<{ id: string; toneKey: 'concise'\|'balanced'; label: string; body: string; loading?: boolean }>` prop, plus `onSelectSuggestion?(id)` + `onRegenerateSuggestions?()`. When non-empty AND the body textarea is empty (or user hasn't manually edited), render a new `SuggestedReplyCards` section above the body textarea: 2–3 radio cards (Concise / Balanced / +Custom-regenerate). Selecting a card fills the body via existing `onChange` path and records `selectedSuggestionId` locally. Once user types into the textarea, mark "touched" so re-selecting won't clobber edits without confirmation. |
+| `src/components/deal/email/SuggestedReplyCards.tsx` *(new, presentational only)* | Radio-card list. Skeleton state while `loading`. No network calls — pure props. |
+| `src/components/deal/email/AiAssistSidebar.tsx` (cont.) | Pass `result.options` → InlineReplyComposer via a new `onInsertDraftSuggestions(options)` callback that hits the same `onInsertDraft` channel but with a structured payload. Implementation: extend the existing `onInsertDraft` prop signature to accept `{ body?: string; suggestions?: SuggestedReply[] }` (backward-compatible — current callers pass a string, new caller passes object). Parent (`EmailListAndDetail.tsx` L3393–3414) routes `suggestions` into the `<InlineReplyComposer />` `suggestedReplies` prop via a new `inlineSuggestions` state, and continues to handle `body` as today. |
 
-### Phase 3 — Client / UI edits (additive)
+No prompt fork: suggestions come from the same `generateTone(tone)` call already used for Draft Reply (which itself calls `generate_draft_options`). The third "+Custom" card simply re-invokes `generateTone('balanced', { regenerate: true, customInstructions })` with the existing path.
 
-13. **#3c Settings seeder** — `MeetingTitleSettings.tsx` already loads SEED_TEMPLATES client-side. Add an on-mount upsert (admin-only) that persists missing seed rows to `meeting_title_templates` so they're visible to other users; idempotent.
-14. **#3e Reply subject guard** — extend `useRenderMeetingTitle` consumers (`StageMeetingTitleChip`, `MeetingSchedulerCard.onSetSubject`) to accept a `isReply` flag; when true, return `Re: <original>` instead of the rendered title. Wire `isReply` from `InlineReplyComposer` / `EmailComposerCard`.
-15. **#6e "Confirm link" pill on Communications tab** — in `DealCommunicationsTab.tsx`, when a row's recognition outcome is `suggested` (joined via `activity_logs.message_id → recognition_log.message_id`), render an inline "Confirm link" pill that writes a `recognition_overrides` row on click.
-16. **#4f Per-slot status dots green/amber/grey/red** — extend `SlotStatus` union to include `'amber' | 'grey' | 'red'` and map: clean→green, refilled→amber, limited-unknown→grey, conflict→red. Pure presentational.
-17. **#2b ±1-week prefetch** — in `useCalendarEvents`, after the primary fetch, fire-and-forget prefetch the prior and next ranges via `queryClient.prefetchQuery`.
-18. **#2d react-window virtualization** — wrap the time-grid rows in `react-window`'s `FixedSizeList`. Already a dep; if missing, `bun add react-window`.
+### 4. Out of scope (untouched)
 
-### Phase 4 — Documentation only (no code behavior change)
+Schedule Meeting flow, NOTES generator (`scheduleMeetingNotes.ts`, `QuickBookMeetingPopover.tsx`), Availability Check, deal recognition, calendar rendering, all edge functions (no prompt or model changes), the send pipeline (`handleSendFromComposer`), `meeting-holds/*`, `calendar-events/*`, `create_calendar` action, `calendar_id` column, `GCAL_SMOKETEST_CALENDAR_ID` env var.
 
-19. **#6b Spec doc** — update the comments in `classifier.ts` so the documented weights match the implemented constants (0.99 / 0.7 / 0.5 / 0.4), and note thresholds 0.6 / 0.3.
+### 5. Test plan
 
-### Phase 5 — Deploy + smoke
+New file: `src/components/deal/email/__tests__/draftReplyInline.test.tsx` (Vitest + RTL).
 
-Deploy `smart-email-ai`, `gmail-messages`, `classify-email-thread`, `meeting-holds`. Then ask the user to run the three live-OAuth smoke tests (#2f / #1f / #4h) and to verify the `meeting-holds-sweep` cron row.
+1. Mount `<EmailListAndDetail />` with a fixture thread (Project Vista) and AI Assist toggled on. Stub `supabase.functions.invoke('smart-email-ai', …)` to return two fake options.
+2. Click the "Draft Reply" pill in `EmailQuickActionsToolbar`.
+3. Assertions:
+   - **(a)** `screen.queryByTestId('popout-composer')` is `null` (PopOutComposer NOT mounted).
+   - **(b)** `screen.getByTestId('inline-reply-composer')` is in the DOM.
+   - **(c)** `screen.findAllByRole('radio', { name: /concise|balanced/i })` returns ≥ 2 cards.
+   - **(d)** Click a card → the `<textarea>` `value` equals that option's body.
+   - **(e)** "Send" button is rendered. Disabled until either a card is selected or the textarea has non-empty text. Enabled after step (d).
+4. Negative test: clicking the per-thread toolbar "Reply" button does NOT mount PopOutComposer (only InlineReplyComposer).
 
----
+(Add `data-testid="popout-composer"` to PopOutComposer root and `data-testid="inline-reply-composer"` to InlineReplyComposer root as part of this PR — both purely additive.)
 
-### Items explicitly NOT done
+### 6. Before / after DOM sketch (Project Vista thread)
 
-- **#5d Backfill of historical `deals.notes`** — query shows zero candidate rows (0 deals match AI-email-shape regex). I'll add a no-op stub script under `supabase/scripts/` but won't run any destructive migration.
-- **#6h `deal_contacts` table** — the spec called for this table; the classifier uses `contact_deals` instead. Keeping `contact_deals` (current behavior) and reconciling the spec text in the same Phase-4 doc edit.
-- **#6b weight rewrite** — user opted to keep current code.
-- **#4d cron verification, #2f / #1f / #4h live smoke** — require permissions/sessions I don't have from here.
+```text
+BEFORE  (current Draft Reply)
+EmailListAndDetail
+├─ ThreadDetail (Project Vista)
+│  └─ ScrollArea (messages)
+├─ AiAssistSidebar
+│  └─ EmailQuickActionsToolbar [Draft Reply] ─click──┐
+└─ PopOutComposer  ◄──────────────── modal pop-up ───┘
+   (To / Subject / Toolbar / Signature / Polish / …)
 
-### Files touched
+AFTER   (Draft Reply → inline)
+EmailListAndDetail
+├─ ThreadDetail (Project Vista)
+│  └─ ScrollArea (messages)
+├─ InlineReplyComposer  ◄─── opened in place at thread bottom
+│  ├─ SuggestedReplyCards
+│  │   (•) Concise   ( ) Balanced   ( ) + Custom
+│  ├─ <textarea> (populated when card selected)
+│  └─ [Send] [Discard] [Pop out]
+└─ AiAssistSidebar
+   └─ EmailQuickActionsToolbar [Draft Reply] (no longer dispatches popout event)
+```
 
-- `supabase/functions/smart-email-ai/index.ts`
-- `supabase/functions/gmail-messages/index.ts`
-- `supabase/functions/classify-email-thread/index.ts`
-- `supabase/functions/classify-email-thread/classifier.ts`
-- `supabase/functions/meeting-holds/index.ts`
-- `src/components/settings/MeetingTitleSettings.tsx`
-- `src/components/deal/email/MeetingSchedulerCard.tsx`
-- `src/components/deal/email/StageMeetingTitleChip.tsx`
-- `src/components/deal/email/InlineReplyComposer.tsx` (pass `isReply`)
-- `src/components/deal/DealCommunicationsTab.tsx`
-- `src/hooks/useCalendarEvents.ts`
-- `src/components/calendar/NaitiveCalendar.tsx`
-- One new migration for the sweep cron + (separately, via insert tool) the 5th Line seed templates.
+### Phase 2 (after approval)
 
-Approve to proceed and I'll execute Phases 1-5 in order.
+Implement per above, run the Vitest, paste pass/fail counts, then re-render Project Vista's Draft Reply flow and paste a DOM-tree snapshot for sign-off.
+
+### Code freeze restatement
+
+The code freeze otherwise remains in place. The previously-shipped `create_calendar` action, the nullable `meeting_holds.calendar_id` column, and the `GCAL_SMOKETEST_CALENDAR_ID` env hook are still default-off in production: `calendar_id` defaults to `"primary"`, `create_calendar` has zero client call-sites, and the smoke-test env var is not set in prod.
+
+**STOP. Awaiting "approved" before Phase 2.**

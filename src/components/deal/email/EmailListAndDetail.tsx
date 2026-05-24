@@ -62,6 +62,7 @@ import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { MockEmail, EmailThread, getAvatarColor, groupEmailsByThread } from './mockEmailData';
 import { InlineReplyComposer, type ReplyDraft } from './InlineReplyComposer';
 import { PopOutComposer } from './PopOutComposer';
+import type { SuggestedReply } from './SuggestedReplyCards';
 import { useEmailDraft, useUnsavedDraftGuard } from '@/hooks/useEmailDraft';
 import { detectBareEmailsInDraft } from '@/lib/detectDraftEmails';
 import { detectThreadQAndA, buildQADedupKey, type ThreadMessageLite } from '@/lib/detectThreadQAndA';
@@ -2090,6 +2091,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
   const [popOutDraft, setPopOutDraft] = useState<ReplyDraft | null>(null);
   const [inlineDraft, setInlineDraft] = useState<ReplyDraft | null>(null);
+  /**
+   * AI-suggested reply options streamed from AiAssistSidebar's
+   * `generate_draft_options` engine. When non-empty, the inline composer
+   * renders the radio-card picker above the body textarea.
+   */
+  const [inlineSuggestions, setInlineSuggestions] = useState<SuggestedReply[]>([]);
 
   // Draft persistence
   const { loadDraft, updateDraft, flushSave, discardDraft, clearDraftOnSend, hasSavedDraft, saveStatus } = useEmailDraft(thread.threadId);
@@ -2565,36 +2572,23 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
     } catch {}
   }, [popOutDraft]);
 
-  // ── AI Assist → pop-out compose bridge ──────────────────────────────
+  // ── AI Assist → inline compose bridge ───────────────────────────────
   // The AI Assist sidebar's "Draft Reply" quick action dispatches
-  // `naitive:ai-assist:open-popout-draft` with the generated body. We
-  // open the Outlook-style PopOutComposer pre-filled with that draft,
-  // resolved recipients, and the thread subject (Re: …).
+  // `naitive:ai-assist:open-inline-draft` (no pop-up). We open the
+  // InlineReplyComposer in place — the suggested-reply radio cards are
+  // populated separately via `onInsertSuggestions` once the AI engine
+  // returns the generated bodies.
   useEffect(() => {
-    const onOpenPopOutDraft = (e: Event) => {
-      const detail = (e as CustomEvent<{ body: string; threadId?: string }>).detail;
-      if (!detail?.body) return;
-      if (detail.threadId && detail.threadId !== thread.threadId) return;
-      const target = getReplyTarget();
-      const subject = thread.subject?.startsWith('Re:')
-        ? thread.subject
-        : `Re: ${thread.subject || ''}`;
-      setReplyTo(null);
-      setInlineDraft(null);
-      setPopOutDraft({
-        to: target.to_email,
-        toName: target.to_name,
-        subject,
-        body: detail.body,
-        cc: '',
-        bcc: '',
-        attachments: [],
-        threadId: thread.threadId,
-      });
+    const onOpenInlineDraft = (e: Event) => {
+      const detail = (e as CustomEvent<{ threadId?: string }>).detail;
+      if (detail?.threadId && detail.threadId !== thread.threadId) return;
+      setPopOutDraft(null);
+      // Do NOT clear inlineDraft if user already has a draft going.
+      setReplyTo(getReplyTarget());
     };
-    window.addEventListener('naitive:ai-assist:open-popout-draft', onOpenPopOutDraft as EventListener);
-    return () => window.removeEventListener('naitive:ai-assist:open-popout-draft', onOpenPopOutDraft as EventListener);
-  }, [getReplyTarget, thread.subject, thread.threadId]);
+    window.addEventListener('naitive:ai-assist:open-inline-draft', onOpenInlineDraft as EventListener);
+    return () => window.removeEventListener('naitive:ai-assist:open-inline-draft', onOpenInlineDraft as EventListener);
+  }, [getReplyTarget, thread.threadId]);
 
   // ─── Thread collapse/expand state ────────────────────────────
   const VISIBLE_RECENT = 3;
@@ -3328,6 +3322,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 dealId={effectiveDealId ?? null}
                 dealName={effectiveDealName ?? null}
                 signature={composerSignature}
+                suggestedReplies={inlineSuggestions}
               />
             </div>
           )}
@@ -3410,6 +3405,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                     attachments: inlineDraft?.attachments || [],
                     threadId: thread.threadId,
                   });
+                  setShowResumeBanner(false);
+                }}
+                onInsertSuggestions={(suggestions) => {
+                  setInlineSuggestions(suggestions as SuggestedReply[]);
+                }}
+                onOpenInlineReply={() => {
+                  setPopOutDraft(null);
+                  setReplyTo(getReplyTarget());
                   setShowResumeBanner(false);
                 }}
               />

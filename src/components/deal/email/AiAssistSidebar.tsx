@@ -200,11 +200,21 @@ interface Props {
   dealName?: string;
   onClose: () => void;
   onInsertDraft: (body: string) => void;
+  /**
+   * Streams AI-generated suggested replies into the inline composer.
+   * Called whenever the underlying generate_draft_options results update.
+   * If not provided, the legacy single-body insert path is used.
+   */
+  onInsertSuggestions?: (
+    suggestions: Array<{ id: string; toneKey: ToneKey; label: string; body: string; loading?: boolean }>,
+  ) => void;
+  /** Opens the inline reply composer in place (without prefilling a body). */
+  onOpenInlineReply?: () => void;
   /** Persists a deal link from the unmatched-email context card. */
   onLinkDeal?: (dealId: string, dealName: string) => void | Promise<void>;
 }
 
-export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onLinkDeal }: Props) {
+export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onInsertSuggestions, onOpenInlineReply, onLinkDeal }: Props) {
   const enqueueAiAction = useEnqueueAiAction();
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
@@ -842,23 +852,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     } catch {}
   }, [selectedOption, selected, isSelectedLoading, activeIntentKey]);
 
-  // ── Pop-out compose modal bridge ───────────────────────────────────────
-  // When the Draft Reply quick action is clicked, we generate (if needed)
-  // and then dispatch `naitive:ai-assist:open-popout-draft` so the parent
-  // EmailListAndDetail can open the Outlook-style PopOutComposer pre-filled
-  // with the AI body, recipients, and subject from the active thread.
+  // ── Stream suggested-reply cards into the inline composer ─────────────
+  // The Draft Reply quick action opens the inline composer (not a pop-up)
+  // and the cards below are populated from the same generate_draft_options
+  // engine. We re-emit on every tone resolution so the cards swap from
+  // "Generating…" to the resolved body as soon as either tone returns.
   useEffect(() => {
-    const pending = popOutPendingTone.current;
-    if (!pending) return;
-    const body = result?.options[pending]?.body;
-    if (!body) return;
+    if (!onInsertSuggestions) return;
+    const suggestions = TONE_ORDER.map((tone) => {
+      const opt = result?.options[tone];
+      return {
+        id: `tone-${tone}`,
+        toneKey: tone,
+        label: TONE_LABELS[tone],
+        body: opt?.body ?? '',
+        loading: !opt?.body && !!loadingTones[tone],
+      };
+    });
+    onInsertSuggestions(suggestions);
+    // Clear any legacy popout-pending marker so a stale ref never opens
+    // the pop-out composer after the inline switch.
     popOutPendingTone.current = null;
-    try {
-      window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-popout-draft', {
-        detail: { body, threadId: thread.threadId },
-      }));
-    } catch {}
-  }, [result, thread.threadId]);
+  }, [result, loadingTones, onInsertSuggestions]);
 
   // Expose a tiny debug snapshot so the top-level ErrorBoundary can include
   // AiAssist state in its fallback when something downstream crashes.
@@ -1017,24 +1032,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             fallbackDealId={workflowAnalysis?.likely_deal?.id || null}
             fallbackDealName={workflowAnalysis?.likely_deal?.name || null}
             onOpenDraft={() => {
-              // Draft Reply now opens the Outlook-style pop-out compose
-              // modal pre-filled with the AI draft. We still keep the
-              // inline draft module open for users who want to keep
-              // iterating in the sidebar.
+              // Draft Reply routes through the SAME inline composer used by
+              // the per-thread "Reply" button — no separate pop-up modal.
+              // We open the inline composer in place and queue both tones
+              // so the user gets 2 suggested-reply radio cards (Recommended
+              // + Shorter). The cards re-use the existing
+              // `generate_draft_options` engine — no prompt fork.
               setDraftOpen(true);
-              const existing = result?.options[selected]?.body;
-              if (existing) {
+              if (onOpenInlineReply) {
+                onOpenInlineReply();
+              } else {
                 try {
-                  window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-popout-draft', {
-                    detail: { body: existing, threadId: thread.threadId },
+                  window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-inline-draft', {
+                    detail: { threadId: thread.threadId },
                   }));
                 } catch {}
-                return;
               }
-              popOutPendingTone.current = selected;
-              if (!loadingTones[selected]) {
-                void generateTone(selected);
-              }
+              // Ensure both tones are generated so the radio cards populate.
+              TONE_ORDER.forEach((tone) => {
+                if (!result?.options[tone] && !loadingTones[tone]) {
+                  void generateTone(tone);
+                }
+              });
             }}
             onInsertDraft={onInsertDraft}
           />
