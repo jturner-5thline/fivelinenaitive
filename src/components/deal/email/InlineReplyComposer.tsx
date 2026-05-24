@@ -9,6 +9,7 @@ import { PreSendAlertDialog } from './PreSendAlertDialog';
 import type { TokenContext } from '@/hooks/useEmailSnippets';
 import type { DraftSaveStatus } from '@/hooks/useEmailDraft';
 import { dispatchComposeBody } from './scheduleIntent';
+import { SuggestedReplyCards, type SuggestedReply } from './SuggestedReplyCards';
 
 // Re-export the public draft contract so callers/PopOutComposer keep working.
 export interface ReplyDraft {
@@ -40,6 +41,14 @@ interface InlineReplyComposerProps {
   dealId?: string | null;
   /** Optional signature ghost text. */
   signature?: string;
+  /**
+   * AI-suggested reply options. When provided (and body is empty/untouched),
+   * a radio-card picker renders above the composer body. Selecting a card
+   * fills the body with that suggestion. Powered by `generate_draft_options`
+   * via AiAssistSidebar — this component is the single composer surface.
+   */
+  suggestedReplies?: SuggestedReply[];
+  onRegenerateSuggestions?: () => void;
 }
 
 export function InlineReplyComposer({
@@ -55,6 +64,8 @@ export function InlineReplyComposer({
   dealName,
   dealId,
   signature,
+  suggestedReplies,
+  onRegenerateSuggestions,
 }: InlineReplyComposerProps) {
   // Recipients are arrays internally; persisted in ReplyDraft as comma strings.
   const [recipients, setRecipients] = useState<ComposerRecipients>(() => ({
@@ -66,6 +77,22 @@ export function InlineReplyComposer({
   const [body, setBody] = useState(initialDraft?.body ?? '');
   const [attachments, setAttachments] = useState<string[]>(initialDraft?.attachments ?? []);
   const [files, setFiles] = useState<File[]>([]);
+  const [selectedSuggestionId, setSelectedSuggestionId] = useState<string | null>(null);
+  const handleSelectSuggestion = useCallback(
+    (id: string) => {
+      const s = (suggestedReplies || []).find((x) => x.id === id);
+      if (!s) return;
+      setSelectedSuggestionId(id);
+      setBody(s.body);
+    },
+    [suggestedReplies],
+  );
+  const handleBodyChange = useCallback((next: string) => {
+    // Manual edits clear the suggestion selection so the card no longer
+    // appears as the active choice (but the cards remain visible).
+    setSelectedSuggestionId(null);
+    setBody(next);
+  }, []);
 
   const getCurrentDraft = useCallback((): ReplyDraft => ({
     to: emailArrayToString(recipients.to),
@@ -158,7 +185,15 @@ export function InlineReplyComposer({
   };
 
   return (
-    <>
+    <div data-testid="inline-reply-composer" className="flex flex-col h-full min-h-0">
+      {suggestedReplies && suggestedReplies.length > 0 && (
+        <SuggestedReplyCards
+          suggestions={suggestedReplies}
+          selectedId={selectedSuggestionId}
+          onSelect={handleSelectSuggestion}
+          onRegenerate={onRegenerateSuggestions}
+        />
+      )}
       <EmailComposerCard
         replyToName={replyTo.to_name}
         threadId={replyTo.threadId}
@@ -167,7 +202,7 @@ export function InlineReplyComposer({
         subject={subject}
         onSubjectChange={setSubject}
         body={body}
-        onBodyChange={setBody}
+        onBodyChange={handleBodyChange}
         attachments={attachments}
         onAttachmentsChange={setAttachments}
         onFilesChange={setFiles}
@@ -191,6 +226,6 @@ export function InlineReplyComposer({
         onAddAttachment={() => { clearPreSendAlert(); handleAddAttachment(); }}
         onAddSubject={() => { clearPreSendAlert(); }}
       />
-    </>
+    </div>
   );
 }
