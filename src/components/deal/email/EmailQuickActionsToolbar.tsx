@@ -9,9 +9,12 @@ import {
   AlignLeft,
   Loader2,
   ListChecks,
+  Info,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { logUpdateLenderRefused } from '@/lib/aiAssistRefusalLogger';
 import { CreateTaskInlineCard } from './CreateTaskInlineCard';
 import { SaveToDealCard } from './SaveToDealCard';
 import { MeetingSchedulerCard } from './MeetingSchedulerCard';
