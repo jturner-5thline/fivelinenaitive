@@ -297,6 +297,7 @@ const App = () => (
                         <CanonicalTag />
                         <CookieConsent />
                         <NewTaskViaNaitiveModal />
+                        <PilotKpiTrackingMount />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
                         <Route path="/" element={<Homepage />} />
