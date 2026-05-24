@@ -391,7 +391,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
     }
   );
   
-  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline' | 'settings_proposal'; value: any }> = [];
   // Match either fenced ```json {...} ``` blocks OR bare {...} objects that
   // contain an "action" key. The LLM sometimes drops the fence or uses
   // alternate key names ("type" instead of "action_type", "label" instead of
@@ -428,6 +428,9 @@ function CopilotAssistantContent({ content }: { content: string }) {
       else if (parsed.responseType === 'lender_card') segments.push({ type: 'lender', value: parsed.data });
       else if (parsed.responseType === 'task_card') segments.push({ type: 'task', value: parsed.data });
       else if (parsed.responseType === 'pipeline_summary') segments.push({ type: 'pipeline', value: parsed.data });
+      else if (parsed.responseType === 'settings_proposal' && parsed.data?.diff_id && parsed.data?.tool_name) {
+        segments.push({ type: 'settings_proposal', value: parsed.data });
+      }
       else if (parsed.responseType === 'lender_filter') {
         // Side-effect only: tell the /lenders page to filter its directory.
         try {
