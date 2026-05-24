@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { REGISTRY_BY_KEY } from "../ai-settings-tool/registry.ts";
+import { REGISTRY_BY_KEY } from "./registry.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
