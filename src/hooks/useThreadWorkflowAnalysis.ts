@@ -6,6 +6,11 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { type LenderPassReasonCategory } from '@/hooks/useLenderDisqualifications';
+import {
+  isNewsletterSender,
+  hasListUnsubscribe,
+  type HeaderMap,
+} from '@/lib/newsletterSenderDetection';
 
 export type WorkflowConfidence = 'low' | 'medium' | 'high';
 export type WorkflowSignalType =
