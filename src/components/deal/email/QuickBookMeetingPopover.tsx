@@ -29,6 +29,8 @@ import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import type { EmailThread } from './mockEmailData';
+import { buildScheduleNotes } from '@/lib/scheduleMeetingNotes';
+import { summarizeThreadTopic } from '@/services/smartEmailTopic';
 
 /**
  * QuickBookMeetingPopover
@@ -198,19 +200,34 @@ function seedAttendees(
   return out;
 }
 
-/** Naive agenda generation from the latest message snippet. */
-function seedAgenda(thread: EmailThread): string {
-  const subj = thread.subject || 'Discussion';
-  const snippet =
-    thread.latestEmail?.snippet ||
-    thread.latestEmail?.body_text?.slice(0, 240) ||
-    '';
-  const lines = [
-    `Topic: ${subj}.`,
-    snippet ? `Context: ${snippet.replace(/\s+/g, ' ').slice(0, 200).trim()}…` : null,
-    `Agenda: review status, align on next steps, action items.`,
-  ].filter(Boolean) as string[];
-  return lines.join('\n');
+/** Build the initial NOTES block from structured thread + slot context.
+ *  Replaces the legacy `seedAgenda` which dumped the raw email body. */
+function initialNotes(args: {
+  thread: EmailThread;
+  dealName?: string | null;
+  tz: string;
+  topic?: string | null;
+}): string {
+  const latest = args.thread.latestEmail;
+  const receivedAt = latest?.received_at ? new Date(latest.received_at) : null;
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  return buildScheduleNotes({
+    dealName: args.dealName ?? null,
+    sender: {
+      name: latest?.from_name ?? null,
+      email: latest?.from_email ?? null,
+      receivedAt,
+    },
+    proposedStart: null,
+    proposedEnd: null,
+    attendeeTimezones: [args.tz],
+    freeBusyVerified: false,
+    topic: args.topic ?? null,
+    fallbackSubject: args.thread.subject ?? null,
+    threadId: args.thread.provider_thread_id || args.thread.threadId,
+    origin,
+    userTz: args.tz,
+  });
 }
 
 /** Compute the first 3 free slots after `from` of `durationMin` length,
