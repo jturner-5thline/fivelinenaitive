@@ -46,7 +46,7 @@ describe('SettingsMutationCard', () => {
   beforeEach(() => {
     mockIsAdmin = true;
     invokeMock.mockReset();
-    vi.useFakeTimers();
+    vi.useFakeTimers({ shouldAdvanceTime: true });
   });
   afterEach(() => {
     vi.useRealTimers();
