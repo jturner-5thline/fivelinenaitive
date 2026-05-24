@@ -3552,6 +3552,7 @@ export type Database = {
       }
       company_settings: {
         Row: {
+          ai_settings: Json
           company_id: string
           created_at: string
           data_room_default_checklists: Json | null
@@ -3563,6 +3564,7 @@ export type Database = {
           deals_widgets_config: Json | null
           default_deal_stage_id: string | null
           disclaimer: string | null
+          feature_flags: Json
           fpa_dashboard_config: Json | null
           id: string
           lender_matching_config: Json | null
@@ -3571,6 +3573,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_settings?: Json
           company_id: string
           created_at?: string
           data_room_default_checklists?: Json | null
@@ -3582,6 +3585,7 @@ export type Database = {
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
           disclaimer?: string | null
+          feature_flags?: Json
           fpa_dashboard_config?: Json | null
           id?: string
           lender_matching_config?: Json | null
@@ -3590,6 +3594,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_settings?: Json
           company_id?: string
           created_at?: string
           data_room_default_checklists?: Json | null
@@ -3601,6 +3606,7 @@ export type Database = {
           deals_widgets_config?: Json | null
           default_deal_stage_id?: string | null
           disclaimer?: string | null
+          feature_flags?: Json
           fpa_dashboard_config?: Json | null
           id?: string
           lender_matching_config?: Json | null
