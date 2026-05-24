@@ -72,7 +72,6 @@ export async function suggestStatusNoteUpdate(ctx: StatusNudgeContext): Promise<
         userPrompt,
         fastModel: true,
       },
-      headers: { 'x-suppress-error-toast': '1' },
     });
     if (error) {
       return { text: '', ok: false, sources, errorKind: 'invoke_error', detail: String((error as any)?.message || error) };
