@@ -1,4 +1,4 @@
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { BellDot, Loader2, RefreshCw, Pencil, Check, X } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -111,7 +111,7 @@ export function StaleStatusNudge({ deal, onSave, now }: StaleStatusNudgeProps) {
   }, []);
 
   // Auto-fire generation once context resolves and popover is open
-  useMemo(() => {
+  useEffect(() => {
     if (open && ctxQuery.data && !loading && !generated && !insufficient) {
       void generate();
     }
