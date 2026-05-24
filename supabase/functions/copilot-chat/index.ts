@@ -5998,6 +5998,52 @@ serve(async (req) => {
     const { data: memberData } = await supabaseUser.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
     const companyId = memberData?.company_id;
 
+    // ── AI Settings Mutations: pre-LLM router hook (additive, flag-gated) ──
+    // Detect a settings-change intent in the user's free-text message; if matched,
+    // delegate to `ai-settings-tool` and stream back a fenced JSON block that the
+    // existing dispatchers in AICopilotPanel.tsx / ChatMessageList.tsx already
+    // recognise as `settings_proposal`. Short-circuits the generic agent loop.
+    try {
+      const userMsg = String(body?.message ?? "").trim();
+      const looksLikeSettings = userMsg.length > 0 && companyId &&
+        /\b(rename|set|change|update|turn\s+(on|off)|enable|disable|switch|make|use)\b/i.test(userMsg) &&
+        /\b(company\s+name|workspace\s+name|timezone|tz|theme|dark\s+mode|notification\s+email|digest|ai\s+assistant|auto[- ]?send|signature|slack|google\s+calendar)\b/i.test(userMsg);
+      if (looksLikeSettings) {
+        const toolUrl = `${supabaseUrl}/functions/v1/ai-settings-tool`;
+        const toolRes = await fetch(toolUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: authHeader },
+          body: JSON.stringify({ prompt: userMsg, company_id: companyId, context: context ?? {} }),
+        });
+        if (toolRes.ok) {
+          const out = await toolRes.json();
+          if (out?.proposal || out?.refusal) {
+            const text = out.proposal
+              ? `Here's the change I'm proposing:\n\n\`\`\`json\n${JSON.stringify({ responseType: "settings_proposal", data: out.proposal }, null, 2)}\n\`\`\``
+              : (out.refusal?.explainer || "I can't make that change from the AI bar.");
+            const { readable: rOut, writable: wOut } = new TransformStream();
+            const w = wOut.getWriter();
+            const enc = new TextEncoder();
+            (async () => {
+              try {
+                const chunk = { choices: [{ delta: { content: text }, index: 0, finish_reason: null }] };
+                await w.write(enc.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+                const done = { choices: [{ delta: {}, index: 0, finish_reason: "stop" }] };
+                await w.write(enc.encode(`data: ${JSON.stringify(done)}\n\n`));
+                await w.write(enc.encode(`data: [DONE]\n\n`));
+              } finally {
+                try { await w.close(); } catch { /* noop */ }
+              }
+            })();
+            return new Response(rOut, { headers: { ...corsHeaders, "Content-Type": "text/event-stream" } });
+          }
+        }
+        // tool unavailable / non-200 → fall through to default agent
+      }
+    } catch (e) {
+      console.warn("[copilot-chat] settings-router hook failed (continuing):", (e as Error).message);
+    }
+
     // Load firm-level Copilot Instructions (Settings → AI) for this company.
     let copilotPrefix = "";
     if (companyId) {
