@@ -914,7 +914,7 @@ export function QuickBookMeetingPopover({
         <FieldRow label="Notes">
           <Textarea
             value={description}
-            onChange={(e) => setDescription(e.target.value)}
+            onChange={(e) => setDescriptionUserEdit(e.target.value)}
             rows={3}
             className="text-[12px] min-h-[60px] resize-none"
           />
