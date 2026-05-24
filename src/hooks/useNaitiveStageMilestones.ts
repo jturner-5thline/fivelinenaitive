@@ -160,6 +160,13 @@ export function useNaitiveStageMilestones(
         } else {
           toast.success(`Deal moved (${def.label})`);
           options?.onDealStageChanged?.();
+          // Pilot KPI: fire demo_converted side-effect when a deal lands in demo-access.
+          if (def.outcomeTargetStage === 'demo-access') {
+            try {
+              const { logPilotKpiEvent } = await import('@/hooks/analytics/usePilotKpiTracking');
+              logPilotKpiEvent('demo_converted', { deal_id: dealId });
+            } catch { /* best-effort */ }
+          }
         }
       }
     },
