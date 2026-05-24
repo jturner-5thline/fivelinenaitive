@@ -852,23 +852,28 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     } catch {}
   }, [selectedOption, selected, isSelectedLoading, activeIntentKey]);
 
-  // ── Pop-out compose modal bridge ───────────────────────────────────────
-  // When the Draft Reply quick action is clicked, we generate (if needed)
-  // and then dispatch `naitive:ai-assist:open-popout-draft` so the parent
-  // EmailListAndDetail can open the Outlook-style PopOutComposer pre-filled
-  // with the AI body, recipients, and subject from the active thread.
+  // ── Stream suggested-reply cards into the inline composer ─────────────
+  // The Draft Reply quick action opens the inline composer (not a pop-up)
+  // and the cards below are populated from the same generate_draft_options
+  // engine. We re-emit on every tone resolution so the cards swap from
+  // "Generating…" to the resolved body as soon as either tone returns.
   useEffect(() => {
-    const pending = popOutPendingTone.current;
-    if (!pending) return;
-    const body = result?.options[pending]?.body;
-    if (!body) return;
+    if (!onInsertSuggestions) return;
+    const suggestions = TONE_ORDER.map((tone) => {
+      const opt = result?.options[tone];
+      return {
+        id: `tone-${tone}`,
+        toneKey: tone,
+        label: TONE_LABELS[tone],
+        body: opt?.body ?? '',
+        loading: !opt?.body && !!loadingTones[tone],
+      };
+    });
+    onInsertSuggestions(suggestions);
+    // Clear any legacy popout-pending marker so a stale ref never opens
+    // the pop-out composer after the inline switch.
     popOutPendingTone.current = null;
-    try {
-      window.dispatchEvent(new CustomEvent('naitive:ai-assist:open-popout-draft', {
-        detail: { body, threadId: thread.threadId },
-      }));
-    } catch {}
-  }, [result, thread.threadId]);
+  }, [result, loadingTones, onInsertSuggestions]);
 
   // Expose a tiny debug snapshot so the top-level ErrorBoundary can include
   // AiAssist state in its fallback when something downstream crashes.
