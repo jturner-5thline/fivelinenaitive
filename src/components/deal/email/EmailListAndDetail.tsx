@@ -2091,6 +2091,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [replyTo, setReplyTo] = useState<{ subject: string; to_email: string; to_name: string; threadId: string } | null>(null);
   const [popOutDraft, setPopOutDraft] = useState<ReplyDraft | null>(null);
   const [inlineDraft, setInlineDraft] = useState<ReplyDraft | null>(null);
+  /**
+   * AI-suggested reply options streamed from AiAssistSidebar's
+   * `generate_draft_options` engine. When non-empty, the inline composer
+   * renders the radio-card picker above the body textarea.
+   */
+  const [inlineSuggestions, setInlineSuggestions] = useState<SuggestedReply[]>([]);
 
   // Draft persistence
   const { loadDraft, updateDraft, flushSave, discardDraft, clearDraftOnSend, hasSavedDraft, saveStatus } = useEmailDraft(thread.threadId);
