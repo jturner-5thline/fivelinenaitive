@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Feature types tracked in `public.usage_events`. Powers the Admin Usage Analytics dashboard.
+ * Feature types tracked in `public.usage_events`. Powers the Admin Analytics dashboard.
  * Add new values here whenever a new significant user action is wired up.
  */
 export type UsageFeatureType =

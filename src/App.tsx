@@ -9,6 +9,12 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation, useParams 
 import { HelmetProvider } from "react-helmet-async";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { usePilotKpiTracking } from "@/hooks/analytics/usePilotKpiTracking";
+
+function PilotKpiTrackingMount() {
+  usePilotKpiTracking();
+  return null;
+}
 import { LendersProvider } from "@/contexts/LendersContext";
 import { LenderStagesProvider } from "@/contexts/LenderStagesContext";
 import { DealStagesProvider } from "@/contexts/DealStagesContext";
@@ -297,6 +303,7 @@ const App = () => (
                         <CanonicalTag />
                         <CookieConsent />
                         <NewTaskViaNaitiveModal />
+                        <PilotKpiTrackingMount />
                         <Suspense fallback={<PageLoader />}>
                         <Routes>
                         <Route path="/" element={<Homepage />} />

@@ -45,6 +45,7 @@ import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
 import { QbCashflowMappingPanel } from "@/components/admin/QbCashflowMappingPanel";
 import { RecurringReportsPanel } from "@/components/admin/RecurringReportsPanel";
 import { UsageAnalyticsPanel } from "@/components/admin/usage-analytics/UsageAnalyticsPanel";
+import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOverview";
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
@@ -100,6 +101,7 @@ const supportSubPages = [
 
 const usageAnalyticsSubPages = [
   { id: "usage-overview", label: "Company Overview", icon: BarChart3 },
+  { id: "pilot-kpis", label: "Pilot KPIs", icon: Activity },
 ];
 
 const blogSubPages = [
@@ -124,7 +126,7 @@ const SECTIONS: SectionDef[] = [
   { id: "settings",            label: "Settings",            icon: Cog,         subPages: settingsSubPages },
   { id: "product-enhancement", label: "Product Enhancement", icon: Lightbulb,   subPages: productEnhancementSubPages },
   { id: "support",             label: "Support",             icon: MonitorPlay, subPages: supportSubPages },
-  { id: "usage-analytics",     label: "Usage Analytics",     icon: BarChart3,   subPages: usageAnalyticsSubPages },
+  { id: "usage-analytics",     label: "Analytics",           icon: BarChart3,   subPages: usageAnalyticsSubPages },
   { id: "blog",                label: "Blog",                icon: Newspaper,   subPages: blogSubPages },
 ];
 
@@ -554,6 +556,8 @@ const Admin = () => {
         return <ClientAccountViewer />;
       case "usage-overview":
         return <UsageAnalyticsPanel />;
+      case "pilot-kpis":
+        return <PilotKpiOverview />;
       case "blog-all":
         return <BlogManagementPanel subTab="all" />;
       case "blog-new":
