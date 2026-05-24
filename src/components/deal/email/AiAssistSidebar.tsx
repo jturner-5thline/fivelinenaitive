@@ -666,6 +666,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           writeCache(next);
           return next;
         });
+        // A successful tone clears any stale "all-tones-failed" banner.
+        setError(null);
 
         const elapsed = Date.now() - startAt;
         console.log(`[AiAssist] draft complete tone=${tone} latency=${elapsed}ms tokens(out)≈${(body.length / 4) | 0}`);
