@@ -384,9 +384,12 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                           th: ({ children }) => <th className="px-2 py-1.5 text-left font-medium text-muted-foreground">{children}</th>,
                           td: ({ children }) => <td className="px-2 py-1.5">{children}</td>,
                         }}
-                      >{cleanedAssistantContent}</ReactMarkdown>
+                      >{cleanedAfterSettings}</ReactMarkdown>
                       {copilotAction && (
                         <CopilotActionConfirm action={copilotAction} />
+                      )}
+                      {settingsProposal && (
+                        <SettingsMutationCard proposal={settingsProposal} />
                       )}
                     </div>
                   ) : msg.content}
