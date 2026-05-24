@@ -1,60 +1,103 @@
-# Draft Reply — Auto-Draft Into Textarea (Plan, Phase 1)
+## Stale Deal-Status Nudge — Phase 1 Plan (no code yet)
 
-Scope is strictly additive to the Draft Reply inline composer flow. **Code freeze otherwise remains in place.** Previously-shipped `create_calendar` action, `calendar_id` column, and `GCAL_SMOKETEST_CALENDAR_ID` env stay default-off in production (`calendar_id` resolves to `"primary"` when null; smoketest env unset in prod).
+Code freeze remains in place. No changes to Schedule Meeting, NOTES generator, Draft Reply auto-populate, Availability Check, deal recognition, calendar render, edge functions, or send-pipeline. The previously-shipped `create_calendar` / `calendar_id` / `GCAL_SMOKETEST_CALENDAR_ID` changes remain default-off in production.
 
----
+### 1. Target component (file paths quoted)
 
-## 1. Current data path (files quoted)
+- **Status note input + "Last updated" label**: `src/pages/DealDetail.tsx` lines **3081–3119**. The note text lives in `deal.notes` (rendered via `RichTextInlineEdit`); the timestamp is `deal.notesUpdatedAt` (mapped from `dbDeal.notes_updated_at`, line 800).
+- Persistence already updates `notes_updated_at` via the existing `updateDeal('notes', value)` mutation, so accepting an AI suggestion = writing to `deal.notes` through the same path (no schema change needed for the timestamp).
+- Status-note history rows live in `deal_status_notes` (via `src/hooks/useStatusNotes.ts`) — already auto-archived when notes change.
+- The nudge icon will be **absolutely positioned in the top-right of the note container** (the `<div className="w-full sm:w-[93%] flex flex-col gap-1">` wrapping `RichTextInlineEdit`), with `relative` added.
 
-**Mount of the inline composer on Draft Reply click**
-- `src/components/deal/email/AiAssistSidebar.tsx` L1046: the Draft Reply pill dispatches `naitive:ai-assist:open-inline-draft` with `{ threadId }` and kicks `generateTone('balanced')` / `generateTone('concise')`.
-- `src/components/deal/email/EmailListAndDetail.tsx` L2587–2590: listener calls `setReplyTo(getReplyTarget())`, leaving `inlineDraft` null.
-- `EmailListAndDetail.tsx` L3325: `<InlineReplyComposer suggestedReplies={inlineSuggestions} ... />`.
+### 2. Stage gating
 
-**Card data path**
-- `AiAssistSidebar.tsx` L860–876 `useEffect`: re-emits `TONE_ORDER.map(...)` into `onInsertSuggestions(...)` on every change to `result` / `loadingTones`. Bodies are empty strings while loading.
-- `EmailListAndDetail.tsx` L3410 `onInsertSuggestions` writes to `setInlineSuggestions`.
-- `InlineReplyComposer.tsx` L80–95: `selectedSuggestionId` + `handleSelectSuggestion` set body when a card is clicked. There is **no effect that auto-populates `body` on mount or when the recommended draft resolves** — that is the root cause of BAD #1.
+- "At or before Terms Issued" in the active pipeline. Resolution: read pipeline stages via `usePipelineStageConfig().getStageConfigForDeal(deal.stage, deal.pipelineId)`, look at the ordered stage list for that pipeline, compute the index of the current stage and the index of the `terms-issued`-labelled stage, show nudge only if `currentIdx <= termsIssuedIdx`.
+- Exclusions: stage matches `isActiveDeal` from `src/lib/deals.ts` (already excludes Closed/Lost/Won/On Hold/Paused/Dead/Archived/Churn). We **reuse** `isActiveDeal(deal)` as the primary gate, then the at-or-before-Terms-Issued check.
+- New helper: `src/lib/dealStageOrder.ts → isAtOrBeforeTermsIssued(deal, pipelineConfig): boolean`. Falls back to a documented label allowlist (`Initial Feedback`, `Lender Outreach`, `Term Sheets`, `Terms Issued`, etc.) when stage indices cannot be resolved.
 
-## 2. Why the textarea is empty
+### 3. Staleness predicate
 
-- `InlineReplyComposer.tsx` L77: `const [body, setBody] = useState(initialDraft?.body ?? '')` — initialized empty.
-- There is no `useEffect` watching `suggestedReplies` that seeds `body` once the Recommended (`balanced`) option resolves. Cards render correctly but nothing fills the textarea unless the user clicks a card.
+- New pure util: `src/lib/businessDays.ts`
+  - `businessDaysBetween(from: Date, to: Date, holidays: Set<string /* YYYY-MM-DD */>): number` — skips Sat/Sun and holiday set.
+  - `isStatusNoteStale(lastUpdatedAt: Date | null, today: Date, holidays): { stale: boolean; businessDaysSince: number }`.
+  - Rules: `null` lastUpdatedAt → `{ stale: true, businessDaysSince: Infinity }`. Threshold = **> 3** business days (so exactly 3 BD = not stale; 4+ BD = stale).
+- **US federal holidays source**: hardcoded static list in `src/lib/usFederalHolidays.ts` for years 2025–2030 (10 fixed-date + observed Mon-following-Sun rules: New Year's, MLK, Presidents', Memorial, Juneteenth, Independence, Labor, Columbus, Veterans, Thanksgiving, Christmas). Documented + unit-tested. No network/runtime dependency.
 
-## 3. Why the sidebar shows "Taking longer than expected"
+### 4. Data-fetch layer for AI context
 
-- `AiAssistSidebar.tsx` L579–683 `generateTone`: 30s `AbortController` timeout, `fastModel: true` by default, calls edge function `smart-email-ai` with `action: 'generate_draft_options'`, `singleTone`.
-- On timeout / error, L673–675 sets `setError('Taking longer than expected. Tap Retry to try a different model.')`. The sidebar renders this banner and skeletons remain.
-- **Coupling problem:** the cards in the inline composer are fed from the same `result` + `loadingTones` (L860–876). When generation fails, `loadingTones[tone]` flips false but `result.options[tone]` is never set, so the suggestion stays `{ body: '', loading: false }` forever — cards become permanently empty/disabled and the textarea also stays empty.
-- The sidebar "Suggested Update" analyzer is a separate query (`workflowAnalysis` / `dealContextSummary`); confirmed it is not what feeds the cards. Only `generateTone` failures starve the cards.
+Reuse existing hooks where possible; no new edge functions.
 
-## 4. Minimal change set
+| Datum | Source |
+|---|---|
+| Lenders sent / passed (count, names, dates, pass reasons) | existing `lender_deals` queries already used by `LendersPanel`; new tiny aggregator hook `useStaleNudgeContext(dealId)` will call the same selects |
+| Recent client emails (to/from primary contact, last 14d) | reuse `useDealContextSummary` (already present in `src/hooks/`) |
+| Most recent meeting summary | reuse the same summary util currently feeding `DealContextCard` (Claap/meeting_summaries table via existing selector) |
+| Current stage + days-in-stage | derived from `deal.stage` + `deal_stage_history` (already queried in `useDealActivityStats`) |
+| Outstanding items status | reuse `useDealTasks` / outstanding-items hook used by Active Pipeline checklist |
 
-| # | File | Change |
-|---|------|--------|
-| a | `InlineReplyComposer.tsx` | Add `recommendedSuggestionId?: string` prop (parent passes `tone-balanced`). New `useEffect`: when `body === ''` and `!userTouched` and a non-loading recommended suggestion arrives, call `handleSelectSuggestion(recommendedSuggestionId)` to seed textarea. Track `userTouched` via `handleBodyChange` (already clears `selectedSuggestionId` — extend to set `userTouchedRef.current = true`). |
-| b | `InlineReplyComposer.tsx` | On card click when `userTouchedRef.current && body.trim() !== ''` and selected body differs, render a small `AlertDialog` confirm ("Replace your edits with this suggestion?"). Confirm → swap; cancel → no-op. Uses existing `@/components/ui/alert-dialog`. |
-| c | `InlineReplyComposer.tsx` | While the recommended suggestion is `loading` and `body === ''`, render an italic muted `Drafting…` placeholder via `EmailComposerCard`'s existing `placeholder` (or a thin overlay if the prop isn't surfaced — small additive prop `bodyPlaceholder`). Cleared once body is populated. Send button stays enabled per existing rules. |
-| d | `AiAssistSidebar.tsx` | Decouple failure: in the `generateTone` catch block, also write a sentinel `DraftOption { body: '', error: true }` into `setResult` so the suggestions effect L860 emits `{ loading: false, error: true }` for failed tones. The inline composer then renders the failed card as a "Retry" affordance instead of permanent spinner. Cards for the successful tone still populate normally — single-tone failure no longer starves the other. |
-| e | `AiAssistSidebar.tsx` | Move the sidebar's `setError(...)` banner state behind a check that ONLY both tones failed. Single-tone failure no longer shows the global "Taking longer than expected" banner — that banner today fires on the first failure and is what the user observed even though Concise may still resolve. Per-card retry replaces it. |
-| f | `SuggestedReplyCards.tsx` | Accept `error?: boolean` on a card and render a tiny "Retry" link that calls `onRegenerate` for that tone. |
+New hook `src/hooks/useStaleStatusNoteContext.ts` aggregates the above into one `StaleNudgeContext` object; **no new RPC** unless aggregation latency is too high — call it out for Phase 2 measurement.
 
-No edits to: `smart-email-ai` edge function, scheduling, NOTES generator, availability check, deal recognition, calendar render, send pipeline, `meeting-holds/*`, `calendar-events/*`, `create_calendar`, `calendar_id`, `GCAL_SMOKETEST_CALENDAR_ID`.
+### 5. AI prompt + reuse
 
-## 5. Test plan (Vitest + RTL, extending `draftReplyInline.test.tsx`)
+- Single source of truth: extend `src/services/smartEmailTopic.ts`'s existing summarization invoker pattern → new sibling `src/services/smartStatusNoteSuggestion.ts` that calls `smart-email-ai` edge function with a NEW `action: 'suggest_status_update'` payload. **No edge-function code changes** in Phase 2 — the existing function already accepts arbitrary actions and falls through to a generic prompt; we pass the full prompt from the client. (If smoke-test shows the edge function ignores unknown actions, fall back to action: `generate_draft_options` with a system override.)
+- Output contract enforced **client-side**:
+  - System prompt: "You write a 1–2 sentence factual status update for a deal. Max 280 characters. Plain prose. No headers, no bullets, no signature, no quoted email, no 'Topic:' prefix. Reference at least one concrete datum (lender name, email date, meeting takeaway, or outstanding item)."
+  - Post-process validator: trim, strip leading "Topic:" / "Status:" / bullet glyphs, collapse whitespace, hard-truncate at 280 chars at the last sentence boundary, assert 1–2 sentences (regex `/[.!?](\s|$)/g` count ≤ 2). On failure → one retry with stricter system message; second failure → surface "Generate again" affordance.
 
-1. **Auto-populate on mount** — mount `<InlineReplyComposer suggestedReplies={[balancedReady, conciseReady]} recommendedSuggestionId="tone-balanced" />`; assert `screen.getByRole('textbox', { name: /body/i }).value` equals `balancedReady.body` within 2s (`waitFor`).
-2. **Swap on card click (clean)** — click `Shorter`; assert textarea becomes `conciseReady.body`, no confirm dialog.
-3. **Dirty-edit guard** — type into textarea, then click another card; assert `AlertDialog` opens; confirm → body replaced; cancel → original edit preserved.
-4. **Drafting… placeholder** — mount with `[{loading:true, body:''}, {loading:true, body:''}]`; assert textarea placeholder text `Drafting…`; rerender with resolved balanced; assert textarea now contains resolved body and placeholder gone.
-5. **Sidebar failure does not block inline (decoupled)** — mock `supabase.functions.invoke` for `singleTone:'balanced'` → reject 504, `singleTone:'concise'` → resolve. Mount `<AiAssistSidebar>` + capture `onInsertSuggestions`; assert eventually two suggestions emitted with `tone-balanced` carrying `error:true` and `tone-concise` carrying a real body; assert global error banner NOT shown when at least one tone resolved.
-6. **No popout regression** — re-assert `popout-composer` testid not in DOM (existing test extended).
+### 6. UI plan
 
-## 6. Phase 2
+- New component: `src/components/deal/StaleStatusNudge.tsx` (icon + popover + state machine).
+- **Icon**: `lucide-react` `BellDot` at `h-3.5 w-3.5` (14px), color `text-amber-400/80` with `hover:text-amber-300`. Wrapped in a `button` absolutely positioned `top-2 right-2` inside the note container (which gets `relative`). Tooltip via existing `Tooltip` primitive: "Status hasn't been updated in {N} business days. Click to draft an AI update."
+- **Popover**: Radix `Popover` (already in project — `src/components/ui/popover.tsx`), `align="end"`, width `w-[420px]`. Contents:
+  1. Header: "AI status update suggestion"
+  2. Current status (read-only quote block, muted)
+  3. AI suggestion (loading skeleton → text). In edit mode, becomes a `<Textarea>`.
+  4. Disclosure `<details>` "Generated from": bulleted list of sources used (e.g. "3 lenders sent (Advantage, Eastward, …)", "Last client email May 21", "Meeting summary May 18").
+  5. Action row: `Accept`, `Edit` (toggles textarea + swaps Accept→Save), `Generate again`, `Cancel`.
+- **Save path**: `Accept` / `Save` call the same `updateDeal('notes', value)` used by `RichTextInlineEdit`, then call `addStatusNote(oldNotes)` for history parity. Timestamp `notes_updated_at` is bumped by the existing trigger.
+- **Audit**: write to existing `naitive_pipeline_audit` via `logNaitivePipelineAudit({ entityType: 'deal_transition', entityId: dealId, action: 'status_note_ai_suggest', context: { mode: 'accepted'|'edited'|'dismissed', suggestion, finalValue }})` — additive use of existing util (`src/lib/naitivePipelineAudit.ts`).
+- **Insufficient activity** (no lenders sent AND no client emails in last 14d AND no recent meeting AND no outstanding items): popover renders fallback copy "Not enough recent activity to suggest an update — please update manually." with only `Cancel` + `Edit` buttons.
 
-After "approved":
-- Implement (a)–(f).
-- Run `bunx vitest run src/components/deal/email/__tests__/draftReplyInline.test.tsx` and paste output.
-- Re-render Project Vista Draft Reply flow; paste textarea-populated screenshot + `data-testid="inline-reply-composer"` DOM snapshot showing populated `<textarea>` and `aria-checked="true"` on Recommended card.
+### 7. Permissions
 
-Awaiting **approved** to begin Phase 2.
+- Owner, Manager, or admin only. Compute: `isOwner = deal.userId === user.id`, `isManager = deal.managerUserId === user.id || normalizedNameMatch(deal.manager, profile.fullName)`, `isAdmin = useUserPermissions().permissions.admin`. Helper: `src/lib/dealStaleNudgePermissions.ts`.
+- Read-only users → icon never mounts.
+
+### 8. Test plan
+
+New test files:
+- `src/lib/__tests__/businessDays.test.ts` — Vitest
+  - 3 BD exactly → not stale
+  - 4 BD across a weekend → stale
+  - Holiday-only gap → not stale (Memorial Day → next biz day)
+  - `null` lastUpdatedAt → stale, `Infinity`
+- `src/lib/__tests__/staleNoteSanitize.test.ts` — Vitest
+  - Strip "Topic:" prefix, bullets, signature blocks
+  - Enforce ≤ 280 chars at sentence boundary
+  - Reject 3-sentence outputs (regex assertion)
+- `src/components/deal/__tests__/StaleStatusNudge.test.tsx` — RTL + Vitest
+  - Hidden when `isActiveDeal === false` (Closed/Lost/Paused stage fixtures)
+  - Hidden when stage index > Terms Issued
+  - Hidden when permissions resolve to read-only
+  - Visible + tooltip text correct when 4 BD stale
+  - Click → suggestion resolves within 2s (mocked invoke)
+  - `Accept` → calls `updateDeal('notes', suggestion)` once and writes audit row
+  - `Generate again` → second invoke fires
+  - `Edit` → textarea editable, `Save` writes edited value
+  - Insufficient-activity context → fallback copy + only Cancel/Edit
+  - Output assertion: `/^[^\n]{1,280}$/` and ≤ 2 sentences
+- Playwright smoke (`tests/staleStatusNudge.spec.ts`): seed a fixture deal w/ `notes_updated_at` 5 BD ago, open `/deals?deal=...`, expect icon visible, open popover, accept, expect note text replaced and timestamp updated.
+
+### 9. Strict additive scope confirmation
+
+Touched files (Phase 2):
+- NEW: `src/lib/businessDays.ts`, `src/lib/usFederalHolidays.ts`, `src/lib/dealStageOrder.ts`, `src/lib/dealStaleNudgePermissions.ts`, `src/lib/staleNoteSanitize.ts`
+- NEW: `src/hooks/useStaleStatusNoteContext.ts`
+- NEW: `src/services/smartStatusNoteSuggestion.ts`
+- NEW: `src/components/deal/StaleStatusNudge.tsx`
+- NEW tests under `src/lib/__tests__/` + `src/components/deal/__tests__/` + `tests/`
+- EDIT (minimal): `src/pages/DealDetail.tsx` — add `relative` class to status-note container and mount `<StaleStatusNudge deal={deal} />` inside it. No other lines changed.
+
+No changes to: Schedule Meeting, NOTES generator, Draft Reply, Availability Check, deal recognition, calendar render, edge functions, send-pipeline, `meeting-holds/*`, `calendar-events/*`. `create_calendar` / `calendar_id` / `GCAL_SMOKETEST_CALENDAR_ID` remain default-off in production.
+
+Awaiting **"approved"** to begin Phase 2.
