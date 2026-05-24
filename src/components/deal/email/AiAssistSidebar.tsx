@@ -200,11 +200,21 @@ interface Props {
   dealName?: string;
   onClose: () => void;
   onInsertDraft: (body: string) => void;
+  /**
+   * Streams AI-generated suggested replies into the inline composer.
+   * Called whenever the underlying generate_draft_options results update.
+   * If not provided, the legacy single-body insert path is used.
+   */
+  onInsertSuggestions?: (
+    suggestions: Array<{ id: string; toneKey: ToneKey; label: string; body: string; loading?: boolean }>,
+  ) => void;
+  /** Opens the inline reply composer in place (without prefilling a body). */
+  onOpenInlineReply?: () => void;
   /** Persists a deal link from the unmatched-email context card. */
   onLinkDeal?: (dealId: string, dealName: string) => void | Promise<void>;
 }
 
-export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onLinkDeal }: Props) {
+export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDraft, onInsertSuggestions, onOpenInlineReply, onLinkDeal }: Props) {
   const enqueueAiAction = useEnqueueAiAction();
   // `loadingTones` tracks per-tone in-flight requests (so the panel can render
   // skeletons selectively). The shell never blocks on either.
