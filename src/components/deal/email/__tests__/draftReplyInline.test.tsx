@@ -131,8 +131,9 @@ describe('Draft Reply → Inline composer contract', () => {
         onRetry={onRetry}
       />,
     );
-    const retry = screen.getByText(/Retry/i);
-    fireEvent.click(retry);
+    const retries = screen.getAllByText(/Retry/i);
+    // First match is the inline "Retry" affordance; second is the helper copy.
+    fireEvent.click(retries[0]);
     expect(onRetry).toHaveBeenCalledWith('balanced');
   });
 });
@@ -291,6 +292,6 @@ describe('InlineReplyComposer — auto-draft into textarea', () => {
     fireEvent.click(screen.getByRole('radio', { name: /Shorter/i }));
     await waitFor(() => expect(ta.value).toBe(SUGGESTIONS[1].body));
     // Recommended card surfaces a Retry affordance instead of staying empty.
-    expect(screen.getByText(/Retry/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/Retry/i).length).toBeGreaterThan(0);
   });
 });
