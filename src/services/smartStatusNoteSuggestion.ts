@@ -35,10 +35,10 @@ function buildPrompt(ctx: StatusNudgeContext): string {
     lines.push(`Lenders passed (${ctx.lendersPassed.length}): ${ctx.lendersPassed.map(l => `${l.name}${l.reason ? ` — ${l.reason}` : ''}`).join(', ')}`);
   }
   if (ctx.recentClientEmails.length) {
-    const last = ctx.recentClientEmails.slice(0, 4)
-      .map(e => `${e.direction === 'in' ? 'from client' : 'to client'}${e.at ? ` ${e.at}` : ''}: ${e.subject || '(no subject)'}`)
+    const last = ctx.recentClientEmails.slice(0, 6)
+      .map(e => `${e.at ? `${e.at} ` : ''}${e.direction === 'in' ? 'inbound' : 'outbound'}: ${e.subject || '(no subject)'}`)
       .join('; ');
-    lines.push(`Recent client emails: ${last}`);
+    lines.push(`Recent emails (last 14d): ${last}`);
   }
   if (ctx.lastMeetingSummary?.summary) {
     lines.push(`Last meeting${ctx.lastMeetingSummary.at ? ` (${ctx.lastMeetingSummary.at})` : ''}: ${ctx.lastMeetingSummary.summary}`);
