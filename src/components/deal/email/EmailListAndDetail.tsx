@@ -3322,6 +3322,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 dealId={effectiveDealId ?? null}
                 dealName={effectiveDealName ?? null}
                 signature={composerSignature}
+                suggestedReplies={inlineSuggestions}
               />
             </div>
           )}
