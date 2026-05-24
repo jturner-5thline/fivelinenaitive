@@ -335,6 +335,7 @@ export function PopOutComposer({
   if (minimized) {
     return (
       <div
+        data-testid="popout-composer"
         className="absolute z-40 bottom-3 right-4 bg-card/95 backdrop-blur-md border border-[hsl(var(--email-border))] rounded-t-xl shadow-xl cursor-pointer"
         style={{ width: 320 }}
         onClick={() => setMinimized(false)}
@@ -355,6 +356,7 @@ export function PopOutComposer({
 
   return (
     <div
+      data-testid="popout-composer"
       ref={dragRef}
       className="absolute z-40 bg-card/95 backdrop-blur-md border border-[hsl(var(--email-border))] rounded-xl shadow-2xl ring-1 ring-black/5 flex flex-col overflow-hidden"
       style={{
