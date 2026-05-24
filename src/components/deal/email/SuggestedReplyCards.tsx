@@ -17,6 +17,12 @@ export interface SuggestedReply {
   label: string;
   body: string;
   loading?: boolean;
+  /**
+   * Set when the underlying generation failed for this tone. The card
+   * renders a small inline "Retry" affordance instead of being silently
+   * disabled. Decouples per-tone failures from the inline composer state.
+   */
+  error?: boolean;
 }
 
 interface Props {
@@ -24,6 +30,8 @@ interface Props {
   selectedId: string | null;
   onSelect: (id: string) => void;
   onRegenerate?: () => void;
+  /** Optional per-card retry — called with the failed card's toneKey. */
+  onRetry?: (toneKey: 'concise' | 'balanced') => void;
   className?: string;
 }
 
@@ -32,6 +40,7 @@ export function SuggestedReplyCards({
   selectedId,
   onSelect,
   onRegenerate,
+  onRetry,
   className,
 }: Props) {
   if (!suggestions || suggestions.length === 0) return null;
@@ -73,13 +82,18 @@ export function SuggestedReplyCards({
               role="radio"
               aria-checked={isSelected}
               aria-label={s.label}
-              disabled={s.loading || !s.body}
-              onClick={() => onSelect(s.id)}
+              disabled={s.loading || (!s.body && !s.error)}
+              onClick={() => {
+                if (s.error) return;
+                onSelect(s.id);
+              }}
               className={cn(
                 'text-left rounded-md border px-3 py-2 transition-colors',
                 'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary',
                 isSelected
                   ? 'border-primary bg-primary/5'
+                  : s.error
+                  ? 'border-destructive/40 bg-destructive/5'
                   : 'border-[hsl(var(--email-border))] hover:border-primary/40 hover:bg-card/60',
                 s.loading && 'opacity-60 cursor-wait',
               )}
@@ -96,10 +110,35 @@ export function SuggestedReplyCards({
                 {s.loading && (
                   <span className="ml-auto text-[10px] text-muted-foreground">Generating…</span>
                 )}
+                {s.error && !s.loading && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRetry?.(s.toneKey);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        onRetry?.(s.toneKey);
+                      }
+                    }}
+                    className="ml-auto inline-flex items-center gap-1 text-[10px] text-destructive hover:underline cursor-pointer"
+                  >
+                    <RefreshCw className="h-3 w-3" /> Retry
+                  </span>
+                )}
               </div>
-              {preview && (
+              {preview && !s.error && (
                 <p className="mt-1 text-[11px] leading-snug text-muted-foreground line-clamp-2">
                   {preview}
+                </p>
+              )}
+              {s.error && (
+                <p className="mt-1 text-[11px] leading-snug text-destructive/80">
+                  Couldn't generate this draft. Tap Retry.
                 </p>
               )}
             </button>
