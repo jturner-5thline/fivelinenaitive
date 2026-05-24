@@ -65,7 +65,7 @@ export function useStaleStatusNoteContext(
         if (ids.length) {
           const { data: msgs } = await supabase
             .from('gmail_messages')
-            .select('gmail_message_id, subject, from_email, to_email, received_at')
+            .select('gmail_message_id, subject, from_email, received_at')
             .in('gmail_message_id', ids);
           const map = new Map((msgs || []).map(m => [m.gmail_message_id, m]));
           for (const link of dealEmails || []) {
