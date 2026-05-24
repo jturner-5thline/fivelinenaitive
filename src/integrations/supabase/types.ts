@@ -7706,6 +7706,42 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_kpi_links: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          kpi_event_id: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          kpi_event_id: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          kpi_event_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_kpi_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_kpi_links_kpi_event_id_fkey"
+            columns: ["kpi_event_id"]
+            isOneToOne: false
+            referencedRelation: "pilot_kpi_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_lender_recommendation_exclusions: {
         Row: {
           created_at: string
@@ -16852,6 +16888,54 @@ export type Database = {
           },
         ]
       }
+      pilot_kpi_events: {
+        Row: {
+          company_id: string
+          created_at: string
+          deal_id: string | null
+          event_type: Database["public"]["Enums"]["pilot_kpi_event_type"]
+          id: string
+          metadata: Json
+          occurred_at: string
+          user_id: string | null
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          deal_id?: string | null
+          event_type: Database["public"]["Enums"]["pilot_kpi_event_type"]
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          deal_id?: string | null
+          event_type?: Database["public"]["Enums"]["pilot_kpi_event_type"]
+          id?: string
+          metadata?: Json
+          occurred_at?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pilot_kpi_events_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pilot_kpi_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       platform_settings: {
         Row: {
           key: string
@@ -24363,6 +24447,15 @@ export type Database = {
         | "system"
       notification_channel_type: "in_app" | "email" | "slack" | "sms" | "push"
       notification_instance_status: "pending" | "sent" | "failed" | "skipped"
+      pilot_kpi_event_type:
+        | "deal_created"
+        | "initial_login"
+        | "session_heartbeat"
+        | "visit"
+        | "feedback_given"
+        | "feedback_call_attended"
+        | "demo_converted"
+        | "pilot_converted"
       settings_audit_action: "dry_run" | "apply" | "undo" | "deny"
       wf_agreement_type: "nda" | "engagement" | "amendment" | "other"
       wf_deal_stage:
@@ -24633,6 +24726,16 @@ export const Constants = {
       ],
       notification_channel_type: ["in_app", "email", "slack", "sms", "push"],
       notification_instance_status: ["pending", "sent", "failed", "skipped"],
+      pilot_kpi_event_type: [
+        "deal_created",
+        "initial_login",
+        "session_heartbeat",
+        "visit",
+        "feedback_given",
+        "feedback_call_attended",
+        "demo_converted",
+        "pilot_converted",
+      ],
       settings_audit_action: ["dry_run", "apply", "undo", "deny"],
       wf_agreement_type: ["nda", "engagement", "amendment", "other"],
       wf_deal_stage: [
