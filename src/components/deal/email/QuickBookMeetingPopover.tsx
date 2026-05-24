@@ -516,6 +516,45 @@ export function QuickBookMeetingPopover({
     );
   }, [busy, selectedStart, selectedEnd]);
 
+  /* ----- auto-recompose NOTES when slot/topic resolve (unless user edited). */
+  useEffect(() => {
+    if (descriptionTouchedRef.current) return;
+    const latest = thread.latestEmail;
+    const receivedAt = latest?.received_at ? new Date(latest.received_at) : null;
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const tzs = Array.from(
+      new Set(attendees.map(() => timezone)),
+    );
+    const next = buildScheduleNotes({
+      dealName: dealName ?? null,
+      sender: {
+        name: latest?.from_name ?? null,
+        email: latest?.from_email ?? null,
+        receivedAt,
+      },
+      proposedStart: selectedStart,
+      proposedEnd: selectedEnd,
+      attendeeTimezones: tzs,
+      freeBusyVerified: !!selectedStart && !busyLoading && !conflict,
+      topic: aiTopic,
+      fallbackSubject: thread.subject ?? null,
+      threadId: thread.provider_thread_id || thread.threadId,
+      origin,
+      userTz: timezone,
+    });
+    setDescription(next);
+  }, [
+    aiTopic,
+    selectedStart,
+    selectedEnd,
+    conflict,
+    busyLoading,
+    timezone,
+    dealName,
+    thread,
+    attendees,
+  ]);
+
   /* ----- attendee chip handlers */
   const addAttendee = useCallback(() => {
     const raw = newAttendee.trim();
