@@ -3407,6 +3407,14 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   });
                   setShowResumeBanner(false);
                 }}
+                onInsertSuggestions={(suggestions) => {
+                  setInlineSuggestions(suggestions as SuggestedReply[]);
+                }}
+                onOpenInlineReply={() => {
+                  setPopOutDraft(null);
+                  setReplyTo(getReplyTarget());
+                  setShowResumeBanner(false);
+                }}
               />
               )}
             </EmailPaneErrorBoundary>
