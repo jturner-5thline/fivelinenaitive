@@ -212,7 +212,7 @@ export function AddLenderSlideOver({
 
   const [search, setSearch] = useState('');
   const [dealTypeFilters, setDealTypeFilters] = useState<string[]>([]);
-  const [sizeFilter, setSizeFilter] = useState<string>('all');
+  const [sizeFilters, setSizeFilters] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('active');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkStage, setBulkStage] = useState<string>(preferredDefault);
@@ -275,13 +275,15 @@ export function AddLenderSlideOver({
         });
       })
       .filter((l) => {
-        if (sizeFilter === 'all') return true;
-        const r = SIZE_RANGES.find((s) => s.id === sizeFilter);
-        if (!r) return true;
+        if (sizeFilters.length === 0) return true;
         const lmin = l.min_deal ?? 0;
         const lmax = l.max_deal ?? Number.MAX_SAFE_INTEGER;
-        // Overlap test
-        return lmax >= r.min && lmin <= r.max;
+        // Overlap test against ANY selected bucket (OR logic)
+        return sizeFilters.some((id) => {
+          const r = SIZE_RANGES.find((s) => s.id === id);
+          if (!r) return false;
+          return lmax >= r.min && lmin <= r.max;
+        });
       })
       .filter((l) => {
         if (!q) return true;
@@ -304,7 +306,7 @@ export function AddLenderSlideOver({
         return { lender: l, score, ai };
       })
       .sort((a, b) => b.score - a.score);
-  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilter, search, matchByName, aiOnly, aiByName]);
+  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilters, search, matchByName, aiOnly, aiByName]);
 
   const toggleSelect = (name: string) => {
     setSelected((prev) => {
