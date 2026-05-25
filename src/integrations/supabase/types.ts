@@ -29,6 +29,21 @@ export type Database = {
         }
         Relationships: []
       }
+      _lender_merge_field_updates: {
+        Row: {
+          canon_id: string
+          set_clause: string
+        }
+        Insert: {
+          canon_id: string
+          set_clause: string
+        }
+        Update: {
+          canon_id?: string
+          set_clause?: string
+        }
+        Relationships: []
+      }
       _lender_merge_name_map: {
         Row: {
           canon_name: string
