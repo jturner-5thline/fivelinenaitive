@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Settings, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { useCompany } from '@/hooks/useCompany';
 
 interface Settings {
   auto_approve_deterministic: boolean;
@@ -23,41 +24,31 @@ const DEFAULTS: Settings = {
 /** Per-company Flex sync triage settings. Admin-only (RLS enforced). */
 export function LenderSyncSettingsPopover() {
   const [open, setOpen] = useState(false);
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const { company } = useCompany();
+  const companyId = company?.id ?? null;
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [s, setS] = useState<Settings>(DEFAULTS);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !companyId) return;
     (async () => {
       setLoading(true);
-      const { data: u } = await supabase.auth.getUser();
-      if (!u.user) { setLoading(false); return; }
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('user_id', u.user.id)
+      const { data } = await supabase
+        .from('lender_sync_settings')
+        .select('*')
+        .eq('company_id', companyId)
         .maybeSingle();
-      const cid = (prof?.company_id as string) || null;
-      setCompanyId(cid);
-      if (cid) {
-        const { data } = await supabase
-          .from('lender_sync_settings')
-          .select('*')
-          .eq('company_id', cid)
-          .maybeSingle();
-        if (data) {
-          setS({
-            auto_approve_deterministic: !!data.auto_approve_deterministic,
-            likely_match_threshold: Number(data.likely_match_threshold) || DEFAULTS.likely_match_threshold,
-            possible_match_threshold: Number(data.possible_match_threshold) || DEFAULTS.possible_match_threshold,
-          });
-        }
+      if (data) {
+        setS({
+          auto_approve_deterministic: !!data.auto_approve_deterministic,
+          likely_match_threshold: Number(data.likely_match_threshold) || DEFAULTS.likely_match_threshold,
+          possible_match_threshold: Number(data.possible_match_threshold) || DEFAULTS.possible_match_threshold,
+        });
       }
       setLoading(false);
     })();
-  }, [open]);
+  }, [open, companyId]);
 
   const save = async () => {
     if (!companyId) return;
