@@ -322,7 +322,24 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
 
   // Categorize pending requests for tabs
   const newLenderRequests = pendingRequests.filter(r => r.request_type === 'new_lender');
-  const conflictRequests = pendingRequests.filter(r => r.request_type === 'merge_conflict');
+  // Conflict Review: anything with unresolved field conflicts OR explicit pending_conflict_review status.
+  // Falls back to legacy `request_type === 'merge_conflict'` until backend backfills `conflict_count`.
+  const conflictRequests = pendingRequests.filter(r =>
+    (r.conflict_count ?? 0) > 0
+    || r.status === 'pending_conflict_review'
+    || r.request_type === 'merge_conflict',
+  );
+  // Likely Match: matching engine flagged at least one strong candidate and request is not in conflict.
+  const likelyMatchRequests = pendingRequests.filter(r =>
+    !conflictRequests.includes(r)
+    && (
+      r.suggested_action === 'update'
+      || r.suggested_action === 'merge'
+      || r.confidence === 'likely_duplicate'
+      || r.confidence === 'exact_duplicate'
+      || (r.match_candidates && r.match_candidates.length > 0)
+    ),
+  );
 
   // Dedupe-aware groupings used across every tab. Single-member groups render as
   // normal request cards; multi-member groups collapse into a parent row with
