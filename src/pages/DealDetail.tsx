@@ -3617,6 +3617,10 @@ export default function DealDetail() {
                                   </div>
                                 );
                               case 'clientContact':
+                                const linkedContactName = primaryDealContact?.name || null;
+                                const linkedContactEmail = primaryDealContact?.email || null;
+                                const displayContactName = linkedContactName || deal.contact || '';
+                                const displayContactInfo = linkedContactEmail || deal.contactInfo || '';
                                 return (
                                   <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
                                     <span className="text-muted-foreground text-sm">Client Contact</span>
@@ -3628,19 +3632,25 @@ export default function DealDetail() {
                                               <PopoverTrigger asChild>
                                                 <Button variant="outline" className="flex-1 min-w-0 justify-start h-8 px-3 font-normal text-sm overflow-hidden">
                                                   <span className="truncate">
-                                                    {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
+                                                    {displayContactName || <span className="text-muted-foreground italic">Add contact</span>}
                                                   </span>
                                                 </Button>
                                               </PopoverTrigger>
                                             </TooltipTrigger>
-                                            {deal.contact && deal.contactInfo && (
+                                            {displayContactName && displayContactInfo && (
                                               <TooltipContent side="left" className="max-w-[200px]">
-                                                <p className="font-medium">{deal.contact}</p>
-                                                <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                                                <p className="font-medium">{displayContactName}</p>
+                                                <p className="text-xs text-muted-foreground">{displayContactInfo}</p>
                                               </TooltipContent>
                                             )}
                                             <PopoverContent className="w-72 p-4 bg-popover" align="start">
                                               <div className="space-y-4">
+                                                {linkedContactName && (
+                                                  <div className="rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
+                                                    Linked from Contacts: <span className="font-medium text-foreground">{linkedContactName}</span>
+                                                    {linkedContactEmail && <> · {linkedContactEmail}</>}
+                                                  </div>
+                                                )}
                                                 <div className="space-y-2">
                                                   <label className="text-sm font-medium">Contact Name</label>
                                                   <DebouncedInput
@@ -3667,8 +3677,8 @@ export default function DealDetail() {
                                       <DraftEmailToClientContactButton
                                         dealId={deal.id}
                                         dealName={deal.name || deal.company}
-                                        contactName={deal.contact}
-                                        contactInfo={deal.contactInfo}
+                                        contactName={displayContactName || null}
+                                        contactInfo={displayContactInfo || null}
                                         companyDomain={deal.companyUrl}
                                         size="sm"
                                         variant="outline"
