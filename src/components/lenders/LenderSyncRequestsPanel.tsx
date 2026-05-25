@@ -584,9 +584,21 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     Selected <span className="font-semibold">{selectedIds.size}</span>
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRerunMatching}
+                    disabled={isRematching}
+                    title="Re-run entity matching engine across pending requests"
+                  >
+                    {isRematching ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Layers className="h-3 w-3 mr-1" />}
+                    Re-match
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
