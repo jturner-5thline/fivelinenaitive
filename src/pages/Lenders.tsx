@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy } from 'lucide-react';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,7 @@ import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequests
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
+import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
