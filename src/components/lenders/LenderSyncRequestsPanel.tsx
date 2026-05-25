@@ -23,6 +23,7 @@ import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
 import { LenderSyncReviewDrawer } from '@/components/lenders/LenderSyncReviewDrawer';
+import { LenderSyncSettingsPopover } from '@/components/lenders/LenderSyncSettingsPopover';
 import { groupSyncRequests, getRequestConfidence } from '@/lib/lenderRequestGrouping';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -665,6 +666,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                   <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
+                  <LenderSyncSettingsPopover />
                 </div>
               </div>
             </div>
