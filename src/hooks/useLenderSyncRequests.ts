@@ -46,7 +46,7 @@ export function useLenderSyncRequests(): UseLenderSyncRequestsResult {
 
       if (fetchError) throw fetchError;
 
-      setRequests((data || []) as LenderSyncRequest[]);
+      setRequests((data || []) as unknown as LenderSyncRequest[]);
     } catch (err) {
       console.error('Error fetching lender sync requests:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch sync requests');
