@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
+import { supabase } from '@/integrations/supabase/client';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
@@ -276,6 +277,24 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [isRematching, setIsRematching] = useState(false);
+
+  const handleRerunMatching = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsRematching(true);
+    try {
+      const { error } = await supabase.functions.invoke('match-lender-sync-request', {
+        body: { backfill_all: true },
+      });
+      if (error) throw error;
+      toast({ title: 'Matching refreshed', description: 'Confidence and suggested actions recomputed.' });
+      await refetch();
+    } catch (err) {
+      toast({ title: 'Matching failed', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setIsRematching(false);
+    }
+  };
 
   // Wrap approve/merge to also notify parent to refresh lenders
   const handleApprove = async (id: string) => {
