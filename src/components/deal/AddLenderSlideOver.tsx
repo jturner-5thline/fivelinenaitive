@@ -104,11 +104,13 @@ function MatchExplanation({
   score,
   match,
   ai,
+  deterministic,
 }: {
   lender: MasterLender;
   score: number;
   match?: LenderMatch;
   ai?: AiRecommendation;
+  deterministic?: DeterministicMatchResult;
 }) {
   const reasons = match?.matchReasons || [];
   const warnings = match?.warnings || [];
@@ -120,6 +122,26 @@ function MatchExplanation({
           {Math.round(score)}%
         </Badge>
       </div>
+
+      {deterministic && (
+        <div className="rounded-md border border-white/10 bg-background/40 p-2 space-y-1">
+          <div className="text-[11px] font-medium text-muted-foreground">Score breakdown</div>
+          <ul className="space-y-0.5">
+            {deterministic.components.map((c) => (
+              <li key={c.key} className="flex items-center justify-between text-[11px] gap-2">
+                <span className="text-foreground/80 truncate">{c.label}</span>
+                <span className={cn('tabular-nums shrink-0', c.available ? 'text-foreground/90' : 'text-muted-foreground italic')}>
+                  {c.available ? `${c.earned}/${c.weight}` : 'n/a'}
+                  <span className="ml-1 text-muted-foreground">· {c.detail}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+          {deterministic.hardExcluded && (
+            <div className="text-[10px] text-amber-300">Lender excludes this industry — score forced to 0.</div>
+          )}
+        </div>
+      )}
 
       {ai && (
         <div className="rounded-md border border-primary/20 bg-primary/5 p-2 space-y-1">
