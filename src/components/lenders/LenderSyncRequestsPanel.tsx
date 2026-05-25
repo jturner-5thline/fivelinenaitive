@@ -22,6 +22,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
+import { LenderSyncReviewDrawer } from '@/components/lenders/LenderSyncReviewDrawer';
 import { groupSyncRequests, getRequestConfidence } from '@/lib/lenderRequestGrouping';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -58,11 +59,12 @@ interface SyncRequestCardProps {
   onApprove: (id: string) => Promise<boolean>;
   onReject: (id: string) => Promise<boolean>;
   onMerge: (id: string, data: Record<string, unknown>) => Promise<boolean>;
+  onReview?: (id: string) => void;
   /** Total members in this funding source's duplicate cluster (incl. self). 1 = unique. */
   clusterSize?: number;
 }
 
-function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onReject, onMerge, clusterSize = 1 }: SyncRequestCardProps) {
+function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onReject, onMerge, onReview, clusterSize = 1 }: SyncRequestCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [showMergeDialog, setShowMergeDialog] = useState(false);
@@ -195,6 +197,12 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
                     <X className="h-3 w-3 mr-1" />
                     Keep Existing
                   </Button>
+                  {onReview && (
+                    <Button size="sm" variant="outline" onClick={() => onReview(request.id)} disabled={isProcessing}>
+                      <Search className="h-3 w-3 mr-1" />
+                      Review
+                    </Button>
+                  )}
                   <Button size="sm" variant="default" onClick={() => setShowMergeDialog(true)} disabled={isProcessing}>
                     <GitMerge className="h-3 w-3 mr-1" />
                     Resolve Conflict
@@ -205,6 +213,12 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
                   <Button size="sm" variant="ghost" onClick={handleReject} disabled={isProcessing}>
                     <X className="h-3 w-3" />
                   </Button>
+                  {onReview && (
+                    <Button size="sm" variant="outline" onClick={() => onReview(request.id)} disabled={isProcessing}>
+                      <Search className="h-3 w-3 mr-1" />
+                      Review
+                    </Button>
+                  )}
                   <Button size="sm" className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground hover:from-primary/90 hover:to-primary/60 shadow-sm" onClick={handleApprove} disabled={isProcessing}>
                     <Check className="h-3 w-3 mr-1" />
                     Approve
@@ -424,6 +438,15 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     }
   };
 
+  // Side-by-side review drawer state.
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
+  const openReview = (id: string) => {
+    setReviewRequestId(id);
+    setReviewOpen(true);
+  };
+  const reviewRequest = requests.find(r => r.id === reviewRequestId) || null;
+
   // High-confidence exact duplicates: merge conflicts whose changes_diff is empty
   // (i.e. Flex sent us a record that is byte-for-byte identical to the existing one).
   const exactDuplicateConflicts = conflictRequests.filter(
@@ -464,6 +487,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
       onApprove={handleApprove}
       onReject={rejectRequest}
       onMerge={handleMerge}
+      onReview={openReview}
       clusterSize={clusterSizeById.get(request.id) || 1}
     />
   );
@@ -869,6 +893,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
         onOpenChange={setConflictPanelOpen}
         conflicts={conflictRequests}
         initialIndex={conflictIndex}
+        onApprove={handleApprove}
+        onReject={rejectRequest}
+        onMerge={handleMerge}
+      />
+      <LenderSyncReviewDrawer
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        request={reviewRequest}
         onApprove={handleApprove}
         onReject={rejectRequest}
         onMerge={handleMerge}
