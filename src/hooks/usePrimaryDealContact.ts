@@ -17,7 +17,6 @@ export interface PrimaryDealContact {
   id: string;
   name: string;
   email: string | null;
-  phone: string | null;
   role: string | null;
 }
 
@@ -30,7 +29,7 @@ export function usePrimaryDealContact(dealId: string | null | undefined) {
       if (!dealId) return null;
       const { data, error } = await supabase
         .from('contact_deals')
-        .select('role, created_at, contact:contacts(id, first_name, last_name, email, phone)')
+        .select('role, created_at, contact:contacts(id, first_name, last_name, email)')
         .eq('deal_id', dealId);
       if (error) throw error;
       const rows = (data || []) as any[];
@@ -43,7 +42,6 @@ export function usePrimaryDealContact(dealId: string | null | undefined) {
         id: c.id,
         name,
         email: c.email ?? null,
-        phone: c.phone ?? null,
         role: primary.role ?? null,
       };
     },
