@@ -14,6 +14,7 @@ import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
+import { useCompanyFeesVisibility, formatComputedTotal } from '@/hooks/useCompanyFeesVisibility';
 import {
   loadPersistedDealOrigin,
   persistDealOrigin,
@@ -544,6 +545,7 @@ export default function DealDetail() {
   // (DealsHeader/sidebar trigger/brand) so the modal body stays clean and
   // the modal's own scroll container is the only scroll region.
   const isEmbedded = searchParams.get('embedded') === '1';
+  const feesVisibility = useCompanyFeesVisibility();
 
   // ── Smart back-navigation: resolve origin from location.state, falling
   //    back to sessionStorage so a hard refresh on /deal/:id keeps the
@@ -3772,7 +3774,8 @@ export default function DealDetail() {
                                         </div>
                                         {/* Fees */}
                                         <div className="space-y-3 min-w-0">
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          {feesVisibility.retainerEnabled && (
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2" data-testid="fee-retainer">
                                             <span className="text-muted-foreground text-sm">Retainer Fee</span>
                                             <div className="relative w-full">
                                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
@@ -3788,7 +3791,9 @@ export default function DealDetail() {
                                               />
                                             </div>
                                           </div>
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          )}
+                                          {feesVisibility.milestoneEnabled && (
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2" data-testid="fee-milestone">
                                             <span className="text-muted-foreground text-sm">Milestone Fee</span>
                                             <div className="relative w-full">
                                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
@@ -3804,6 +3809,7 @@ export default function DealDetail() {
                                               />
                                             </div>
                                           </div>
+                                          )}
                                           <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                             <span className="text-muted-foreground text-sm">Success Fee %</span>
                                             <div className="flex items-center gap-2">
@@ -3840,15 +3846,29 @@ export default function DealDetail() {
                                               </Tooltip>
                                             </div>
                                           </div>
-                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
+                                          <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2" data-testid="fee-total">
                                             <span className="text-muted-foreground text-sm">Total Fee</span>
                                             <div className="relative w-full">
                                               <span className="absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground text-sm">$</span>
                                               <Input
                                                 type="text"
-                                                value={deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : ''}
+                                                value={
+                                                  feesVisibility.totalFeeComputedOnly
+                                                    ? (() => {
+                                                        const c = formatComputedTotal(
+                                                          (deal as any).value ?? null,
+                                                          deal.successFeePercent ?? null,
+                                                        );
+                                                        return c === '—' ? '' : c.replace(/^\$/, '');
+                                                      })()
+                                                    : (deal.totalFee ? Math.round(deal.totalFee).toLocaleString() : '')
+                                                }
                                                 readOnly
-                                                title="Auto-calculated: Retainer + Milestone + Deal Size × Success Fee %"
+                                                title={
+                                                  feesVisibility.totalFeeComputedOnly
+                                                    ? 'Computed: deal size × success fee %'
+                                                    : 'Auto-calculated: Retainer + Milestone + Deal Size × Success Fee %'
+                                                }
                                                 placeholder="0"
                                                 className="pl-5 h-8 text-sm w-full bg-muted/40 cursor-not-allowed"
                                               />

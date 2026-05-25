@@ -1,4 +1,7 @@
 import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useCompany } from '@/hooks/useCompany';
 import { GripVertical, Eye, EyeOff, RotateCcw, ChevronDown, LayoutList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -87,6 +90,48 @@ function SortableFieldItem({
 
 export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSettingsProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { company } = useCompany();
+  const companyId = company?.id ?? null;
+  const queryClient = useQueryClient();
+
+  const { data: aiSettings } = useQuery({
+    queryKey: ['company_settings', companyId, 'ai_settings'],
+    enabled: !!companyId && isAdmin,
+    staleTime: 60 * 1000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('company_settings')
+        .select('ai_settings')
+        .eq('company_id', companyId!)
+        .maybeSingle();
+      if (error) throw error;
+      return ((data as any)?.ai_settings ?? {}) as Record<string, any>;
+    },
+  });
+
+  const fees = (aiSettings?.deal_info?.fees ?? {}) as Record<string, any>;
+  const retainerEnabled = typeof fees.retainer_enabled === 'boolean' ? fees.retainer_enabled : true;
+  const milestoneEnabled = typeof fees.milestone_enabled === 'boolean' ? fees.milestone_enabled : true;
+  const totalFeeComputedOnly = typeof fees.total_fee_computed_only === 'boolean' ? fees.total_fee_computed_only : false;
+
+  const updateFeeFlag = async (key: 'retainer_enabled' | 'milestone_enabled' | 'total_fee_computed_only', value: boolean) => {
+    if (!companyId) return;
+    const base = (aiSettings ?? {}) as Record<string, any>;
+    const cloned = JSON.parse(JSON.stringify(base));
+    cloned.deal_info = cloned.deal_info ?? {};
+    cloned.deal_info.fees = cloned.deal_info.fees ?? {};
+    cloned.deal_info.fees[key] = value;
+    const { error } = await supabase
+      .from('company_settings')
+      .upsert({ company_id: companyId, ai_settings: cloned }, { onConflict: 'company_id' });
+    if (error) {
+      toast({ title: 'Failed to update setting', description: error.message, variant: 'destructive' });
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: ['company_settings', companyId, 'ai_settings'] });
+    toast({ title: 'Setting updated' });
+  };
+
   const {
     fieldOrder,
     fieldVisibility,
@@ -138,6 +183,31 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
         </CollapsibleTrigger>
         <CollapsibleContent>
           <CardContent className="space-y-4">
+            <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Hours &amp; Fees section</p>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">Show Retainer Fee</p>
+                  <p className="text-xs text-muted-foreground">When off, the Retainer Fee row is hidden from all users on this account.</p>
+                </div>
+                <Switch checked={retainerEnabled} onCheckedChange={(v) => updateFeeFlag('retainer_enabled', v)} aria-label="Show Retainer Fee" />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">Show Milestone Fee</p>
+                  <p className="text-xs text-muted-foreground">When off, the Milestone Fee row is hidden from all users on this account.</p>
+                </div>
+                <Switch checked={milestoneEnabled} onCheckedChange={(v) => updateFeeFlag('milestone_enabled', v)} aria-label="Show Milestone Fee" />
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">Total Fee uses computed value (success fee % × deal size)</p>
+                  <p className="text-xs text-muted-foreground">When on, Total Fee is computed live as deal size × success fee % and ignores Retainer/Milestone.</p>
+                </div>
+                <Switch checked={totalFeeComputedOnly} onCheckedChange={(v) => updateFeeFlag('total_fee_computed_only', v)} aria-label="Total Fee computed only" />
+              </div>
+            </div>
+
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
                 Drag to reorder. Toggle visibility for each field. Changes apply to all deals in your company.
