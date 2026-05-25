@@ -930,10 +930,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
             <Download className="h-4 w-4" />
             Export as PDF
           </Button>
-          <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
-            <Mail className="h-4 w-4" />
-            Generate Status Email
-          </Button>
+          {isFifthLine && (
+            <Button variant="liquid-glass" size="sm" onClick={() => onExport(content)} className="gap-2">
+              <Mail className="h-4 w-4" />
+              Generate Status Email
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
