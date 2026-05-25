@@ -709,26 +709,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                 )}
               </div>
 
-              <TabsContent value="all" className="mt-3">
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-2">
-                    {pendingRequests.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8">No pending requests.</p>
-                    )}
-                    {groupSyncRequests(applyFilters(pendingRequests)).map(group => (
-                      <GroupedSyncRequestCard
-                        key={group.key + ':' + group.members[0].id}
-                        group={group}
-                        onApprove={handleApprove}
-                        onReject={rejectRequest}
-                        onMerge={handleMerge}
-                        renderMember={renderMember}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
               <TabsContent value="new" className="mt-3">
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-2">
@@ -745,6 +725,19 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                         renderMember={renderMember}
                       />
                     ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="likely" className="mt-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {likelyMatchRequests.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        No likely matches. Try "Re-run matching" to refresh confidence.
+                      </p>
+                    )}
+                    {applyFilters(likelyMatchRequests, { allowTypeFilter: false }).map(r => renderMember(r))}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -808,38 +801,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                         </button>
                       );
                     })}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="duplicates" className="mt-3">
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-3">
-                    {duplicateGroups.length === 0 && softDupRequests.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8">No potential duplicates detected.</p>
-                    )}
-                    {duplicateGroups
-                      .map(g => ({ ...g, members: applyFilters(g.members, { allowTypeFilter: false }) }))
-                      .filter(g => g.members.length > 0)
-                      .map(group => (
-                        <GroupedSyncRequestCard
-                          key={group.key + ':' + group.members[0].id}
-                          group={group}
-                          onApprove={handleApprove}
-                          onReject={rejectRequest}
-                          onMerge={handleMerge}
-                          renderMember={renderMember}
-                          defaultOpen
-                        />
-                      ))}
-                    {applyFilters(softDupRequests, { allowTypeFilter: false }).length > 0 && (
-                      <>
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground pt-2">
-                          Soft matches against existing directory
-                        </p>
-                        {applyFilters(softDupRequests, { allowTypeFilter: false }).map(r => renderMember(r))}
-                      </>
-                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
