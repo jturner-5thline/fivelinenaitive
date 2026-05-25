@@ -977,6 +977,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
       </div>
 
       {/* Visible Metrics on FLEx */}
+      {keyMetricsFlexEnabled && (
       <div className="space-y-3">
         <div>
           <Label className="text-sm font-semibold">Key Metrics - FLEx</Label>
@@ -1039,6 +1040,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
           })()}
         </div>
       </div>
+      )}
     </div>
   );
 }
