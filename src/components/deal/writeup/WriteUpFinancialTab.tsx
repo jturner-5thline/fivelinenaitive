@@ -166,6 +166,8 @@ const parseYearToNumber = (yearStr: string): number | null => {
 
 export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteUpFinancialTabProps) {
   const [grossMarginErrors, setGrossMarginErrors] = useState<Record<string, string | null>>({});
+  const { features: companyFeatures } = useCompanyFeatures();
+  const keyMetricsFlexEnabled = companyFeatures?.key_metrics_flex_enabled ?? false;
   const [financialAsOfText, setFinancialAsOfText] = useState(
     data.financialDataAsOf ? format(data.financialDataAsOf, 'MM/yyyy') : ''
   );
