@@ -90,7 +90,7 @@ export interface Deal {
   businessModel?: string;
   contactInfo?: string;
   stage: DealStage;
-  status: DealStatus;
+  status: DealStatus | null;
   engagementType: EngagementType;
   exclusivity?: ExclusivityType;
   dealTypes?: string[]; // Array of deal type IDs
