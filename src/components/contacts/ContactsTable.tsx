@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Search, MoreHorizontal, UserPlus, ChevronDown, Building2, Briefcase, Trash2, Linkedin } from 'lucide-react';
 import { Contact, LIFECYCLE_STAGES, CONTACT_STATUSES, useDeleteContact } from '@/hooks/useContacts';
+import { useUpdateContact } from '@/hooks/useContacts';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { useContactTypes } from '@/hooks/useContactTypes';
 import { useCrmCompanies } from '@/hooks/useCrmCompanies';
 import { useLinkContactToCompany, useLinkContactToDeal, useAllDeals } from '@/hooks/useCrmLinks';
@@ -53,6 +55,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const [lifecycleFilter, setLifecycleFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [contactTypeFilter, setContactTypeFilter] = useState<string>('all');
+  const [ownerFilter, setOwnerFilter] = useState<string>('all');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const { sortField, sortDir, handleSort } = useTriStateSort({
     field: 'created_at',
@@ -70,6 +73,9 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
   const linkToCompany = useLinkContactToCompany();
   const linkToDeal = useLinkContactToDeal();
   const deleteContact = useDeleteContact();
+  const updateContact = useUpdateContact();
+  const teamMembers = useTeamMembers();
+  const ownerNameById = useMemo(() => new Map(teamMembers.map(m => [m.id, m.display_name])), [teamMembers]);
   const { data: contactTypes = [] } = useContactTypes();
 
   const filtered = useMemo(() => {
@@ -95,6 +101,11 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
     if (contactTypeFilter !== 'all') {
       result = result.filter(c => ((c as any).contact_type || '') === contactTypeFilter);
     }
+    if (ownerFilter !== 'all') {
+      result = ownerFilter === 'unassigned'
+        ? result.filter(c => !c.owner_user_id)
+        : result.filter(c => c.owner_user_id === ownerFilter);
+    }
 
     if (sortField && sortDir) {
       result.sort((a, b) => {
@@ -106,7 +117,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
     }
 
     return result;
-  }, [contacts, search, lifecycleFilter, statusFilter, contactTypeFilter, sortField, sortDir]);
+  }, [contacts, search, lifecycleFilter, statusFilter, contactTypeFilter, ownerFilter, sortField, sortDir]);
 
   const toggleAll = () => {
     if (selectedIds.size === filtered.length) {
@@ -183,6 +194,16 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
             {contactTypes.map(t => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+          <SelectTrigger className="w-[160px] h-9">
+            <SelectValue placeholder="Owner" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Owners</SelectItem>
+            <SelectItem value="unassigned">Unassigned</SelectItem>
+            {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
+          </SelectContent>
+        </Select>
 
         {selectedIds.size > 0 && (
           <DropdownMenu>
@@ -192,6 +213,20 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
+              <DropdownMenuItem
+                onClick={() => {
+                  Array.from(selectedIds).forEach(id => updateContact.mutate({ id, owner_user_id: null } as any));
+                }}
+              >Unassign Owner</DropdownMenuItem>
+              {teamMembers.map(m => (
+                <DropdownMenuItem
+                  key={m.id}
+                  onClick={() => {
+                    Array.from(selectedIds).forEach(id => updateContact.mutate({ id, owner_user_id: m.id } as any));
+                  }}
+                >Assign Owner: {m.display_name}</DropdownMenuItem>
+              ))}
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => onBulkAction?.('assign_sdr', Array.from(selectedIds))}>Assign SDR Owner</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('assign_ae', Array.from(selectedIds))}>Assign AE Owner</DropdownMenuItem>
               <DropdownMenuItem onClick={() => onBulkAction?.('update_status', Array.from(selectedIds))}>Update Status</DropdownMenuItem>
@@ -219,6 +254,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
               <TableHead><SortHeader field="status">Status</SortHeader></TableHead>
               <TableHead><SortHeader field="contact_score">Score</SortHeader></TableHead>
               <TableHead><SortHeader field="lead_source">Source</SortHeader></TableHead>
+              <TableHead><SortHeader field="owner_user_id">Owner</SortHeader></TableHead>
               <TableHead><SortHeader field="last_activity_date">Last Activity</SortHeader></TableHead>
               <TableHead className="w-10" />
             </TableRow>
@@ -226,7 +262,7 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
           <TableBody>
             {filtered.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={13} className="text-center py-12 text-muted-foreground">
+                <TableCell colSpan={14} className="text-center py-12 text-muted-foreground">
                   <UserPlus className="h-8 w-8 mx-auto mb-2 opacity-40" />
                   <p className="text-sm">No contacts found</p>
                 </TableCell>
@@ -288,6 +324,9 @@ export function ContactsTable({ contacts, onBulkAction }: ContactsTableProps) {
                     </TableCell>
                     <TableCell className="text-sm">{contact.contact_score || 0}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{contact.lead_source || '—'}</TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {contact.owner_user_id ? (ownerNameById.get(contact.owner_user_id) || 'Unknown') : '—'}
+                    </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
                       {contact.last_activity_date ? format(new Date(contact.last_activity_date), 'MMM d') : '—'}
                     </TableCell>
