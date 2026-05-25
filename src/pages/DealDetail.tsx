@@ -53,6 +53,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRecordDealOpened } from '@/hooks/useRecentDeals';
+import { usePrimaryDealContact } from '@/hooks/usePrimaryDealContact';
 import { useCompany } from '@/hooks/useCompany';
 import { useProfile } from '@/hooks/useProfile';
 import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
@@ -705,6 +706,12 @@ export default function DealDetail() {
   useEffect(() => {
     if (id) recordDealOpened(id);
   }, [id, recordDealOpened]);
+
+  // Primary contact linked via contact_deals (role='primary'). When
+  // present, this drives the Client Contact display in place of the
+  // legacy free-text `deal.contact` field. Falls back to the free-text
+  // field for tenants that haven't migrated to contact links yet.
+  const { data: primaryDealContact } = usePrimaryDealContact(id || null);
 
   const formatRenderedLenderStage = useCallback(
     (value: string | null | undefined) => resolveLenderActivityLabel(value, 'stage'),
@@ -3609,7 +3616,11 @@ export default function DealDetail() {
                                     </Select>
                                   </div>
                                 );
-                              case 'clientContact':
+                              case 'clientContact': {
+                                const linkedContactName = primaryDealContact?.name || null;
+                                const linkedContactEmail = primaryDealContact?.email || null;
+                                const displayContactName = linkedContactName || deal.contact || '';
+                                const displayContactInfo = linkedContactEmail || deal.contactInfo || '';
                                 return (
                                   <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
                                     <span className="text-muted-foreground text-sm">Client Contact</span>
@@ -3621,19 +3632,25 @@ export default function DealDetail() {
                                               <PopoverTrigger asChild>
                                                 <Button variant="outline" className="flex-1 min-w-0 justify-start h-8 px-3 font-normal text-sm overflow-hidden">
                                                   <span className="truncate">
-                                                    {deal.contact || <span className="text-muted-foreground italic">Add contact</span>}
+                                                    {displayContactName || <span className="text-muted-foreground italic">Add contact</span>}
                                                   </span>
                                                 </Button>
                                               </PopoverTrigger>
                                             </TooltipTrigger>
-                                            {deal.contact && deal.contactInfo && (
+                                            {displayContactName && displayContactInfo && (
                                               <TooltipContent side="left" className="max-w-[200px]">
-                                                <p className="font-medium">{deal.contact}</p>
-                                                <p className="text-xs text-muted-foreground">{deal.contactInfo}</p>
+                                                <p className="font-medium">{displayContactName}</p>
+                                                <p className="text-xs text-muted-foreground">{displayContactInfo}</p>
                                               </TooltipContent>
                                             )}
                                             <PopoverContent className="w-72 p-4 bg-popover" align="start">
                                               <div className="space-y-4">
+                                                {linkedContactName && (
+                                                  <div className="rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
+                                                    Linked from Contacts: <span className="font-medium text-foreground">{linkedContactName}</span>
+                                                    {linkedContactEmail && <> · {linkedContactEmail}</>}
+                                                  </div>
+                                                )}
                                                 <div className="space-y-2">
                                                   <label className="text-sm font-medium">Contact Name</label>
                                                   <DebouncedInput
@@ -3660,8 +3677,8 @@ export default function DealDetail() {
                                       <DraftEmailToClientContactButton
                                         dealId={deal.id}
                                         dealName={deal.name || deal.company}
-                                        contactName={deal.contact}
-                                        contactInfo={deal.contactInfo}
+                                        contactName={displayContactName || null}
+                                        contactInfo={displayContactInfo || null}
                                         companyDomain={deal.companyUrl}
                                         size="sm"
                                         variant="outline"
@@ -3670,6 +3687,7 @@ export default function DealDetail() {
                                     </div>
                                   </div>
                                 );
+                              }
                               case 'referralSource':
                                 return (
                                   <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
