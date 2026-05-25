@@ -18,6 +18,14 @@ export interface CompanyFeatures {
    *  - `null`  = inherit tenant default (5thline.co => on, all others => off)
    */
   assist_enabled: boolean | null;
+  /**
+   * Per-company override for the "Key Metrics - FLEx" section on the
+   * Deal Write-Up tab.
+   *  - `true`  = force-enable for this company
+   *  - `false` = force-disable for this company
+   *  - `null`  = inherit tenant default (5thline.co => on, all others => off)
+   */
+  key_metrics_flex_enabled: boolean | null;
   created_at: string;
   updated_at: string;
 }
@@ -29,6 +37,7 @@ const DEFAULT_FEATURES: Omit<CompanyFeatures, 'id' | 'company_id' | 'created_at'
   deal_memo_enabled: false,
   sample_deal_on_signup: true,
   assist_enabled: null,
+  key_metrics_flex_enabled: null,
 };
 
 export function useCompanyFeatures() {
@@ -86,6 +95,8 @@ export function useCompanyFeatures() {
         // (true/false) still wins so admins can disable it for a specific
         // 5th Line workspace.
         assist_enabled: data?.assist_enabled ?? true,
+        // Key Metrics - FLEx: 5th Line default is ON, override may force off.
+        key_metrics_flex_enabled: data?.key_metrics_flex_enabled ?? true,
       },
       isLoading: false,
     };
@@ -102,6 +113,9 @@ export function useCompanyFeatures() {
       // (true) can enable it; (false) keeps it off; (null) inherits the
       // tenant default below.
       assist_enabled: data?.assist_enabled ?? false,
+      // Key Metrics - FLEx: non-5th-Line tenants default to OFF. A company-level
+      // override (true) can enable it; (false) keeps it off; (null) inherits.
+      key_metrics_flex_enabled: data?.key_metrics_flex_enabled ?? false,
     },
     isLoading,
   };
@@ -131,7 +145,7 @@ export function useAdminCompanyFeatures(companyId: string | null) {
   });
 
   const updateFeatures = useMutation({
-    mutationFn: async (updates: Partial<Pick<CompanyFeatures, 'workflows_enabled' | 'timeline_view_enabled' | 'agreement_icon_visible' | 'deal_memo_enabled' | 'sample_deal_on_signup' | 'assist_enabled'>>) => {
+    mutationFn: async (updates: Partial<Pick<CompanyFeatures, 'workflows_enabled' | 'timeline_view_enabled' | 'agreement_icon_visible' | 'deal_memo_enabled' | 'sample_deal_on_signup' | 'assist_enabled' | 'key_metrics_flex_enabled'>>) => {
       if (!companyId) throw new Error('No company selected');
 
       // Upsert: insert if not exists, update if exists

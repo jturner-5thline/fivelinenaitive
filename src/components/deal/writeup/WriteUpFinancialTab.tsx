@@ -27,6 +27,7 @@ import { DealWriteUpData, FinancialYear, FinancialComment, ExistingDebtItem } fr
 import { FlexChangedFieldWrapper } from './FlexChangedFieldWrapper';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 
 const PROFITABILITY_OPTIONS = [
   'Profitable',
@@ -165,6 +166,8 @@ const parseYearToNumber = (yearStr: string): number | null => {
 
 export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteUpFinancialTabProps) {
   const [grossMarginErrors, setGrossMarginErrors] = useState<Record<string, string | null>>({});
+  const { features: companyFeatures } = useCompanyFeatures();
+  const keyMetricsFlexEnabled = companyFeatures?.key_metrics_flex_enabled ?? false;
   const [financialAsOfText, setFinancialAsOfText] = useState(
     data.financialDataAsOf ? format(data.financialDataAsOf, 'MM/yyyy') : ''
   );
@@ -974,6 +977,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
       </div>
 
       {/* Visible Metrics on FLEx */}
+      {keyMetricsFlexEnabled && (
       <div className="space-y-3">
         <div>
           <Label className="text-sm font-semibold">Key Metrics - FLEx</Label>
@@ -1036,6 +1040,7 @@ export function WriteUpFinancialTab({ data, updateField, changedFields }: WriteU
           })()}
         </div>
       </div>
+      )}
     </div>
   );
 }
