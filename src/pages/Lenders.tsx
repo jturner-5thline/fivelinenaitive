@@ -496,6 +496,10 @@ export default function Lenders() {
       list = list.filter((lender) => activeDealCounts[lender.name]);
     }
 
+    if (showDuplicatesOnly) {
+      list = list.filter((lender) => duplicateIndex.byLenderId[lender.id]);
+    }
+
     const q = debouncedSearchQuery.trim().toLowerCase();
     if (!q) return list;
 
