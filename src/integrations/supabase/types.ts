@@ -14445,14 +14445,67 @@ export type Database = {
           },
         ]
       }
+      lender_sync_request_decisions: {
+        Row: {
+          action: string
+          decided_at: string
+          decided_by: string | null
+          existing_value: Json | null
+          field_name: string
+          id: string
+          incoming_value: Json | null
+          notes: string | null
+          request_id: string
+          scope: string
+        }
+        Insert: {
+          action: string
+          decided_at?: string
+          decided_by?: string | null
+          existing_value?: Json | null
+          field_name: string
+          id?: string
+          incoming_value?: Json | null
+          notes?: string | null
+          request_id: string
+          scope: string
+        }
+        Update: {
+          action?: string
+          decided_at?: string
+          decided_by?: string | null
+          existing_value?: Json | null
+          field_name?: string
+          id?: string
+          incoming_value?: Json | null
+          notes?: string | null
+          request_id?: string
+          scope?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "lender_sync_request_decisions_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "lender_sync_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       lender_sync_requests: {
         Row: {
+          assigned_reviewer_id: string | null
           changes_diff: Json | null
+          confidence: string | null
+          conflict_count: number
+          contact_change_count: number
           created_at: string
           existing_lender_id: string | null
           existing_lender_name: string | null
           id: string
           incoming_data: Json
+          match_candidates: Json
+          match_reason: string | null
           processed_at: string | null
           processed_by: string | null
           processing_notes: string | null
@@ -14460,15 +14513,22 @@ export type Database = {
           source_lender_id: string | null
           source_system: string
           status: string
+          suggested_action: string | null
           updated_at: string
         }
         Insert: {
+          assigned_reviewer_id?: string | null
           changes_diff?: Json | null
+          confidence?: string | null
+          conflict_count?: number
+          contact_change_count?: number
           created_at?: string
           existing_lender_id?: string | null
           existing_lender_name?: string | null
           id?: string
           incoming_data: Json
+          match_candidates?: Json
+          match_reason?: string | null
           processed_at?: string | null
           processed_by?: string | null
           processing_notes?: string | null
@@ -14476,15 +14536,22 @@ export type Database = {
           source_lender_id?: string | null
           source_system?: string
           status?: string
+          suggested_action?: string | null
           updated_at?: string
         }
         Update: {
+          assigned_reviewer_id?: string | null
           changes_diff?: Json | null
+          confidence?: string | null
+          conflict_count?: number
+          contact_change_count?: number
           created_at?: string
           existing_lender_id?: string | null
           existing_lender_name?: string | null
           id?: string
           incoming_data?: Json
+          match_candidates?: Json
+          match_reason?: string | null
           processed_at?: string | null
           processed_by?: string | null
           processing_notes?: string | null
@@ -14492,6 +14559,7 @@ export type Database = {
           source_lender_id?: string | null
           source_system?: string
           status?: string
+          suggested_action?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -14503,6 +14571,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      lender_sync_settings: {
+        Row: {
+          auto_approve_deterministic: boolean
+          company_id: string
+          created_at: string
+          likely_match_threshold: number
+          possible_match_threshold: number
+          updated_at: string
+        }
+        Insert: {
+          auto_approve_deterministic?: boolean
+          company_id: string
+          created_at?: string
+          likely_match_threshold?: number
+          possible_match_threshold?: number
+          updated_at?: string
+        }
+        Update: {
+          auto_approve_deterministic?: boolean
+          company_id?: string
+          created_at?: string
+          likely_match_threshold?: number
+          possible_match_threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       login_history: {
         Row: {

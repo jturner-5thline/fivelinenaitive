@@ -10,12 +10,22 @@ export interface LenderSyncRequest {
   existing_lender_id: string | null;
   existing_lender_name: string | null;
   changes_diff: Record<string, { old: unknown; new: unknown }> | null;
-  status: 'pending' | 'approved' | 'rejected' | 'merged' | 'auto_approved';
+  status:
+    | 'pending' | 'approved' | 'rejected' | 'merged' | 'auto_approved'
+    | 'pending_new' | 'pending_match_review' | 'pending_conflict_review'
+    | 'approved_add' | 'approved_update' | 'approved_merge' | 'completed';
   processed_by: string | null;
   processed_at: string | null;
   processing_notes: string | null;
   created_at: string;
   updated_at: string;
+  confidence?: 'exact_duplicate' | 'likely_duplicate' | 'possible_match' | 'needs_review' | 'none' | null;
+  suggested_action?: 'add' | 'update' | 'merge' | 'review' | null;
+  match_candidates?: Array<{ lender_id: string; name: string; score: number; reasons: string[]; topReason: string }> | null;
+  match_reason?: string | null;
+  conflict_count?: number | null;
+  contact_change_count?: number | null;
+  assigned_reviewer_id?: string | null;
 }
 
 interface UseLenderSyncRequestsResult {
@@ -46,7 +56,7 @@ export function useLenderSyncRequests(): UseLenderSyncRequestsResult {
 
       if (fetchError) throw fetchError;
 
-      setRequests((data || []) as LenderSyncRequest[]);
+      setRequests((data || []) as unknown as LenderSyncRequest[]);
     } catch (err) {
       console.error('Error fetching lender sync requests:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch sync requests');

@@ -18,6 +18,7 @@ import {
 } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
 import { useLenderSyncRequests, LenderSyncRequest } from '@/hooks/useLenderSyncRequests';
+import { supabase } from '@/integrations/supabase/client';
 import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
@@ -154,6 +155,30 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
                     <Badge variant="outline" className={`text-[10px] ${c.className}`}>{c.label}</Badge>
                   ) : null;
                 })()}
+                {request.confidence && request.confidence !== 'none' && (
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] ${
+                      request.confidence === 'exact_duplicate' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                      : request.confidence === 'likely_duplicate' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40'
+                      : request.confidence === 'possible_match' ? 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/40'
+                      : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/40'
+                    }`}
+                    title={request.match_reason || undefined}
+                  >
+                    {request.confidence.replace('_', ' ')}
+                  </Badge>
+                )}
+                {request.suggested_action && (
+                  <Badge variant="outline" className="text-[10px] bg-primary/5 border-primary/30 text-primary">
+                    Suggested: {request.suggested_action}
+                  </Badge>
+                )}
+                {(request.conflict_count ?? 0) > 0 && (
+                  <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+                    {request.conflict_count} conflict{request.conflict_count === 1 ? '' : 's'}
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
@@ -276,6 +301,24 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
+  const [isRematching, setIsRematching] = useState(false);
+
+  const handleRerunMatching = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsRematching(true);
+    try {
+      const { error } = await supabase.functions.invoke('match-lender-sync-request', {
+        body: { backfill_all: true },
+      });
+      if (error) throw error;
+      toast({ title: 'Matching refreshed', description: 'Confidence and suggested actions recomputed.' });
+      await refetch();
+    } catch (err) {
+      toast({ title: 'Matching failed', description: (err as Error).message, variant: 'destructive' });
+    } finally {
+      setIsRematching(false);
+    }
+  };
 
   // Wrap approve/merge to also notify parent to refresh lenders
   const handleApprove = async (id: string) => {
@@ -303,7 +346,24 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
 
   // Categorize pending requests for tabs
   const newLenderRequests = pendingRequests.filter(r => r.request_type === 'new_lender');
-  const conflictRequests = pendingRequests.filter(r => r.request_type === 'merge_conflict');
+  // Conflict Review: anything with unresolved field conflicts OR explicit pending_conflict_review status.
+  // Falls back to legacy `request_type === 'merge_conflict'` until backend backfills `conflict_count`.
+  const conflictRequests = pendingRequests.filter(r =>
+    (r.conflict_count ?? 0) > 0
+    || r.status === 'pending_conflict_review'
+    || r.request_type === 'merge_conflict',
+  );
+  // Likely Match: matching engine flagged at least one strong candidate and request is not in conflict.
+  const likelyMatchRequests = pendingRequests.filter(r =>
+    !conflictRequests.includes(r)
+    && (
+      r.suggested_action === 'update'
+      || r.suggested_action === 'merge'
+      || r.confidence === 'likely_duplicate'
+      || r.confidence === 'exact_duplicate'
+      || (r.match_candidates && r.match_candidates.length > 0)
+    ),
+  );
 
   // Dedupe-aware groupings used across every tab. Single-member groups render as
   // normal request cards; multi-member groups collapse into a parent row with
@@ -320,12 +380,12 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   );
   const duplicateCount = duplicateGroups.reduce((s, g) => s + g.members.length, 0) + softDupRequests.length;
 
-  // Default to the most actionable tab. Conflicts win, then new lenders, else all.
+  // Default to the most actionable tab per spec: Conflict Review > Likely Match > New > Completed.
   const defaultTab =
     conflictRequests.length > 0 ? 'conflicts'
+    : likelyMatchRequests.length > 0 ? 'likely'
     : newLenderRequests.length > 0 ? 'new'
-    : duplicateCount > 0 ? 'duplicates'
-    : 'all';
+    : 'completed';
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
   // Per-tab search + type filter (each tab keeps its own state so switching tabs
@@ -548,9 +608,21 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     Selected <span className="font-semibold">{selectedIds.size}</span>
                   </Badge>
                 </div>
-                <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleRerunMatching}
+                    disabled={isRematching}
+                    title="Re-run entity matching engine across pending requests"
+                  >
+                    {isRematching ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Layers className="h-3 w-3 mr-1" />}
+                    Re-match
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
+                    <RefreshCw className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -603,33 +675,27 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full grid grid-cols-5">
-                <TabsTrigger value="all" className="gap-1.5">
-                  All
-                  {pendingRequests.length > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">{pendingRequests.length}</Badge>
-                  )}
-                </TabsTrigger>
+              <TabsList className="w-full grid grid-cols-4">
                 <TabsTrigger value="new" className="gap-1.5">
-                  New Funding Sources
+                  New
                   {newLenderRequests.length > 0 && (
                     <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30">
                       {newLenderRequests.length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="conflicts" className="gap-1.5">
-                  Resolve Conflicts
-                  {conflictRequests.length > 0 && (
-                    <Badge variant="destructive" className="h-5 px-1.5 text-xs">{conflictRequests.length}</Badge>
+                <TabsTrigger value="likely" className="gap-1.5">
+                  Likely Match
+                  {likelyMatchRequests.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                      {likelyMatchRequests.length}
+                    </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="duplicates" className="gap-1.5">
-                  Potential Duplicates
-                  {duplicateCount > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                      {duplicateCount}
-                    </Badge>
+                <TabsTrigger value="conflicts" className="gap-1.5">
+                  Conflict Review
+                  {conflictRequests.length > 0 && (
+                    <Badge variant="destructive" className="h-5 px-1.5 text-xs">{conflictRequests.length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="completed" className="gap-1.5">
@@ -651,7 +717,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     className="h-8 pl-7 text-sm"
                   />
                 </div>
-                {activeTab === 'all' || activeTab === 'completed' ? (
+                {activeTab === 'completed' ? (
                   <Select
                     value={currentFilter.type}
                     onValueChange={(v) => setCurrentFilter({ ...currentFilter, type: v })}
@@ -679,26 +745,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                 )}
               </div>
 
-              <TabsContent value="all" className="mt-3">
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-2">
-                    {pendingRequests.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8">No pending requests.</p>
-                    )}
-                    {groupSyncRequests(applyFilters(pendingRequests)).map(group => (
-                      <GroupedSyncRequestCard
-                        key={group.key + ':' + group.members[0].id}
-                        group={group}
-                        onApprove={handleApprove}
-                        onReject={rejectRequest}
-                        onMerge={handleMerge}
-                        renderMember={renderMember}
-                      />
-                    ))}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
               <TabsContent value="new" className="mt-3">
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-2">
@@ -715,6 +761,19 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                         renderMember={renderMember}
                       />
                     ))}
+                  </div>
+                </ScrollArea>
+              </TabsContent>
+
+              <TabsContent value="likely" className="mt-3">
+                <ScrollArea className="h-[400px]">
+                  <div className="space-y-2">
+                    {likelyMatchRequests.length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        No likely matches. Try "Re-run matching" to refresh confidence.
+                      </p>
+                    )}
+                    {applyFilters(likelyMatchRequests, { allowTypeFilter: false }).map(r => renderMember(r))}
                   </div>
                 </ScrollArea>
               </TabsContent>
@@ -778,38 +837,6 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                         </button>
                       );
                     })}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="duplicates" className="mt-3">
-                <ScrollArea className="h-[400px]">
-                  <div className="space-y-3">
-                    {duplicateGroups.length === 0 && softDupRequests.length === 0 && (
-                      <p className="text-sm text-muted-foreground text-center py-8">No potential duplicates detected.</p>
-                    )}
-                    {duplicateGroups
-                      .map(g => ({ ...g, members: applyFilters(g.members, { allowTypeFilter: false }) }))
-                      .filter(g => g.members.length > 0)
-                      .map(group => (
-                        <GroupedSyncRequestCard
-                          key={group.key + ':' + group.members[0].id}
-                          group={group}
-                          onApprove={handleApprove}
-                          onReject={rejectRequest}
-                          onMerge={handleMerge}
-                          renderMember={renderMember}
-                          defaultOpen
-                        />
-                      ))}
-                    {applyFilters(softDupRequests, { allowTypeFilter: false }).length > 0 && (
-                      <>
-                        <p className="text-[11px] uppercase tracking-wider text-muted-foreground pt-2">
-                          Soft matches against existing directory
-                        </p>
-                        {applyFilters(softDupRequests, { allowTypeFilter: false }).map(r => renderMember(r))}
-                      </>
-                    )}
                   </div>
                 </ScrollArea>
               </TabsContent>
