@@ -20,6 +20,7 @@ import { DynamicFieldRenderer } from '@/components/crm/DynamicFieldRenderer';
 import { ContactTasksCard } from '@/components/contacts/ContactTasksCard';
 import { ClaapCallsSection } from '@/components/claap/ClaapCallsSection';
 import { CompanyDomainMatchPrompt } from '@/components/contacts/CompanyDomainMatchPrompt';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -44,6 +45,7 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
   const createActivity = useCreateContactActivity();
   const { data: contactDeals = [] } = useContactDeals(contactId);
   const deleteContact = useDeleteContact();
+  const teamMembers = useTeamMembers();
   const [newNote, setNewNote] = useState('');
   const [activityFilter, setActivityFilter] = useState('all');
 
@@ -231,6 +233,19 @@ export function ContactDetailContent({ contactId, headerExtra, hideBackButton, o
                     onChange={(v) => handleQuickUpdate('contact_type', v)}
                     triggerClassName="h-8 text-xs"
                   />
+                </div>
+                <div>
+                  <p className="text-[10px] text-muted-foreground uppercase mb-1">Owner</p>
+                  <Select
+                    value={contact.owner_user_id || 'unassigned'}
+                    onValueChange={v => handleQuickUpdate('owner_user_id', v === 'unassigned' ? null : v)}
+                  >
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="unassigned">Unassigned</SelectItem>
+                      {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <EditableField label="Lead Source" type="text" value={contact.lead_source} onSave={(v) => handleQuickUpdate('lead_source', v)} />
                 <EditableField label="Source System" type="text" value={contact.source_system} onSave={(v) => handleQuickUpdate('source_system', v)} />
