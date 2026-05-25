@@ -1222,7 +1222,7 @@ export function useDealsDatabase() {
   }, [deals]);
 
   // Update deal status
-  const updateDealStatus = useCallback(async (dealId: string, newStatus: DealStatus) => {
+  const updateDealStatus = useCallback(async (dealId: string, newStatus: DealStatus | null) => {
     await updateDeal(dealId, { status: newStatus });
   }, [updateDeal]);
 
