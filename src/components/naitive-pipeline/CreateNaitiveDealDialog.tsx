@@ -219,7 +219,7 @@ export function CreateNaitiveDealDialog({ trigger, pipelineId, stages, defaultSt
         deal_class: 'naitive',
         user_id: user.id,
         value: 0,
-        status: 'on-track',
+        status: null,
       };
 
       // Protected text fields: only include in payload when the user actually
