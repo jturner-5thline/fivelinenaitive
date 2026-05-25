@@ -545,6 +545,7 @@ export default function DealDetail() {
   // (DealsHeader/sidebar trigger/brand) so the modal body stays clean and
   // the modal's own scroll container is the only scroll region.
   const isEmbedded = searchParams.get('embedded') === '1';
+  const feesVisibility = useCompanyFeesVisibility();
 
   // ── Smart back-navigation: resolve origin from location.state, falling
   //    back to sessionStorage so a hard refresh on /deal/:id keeps the
