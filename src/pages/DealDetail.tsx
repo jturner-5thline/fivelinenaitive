@@ -3687,6 +3687,7 @@ export default function DealDetail() {
                                     </div>
                                   </div>
                                 );
+                              }
                               case 'referralSource':
                                 return (
                                   <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
