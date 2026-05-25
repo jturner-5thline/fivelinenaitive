@@ -3616,7 +3616,7 @@ export default function DealDetail() {
                                     </Select>
                                   </div>
                                 );
-                              case 'clientContact':
+                              case 'clientContact': {
                                 const linkedContactName = primaryDealContact?.name || null;
                                 const linkedContactEmail = primaryDealContact?.email || null;
                                 const displayContactName = linkedContactName || deal.contact || '';
