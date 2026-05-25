@@ -707,6 +707,12 @@ export default function DealDetail() {
     if (id) recordDealOpened(id);
   }, [id, recordDealOpened]);
 
+  // Primary contact linked via contact_deals (role='primary'). When
+  // present, this drives the Client Contact display in place of the
+  // legacy free-text `deal.contact` field. Falls back to the free-text
+  // field for tenants that haven't migrated to contact links yet.
+  const { data: primaryDealContact } = usePrimaryDealContact(id || null);
+
   const formatRenderedLenderStage = useCallback(
     (value: string | null | undefined) => resolveLenderActivityLabel(value, 'stage'),
     [resolveLenderActivityLabel],
