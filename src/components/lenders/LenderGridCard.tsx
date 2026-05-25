@@ -129,6 +129,22 @@ export const LenderGridCard = memo(function LenderGridCard({
             {activeDealCount} active
           </Badge>
         )}
+        {duplicateCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="outline"
+                className="text-xs rounded-none rounded-br-lg border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1"
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                {duplicateCount} dup{duplicateCount === 1 ? '' : 's'}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              Shares a name with {duplicateCount} other funding source{duplicateCount === 1 ? '' : 's'}.
+            </TooltipContent>
+          </Tooltip>
+        )}
       </div>
       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
