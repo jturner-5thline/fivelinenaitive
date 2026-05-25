@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { DuplicateCluster } from '@/hooks/useDealDuplicates';
-import { Deal, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, STATUS_CONFIG, STAGE_CONFIG } from '@/types/deal';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronDown, ChevronRight, Merge, ExternalLink, Trash2, X } from 'lucide-react';
