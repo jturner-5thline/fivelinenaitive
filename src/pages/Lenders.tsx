@@ -1580,6 +1580,7 @@ export default function Lenders() {
                           <LenderListCard
                             lender={lender}
                             activeDealCount={activeDealCounts[lender.name] || 0}
+                            duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                             summary={getLenderSummary(lender.name)}
                             isQuickUploading={isQuickUploading}
                             quickUploadLenderName={quickUploadTarget?.lenderName || null}
@@ -1633,6 +1634,7 @@ export default function Lenders() {
                         <LenderGridCard
                           lender={lender}
                           activeDealCount={activeDealCounts[lender.name] || 0}
+                          duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                           tileDisplaySettings={tileDisplaySettings}
                           summary={getLenderSummary(lender.name)}
                           isQuickUploading={isQuickUploading}
