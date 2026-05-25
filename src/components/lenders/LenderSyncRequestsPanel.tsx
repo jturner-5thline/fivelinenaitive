@@ -533,13 +533,13 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
 
   const handleBulkApprove = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (selectedApprovable.length === 0) return;
+    if (safeSelected.length === 0) return;
     
     setIsBulkProcessing(true);
     let successCount = 0;
     let failCount = 0;
 
-    for (const request of selectedApprovable) {
+    for (const request of safeSelected) {
       const success = await approveRequest(request.id);
       if (success) {
         successCount++;
