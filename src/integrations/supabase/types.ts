@@ -3409,6 +3409,7 @@ export type Database = {
           created_at: string
           deal_memo_enabled: boolean
           id: string
+          key_metrics_flex_enabled: boolean | null
           sample_deal_on_signup: boolean
           timeline_view_enabled: boolean
           updated_at: string
@@ -3421,6 +3422,7 @@ export type Database = {
           created_at?: string
           deal_memo_enabled?: boolean
           id?: string
+          key_metrics_flex_enabled?: boolean | null
           sample_deal_on_signup?: boolean
           timeline_view_enabled?: boolean
           updated_at?: string
@@ -3433,6 +3435,7 @@ export type Database = {
           created_at?: string
           deal_memo_enabled?: boolean
           id?: string
+          key_metrics_flex_enabled?: boolean | null
           sample_deal_on_signup?: boolean
           timeline_view_enabled?: boolean
           updated_at?: string
