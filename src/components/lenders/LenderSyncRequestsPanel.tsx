@@ -356,12 +356,12 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   );
   const duplicateCount = duplicateGroups.reduce((s, g) => s + g.members.length, 0) + softDupRequests.length;
 
-  // Default to the most actionable tab. Conflicts win, then new lenders, else all.
+  // Default to the most actionable tab per spec: Conflict Review > Likely Match > New > Completed.
   const defaultTab =
     conflictRequests.length > 0 ? 'conflicts'
+    : likelyMatchRequests.length > 0 ? 'likely'
     : newLenderRequests.length > 0 ? 'new'
-    : duplicateCount > 0 ? 'duplicates'
-    : 'all';
+    : 'completed';
   const [activeTab, setActiveTab] = useState<string>(defaultTab);
 
   // Per-tab search + type filter (each tab keeps its own state so switching tabs
