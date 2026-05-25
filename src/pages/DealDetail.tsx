@@ -56,6 +56,8 @@ import { useRecordDealOpened } from '@/hooks/useRecentDeals';
 import { usePrimaryDealContact } from '@/hooks/usePrimaryDealContact';
 import { useCompany } from '@/hooks/useCompany';
 import { useProfile } from '@/hooks/useProfile';
+import { resolveDealClientContact } from '@/lib/dealClientContact';
+import { DealClientContactField } from '@/components/deal/DealClientContactField';
 import { Deal, DealStatus, DealStage, EngagementType, ExclusivityType, LenderStatus, LenderStage, LenderSubstage, LenderTrackingStatus, DealLender, DealMilestone, Referrer, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG, EXCLUSIVITY_CONFIG, LENDER_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
 import { useLenders } from '@/contexts/LendersContext';
 import { useMasterLenders } from '@/hooks/useMasterLenders';
@@ -712,6 +714,10 @@ export default function DealDetail() {
   // legacy free-text `deal.contact` field. Falls back to the free-text
   // field for tenants that haven't migrated to contact links yet.
   const { data: primaryDealContact } = usePrimaryDealContact(id || null);
+  const resolvedClientContact = useMemo(
+    () => deal ? resolveDealClientContact(deal, primaryDealContact) : null,
+    [deal, primaryDealContact],
+  );
 
   const formatRenderedLenderStage = useCallback(
     (value: string | null | undefined) => resolveLenderActivityLabel(value, 'stage'),
