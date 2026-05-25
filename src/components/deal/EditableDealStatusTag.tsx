@@ -18,7 +18,7 @@
  * and make the badge a button.
  */
 import { useCallback, useState } from 'react';
-import { ChevronDown, Check, Loader2 } from 'lucide-react';
+import { ChevronDown, Check, Loader2, CircleDashed } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import {
@@ -30,6 +30,8 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useInvalidateDealFreshness } from '@/hooks/useDealFreshness';
 
 const STATUS_ORDER: DealStatus[] = ['on-track', 'at-risk', 'off-track', 'on-hold', 'archived'];
+const NONE_VALUE = '__none__' as const;
+type StatusChoice = DealStatus | typeof NONE_VALUE;
 
 export interface EditableDealStatusTagProps {
   dealId: string;
@@ -52,10 +54,11 @@ export function EditableDealStatusTag({
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
-  const current = (status || 'on-track') as DealStatus;
+  const current: DealStatus | null = (status as DealStatus | null) || null;
 
-  const handleSelect = useCallback(async (next: DealStatus) => {
+  const handleSelect = useCallback(async (choice: StatusChoice) => {
     setOpen(false);
+    const next: DealStatus | null = choice === NONE_VALUE ? null : choice;
     if (next === current) return;
     setPending(true);
     const previous = current;
@@ -64,7 +67,9 @@ export function EditableDealStatusTag({
       // Recompute the left-column tile glow immediately — if the deal is
       // now fresh, the stale ring drops off on the next render tick.
       invalidateFreshness();
-      toast.success(`Status updated to ${STATUS_CONFIG[next].label}`);
+      toast.success(
+        next ? `Status updated to ${STATUS_CONFIG[next].label}` : 'Status cleared',
+      );
     } catch (err: any) {
       console.error('[EditableDealStatusTag] update failed', err);
       toast.error('Failed to update status', { description: err?.message });
@@ -83,7 +88,7 @@ export function EditableDealStatusTag({
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label={`Edit deal status (currently ${STATUS_CONFIG[current]?.label || current})`}
+          aria-label={`Edit deal status (currently ${current ? STATUS_CONFIG[current]?.label || current : 'none'})`}
           aria-haspopup="menu"
           aria-expanded={open}
           disabled={pending}
@@ -96,11 +101,18 @@ export function EditableDealStatusTag({
             className,
           )}
         >
-          <DealStatusTag
-            status={current}
-            hideDot={hideDot}
-            className="cursor-pointer hover:brightness-110"
-          />
+          {current ? (
+            <DealStatusTag
+              status={current}
+              hideDot={hideDot}
+              className="cursor-pointer hover:brightness-110"
+            />
+          ) : (
+            <span className="inline-flex items-center gap-1 px-1.5 py-0 h-[18px] rounded-full text-[10px] font-medium leading-none whitespace-nowrap border border-border/60 bg-muted/40 text-muted-foreground cursor-pointer hover:bg-muted/60">
+              {!hideDot && <CircleDashed className="h-2.5 w-2.5" />}
+              <span className="truncate">No status</span>
+            </span>
+          )}
           {!hideChevron && (
             <span className="ml-0.5 inline-flex h-[18px] items-center text-muted-foreground/70">
               {pending
@@ -116,6 +128,21 @@ export function EditableDealStatusTag({
         onClick={(e) => e.stopPropagation()}
       >
         <div role="menu" aria-label="Deal status">
+          <button
+            key={NONE_VALUE}
+            role="menuitemradio"
+            aria-checked={current === null}
+            type="button"
+            onClick={() => handleSelect(NONE_VALUE)}
+            className={cn(
+              'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left',
+              current === null ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
+            )}
+          >
+            <CircleDashed className="h-2.5 w-2.5 text-muted-foreground shrink-0" />
+            <span className="flex-1 truncate">None</span>
+            {current === null && <Check className="h-3 w-3 text-primary shrink-0" />}
+          </button>
           {STATUS_ORDER.map((key) => {
             const cfg = STATUS_CONFIG[key];
             const isActive = key === current;
