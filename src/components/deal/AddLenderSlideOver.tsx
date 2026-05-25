@@ -29,6 +29,7 @@ import { cn } from '@/lib/utils';
 import { useMasterLenders, type MasterLender } from '@/hooks/useMasterLenders';
 import { useLenderMatching, type DealCriteria, type LenderMatch } from '@/hooks/useLenderMatching';
 import { useAiRecommendedLenders, type AiRecommendation, type AiRecommenderCriteriaOverride } from '@/hooks/useAiRecommendedLenders';
+import { computeMatchScore, type DeterministicMatchResult } from '@/lib/lenderMatchScore';
 import { toast } from 'sonner';
 
 interface Props {
@@ -301,12 +302,15 @@ export function AddLenderSlideOver({
       .map((l) => {
         const key = l.name.toLowerCase();
         const ai = aiByName.get(key);
+        const det = computeMatchScore(l, criteria);
         const ruleScore = matchByName.get(key) ?? 0;
-        const score = ai ? Math.max(ruleScore, ai.matchScore) : ruleScore;
-        return { lender: l, score, ai };
+        // Prefer deterministic score; let AI score win only if materially higher.
+        const base = Math.max(det.score, ruleScore);
+        const score = ai ? Math.max(base, ai.matchScore) : base;
+        return { lender: l, score, ai, deterministic: det };
       })
       .sort((a, b) => b.score - a.score);
-  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilters, search, matchByName, aiOnly, aiByName]);
+  }, [masterLenders, existingSet, statusFilter, dealTypeFilters, sizeFilters, search, matchByName, aiOnly, aiByName, criteria]);
 
   const toggleSelect = (name: string) => {
     setSelected((prev) => {
