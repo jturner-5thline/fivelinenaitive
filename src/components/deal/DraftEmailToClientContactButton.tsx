@@ -27,6 +27,8 @@ interface DraftEmailToClientContactButtonProps {
   variant?: 'outline' | 'ghost' | 'secondary';
   /** Visible button label. Defaults to "Draft Email to Client Contact". */
   label?: string;
+  /** Render as a compact icon-only button (envelope only). */
+  iconOnly?: boolean;
 }
 
 const EMAIL_RE = /[\w.+-]+@[\w-]+\.[\w.-]+/i;
@@ -41,6 +43,7 @@ export function DraftEmailToClientContactButton({
   size = 'sm',
   variant = 'outline',
   label = 'Draft Email to Client Contact',
+  iconOnly = false,
 }: DraftEmailToClientContactButtonProps) {
   const [open, setOpen] = useState(false);
   const contactEmail = contactInfo?.match(EMAIL_RE)?.[0]
@@ -48,19 +51,27 @@ export function DraftEmailToClientContactButton({
     ?? null;
   const disabled = !contactEmail;
 
+  const tooltipText = disabled
+    ? 'Add a contact email to enable drafting'
+    : label;
+
   return (
     <>
       <Button
         type="button"
         variant={variant}
-        size={size}
+        size={iconOnly ? 'icon' : size}
         disabled={disabled}
         onClick={() => setOpen(true)}
-        className={cn('h-8 gap-1.5 text-xs', className)}
-        title={disabled ? 'Add a contact email to enable drafting' : 'Draft an email to this contact'}
+        aria-label={label}
+        title={tooltipText}
+        className={cn(
+          iconOnly ? 'h-8 w-8 p-0' : 'h-8 gap-1.5 text-xs',
+          className,
+        )}
       >
-        <Mail className="h-3.5 w-3.5" />
-        {label}
+        <Mail className={iconOnly ? 'h-4 w-4' : 'h-3.5 w-3.5'} />
+        {!iconOnly && label}
       </Button>
       {open && (
         <Suspense fallback={null}>
