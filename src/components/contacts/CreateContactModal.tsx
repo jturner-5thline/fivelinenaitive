@@ -8,6 +8,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { useCreateContact, LIFECYCLE_STAGES, CONTACT_STATUSES } from '@/hooks/useContacts';
 import { CompanyComboBox } from '@/components/contacts/CompanyComboBox';
 import { ContactTypeSelect } from '@/components/contacts/ContactTypeSelect';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
+import { useAuth } from '@/contexts/AuthContext';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
 import { cn } from '@/lib/utils';
 
@@ -19,6 +21,8 @@ interface CreateContactModalProps {
 
 export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateContactModalProps) {
   const createContact = useCreateContact();
+  const teamMembers = useTeamMembers();
+  const { user } = useAuth();
   const [form, setForm] = useState({
     first_name: '',
     last_name: '',
@@ -35,6 +39,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
     description: '',
     crm_company_id: defaultCompanyId || '' as string,
     contact_type: '' as string,
+    owner_user_id: '' as string,
   });
 
   const handleEmailChange = (email: string) => {
@@ -60,6 +65,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
       contact_type: form.contact_type?.trim() || null,
       linkedin_url: linkedinTrim || null,
       job_title: form.job_title.trim() || null,
+      owner_user_id: form.owner_user_id || user?.id || null,
     };
     createContact.mutate(payload as any, {
       onSuccess: () => {
@@ -67,7 +73,7 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
         setForm({
           first_name: '', last_name: '', email: '', phone_work: '', phone_mobile: '',
           job_title: '', department: '', lifecycle_stage: 'lead', status: 'new',
-          lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '',
+          lead_source: '', linkedin_url: '', website_url: '', description: '', crm_company_id: '', contact_type: '', owner_user_id: '',
         });
       },
     });
@@ -161,6 +167,19 @@ export function CreateContactModal({ open, onClose, defaultCompanyId }: CreateCo
           <div className="space-y-1.5">
             <Label htmlFor="website_url" className="text-xs">Website / Domain</Label>
             <Input id="website_url" placeholder="auto from email" value={form.website_url} onChange={(e) => setForm(p => ({ ...p, website_url: e.target.value }))} />
+          </div>
+          <div className="space-y-1.5 col-span-2">
+            <Label className="text-xs">Owner</Label>
+            <Select
+              value={form.owner_user_id || (user?.id ?? 'unassigned')}
+              onValueChange={(v) => setForm(p => ({ ...p, owner_user_id: v === 'unassigned' ? '' : v }))}
+            >
+              <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {teamMembers.map(m => <SelectItem key={m.id} value={m.id}>{m.display_name}</SelectItem>)}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1.5 col-span-2">
             <Label htmlFor="description" className="text-xs">Notes</Label>
