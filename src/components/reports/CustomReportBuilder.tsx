@@ -66,7 +66,7 @@ const availableFields: FieldOption[] = [
   // Basic fields
   { id: 'company', label: 'Company Name', category: 'basic', getValue: (d) => d.company },
   { id: 'stage', label: 'Stage', category: 'basic', getValue: (d) => STAGE_CONFIG[d.stage]?.label || d.stage },
-  { id: 'status', label: 'Status', category: 'basic', getValue: (d) => STATUS_CONFIG[d.status]?.label || d.status },
+  { id: 'status', label: 'Status', category: 'basic', getValue: (d) => STATUS_CONFIG[d.status as DealStatus]?.label || d.status },
   { id: 'engagementType', label: 'Engagement Type', category: 'basic', getValue: (d) => ENGAGEMENT_TYPE_CONFIG[d.engagementType]?.label || d.engagementType },
   { id: 'manager', label: 'Manager', category: 'basic', getValue: (d) => d.manager || 'N/A' },
   { id: 'referredBy', label: 'Referred By', category: 'basic', getValue: (d) => d.referredBy?.name || 'N/A' },

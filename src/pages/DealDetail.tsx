@@ -2505,7 +2505,7 @@ export default function DealDetail() {
   // during a brief mid-refetch state, these lookups can return undefined
   // and crash the page on `.badgeColor` / `.label` access.
   const stageConfig = STAGE_CONFIG[deal.stage] ?? { label: String(deal.stage ?? 'Unknown'), color: 'bg-muted' };
-  const statusConfig = STATUS_CONFIG[deal.status] ?? { label: String(deal.status ?? 'Unknown'), dotColor: 'bg-muted', badgeColor: 'bg-muted' };
+  const statusConfig = STATUS_CONFIG[deal.status as DealStatus] ?? { label: String(deal.status ?? 'Unknown'), dotColor: 'bg-muted', badgeColor: 'bg-muted' };
 
   const formatValue = (value: number) => formatCurrencyValue(value);
 
@@ -2973,7 +2973,7 @@ export default function DealDetail() {
                 >
                   <SelectTrigger className={`w-auto ${statusConfig.badgeColor} text-white border-0 text-xs rounded-lg h-6 px-2`}>
                     <SelectValue>
-                      {STATUS_CONFIG[deal.status]?.label || deal.status}
+                      {STATUS_CONFIG[deal.status as DealStatus]?.label || deal.status}
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>

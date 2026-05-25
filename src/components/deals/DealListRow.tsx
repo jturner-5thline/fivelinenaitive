@@ -65,7 +65,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
   const { pipelines } = usePipelineContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
   
-  const statusConfig = STATUS_CONFIG[deal.status] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
+  const statusConfig = STATUS_CONFIG[deal.status as DealStatus] || { label: deal.status, dotColor: 'bg-muted', badgeColor: 'bg-muted' };
   const stageConfig = getStageConfigForDeal(deal.stage, deal.pipelineId);
 
   const getDealTypeLabels = () => {

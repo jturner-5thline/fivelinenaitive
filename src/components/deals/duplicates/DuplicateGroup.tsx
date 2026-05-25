@@ -141,7 +141,7 @@ function DealComparisonCard({ deal, pipelineMap, onNavigate, onDealDeleted }: { 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const stageLabel = STAGE_CONFIG[deal.stage]?.label || deal.stage;
-  const statusConfig = STATUS_CONFIG[deal.status];
+  const statusConfig = STATUS_CONFIG[deal.status as DealStatus];
   const pipelineName = deal.pipelineId ? pipelineMap.get(deal.pipelineId) || '—' : '—';
 
   const handleDelete = async () => {
