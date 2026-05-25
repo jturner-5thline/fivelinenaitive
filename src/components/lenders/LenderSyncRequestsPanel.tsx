@@ -639,33 +639,27 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
             )}
 
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="w-full grid grid-cols-5">
-                <TabsTrigger value="all" className="gap-1.5">
-                  All
-                  {pendingRequests.length > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs">{pendingRequests.length}</Badge>
-                  )}
-                </TabsTrigger>
+              <TabsList className="w-full grid grid-cols-4">
                 <TabsTrigger value="new" className="gap-1.5">
-                  New Funding Sources
+                  New
                   {newLenderRequests.length > 0 && (
                     <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30">
                       {newLenderRequests.length}
                     </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="conflicts" className="gap-1.5">
-                  Resolve Conflicts
-                  {conflictRequests.length > 0 && (
-                    <Badge variant="destructive" className="h-5 px-1.5 text-xs">{conflictRequests.length}</Badge>
+                <TabsTrigger value="likely" className="gap-1.5">
+                  Likely Match
+                  {likelyMatchRequests.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
+                      {likelyMatchRequests.length}
+                    </Badge>
                   )}
                 </TabsTrigger>
-                <TabsTrigger value="duplicates" className="gap-1.5">
-                  Potential Duplicates
-                  {duplicateCount > 0 && (
-                    <Badge variant="secondary" className="h-5 px-1.5 text-xs bg-amber-500/15 text-amber-700 dark:text-amber-400 border border-amber-500/30">
-                      {duplicateCount}
-                    </Badge>
+                <TabsTrigger value="conflicts" className="gap-1.5">
+                  Conflict Review
+                  {conflictRequests.length > 0 && (
+                    <Badge variant="destructive" className="h-5 px-1.5 text-xs">{conflictRequests.length}</Badge>
                   )}
                 </TabsTrigger>
                 <TabsTrigger value="completed" className="gap-1.5">
