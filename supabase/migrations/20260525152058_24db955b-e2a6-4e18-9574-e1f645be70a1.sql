@@ -1,0 +1,2 @@
+ALTER TABLE public.deals ALTER COLUMN status DROP NOT NULL;
+ALTER TABLE public.deals ALTER COLUMN status DROP DEFAULT;

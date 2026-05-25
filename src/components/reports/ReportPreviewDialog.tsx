@@ -31,7 +31,7 @@ import {
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { ScheduleReportDialog } from './ScheduleReportDialog';
-import { STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
+import { DealStatus, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import {
   BarChart,
   Bar,
@@ -127,7 +127,7 @@ export function ReportPreviewDialog({ open, onOpenChange, report }: ReportPrevie
           key = STAGE_CONFIG[deal.stage]?.label || deal.stage;
           break;
         case 'status':
-          key = STATUS_CONFIG[deal.status]?.label || deal.status;
+          key = STATUS_CONFIG[deal.status as DealStatus]?.label || deal.status;
           break;
         case 'manager':
           key = deal.manager || 'Unassigned';
@@ -266,7 +266,7 @@ export function ReportPreviewDialog({ open, onOpenChange, report }: ReportPrevie
         const getFieldValue = (deal: any, field: string) => {
           switch (field) {
             case 'stage': return STAGE_CONFIG[deal.stage]?.label || deal.stage;
-            case 'status': return STATUS_CONFIG[deal.status]?.label || deal.status;
+            case 'status': return STATUS_CONFIG[deal.status as DealStatus]?.label || deal.status;
             case 'value': return formatCurrencyValue(deal.value || 0);
             case 'total_fee': return formatCurrencyValue(deal.totalFee || 0);
             case 'lender_count': return deal.lenders?.length || 0;

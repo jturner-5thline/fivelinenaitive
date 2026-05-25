@@ -21,7 +21,7 @@ interface DealsContextType {
   error: Error | null;
   createDeal: (dealData: Partial<Deal>) => Promise<Deal | null>;
   updateDeal: (dealId: string, updates: Partial<Deal>) => Promise<void>;
-  updateDealStatus: (dealId: string, newStatus: DealStatus) => Promise<void>;
+  updateDealStatus: (dealId: string, newStatus: DealStatus | null) => Promise<void>;
   addLenderToDeal: (dealId: string, lenderData: Partial<DealLender>) => Promise<DealLender | null>;
   updateLender: (lenderId: string, updates: Partial<DealLender>) => Promise<void>;
   deleteLender: (lenderId: string) => Promise<void>;

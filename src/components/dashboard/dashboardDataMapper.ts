@@ -28,7 +28,7 @@ export interface DashboardDealRow {
   _assocDirComm: number;
   _dirMdComm: number;
   _profit: number;
-  _status: DealStatus;
+  _status: DealStatus | null;
   _closingDate: string | null;        // effective closing date (override wins)
   _rawClosingDate: string | null;     // original deal closingDate
   _dashboardClosingDate: string | null; // manual override
@@ -67,14 +67,14 @@ function fmtPct(v: number | undefined): string {
   return v.toFixed(2) + '%';
 }
 
-function statusColor(s: DealStatus): string {
+function statusColor(s: DealStatus | null): string {
   if (s === 'on-track') return '#4de8a0';
   if (s === 'at-risk') return '#f0c84a';
   if (s === 'off-track') return '#ff8a96';
   return 'rgba(130,165,190,0.6)';
 }
 
-function statusPill(s: DealStatus): string {
+function statusPill(s: DealStatus | null): string {
   if (s === 'on-track') return 'db-pill-on';
   if (s === 'at-risk') return 'db-pill-risk';
   if (s === 'off-track') return 'db-pill-off';

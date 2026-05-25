@@ -316,7 +316,7 @@ export function useDealsDatabase() {
       name: dbDeal.company,
       company: dbDeal.company,
       stage: dbDeal.stage as DealStage,
-      status: dbDeal.status as DealStatus,
+      status: (dbDeal.status || null) as DealStatus | null,
       engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
       exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
       dealTypes: parseDealTypes(dbDeal.deal_type),
@@ -543,7 +543,7 @@ export function useDealsDatabase() {
         .insert({
           company: dealData.company || 'New Deal',
           value: dealData.value || 0,
-          status: dealData.status || 'on-track',
+          status: dealData.status ?? null,
           stage: dealData.stage || 'final-credit-items',
           engagement_type: dealData.engagementType || 'guided',
           manager: dealData.manager || null,
@@ -587,7 +587,7 @@ export function useDealsDatabase() {
         name: data.company,
         company: data.company,
         stage: data.stage as DealStage,
-        status: data.status as DealStatus,
+        status: (data.status || null) as DealStatus | null,
         engagementType: (data.engagement_type || 'guided') as EngagementType,
         manager: data.manager || '',
         dealOwner: data.deal_owner || undefined,
@@ -700,7 +700,7 @@ export function useDealsDatabase() {
           value: Number((dbDeal as any).value || 0),
           totalFee: 0,
           stage: ((dbDeal as any).stage || '') as DealStage,
-          status: ((dbDeal as any).status || 'on-track') as DealStatus,
+          status: ((dbDeal as any).status || null) as DealStatus | null,
           engagementType: 'guided',
           manager: '',
           createdAt: new Date().toISOString(),
@@ -1222,7 +1222,7 @@ export function useDealsDatabase() {
   }, [deals]);
 
   // Update deal status
-  const updateDealStatus = useCallback(async (dealId: string, newStatus: DealStatus) => {
+  const updateDealStatus = useCallback(async (dealId: string, newStatus: DealStatus | null) => {
     await updateDeal(dealId, { status: newStatus });
   }, [updateDeal]);
 

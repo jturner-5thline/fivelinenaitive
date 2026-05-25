@@ -1,6 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Deal, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
+import { Deal, DealStatus, STAGE_CONFIG, STATUS_CONFIG, ENGAGEMENT_TYPE_CONFIG } from '@/types/deal';
 import { format } from 'date-fns';
 
 interface ReportOptions {
@@ -93,7 +93,7 @@ export const generatePipelineSummaryReport = (
     const csvData = filteredDeals.map(deal => ({
       'Deal Name': deal.company,
       'Stage': STAGE_CONFIG[deal.stage]?.label || deal.stage,
-      'Status': STATUS_CONFIG[deal.status]?.label || deal.status,
+      'Status': STATUS_CONFIG[deal.status as DealStatus]?.label || deal.status,
       'Engagement Type': ENGAGEMENT_TYPE_CONFIG[deal.engagementType]?.label || deal.engagementType,
       'Manager': deal.manager || 'N/A',
       'Deal Value': deal.value,
@@ -163,7 +163,7 @@ export const generatePipelineSummaryReport = (
   const dealData = filteredDeals.map(deal => [
     deal.company,
     STAGE_CONFIG[deal.stage]?.label || deal.stage,
-    STATUS_CONFIG[deal.status]?.label || deal.status,
+    STATUS_CONFIG[deal.status as DealStatus]?.label || deal.status,
     deal.manager || 'N/A',
     formatCurrency(deal.value),
     formatCurrency(deal.totalFee || 0),
@@ -201,7 +201,7 @@ export const generateDealActivityReport = (
     const csvData = filteredDeals.map(deal => ({
       'Deal Name': deal.company,
       'Stage': STAGE_CONFIG[deal.stage]?.label || deal.stage,
-      'Status': STATUS_CONFIG[deal.status]?.label || deal.status,
+      'Status': STATUS_CONFIG[deal.status as DealStatus]?.label || deal.status,
       'Manager': deal.manager || 'N/A',
       'Active Lenders': deal.lenders?.filter(l => l.trackingStatus === 'active').length || 0,
       'Total Lenders': deal.lenders?.length || 0,

@@ -30,7 +30,8 @@ export interface DealStatusTagProps {
 }
 
 export function DealStatusTag({ status, className, hideDot = false }: DealStatusTagProps) {
-  const key = (status || 'on-track') as DealStatus;
+  if (!status) return null;
+  const key = status as DealStatus;
   const config = STATUS_CONFIG[key];
   if (!config) return null;
   const tone = STATUS_TAG_THEME[key] ?? STATUS_TAG_THEME['on-track'];

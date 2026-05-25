@@ -9338,7 +9338,7 @@ export type Database = {
           services_offered: string[] | null
           sourced_via: string | null
           stage: string
-          status: string
+          status: string | null
           success_fee_percent: number | null
           tags: string[]
           total_fee: number | null
@@ -9421,7 +9421,7 @@ export type Database = {
           services_offered?: string[] | null
           sourced_via?: string | null
           stage?: string
-          status?: string
+          status?: string | null
           success_fee_percent?: number | null
           tags?: string[]
           total_fee?: number | null
@@ -9504,7 +9504,7 @@ export type Database = {
           services_offered?: string[] | null
           sourced_via?: string | null
           stage?: string
-          status?: string
+          status?: string | null
           success_fee_percent?: number | null
           tags?: string[]
           total_fee?: number | null

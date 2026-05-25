@@ -208,7 +208,7 @@ export function FinServCreateDealDialog({ trigger, pipelineId, onCreated }: FinS
         company_id: FIFTH_LINE_COMPANY_ID,
         deal_class: 'finserv',
         engagement_type: 'guided',
-        status: 'on-track',
+        status: null,
         user_id: user.id,
         // Seed `value` from MRR + One-Time Revenue so the new pipeline
         // card, per-stage totals, and Weighted Value KPI immediately show
