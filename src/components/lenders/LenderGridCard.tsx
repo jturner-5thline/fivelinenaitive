@@ -36,6 +36,7 @@ interface LenderSummary {
 interface LenderGridCardProps {
   lender: MasterLender;
   activeDealCount: number;
+  duplicateCount?: number;
   tileDisplaySettings: LenderTileDisplaySettings;
   summary: LenderSummary;
   isQuickUploading: boolean;
@@ -55,6 +56,7 @@ const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v)
 export const LenderGridCard = memo(function LenderGridCard({
   lender,
   activeDealCount,
+  duplicateCount = 0,
   tileDisplaySettings,
   summary,
   isQuickUploading,
