@@ -395,6 +395,14 @@ export default function Lenders() {
     return counts;
   }, [deals, masterLenders]);
 
+  // Detect potential duplicate funding sources within the current tenant's
+  // master lender list. Runs purely client-side because the directory is
+  // already loaded in full for cross-referencing (see useMasterLenders above).
+  const duplicateIndex = useMemo(
+    () => detectDuplicateLenders(masterLenders.map((l) => ({ id: l.id, name: l.name }))),
+    [masterLenders],
+  );
+
   // Build a per-lender deal-history index used by the search:
   // deal names, pass reasons, and lender notes from all deals where this funding source appears.
   const lenderDealIndex = useMemo(() => {
