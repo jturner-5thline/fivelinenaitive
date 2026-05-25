@@ -64,6 +64,8 @@ for(const {canonical,dups} of t3){
   for(const [t,c] of POINTERS){
     lines.push(`UPDATE ${t} SET ${c}='${canonical.id}' WHERE ${c} = ANY(${dupIdsArr});`);
   }
+  // text-typed source_lender_id (cast)
+  lines.push(`UPDATE lender_sync_requests SET source_lender_id='${canonical.id}' WHERE source_lender_id = ANY(ARRAY[${dups.map(d=>`'${d.id}'`).join(',')}]::text[]);`);
 
   // deal_lenders rename + dedupe
   if(dups.some(d=>d.name)){
