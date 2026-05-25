@@ -1334,6 +1334,32 @@ export default function Lenders() {
                       <X className="h-3 w-3 ml-1" />
                     )}
                   </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`gap-2 whitespace-nowrap h-10 ${showDuplicatesOnly ? 'lg-cta' : 'lg-pill'}`}
+                        onClick={() => setShowDuplicatesOnly(!showDuplicatesOnly)}
+                      >
+                        <Copy className="h-4 w-4" />
+                        {showDuplicatesOnly
+                          ? `Duplicates (${duplicateIndex.groups.length} group${duplicateIndex.groups.length === 1 ? '' : 's'})`
+                          : 'Duplicates'}
+                        {!showDuplicatesOnly && duplicateIndex.groups.length > 0 && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                            {duplicateIndex.groups.length}
+                          </Badge>
+                        )}
+                        {showDuplicatesOnly && (
+                          <X className="h-3 w-3 ml-1" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      Show only funding sources that look like duplicates of another entry (exact, near-match suffix, or substring). Use the Merge button above to clean them up.
+                    </TooltipContent>
+                  </Tooltip>
                   <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
                     <SelectTrigger className="lg-input h-10 w-full sm:w-[180px]">
                       <ArrowUpDown className="h-4 w-4 mr-2" />
