@@ -109,7 +109,7 @@ export function ExpectedThisWeekWidget() {
         // MODE 2: team member only sees active deals
         const inactiveStatuses = ['archived'];
         const inactiveStages = ['closed-lost', 'closed-won', 'on-hold'];
-        if (!inactiveStatuses.includes(deal.status) && !inactiveStages.includes(deal.stage)) {
+        if (!inactiveStatuses.includes(deal.status ?? '') && !inactiveStages.includes(deal.stage)) {
           ids.add(deal.id);
         }
       }
