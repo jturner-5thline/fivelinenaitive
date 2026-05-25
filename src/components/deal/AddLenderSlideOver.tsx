@@ -520,7 +520,7 @@ export function AddLenderSlideOver({
                   {aiOnly ? 'No AI-recommended lenders match these filters.' : 'No funding sources match these filters.'}
                 </div>
               )}
-              {filteredLenders.map(({ lender, score, ai }) => {
+              {filteredLenders.map(({ lender, score, ai, deterministic }) => {
                 const isChecked = selected.has(lender.name);
                 const fullMatch = matchByNameFull.get(lender.name.toLowerCase());
                 return (
@@ -572,6 +572,7 @@ export function AddLenderSlideOver({
                               score={score}
                               match={fullMatch}
                               ai={ai}
+                              deterministic={deterministic}
                             />
                           </PopoverContent>
                         </Popover>
