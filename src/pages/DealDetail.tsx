@@ -5803,7 +5803,7 @@ export default function DealDetail() {
                 outstandingItems,
                 editableContent,
               );
-              const rawContact = (deal.contact || '').trim();
+              const rawContact = (resolvedClientContact?.name || deal.contact || '').trim();
               const contactDisplayName = rawContact.split(/\s+/)[0] || '';
               // Salutation must be its OWN paragraph, then a blank line,
               // then the body sentence. The composer's signature insertion
@@ -5815,7 +5815,10 @@ export default function DealDetail() {
                 'See attached. See the current status report for your review.';
               const greetingHtml = `<p>${salutation}</p><p><br/></p><p>${bodyLine}</p>`;
               const contactEmail =
-                (deal as any).contact_email || deal.contactEmail || null;
+                resolvedClientContact?.email ||
+                (deal as any).contact_email ||
+                deal.contactEmail ||
+                null;
               setStatusEmailFlow({
                 content: editableContent,
                 attachment: pdfFile,
