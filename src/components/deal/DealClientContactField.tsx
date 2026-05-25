@@ -85,6 +85,8 @@ export function DealClientContactField({
           companyDomain={deal.companyUrl}
           size="sm"
           variant="outline"
+          iconOnly
+          label="Draft email to client contact"
           className="shrink-0"
         />
       </div>
