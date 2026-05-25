@@ -2,7 +2,7 @@ import { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { VirtuosoGrid, Virtuoso } from 'react-virtuoso';
-import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Building2, Search, X, ArrowUpDown, LayoutGrid, List, Loader2, Globe, Download, Upload, Zap, FileCheck, Megaphone, Database, Settings, Users, Columns, Table2, RefreshCw, History, Bell, ChevronDown, FolderPlus, FileX, BarChart3, Copy } from 'lucide-react';
 import { WorkspacePage } from '@/components/layout/WorkspacePage';
 import { BetaBadge } from '@/components/ui/beta-badge';
 import { Button } from '@/components/ui/button';
@@ -82,6 +82,7 @@ import { LenderSyncRequestsPanel } from '@/components/lenders/LenderSyncRequests
 import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
+import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -238,6 +239,7 @@ export default function Lenders() {
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [showActiveDealsOnly, setShowActiveDealsOnly] = useState(false);
+  const [showDuplicatesOnly, setShowDuplicatesOnly] = useState(false);
   const [sortOption, setSortOption] = useState<SortOption>('name-asc');
   const [viewMode, setViewMode] = useState<ViewMode>(() => {
     const saved = localStorage.getItem('lenders-view-mode');
@@ -393,6 +395,14 @@ export default function Lenders() {
     return counts;
   }, [deals, masterLenders]);
 
+  // Detect potential duplicate funding sources within the current tenant's
+  // master lender list. Runs purely client-side because the directory is
+  // already loaded in full for cross-referencing (see useMasterLenders above).
+  const duplicateIndex = useMemo(
+    () => detectDuplicateLenders(masterLenders.map((l) => ({ id: l.id, name: l.name }))),
+    [masterLenders],
+  );
+
   // Build a per-lender deal-history index used by the search:
   // deal names, pass reasons, and lender notes from all deals where this funding source appears.
   const lenderDealIndex = useMemo(() => {
@@ -494,6 +504,10 @@ export default function Lenders() {
       list = list.filter((lender) => activeDealCounts[lender.name]);
     }
 
+    if (showDuplicatesOnly) {
+      list = list.filter((lender) => duplicateIndex.byLenderId[lender.id]);
+    }
+
     const q = debouncedSearchQuery.trim().toLowerCase();
     if (!q) return list;
 
@@ -537,10 +551,20 @@ export default function Lenders() {
         matches(aux)
       );
     });
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
+    // When the duplicates filter is on, group clusters together regardless of
+    // the currently selected sort option so they're visually adjacent.
+    if (showDuplicatesOnly) {
+      return [...filteredLenders].sort((a, b) => {
+        const ga = duplicateIndex.byLenderId[a.id]?.groupId || '';
+        const gb = duplicateIndex.byLenderId[b.id]?.groupId || '';
+        if (ga !== gb) return ga.localeCompare(gb);
+        return a.name.localeCompare(b.name);
+      });
+    }
     // We already fetch lenders ordered by name asc, so avoid expensive sorts when possible.
     if (sortOption === 'name-asc') return filteredLenders;
     if (sortOption === 'name-desc') return [...filteredLenders].reverse();
@@ -555,7 +579,7 @@ export default function Lenders() {
           return 0;
       }
     });
-  }, [filteredLenders, sortOption, activeDealCounts]);
+  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
@@ -1310,6 +1334,32 @@ export default function Lenders() {
                       <X className="h-3 w-3 ml-1" />
                     )}
                   </Button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className={`gap-2 whitespace-nowrap h-10 ${showDuplicatesOnly ? 'lg-cta' : 'lg-pill'}`}
+                        onClick={() => setShowDuplicatesOnly(!showDuplicatesOnly)}
+                      >
+                        <Copy className="h-4 w-4" />
+                        {showDuplicatesOnly
+                          ? `Duplicates (${duplicateIndex.groups.length} group${duplicateIndex.groups.length === 1 ? '' : 's'})`
+                          : 'Duplicates'}
+                        {!showDuplicatesOnly && duplicateIndex.groups.length > 0 && (
+                          <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                            {duplicateIndex.groups.length}
+                          </Badge>
+                        )}
+                        {showDuplicatesOnly && (
+                          <X className="h-3 w-3 ml-1" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs">
+                      Show only funding sources that look like duplicates of another entry (exact, near-match suffix, or substring). Use the Merge button above to clean them up.
+                    </TooltipContent>
+                  </Tooltip>
                   <Select value={sortOption} onValueChange={(value: SortOption) => setSortOption(value)}>
                     <SelectTrigger className="lg-input h-10 w-full sm:w-[180px]">
                       <ArrowUpDown className="h-4 w-4 mr-2" />
@@ -1530,6 +1580,7 @@ export default function Lenders() {
                           <LenderListCard
                             lender={lender}
                             activeDealCount={activeDealCounts[lender.name] || 0}
+                            duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                             summary={getLenderSummary(lender.name)}
                             isQuickUploading={isQuickUploading}
                             quickUploadLenderName={quickUploadTarget?.lenderName || null}
@@ -1583,6 +1634,7 @@ export default function Lenders() {
                         <LenderGridCard
                           lender={lender}
                           activeDealCount={activeDealCounts[lender.name] || 0}
+                          duplicateCount={duplicateIndex.byLenderId[lender.id]?.count || 0}
                           tileDisplaySettings={tileDisplaySettings}
                           summary={getLenderSummary(lender.name)}
                           isQuickUploading={isQuickUploading}

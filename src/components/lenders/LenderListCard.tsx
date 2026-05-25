@@ -36,6 +36,7 @@ interface LenderSummary {
 interface LenderListCardProps {
   lender: MasterLender;
   activeDealCount: number;
+  duplicateCount?: number;
   summary: LenderSummary;
   isQuickUploading: boolean;
   quickUploadLenderName: string | null;
@@ -54,6 +55,7 @@ const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v)
 export const LenderListCard = memo(function LenderListCard({
   lender,
   activeDealCount,
+  duplicateCount = 0,
   summary,
   isQuickUploading,
   quickUploadLenderName,
@@ -97,6 +99,22 @@ export const LenderListCard = memo(function LenderListCard({
         <div className="flex items-center gap-2">
           <h3 className="font-medium truncate">{lender.name}</h3>
           <LenderFlagIndicator lenderName={lender.name} />
+          {duplicateCount > 0 && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Badge
+                  variant="outline"
+                  className="text-xs shrink-0 border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1"
+                >
+                  <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                  {duplicateCount === 1 ? '1 possible dup' : `${duplicateCount} possible dups`}
+                </Badge>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                Shares a name with {duplicateCount} other funding source{duplicateCount === 1 ? '' : 's'} in this workspace. Use Merge to consolidate.
+              </TooltipContent>
+            </Tooltip>
+          )}
           {lender.tier && (
             <Badge
               className={`text-xs shrink-0 ${

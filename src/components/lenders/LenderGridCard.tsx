@@ -36,6 +36,7 @@ interface LenderSummary {
 interface LenderGridCardProps {
   lender: MasterLender;
   activeDealCount: number;
+  duplicateCount?: number;
   tileDisplaySettings: LenderTileDisplaySettings;
   summary: LenderSummary;
   isQuickUploading: boolean;
@@ -55,6 +56,7 @@ const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v)
 export const LenderGridCard = memo(function LenderGridCard({
   lender,
   activeDealCount,
+  duplicateCount = 0,
   tileDisplaySettings,
   summary,
   isQuickUploading,
@@ -126,6 +128,22 @@ export const LenderGridCard = memo(function LenderGridCard({
           <Badge variant="default" className={`text-xs ${lender.tier || lender.flex_lender_id ? 'rounded-none rounded-br-lg' : onToggleSelect ? 'rounded-lg' : 'rounded-tl-lg rounded-br-lg rounded-tr-none rounded-bl-none'}`}>
             {activeDealCount} active
           </Badge>
+        )}
+        {duplicateCount > 0 && (
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Badge
+                variant="outline"
+                className="text-xs rounded-none rounded-br-lg border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 gap-1"
+              >
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-amber-500" />
+                {duplicateCount} dup{duplicateCount === 1 ? '' : 's'}
+              </Badge>
+            </TooltipTrigger>
+            <TooltipContent>
+              Shares a name with {duplicateCount} other funding source{duplicateCount === 1 ? '' : 's'}.
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
       <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
