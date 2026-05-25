@@ -681,7 +681,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     className="h-8 pl-7 text-sm"
                   />
                 </div>
-                {activeTab === 'all' || activeTab === 'completed' ? (
+                {activeTab === 'completed' ? (
                   <Select
                     value={currentFilter.type}
                     onValueChange={(v) => setCurrentFilter({ ...currentFilter, type: v })}
