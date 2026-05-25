@@ -897,6 +897,14 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
         onReject={rejectRequest}
         onMerge={handleMerge}
       />
+      <LenderSyncReviewDrawer
+        open={reviewOpen}
+        onOpenChange={setReviewOpen}
+        request={reviewRequest}
+        onApprove={handleApprove}
+        onReject={rejectRequest}
+        onMerge={handleMerge}
+      />
     </Collapsible>
   );
 }
