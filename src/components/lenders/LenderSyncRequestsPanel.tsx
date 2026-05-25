@@ -155,6 +155,30 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
                     <Badge variant="outline" className={`text-[10px] ${c.className}`}>{c.label}</Badge>
                   ) : null;
                 })()}
+                {request.confidence && request.confidence !== 'none' && (
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] ${
+                      request.confidence === 'exact_duplicate' ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30'
+                      : request.confidence === 'likely_duplicate' ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/40'
+                      : request.confidence === 'possible_match' ? 'bg-orange-500/10 text-orange-700 dark:text-orange-400 border-orange-500/40'
+                      : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/40'
+                    }`}
+                    title={request.match_reason || undefined}
+                  >
+                    {request.confidence.replace('_', ' ')}
+                  </Badge>
+                )}
+                {request.suggested_action && (
+                  <Badge variant="outline" className="text-[10px] bg-primary/5 border-primary/30 text-primary">
+                    Suggested: {request.suggested_action}
+                  </Badge>
+                )}
+                {(request.conflict_count ?? 0) > 0 && (
+                  <Badge variant="outline" className="text-[10px] bg-destructive/10 text-destructive border-destructive/30">
+                    {request.conflict_count} conflict{request.conflict_count === 1 ? '' : 's'}
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 {formatDistanceToNow(new Date(request.created_at), { addSuffix: true })}
