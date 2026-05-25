@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      _lender_merge_dup_map: {
+        Row: {
+          canon_id: string
+          dup_id: string
+        }
+        Insert: {
+          canon_id: string
+          dup_id: string
+        }
+        Update: {
+          canon_id?: string
+          dup_id?: string
+        }
+        Relationships: []
+      }
+      _lender_merge_name_map: {
+        Row: {
+          canon_name: string
+          dup_name: string
+        }
+        Insert: {
+          canon_name: string
+          dup_name: string
+        }
+        Update: {
+          canon_name?: string
+          dup_name?: string
+        }
+        Relationships: []
+      }
       activity_logs: {
         Row: {
           activity_type: string
