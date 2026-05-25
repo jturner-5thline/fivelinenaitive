@@ -44,7 +44,7 @@ export function exportDealToCSV(deal: Deal): void {
     ['Company', deal.company],
     ['Deal Name', deal.name],
     ['Stage', STAGE_CONFIG[deal.stage].label],
-    ['Status', STATUS_CONFIG[deal.status].label],
+    ['Status', (deal.status ? STATUS_CONFIG[deal.status].label : "—")],
     ['Engagement Type', ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label],
     ['Deal Value', formatCurrency(deal.value)],
     ['Total Fee', formatCurrency(deal.totalFee)],
@@ -121,7 +121,7 @@ export function exportDealToPDF(deal: Deal): void {
   const summaryData = [
     ['Deal Name', deal.name],
     ['Stage', STAGE_CONFIG[deal.stage].label],
-    ['Status', STATUS_CONFIG[deal.status].label],
+    ['Status', (deal.status ? STATUS_CONFIG[deal.status].label : "—")],
     ['Engagement Type', ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label],
     ['Deal Value', formatCurrency(deal.value)],
     ['Total Fee', formatCurrency(deal.totalFee)],
@@ -289,7 +289,7 @@ export async function exportDealToWord(deal: Deal): Promise<void> {
             rows: [
               createTableRow('Deal Name', deal.name),
               createTableRow('Stage', STAGE_CONFIG[deal.stage].label),
-              createTableRow('Status', STATUS_CONFIG[deal.status].label),
+              createTableRow('Status', (deal.status ? STATUS_CONFIG[deal.status].label : "—")),
               createTableRow('Engagement Type', ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label),
               createTableRow('Deal Value', formatCurrency(deal.value)),
               createTableRow('Total Fee', formatCurrency(deal.totalFee)),
@@ -536,7 +536,7 @@ export function exportPipelineToCSV(deals: Deal[]): void {
     rows.push([
       deal.company,
       deal.name,
-      STATUS_CONFIG[deal.status].label,
+      (deal.status ? STATUS_CONFIG[deal.status].label : "—"),
       STAGE_CONFIG[deal.stage].label,
       formatCurrency(deal.value),
       formatCurrency(deal.totalFee),
@@ -611,7 +611,7 @@ export function exportPipelineToPDF(deals: Deal[]): void {
   const dealsData = deals.map(deal => [
     deal.company,
     deal.name,
-    STATUS_CONFIG[deal.status].label,
+    (deal.status ? STATUS_CONFIG[deal.status].label : "—"),
     STAGE_CONFIG[deal.stage].label,
     formatCurrency(deal.value),
     formatCurrency(deal.totalFee),
@@ -747,7 +747,7 @@ export async function exportPipelineToWord(deals: Deal[]): Promise<void> {
                     children: [
                       createDataCell(deal.company),
                       createDataCell(deal.name),
-                      createDataCell(STATUS_CONFIG[deal.status].label),
+                      createDataCell((deal.status ? STATUS_CONFIG[deal.status].label : "—")),
                       createDataCell(STAGE_CONFIG[deal.stage].label),
                       createDataCell(formatCurrency(deal.value)),
                       createDataCell(deal.manager),
