@@ -407,19 +407,61 @@ export function AddLenderSlideOver({
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
-              <Select value={sizeFilter} onValueChange={setSizeFilter}>
-                <SelectTrigger className="h-7 w-[130px] text-xs bg-background/40 border-white/10">
-                  <SelectValue placeholder="Deal size" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Any size</SelectItem>
-                  {SIZE_RANGES.map((r) => (
-                    <SelectItem key={r.id} value={r.id}>
-                      {r.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 w-[160px] justify-between text-xs bg-background/40 border-white/10 font-normal"
+                  >
+                    <span className="truncate">
+                      {(() => {
+                        if (sizeFilters.length === 0) return 'Any size';
+                        const first = SIZE_RANGES.find((r) => r.id === sizeFilters[0])?.label ?? '';
+                        if (sizeFilters.length === 1) return first;
+                        return `${first} +${sizeFilters.length - 1} more`;
+                      })()}
+                    </span>
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent align="start" className="w-[200px] p-1">
+                  <div role="listbox" aria-multiselectable="true" className="flex flex-col">
+                    {SIZE_RANGES.map((r) => {
+                      const checked = sizeFilters.includes(r.id);
+                      return (
+                        <button
+                          key={r.id}
+                          type="button"
+                          role="option"
+                          aria-selected={checked}
+                          onClick={() =>
+                            setSizeFilters((prev) =>
+                              prev.includes(r.id) ? prev.filter((x) => x !== r.id) : [...prev, r.id]
+                            )
+                          }
+                          className="flex items-center gap-2 rounded-sm px-2 py-1.5 text-xs hover:bg-accent text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          <Checkbox checked={checked} className="pointer-events-none" />
+                          <span className="flex-1">{r.label}</span>
+                        </button>
+                      );
+                    })}
+                    {sizeFilters.length > 0 && (
+                      <div className="mt-1 border-t border-border pt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="w-full h-7 text-xs"
+                          onClick={() => setSizeFilters([])}
+                        >
+                          Clear
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
                 <SelectTrigger className="h-7 w-[110px] text-xs bg-background/40 border-white/10">
                   <SelectValue />
