@@ -14,6 +14,7 @@ import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
+import { useCompanyFeesVisibility, formatComputedTotal } from '@/hooks/useCompanyFeesVisibility';
 import {
   loadPersistedDealOrigin,
   persistDealOrigin,
