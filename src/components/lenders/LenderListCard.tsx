@@ -36,6 +36,7 @@ interface LenderSummary {
 interface LenderListCardProps {
   lender: MasterLender;
   activeDealCount: number;
+  duplicateCount?: number;
   summary: LenderSummary;
   isQuickUploading: boolean;
   quickUploadLenderName: string | null;
@@ -54,6 +55,7 @@ const formatCurrency = (v: number | null | undefined) => formatLenderCurrency(v)
 export const LenderListCard = memo(function LenderListCard({
   lender,
   activeDealCount,
+  duplicateCount = 0,
   summary,
   isQuickUploading,
   quickUploadLenderName,
