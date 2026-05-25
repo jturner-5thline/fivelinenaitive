@@ -8,7 +8,7 @@ const FIELDS = ['email','lender_type','loan_types','sub_debt','cash_burn','spons
 
 const POINTERS: [string,string][] = [
   ['lender_disqualifications','master_lender_id'],['lender_pass_patterns','master_lender_id'],
-
+  ['lender_sync_requests','existing_lender_id'],
   ['lender_contacts','lender_id'],['lender_audit_logs','lender_id'],
   ['lender_notes','master_lender_id'],['lender_fit_attributes','master_lender_id'],
   ['agent_runs','lender_id'],['claap_meetings','matched_lender_id'],
