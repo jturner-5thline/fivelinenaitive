@@ -23,6 +23,7 @@ import { MergeConflictDialog } from '@/components/lenders/MergeConflictDialog';
 import { ConflictResolutionPanel } from '@/components/lenders/ConflictResolutionPanel';
 import { GroupedSyncRequestCard } from '@/components/lenders/GroupedSyncRequestCard';
 import { LenderSyncReviewDrawer } from '@/components/lenders/LenderSyncReviewDrawer';
+import { LenderSyncSettingsPopover } from '@/components/lenders/LenderSyncSettingsPopover';
 import { groupSyncRequests, getRequestConfidence } from '@/lib/lenderRequestGrouping';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -358,6 +359,25 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const approvableRequests = pendingRequests.filter(r => r.request_type !== 'merge_conflict');
   const selectedApprovable = approvableRequests.filter(r => selectedIds.has(r.id));
 
+  // Phase 4 safety gate: bulk approve is only "safe" when every selected request is
+  // either a clean new lender (no candidate matches) OR an exact duplicate / update
+  // with zero populated-field conflicts. Anything else must be reviewed individually.
+  const isSafeForBulk = (r: LenderSyncRequest) => {
+    const conflicts = r.conflict_count ?? 0;
+    if (conflicts > 0) return false;
+    if (r.request_type === 'new_lender') {
+      // safe if matching engine found nothing strong
+      const hasStrong = (r.match_candidates || []).some(c => (c.score ?? 0) >= 0.82);
+      return !hasStrong;
+    }
+    if (r.request_type === 'update_existing') {
+      return r.confidence === 'exact_duplicate' || r.suggested_action === 'update';
+    }
+    return false;
+  };
+  const safeSelected = selectedApprovable.filter(isSafeForBulk);
+  const unsafeSelectedCount = selectedApprovable.length - safeSelected.length;
+
   // Categorize pending requests for tabs
   const newLenderRequests = pendingRequests.filter(r => r.request_type === 'new_lender');
   // Conflict Review: anything with unresolved field conflicts OR explicit pending_conflict_review status.
@@ -514,13 +534,13 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
 
   const handleBulkApprove = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (selectedApprovable.length === 0) return;
+    if (safeSelected.length === 0) return;
     
     setIsBulkProcessing(true);
     let successCount = 0;
     let failCount = 0;
 
-    for (const request of selectedApprovable) {
+    for (const request of safeSelected) {
       const success = await approveRequest(request.id);
       if (success) {
         successCount++;
@@ -646,6 +666,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                   <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
+                  <LenderSyncSettingsPopover />
                 </div>
               </div>
             </div>
@@ -667,6 +688,12 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                 </div>
                 {selectedApprovable.length > 0 && (
                   <div className="flex items-center gap-2">
+                    {unsafeSelectedCount > 0 && (
+                      <span className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
+                        <AlertTriangle className="h-3 w-3" />
+                        {unsafeSelectedCount} need individual review
+                      </span>
+                    )}
                     <Button 
                       size="sm" 
                       className="bg-gradient-to-r from-destructive to-destructive/70 text-destructive-foreground hover:from-destructive/90 hover:to-destructive/60 shadow-sm"
@@ -684,14 +711,17 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                       size="sm" 
                       className="bg-gradient-to-r from-primary to-primary/70 text-primary-foreground hover:from-primary/90 hover:to-primary/60 shadow-sm"
                       onClick={handleBulkApprove}
-                      disabled={isBulkProcessing}
+                      disabled={isBulkProcessing || safeSelected.length === 0}
+                      title={unsafeSelectedCount > 0
+                        ? `Only ${safeSelected.length} of ${selectedApprovable.length} are safe to bulk-approve. Review the rest individually.`
+                        : 'Approve all selected'}
                     >
                       {isBulkProcessing ? (
                         <Loader2 className="h-4 w-4 mr-1 animate-spin" />
                       ) : (
                         <CheckCheck className="h-4 w-4 mr-1" />
                       )}
-                      Approve All ({selectedApprovable.length})
+                      Approve Safe ({safeSelected.length})
                     </Button>
                   </div>
                 )}
