@@ -15,6 +15,8 @@ import StarterKit from '@tiptap/starter-kit';
 import { Bold, Italic, List, ListOrdered } from 'lucide-react';
 import { LenderPipelineSnapshot } from './LenderPipelineSnapshot';
 import type { DealLender } from '@/types/deal';
+import { useCompany } from '@/hooks/useCompany';
+import { FIFTH_LINE_COMPANY_ID } from '@/hooks/useNaitivePipelineAccess';
 
 export type { StatusReportEditableContent };
 
@@ -156,6 +158,56 @@ export function StatusReportPreviewModal({
   onExport,
   onUpdateLender,
 }: StatusReportPreviewModalProps) {
+  // ── Tenant-aware branding & theme ──
+  // 5th Line keeps its current navy/dark in-app treatment. All other
+  // tenants get a neutral, professional light-mode treatment with the
+  // current company name in place of the "5TH | LINE" wordmark.
+  const { company } = useCompany();
+  const isFifthLine = company?.id === FIFTH_LINE_COMPANY_ID;
+  const brandName = company?.name?.trim() || '';
+  const reportTheme = useMemo(() => {
+    if (isFifthLine) {
+      return {
+        accent: '#1e3a8a',
+        accentText: '#1e3a8a',
+        bodyText: '#334155',
+        titleText: '#0f172a',
+        summaryBg: 'linear-gradient(180deg,#f8fafc 0%,#ffffff 100%)',
+        pipeline: {
+          blue:  { bg: 'linear-gradient(180deg,#eff6ff 0%,#ffffff 60%)', border: '#bfdbfe', head: 'linear-gradient(135deg,#3b82f6,#2563eb)' },
+          teal:  { bg: 'linear-gradient(180deg,#ecfeff 0%,#ffffff 60%)', border: '#a5f3fc', head: 'linear-gradient(135deg,#0ea5e9,#0d9488)' },
+          green: { bg: 'linear-gradient(180deg,#f0fdf4 0%,#ffffff 60%)', border: '#bbf7d0', head: 'linear-gradient(135deg,#22c55e,#16a34a)' },
+          red:   { bg: 'linear-gradient(180deg,#fef2f2 0%,#ffffff 60%)', border: '#fecaca', head: 'linear-gradient(135deg,#ef4444,#dc2626)' },
+        },
+      };
+    }
+    // Non-5th Line: neutral slate, distinctly different from navy.
+    return {
+      accent: '#0f172a',
+      accentText: '#0f172a',
+      bodyText: '#1f2937',
+      titleText: '#0b1220',
+      summaryBg: 'linear-gradient(180deg,#f8fafc 0%,#ffffff 100%)',
+      pipeline: {
+        blue:  { bg: '#ffffff', border: '#e2e8f0', head: 'linear-gradient(135deg,#475569,#334155)' },
+        teal:  { bg: '#ffffff', border: '#e2e8f0', head: 'linear-gradient(135deg,#0f766e,#115e59)' },
+        green: { bg: '#ffffff', border: '#e2e8f0', head: 'linear-gradient(135deg,#166534,#14532d)' },
+        red:   { bg: '#ffffff', border: '#e2e8f0', head: 'linear-gradient(135deg,#7f1d1d,#581c1c)' },
+      },
+    };
+  }, [isFifthLine]);
+  const themedSectionLabel: React.CSSProperties = {
+    ...sectionLabelStyle,
+    color: isFifthLine ? '#64748b' : '#475569',
+  };
+  const themedListItem: React.CSSProperties = { ...listItemStyle, color: reportTheme.bodyText };
+  const themedGlyph: React.CSSProperties = { ...glyphStyle, color: reportTheme.accentText };
+  const themedAction: React.CSSProperties = {
+    ...actionStyle,
+    borderLeft: `3px solid ${reportTheme.accent}`,
+    color: reportTheme.titleText,
+  };
+
   const initialContent = useMemo(
     () => buildInitialContent(deal, configuredStages, outstandingItems),
     [deal, configuredStages, outstandingItems],
@@ -485,12 +537,12 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
   // ── Render the printable report (light-themed) ──────────────────────────
   const renderPrintable = () => (
     <div ref={printableRef} className="bg-white text-slate-900 rounded-lg overflow-hidden">
-      <div className="sr-bar" style={{ height: 6, background: '#1e3a8a', borderRadius: 2, marginBottom: 16 }} />
+      <div className="sr-bar" style={{ height: 6, background: reportTheme.accent, borderRadius: 2, marginBottom: 16 }} />
       <div>
-        <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: '#1e3a8a' }}>
-          5<sup>TH</sup> | LINE
+        <div className="sr-brand" style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', color: reportTheme.accentText, textTransform: 'uppercase' }}>
+          {isFifthLine ? (<>5<sup>TH</sup> | LINE</>) : (brandName || 'Status Report')}
         </div>
-        <h2 className="sr-title" style={{ fontSize: 22, fontWeight: 600, margin: '4px 0 0', color: '#0f172a' }}>
+        <h2 className="sr-title" style={{ fontSize: 22, fontWeight: 600, margin: '4px 0 0', color: reportTheme.titleText }}>
           {deal.company} — Status Update
         </h2>
         <div className="sr-date" style={{ fontSize: 13, color: '#64748b', marginTop: 2 }}>{todayLong()}</div>
@@ -498,16 +550,16 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
       {content.sectionsVisible.statusSummary && (content.statusSummaryHtml?.trim() || content.statusSummary.filter(Boolean).length > 0) && (
         <>
-          <div className="sr-section-label" style={sectionLabelStyle}>Status Summary</div>
+          <div className="sr-section-label" style={themedSectionLabel}>Status Summary</div>
           <div
             className="sr-summary"
             style={{
-              borderLeft: '3px solid #1e3a8a',
+              borderLeft: `3px solid ${reportTheme.accent}`,
               padding: '10px 0 10px 16px',
               margin: 0,
-              background: 'linear-gradient(180deg,#f8fafc 0%,#ffffff 100%)',
+              background: reportTheme.summaryBg,
               borderRadius: 6,
-              color: '#334155',
+              color: reportTheme.bodyText,
               fontSize: 14,
               lineHeight: 1.7,
             }}
@@ -522,7 +574,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
       {content.sectionsVisible.pipelineSnapshot && (
         <>
-          <div className="sr-section-label" style={sectionLabelStyle}>Funding Source Pipeline Snapshot</div>
+          <div className="sr-section-label" style={themedSectionLabel}>Funding Source Pipeline Snapshot</div>
           <div className="sr-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginTop: 8, alignItems: 'stretch' }}>
             {([
               { key: 'onDeck', label: 'On Deck', color: 'blue', items: buckets.onDeck },
@@ -530,14 +582,14 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
               { key: 'termsIssued', label: 'Terms Issued', color: 'green', items: buckets.termsIssued },
               { key: 'passed', label: 'Passed', color: 'red', items: buckets.passed },
             ] as const).map((g) => (
-              <div key={g.key} className={`sr-col ${g.color}`} style={colStyle(g.color)}>
-                <div className="sr-col-head" style={colHeadStyle(g.color)}>{g.label} ({g.items.length})</div>
+              <div key={g.key} className={`sr-col ${g.color}`} style={colStyle(g.color, reportTheme)}>
+                <div className="sr-col-head" style={colHeadStyle(g.color, reportTheme)}>{g.label} ({g.items.length})</div>
                 <div className="sr-col-body" style={{ padding: '10px 12px', flex: 1 }}>
                   {g.items.length === 0 ? (
                     <p style={{ margin: 0, fontSize: 12, color: '#94a3b8', fontStyle: 'italic' }}>None</p>
                   ) : (
                     g.items.map((l) => (
-                      <p key={l.id} style={{ margin: '0 0 4px', fontSize: 12, color: '#334155', lineHeight: 1.45 }}>{l.name}</p>
+                      <p key={l.id} style={{ margin: '0 0 4px', fontSize: 12, color: reportTheme.bodyText, lineHeight: 1.45 }}>{l.name}</p>
                     ))
                   )}
                 </div>
@@ -549,11 +601,11 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
       {content.sectionsVisible.milestones && content.completedMilestones.filter(Boolean).length > 0 && (
         <>
-          <div className="sr-section-label" style={sectionLabelStyle}>Recent Milestones</div>
+          <div className="sr-section-label" style={themedSectionLabel}>Recent Milestones</div>
           <ul className="sr-list" style={listStyle}>
             {content.completedMilestones.filter(Boolean).map((m, i) => (
-              <li key={i} style={listItemStyle}>
-                <span className="glyph" style={glyphStyle}>✓</span>{m}
+              <li key={i} style={themedListItem}>
+                <span className="glyph" style={themedGlyph}>✓</span>{m}
               </li>
             ))}
           </ul>
@@ -562,11 +614,11 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
       {content.sectionsVisible.nextSteps && content.nextSteps.filter(Boolean).length > 0 && (
         <>
-          <div className="sr-section-label" style={sectionLabelStyle}>Next Steps</div>
+          <div className="sr-section-label" style={themedSectionLabel}>Next Steps</div>
           <ul className="sr-list" style={listStyle}>
             {content.nextSteps.filter(Boolean).map((s, i) => (
-              <li key={i} style={listItemStyle}>
-                <span className="glyph" style={glyphStyle}>→</span>{s}
+              <li key={i} style={themedListItem}>
+                <span className="glyph" style={themedGlyph}>→</span>{s}
               </li>
             ))}
           </ul>
@@ -575,7 +627,7 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
       {passedDetails.length > 0 && (
         <>
-          <div className="sr-section-label" style={sectionLabelStyle}>Passed Lender Reasons</div>
+          <div className="sr-section-label" style={themedSectionLabel}>Passed Lender Reasons</div>
           <table className="sr-passed" style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, fontSize: 13, tableLayout: 'fixed' }}>
             <colgroup>
               <col style={{ width: '38%' }} />
@@ -605,8 +657,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
 
       {content.sectionsVisible.actionItems && (
         <>
-          <div className="sr-section-label" style={sectionLabelStyle}>What We Need From You</div>
-          <div className="sr-action" style={actionStyle}>
+          <div className="sr-section-label" style={themedSectionLabel}>What We Need From You</div>
+          <div className="sr-action" style={themedAction}>
             {content.actionItems.trim() || 'Nothing needed at this time!'}
           </div>
         </>
@@ -648,8 +700,8 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
       <div className="px-6 py-5 space-y-5">
         {/* Header */}
         <div>
-          <div className="text-[10px] font-bold tracking-[0.22em] text-blue-300/80">
-            5<sup>TH</sup> | LINE
+          <div className="text-[10px] font-bold tracking-[0.22em] text-blue-300/80 uppercase">
+            {isFifthLine ? (<>5<sup>TH</sup> | LINE</>) : (brandName || 'Status Report')}
           </div>
           <h3 className="text-xl font-semibold text-slate-50 mt-1">
             {deal.company} — Status Update
@@ -863,7 +915,11 @@ Style: concise, professional, factual, client-ready. Avoid hype. No emoji.`;
           {/* Live printable preview */}
           <div className="lg:sticky lg:top-0 lg:self-start">
             <div className="max-h-[80vh] overflow-y-auto">
-              {renderInAppPreview()}
+              {isFifthLine ? renderInAppPreview() : (
+                <div className="rounded-2xl border border-slate-200 bg-white shadow-sm p-6">
+                  {renderPrintable()}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -902,13 +958,14 @@ const actionStyle: React.CSSProperties = {
   background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a8a',
   borderRadius: 6, padding: '12px 14px', fontSize: 14, color: '#0f172a', lineHeight: 1.6, whiteSpace: 'pre-wrap',
 };
-function colStyle(color: string): React.CSSProperties {
-  const tints: Record<string, { bg: string; border: string }> = {
-    blue:  { bg: 'linear-gradient(180deg,#eff6ff 0%,#ffffff 60%)', border: '#bfdbfe' },
-    teal:  { bg: 'linear-gradient(180deg,#ecfeff 0%,#ffffff 60%)', border: '#a5f3fc' },
-    green: { bg: 'linear-gradient(180deg,#f0fdf4 0%,#ffffff 60%)', border: '#bbf7d0' },
-    red:   { bg: 'linear-gradient(180deg,#fef2f2 0%,#ffffff 60%)', border: '#fecaca' },
+function colStyle(color: string, theme?: { pipeline: Record<string, { bg: string; border: string; head: string }> }): React.CSSProperties {
+  const fallback = {
+    blue:  { bg: 'linear-gradient(180deg,#eff6ff 0%,#ffffff 60%)', border: '#bfdbfe', head: '' },
+    teal:  { bg: 'linear-gradient(180deg,#ecfeff 0%,#ffffff 60%)', border: '#a5f3fc', head: '' },
+    green: { bg: 'linear-gradient(180deg,#f0fdf4 0%,#ffffff 60%)', border: '#bbf7d0', head: '' },
+    red:   { bg: 'linear-gradient(180deg,#fef2f2 0%,#ffffff 60%)', border: '#fecaca', head: '' },
   };
+  const tints = theme?.pipeline || fallback;
   const t = tints[color] || tints.blue;
   return {
     border: `1px solid ${t.border}`,
@@ -921,13 +978,16 @@ function colStyle(color: string): React.CSSProperties {
     boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
   };
 }
-function colHeadStyle(color: string): React.CSSProperties {
-  const map: Record<string, string> = {
+function colHeadStyle(color: string, theme?: { pipeline: Record<string, { head: string }> }): React.CSSProperties {
+  const fallback: Record<string, string> = {
     blue:  'linear-gradient(135deg,#3b82f6,#2563eb)',
     teal:  'linear-gradient(135deg,#0ea5e9,#0d9488)',
     green: 'linear-gradient(135deg,#22c55e,#16a34a)',
     red:   'linear-gradient(135deg,#ef4444,#dc2626)',
   };
+  const map: Record<string, string> = theme
+    ? Object.fromEntries(Object.entries(theme.pipeline).map(([k, v]) => [k, v.head]))
+    : fallback;
   return {
     padding: '10px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
     textTransform: 'uppercase', color: '#fff', background: map[color] || map.blue,
