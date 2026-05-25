@@ -958,13 +958,14 @@ const actionStyle: React.CSSProperties = {
   background: '#f8fafc', border: '1px solid #e2e8f0', borderLeft: '3px solid #1e3a8a',
   borderRadius: 6, padding: '12px 14px', fontSize: 14, color: '#0f172a', lineHeight: 1.6, whiteSpace: 'pre-wrap',
 };
-function colStyle(color: string): React.CSSProperties {
-  const tints: Record<string, { bg: string; border: string }> = {
-    blue:  { bg: 'linear-gradient(180deg,#eff6ff 0%,#ffffff 60%)', border: '#bfdbfe' },
-    teal:  { bg: 'linear-gradient(180deg,#ecfeff 0%,#ffffff 60%)', border: '#a5f3fc' },
-    green: { bg: 'linear-gradient(180deg,#f0fdf4 0%,#ffffff 60%)', border: '#bbf7d0' },
-    red:   { bg: 'linear-gradient(180deg,#fef2f2 0%,#ffffff 60%)', border: '#fecaca' },
+function colStyle(color: string, theme?: { pipeline: Record<string, { bg: string; border: string; head: string }> }): React.CSSProperties {
+  const fallback = {
+    blue:  { bg: 'linear-gradient(180deg,#eff6ff 0%,#ffffff 60%)', border: '#bfdbfe', head: '' },
+    teal:  { bg: 'linear-gradient(180deg,#ecfeff 0%,#ffffff 60%)', border: '#a5f3fc', head: '' },
+    green: { bg: 'linear-gradient(180deg,#f0fdf4 0%,#ffffff 60%)', border: '#bbf7d0', head: '' },
+    red:   { bg: 'linear-gradient(180deg,#fef2f2 0%,#ffffff 60%)', border: '#fecaca', head: '' },
   };
+  const tints = theme?.pipeline || fallback;
   const t = tints[color] || tints.blue;
   return {
     border: `1px solid ${t.border}`,
@@ -977,13 +978,16 @@ function colStyle(color: string): React.CSSProperties {
     boxShadow: '0 1px 2px rgba(15,23,42,0.04)',
   };
 }
-function colHeadStyle(color: string): React.CSSProperties {
-  const map: Record<string, string> = {
+function colHeadStyle(color: string, theme?: { pipeline: Record<string, { head: string }> }): React.CSSProperties {
+  const fallback: Record<string, string> = {
     blue:  'linear-gradient(135deg,#3b82f6,#2563eb)',
     teal:  'linear-gradient(135deg,#0ea5e9,#0d9488)',
     green: 'linear-gradient(135deg,#22c55e,#16a34a)',
     red:   'linear-gradient(135deg,#ef4444,#dc2626)',
   };
+  const map: Record<string, string> = theme
+    ? Object.fromEntries(Object.entries(theme.pipeline).map(([k, v]) => [k, v.head]))
+    : fallback;
   return {
     padding: '10px 12px', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em',
     textTransform: 'uppercase', color: '#fff', background: map[color] || map.blue,
