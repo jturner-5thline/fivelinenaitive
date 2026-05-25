@@ -3623,75 +3623,15 @@ export default function DealDetail() {
                                   </div>
                                 );
                               case 'clientContact': {
-                                const linkedContactName = primaryDealContact?.name || null;
-                                const linkedContactEmail = primaryDealContact?.email || null;
-                                const displayContactName = linkedContactName || deal.contact || '';
-                                const displayContactInfo = linkedContactEmail || deal.contactInfo || '';
                                 return (
-                                  <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
-                                    <span className="text-muted-foreground text-sm">Client Contact</span>
-                                    <div className="min-w-0 flex items-center gap-2">
-                                      <TooltipProvider>
-                                        <Tooltip>
-                                          <Popover open={contactPopoverOpen} onOpenChange={setContactPopoverOpen}>
-                                            <TooltipTrigger asChild>
-                                              <PopoverTrigger asChild>
-                                                <Button variant="outline" className="flex-1 min-w-0 justify-start h-8 px-3 font-normal text-sm overflow-hidden">
-                                                  <span className="truncate">
-                                                    {displayContactName || <span className="text-muted-foreground italic">Add contact</span>}
-                                                  </span>
-                                                </Button>
-                                              </PopoverTrigger>
-                                            </TooltipTrigger>
-                                            {displayContactName && displayContactInfo && (
-                                              <TooltipContent side="left" className="max-w-[200px]">
-                                                <p className="font-medium">{displayContactName}</p>
-                                                <p className="text-xs text-muted-foreground">{displayContactInfo}</p>
-                                              </TooltipContent>
-                                            )}
-                                            <PopoverContent className="w-72 p-4 bg-popover" align="start">
-                                              <div className="space-y-4">
-                                                {linkedContactName && (
-                                                  <div className="rounded-md bg-muted/50 px-2 py-1.5 text-xs text-muted-foreground">
-                                                    Linked from Contacts: <span className="font-medium text-foreground">{linkedContactName}</span>
-                                                    {linkedContactEmail && <> · {linkedContactEmail}</>}
-                                                  </div>
-                                                )}
-                                                <div className="space-y-2">
-                                                  <label className="text-sm font-medium">Contact Name</label>
-                                                  <DebouncedInput
-                                                    value={deal.contact || ''}
-                                                    onChange={(value) => updateDeal('contact', String(value))}
-                                                    onSave={() => setContactPopoverOpen(false)}
-                                                    placeholder="Enter contact name"
-                                                  />
-                                                </div>
-                                                <div className="space-y-2">
-                                                  <label className="text-sm font-medium">Contact Info</label>
-                                                  <DebouncedInput
-                                                    value={deal.contactInfo || ''}
-                                                    onChange={(value) => updateDeal('contactInfo', String(value))}
-                                                    onSave={() => setContactPopoverOpen(false)}
-                                                    placeholder="Email or phone number"
-                                                  />
-                                                </div>
-                                              </div>
-                                            </PopoverContent>
-                                          </Popover>
-                                        </Tooltip>
-                                      </TooltipProvider>
-                                      <DraftEmailToClientContactButton
-                                        dealId={deal.id}
-                                        dealName={deal.name || deal.company}
-                                        contactName={displayContactName || null}
-                                        contactInfo={displayContactInfo || null}
-                                        companyDomain={deal.companyUrl}
-                                        size="sm"
-                                        variant="outline"
-                                        className="shrink-0"
-                                      />
-                                    </div>
-                                  </div>
+                                  <DealClientContactField
+                                    key={fieldId}
+                                    deal={deal}
+                                    linkedContact={primaryDealContact}
+                                    contactPopoverOpen={contactPopoverOpen}
+                                    onContactPopoverOpenChange={setContactPopoverOpen}
+                                    onUpdateField={(field, value) => updateDeal(field, value)}
+                                  />
                                 );
                               }
                               case 'referralSource':
