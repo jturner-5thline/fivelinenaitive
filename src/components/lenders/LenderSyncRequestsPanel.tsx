@@ -438,6 +438,15 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
     }
   };
 
+  // Side-by-side review drawer state.
+  const [reviewOpen, setReviewOpen] = useState(false);
+  const [reviewRequestId, setReviewRequestId] = useState<string | null>(null);
+  const openReview = (id: string) => {
+    setReviewRequestId(id);
+    setReviewOpen(true);
+  };
+  const reviewRequest = requests.find(r => r.id === reviewRequestId) || null;
+
   // High-confidence exact duplicates: merge conflicts whose changes_diff is empty
   // (i.e. Flex sent us a record that is byte-for-byte identical to the existing one).
   const exactDuplicateConflicts = conflictRequests.filter(
@@ -478,6 +487,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
       onApprove={handleApprove}
       onReject={rejectRequest}
       onMerge={handleMerge}
+      onReview={openReview}
       clusterSize={clusterSizeById.get(request.id) || 1}
     />
   );
