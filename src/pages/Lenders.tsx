@@ -551,10 +551,20 @@ export default function Lenders() {
         matches(aux)
       );
     });
-  }, [masterLenders, advancedFilters, showActiveDealsOnly, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
+  }, [masterLenders, advancedFilters, showActiveDealsOnly, showDuplicatesOnly, duplicateIndex, activeDealCounts, debouncedSearchQuery, lenderDealIndex, lenderAuxIndex, aiFilter]);
 
   // Sort filtered lenders - memoized to prevent re-sorting on every render
   const sortedLenders = useMemo(() => {
+    // When the duplicates filter is on, group clusters together regardless of
+    // the currently selected sort option so they're visually adjacent.
+    if (showDuplicatesOnly) {
+      return [...filteredLenders].sort((a, b) => {
+        const ga = duplicateIndex.byLenderId[a.id]?.groupId || '';
+        const gb = duplicateIndex.byLenderId[b.id]?.groupId || '';
+        if (ga !== gb) return ga.localeCompare(gb);
+        return a.name.localeCompare(b.name);
+      });
+    }
     // We already fetch lenders ordered by name asc, so avoid expensive sorts when possible.
     if (sortOption === 'name-asc') return filteredLenders;
     if (sortOption === 'name-desc') return [...filteredLenders].reverse();
@@ -569,7 +579,7 @@ export default function Lenders() {
           return 0;
       }
     });
-  }, [filteredLenders, sortOption, activeDealCounts]);
+  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
