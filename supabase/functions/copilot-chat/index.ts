@@ -695,7 +695,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_fields",
-      description: "Update one or more deal fields in a SINGLE transactional update — value/size, closing_date, flag status, stage, manager, deal_owner, narrative, deal_type, engagement_type. Use this when the user requests multiple field changes in one prompt; it renders ONE combined confirmation card and verifies each column individually after write. HIGH RISK for stage/manager/owner/type/engagement — returns a confirmation card.",
+      description: "Update one or more deal fields in a SINGLE transactional update — value/size, closing_date, flag status, stage, manager, deal_owner, narrative, deal_type, engagement_type, AND tracked hours (pre_signing_hours, post_signing_hours).\n\nHours fields: use the *_delta variant to ADD/SUBTRACT hours (e.g. user says \"add 0.5 Post Signing hours\" → post_signing_hours_delta: 0.5). Use the absolute *_hours field only when the user explicitly sets a total (e.g. \"set post signing to 4 hours\"). NEVER call this tool without at least one writable field populated — value, closing_date, is_flagged, stage, manager, deal_owner, narrative, deal_type, engagement_type, pre_signing_hours[_delta], or post_signing_hours[_delta]. Calling it with only {deal_id, deal_name} is invalid and will be rejected.\n\nExample — 'Add 0.5 Post Signing hours to Upflex': { deal_id: '<uuid>', deal_name: 'Upflex', post_signing_hours_delta: 0.5 }. For multiple deals, emit ONE tool call per deal with the same shape.\n\nHIGH RISK for stage/manager/owner/type/engagement — returns a confirmation card. Hours and value/date/flag updates render an auto-confirm card.",
       parameters: {
         type: "object",
         properties: {
@@ -711,6 +711,10 @@ const tools = [
           narrative: { type: "string", description: "New deal narrative / overview text" },
           deal_type: { type: "string", description: "New deal type" },
           engagement_type: { type: "string", description: "New engagement type" },
+          pre_signing_hours: { type: "number", description: "Set absolute Pre-Signing hours total. Prefer pre_signing_hours_delta for additive requests." },
+          pre_signing_hours_delta: { type: "number", description: "Add this many Pre-Signing hours (can be negative). Use for 'add/log/subtract X pre-signing hours'." },
+          post_signing_hours: { type: "number", description: "Set absolute Post-Signing hours total. Prefer post_signing_hours_delta for additive requests." },
+          post_signing_hours_delta: { type: "number", description: "Add this many Post-Signing hours (can be negative). Use for 'add/log/subtract X post-signing hours'." },
           current_value: { type: "number", description: "Current value, for the diff card" },
           current_closing_date: { type: "string", description: "Current closing date, for the diff card" },
           current_is_flagged: { type: "boolean", description: "Current flag state, for the diff card" },
