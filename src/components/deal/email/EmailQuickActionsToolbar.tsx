@@ -6,6 +6,7 @@ import {
   Sparkles as SparklesIcon,
   ListPlus,
   CalendarClock,
+  CalendarRange,
   AlignLeft,
   Loader2,
   ListChecks,
@@ -21,11 +22,12 @@ import { MeetingSchedulerCard } from './MeetingSchedulerCard';
 import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
 import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import { QuickBookMeetingPopover } from './QuickBookMeetingPopover';
+import { SuggestTimesPanel } from './SuggestTimesPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
 
-type QuickActionKey = 'save_dr' | 'lender' | 'draft' | 'task' | 'meeting' | 'summarize' | 'outstanding';
+type QuickActionKey = 'save_dr' | 'lender' | 'draft' | 'task' | 'meeting' | 'suggest_times' | 'summarize' | 'outstanding';
 
 interface ActionDef {
   key: QuickActionKey;
@@ -41,6 +43,7 @@ const ALL_ACTIONS: ActionDef[] = [
   { key: 'draft', label: 'Draft Reply', icon: <SparklesIcon className="h-4 w-4" />, iconClass: 'text-primary' },
   { key: 'task', label: 'Create Task', icon: <ListPlus className="h-4 w-4" />, iconClass: 'text-sky-300' },
   { key: 'meeting', label: 'Schedule Meeting', icon: <CalendarClock className="h-4 w-4" />, iconClass: 'text-violet-300' },
+  { key: 'suggest_times', label: 'Suggest Times', icon: <CalendarRange className="h-4 w-4" />, iconClass: 'text-violet-300' },
   { key: 'outstanding', label: 'Add to Outstanding Items', icon: <ListChecks className="h-4 w-4" />, iconClass: 'text-fuchsia-300' },
   { key: 'summarize', label: 'Summarize thread', icon: <AlignLeft className="h-4 w-4" />, iconClass: 'text-cyan-300' },
 ];
