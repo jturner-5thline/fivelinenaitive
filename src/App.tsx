@@ -309,6 +309,7 @@ const App = () => (
                       <CopyProtection>
                       <UndoSendProvider>
                       <WelcomeScreenWrapper />
+                      <DemoAiChatResetMount />
                       <Toaster />
                       <Sonner />
                       <WorkflowEmailModalListener />
