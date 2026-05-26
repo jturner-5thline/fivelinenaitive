@@ -6,7 +6,6 @@
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarRange, Loader2, RefreshCcw, Send, X, Minus, Plus, WifiOff } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';

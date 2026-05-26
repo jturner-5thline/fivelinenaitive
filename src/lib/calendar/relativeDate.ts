@@ -36,5 +36,5 @@ export function getRelativeDateLabel(date: Date, now: Date, tz: string): string 
   // 7+ days out — or past (fallback to full label).
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short', month: 'short', day: 'numeric', timeZone: tz,
-  }).format(date).replace(',', '');
+  }).format(date);
 }

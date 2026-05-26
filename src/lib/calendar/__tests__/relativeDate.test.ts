@@ -21,7 +21,7 @@ describe('getRelativeDateLabel', () => {
   });
 
   it('returns weekday + date 7+ days out', () => {
-    expect(getRelativeDateLabel(new Date('2026-06-01T14:45:00Z'), now, TZ)).toBe('Mon Jun 1');
+    expect(getRelativeDateLabel(new Date('2026-06-01T14:45:00Z'), now, TZ)).toBe('Mon, Jun 1');
   });
 
   it('handles DST spring-forward correctly', () => {
