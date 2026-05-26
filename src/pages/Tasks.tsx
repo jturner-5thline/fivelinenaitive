@@ -1177,6 +1177,23 @@ export default function Tasks() {
                   </div>
                 </div>
               )}
+              <div className="flex items-center justify-between pt-2 mt-1 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                  onClick={() => { clearAllFilters(); patchFilters({ search: '' }); setDealFilterQuery(''); }}
+                >
+                  Clear filters
+                </button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 text-[11px] px-3"
+                  onClick={() => setFiltersOpen(false)}
+                >
+                  Done
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
 
