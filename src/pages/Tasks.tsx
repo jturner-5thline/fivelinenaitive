@@ -670,6 +670,12 @@ export default function Tasks() {
     if (c.ownerFilter) setOwnerFilter(c.ownerFilter as TaskOwnerFilter);
     if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
     if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
+    if (Array.isArray((c as any).filterPriorities)) {
+      setFilterPriorities(new Set((c as any).filterPriorities as TaskPriority[]));
+    }
+    if (typeof (c as any).showAllDeals === 'boolean') {
+      setShowAllDeals((c as any).showAllDeals);
+    }
     if (c.filterDueDate) setFilterDueDate(c.filterDueDate as FilterDueDate);
     if (c.filterRecurring) setFilterRecurring(c.filterRecurring as FilterRecurring);
     toast.success(`Loaded view: ${view.name}`);
