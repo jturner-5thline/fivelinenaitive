@@ -690,6 +690,14 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
             dealName,
             dueDate: existingTask?.due_date || updates.due_date || null,
           });
+          createTaskAssignedNotification({
+            taskId: id,
+            taskTitle: existingTask?.title || updates.title || 'Task',
+            assigneeUserId: updates.assigned_to as string,
+            assignedByName: assignerProfile?.display_name || undefined,
+            dealName,
+            dealId: existingTask?.deal_id || null,
+          });
         }
       }
 
