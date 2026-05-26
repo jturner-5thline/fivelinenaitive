@@ -118,6 +118,35 @@ export function QuickCreateTaskDialog({
   // through a type-ahead picker that respects RLS (deals already filtered
   // server-side via DealsContext).
   const { deals: allDeals } = useDealsContext();
+  // Active-pipeline scoping: restrict the picker to deals whose pipeline_id
+  // is on the company's currently-active pipelines — i.e. the default
+  // pipeline ("Active Pipeline") plus any pipeline named "In Development" /
+  // "Development Pipeline". Other pipelines (Archived, Guided, sandbox)
+  // and stage-level dead/closed deals are excluded so the picker matches
+  // the deals surfaced in /deals.
+  const { pipelines: companyPipelines } = usePipelineContext();
+  const activePipelineIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of companyPipelines) {
+      const n = (p.name || '').toLowerCase();
+      if (p.isDefault || n.includes('development')) ids.add(p.id);
+    }
+    return ids;
+  }, [companyPipelines]);
+  const pipelineNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of companyPipelines) m.set(p.id, p.name);
+    return m;
+  }, [companyPipelines]);
+  const stageOrderByPipeline = useMemo(() => {
+    const m = new Map<string, Map<string, number>>();
+    for (const p of companyPipelines) {
+      const inner = new Map<string, number>();
+      p.stages.forEach((s, i) => inner.set(s.id, i));
+      m.set(p.id, inner);
+    }
+    return m;
+  }, [companyPipelines]);
   const [dealId, setDealId] = useState<string | null>(null);
   const [dealPickerOpen, setDealPickerOpen] = useState(false);
   const [dealQuery, setDealQuery] = useState('');
