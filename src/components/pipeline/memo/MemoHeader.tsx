@@ -5,6 +5,12 @@ import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { DraftEmailToClientContactButton } from '@/components/deal/DraftEmailToClientContactButton';
 import { CreateTaskButton } from '@/components/deal/CreateTaskButton';
+import { useEffect, useRef, useState } from 'react';
+import { Textarea } from '@/components/ui/textarea';
+import { Button } from '@/components/ui/button';
+import { Loader2, Pencil } from 'lucide-react';
+import { useDeals } from '@/contexts/DealsContext';
+import { toast } from 'sonner';
 
 interface MemoHeaderProps {
   deal: Deal;
@@ -61,6 +67,75 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
   })();
   const statusDisplay = statusText || stageLabel;
 
+  // Inline edit state for the Status row. Persists into deal.notes
+  // via the same updateDeal mutation used by DealCard + DealDetail so
+  // every other consumer (memo, card, detail header) refreshes in lockstep.
+  const { updateDeal } = useDeals();
+  const [isEditing, setIsEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [optimistic, setOptimistic] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => { setOptimistic(null); }, [deal.id, deal.notes]);
+
+  const effectiveStatusText = optimistic ?? statusText;
+  const effectiveDisplay = effectiveStatusText || stageLabel;
+
+  const beginEdit = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setDraft(effectiveStatusText || '');
+    setErrorMsg(null);
+    setIsEditing(true);
+  };
+
+  useEffect(() => {
+    if (isEditing && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.select();
+    }
+  }, [isEditing]);
+
+  const cancelEdit = () => {
+    setIsEditing(false);
+    setErrorMsg(null);
+  };
+
+  const saveEdit = async () => {
+    const next = draft.trim();
+    if (next === (effectiveStatusText || '')) {
+      setIsEditing(false);
+      return;
+    }
+    setSaving(true);
+    setErrorMsg(null);
+    const prevOptimistic = optimistic;
+    setOptimistic(next);
+    try {
+      await updateDeal(deal.id, { notes: next ? next : null });
+      setIsEditing(false);
+    } catch (e) {
+      setOptimistic(prevOptimistic);
+      const msg = e instanceof Error ? e.message : 'Save failed';
+      setErrorMsg(msg);
+      toast.error(`Failed to update status — ${msg}`);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if ((e.key === 'Enter' && (e.metaKey || e.ctrlKey))) {
+      e.preventDefault();
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      cancelEdit();
+    }
+    e.stopPropagation();
+  };
+
   return (
     <div className="px-5 pt-4 pb-3 border-b border-white/10 bg-gradient-to-b from-white/[0.04] to-transparent">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -111,15 +186,69 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
           <CreateTaskButton dealId={deal.id} dealName={deal.company || deal.name} />
         </div>
       </div>
-      {statusDisplay && (
-        <p
-          className="mt-1.5 text-[12px] leading-snug text-muted-foreground break-words"
-          title={statusDisplay}
-        >
-          <span className="text-muted-foreground/70">Status:</span>{' '}
-          <span className="text-foreground/80">{statusDisplay}</span>
-        </p>
-      )}
+      <div
+        className="mt-1.5"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        {isEditing ? (
+          <div className="space-y-1.5">
+            <div className="flex items-start gap-2">
+              <span className="text-[12px] text-muted-foreground/70 pt-1.5 shrink-0">Status:</span>
+              <Textarea
+                ref={textareaRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={handleKeyDown}
+                disabled={saving}
+                placeholder="Add a status update…"
+                className="min-h-[56px] text-[12px] leading-snug bg-background/40"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-1.5">
+              {errorMsg && (
+                <span className="mr-auto text-[11px] text-destructive">{errorMsg}</span>
+              )}
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-7 px-2 text-[11px]"
+                onClick={cancelEdit}
+                disabled={saving}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-7 px-2.5 text-[11px]"
+                onClick={saveEdit}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : null}
+                Save
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={beginEdit}
+            title={effectiveDisplay ? `${effectiveDisplay} — click to edit` : 'Add a status update'}
+            className="group w-full text-left text-[12px] leading-snug text-muted-foreground break-words rounded px-1 -mx-1 py-0.5 hover:bg-white/5 transition-colors"
+          >
+            <span className="text-muted-foreground/70">Status:</span>{' '}
+            {effectiveDisplay ? (
+              <span className="text-foreground/80">{effectiveDisplay}</span>
+            ) : (
+              <span className="italic text-muted-foreground/60">Add a status update</span>
+            )}
+            <Pencil className="inline-block ml-1.5 h-3 w-3 align-[-2px] text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity" />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
