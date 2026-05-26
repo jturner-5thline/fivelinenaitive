@@ -340,6 +340,17 @@ export function EmailQuickActionsToolbar({
           onClose={() => setActive(null)}
         />
       )}
+      {active === 'suggest_times' && (
+        <SuggestTimesPanel
+          threadId={thread.threadId}
+          subject={thread.subject}
+          recipientEmail={thread.latestEmail?.from_email || null}
+          recipientName={thread.latestEmail?.from_name || null}
+          dealId={dealId || fallbackDealId || null}
+          onInsertDraft={(body) => onInsertDraft(body)}
+          onClose={() => setActive(null)}
+        />
+      )}
       {active === 'summarize' && (
         <div className="rounded-xl border border-[hsl(195_85%_60%/0.35)] bg-[hsl(200_75%_55%/0.08)] p-3">
           <div className="flex items-center gap-1.5 mb-2">
