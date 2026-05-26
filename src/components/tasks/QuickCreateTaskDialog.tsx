@@ -897,20 +897,39 @@ export function QuickCreateTaskDialog({
                 </div>
                 <div className="max-h-[260px] overflow-y-auto py-1">
                   {dealResultsEmpty && (
-                    <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
-                      {dealQuery.trim() ? 'No deals match your search.' : 'No deals available.'}
+                    <div className="px-3 py-4 text-[11px] text-center space-y-1" style={{ color: '#7a8194' }}>
+                      <div>
+                        {dealQuery.trim()
+                          ? 'No active deals match your search.'
+                          : 'No active deals in your pipeline.'}
+                      </div>
+                      {!dealQuery.trim() && (
+                        <Link
+                          to="/deals"
+                          onClick={() => setDealPickerOpen(false)}
+                          className="inline-block text-[11px] font-medium hover:underline"
+                          style={{ color: '#7eb8f7' }}
+                        >
+                          Add a deal →
+                        </Link>
+                      )}
                     </div>
                   )}
-                  {dealSearchGroups.active.map(d => {
+                  {dealPickerResults.map(d => {
                     const commit = () => {
                       setDealId(d.id);
                       setDealPickerOpen(false);
                       setDealQuery('');
                     };
+                    const pipelineLabel = d.pipelineId
+                      ? pipelineNameById.get(d.pipelineId)
+                      : undefined;
                     return (
                       <button
                         key={d.id}
                         type="button"
+                        role="option"
+                        aria-selected={dealId === d.id}
                         // Use onMouseDown so selection commits before the
                         // Dialog/Popover focus-restore logic can intercept the
                         // click. preventDefault keeps focus on the trigger so
@@ -926,58 +945,15 @@ export function QuickCreateTaskDialog({
                             <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
                           )}
                         </span>
-                        {d.stage && (
+                        {pipelineLabel && (
                           <span
                             className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
                             style={{
-                              color: dealStageTone(d.stage),
-                              backgroundColor: `${dealStageTone(d.stage)}1a`,
+                              color: '#93c5fd',
+                              backgroundColor: 'rgba(30,58,95,0.6)',
                             }}
                           >
-                            {formatStage(d.stage)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                  {dealSearchGroups.inactive.length > 0 && (
-                    <div
-                      className="px-3 pt-2 pb-1 mt-1 border-t text-[9px] uppercase tracking-wider font-semibold"
-                      style={{ color: '#5b6173', borderColor: 'rgba(255,255,255,0.05)' }}
-                    >
-                      — Archived / On Hold —
-                    </div>
-                  )}
-                  {dealSearchGroups.inactive.map(d => {
-                    const commit = () => {
-                      setDealId(d.id);
-                      setDealPickerOpen(false);
-                      setDealQuery('');
-                    };
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onMouseDown={(e) => { e.preventDefault(); commit(); }}
-                        onClick={(e) => { e.preventDefault(); commit(); }}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.05)] opacity-60"
-                        style={{ color: dealId === d.id ? '#cfe3ff' : '#9aa3b6' }}
-                      >
-                        <span className="flex-1 truncate">
-                          <span className="font-medium">{d.name}</span>
-                          {d.company && d.company !== d.name && (
-                            <span className="ml-2" style={{ color: '#5b6173' }}>· {d.company}</span>
-                          )}
-                        </span>
-                        {d.stage && (
-                          <span
-                            className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
-                            style={{
-                              color: dealStageTone(d.stage),
-                              backgroundColor: `${dealStageTone(d.stage)}14`,
-                            }}
-                          >
-                            {formatStage(d.stage)}
+                            {pipelineLabel}
                           </span>
                         )}
                       </button>
