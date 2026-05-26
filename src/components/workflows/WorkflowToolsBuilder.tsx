@@ -397,7 +397,7 @@ export function WorkflowToolsBuilder({ nodes, onNodesChange }: WorkflowToolsBuil
             <div>
               <Label className="text-xs">Agent</Label>
               <Select
-                value={selectedNode.config.agentId || ''}
+                value={selectedNode.config.agentId || undefined}
                 onValueChange={(v) => updateNode(selectedNode.id, {
                   config: { ...selectedNode.config, agentId: v }
                 })}
@@ -406,7 +406,7 @@ export function WorkflowToolsBuilder({ nodes, onNodesChange }: WorkflowToolsBuil
                   <SelectValue placeholder="Select an agent" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Select agent...</SelectItem>
+                  <SelectItem value="__none__" disabled>No agents available</SelectItem>
                 </SelectContent>
               </Select>
             </div>
