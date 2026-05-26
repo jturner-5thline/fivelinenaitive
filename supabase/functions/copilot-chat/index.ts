@@ -2903,11 +2903,43 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── MIXED RISK: Deal field updates ──
     case "update_deal_fields": {
-      const { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged").eq("id", args.deal_id).single();
+      const { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours").eq("id", args.deal_id).single();
       if (!deal) return { error: "Deal not found" };
 
+      // Validate that the model actually included a writable field. Without
+      // this, the model can emit `{ deal_id, deal_name }` with no payload and
+      // then narrate false success when the execute step rejects it.
+      const HOUR_KEYS = ["pre_signing_hours", "pre_signing_hours_delta", "post_signing_hours", "post_signing_hours_delta"] as const;
+      const WRITABLE_KEYS = [
+        "value", "closing_date", "is_flagged", "flag_notes",
+        "stage", "manager", "deal_owner", "narrative", "deal_type", "engagement_type",
+        ...HOUR_KEYS,
+      ];
+      const providedKeys = WRITABLE_KEYS.filter((k) => (args as any)[k] !== undefined && (args as any)[k] !== null);
+      console.log("[copilot-chat] update_deal_fields confirm — deal_id=%s providedKeys=%j args=%j", args.deal_id, providedKeys, args);
+      if (providedKeys.length === 0) {
+        return {
+          error: `update_deal_fields called for ${deal.company} with no writable fields. To add hours include post_signing_hours_delta (e.g. 0.5) or pre_signing_hours_delta. To change other fields include value, closing_date, is_flagged, stage, manager, deal_owner, narrative, deal_type, or engagement_type. Re-emit the call with the correct payload.`,
+          error_code: "EMPTY_FIELDS",
+        };
+      }
+
+      // Resolve hours deltas against current values for the diff card.
+      let resolvedPreHours: number | undefined;
+      let resolvedPostHours: number | undefined;
+      if (args.pre_signing_hours_delta !== undefined && args.pre_signing_hours_delta !== null) {
+        resolvedPreHours = Number(deal.pre_signing_hours || 0) + Number(args.pre_signing_hours_delta);
+      } else if (args.pre_signing_hours !== undefined && args.pre_signing_hours !== null) {
+        resolvedPreHours = Number(args.pre_signing_hours);
+      }
+      if (args.post_signing_hours_delta !== undefined && args.post_signing_hours_delta !== null) {
+        resolvedPostHours = Number(deal.post_signing_hours || 0) + Number(args.post_signing_hours_delta);
+      } else if (args.post_signing_hours !== undefined && args.post_signing_hours !== null) {
+        resolvedPostHours = Number(args.post_signing_hours);
+      }
+
       // Flag changes are LOW RISK — auto-execute
-      if (args.is_flagged !== undefined && args.value === undefined && args.closing_date === undefined) {
+      if (args.is_flagged !== undefined && args.value === undefined && args.closing_date === undefined && resolvedPreHours === undefined && resolvedPostHours === undefined) {
         try {
           await verifiedDealUpdate(supabase, args.deal_id, {
             is_flagged: args.is_flagged,
@@ -2938,6 +2970,8 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (args.value !== undefined) changes.push(`Deal size: $${deal.value?.toLocaleString() || 0} → $${args.value.toLocaleString()}`);
       if (args.closing_date !== undefined) changes.push(`Close date: ${deal.closing_date || 'None'} → ${args.closing_date || 'None'}`);
       if (args.is_flagged !== undefined) changes.push(`Flag: ${args.is_flagged ? 'On' : 'Off'}`);
+      if (resolvedPreHours !== undefined) changes.push(`Pre-Signing hours: ${Number(deal.pre_signing_hours || 0)} → ${resolvedPreHours}`);
+      if (resolvedPostHours !== undefined) changes.push(`Post-Signing hours: ${Number(deal.post_signing_hours || 0)} → ${resolvedPostHours}`);
 
       return {
         action: "confirm",
@@ -2947,6 +2981,10 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           deal_id: args.deal_id, deal_name: deal.company,
           value: args.value, closing_date: args.closing_date,
           is_flagged: args.is_flagged, flag_notes: args.flag_notes,
+          pre_signing_hours: resolvedPreHours,
+          post_signing_hours: resolvedPostHours,
+          current_pre_signing_hours: resolvedPreHours !== undefined ? Number(deal.pre_signing_hours || 0) : undefined,
+          current_post_signing_hours: resolvedPostHours !== undefined ? Number(deal.post_signing_hours || 0) : undefined,
           current_value: deal.value, current_closing_date: deal.closing_date,
         },
       };
