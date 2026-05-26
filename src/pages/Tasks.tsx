@@ -284,11 +284,7 @@ export default function Tasks() {
       setFilterDueDate(d);
     }
     const p = params.get('priority');
-    if (p) {
-      const valid = p.split(',').filter((v): v is TaskPriority =>
-        ['urgent','high','medium','low'].includes(v));
-      if (valid.length) setFilterPriorities(new Set(valid));
-    }
+    if (p === 'urgent' || p === '1' || p === 'true') setUrgentOnly(true);
     const deals = params.get('deal');
     if (deals) {
       const ids = deals.split(',').filter(Boolean);
