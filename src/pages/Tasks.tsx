@@ -375,7 +375,13 @@ export default function Tasks() {
     .filter(t => {
       if (filterStatus === 'incomplete' && t.status === 'complete') return false;
       if (filterStatus !== 'all' && filterStatus !== 'incomplete' && t.status !== filterStatus) return false;
-      if (search && !t.title.toLowerCase().includes(search.toLowerCase())) return false;
+      if (debouncedSearch) {
+        const q = debouncedSearch.toLowerCase();
+        const inTitle = t.title.toLowerCase().includes(q);
+        const dealName = (t.deal?.company || t.deal?.name || t.crm_company?.name || '').toLowerCase();
+        const inDeal = dealName.includes(q);
+        if (!inTitle && !inDeal) return false;
+      }
       if (filterDealIds.size > 0 && (!t.deal_id || !filterDealIds.has(t.deal_id))) return false;
       if (filterPriorities.size > 0 && !filterPriorities.has(t.priority as TaskPriority)) return false;
       if (filterLabelIds.size > 0) {
