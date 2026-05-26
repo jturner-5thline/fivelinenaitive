@@ -16,7 +16,8 @@ export interface TaskSavedView {
     ownerFilter?: string;
     filterDealIds?: string[];
     filterLabelIds?: string[];
-    filterPriorities?: string[];
+    filterPriorities?: string[]; // legacy — kept for back-compat read
+    urgentOnly?: boolean;
     showAllDeals?: boolean;
     filterDueDate?: string; // 'all' | 'overdue' | 'today' | 'this_week' | 'no_date'
     filterRecurring?: string; // 'all' | 'recurring' | 'paused'
