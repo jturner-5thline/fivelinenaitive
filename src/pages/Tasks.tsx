@@ -134,7 +134,7 @@ const DUE_LABELS: Record<FilterDueDate, string> = {
   no_date: 'No due date',
 };
 const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
-  urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low',
+  urgent: 'Urgent',
 };
 
 export default function Tasks() {
