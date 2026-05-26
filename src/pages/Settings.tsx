@@ -504,13 +504,13 @@ export default function Settings() {
     const legacyMap: Record<string, string> = {
       general: 'workspace',
       deals: 'deals',
-      lenders: 'lenders',
-      automation: 'automation',
-      email: 'email',
-      metrics: 'metrics',
+      lenders: 'funding-sources',
+      automation: 'automation-ai',
+      email: 'communications',
+      metrics: 'integrations',
       crm: 'integrations',
-      ai: 'ai',
-      'sales-bd': 'sales-bd',
+      ai: 'automation-ai',
+      'sales-bd': 'integrations',
     };
     let target = legacyTab ? legacyMap[legacyTab] : undefined;
     if (!target) {
@@ -584,45 +584,43 @@ export default function Settings() {
   // Sidebar mobile sheet
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  // Aggregate badge counts for each group (e.g. pending join requests on Company).
+  const groupBadge = (groupId: string) =>
+    groups
+      .find((g) => g.id === groupId)
+      ?.sections.reduce((sum, s) => sum + (s.badge ?? 0), 0) ?? 0;
+
   const SidebarContent = (
-    <nav className="flex flex-col gap-6 p-4" aria-label="Settings categories">
+    <nav className="flex flex-col gap-0.5 p-3" aria-label="Settings categories">
       {groups.map((group) => {
         const Icon = group.icon;
+        const isActive = activeGroup?.id === group.id;
+        const badge = groupBadge(group.id);
         return (
-          <div key={group.id}>
-            <div className="flex items-center gap-2 px-2 mb-1 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground">
-              <Icon className="h-3.5 w-3.5" />
-              {group.label}
-            </div>
-            <div className="flex flex-col">
-              {group.sections.map((section) => {
-                const isActive =
-                  activeGroup?.id === group.id && activeSection?.id === section.id;
-                return (
-                  <button
-                    key={section.id}
-                    onClick={() => {
-                      goToSection(group.id, section.id);
-                      setMobileOpen(false);
-                    }}
-                    className={`text-left text-sm px-3 py-1.5 rounded-md transition-colors flex items-center justify-between gap-2 ${
-                      isActive
-                        ? 'bg-accent text-accent-foreground font-medium'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
-                    }`}
-                    aria-current={isActive ? 'page' : undefined}
-                  >
-                    <span className="truncate">{section.label}</span>
-                    {section.badge != null && section.badge > 0 && (
-                      <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
-                        {section.badge}
-                      </Badge>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
+          <button
+            key={group.id}
+            onClick={() => {
+              const first = group.sections[0];
+              if (first) {
+                goToSection(group.id, first.id);
+                setMobileOpen(false);
+              }
+            }}
+            className={`group/nav text-left flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
+              isActive
+                ? 'bg-accent text-foreground font-medium'
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+            }`}
+            aria-current={isActive ? 'page' : undefined}
+          >
+            <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-foreground' : 'text-muted-foreground group-hover/nav:text-foreground'}`} />
+            <span className="truncate flex-1">{group.label}</span>
+            {badge > 0 && (
+              <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
+                {badge}
+              </Badge>
+            )}
+          </button>
         );
       })}
     </nav>
@@ -638,8 +636,8 @@ export default function Settings() {
       <div className="bg-background min-h-full">
         <div className="flex w-full">
           {/* Sidebar — desktop */}
-          <aside className="hidden md:block w-64 shrink-0 border-r border-border sticky top-0 self-start h-screen overflow-y-auto">
-            <div className="px-4 pt-5 pb-3 border-b border-border">
+          <aside className="hidden md:block w-56 shrink-0 border-r border-border/60 sticky top-0 self-start h-screen overflow-y-auto bg-background">
+            <div className="px-4 pt-5 pb-4">
               <Link
                 to="/dashboard"
                 className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3"
@@ -647,10 +645,10 @@ export default function Settings() {
                 <ArrowLeft className="h-3.5 w-3.5" />
                 Dashboard
               </Link>
-              <h1 className="text-lg font-semibold">Settings</h1>
+              <h1 className="text-base font-semibold tracking-tight">Settings</h1>
               <button
                 onClick={() => setPaletteOpen(true)}
-                className="mt-3 w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-md border border-border bg-muted/40 hover:bg-muted text-muted-foreground transition-colors"
+                className="mt-3 w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-md border border-border/60 bg-muted/30 hover:bg-muted/60 text-muted-foreground transition-colors"
               >
                 <span className="flex items-center gap-2">
                   <Search className="h-3.5 w-3.5" />
@@ -667,7 +665,7 @@ export default function Settings() {
           {/* Content pane */}
           <main className="flex-1 min-w-0">
             {/* Mobile header */}
-            <div className="md:hidden sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-background/95 backdrop-blur">
+            <div className="md:hidden sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-3 border-b border-border/60 bg-background/95 backdrop-blur">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -675,8 +673,8 @@ export default function Settings() {
                   </Button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 p-0">
-                  <div className="px-4 pt-5 pb-3 border-b border-border">
-                    <h1 className="text-lg font-semibold">Settings</h1>
+                  <div className="px-4 pt-5 pb-3">
+                    <h1 className="text-base font-semibold tracking-tight">Settings</h1>
                   </div>
                   {SidebarContent}
                 </SheetContent>
@@ -689,43 +687,57 @@ export default function Settings() {
               </Button>
             </div>
 
-            <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
-              {/* Breadcrumbs */}
-              <nav className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
-                <Link to="/settings" className="hover:text-foreground">
-                  Settings
-                </Link>
-                {activeGroup && (
-                  <>
-                    <ChevronRight className="h-3 w-3" />
-                    <span>{activeGroup.label}</span>
-                  </>
-                )}
-                {activeSection && (
-                  <>
-                    <ChevronRight className="h-3 w-3" />
-                    <span className="text-foreground">{activeSection.label}</span>
-                  </>
-                )}
-              </nav>
-
+            <div className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-12">
               {/* Section header */}
               {activeSection && (
-                <div className="mb-6">
-                  <h2 className="text-2xl font-semibold tracking-tight">
+                <header className="mb-5">
+                  <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-1.5">
+                    {activeGroup?.label}
+                  </div>
+                  <h2 className="text-[22px] font-semibold tracking-tight leading-tight">
                     {activeSection.label}
                   </h2>
                   {activeSection.description && (
-                    <p className="text-sm text-muted-foreground mt-1">
+                    <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
                       {activeSection.description}
                     </p>
                   )}
+                </header>
+              )}
+
+              {/* Subsection pills */}
+              {activeGroup && activeGroup.sections.length > 1 && (
+                <div className="mb-6 -mx-1 overflow-x-auto">
+                  <div className="flex items-center gap-1 px-1 pb-1">
+                    {activeGroup.sections.map((section) => {
+                      const isActive = activeSection?.id === section.id;
+                      return (
+                        <button
+                          key={section.id}
+                          onClick={() => goToSection(activeGroup.id, section.id)}
+                          className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
+                            isActive
+                              ? 'bg-accent text-foreground font-medium'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                          }`}
+                          aria-current={isActive ? 'page' : undefined}
+                        >
+                          {section.label}
+                          {section.badge != null && section.badge > 0 && (
+                            <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
+                              {section.badge}
+                            </Badge>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Read-only banner */}
               {!isAdmin && (
-                <div className="mb-6 flex items-start gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+                <div className="mb-6 flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm">
                   <Eye className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
                     <p className="font-medium">Read-only mode</p>
@@ -742,10 +754,10 @@ export default function Settings() {
                 {activeSection?.href ? (
                   <Link
                     to={activeSection.href}
-                    className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors border"
+                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/60 transition-colors border border-border/60"
                   >
                     <div>
-                      <p className="font-medium">{activeSection.label}</p>
+                      <p className="font-medium">Open {activeSection.label}</p>
                       <p className="text-sm text-muted-foreground">
                         {activeSection.description}
                       </p>
@@ -787,10 +799,6 @@ export default function Settings() {
           </CommandList>
         </CommandDialog>
 
-        {/* Hidden, kept for parity with old layout's bottom padding */}
-        <div className="h-12" aria-hidden />
-        {/* lock icon kept so the import isn't dead in future role-gating */}
-        <Lock className="hidden" aria-hidden />
       </div>
     </>
   );
