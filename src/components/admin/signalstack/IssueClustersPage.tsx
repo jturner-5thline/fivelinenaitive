@@ -1,8 +1,18 @@
 import * as React from "react";
 import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
-import { SectionHeader, SeverityDot, StatusBadge, ConvergenceBar } from "./ui";
-import { issueClusters, feedbackItems, aiActions, type IssueCluster } from "./mockData";
+import { SectionHeader, SeverityDot, StatusBadge, ConvergenceBar, PriorityScore } from "./ui";
+import {
+  issueClusters,
+  feedbackItems,
+  aiActions,
+  promptVersions,
+  journeys,
+  clusterPromptLinks,
+  clusterJourneyLinks,
+  type IssueCluster,
+} from "./mockData";
+import { Route, BrainCircuit, MessageSquareQuote } from "lucide-react";
 
 const STATUS = ["open", "in_progress", "monitoring", "resolved"] as const;
 
@@ -32,34 +42,39 @@ export function IssueClustersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {rows.map(c => (
-          <Card key={c.id} className="p-5 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition" onClick={() => setActive(c)}>
-            <div className="flex items-start justify-between gap-3 mb-2">
-              <div className="flex items-center gap-2 min-w-0">
-                <SeverityDot severity={c.severity} />
-                <div className="min-w-0">
+          <Card
+            key={c.id}
+            className="p-5 cursor-pointer hover:ring-1 hover:ring-teal-500/30 transition"
+            onClick={() => setActive(c)}
+          >
+            <div className="flex items-start gap-4">
+              <PriorityScore score={c.score} />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-0.5">
+                  <SeverityDot severity={c.severity} />
                   <div className="font-semibold truncate">{c.title}</div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {c.workflow} · owner {c.owner}
+                </div>
+                <div className="text-[11px] text-muted-foreground mb-2">
+                  {c.workflow} · owner {c.owner}
+                </div>
+                <ConvergenceBar signals={c.signals} />
+                <div className="grid grid-cols-4 gap-2 mt-2.5 text-[11px]">
+                  <Mini label="Users" value={c.impactedUsers} />
+                  <Mini label="Feedback" value={c.feedbackCount} />
+                  <Mini label="AI fail" value={c.aiFailures} />
+                  <Mini label="Evidence" value={c.evidenceCount} />
+                </div>
+                <div className="flex items-center justify-between mt-2.5 gap-2">
+                  <ClusterStatusBadge status={c.status} />
+                  <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+                    {clusterJourneyLinks[c.id] && (
+                      <span className="inline-flex items-center gap-0.5"><Route className="h-3 w-3" />1</span>
+                    )}
+                    <span className="inline-flex items-center gap-0.5"><BrainCircuit className="h-3 w-3" />{clusterPromptLinks[c.id]?.length ?? 0}</span>
+                    <span className="inline-flex items-center gap-0.5"><MessageSquareQuote className="h-3 w-3" />{c.linkedFeedback.length}</span>
                   </div>
                 </div>
               </div>
-              <div className="text-right">
-                <div className="text-2xl font-semibold tabular-nums leading-none">{c.score}</div>
-                <div className="text-[10px] uppercase tracking-wider text-muted-foreground mt-0.5">severity</div>
-              </div>
-            </div>
-            <ConvergenceBar signals={c.signals} />
-            <div className="grid grid-cols-4 gap-2 mt-3 text-[11px]">
-              <Mini label="Users" value={c.impactedUsers} />
-              <Mini label="Feedback" value={c.feedbackCount} />
-              <Mini label="AI fail" value={c.aiFailures} />
-              <Mini label="Evidence" value={c.evidenceCount} />
-            </div>
-            <div className="flex items-center justify-between mt-3">
-              <ClusterStatusBadge status={c.status} />
-              <span className="text-[11px] text-muted-foreground">
-                {c.experiments.length > 0 ? c.experiments.join(", ") : "No active experiment"}
-              </span>
             </div>
           </Card>
         ))}
@@ -75,10 +90,13 @@ export function IssueClustersPage() {
                 </SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-4">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <ClusterStatusBadge status={active.status} />
-                  <StatusBadge tone="neutral">{active.workflow}</StatusBadge>
-                  <StatusBadge tone="info">Owner: {active.owner}</StatusBadge>
+                <div className="flex items-center gap-4">
+                  <PriorityScore score={active.score} size={64} />
+                  <div className="flex flex-col gap-1.5">
+                    <ClusterStatusBadge status={active.status} />
+                    <StatusBadge tone="neutral">{active.workflow}</StatusBadge>
+                    <StatusBadge tone="info">Owner: {active.owner}</StatusBadge>
+                  </div>
                 </div>
 
                 <ConvergenceBar signals={active.signals} />
@@ -87,6 +105,35 @@ export function IssueClustersPage() {
                   <div>Feedback {active.signals.feedback}</div>
                   <div>AI {active.signals.aiFailure}</div>
                   <div>Business {active.signals.business}</div>
+                </div>
+
+                {clusterJourneyLinks[active.id] && (
+                  <div>
+                    <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Linked journey</div>
+                    {(() => {
+                      const j = journeys.find(jj => jj.id === clusterJourneyLinks[active.id]);
+                      if (!j) return null;
+                      return (
+                        <div className="text-xs rounded border border-border/60 bg-muted/20 p-2 flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5"><Route className="h-3 w-3 text-teal-300/80" /> {j.name}</span>
+                          <span className="text-[10px] text-muted-foreground">{j.segment}</span>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                <div>
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground mb-1.5">Linked prompt versions</div>
+                  <div className="space-y-1.5">
+                    {promptVersions.filter(p => clusterPromptLinks[active.id]?.includes(p.id)).map(p => (
+                      <div key={p.id} className="text-xs rounded border border-border/60 bg-muted/20 p-2 flex items-center justify-between">
+                        <span className="inline-flex items-center gap-1.5"><BrainCircuit className="h-3 w-3 text-teal-300/80" /> {p.name} <span className="text-muted-foreground">v{p.version}</span></span>
+                        <StatusBadge tone={p.corpusFreshnessDays > 30 ? "warn" : "ok"}>{p.corpusFreshnessDays}d</StatusBadge>
+                      </div>
+                    ))}
+                    {!clusterPromptLinks[active.id]?.length && <div className="text-xs text-muted-foreground">None</div>}
+                  </div>
                 </div>
 
                 <div>
