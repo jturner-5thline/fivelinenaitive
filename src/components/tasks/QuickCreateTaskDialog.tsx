@@ -326,30 +326,31 @@ export function QuickCreateTaskDialog({
 
   const selectedDeal = dealId ? allDeals.find(d => d.id === dealId) : null;
 
-  const dealSearchResults = useMemo(() => {
+  // Grouped deal results: active deals first (alpha), then archived/on-hold
+  // (alpha, greyed-out). Search filters across both groups but the grouping
+  // is preserved so users can scan active deals at the top.
+  const dealSearchGroups = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
-    const base = allDeals.filter(isActiveDeal);
-    const ranked = base
-      .map(d => ({
-        deal: d,
-        // Prioritize relevance to the task title, then to the picker query.
-        s: scoreDeal(d, debouncedTitle) +
-           (q ? (d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q) ? 50 : 0) : 0),
-      }))
-      .sort((a, b) => {
-        if (b.s !== a.s) return b.s - a.s;
-        return a.deal.name.localeCompare(b.deal.name);
-      });
-    const filtered = q
-      ? ranked.filter(({ deal: d }) =>
-          d.name.toLowerCase().includes(q) ||
-          d.company.toLowerCase().includes(q) ||
-          (d.lender || '').toLowerCase().includes(q) ||
-          (d.contact || '').toLowerCase().includes(q))
-      : ranked;
-    return filtered.slice(0, 50).map(x => x.deal);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDeals, dealQuery, debouncedTitle]);
+    const matches = (d: Deal) =>
+      !q ||
+      d.name.toLowerCase().includes(q) ||
+      (d.company || '').toLowerCase().includes(q) ||
+      (d.lender || '').toLowerCase().includes(q) ||
+      (d.contact || '').toLowerCase().includes(q);
+    const active: Deal[] = [];
+    const inactive: Deal[] = [];
+    for (const d of allDeals) {
+      if (!matches(d)) continue;
+      (isActiveDeal(d) ? active : inactive).push(d);
+    }
+    const byName = (a: Deal, b: Deal) =>
+      a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    active.sort(byName);
+    inactive.sort(byName);
+    return { active: active.slice(0, 50), inactive: inactive.slice(0, 50) };
+  }, [allDeals, dealQuery]);
+  const dealResultsEmpty =
+    dealSearchGroups.active.length === 0 && dealSearchGroups.inactive.length === 0;
 
   const dealStageTone = (stage?: string) => {
     switch (stage) {
@@ -852,38 +853,93 @@ export function QuickCreateTaskDialog({
                   />
                 </div>
                 <div className="max-h-[260px] overflow-y-auto py-1">
-                  {dealSearchResults.length === 0 && (
+                  {dealResultsEmpty && (
                     <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
-                      {dealQuery.trim() ? 'No active deals match your search.' : 'No active deals.'}
+                      {dealQuery.trim() ? 'No deals match your search.' : 'No deals available.'}
                     </div>
                   )}
-                  {dealSearchResults.map(d => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => { setDealId(d.id); setDealPickerOpen(false); setDealQuery(''); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.08)]"
-                      style={{ color: dealId === d.id ? '#cfe3ff' : '#eef1f6' }}
-                    >
-                      <span className="flex-1 truncate">
-                        <span className="font-medium">{d.name}</span>
-                        {d.company && d.company !== d.name && (
-                          <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
-                        )}
-                      </span>
-                      {d.stage && (
-                        <span
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
-                          style={{
-                            color: dealStageTone(d.stage),
-                            backgroundColor: `${dealStageTone(d.stage)}1a`,
-                          }}
-                        >
-                          {formatStage(d.stage)}
+                  {dealSearchGroups.active.map(d => {
+                    const commit = () => {
+                      setDealId(d.id);
+                      setDealPickerOpen(false);
+                      setDealQuery('');
+                    };
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        // Use onMouseDown so selection commits before the
+                        // Dialog/Popover focus-restore logic can intercept the
+                        // click. preventDefault keeps focus on the trigger so
+                        // the popover closes cleanly.
+                        onMouseDown={(e) => { e.preventDefault(); commit(); }}
+                        onClick={(e) => { e.preventDefault(); commit(); }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.08)]"
+                        style={{ color: dealId === d.id ? '#cfe3ff' : '#eef1f6' }}
+                      >
+                        <span className="flex-1 truncate">
+                          <span className="font-medium">{d.name}</span>
+                          {d.company && d.company !== d.name && (
+                            <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
+                          )}
                         </span>
-                      )}
-                    </button>
-                  ))}
+                        {d.stage && (
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                            style={{
+                              color: dealStageTone(d.stage),
+                              backgroundColor: `${dealStageTone(d.stage)}1a`,
+                            }}
+                          >
+                            {formatStage(d.stage)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {dealSearchGroups.inactive.length > 0 && (
+                    <div
+                      className="px-3 pt-2 pb-1 mt-1 border-t text-[9px] uppercase tracking-wider font-semibold"
+                      style={{ color: '#5b6173', borderColor: 'rgba(255,255,255,0.05)' }}
+                    >
+                      — Archived / On Hold —
+                    </div>
+                  )}
+                  {dealSearchGroups.inactive.map(d => {
+                    const commit = () => {
+                      setDealId(d.id);
+                      setDealPickerOpen(false);
+                      setDealQuery('');
+                    };
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); commit(); }}
+                        onClick={(e) => { e.preventDefault(); commit(); }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.05)] opacity-60"
+                        style={{ color: dealId === d.id ? '#cfe3ff' : '#9aa3b6' }}
+                      >
+                        <span className="flex-1 truncate">
+                          <span className="font-medium">{d.name}</span>
+                          {d.company && d.company !== d.name && (
+                            <span className="ml-2" style={{ color: '#5b6173' }}>· {d.company}</span>
+                          )}
+                        </span>
+                        {d.stage && (
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                            style={{
+                              color: dealStageTone(d.stage),
+                              backgroundColor: `${dealStageTone(d.stage)}14`,
+                            }}
+                          >
+                            {formatStage(d.stage)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </PopoverContent>
             </Popover>
