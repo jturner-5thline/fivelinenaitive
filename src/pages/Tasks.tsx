@@ -594,7 +594,7 @@ export default function Tasks() {
         ownerFilter,
         filterDealIds: Array.from(filterDealIds),
         filterLabelIds: Array.from(filterLabelIds),
-        filterPriorities: Array.from(filterPriorities),
+        urgentOnly,
         showAllDeals,
         filterDueDate,
         filterRecurring,
