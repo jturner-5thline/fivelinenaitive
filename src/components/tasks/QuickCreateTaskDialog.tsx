@@ -326,30 +326,31 @@ export function QuickCreateTaskDialog({
 
   const selectedDeal = dealId ? allDeals.find(d => d.id === dealId) : null;
 
-  const dealSearchResults = useMemo(() => {
+  // Grouped deal results: active deals first (alpha), then archived/on-hold
+  // (alpha, greyed-out). Search filters across both groups but the grouping
+  // is preserved so users can scan active deals at the top.
+  const dealSearchGroups = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
-    const base = allDeals.filter(isActiveDeal);
-    const ranked = base
-      .map(d => ({
-        deal: d,
-        // Prioritize relevance to the task title, then to the picker query.
-        s: scoreDeal(d, debouncedTitle) +
-           (q ? (d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q) ? 50 : 0) : 0),
-      }))
-      .sort((a, b) => {
-        if (b.s !== a.s) return b.s - a.s;
-        return a.deal.name.localeCompare(b.deal.name);
-      });
-    const filtered = q
-      ? ranked.filter(({ deal: d }) =>
-          d.name.toLowerCase().includes(q) ||
-          d.company.toLowerCase().includes(q) ||
-          (d.lender || '').toLowerCase().includes(q) ||
-          (d.contact || '').toLowerCase().includes(q))
-      : ranked;
-    return filtered.slice(0, 50).map(x => x.deal);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDeals, dealQuery, debouncedTitle]);
+    const matches = (d: Deal) =>
+      !q ||
+      d.name.toLowerCase().includes(q) ||
+      (d.company || '').toLowerCase().includes(q) ||
+      (d.lender || '').toLowerCase().includes(q) ||
+      (d.contact || '').toLowerCase().includes(q);
+    const active: Deal[] = [];
+    const inactive: Deal[] = [];
+    for (const d of allDeals) {
+      if (!matches(d)) continue;
+      (isActiveDeal(d) ? active : inactive).push(d);
+    }
+    const byName = (a: Deal, b: Deal) =>
+      a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    active.sort(byName);
+    inactive.sort(byName);
+    return { active: active.slice(0, 50), inactive: inactive.slice(0, 50) };
+  }, [allDeals, dealQuery]);
+  const dealResultsEmpty =
+    dealSearchGroups.active.length === 0 && dealSearchGroups.inactive.length === 0;
 
   const dealStageTone = (stage?: string) => {
     switch (stage) {
