@@ -418,7 +418,7 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
       {embedded ? (
         <div>
           <p className="text-xs text-muted-foreground mb-3">
-            Configure default checklist rounds &amp; items per deal type (matched by &quot;contains&quot;).
+            Configure default checklist rounds &amp; items per configured Deal Type.
             {' '}{localConfig.configs.length} types, {totalItems} total items
           </p>
           {innerContent}
@@ -436,7 +436,7 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
                     Deal-Type Data Room Checklists
                   </CardTitle>
                   <CardDescription>
-                    Configure default checklist rounds &amp; items per deal type (matched by &quot;contains&quot;).
+                    Configure default checklist rounds &amp; items per configured Deal Type.
                     {' '}{localConfig.configs.length} types, {totalItems} total items
                   </CardDescription>
                 </div>
