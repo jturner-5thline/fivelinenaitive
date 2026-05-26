@@ -179,7 +179,11 @@ function InlineFilterSelect<T extends string>({
   onToggle: () => void;
   onSelect: (value: T) => void;
 }) {
-  const activeIndex = Math.max(0, options.findIndex(option => option.value === value));
+  const listboxRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) listboxRef.current?.focus();
+  }, [isOpen]);
 
   const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
@@ -242,6 +246,7 @@ function InlineFilterSelect<T extends string>({
       {isOpen && (
         <div
           id={`${id}-listbox`}
+          ref={listboxRef}
           role="listbox"
           tabIndex={0}
           aria-labelledby={`${id}-trigger`}
