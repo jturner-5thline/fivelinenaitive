@@ -4818,9 +4818,11 @@ export default function DealDetail() {
                                           <div className="flex items-start gap-2">
                                             <MessageSquare className="h-3.5 w-3.5 text-muted-foreground mt-1.5 flex-shrink-0" />
                                             {lender.notesUpdatedAt && (
-                                              <span className="text-[10px] text-muted-foreground whitespace-nowrap mt-1.5">
-                                                {format(new Date(lender.notesUpdatedAt), 'MM-dd')}
-                                              </span>
+                                              <LenderNoteTimestamp
+                                                updatedAt={lender.notesUpdatedAt}
+                                                noteCount={(lender.notesHistory?.length || 0) + (lender.notes ? 1 : 0)}
+                                                className="mt-1.5"
+                                              />
                                             )}
                                             <LenderNotesField
                                               lenderId={lender.id}
