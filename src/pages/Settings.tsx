@@ -330,84 +330,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
     ],
   },
   {
-    id: 'automation-ai',
-    label: 'Automation & AI',
-    icon: Sparkles,
-    sections: [
-      {
-        id: 'workflows',
-        label: 'Workflows',
-        description: 'Create and manage automated workflows.',
-        keywords: ['workflows', 'workflow', 'automation', 'triggers', 'actions'],
-        href: '/workflows',
-        visible: (g) => g.workflowsEnabled,
-      },
-      {
-        id: 'suggestions',
-        label: 'Smart Suggestions',
-        description: 'AI-driven alerts, warnings, and reminders.',
-        keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders'],
-        render: () => <SuggestionSettings />,
-      },
-      {
-        id: 'scheduled-reports',
-        label: 'Scheduled Reports',
-        description: 'Recurring pipeline and activity summaries.',
-        keywords: ['scheduled', 'reports', 'recurring', 'summary'],
-        render: () => <ScheduledReportsSettings />,
-      },
-      {
-        id: 'sla-rules',
-        label: 'SLA Rules',
-        description: 'Stale-deal monitoring and timeout rules.',
-        keywords: ['sla', 'rules', 'stale', 'monitoring', 'timeout'],
-        render: () => <SLARulesSettings />,
-      },
-      {
-        id: 'stale-alerts',
-        label: 'Stale Alerts',
-        description: 'Notifications for managers when deals go stale.',
-        keywords: ['stale', 'alert', 'manager', 'notification'],
-        render: ({ isAdmin }) => <StaleAlertSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'ai-configuration',
-        label: 'Models',
-        description: 'Configure default AI model, temperature, and tokens.',
-        keywords: ['ai', 'model', 'claude', 'anthropic', 'temperature', 'tokens'],
-        render: ({ isAdmin }) => <AIConfigurationSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'ai-copilot',
-        label: 'Copilot',
-        description: 'Per-surface AI tone and assist overrides.',
-        keywords: ['ai', 'copilot', 'assist', 'tone'],
-        render: () => <AICopilotSettings />,
-      },
-      {
-        id: 'meeting-titles',
-        label: 'Meeting Titles',
-        description: 'Calendar invite title templates by stage.',
-        keywords: ['meeting', 'titles', 'calendar', 'invite', 'stage', 'template'],
-        render: ({ isAdmin }) => <MeetingTitleSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'working-hours',
-        label: 'Working Hours',
-        description: 'Working hours used by scheduling and AI suggestions.',
-        keywords: ['working', 'hours', 'schedule', 'availability'],
-        render: () => <WorkingHoursSettings />,
-      },
-      {
-        id: 'availability-verification',
-        label: 'Availability',
-        description: 'How proposed times are double-checked.',
-        keywords: ['availability', 'verification', 'calendar'],
-        render: () => <AvailabilityVerificationSettings />,
-      },
-    ],
-  },
-  {
     id: 'integrations',
     label: 'Integrations',
     icon: Plug,
@@ -505,18 +427,22 @@ export default function Settings() {
       general: 'workspace',
       deals: 'deals',
       lenders: 'funding-sources',
-      automation: 'automation-ai',
+      automation: 'workspace',
       email: 'communications',
       metrics: 'integrations',
       crm: 'integrations',
-      ai: 'automation-ai',
+      ai: 'workspace',
       'sales-bd': 'integrations',
     };
     let target = legacyTab ? legacyMap[legacyTab] : undefined;
     if (!target) {
       try {
         const stored = localStorage.getItem(LAST_PATH_KEY);
-        if (stored && stored.startsWith('/settings/')) {
+        if (
+          stored &&
+          stored.startsWith('/settings/') &&
+          !stored.startsWith('/settings/automation-ai')
+        ) {
           navigate(stored, { replace: true });
           return;
         }
