@@ -1099,12 +1099,8 @@ export default function Tasks() {
                         filterDealIds.has(id) || (!q || name.toLowerCase().includes(q))
                       );
                       if (visible.length === 0) return <div className="px-2 py-3 text-[11px] text-center text-muted-foreground">No deals match.</div>;
-                      const sorted = [...visible].sort((a, b) => {
-                        const aSel = filterDealIds.has(a[0]) ? 0 : 1;
-                        const bSel = filterDealIds.has(b[0]) ? 0 : 1;
-                        if (aSel !== bSel) return aSel - bSel;
-                        return a[1].localeCompare(b[1]);
-                      });
+                      // Sort options alphabetically by deal name.
+                      const sorted = [...visible].sort((a, b) => a[1].localeCompare(b[1]));
                       return sorted.map(([id, name]) => (
                         <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted"
                           onClick={() => {
