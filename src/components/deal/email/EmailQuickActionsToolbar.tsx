@@ -26,6 +26,8 @@ import { SuggestTimesPanel } from './SuggestTimesPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
+import { useQueryClient } from '@tanstack/react-query';
+import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 
 type QuickActionKey = 'save_dr' | 'lender' | 'draft' | 'task' | 'meeting' | 'suggest_times' | 'summarize' | 'outstanding';
 
