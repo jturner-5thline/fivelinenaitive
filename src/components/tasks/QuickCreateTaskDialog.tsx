@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
 import { useAssigneeOpenTaskCounts } from '@/hooks/useAssigneeOpenTaskCounts';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { Link } from 'react-router-dom';
 import type { Deal } from '@/types/deal';
 import { isActiveDeal } from '@/lib/deals';
 import { toast } from 'sonner';
