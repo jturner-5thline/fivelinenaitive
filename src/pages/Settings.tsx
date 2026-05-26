@@ -1,10 +1,34 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, ComponentType } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, ChevronRight, Search, X } from 'lucide-react';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import {
+  ArrowLeft,
+  ChevronRight,
+  Search,
+  Briefcase,
+  Layers,
+  Building2,
+  Plug,
+  Workflow,
+  Sparkles,
+  BarChart3,
+  Users,
+  Mail,
+  Lock,
+  Eye,
+  Menu,
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import {
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command';
+import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { LenderStagesSettings } from '@/components/settings/LenderStagesSettings';
 import { LenderSubstagesSettings } from '@/components/settings/LenderSubstagesSettings';
 import { PassReasonsSettings } from '@/components/settings/PassReasonsSettings';
@@ -48,149 +72,586 @@ import { useCompanyFeatures } from '@/hooks/useCompanyFeatures';
 import { usePageAccessFlags } from '@/hooks/useFeatureFlags';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
 
-const SETTINGS_SECTIONS = [
-  { id: 'account', keywords: ['account', 'profile', 'personal', 'info', 'details', 'email', 'name', 'avatar'] },
-  { id: 'company', keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees'] },
-  { id: 'database', keywords: ['database', 'lenders', 'directory', 'data', 'directories'] },
-  { id: 'workflows', keywords: ['workflows', 'workflow', 'automation', 'automate', 'triggers', 'actions'] },
-  { id: 'lender-stages', keywords: ['lender', 'stages', 'stage', 'pipeline', 'workflow', 'status', 'group', 'active', 'closed'] },
-  { id: 'lender-milestones', keywords: ['lender', 'milestones', 'milestone', 'substage', 'tracking', 'progress'] },
-  { id: 'pass-reasons', keywords: ['pass', 'reasons', 'reason', 'decline', 'reject', 'lender'] },
-  { id: 'deal-types', keywords: ['deal', 'types', 'type', 'category', 'classification'] },
-  { id: 'pipelines', keywords: ['pipeline', 'pipelines', 'kanban', 'board', 'workflow', 'deal', 'stages', 'manage'] },
-  { id: 'deal-info-fields', keywords: ['deal', 'information', 'fields', 'card', 'layout', 'order', 'visibility', 'configure'] },
-  { id: 'writeup-fields', keywords: ['write', 'writeup', 'write-up', 'fields', 'configure', 'labels', 'required', 'overview'] },
-  { id: 'deal-stages', keywords: ['deal', 'stages', 'stage', 'pipeline', 'progression', 'workflow'] },
-  { id: 'default-milestones', keywords: ['default', 'milestones', 'milestone', 'templates', 'automatic', 'deal'] },
-  { id: 'referral-sources', keywords: ['referral', 'sources', 'source', 'referred', 'by', 'referrer'] },
-  { id: 'suggestions', keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders', 'opportunities', 'ai'] },
-  { id: 'lender-matching', keywords: ['lender', 'matching', 'algorithm', 'scoring', 'weight', 'priority', 'criteria', 'suggested'] },
-  { id: 'data-room-checklist', keywords: ['data', 'room', 'checklist', 'documents', 'required', 'files', 'information', 'items'] },
-  { id: 'gamma-templates', keywords: ['gamma', 'templates', 'presentation', 'document', 'pitch', 'status', 'update'] },
-  { id: 'agreement-templates', keywords: ['agreement', 'templates', 'legal', 'advisory', 'drafter', 'contract', 'engagement'] },
-  { id: 'preferences', keywords: ['preferences', 'theme', 'notifications', 'regional', 'settings', 'dark', 'light', 'mode'] },
-  { id: 'scheduled-reports', keywords: ['scheduled', 'reports', 'report', 'automation', 'pipeline', 'summary', 'recurring'] },
-  { id: 'sla-rules', keywords: ['sla', 'rules', 'stale', 'alert', 'monitoring', 'deal', 'activity', 'timeout'] },
-  { id: 'zapier', keywords: ['zapier', 'webhook', 'integration', 'automation', 'connect', 'zap'] },
-  { id: 'stale-alerts', keywords: ['stale', 'deal', 'alert', 'email', 'notification', 'manager', 'admin', 'attention'] },
-  { id: 'email-snippets', keywords: ['email', 'snippets', 'snippet', 'template', 'templates', 'reusable', 'tokens', 'hubspot'] },
-  { id: 'email-labels', keywords: ['email', 'labels', 'label', 'tags', 'rules', 'auto', 'smart', 'categorize'] },
-  { id: 'email-signature', keywords: ['email', 'signature', 'sign', 'off', 'closing', 'best', 'regards', 'name'] },
-  { id: 'email-templates-outbound', keywords: ['email', 'templates', 'outbound', 'lender', 'submission', 'sequence', 'body', 'compose'] },
-  { id: 'email-style-guide', keywords: ['email', 'style', 'guide', 'voice', 'tone', 'signature', 'greeting', 'closing', 'ai', 'draft', 'reply', '5th line'] },
-  { id: 'email-cadence', keywords: ['email', 'cadence', 'learn', 'follow', 'up', 'frequency', 'tone', 'rhythm', 'history', 'inbox', 'scan', 'ai'] },
-  { id: 'distribution-stats', keywords: ['distribution', 'stats', 'tracking', 'internal', 'ip', 'bot', 'clean', 'filter', 'opens', 'clicks'] },
-  { id: 'kpi-card-settings', keywords: ['kpi', 'summary', 'card', 'metrics', 'dashboard', 'format', 'trend', 'comparison'] },
-  { id: 'field-layout', keywords: ['field', 'layout', 'editor', 'hubspot', 'contacts', 'companies', 'crm', 'fields', 'sections'] },
-  { id: 'ai-configuration', keywords: ['ai', 'claude', 'anthropic', 'artificial', 'intelligence', 'model', 'temperature', 'tokens', 'chatbot'] },
-  { id: 'meeting-titles', keywords: ['meeting', 'titles', 'title', 'calendar', 'invite', 'event', 'subject', 'template', 'ai', 'assistant', 'stage'] },
-  { id: 'partner-rules', keywords: ['sales', 'bd', 'partner', 'partners', 'tier', 'tiers', 'rules', 'definitions', 'channel', 'channels', 'criteria'] },
-  { id: 'contact-types', keywords: ['contact', 'types', 'type', 'banker', 'lender', 'client', 'prospect', 'crm', 'dropdown', 'options'] },
+type SectionDef = {
+  id: string;
+  label: string;
+  description?: string;
+  keywords: string[];
+  render?: (ctx: { isAdmin: boolean }) => JSX.Element | null;
+  href?: string; // external link instead of inline render
+  badge?: number;
+  visible?: (ctx: GateCtx) => boolean;
+};
+
+type GroupDef = {
+  id: string;
+  label: string;
+  icon: ComponentType<{ className?: string }>;
+  sections: SectionDef[];
+  visible?: (ctx: GateCtx) => boolean;
+};
+
+type GateCtx = {
+  isAdmin: boolean;
+  workflowsEnabled: boolean;
+  agreementVisible: boolean;
+  agreementAccess: boolean;
+  canEditPartnerRules: boolean;
+};
+
+const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
+  {
+    id: 'workspace',
+    label: 'Workspace',
+    icon: Building2,
+    sections: [
+      {
+        id: 'account',
+        label: 'Account',
+        description: 'Your personal profile, security, and notification preferences.',
+        keywords: ['account', 'profile', 'personal', 'email', 'name', 'avatar', 'security', '2fa'],
+        href: '/account',
+      },
+      {
+        id: 'company',
+        label: 'Company',
+        description: 'Company profile, team members, and roles.',
+        keywords: ['company', 'team', 'organization', 'members', 'admin', 'logo', 'industry', 'employees', 'roles'],
+        href: '/company',
+        badge: ctx.pendingJoinCount,
+      },
+      {
+        id: 'preferences',
+        label: 'Preferences',
+        description: 'Theme, notifications, and regional settings.',
+        keywords: ['preferences', 'theme', 'dark', 'light', 'regional', 'timezone'],
+        href: '/preferences',
+      },
+      {
+        id: 'database',
+        label: 'Database',
+        description: 'View and manage your directories and data.',
+        keywords: ['database', 'directories', 'data'],
+        href: '/database',
+      },
+    ],
+  },
+  {
+    id: 'deals',
+    label: 'Deals',
+    icon: Briefcase,
+    sections: [
+      {
+        id: 'pipelines',
+        label: 'Pipelines',
+        description: 'Configure deal pipelines and their stages.',
+        keywords: ['pipeline', 'pipelines', 'kanban', 'board'],
+        render: ({ isAdmin }) => <PipelineSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'deal-stages',
+        label: 'Deal Stages',
+        description: 'Stages used in the active deal pipeline.',
+        keywords: ['deal', 'stages', 'stage', 'progression', 'workflow', 'kanban'],
+        render: ({ isAdmin }) => <DealStagesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'deal-types',
+        label: 'Deal Types',
+        description: 'Categorize deals by type for routing and reporting.',
+        keywords: ['deal', 'types', 'type', 'category', 'classification'],
+        render: ({ isAdmin }) => <DealTypesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'deal-info-fields',
+        label: 'Information Fields',
+        description: 'Configure deal information cards and field visibility.',
+        keywords: ['deal', 'information', 'fields', 'card', 'layout', 'order', 'visibility'],
+        render: ({ isAdmin }) => <DealInfoFieldsSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'writeup-fields',
+        label: 'Write-Up Fields',
+        description: 'Configure write-up labels, required fields, and overview.',
+        keywords: ['write', 'writeup', 'fields', 'labels', 'required', 'overview'],
+        render: ({ isAdmin }) => <WriteUpFieldsSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'default-milestones',
+        label: 'Default Milestones',
+        description: 'Templates applied automatically to new deals.',
+        keywords: ['default', 'milestones', 'milestone', 'templates'],
+        render: ({ isAdmin }) => <DefaultMilestonesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'referral-sources',
+        label: 'Referral Sources',
+        description: 'Manage referral sources used for attribution.',
+        keywords: ['referral', 'sources', 'source', 'referrer'],
+        render: ({ isAdmin }) => <ReferralSourcesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'data-room-checklist',
+        label: 'Data Room Checklists',
+        description: 'Document checklist templates by deal type.',
+        keywords: ['data', 'room', 'checklist', 'documents', 'required'],
+        render: ({ isAdmin }) => <UnifiedChecklistSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'gamma-templates',
+        label: 'Gamma Templates',
+        description: 'Presentation templates for pitches and status updates.',
+        keywords: ['gamma', 'templates', 'presentation', 'pitch'],
+        render: ({ isAdmin }) => <GammaTemplatesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'agreement-templates',
+        label: 'Agreement Templates',
+        description: 'Legal templates for advisory and engagement agreements.',
+        keywords: ['agreement', 'templates', 'legal', 'advisory', 'contract'],
+        visible: (g) => g.agreementVisible && g.agreementAccess,
+        render: ({ isAdmin }) => <AgreementTemplatesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'lender-score',
+        label: 'Lender Score',
+        description: 'Lender scoring weights for matching and ranking.',
+        keywords: ['lender', 'score', 'scoring', 'weights'],
+        render: ({ isAdmin }) => <LenderScoreSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'disclaimer',
+        label: 'Disclaimer',
+        description: 'Disclaimer text used in write-ups and outbound docs.',
+        keywords: ['disclaimer', 'legal', 'footer'],
+        render: ({ isAdmin }) => <DisclaimerSettings isAdmin={isAdmin} />,
+      },
+    ],
+  },
+  {
+    id: 'lenders',
+    label: 'Lenders',
+    icon: Layers,
+    sections: [
+      {
+        id: 'lender-stages',
+        label: 'Lender Stages',
+        description: 'Stages used across the lender pipeline.',
+        keywords: ['lender', 'stages', 'stage', 'group', 'active', 'closed'],
+        render: ({ isAdmin }) => <LenderStagesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'lender-milestones',
+        label: 'Lender Milestones',
+        description: 'Substages tracking progress within a stage.',
+        keywords: ['lender', 'milestones', 'milestone', 'substage', 'tracking', 'progress'],
+        render: ({ isAdmin }) => <LenderSubstagesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'pass-reasons',
+        label: 'Pass Reasons',
+        description: 'Reasons captured when a lender passes on a deal.',
+        keywords: ['pass', 'reasons', 'decline', 'reject'],
+        render: ({ isAdmin }) => <PassReasonsSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'tracking-statuses',
+        label: 'Tracking Statuses',
+        description: 'Status tags for tracked lender activity.',
+        keywords: ['tracking', 'status', 'lender'],
+        render: ({ isAdmin }) => <TrackingStatusSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'lender-matching',
+        label: 'Lender Matching',
+        description: 'Configure algorithm criteria for suggested lenders.',
+        keywords: ['lender', 'matching', 'algorithm', 'criteria', 'suggested'],
+        render: () => <LenderMatchingSettings />,
+      },
+    ],
+  },
+  {
+    id: 'integrations',
+    label: 'Integrations',
+    icon: Plug,
+    sections: [
+      {
+        id: 'field-layout',
+        label: 'CRM Field Layout',
+        description: 'Configure how contact and company fields are displayed.',
+        keywords: ['field', 'layout', 'hubspot', 'crm', 'contacts', 'companies'],
+        href: '/field-layout-editor',
+      },
+      {
+        id: 'contact-types',
+        label: 'Contact Types',
+        description: 'Dropdown options for contact classification.',
+        keywords: ['contact', 'types', 'banker', 'client', 'prospect'],
+        render: ({ isAdmin }) => <ContactTypesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'zapier',
+        label: 'Zapier',
+        description: 'Manage Zapier webhooks and event triggers.',
+        keywords: ['zapier', 'webhook', 'integration', 'zap'],
+        href: '/integrations?tab=zapier',
+      },
+    ],
+  },
+  {
+    id: 'automation',
+    label: 'Automation',
+    icon: Workflow,
+    visible: (g) => g.workflowsEnabled,
+    sections: [
+      {
+        id: 'workflows',
+        label: 'Workflows',
+        description: 'Create and manage automated workflows.',
+        keywords: ['workflows', 'workflow', 'automation', 'triggers', 'actions'],
+        href: '/workflows',
+      },
+      {
+        id: 'suggestions',
+        label: 'Smart Suggestions',
+        description: 'AI-driven alerts, warnings, and reminders.',
+        keywords: ['suggestions', 'smart', 'alerts', 'warnings', 'reminders'],
+        render: () => <SuggestionSettings />,
+      },
+      {
+        id: 'scheduled-reports',
+        label: 'Scheduled Reports',
+        description: 'Recurring pipeline and activity summaries.',
+        keywords: ['scheduled', 'reports', 'recurring', 'summary'],
+        render: () => <ScheduledReportsSettings />,
+      },
+      {
+        id: 'sla-rules',
+        label: 'SLA Rules',
+        description: 'Stale-deal monitoring and timeout rules.',
+        keywords: ['sla', 'rules', 'stale', 'monitoring', 'timeout'],
+        render: () => <SLARulesSettings />,
+      },
+      {
+        id: 'stale-alerts',
+        label: 'Stale Alerts',
+        description: 'Notifications for managers when deals go stale.',
+        keywords: ['stale', 'alert', 'manager', 'notification'],
+        render: ({ isAdmin }) => <StaleAlertSettings isAdmin={isAdmin} />,
+      },
+    ],
+  },
+  {
+    id: 'email',
+    label: 'Email',
+    icon: Mail,
+    sections: [
+      {
+        id: 'email-signature',
+        label: 'Signature',
+        description: 'Signature appended to outbound email.',
+        keywords: ['email', 'signature', 'sign-off', 'closing'],
+        render: () => <EmailSignatureSettings />,
+      },
+      {
+        id: 'email-snippets',
+        label: 'Snippets',
+        description: 'Reusable email templates and tokens.',
+        keywords: ['email', 'snippets', 'template', 'tokens'],
+        render: () => <EmailSnippetsSettings />,
+      },
+      {
+        id: 'email-labels',
+        label: 'Labels',
+        description: 'Smart label rules for inbox categorization.',
+        keywords: ['email', 'labels', 'tags', 'rules', 'categorize'],
+        render: () => <EmailLabelsSettings />,
+      },
+      {
+        id: 'email-templates-outbound',
+        label: 'Outbound Templates',
+        description: 'Lender submission sequences and outbound bodies.',
+        keywords: ['email', 'templates', 'outbound', 'lender', 'submission', 'sequence'],
+        render: ({ isAdmin }) => <OutboundEmailTemplatesSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'email-style-guide',
+        label: 'Style Guide',
+        description: 'Voice, tone, and AI-draft style.',
+        keywords: ['email', 'style', 'voice', 'tone', 'ai', 'draft'],
+        render: ({ isAdmin }) => <EmailStyleGuideSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'email-cadence',
+        label: 'Cadence',
+        description: 'Learn and apply follow-up frequency.',
+        keywords: ['email', 'cadence', 'follow-up', 'frequency', 'rhythm'],
+        render: () => <EmailCadenceSettings />,
+      },
+      {
+        id: 'email-workflows',
+        label: 'Email Workflows',
+        description: 'Triggered email workflows.',
+        keywords: ['email', 'workflows', 'triggers'],
+        render: ({ isAdmin }) => <EmailWorkflowsSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'distribution-stats',
+        label: 'Distribution Stats',
+        description: 'Internal IP / bot filtering for opens and clicks.',
+        keywords: ['distribution', 'stats', 'tracking', 'opens', 'clicks', 'bot'],
+        render: () => <DistributionStatsSettings />,
+      },
+    ],
+  },
+  {
+    id: 'ai',
+    label: 'AI',
+    icon: Sparkles,
+    sections: [
+      {
+        id: 'ai-configuration',
+        label: 'Models',
+        description: 'Configure default AI model, temperature, and tokens.',
+        keywords: ['ai', 'model', 'claude', 'anthropic', 'temperature', 'tokens'],
+        render: ({ isAdmin }) => <AIConfigurationSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'ai-copilot',
+        label: 'Copilot',
+        description: 'Per-surface AI tone and assist overrides.',
+        keywords: ['ai', 'copilot', 'assist', 'tone'],
+        render: () => <AICopilotSettings />,
+      },
+      {
+        id: 'meeting-titles',
+        label: 'Meeting Titles',
+        description: 'Calendar invite title templates by stage.',
+        keywords: ['meeting', 'titles', 'calendar', 'invite', 'stage', 'template'],
+        render: ({ isAdmin }) => <MeetingTitleSettings isAdmin={isAdmin} />,
+      },
+      {
+        id: 'working-hours',
+        label: 'Working Hours',
+        description: 'Working hours used by scheduling and AI suggestions.',
+        keywords: ['working', 'hours', 'schedule', 'availability'],
+        render: () => <WorkingHoursSettings />,
+      },
+      {
+        id: 'availability-verification',
+        label: 'Availability Verification',
+        description: 'How proposed times are double-checked.',
+        keywords: ['availability', 'verification', 'calendar'],
+        render: () => <AvailabilityVerificationSettings />,
+      },
+    ],
+  },
+  {
+    id: 'metrics',
+    label: 'Metrics',
+    icon: BarChart3,
+    sections: [
+      {
+        id: 'kpi-card-settings',
+        label: 'KPI Cards',
+        description: 'Format, trend, and comparison for KPI summary cards.',
+        keywords: ['kpi', 'metrics', 'dashboard', 'format', 'trend'],
+        render: ({ isAdmin }) => <KPICardSettings isAdmin={isAdmin} />,
+      },
+    ],
+  },
+  {
+    id: 'sales-bd',
+    label: 'Sales & BD',
+    icon: Users,
+    visible: (g) => g.isAdmin || g.canEditPartnerRules,
+    sections: [
+      {
+        id: 'partner-rules',
+        label: 'Partner Rules',
+        description: 'Tier definitions and partner channel criteria.',
+        keywords: ['partner', 'tiers', 'rules', 'channels', 'criteria'],
+        render: () => <PartnerRulesSettings />,
+      },
+    ],
+  },
 ];
 
-// Tab definitions with which section IDs belong to each
-const TABS = [
-  { id: 'general', label: 'General', sectionIds: ['account', 'company', 'preferences', 'database'] },
-  { id: 'deals', label: 'Deals', sectionIds: ['deal-types', 'pipelines', 'deal-info-fields', 'writeup-fields', 'deal-stages', 'default-milestones', 'referral-sources', 'data-room-checklist', 'gamma-templates', 'agreement-templates'] },
-  { id: 'lenders', label: 'Lenders', sectionIds: ['lender-stages', 'lender-milestones', 'pass-reasons', 'lender-matching'] },
-  { id: 'automation', label: 'Automation', sectionIds: ['workflows', 'suggestions', 'scheduled-reports', 'sla-rules', 'stale-alerts', 'zapier'] },
-  { id: 'email', label: 'Email', sectionIds: ['email-snippets', 'email-labels', 'email-signature', 'email-templates-outbound', 'email-style-guide', 'email-cadence', 'distribution-stats'] },
-  { id: 'metrics', label: 'Metrics', sectionIds: ['kpi-card-settings'] },
-  { id: 'crm', label: 'CRM', sectionIds: ['field-layout', 'contact-types'] },
-  { id: 'ai', label: 'AI', sectionIds: ['ai-configuration', 'meeting-titles'] },
-  { id: 'sales-bd', label: 'Sales & BD', sectionIds: ['partner-rules'] },
-];
+const LAST_PATH_KEY = 'naitive:settings:lastPath';
 
-function LinkCard({ to, title, description, badge }: { to: string; title: string; description: string; badge?: number }) {
-  return (
-    <Link
-      to={to}
-      className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors border"
-    >
-      <div>
-        <p className="font-medium flex items-center gap-2">
-          {title}
-          {badge != null && badge > 0 && (
-            <span className="h-5 min-w-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[11px] font-bold flex items-center justify-center">
-              {badge}
-            </span>
-          )}
-        </p>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
-      <ChevronRight className="h-5 w-5 text-muted-foreground shrink-0" />
-    </Link>
-  );
+function findSection(groups: GroupDef[], groupId?: string, sectionId?: string) {
+  const group = groups.find((g) => g.id === groupId) || groups[0];
+  const section =
+    group?.sections.find((s) => s.id === sectionId) || group?.sections[0];
+  return { group, section };
 }
 
 export default function Settings() {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTab = searchParams.get('tab') || 'general';
-  const [activeTab, setActiveTab] = useState(initialTab);
-  // Keep activeTab in sync with URL changes (e.g. CTA links from other pages).
-  // Only re-syncs when the URL itself changes — never when user clicks a tab —
-  // so the in-page click handler stays the source of truth for tab switches.
-  useEffect(() => {
-    const t = searchParams.get('tab');
-    if (t && t !== activeTab) setActiveTab(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  const { group: groupParam, section: sectionParam } = useParams<{
+    group?: string;
+    section?: string;
+  }>();
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
 
-  // Click handler: update local state AND URL so the active panel always
-  // matches the highlighted tab, even if a downstream effect re-reads the URL.
-  const handleTabChange = (next: string) => {
-    setActiveTab(next);
-    const params = new URLSearchParams(searchParams);
-    params.set('tab', next);
-    setSearchParams(params, { replace: true });
-  };
   const { isAdmin } = useCompany();
   const { features: companyFeatures } = useCompanyFeatures();
   const { hasPageAccess } = usePageAccessFlags();
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
   const canEditPartnerRules = useCanEditPartnerRules();
 
-  const visibleSections = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return SETTINGS_SECTIONS.map(s => s.id);
+  const gateCtx: GateCtx = {
+    isAdmin,
+    workflowsEnabled: !!companyFeatures.workflows_enabled,
+    agreementVisible: !!companyFeatures.agreement_icon_visible,
+    agreementAccess: hasPageAccess('agreement_drafter'),
+    canEditPartnerRules: !!canEditPartnerRules,
+  };
+
+  const allGroups = useMemo(() => buildGroups({ pendingJoinCount }), [pendingJoinCount]);
+  const groups = useMemo(
+    () =>
+      allGroups
+        .filter((g) => (g.visible ? g.visible(gateCtx) : true))
+        .map((g) => ({
+          ...g,
+          sections: g.sections.filter((s) => (s.visible ? s.visible(gateCtx) : true)),
+        }))
+        .filter((g) => g.sections.length > 0),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allGroups, gateCtx.workflowsEnabled, gateCtx.agreementVisible, gateCtx.agreementAccess, gateCtx.isAdmin, gateCtx.canEditPartnerRules],
+  );
+
+  // Legacy ?tab= URL → group redirect (maintain backwards-compatibility with old links)
+  useEffect(() => {
+    if (groupParam || sectionParam) return;
+    const legacyTab = searchParams.get('tab');
+    const legacyMap: Record<string, string> = {
+      general: 'workspace',
+      deals: 'deals',
+      lenders: 'lenders',
+      automation: 'automation',
+      email: 'email',
+      metrics: 'metrics',
+      crm: 'integrations',
+      ai: 'ai',
+      'sales-bd': 'sales-bd',
+    };
+    let target = legacyTab ? legacyMap[legacyTab] : undefined;
+    if (!target) {
+      try {
+        const stored = localStorage.getItem(LAST_PATH_KEY);
+        if (stored && stored.startsWith('/settings/')) {
+          navigate(stored, { replace: true });
+          return;
+        }
+      } catch {}
     }
-    
-    const query = searchQuery.toLowerCase();
-    return SETTINGS_SECTIONS
-      .filter(section => 
-        section.keywords.some(keyword => keyword.includes(query)) ||
-        section.id.includes(query)
-      )
-      .map(s => s.id);
-  }, [searchQuery]);
+    const g = groups.find((x) => x.id === target) || groups[0];
+    if (g) navigate(`/settings/${g.id}/${g.sections[0].id}`, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups.length]);
 
-  const isVisible = (id: string) => visibleSections.includes(id);
+  const { group: activeGroup, section: activeSection } = findSection(
+    groups,
+    groupParam,
+    sectionParam,
+  );
 
-  // Filter tabs based on feature flags — hide Automation if workflows disabled
-  const availableTabs = useMemo(() => {
-    return TABS.filter(tab => {
-      if (tab.id === 'automation' && !companyFeatures.workflows_enabled) return false;
-      // Sales & BD tab: only visible to admins or allowlisted partner-rules editors
-      if (tab.id === 'sales-bd' && !isAdmin && !canEditPartnerRules) return false;
-      return true;
-    });
-  }, [companyFeatures.workflows_enabled, isAdmin, canEditPartnerRules]);
-
-  // When searching, find the first tab that has matching results and switch to it
-  const filteredTabs = useMemo(() => {
-    if (!searchQuery.trim()) return availableTabs;
-    return availableTabs.filter(tab => tab.sectionIds.some(id => visibleSections.includes(id)));
-  }, [searchQuery, visibleSections, availableTabs]);
-
-  // Auto-switch to first matching tab when searching
-  const effectiveTab = useMemo(() => {
-    if (!searchQuery.trim()) return activeTab;
-    if (filteredTabs.length > 0 && !filteredTabs.find(t => t.id === activeTab)) {
-      return filteredTabs[0].id;
+  // Persist last-visited
+  useEffect(() => {
+    if (activeGroup && activeSection) {
+      try {
+        localStorage.setItem(
+          LAST_PATH_KEY,
+          `/settings/${activeGroup.id}/${activeSection.id}`,
+        );
+      } catch {}
     }
-    return activeTab;
-  }, [searchQuery, filteredTabs, activeTab]);
+  }, [activeGroup?.id, activeSection?.id]);
+
+  // External href redirect (for "Account", "Company", etc.)
+  useEffect(() => {
+    if (activeSection?.href && groupParam && sectionParam) {
+      navigate(activeSection.href);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection?.href]);
+
+  // ───────── Command palette ─────────
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((v) => !v);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
+  const goToSection = useCallback(
+    (groupId: string, sectionId: string) => {
+      const grp = groups.find((g) => g.id === groupId);
+      const sec = grp?.sections.find((s) => s.id === sectionId);
+      if (!grp || !sec) return;
+      if (sec.href) {
+        navigate(sec.href);
+      } else {
+        navigate(`/settings/${grp.id}/${sec.id}`);
+      }
+      setPaletteOpen(false);
+    },
+    [groups, navigate],
+  );
+
+  // Sidebar mobile sheet
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  const SidebarContent = (
+    <nav className="flex flex-col gap-6 p-4" aria-label="Settings categories">
+      {groups.map((group) => {
+        const Icon = group.icon;
+        return (
+          <div key={group.id}>
+            <div className="flex items-center gap-2 px-2 mb-1 text-[11px] font-semibold tracking-wide uppercase text-muted-foreground">
+              <Icon className="h-3.5 w-3.5" />
+              {group.label}
+            </div>
+            <div className="flex flex-col">
+              {group.sections.map((section) => {
+                const isActive =
+                  activeGroup?.id === group.id && activeSection?.id === section.id;
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => {
+                      goToSection(group.id, section.id);
+                      setMobileOpen(false);
+                    }}
+                    className={`text-left text-sm px-3 py-1.5 rounded-md transition-colors flex items-center justify-between gap-2 ${
+                      isActive
+                        ? 'bg-accent text-accent-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-accent/50'
+                    }`}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <span className="truncate">{section.label}</span>
+                    {section.badge != null && section.badge > 0 && (
+                      <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
+                        {section.badge}
+                      </Badge>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </nav>
+  );
 
   return (
     <>
@@ -199,167 +660,162 @@ export default function Settings() {
         <meta name="description" content="Manage application settings" />
       </Helmet>
 
-      <div className="bg-background min-h-full pb-24">
+      <div className="bg-background min-h-full">
+        <div className="flex w-full">
+          {/* Sidebar — desktop */}
+          <aside className="hidden md:block w-64 shrink-0 border-r border-border sticky top-0 self-start h-screen overflow-y-auto">
+            <div className="px-4 pt-5 pb-3 border-b border-border">
+              <Link
+                to="/dashboard"
+                className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground mb-3"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Dashboard
+              </Link>
+              <h1 className="text-lg font-semibold">Settings</h1>
+              <button
+                onClick={() => setPaletteOpen(true)}
+                className="mt-3 w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-md border border-border bg-muted/40 hover:bg-muted text-muted-foreground transition-colors"
+              >
+                <span className="flex items-center gap-2">
+                  <Search className="h-3.5 w-3.5" />
+                  Search…
+                </span>
+                <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-background border border-border">
+                  ⌘K
+                </kbd>
+              </button>
+            </div>
+            {SidebarContent}
+          </aside>
 
-        <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-          <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
-            <Link to="/dashboard">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Dashboard
-            </Link>
-          </Button>
-
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div>
-                <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Settings</h1>
-                <p className="text-muted-foreground">Manage your application settings</p>
-              </div>
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search settings..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-9"
-                />
-                {searchQuery && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6"
-                    onClick={() => setSearchQuery('')}
-                  >
-                    <X className="h-3 w-3" />
+          {/* Content pane */}
+          <main className="flex-1 min-w-0">
+            {/* Mobile header */}
+            <div className="md:hidden sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-3 border-b border-border bg-background/95 backdrop-blur">
+              <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <Menu className="h-5 w-5" />
                   </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-72 p-0">
+                  <div className="px-4 pt-5 pb-3 border-b border-border">
+                    <h1 className="text-lg font-semibold">Settings</h1>
+                  </div>
+                  {SidebarContent}
+                </SheetContent>
+              </Sheet>
+              <div className="flex-1 text-sm font-medium truncate">
+                {activeGroup?.label} · {activeSection?.label}
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setPaletteOpen(true)}>
+                <Search className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="max-w-5xl mx-auto px-4 sm:px-8 py-6 sm:py-8">
+              {/* Breadcrumbs */}
+              <nav className="text-xs text-muted-foreground mb-2 flex items-center gap-1.5">
+                <Link to="/settings" className="hover:text-foreground">
+                  Settings
+                </Link>
+                {activeGroup && (
+                  <>
+                    <ChevronRight className="h-3 w-3" />
+                    <span>{activeGroup.label}</span>
+                  </>
+                )}
+                {activeSection && (
+                  <>
+                    <ChevronRight className="h-3 w-3" />
+                    <span className="text-foreground">{activeSection.label}</span>
+                  </>
+                )}
+              </nav>
+
+              {/* Section header */}
+              {activeSection && (
+                <div className="mb-6">
+                  <h2 className="text-2xl font-semibold tracking-tight">
+                    {activeSection.label}
+                  </h2>
+                  {activeSection.description && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {activeSection.description}
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Read-only banner */}
+              {!isAdmin && (
+                <div className="mb-6 flex items-start gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm">
+                  <Eye className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <div>
+                    <p className="font-medium">Read-only mode</p>
+                    <p className="text-muted-foreground">
+                      You're viewing settings in read-only mode. Contact an admin to
+                      make changes.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Section body */}
+              <div className="space-y-4">
+                {activeSection?.href ? (
+                  <Link
+                    to={activeSection.href}
+                    className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors border"
+                  >
+                    <div>
+                      <p className="font-medium">{activeSection.label}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {activeSection.description}
+                      </p>
+                    </div>
+                    <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                  </Link>
+                ) : (
+                  activeSection?.render?.({ isAdmin })
                 )}
               </div>
             </div>
+          </main>
+        </div>
 
-            {filteredTabs.length === 0 && searchQuery && (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground">No settings found matching "{searchQuery}"</p>
-                <Button variant="link" onClick={() => setSearchQuery('')} className="mt-2">
-                  Clear search
-                </Button>
-              </div>
-            )}
-
-            {filteredTabs.length > 0 && (
-              <Tabs value={effectiveTab} onValueChange={handleTabChange}>
-                <TabsList className="w-full justify-start overflow-x-auto">
-                  {filteredTabs.map(tab => (
-                    <TabsTrigger key={tab.id} value={tab.id}>
-                      {tab.label}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
-
-                {/* General Tab */}
-                <TabsContent value="general" className="space-y-4 mt-4">
-                  {isVisible('account') && (
-                    <LinkCard to="/account" title="Account" description="Your personal profile, security, and notification preferences" />
-                  )}
-                  {isVisible('company') && (
-                    <LinkCard to="/company" title="Company" description="Company profile, team members, and roles" badge={pendingJoinCount} />
-                  )}
-                  {isVisible('preferences') && (
-                    <LinkCard to="/preferences" title="Preferences" description="Theme, notifications, and regional settings" />
-                  )}
-                  {isVisible('database') && (
-                    <LinkCard to="/database" title="Database" description="View and manage your directories and data" />
-                  )}
-                </TabsContent>
-
-                {/* Deals Tab */}
-                <TabsContent value="deals" className="space-y-4 mt-4">
-                  {isVisible('deal-types') && <DealTypesSettings isAdmin={isAdmin} />}
-                  {isVisible('pipelines') && <PipelineSettings isAdmin={isAdmin} />}
-                  {isVisible('deal-info-fields') && <DealInfoFieldsSettings isAdmin={isAdmin} />}
-                  {isVisible('writeup-fields') && <WriteUpFieldsSettings isAdmin={isAdmin} />}
-                  {isVisible('deal-stages') && <DealStagesSettings isAdmin={isAdmin} />}
-                  {isVisible('default-milestones') && <DefaultMilestonesSettings isAdmin={isAdmin} />}
-                  {isVisible('referral-sources') && <ReferralSourcesSettings isAdmin={isAdmin} />}
-                  {isVisible('data-room-checklist') && <UnifiedChecklistSettings isAdmin={isAdmin} />}
-                  {isVisible('gamma-templates') && <GammaTemplatesSettings isAdmin={isAdmin} />}
-                  {isVisible('agreement-templates') && companyFeatures.agreement_icon_visible && hasPageAccess('agreement_drafter') && (
-                    <AgreementTemplatesSettings isAdmin={isAdmin} />
-                  )}
-                  {isVisible('deal-types') && <LenderScoreSettings isAdmin={isAdmin} />}
-                  {isVisible('deal-types') && <DisclaimerSettings isAdmin={isAdmin} />}
-                </TabsContent>
-
-                {/* Lenders Tab */}
-                <TabsContent value="lenders" className="space-y-4 mt-4">
-                  {isVisible('lender-stages') && <LenderStagesSettings isAdmin={isAdmin} />}
-                  {isVisible('lender-milestones') && <LenderSubstagesSettings isAdmin={isAdmin} />}
-                  {isVisible('pass-reasons') && <PassReasonsSettings isAdmin={isAdmin} />}
-                  {isVisible('lender-stages') && <TrackingStatusSettings isAdmin={isAdmin} />}
-                  {isVisible('lender-matching') && <LenderMatchingSettings />}
-                </TabsContent>
-
-                {/* Automation Tab — only shown when workflows_enabled */}
-                {companyFeatures.workflows_enabled && (
-                  <TabsContent value="automation" className="space-y-4 mt-4">
-                    {isVisible('workflows') && (
-                      <LinkCard to="/workflows" title="Workflows" description="Create and manage automated workflows" />
+        {/* Command palette */}
+        <CommandDialog open={paletteOpen} onOpenChange={setPaletteOpen}>
+          <CommandInput placeholder="Search settings… (sections, fields, options)" />
+          <CommandList>
+            <CommandEmpty>No results found.</CommandEmpty>
+            {groups.map((group) => (
+              <CommandGroup key={group.id} heading={group.label}>
+                {group.sections.map((section) => (
+                  <CommandItem
+                    key={`${group.id}-${section.id}`}
+                    value={`${group.label} ${section.label} ${section.keywords.join(' ')}`}
+                    onSelect={() => goToSection(group.id, section.id)}
+                  >
+                    <ChevronRight className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
+                    <span>{section.label}</span>
+                    {section.description && (
+                      <span className="ml-2 text-xs text-muted-foreground truncate">
+                        {section.description}
+                      </span>
                     )}
-                    {isVisible('suggestions') && <SuggestionSettings />}
-                    {isVisible('scheduled-reports') && <ScheduledReportsSettings />}
-                    {isVisible('sla-rules') && <SLARulesSettings />}
-                    {isVisible('stale-alerts') && <StaleAlertSettings isAdmin={isAdmin} />}
-                    {isVisible('zapier') && (
-                      <LinkCard to="/integrations?tab=zapier" title="Zapier" description="Manage Zapier webhooks and event triggers" />
-                    )}
-                  </TabsContent>
-                )}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            ))}
+          </CommandList>
+        </CommandDialog>
 
-                {/* Email Tab */}
-                <TabsContent value="email" className="space-y-4 mt-4">
-                  {isVisible('email-signature') && <EmailSignatureSettings />}
-                  {isVisible('email-snippets') && <EmailSnippetsSettings />}
-                  {isVisible('email-labels') && <EmailLabelsSettings />}
-                  {isVisible('email-templates-outbound') && <OutboundEmailTemplatesSettings isAdmin={isAdmin} />}
-                  {isVisible('email-style-guide') && <EmailStyleGuideSettings isAdmin={isAdmin} />}
-                  {isVisible('email-cadence') && <EmailCadenceSettings />}
-                  <EmailWorkflowsSettings isAdmin={isAdmin} />
-                  {isVisible('distribution-stats') && <DistributionStatsSettings />}
-                </TabsContent>
-
-                {/* Metrics Tab */}
-                <TabsContent value="metrics" className="space-y-4 mt-4">
-                  {isVisible('kpi-card-settings') && <KPICardSettings isAdmin={isAdmin} />}
-                </TabsContent>
-
-                {/* CRM Tab */}
-                <TabsContent value="crm" className="space-y-4 mt-4">
-                  {isVisible('field-layout') && (
-                    <LinkCard to="/field-layout-editor" title="Field Layout Editor" description="Configure how contact and company fields are displayed on detail pages" />
-                  )}
-                  {isVisible('contact-types') && <ContactTypesSettings isAdmin={isAdmin} />}
-                </TabsContent>
-
-                {/* AI Tab */}
-                <TabsContent value="ai" className="space-y-4 mt-4">
-                  {isVisible('ai-configuration') && (
-                    <AIConfigurationSettings isAdmin={isAdmin} />
-                  )}
-                  <AICopilotSettings />
-                  {isVisible('meeting-titles') && (
-                    <MeetingTitleSettings isAdmin={isAdmin} />
-                  )}
-                  <WorkingHoursSettings />
-                  <AvailabilityVerificationSettings />
-                </TabsContent>
-
-                {/* Sales & BD Tab */}
-                <TabsContent value="sales-bd" className="space-y-4 mt-4">
-                  {isVisible('partner-rules') && <PartnerRulesSettings />}
-                </TabsContent>
-              </Tabs>
-            )}
-          </div>
-        </main>
+        {/* Hidden, kept for parity with old layout's bottom padding */}
+        <div className="h-12" aria-hidden />
+        {/* lock icon kept so the import isn't dead in future role-gating */}
+        <Lock className="hidden" aria-hidden />
       </div>
     </>
   );
