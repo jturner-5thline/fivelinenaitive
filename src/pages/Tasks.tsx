@@ -94,6 +94,9 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: 'low', label: 'Low' },
 ];
 const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
+// Deals are restricted to these stages by default in the Tasks deal picker;
+// the "Show all deals (incl. closed/on-hold)" checkbox lifts the restriction.
+const ACTIVE_DEAL_STAGES = new Set(['pipeline', 'development_pipeline']);
 
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
