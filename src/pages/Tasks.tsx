@@ -62,7 +62,7 @@ import {
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
-  Link2, Pin, PinOff, Repeat,
+  Link2, Pin, PinOff, Repeat, ChevronDown,
   Columns3,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -133,9 +133,157 @@ const DUE_LABELS: Record<FilterDueDate, string> = {
   this_week: 'Due this week',
   no_date: 'No due date',
 };
+const SORT_LABELS: Record<SortBy, string> = {
+  due_date: 'Due date',
+  priority: 'Priority',
+  deal: 'Deal',
+  created_at: 'Created date',
+  title: 'Name',
+};
+const GROUP_LABELS: Record<GroupBy, string> = {
+  status: 'Status',
+  time: 'Due date',
+  priority: 'Priority',
+  focus: 'Focus',
+  none: 'None',
+};
+const RECURRING_LABELS: Record<FilterRecurring, string> = {
+  all: 'All tasks',
+  recurring: 'Recurring only',
+  paused: 'Paused only',
+};
 const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
   urgent: 'Urgent',
 };
+
+type InlineSelectOption<T extends string> = {
+  value: T;
+  label: string;
+  icon?: React.ComponentType<{ className?: string }>;
+};
+
+function InlineFilterSelect<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  isOpen,
+  onToggle,
+  onSelect,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: InlineSelectOption<T>[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (value: T) => void;
+}) {
+  const activeIndex = Math.max(0, options.findIndex(option => option.value === value));
+
+  const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onToggle();
+    }
+  };
+
+  const handleListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onToggle();
+      return;
+    }
+
+    const currentIndex = options.findIndex(option => option.value === value);
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const next = options[(currentIndex + 1 + options.length) % options.length];
+      onSelect(next.value);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = options[(currentIndex - 1 + options.length) % options.length];
+      onSelect(next.value);
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onToggle();
+    }
+  };
+
+  const selected = options.find(option => option.value === value) ?? options[0];
+  const SelectedIcon = selected.icon;
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">{label}</label>
+      <button
+        id={`${id}-trigger`}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={`${id}-listbox`}
+        className="flex h-8 w-full items-center justify-between rounded-md border px-3 text-xs transition-colors hover:bg-muted/60"
+        style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+        onClick={onToggle}
+        onKeyDown={handleTriggerKeyDown}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {SelectedIcon ? <SelectedIcon className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+          <span className="truncate">{selected.label}</span>
+        </span>
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
+      </button>
+      {isOpen && (
+        <div
+          id={`${id}-listbox`}
+          role="listbox"
+          tabIndex={0}
+          aria-labelledby={`${id}-trigger`}
+          aria-activedescendant={`${id}-option-${selected.value}`}
+          className="rounded-md border p-1"
+          style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+          onKeyDown={handleListKeyDown}
+        >
+          {options.map((option) => {
+            const OptionIcon = option.icon;
+            const selectedOption = option.value === value;
+
+            return (
+              <button
+                key={option.value}
+                id={`${id}-option-${option.value}`}
+                type="button"
+                role="option"
+                aria-selected={selectedOption}
+                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/70"
+                style={{
+                  backgroundColor: selectedOption ? 'rgba(126,184,247,0.12)' : 'transparent',
+                  color: selectedOption ? '#cfe3ff' : undefined,
+                }}
+                onClick={() => {
+                  onSelect(option.value);
+                  onToggle();
+                }}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  {OptionIcon ? <OptionIcon className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+                  <span className="truncate">{option.label}</span>
+                </span>
+                {selectedOption ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
