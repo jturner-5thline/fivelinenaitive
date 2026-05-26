@@ -378,6 +378,9 @@ export default function Integrations() {
           }}
           onDisconnect={async () => {
             await microsoft.disconnect();
+            // Refresh unified mail-connection status so dependent UIs
+            // immediately reflect the disconnect.
+            await gmail.checkStatus();
           }}
         >
           <div className="space-y-3 mt-2">
