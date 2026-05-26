@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Loader2, Pencil } from 'lucide-react';
+import { ArrowUpRight } from 'lucide-react';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
 
@@ -16,6 +17,9 @@ interface MemoHeaderProps {
   deal: Deal;
   /** Show pulsing live-deal dot (only on the topmost visible card). */
   showLiveDot?: boolean;
+  /** Opens the full deal details drawer/page. The card itself is no
+   *  longer a click target — only this header button navigates. */
+  onOpenDeal?: () => void;
 }
 
 function formatAmount(value: number | undefined | null): string {
@@ -30,7 +34,7 @@ function formatAmount(value: number | undefined | null): string {
  * deal size, engagement type and asset class, and a "Live deal" status
  * indicator on the right edge.
  */
-export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
+export function MemoHeader({ deal, showLiveDot = true, onOpenDeal }: MemoHeaderProps) {
   const amountLabel = formatAmount(deal.value);
   const structureLabel = deal.engagementType
     ? deal.engagementType.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
@@ -184,6 +188,19 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
               appears instantly in the memo card's TasksMilestonesBand
               and the deal detail Tasks panel without a refresh. */}
           <CreateTaskButton dealId={deal.id} dealName={deal.company || deal.name} />
+          {onOpenDeal && (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-7 px-2 shrink-0 gap-1"
+              onClick={(e) => { e.stopPropagation(); onOpenDeal(); }}
+              aria-label={`Open details for ${deal.company || deal.name}`}
+            >
+              <ArrowUpRight className="h-3.5 w-3.5" />
+              Open details
+            </Button>
+          )}
         </div>
       </div>
       <div
