@@ -895,7 +895,7 @@ export default function Tasks() {
           {/* Search — far left, flexes to fill available space */}
           <div className="relative flex-1 min-w-[160px] max-w-[280px] order-1">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5" style={{ color: '#8a93a6' }} />
-            <Input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search…" className="h-8 text-[12px] pl-8 text-white placeholder:text-[#8a93a6] w-full" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }} />
+            <Input value={taskFilters.search} onChange={e => patchFilters({ search: e.target.value })} placeholder="Search tasks or deals…" className="h-8 text-[12px] pl-8 text-white placeholder:text-[#8a93a6] w-full" style={{ backgroundColor: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }} />
           </div>
 
           {/* Primary navigation tabs — List / Board */}
@@ -945,7 +945,7 @@ export default function Tasks() {
               <SelectItem value="all" className="text-xs">All tasks</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={filterStatus} onValueChange={v => setFilterStatus(v as FilterStatus)}>
+          <Select value={taskFilters.status} onValueChange={v => patchFilters({ status: v as FilterStatus })}>
             <SelectTrigger aria-label="Status: All" className="h-8 w-[110px] text-[12px] text-[#b3bccc]" style={{ backgroundColor: 'rgba(255,255,255,0.025)', borderColor: 'rgba(255,255,255,0.06)' }}>
               <Filter className="h-3 w-3 mr-1.5" /><SelectValue />
             </SelectTrigger>
@@ -987,7 +987,7 @@ export default function Tasks() {
             <PopoverContent className="w-[320px] p-3 space-y-3" align="end">
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Due date</label>
-                <Select value={filterDueDate} onValueChange={v => setFilterDueDate(v as FilterDueDate)}>
+                <Select value={taskFilters.dueDate} onValueChange={v => patchFilters({ dueDate: v as FilterDueDate })}>
                   <SelectTrigger className="h-8 text-xs"><CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all" className="text-xs">Any due date</SelectItem>
@@ -1000,7 +1000,7 @@ export default function Tasks() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Sort by</label>
-                <Select value={sortBy} onValueChange={v => setSortBy(v as SortBy)}>
+                <Select value={taskFilters.sortBy} onValueChange={v => patchFilters({ sortBy: v as SortBy })}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="due_date" className="text-xs">Due date</SelectItem>
@@ -1013,7 +1013,7 @@ export default function Tasks() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Group by</label>
-                <Select value={groupBy} onValueChange={v => setGroupBy(v as GroupBy)}>
+                <Select value={taskFilters.groupBy} onValueChange={v => patchFilters({ groupBy: v as GroupBy })}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="status" className="text-xs">Status</SelectItem>
@@ -1024,7 +1024,7 @@ export default function Tasks() {
               </div>
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Recurring</label>
-                <Select value={filterRecurring} onValueChange={v => setFilterRecurring(v as FilterRecurring)}>
+                <Select value={taskFilters.recurring} onValueChange={v => patchFilters({ recurring: v as FilterRecurring })}>
                   <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all" className="text-xs">All tasks</SelectItem>
@@ -1037,7 +1037,7 @@ export default function Tasks() {
                 <div className="flex items-center justify-between">
                   <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Priority</label>
                   {filterPriorities.size > 0 && (
-                    <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterPriorities(new Set())}>Clear</button>
+                    <button className="text-[10px] text-destructive hover:underline" onClick={() => patchFilters({ priority: [] })}>Clear</button>
                   )}
                 </div>
                 <div className="grid grid-cols-2 gap-1">
@@ -1048,11 +1048,11 @@ export default function Tasks() {
                         key={p.value}
                         type="button"
                         className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                        onClick={() => setFilterPriorities(prev => {
-                          const next = new Set(prev);
+                        onClick={() => {
+                          const next = new Set(filterPriorities);
                           if (next.has(p.value)) next.delete(p.value); else next.add(p.value);
-                          return next;
-                        })}
+                          patchFilters({ priority: Array.from(next) });
+                        }}
                       >
                         <Checkbox checked={checked} className="h-3.5 w-3.5" />
                         <span>{p.label}</span>
@@ -1066,13 +1066,13 @@ export default function Tasks() {
                   <div className="flex items-center justify-between">
                     <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Deals</label>
                     {filterDealIds.size > 0 && (
-                      <button className="text-[10px] text-destructive hover:underline" onClick={() => setFilterDealIds(new Set())}>Clear</button>
+                      <button className="text-[10px] text-destructive hover:underline" onClick={() => patchFilters({ deals: [] })}>Clear</button>
                     )}
                   </div>
                   <label className="flex items-center gap-2 text-[11px] text-muted-foreground cursor-pointer select-none">
                     <Checkbox
-                      checked={showAllDeals}
-                      onCheckedChange={(c) => setShowAllDeals(!!c)}
+                      checked={taskFilters.showClosedDeals}
+                      onCheckedChange={(c) => patchFilters({ showClosedDeals: !!c })}
                       className="h-3.5 w-3.5"
                     />
                     Show all deals (incl. closed / on-hold)
@@ -1099,11 +1099,9 @@ export default function Tasks() {
                       return sorted.map(([id, name]) => (
                         <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted"
                           onClick={() => {
-                            setFilterDealIds(prev => {
-                              const next = new Set(prev);
-                              if (next.has(id)) next.delete(id); else next.add(id);
-                              return next;
-                            });
+                            const next = new Set(filterDealIds);
+                            if (next.has(id)) next.delete(id); else next.add(id);
+                            patchFilters({ deals: Array.from(next) });
                           }}>
                           <Checkbox checked={filterDealIds.has(id)} className="h-3.5 w-3.5" />
                           <span className="truncate">{name}</span>
