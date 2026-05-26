@@ -975,7 +975,7 @@ export default function Tasks() {
           </Select>
 
           {/* Advanced filters collapsed behind a single entry point */}
-          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen} modal={false}>
             <PopoverTrigger asChild>
               {(() => {
                 const activeCount = filterDealIds.size + filterLabelIds.size
@@ -1011,17 +1011,14 @@ export default function Tasks() {
               align="end"
               onOpenAutoFocus={(e) => e.preventDefault()}
               onPointerDownOutside={(e) => {
-                // Keep popover open when interacting with Radix portaled
-                // children (Select dropdowns, etc.) whose content lives
-                // outside the PopoverContent DOM subtree.
                 const target = e.target as HTMLElement | null;
-                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"]')) {
+                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"], [cmdk-root]')) {
                   e.preventDefault();
                 }
               }}
               onInteractOutside={(e) => {
                 const target = e.target as HTMLElement | null;
-                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"]')) {
+                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"], [cmdk-root]')) {
                   e.preventDefault();
                 }
               }}
