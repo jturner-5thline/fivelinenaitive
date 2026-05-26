@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { useAuth } from '@/contexts/AuthContext';
 
 export interface TaskCollaborator {
   id: string;
@@ -17,7 +16,6 @@ export interface TaskCollaborator {
 
 export function useTaskCollaborators(taskId: string | null) {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
   const key = ['task-collaborators', taskId];
 
   const { data: collaborators = [], isLoading } = useQuery({
