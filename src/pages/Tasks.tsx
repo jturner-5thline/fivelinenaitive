@@ -94,6 +94,9 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
   { value: 'low', label: 'Low' },
 ];
 const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
+// Deals are restricted to these stages by default in the Tasks deal picker;
+// the "Show all deals (incl. closed/on-hold)" checkbox lifts the restriction.
+const ACTIVE_DEAL_STAGES = new Set(['pipeline', 'development_pipeline']);
 
 function FilterChip({ label, onClear }: { label: string; onClear: () => void }) {
   return (
@@ -242,15 +245,21 @@ export default function Tasks() {
   // surfaces deals already linked to a loaded task).
   const { deals: allDeals } = useDealsContext();
   const allDealOptions = useMemo(() => {
-    const fromTasks = new Map(uniqueDeals);
-    const merged = new Map<string, string>(fromTasks);
+    const merged = new Map<string, string>();
+    const dealById = new Map(allDeals.map(d => [d.id, d] as const));
+    // Default: only deals on the active boards ('pipeline' or
+    // 'development_pipeline'). The "Show all deals" checkbox lifts this.
+    uniqueDeals.forEach(([id, name]) => {
+      if (showAllDeals) { merged.set(id, name); return; }
+      const d = dealById.get(id);
+      if (!d || (typeof d.stage === 'string' && ACTIVE_DEAL_STAGES.has(d.stage))) {
+        merged.set(id, name);
+      }
+    });
     allDeals.forEach(d => {
       if (d.status === 'archived') return;
-      // Default: only include deals on the active board (not closed/on-hold).
-      // Niki can flip "Show all deals" to surface dormant ones. Subtask 3.
       if (!showAllDeals) {
-        if (d.status === 'on-hold') return;
-        if (typeof d.stage === 'string' && ACTIVE_DEAL_INACTIVE_STAGES.has(d.stage)) return;
+        if (typeof d.stage !== 'string' || !ACTIVE_DEAL_STAGES.has(d.stage)) return;
       }
       if (!merged.has(d.id)) merged.set(d.id, d.company || d.name);
     });
@@ -1090,12 +1099,8 @@ export default function Tasks() {
                         filterDealIds.has(id) || (!q || name.toLowerCase().includes(q))
                       );
                       if (visible.length === 0) return <div className="px-2 py-3 text-[11px] text-center text-muted-foreground">No deals match.</div>;
-                      const sorted = [...visible].sort((a, b) => {
-                        const aSel = filterDealIds.has(a[0]) ? 0 : 1;
-                        const bSel = filterDealIds.has(b[0]) ? 0 : 1;
-                        if (aSel !== bSel) return aSel - bSel;
-                        return a[1].localeCompare(b[1]);
-                      });
+                      // Sort options alphabetically by deal name.
+                      const sorted = [...visible].sort((a, b) => a[1].localeCompare(b[1]));
                       return sorted.map(([id, name]) => (
                         <button key={id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs hover:bg-muted"
                           onClick={() => {
