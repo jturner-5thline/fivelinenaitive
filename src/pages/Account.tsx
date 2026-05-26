@@ -1,5 +1,5 @@
 import { Helmet } from 'react-helmet-async';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ProfileSettings } from '@/components/settings/ProfileSettings';
@@ -10,7 +10,68 @@ import { DealSummarySettings } from '@/components/settings/DealSummarySettings';
 import { TaskDefaultsSettings } from '@/components/settings/TaskDefaultsSettings';
 import { NotificationLinkSettings } from '@/components/settings/NotificationLinkSettings';
 
+type SectionId = 'profile' | 'security' | 'notifications' | 'emails' | 'tasks';
+
+const SECTIONS: Array<{
+  id: SectionId;
+  label: string;
+  description: string;
+  render: () => JSX.Element;
+}> = [
+  {
+    id: 'profile',
+    label: 'Profile',
+    description: 'Your personal profile and company information.',
+    render: () => (
+      <>
+        <ProfileSettings />
+        <CompanySettings />
+      </>
+    ),
+  },
+  {
+    id: 'security',
+    label: 'Security',
+    description: 'Password, active sessions, and recent login history.',
+    render: () => <SecuritySettings />,
+  },
+  {
+    id: 'notifications',
+    label: 'Notifications',
+    description: 'How and where you receive notifications, including Slack.',
+    render: () => (
+      <>
+        <NotificationLinkSettings />
+        <NotificationSettings />
+      </>
+    ),
+  },
+  {
+    id: 'emails',
+    label: 'Email Summaries',
+    description: 'Recurring deal-activity digests sent to your inbox.',
+    render: () => <DealSummarySettings />,
+  },
+  {
+    id: 'tasks',
+    label: 'Tasks',
+    description: 'Defaults applied when you create tasks from AI suggestions.',
+    render: () => <TaskDefaultsSettings />,
+  },
+];
+
 export default function Account() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeId = (searchParams.get('section') as SectionId) || 'profile';
+  const active = SECTIONS.find((s) => s.id === activeId) ?? SECTIONS[0];
+
+  const setActive = (id: SectionId) => {
+    const next = new URLSearchParams(searchParams);
+    if (id === 'profile') next.delete('section');
+    else next.set('section', id);
+    setSearchParams(next, { replace: true });
+  };
+
   return (
     <>
       <Helmet>
@@ -18,36 +79,53 @@ export default function Account() {
         <meta name="description" content="Manage your account settings" />
       </Helmet>
 
-      <div className="bg-background">
-
-        <main className="container mx-auto max-w-4xl px-4 py-6 sm:px-6 lg:px-8">
-          <Button variant="ghost" size="sm" className="gap-2 mb-6" asChild>
+      <div className="bg-transparent min-h-full">
+        <main className="max-w-5xl mx-auto px-4 sm:px-8 pt-6 sm:pt-8 pb-12">
+          <Button variant="ghost" size="sm" className="gap-1.5 mb-4 -ml-2 h-7 px-2 text-xs text-muted-foreground hover:text-foreground" asChild>
             <Link to="/settings">
-              <ArrowLeft className="h-4 w-4" />
-              Back to Settings
+              <ArrowLeft className="h-3.5 w-3.5" />
+              Settings
             </Link>
           </Button>
 
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold bg-brand-gradient bg-clip-text text-transparent dark:bg-none dark:text-white">Account</h1>
-              <p className="text-muted-foreground">Manage your profile and company information</p>
+          {/* Header */}
+          <header className="mb-5">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground/80 mb-1.5">
+              Workspace
             </div>
+            <h1 className="text-[22px] font-semibold tracking-tight leading-tight">
+              {active.label}
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1.5 max-w-2xl">
+              {active.description}
+            </p>
+          </header>
 
-            <ProfileSettings />
-
-            <CompanySettings />
-
-            <SecuritySettings />
-
-            <DealSummarySettings />
-
-            <TaskDefaultsSettings />
-
-            <NotificationLinkSettings />
-
-            <NotificationSettings />
+          {/* Pills */}
+          <div className="mb-6 -mx-1 overflow-x-auto">
+            <div className="flex items-center gap-1 px-1 pb-1">
+              {SECTIONS.map((s) => {
+                const isActive = s.id === active.id;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => setActive(s.id)}
+                    className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 border ${
+                      isActive
+                        ? 'bg-primary/15 text-foreground border-primary/30 font-medium'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04] border-transparent'
+                    }`}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    {s.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
+
+          {/* Body */}
+          <div className="space-y-4">{active.render()}</div>
         </main>
       </div>
     </>
