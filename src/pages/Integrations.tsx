@@ -174,6 +174,11 @@ export default function Integrations() {
         if (success) {
           toast.success("Microsoft connected!");
           microsoft.checkStatus();
+          // Also refresh the unified mail-connection status so other
+          // surfaces (Inbox dialog, deal Emails tab) immediately see the
+          // newly-connected Microsoft mailbox instead of prompting the
+          // user to "Connect your mail".
+          gmail.checkStatus();
         } else {
           toast.error("Failed to connect Microsoft");
         }
