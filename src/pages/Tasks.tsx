@@ -488,6 +488,31 @@ export default function Tasks() {
     search,
   }), [filterStatus, filterDueDate, sortBy, groupBy, filterRecurring, urgentOnly, filterDealIds, showAllDeals, search]);
 
+  const dueDateOptions = useMemo<InlineSelectOption<FilterDueDate>[]>(() => [
+    { value: 'all', label: 'Any due date', icon: CalendarDays },
+    { value: 'overdue', label: 'Overdue', icon: CalendarDays },
+    { value: 'today', label: 'Due today', icon: CalendarDays },
+    { value: 'this_week', label: 'Due this week', icon: CalendarDays },
+    { value: 'no_date', label: 'No due date', icon: CalendarDays },
+  ], []);
+  const sortByOptions = useMemo<InlineSelectOption<SortBy>[]>(() => [
+    { value: 'due_date', label: 'Due date' },
+    { value: 'created_at', label: 'Created date' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'title', label: 'Name' },
+    { value: 'deal', label: 'Deal' },
+  ], []);
+  const groupByOptions = useMemo<InlineSelectOption<GroupBy>[]>(() => [
+    { value: 'status', label: 'Status' },
+    { value: 'time', label: 'Due date' },
+    { value: 'priority', label: 'Priority' },
+  ], []);
+  const recurringOptions = useMemo<InlineSelectOption<FilterRecurring>[]>(() => [
+    { value: 'all', label: 'All tasks', icon: Repeat },
+    { value: 'recurring', label: 'Recurring only', icon: Repeat },
+    { value: 'paused', label: 'Paused only', icon: Repeat },
+  ], []);
+
   type TaskFilters = typeof taskFilters;
   const patchFilters = useCallback((patch: Partial<TaskFilters>) => {
     if (patch.status !== undefined) setFilterStatus(patch.status);
