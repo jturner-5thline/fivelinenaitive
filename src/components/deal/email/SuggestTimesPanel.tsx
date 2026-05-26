@@ -138,7 +138,7 @@ export function SuggestTimesPanel({
     const windowStart = new Date();
     windowStart.setDate(windowStart.getDate() + 1);
     windowStart.setHours(0, 0, 0, 0);
-    return generateSlots({
+    const result = generateSlots({
       windowStart,
       businessDays: dWindow,
       workingHoursStart: dWhStart,
@@ -150,6 +150,23 @@ export function SuggestTimesPanel({
       busy: cachedBusy,
       maxSlots: dSlotCount,
     });
+    // One-shot diagnostic so we can verify raw freebusy + final picks for
+    // the "always 9 AM" availability bug.
+    // eslint-disable-next-line no-console
+    console.debug('[SuggestTimes] generate', {
+      tz: userTz,
+      windowStart: windowStart.toISOString(),
+      businessDays: dWindow,
+      hours: `${dWhStart}–${dWhEnd}`,
+      durationMin: dDuration,
+      bufferMin: dBuffer,
+      busyCount: cachedBusy.length,
+      busySample: cachedBusy.slice(0, 4).map((b) => ({
+        start: b.start.toISOString(), end: b.end.toISOString(),
+      })),
+      picks: result.map((s) => s.start.toISOString()),
+    });
+    return result;
   }, [cachedBusy, dDuration, dWindow, dWhStart, dWhEnd, dSlotCount, dBuffer, dAvoid, dFocus]);
 
   // Telemetry: log time-to-first-slot once per mount.
