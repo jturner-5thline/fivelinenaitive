@@ -294,7 +294,7 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
                 <>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Match string:</span>
+                      <span className="text-sm font-medium">Deal Type:</span>
                       <Badge variant="outline">{selectedConfig.dealTypeMatchString}</Badge>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
                         setEditConfigId(selectedConfig.id);
