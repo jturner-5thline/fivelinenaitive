@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
+import { useState, useRef, type KeyboardEvent, type ComponentType, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
@@ -62,7 +62,7 @@ import {
   Bookmark, BookmarkPlus, FileDown, Star, MoreVertical,
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
-  Link2, Pin, PinOff, Repeat,
+  Link2, Pin, PinOff, Repeat, ChevronDown,
   Columns3,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -137,6 +137,146 @@ const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
   urgent: 'Urgent',
 };
 
+type InlineSelectOption<T extends string> = {
+  value: T;
+  label: string;
+  icon?: ComponentType<{ className?: string }>;
+};
+
+function InlineFilterSelect<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  isOpen,
+  onToggle,
+  onSelect,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: InlineSelectOption<T>[];
+  isOpen: boolean;
+  onToggle: () => void;
+  onSelect: (value: T) => void;
+}) {
+  const listboxRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (isOpen) listboxRef.current?.focus();
+  }, [isOpen]);
+
+  const handleTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp' || event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      onToggle();
+    }
+  };
+
+  const handleListKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onToggle();
+      return;
+    }
+
+    const currentIndex = options.findIndex(option => option.value === value);
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      const next = options[(currentIndex + 1 + options.length) % options.length];
+      onSelect(next.value);
+      return;
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      const next = options[(currentIndex - 1 + options.length) % options.length];
+      onSelect(next.value);
+      return;
+    }
+
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      onToggle();
+    }
+  };
+
+  const selected = options.find(option => option.value === value) ?? options[0];
+  const SelectedIcon = selected.icon;
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">{label}</label>
+      <button
+        id={`${id}-trigger`}
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        aria-controls={`${id}-listbox`}
+        className="flex h-8 w-full items-center justify-between rounded-md border px-3 text-xs transition-colors hover:bg-muted/60"
+        style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle();
+        }}
+        onKeyDown={handleTriggerKeyDown}
+      >
+        <span className="flex min-w-0 items-center gap-2">
+          {SelectedIcon ? <SelectedIcon className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+          <span className="truncate">{selected.label}</span>
+        </span>
+        <ChevronDown className={cn('h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform', isOpen && 'rotate-180')} />
+      </button>
+      {isOpen && (
+        <div
+          id={`${id}-listbox`}
+          ref={listboxRef}
+          role="listbox"
+          tabIndex={0}
+          aria-labelledby={`${id}-trigger`}
+          aria-activedescendant={`${id}-option-${selected.value}`}
+          className="rounded-md border p-1"
+          style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
+          onKeyDown={handleListKeyDown}
+        >
+          {options.map((option) => {
+            const OptionIcon = option.icon;
+            const selectedOption = option.value === value;
+
+            return (
+              <button
+                key={option.value}
+                id={`${id}-option-${option.value}`}
+                type="button"
+                role="option"
+                aria-selected={selectedOption}
+                className="flex w-full items-center justify-between rounded px-2 py-1.5 text-xs transition-colors hover:bg-muted/70"
+                style={{
+                  backgroundColor: selectedOption ? 'rgba(126,184,247,0.12)' : 'transparent',
+                  color: selectedOption ? '#cfe3ff' : undefined,
+                }}
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  onSelect(option.value);
+                  onToggle();
+                }}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  {OptionIcon ? <OptionIcon className="h-3 w-3 shrink-0 text-muted-foreground" /> : null}
+                  <span className="truncate">{option.label}</span>
+                </span>
+                {selectedOption ? <Check className="h-3.5 w-3.5 shrink-0" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Tasks() {
   const [ownerFilter, setOwnerFilter] = useState<TaskOwnerFilter>('mine');
   const { tasks, isLoading, createTask, updateTask, deleteTask } = useMyTasks(ownerFilter);
@@ -188,6 +328,7 @@ export default function Tasks() {
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [filterRecurring, setFilterRecurring] = useState<FilterRecurring>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [openInlineFilter, setOpenInlineFilter] = useState<'dueDate' | 'sortBy' | 'groupBy' | 'recurring' | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -338,6 +479,31 @@ export default function Tasks() {
     showClosedDeals: showAllDeals,
     search,
   }), [filterStatus, filterDueDate, sortBy, groupBy, filterRecurring, urgentOnly, filterDealIds, showAllDeals, search]);
+
+  const dueDateOptions = useMemo<InlineSelectOption<FilterDueDate>[]>(() => [
+    { value: 'all', label: 'Any due date', icon: CalendarDays },
+    { value: 'overdue', label: 'Overdue', icon: CalendarDays },
+    { value: 'today', label: 'Due today', icon: CalendarDays },
+    { value: 'this_week', label: 'Due this week', icon: CalendarDays },
+    { value: 'no_date', label: 'No due date', icon: CalendarDays },
+  ], []);
+  const sortByOptions = useMemo<InlineSelectOption<SortBy>[]>(() => [
+    { value: 'due_date', label: 'Due date' },
+    { value: 'created_at', label: 'Created date' },
+    { value: 'priority', label: 'Priority' },
+    { value: 'title', label: 'Name' },
+    { value: 'deal', label: 'Deal' },
+  ], []);
+  const groupByOptions = useMemo<InlineSelectOption<GroupBy>[]>(() => [
+    { value: 'status', label: 'Status' },
+    { value: 'time', label: 'Due date' },
+    { value: 'priority', label: 'Priority' },
+  ], []);
+  const recurringOptions = useMemo<InlineSelectOption<FilterRecurring>[]>(() => [
+    { value: 'all', label: 'All tasks', icon: Repeat },
+    { value: 'recurring', label: 'Recurring only', icon: Repeat },
+    { value: 'paused', label: 'Paused only', icon: Repeat },
+  ], []);
 
   type TaskFilters = typeof taskFilters;
   const patchFilters = useCallback((patch: Partial<TaskFilters>) => {
@@ -975,7 +1141,14 @@ export default function Tasks() {
           </Select>
 
           {/* Advanced filters collapsed behind a single entry point */}
-          <Popover open={filtersOpen} onOpenChange={setFiltersOpen} modal={false}>
+          <Popover
+            open={filtersOpen}
+            onOpenChange={(open) => {
+              setFiltersOpen(open);
+              if (!open) setOpenInlineFilter(null);
+            }}
+            modal={true}
+          >
             <PopoverTrigger asChild>
               {(() => {
                 const activeCount = filterDealIds.size + filterLabelIds.size
@@ -1010,70 +1183,43 @@ export default function Tasks() {
               className="w-[320px] p-3 space-y-3"
               align="end"
               onOpenAutoFocus={(e) => e.preventDefault()}
-              onPointerDownOutside={(e) => {
-                const orig = (e as any).detail?.originalEvent;
-                const target = (orig?.target ?? e.target) as HTMLElement | null;
-                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"], [cmdk-root]')) {
-                  e.preventDefault();
-                }
-              }}
-              onInteractOutside={(e) => {
-                const orig = (e as any).detail?.originalEvent;
-                const target = (orig?.target ?? e.target) as HTMLElement | null;
-                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"], [cmdk-root]')) {
-                  e.preventDefault();
-                }
-              }}
-              onFocusOutside={(e) => e.preventDefault()}
             >
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Due date</label>
-                <Select value={taskFilters.dueDate} onValueChange={v => patchFilters({ dueDate: v as FilterDueDate })}>
-                  <SelectTrigger className="h-8 text-xs"><CalendarDays className="h-3 w-3 mr-1.5" /><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="text-xs">Any due date</SelectItem>
-                    <SelectItem value="overdue" className="text-xs">Overdue</SelectItem>
-                    <SelectItem value="today" className="text-xs">Due today</SelectItem>
-                    <SelectItem value="this_week" className="text-xs">Due this week</SelectItem>
-                    <SelectItem value="no_date" className="text-xs">No due date</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Sort by</label>
-                <Select value={taskFilters.sortBy} onValueChange={v => patchFilters({ sortBy: v as SortBy })}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="due_date" className="text-xs">Due date</SelectItem>
-                    <SelectItem value="priority" className="text-xs">Priority</SelectItem>
-                    <SelectItem value="deal" className="text-xs">Deal</SelectItem>
-                    <SelectItem value="created_at" className="text-xs">Created</SelectItem>
-                    <SelectItem value="title" className="text-xs">Name</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Group by</label>
-                <Select value={taskFilters.groupBy} onValueChange={v => patchFilters({ groupBy: v as GroupBy })}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="status" className="text-xs">Status</SelectItem>
-                    <SelectItem value="time" className="text-xs">Due date</SelectItem>
-                    <SelectItem value="priority" className="text-xs">Priority</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Recurring</label>
-                <Select value={taskFilters.recurring} onValueChange={v => patchFilters({ recurring: v as FilterRecurring })}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all" className="text-xs">All tasks</SelectItem>
-                    <SelectItem value="recurring" className="text-xs">Recurring only</SelectItem>
-                    <SelectItem value="paused" className="text-xs">Paused only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <InlineFilterSelect
+                id="task-filters-due-date"
+                label="Due date"
+                value={taskFilters.dueDate}
+                options={dueDateOptions}
+                isOpen={openInlineFilter === 'dueDate'}
+                onToggle={() => setOpenInlineFilter(current => current === 'dueDate' ? null : 'dueDate')}
+                onSelect={(value) => patchFilters({ dueDate: value })}
+              />
+              <InlineFilterSelect
+                id="task-filters-sort-by"
+                label="Sort by"
+                value={taskFilters.sortBy}
+                options={sortByOptions}
+                isOpen={openInlineFilter === 'sortBy'}
+                onToggle={() => setOpenInlineFilter(current => current === 'sortBy' ? null : 'sortBy')}
+                onSelect={(value) => patchFilters({ sortBy: value })}
+              />
+              <InlineFilterSelect
+                id="task-filters-group-by"
+                label="Group by"
+                value={taskFilters.groupBy}
+                options={groupByOptions}
+                isOpen={openInlineFilter === 'groupBy'}
+                onToggle={() => setOpenInlineFilter(current => current === 'groupBy' ? null : 'groupBy')}
+                onSelect={(value) => patchFilters({ groupBy: value })}
+              />
+              <InlineFilterSelect
+                id="task-filters-recurring"
+                label="Recurring"
+                value={taskFilters.recurring}
+                options={recurringOptions}
+                isOpen={openInlineFilter === 'recurring'}
+                onToggle={() => setOpenInlineFilter(current => current === 'recurring' ? null : 'recurring')}
+                onSelect={(value) => patchFilters({ recurring: value })}
+              />
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Priority</label>
                 <button
