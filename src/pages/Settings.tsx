@@ -608,12 +608,12 @@ export default function Settings() {
             }}
             className={`group/nav text-left flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors ${
               isActive
-                ? 'bg-accent text-foreground font-medium'
-                : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                ? 'bg-primary/15 text-foreground font-medium border border-primary/25 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]'
+                : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04] border border-transparent'
             }`}
             aria-current={isActive ? 'page' : undefined}
           >
-            <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-foreground' : 'text-muted-foreground group-hover/nav:text-foreground'}`} />
+            <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground group-hover/nav:text-foreground'}`} />
             <span className="truncate flex-1">{group.label}</span>
             {badge > 0 && (
               <Badge variant="destructive" className="h-4 px-1.5 text-[10px]">
@@ -633,10 +633,10 @@ export default function Settings() {
         <meta name="description" content="Manage application settings" />
       </Helmet>
 
-      <div className="bg-background min-h-full">
+      <div className="bg-transparent min-h-full">
         <div className="flex w-full">
           {/* Sidebar — desktop */}
-          <aside className="hidden md:block w-56 shrink-0 border-r border-border/60 sticky top-0 self-start h-screen overflow-y-auto bg-background">
+          <aside className="hidden md:block w-56 shrink-0 border-r border-white/[0.06] sticky top-0 self-start h-screen overflow-y-auto bg-transparent">
             <div className="px-4 pt-5 pb-4">
               <Link
                 to="/dashboard"
@@ -648,13 +648,13 @@ export default function Settings() {
               <h1 className="text-base font-semibold tracking-tight">Settings</h1>
               <button
                 onClick={() => setPaletteOpen(true)}
-                className="mt-3 w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-md border border-border/60 bg-muted/30 hover:bg-muted/60 text-muted-foreground transition-colors"
+                className="mt-3 w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-xs rounded-md border border-white/[0.08] bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/[0.12] text-muted-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-0"
               >
                 <span className="flex items-center gap-2">
                   <Search className="h-3.5 w-3.5" />
                   Search…
                 </span>
-                <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-background border border-border">
+                <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-white/[0.04] border border-white/[0.08]">
                   ⌘K
                 </kbd>
               </button>
@@ -665,7 +665,7 @@ export default function Settings() {
           {/* Content pane */}
           <main className="flex-1 min-w-0">
             {/* Mobile header */}
-            <div className="md:hidden sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-3 border-b border-border/60 bg-background/95 backdrop-blur">
+            <div className="md:hidden sticky top-0 z-20 flex items-center justify-between gap-2 px-4 py-3 border-b border-white/[0.06] bg-background/60 backdrop-blur-xl">
               <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
                 <SheetTrigger asChild>
                   <Button variant="ghost" size="icon">
@@ -715,10 +715,10 @@ export default function Settings() {
                         <button
                           key={section.id}
                           onClick={() => goToSection(activeGroup.id, section.id)}
-                          className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 ${
+                          className={`whitespace-nowrap text-sm px-3 py-1.5 rounded-full transition-colors flex items-center gap-1.5 border ${
                             isActive
-                              ? 'bg-accent text-foreground font-medium'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-accent/40'
+                              ? 'bg-primary/15 text-foreground border-primary/30 font-medium'
+                              : 'text-muted-foreground hover:text-foreground hover:bg-white/[0.04] border-transparent'
                           }`}
                           aria-current={isActive ? 'page' : undefined}
                         >
@@ -737,7 +737,7 @@ export default function Settings() {
 
               {/* Read-only banner */}
               {!isAdmin && (
-                <div className="mb-6 flex items-start gap-3 rounded-lg border border-border/60 bg-muted/30 px-4 py-3 text-sm">
+                <div className="mb-6 flex items-start gap-3 rounded-lg glass-border-soft bg-white/[0.03] px-4 py-3 text-sm">
                   <Eye className="h-4 w-4 mt-0.5 text-muted-foreground shrink-0" />
                   <div>
                     <p className="font-medium">Read-only mode</p>
@@ -754,7 +754,7 @@ export default function Settings() {
                 {activeSection?.href ? (
                   <Link
                     to={activeSection.href}
-                    className="flex items-center justify-between p-4 bg-muted/30 rounded-lg hover:bg-muted/60 transition-colors border border-border/60"
+                    className="flex items-center justify-between p-4 rounded-lg glass-border-soft bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
                   >
                     <div>
                       <p className="font-medium">Open {activeSection.label}</p>
