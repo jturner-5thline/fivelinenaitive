@@ -409,6 +409,7 @@ const App = () => (
                           } />
                           <Route path="/privacy" element={<PrivacyPolicy />} />
                           <Route path="/unsubscribe" element={<Unsubscribe />} />
+                          <Route path="/schedule/confirm" element={<ScheduleConfirm />} />
                           <Route path="/terms" element={<TermsOfService />} />
                           <Route path="/homepage" element={<Homepage />} />
                           <Route path="/blog/:slug" element={<BlogPost />} />
