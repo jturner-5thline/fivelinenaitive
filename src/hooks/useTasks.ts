@@ -358,7 +358,7 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
           description: task.description || null,
           assigned_to: task.assigned_to || user.id,
           assigned_by: user.id,
-          priority: task.priority || 'medium',
+          priority: task.priority === 'urgent' ? 'urgent' : null,
           due_date: task.due_date || null,
           status: task.status || 'not_started',
           project_id: task.project_id || null,
