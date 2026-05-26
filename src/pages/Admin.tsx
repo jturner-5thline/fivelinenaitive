@@ -518,6 +518,8 @@ const Admin = () => {
         );
       case "ux-analytics":
         return <UXAnalyticsPanel />;
+      case "signalstack":
+        return <SignalStackApp />;
       case "ai-training":
         return (
           <Card>
