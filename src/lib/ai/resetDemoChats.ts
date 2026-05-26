@@ -80,12 +80,12 @@ export async function runDemoAiChatReset(
   }
 
   // 4. Server-side (fire-and-forget — do not block first paint)
-  supabase
-    .rpc('reset_demo_ai_chats' as any)
-    .then(({ error }) => {
-      if (error) console.warn('[demo-reset] rpc error:', error.message);
-    })
-    .catch((err) => console.warn('[demo-reset] rpc threw:', err));
+  try {
+    const { error } = await (supabase.rpc as any)('reset_demo_ai_chats');
+    if (error) console.warn('[demo-reset] rpc error:', error.message);
+  } catch (err) {
+    console.warn('[demo-reset] rpc threw:', err);
+  }
 }
 
 /** Test-only: clear the per-tab sentinel so the next call re-runs. */
