@@ -12,6 +12,8 @@ import { cn } from '@/lib/utils';
 import { type TeamMember } from '@/hooks/useTeamMembers';
 import { useAssigneeOpenTaskCounts } from '@/hooks/useAssigneeOpenTaskCounts';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { usePipelineContext } from '@/contexts/PipelineContext';
+import { Link } from 'react-router-dom';
 import type { Deal } from '@/types/deal';
 import { isActiveDeal } from '@/lib/deals';
 import { toast } from 'sonner';
@@ -116,6 +118,35 @@ export function QuickCreateTaskDialog({
   // through a type-ahead picker that respects RLS (deals already filtered
   // server-side via DealsContext).
   const { deals: allDeals } = useDealsContext();
+  // Active-pipeline scoping: restrict the picker to deals whose pipeline_id
+  // is on the company's currently-active pipelines — i.e. the default
+  // pipeline ("Active Pipeline") plus any pipeline named "In Development" /
+  // "Development Pipeline". Other pipelines (Archived, Guided, sandbox)
+  // and stage-level dead/closed deals are excluded so the picker matches
+  // the deals surfaced in /deals.
+  const { pipelines: companyPipelines } = usePipelineContext();
+  const activePipelineIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of companyPipelines) {
+      const n = (p.name || '').toLowerCase();
+      if (p.isDefault || n.includes('development')) ids.add(p.id);
+    }
+    return ids;
+  }, [companyPipelines]);
+  const pipelineNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const p of companyPipelines) m.set(p.id, p.name);
+    return m;
+  }, [companyPipelines]);
+  const stageOrderByPipeline = useMemo(() => {
+    const m = new Map<string, Map<string, number>>();
+    for (const p of companyPipelines) {
+      const inner = new Map<string, number>();
+      p.stages.forEach((s, i) => inner.set(s.id, i));
+      m.set(p.id, inner);
+    }
+    return m;
+  }, [companyPipelines]);
   const [dealId, setDealId] = useState<string | null>(null);
   const [dealPickerOpen, setDealPickerOpen] = useState(false);
   const [dealQuery, setDealQuery] = useState('');
@@ -326,10 +357,12 @@ export function QuickCreateTaskDialog({
 
   const selectedDeal = dealId ? allDeals.find(d => d.id === dealId) : null;
 
-  // Grouped deal results: active deals first (alpha), then archived/on-hold
-  // (alpha, greyed-out). Search filters across both groups but the grouping
-  // is preserved so users can scan active deals at the top.
-  const dealSearchGroups = useMemo(() => {
+  // Scoped, ordered deal list: company's Active Pipeline + Development
+  // Pipeline only, with stage-level dead deals excluded. Sorted by pipeline
+  // (default first, then development), stage order within the pipeline, then
+  // alpha by deal name. Search filters across name/company/lender/contact
+  // but preserves the ordering.
+  const dealPickerResults = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
     const matches = (d: Deal) =>
       !q ||
@@ -337,20 +370,30 @@ export function QuickCreateTaskDialog({
       (d.company || '').toLowerCase().includes(q) ||
       (d.lender || '').toLowerCase().includes(q) ||
       (d.contact || '').toLowerCase().includes(q);
-    const active: Deal[] = [];
-    const inactive: Deal[] = [];
-    for (const d of allDeals) {
-      if (!matches(d)) continue;
-      (isActiveDeal(d) ? active : inactive).push(d);
-    }
-    const byName = (a: Deal, b: Deal) =>
-      a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    active.sort(byName);
-    inactive.sort(byName);
-    return { active: active.slice(0, 50), inactive: inactive.slice(0, 50) };
-  }, [allDeals, dealQuery]);
-  const dealResultsEmpty =
-    dealSearchGroups.active.length === 0 && dealSearchGroups.inactive.length === 0;
+    const defaultPipelineId =
+      companyPipelines.find(p => p.isDefault)?.id ?? null;
+    const pipelineRank = (pid?: string) => {
+      if (!pid) return 99;
+      if (pid === defaultPipelineId) return 0;
+      return 1;
+    };
+    const filtered = allDeals.filter(d => {
+      if (!d.pipelineId || !activePipelineIds.has(d.pipelineId)) return false;
+      if (!isActiveDeal(d)) return false;
+      return matches(d);
+    });
+    filtered.sort((a, b) => {
+      const pr = pipelineRank(a.pipelineId) - pipelineRank(b.pipelineId);
+      if (pr !== 0) return pr;
+      const stageMap = stageOrderByPipeline.get(a.pipelineId || '');
+      const sa = stageMap?.get(a.stage as string) ?? 999;
+      const sb = stageMap?.get(b.stage as string) ?? 999;
+      if (sa !== sb) return sa - sb;
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
+    return filtered.slice(0, 100);
+  }, [allDeals, dealQuery, activePipelineIds, companyPipelines, stageOrderByPipeline]);
+  const dealResultsEmpty = dealPickerResults.length === 0;
 
   const dealStageTone = (stage?: string) => {
     switch (stage) {
@@ -854,20 +897,39 @@ export function QuickCreateTaskDialog({
                 </div>
                 <div className="max-h-[260px] overflow-y-auto py-1">
                   {dealResultsEmpty && (
-                    <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
-                      {dealQuery.trim() ? 'No deals match your search.' : 'No deals available.'}
+                    <div className="px-3 py-4 text-[11px] text-center space-y-1" style={{ color: '#7a8194' }}>
+                      <div>
+                        {dealQuery.trim()
+                          ? 'No active deals match your search.'
+                          : 'No active deals in your pipeline.'}
+                      </div>
+                      {!dealQuery.trim() && (
+                        <Link
+                          to="/deals"
+                          onClick={() => setDealPickerOpen(false)}
+                          className="inline-block text-[11px] font-medium hover:underline"
+                          style={{ color: '#7eb8f7' }}
+                        >
+                          Add a deal →
+                        </Link>
+                      )}
                     </div>
                   )}
-                  {dealSearchGroups.active.map(d => {
+                  {dealPickerResults.map(d => {
                     const commit = () => {
                       setDealId(d.id);
                       setDealPickerOpen(false);
                       setDealQuery('');
                     };
+                    const pipelineLabel = d.pipelineId
+                      ? pipelineNameById.get(d.pipelineId)
+                      : undefined;
                     return (
                       <button
                         key={d.id}
                         type="button"
+                        role="option"
+                        aria-selected={dealId === d.id}
                         // Use onMouseDown so selection commits before the
                         // Dialog/Popover focus-restore logic can intercept the
                         // click. preventDefault keeps focus on the trigger so
@@ -883,58 +945,15 @@ export function QuickCreateTaskDialog({
                             <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
                           )}
                         </span>
-                        {d.stage && (
+                        {pipelineLabel && (
                           <span
                             className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
                             style={{
-                              color: dealStageTone(d.stage),
-                              backgroundColor: `${dealStageTone(d.stage)}1a`,
+                              color: '#93c5fd',
+                              backgroundColor: 'rgba(30,58,95,0.6)',
                             }}
                           >
-                            {formatStage(d.stage)}
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
-                  {dealSearchGroups.inactive.length > 0 && (
-                    <div
-                      className="px-3 pt-2 pb-1 mt-1 border-t text-[9px] uppercase tracking-wider font-semibold"
-                      style={{ color: '#5b6173', borderColor: 'rgba(255,255,255,0.05)' }}
-                    >
-                      — Archived / On Hold —
-                    </div>
-                  )}
-                  {dealSearchGroups.inactive.map(d => {
-                    const commit = () => {
-                      setDealId(d.id);
-                      setDealPickerOpen(false);
-                      setDealQuery('');
-                    };
-                    return (
-                      <button
-                        key={d.id}
-                        type="button"
-                        onMouseDown={(e) => { e.preventDefault(); commit(); }}
-                        onClick={(e) => { e.preventDefault(); commit(); }}
-                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.05)] opacity-60"
-                        style={{ color: dealId === d.id ? '#cfe3ff' : '#9aa3b6' }}
-                      >
-                        <span className="flex-1 truncate">
-                          <span className="font-medium">{d.name}</span>
-                          {d.company && d.company !== d.name && (
-                            <span className="ml-2" style={{ color: '#5b6173' }}>· {d.company}</span>
-                          )}
-                        </span>
-                        {d.stage && (
-                          <span
-                            className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
-                            style={{
-                              color: dealStageTone(d.stage),
-                              backgroundColor: `${dealStageTone(d.stage)}14`,
-                            }}
-                          >
-                            {formatStage(d.stage)}
+                            {pipelineLabel}
                           </span>
                         )}
                       </button>
