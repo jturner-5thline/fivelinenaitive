@@ -174,6 +174,11 @@ export default function Integrations() {
         if (success) {
           toast.success("Microsoft connected!");
           microsoft.checkStatus();
+          // Also refresh the unified mail-connection status so other
+          // surfaces (Inbox dialog, deal Emails tab) immediately see the
+          // newly-connected Microsoft mailbox instead of prompting the
+          // user to "Connect your mail".
+          gmail.checkStatus();
         } else {
           toast.error("Failed to connect Microsoft");
         }
@@ -373,6 +378,9 @@ export default function Integrations() {
           }}
           onDisconnect={async () => {
             await microsoft.disconnect();
+            // Refresh unified mail-connection status so dependent UIs
+            // immediately reflect the disconnect.
+            await gmail.checkStatus();
           }}
         >
           <div className="space-y-3 mt-2">
