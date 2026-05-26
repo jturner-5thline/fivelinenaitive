@@ -26,13 +26,6 @@ interface CrmCompanyTasksCardProps {
   onExternalShowCreateChange?: (v: boolean) => void;
 }
 
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'urgent', label: 'Urgent' },
-];
-
 const STATUS_OPTIONS = [
   { value: 'not_started', label: 'Not Started' },
   { value: 'in_progress', label: 'In Progress' },
@@ -40,12 +33,6 @@ const STATUS_OPTIONS = [
   { value: 'complete', label: 'Complete' },
 ];
 
-const priorityColor: Record<string, string> = {
-  urgent: 'text-red-400',
-  high: 'text-orange-400',
-  medium: 'text-yellow-400',
-  low: 'text-muted-foreground',
-};
 
 export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate, onExternalShowCreateChange }: CrmCompanyTasksCardProps) {
   const { data: tasks = [], isLoading } = useCrmCompanyTasks(companyId);
