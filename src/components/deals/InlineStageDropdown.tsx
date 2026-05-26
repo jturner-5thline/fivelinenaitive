@@ -50,7 +50,7 @@ export function InlineStageDropdown({ dealId, stage, pipelineId, onStageChange, 
         >
           <Badge
             variant="outline"
-            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium leading-none bg-muted/60 border border-border/50 text-foreground/85 cursor-pointer transition-colors hover:bg-muted/80 hover:text-foreground ${className}`}
+            className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-medium leading-tight bg-muted/60 border border-border/50 text-foreground/85 cursor-pointer transition-colors hover:bg-muted/80 hover:text-foreground max-w-full text-left whitespace-normal break-words ${className}`}
           >
             {currentConfig.label}
           </Badge>
