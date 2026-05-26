@@ -414,6 +414,24 @@ export function QuickCreateTaskDialog({
       <DialogContent
         className="sm:max-w-[480px] p-0 border"
         style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.06)' }}
+        // Ignore outside-interaction events that originate from Radix-portaled
+        // children (Popover, Select, Calendar). Without this, clicking the
+        // deal picker's search input or any row inside the portaled
+        // PopoverContent is treated as a click outside the Dialog and
+        // immediately dismisses the modal.
+        onPointerDownOutside={(e) => {
+          const t = e.target as HTMLElement | null;
+          if (t?.closest('[data-radix-popper-content-wrapper], [data-radix-popover-content], [data-radix-select-content], [role="listbox"], [role="option"], [data-deal-picker], [cmdk-root]')) {
+            e.preventDefault();
+          }
+        }}
+        onInteractOutside={(e) => {
+          const t = e.target as HTMLElement | null;
+          if (t?.closest('[data-radix-popper-content-wrapper], [data-radix-popover-content], [data-radix-select-content], [role="listbox"], [role="option"], [data-deal-picker], [cmdk-root]')) {
+            e.preventDefault();
+          }
+        }}
+        onFocusOutside={(e) => e.preventDefault()}
       >
         <DialogHeader className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
           <DialogTitle className="text-[15px] font-semibold tracking-tight" style={{ color: '#eef1f6' }}>
@@ -881,9 +899,11 @@ export function QuickCreateTaskDialog({
                 </button>
               </PopoverTrigger>
               <PopoverContent
+                data-deal-picker="true"
                 className="p-0 w-[440px] max-h-[320px] overflow-hidden"
                 align="start"
                 style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.08)' }}
+                onOpenAutoFocus={(e) => e.preventDefault()}
               >
                 <div className="p-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   <Input
