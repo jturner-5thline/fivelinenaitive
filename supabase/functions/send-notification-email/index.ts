@@ -1310,7 +1310,41 @@ const handler = async (req: Request): Promise<Response> => {
     // --- Send to all recipients ---
     const preferenceKey = preferenceMap[payload.type];
     const results: any[] = [];
+    // Defense-in-depth: when this notification is a workflow follow-up
+    // (subject prefixed "Follow-up:" or type === 'workflow_action'),
+    // never deliver to internal @5thline.co addresses. Briefings, weekly
+    // summaries and other intentional-internal emails use different types
+    // and are not affected.
+    const suppressionEnabled =
+      (Deno.env.get("EMAIL_INTERNAL_SUPPRESSION_ENABLED") ?? "true").toLowerCase() !== "false";
+    const isWorkflowFollowup =
+      (payload as any).type === "workflow_action" ||
+      /^Follow-?up:/i.test(String((payload as any)?.metadata?.subject || ""));
     for (const recipient of recipients) {
+      if (
+        suppressionEnabled &&
+        isWorkflowFollowup &&
+        recipient.email.toLowerCase().endsWith("@5thline.co")
+      ) {
+        console.log(
+          `[email] internal_user_suppressed recipient=${recipient.email} subject="${emailSubject}" deal_id=${payload.deal_id ?? ""}`
+        );
+        try {
+          await supabaseAdmin.from("email_suppression_log").insert({
+            intended_recipient: recipient.email.toLowerCase(),
+            reason: "internal_user_suppressed",
+            template: (payload as any)?.metadata?.template ?? null,
+            function_name: "send-notification-email",
+            deal_id: payload.deal_id ?? null,
+            subject: emailSubject,
+            metadata: { payload_type: payload.type },
+          });
+        } catch (logErr) {
+          console.error("[email] suppression_log insert failed:", logErr);
+        }
+        results.push({ email: recipient.email, skipped: true, reason: "internal_user_suppressed" });
+        continue;
+      }
       // Check per-recipient notification preferences
       const profileData = recipient.profile;
       if (!profileData.email_notifications || (preferenceKey && !profileData[preferenceKey])) {
