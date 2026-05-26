@@ -602,6 +602,8 @@ export default function Tasks() {
         ownerFilter,
         filterDealIds: Array.from(filterDealIds),
         filterLabelIds: Array.from(filterLabelIds),
+        filterPriorities: Array.from(filterPriorities),
+        showAllDeals,
         filterDueDate,
         filterRecurring,
       },
@@ -668,6 +670,12 @@ export default function Tasks() {
     if (c.ownerFilter) setOwnerFilter(c.ownerFilter as TaskOwnerFilter);
     if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
     if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
+    if (Array.isArray((c as any).filterPriorities)) {
+      setFilterPriorities(new Set((c as any).filterPriorities as TaskPriority[]));
+    }
+    if (typeof (c as any).showAllDeals === 'boolean') {
+      setShowAllDeals((c as any).showAllDeals);
+    }
     if (c.filterDueDate) setFilterDueDate(c.filterDueDate as FilterDueDate);
     if (c.filterRecurring) setFilterRecurring(c.filterRecurring as FilterRecurring);
     toast.success(`Loaded view: ${view.name}`);
@@ -1234,6 +1242,10 @@ export default function Tasks() {
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-xs gap-2" onClick={handleExportCSV}>
                 <FileDown className="h-3.5 w-3.5" /> Export CSV
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
+                <BookmarkPlus className="h-3.5 w-3.5" /> Save current as preset
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Templates</DropdownMenuLabel>

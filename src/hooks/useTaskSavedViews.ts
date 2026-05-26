@@ -16,6 +16,8 @@ export interface TaskSavedView {
     ownerFilter?: string;
     filterDealIds?: string[];
     filterLabelIds?: string[];
+    filterPriorities?: string[];
+    showAllDeals?: boolean;
     filterDueDate?: string; // 'all' | 'overdue' | 'today' | 'this_week' | 'no_date'
     filterRecurring?: string; // 'all' | 'recurring' | 'paused'
   };
