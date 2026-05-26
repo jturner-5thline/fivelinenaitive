@@ -447,7 +447,7 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
                   <GitBranch className="h-5 w-5 text-primary" />
                   <div>
                     <CardTitle className="text-lg">Deal Stages</CardTitle>
-                    <CardDescription>Configure the stages in your deal pipeline</CardDescription>
+                    <CardDescription>Edit the stages of your configured deal pipeline. Changes apply across kanban, filters and stage selectors.</CardDescription>
                   </div>
                 </div>
                 {isOpen ? (
@@ -462,7 +462,29 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
             <CardContent className="space-y-4">
               {/* Top Save Bar */}
               <SaveBar />
-              
+
+              {pipelines.length > 1 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Pipeline</Label>
+                  <Select value={selectedPipelineId ?? undefined} onValueChange={switchPipeline}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelines.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}{p.isDefault ? ' (Active)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {pipelines.length === 0 && (
+                <p className="text-sm text-muted-foreground">No deal pipeline configured for this account yet.</p>
+              )}
+
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
