@@ -43,6 +43,7 @@ import { StageMeetingTitleChip } from './StageMeetingTitleChip';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { OpenAvailabilityCard } from './OpenAvailabilityCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
+import { AIAssistOverlayProvider } from './AIAssistOverlay';
 import { CadenceInsightCard } from './CadenceInsightCard';
 import {
   COMPOSE_BODY_EVENT,
@@ -974,6 +975,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       </div>
 
       {/* Content */}
+      <AIAssistOverlayProvider>
       <ScrollArea
         className="flex-1 min-h-0 min-w-0 w-full overflow-hidden [&>[data-radix-scroll-area-viewport]>div]:!block [&>[data-radix-scroll-area-viewport]>div]:!min-w-0 [&>[data-radix-scroll-area-viewport]>div]:!w-full [&>[data-radix-scroll-area-viewport]>div]:!max-w-full"
         // overscroll-contain stops scroll chaining into the dialog/dashboard
@@ -1549,6 +1551,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
 
         </div>
       </ScrollArea>
+      </AIAssistOverlayProvider>
 
       {/* Footer actions */}
       <div className="border-t border-white/[0.06] px-3 py-3 flex items-center gap-2 shrink-0 min-w-0 w-full">
