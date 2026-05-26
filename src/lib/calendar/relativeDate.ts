@@ -30,10 +30,10 @@ export function getRelativeDateLabel(date: Date, now: Date, tz: string): string 
   if (diff <= 0 && diff > -1) return 'Today';
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Tomorrow';
-  if (diff >= 2 && diff <= 6) {
+  if (diff >= 2 && diff <= 5) {
     return new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: tz }).format(date);
   }
-  // 7+ days out — or past (fallback to full label).
+  // 6+ days out — or past (fallback to full weekday + date).
   return new Intl.DateTimeFormat('en-US', {
     weekday: 'short', month: 'short', day: 'numeric', timeZone: tz,
   }).format(date);
