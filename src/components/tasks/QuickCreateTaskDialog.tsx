@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 
 export interface QuickTaskInput {
   title: string;
-  priority: 'low' | 'medium' | 'high' | 'urgent' | null;
+  priority: 'urgent' | null;
   due_date: string | null;
   status: 'not_started' | 'in_progress' | 'blocked' | 'complete';
   assigned_to: string;
