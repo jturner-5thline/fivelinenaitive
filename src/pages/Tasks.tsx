@@ -1294,11 +1294,9 @@ export default function Tasks() {
               {filterDueDate !== 'all' && (
                 <FilterChip label={DUE_LABELS[filterDueDate]} onClear={() => setFilterDueDate('all')} />
               )}
-              {Array.from(filterPriorities).map(p => (
-                <FilterChip key={p} label={`Priority: ${PRIORITY_LABEL_MAP[p]}`} onClear={() => {
-                  setFilterPriorities(prev => { const n = new Set(prev); n.delete(p); return n; });
-                }} />
-              ))}
+              {urgentOnly && (
+                <FilterChip label="Priority: Urgent" onClear={() => setUrgentOnly(false)} />
+              )}
               {Array.from(filterDealIds).map(id => {
                 const name = allDealOptions.find(([d]) => d === id)?.[1]
                   || uniqueDeals.find(([d]) => d === id)?.[1] || 'Deal';
