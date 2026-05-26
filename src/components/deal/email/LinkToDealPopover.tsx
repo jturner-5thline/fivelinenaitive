@@ -104,14 +104,21 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
   const handleSelect = async (deal: Deal) => {
     if (linking) return;
     setLinking(true);
-    // Close immediately for snappy feel; persistence is awaited separately.
-    setOpen(false);
-    setSearch('');
+    setError(null);
+    // Keep the popover OPEN until the link mutation actually resolves. If it
+    // fails we want the user to see the error and retry without having to
+    // re-open the popover and re-search the deal.
     try {
+      console.log('[LinkToDealPopover] linking', { dealId: deal.id, dealName: deal.company });
       await Promise.resolve(onLinkDeal(deal.id, deal.company));
       toast.success(`Linked to ${deal.company}`);
+      setSearch('');
+      setOpen(false);
     } catch (err: any) {
-      toast.error(err?.message || 'Failed to link deal');
+      console.error('[LinkToDealPopover] link failed', err);
+      const msg = err?.message || 'Failed to link deal';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLinking(false);
     }
@@ -199,7 +206,18 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
                 return (
                   <button
                     key={deal.id}
-                    onClick={() => !isCurrentlyLinked && handleSelect(deal)}
+                    type="button"
+                    disabled={linking || isCurrentlyLinked}
+                    onClick={(e) => {
+                      // Stop the click from bubbling up to Radix's outside-click
+                      // / dismiss handlers — otherwise the popover treats the
+                      // row click as a dismiss and we never run the mutation.
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (isCurrentlyLinked) return;
+                      void handleSelect(deal);
+                    }}
+                    onMouseDown={(e) => e.stopPropagation()}
                     onMouseEnter={() => setActiveIndex(idx)}
                     className={cn(
                       'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left transition-colors',
@@ -210,7 +228,11 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
                           : 'hover:bg-muted/50'
                     )}
                   >
-                    <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    {linking && isActive ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground shrink-0" />
+                    ) : (
+                      <Briefcase className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-1.5">
                         <span className="text-xs font-medium truncate">{deal.company}</span>
