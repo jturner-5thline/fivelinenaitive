@@ -61,6 +61,34 @@ export function useTaskCollaborators(taskId: string | null) {
         console.error('[task_collaborators] insert failed', { taskId, userId, error });
         throw error;
       }
+
+      // Fire-and-forget in-app notification for the added collaborator.
+      // RLS-safe via SECURITY DEFINER RPC that verifies the caller can access the task.
+      try {
+        // Fetch task title + deal for nicer notification copy
+        const { data: t } = await supabase
+          .from('tasks')
+          .select('title, deal_id')
+          .eq('id', taskId)
+          .maybeSingle();
+        const title = (t as any)?.title || 'a task';
+        const dealId = (t as any)?.deal_id || null;
+        const { data: { user } } = await supabase.auth.getUser();
+        const { data: actor } = user
+          ? await supabase.from('profiles').select('display_name').eq('user_id', user.id).maybeSingle()
+          : { data: null } as any;
+        const actorName = (actor as any)?.display_name || 'Someone';
+        await supabase.rpc('create_task_inapp_notification' as any, {
+          _task_id: taskId,
+          _recipient_user_id: userId,
+          _trigger_key: 'task_collaborator_added',
+          _title: 'You were added as a collaborator',
+          _body: `${actorName} added you to "${title}"`,
+          _context: { task_id: taskId, task_title: title, deal_id: dealId, added_by_user_id: user?.id ?? null },
+        });
+      } catch (e) {
+        console.warn('[task_collaborators] in-app notification failed (non-fatal)', e);
+      }
     },
     onMutate: async (userId: string) => {
       await queryClient.cancelQueries({ queryKey: key });
