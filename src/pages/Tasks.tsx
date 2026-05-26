@@ -662,8 +662,12 @@ export default function Tasks() {
     if (c.ownerFilter) setOwnerFilter(c.ownerFilter as TaskOwnerFilter);
     if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
     if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
-    if (Array.isArray((c as any).filterPriorities)) {
-      setFilterPriorities(new Set((c as any).filterPriorities as TaskPriority[]));
+    if (typeof (c as any).urgentOnly === 'boolean') {
+      setUrgentOnly((c as any).urgentOnly);
+    } else if (Array.isArray((c as any).filterPriorities)) {
+      // Back-compat: any priority preset that previously included 'urgent'
+      // now maps to the simplified urgent-only flag; everything else is dropped.
+      setUrgentOnly(((c as any).filterPriorities as string[]).includes('urgent'));
     }
     if (typeof (c as any).showAllDeals === 'boolean') {
       setShowAllDeals((c as any).showAllDeals);
