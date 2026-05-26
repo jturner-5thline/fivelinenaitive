@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import * as TabsPrimitive from '@radix-ui/react-tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AgendaIntel } from './AgendaIntel';
 import { EndOfDayTab } from './EndOfDayTab';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -1793,46 +1795,61 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
         overlayClassName="bg-black/80"
       >
         <div className="flex flex-col h-full min-h-0 min-w-0 relative max-w-full overflow-hidden">
-          {/* Unified top header — title + date on the left, primary tab
-              navigation on the right. When the Email tab is active, a second
-              row beneath surfaces the email sub-tabs and the unread/all
-              segmented control so all navigation lives in one cohesive band. */}
-          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 min-h-0 min-w-0 flex flex-col overflow-hidden">
-            <div
-              className="glass-divider-b glass-surface-1 min-w-0"
-              style={{
-                paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
-                paddingRight: 'clamp(0.75rem, 1.4vw, 1.5rem)',
-                paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
-                paddingBottom: 'clamp(0.5rem, 0.9vw, 0.75rem)',
-                rowGap: 'clamp(0.5rem, 0.9vw, 0.75rem)',
-                display: 'flex',
-                flexDirection: 'column',
-              }}
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight truncate">{title}</h2>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground/60 mt-0.5 truncate">
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="flex-1 min-h-0 min-w-0 flex flex-row overflow-hidden">
+            {/* Left vertical icon rail */}
+            <TooltipProvider delayDuration={150}>
+              <TabsPrimitive.List
+                aria-orientation="vertical"
+                className="shrink-0 flex flex-col items-center gap-2 w-14 sm:w-16 py-3 border-r border-border/40 bg-white/[0.02]"
+              >
+                {TABS.map(tab => {
+                  const Icon = tab.icon;
+                  return (
+                    <Tooltip key={tab.value}>
+                      <TooltipTrigger asChild>
+                        <TabsPrimitive.Trigger
+                          value={tab.value}
+                          aria-label={tab.label}
+                          className={cn(
+                            'h-10 w-10 inline-flex items-center justify-center rounded-lg',
+                            'text-muted-foreground/70 hover:text-foreground hover:bg-white/[0.06]',
+                            'transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+                            'data-[state=active]:bg-primary/15 data-[state=active]:text-primary',
+                          )}
+                        >
+                          <Icon className="h-5 w-5" />
+                        </TabsPrimitive.Trigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="right" align="center" sideOffset={6}>
+                        {tab.label}
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </TabsPrimitive.List>
+            </TooltipProvider>
+
+            {/* Main column: single-row header + content */}
+            <div className="flex-1 min-w-0 min-h-0 flex flex-col overflow-hidden">
+              <div
+                className="glass-divider-b glass-surface-1 min-w-0"
+                style={{
+                  paddingLeft: 'clamp(0.75rem, 1.4vw, 1.5rem)',
+                  paddingRight: 'clamp(2.5rem, 3vw, 3.25rem)',
+                  paddingTop: 'clamp(0.5rem, 1vw, 1rem)',
+                  paddingBottom: 'clamp(0.5rem, 0.9vw, 0.75rem)',
+                  rowGap: 'clamp(0.5rem, 0.9vw, 0.75rem)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                }}
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <h2 className="text-base sm:text-lg font-bold text-foreground tracking-tight whitespace-nowrap">{title}</h2>
+                  <span aria-hidden="true" className="h-4 w-px bg-border/60 shrink-0" />
+                  <p className="text-[11px] sm:text-xs text-muted-foreground/70 truncate min-w-0">
                     {window.label} • {format(new Date(), 'EEEE, MMMM d, yyyy')}
                   </p>
                 </div>
-                <TabsList className="shrink-0 flex-wrap h-auto">
-                  {TABS.map(tab => {
-                    const Icon = tab.icon;
-                    return (
-                      <TabsTrigger
-                        key={tab.value}
-                        value={tab.value}
-                        className="gap-1.5 text-[11px] sm:text-xs px-2 sm:px-3 py-1 sm:py-1.5"
-                      >
-                        <Icon className="h-3.5 w-3.5" />
-                        <span className="hidden md:inline">{tab.label}</span>
-                      </TabsTrigger>
-                    );
-                  })}
-                </TabsList>
-              </div>
 
               {isEmailActive && (
                 <div className="flex flex-wrap items-center gap-1.5 min-w-0">
@@ -1891,9 +1908,9 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                   </div>
                 </div>
               )}
-            </div>
+              </div>
 
-            <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative">
+              <div className="flex-1 min-h-0 min-w-0 overflow-hidden relative">
               {/* Left arrow */}
               {canGoLeft && (
                 <button
@@ -1970,6 +1987,7 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                   )}
                 </div>
               </ScrollArea>
+              </div>
             </div>
           </Tabs>
         </div>
