@@ -695,7 +695,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_fields",
-      description: "Update one or more deal fields in a SINGLE transactional update — value/size, closing_date, flag status, stage, manager, deal_owner, narrative, deal_type, engagement_type. Use this when the user requests multiple field changes in one prompt; it renders ONE combined confirmation card and verifies each column individually after write. HIGH RISK for stage/manager/owner/type/engagement — returns a confirmation card.",
+      description: "Update one or more deal fields in a SINGLE transactional update — value/size, closing_date, flag status, stage, manager, deal_owner, narrative, deal_type, engagement_type, AND tracked hours (pre_signing_hours, post_signing_hours).\n\nHours fields: use the *_delta variant to ADD/SUBTRACT hours (e.g. user says \"add 0.5 Post Signing hours\" → post_signing_hours_delta: 0.5). Use the absolute *_hours field only when the user explicitly sets a total (e.g. \"set post signing to 4 hours\"). NEVER call this tool without at least one writable field populated — value, closing_date, is_flagged, stage, manager, deal_owner, narrative, deal_type, engagement_type, pre_signing_hours[_delta], or post_signing_hours[_delta]. Calling it with only {deal_id, deal_name} is invalid and will be rejected.\n\nExample — 'Add 0.5 Post Signing hours to Upflex': { deal_id: '<uuid>', deal_name: 'Upflex', post_signing_hours_delta: 0.5 }. For multiple deals, emit ONE tool call per deal with the same shape.\n\nHIGH RISK for stage/manager/owner/type/engagement — returns a confirmation card. Hours and value/date/flag updates render an auto-confirm card.",
       parameters: {
         type: "object",
         properties: {
@@ -711,6 +711,10 @@ const tools = [
           narrative: { type: "string", description: "New deal narrative / overview text" },
           deal_type: { type: "string", description: "New deal type" },
           engagement_type: { type: "string", description: "New engagement type" },
+          pre_signing_hours: { type: "number", description: "Set absolute Pre-Signing hours total. Prefer pre_signing_hours_delta for additive requests." },
+          pre_signing_hours_delta: { type: "number", description: "Add this many Pre-Signing hours (can be negative). Use for 'add/log/subtract X pre-signing hours'." },
+          post_signing_hours: { type: "number", description: "Set absolute Post-Signing hours total. Prefer post_signing_hours_delta for additive requests." },
+          post_signing_hours_delta: { type: "number", description: "Add this many Post-Signing hours (can be negative). Use for 'add/log/subtract X post-signing hours'." },
           current_value: { type: "number", description: "Current value, for the diff card" },
           current_closing_date: { type: "string", description: "Current closing date, for the diff card" },
           current_is_flagged: { type: "boolean", description: "Current flag state, for the diff card" },
@@ -2899,11 +2903,43 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── MIXED RISK: Deal field updates ──
     case "update_deal_fields": {
-      const { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged").eq("id", args.deal_id).single();
+      const { data: deal } = await supabase.from("deals").select("id, company, value, closing_date, is_flagged, pre_signing_hours, post_signing_hours").eq("id", args.deal_id).single();
       if (!deal) return { error: "Deal not found" };
 
+      // Validate that the model actually included a writable field. Without
+      // this, the model can emit `{ deal_id, deal_name }` with no payload and
+      // then narrate false success when the execute step rejects it.
+      const HOUR_KEYS = ["pre_signing_hours", "pre_signing_hours_delta", "post_signing_hours", "post_signing_hours_delta"] as const;
+      const WRITABLE_KEYS = [
+        "value", "closing_date", "is_flagged", "flag_notes",
+        "stage", "manager", "deal_owner", "narrative", "deal_type", "engagement_type",
+        ...HOUR_KEYS,
+      ];
+      const providedKeys = WRITABLE_KEYS.filter((k) => (args as any)[k] !== undefined && (args as any)[k] !== null);
+      console.log("[copilot-chat] update_deal_fields confirm — deal_id=%s providedKeys=%j args=%j", args.deal_id, providedKeys, args);
+      if (providedKeys.length === 0) {
+        return {
+          error: `update_deal_fields called for ${deal.company} with no writable fields. To add hours include post_signing_hours_delta (e.g. 0.5) or pre_signing_hours_delta. To change other fields include value, closing_date, is_flagged, stage, manager, deal_owner, narrative, deal_type, or engagement_type. Re-emit the call with the correct payload.`,
+          error_code: "EMPTY_FIELDS",
+        };
+      }
+
+      // Resolve hours deltas against current values for the diff card.
+      let resolvedPreHours: number | undefined;
+      let resolvedPostHours: number | undefined;
+      if (args.pre_signing_hours_delta !== undefined && args.pre_signing_hours_delta !== null) {
+        resolvedPreHours = Number(deal.pre_signing_hours || 0) + Number(args.pre_signing_hours_delta);
+      } else if (args.pre_signing_hours !== undefined && args.pre_signing_hours !== null) {
+        resolvedPreHours = Number(args.pre_signing_hours);
+      }
+      if (args.post_signing_hours_delta !== undefined && args.post_signing_hours_delta !== null) {
+        resolvedPostHours = Number(deal.post_signing_hours || 0) + Number(args.post_signing_hours_delta);
+      } else if (args.post_signing_hours !== undefined && args.post_signing_hours !== null) {
+        resolvedPostHours = Number(args.post_signing_hours);
+      }
+
       // Flag changes are LOW RISK — auto-execute
-      if (args.is_flagged !== undefined && args.value === undefined && args.closing_date === undefined) {
+      if (args.is_flagged !== undefined && args.value === undefined && args.closing_date === undefined && resolvedPreHours === undefined && resolvedPostHours === undefined) {
         try {
           await verifiedDealUpdate(supabase, args.deal_id, {
             is_flagged: args.is_flagged,
@@ -2934,6 +2970,8 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       if (args.value !== undefined) changes.push(`Deal size: $${deal.value?.toLocaleString() || 0} → $${args.value.toLocaleString()}`);
       if (args.closing_date !== undefined) changes.push(`Close date: ${deal.closing_date || 'None'} → ${args.closing_date || 'None'}`);
       if (args.is_flagged !== undefined) changes.push(`Flag: ${args.is_flagged ? 'On' : 'Off'}`);
+      if (resolvedPreHours !== undefined) changes.push(`Pre-Signing hours: ${Number(deal.pre_signing_hours || 0)} → ${resolvedPreHours}`);
+      if (resolvedPostHours !== undefined) changes.push(`Post-Signing hours: ${Number(deal.post_signing_hours || 0)} → ${resolvedPostHours}`);
 
       return {
         action: "confirm",
@@ -2943,6 +2981,10 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           deal_id: args.deal_id, deal_name: deal.company,
           value: args.value, closing_date: args.closing_date,
           is_flagged: args.is_flagged, flag_notes: args.flag_notes,
+          pre_signing_hours: resolvedPreHours,
+          post_signing_hours: resolvedPostHours,
+          current_pre_signing_hours: resolvedPreHours !== undefined ? Number(deal.pre_signing_hours || 0) : undefined,
+          current_post_signing_hours: resolvedPostHours !== undefined ? Number(deal.post_signing_hours || 0) : undefined,
           current_value: deal.value, current_closing_date: deal.closing_date,
         },
       };
@@ -5316,10 +5358,31 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.narrative !== undefined) updateFields.narrative = params.narrative;
       if (params.deal_type !== undefined) updateFields.deal_type = params.deal_type;
       if (params.engagement_type !== undefined) updateFields.engagement_type = params.engagement_type;
+      // Hours: support both absolute set (pre/post_signing_hours) and deltas.
+      // If a delta is provided without a pre-resolved absolute, read current
+      // and add. The confirm branch usually pre-resolves into the absolute
+      // field, so the delta path is a safety net for direct executes.
+      if (params.pre_signing_hours !== undefined && params.pre_signing_hours !== null) {
+        updateFields.pre_signing_hours = Number(params.pre_signing_hours);
+      } else if (params.pre_signing_hours_delta !== undefined && params.pre_signing_hours_delta !== null) {
+        const { data: cur } = await supabase.from("deals").select("pre_signing_hours").eq("id", params.deal_id).maybeSingle();
+        updateFields.pre_signing_hours = Number((cur as any)?.pre_signing_hours || 0) + Number(params.pre_signing_hours_delta);
+      }
+      if (params.post_signing_hours !== undefined && params.post_signing_hours !== null) {
+        updateFields.post_signing_hours = Number(params.post_signing_hours);
+      } else if (params.post_signing_hours_delta !== undefined && params.post_signing_hours_delta !== null) {
+        const { data: cur } = await supabase.from("deals").select("post_signing_hours").eq("id", params.deal_id).maybeSingle();
+        updateFields.post_signing_hours = Number((cur as any)?.post_signing_hours || 0) + Number(params.post_signing_hours_delta);
+      }
       // Capture "before" snapshot of the exact fields we are about to change
       const beforeCols = Object.keys(updateFields);
+      console.log("[copilot-chat] update_deal_fields execute — deal_id=%s fields=%j params=%j", params.deal_id, beforeCols, params);
       if (beforeCols.length === 0) {
-        return { success: false, error: "No deal fields provided to update." };
+        return {
+          success: false,
+          error: "No deal fields provided to update. Re-emit update_deal_fields with at least one writable field (e.g. post_signing_hours_delta: 0.5 to add Post-Signing hours).",
+          error_code: "EMPTY_FIELDS",
+        };
       }
       const { data: beforeRow } = await supabase
         .from("deals")
@@ -5347,6 +5410,8 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.deal_type !== undefined) changes.push(`type to ${params.deal_type}`);
       if (params.engagement_type !== undefined) changes.push(`engagement to ${params.engagement_type}`);
       if (params.narrative !== undefined) changes.push(`narrative updated`);
+      if (updateFields.pre_signing_hours !== undefined) changes.push(`pre-signing hours to ${updateFields.pre_signing_hours}`);
+      if (updateFields.post_signing_hours !== undefined) changes.push(`post-signing hours to ${updateFields.post_signing_hours}`);
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id, activity_type: "deal_updated",
         description: `Deal updated: ${changes.join(', ')} via AI Copilot`,

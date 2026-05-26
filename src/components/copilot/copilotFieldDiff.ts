@@ -206,6 +206,22 @@ export function deriveFieldDiffs(
           newValue: get("engagement_type"),
         });
       }
+      if (get("pre_signing_hours") !== undefined) {
+        rows.push({
+          field: "pre_signing_hours",
+          label: "Pre-Signing hours",
+          oldValue: get("current_pre_signing_hours"),
+          newValue: get("pre_signing_hours"),
+        });
+      }
+      if (get("post_signing_hours") !== undefined) {
+        rows.push({
+          field: "post_signing_hours",
+          label: "Post-Signing hours",
+          oldValue: get("current_post_signing_hours"),
+          newValue: get("post_signing_hours"),
+        });
+      }
       return rows;
     }
     case "move_deal_pipeline":
