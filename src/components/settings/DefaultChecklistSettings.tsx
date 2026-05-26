@@ -456,27 +456,50 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
       {/* ─── Dialogs ─── */}
 
       {/* Add deal type config */}
-      <Dialog open={addConfigOpen} onOpenChange={setAddConfigOpen}>
+      <Dialog open={addConfigOpen} onOpenChange={(o) => { setAddConfigOpen(o); if (!o) setNewMatchString(''); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Add Deal Type Checklist</DialogTitle></DialogHeader>
           <div className="space-y-2">
-            <Label>Match String (e.g. &quot;Growth Capital&quot;)</Label>
-            <Input value={newMatchString} onChange={e => setNewMatchString(e.target.value)} placeholder="Growth Capital"
-              onKeyDown={e => e.key === 'Enter' && handleAddConfig()} />
-            <p className="text-[11px] text-muted-foreground">Deals whose type contains this string will use this checklist.</p>
+            <Label>Deal Type</Label>
+            {availableForAdd.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">
+                All configured Deal Types already have a checklist. Add a new Deal Type in Settings → Deal Types to create another.
+              </p>
+            ) : (
+              <Select value={newMatchString} onValueChange={setNewMatchString}>
+                <SelectTrigger><SelectValue placeholder="Select a Deal Type" /></SelectTrigger>
+                <SelectContent>
+                  {availableForAdd.map(dt => (
+                    <SelectItem key={dt.id} value={dt.label}>{dt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Checklist will apply to deals with this exact Deal Type. Manage Deal Types in Settings → Deal Types.
+            </p>
           </div>
           <DialogFooter>
-            <Button size="sm" onClick={handleAddConfig} disabled={!newMatchString.trim()}>Add</Button>
+            <Button size="sm" onClick={handleAddConfig} disabled={!newMatchString.trim() || availableForAdd.length === 0}>Add</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit deal type match string */}
+      {/* Edit deal type */}
       <Dialog open={!!editConfigId} onOpenChange={o => !o && setEditConfigId(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Edit Match String</DialogTitle></DialogHeader>
-          <Input value={editMatchString} onChange={e => setEditMatchString(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleEditConfig()} />
+          <DialogHeader><DialogTitle>Edit Deal Type</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Deal Type</Label>
+            <Select value={editMatchString} onValueChange={setEditMatchString}>
+              <SelectTrigger><SelectValue placeholder="Select a Deal Type" /></SelectTrigger>
+              <SelectContent>
+                {availableForEdit(editMatchString).map(dt => (
+                  <SelectItem key={dt.id} value={dt.label}>{dt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <DialogFooter>
             <Button size="sm" onClick={handleEditConfig} disabled={!editMatchString.trim()}>Save</Button>
           </DialogFooter>
