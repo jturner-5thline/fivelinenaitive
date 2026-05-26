@@ -8,8 +8,7 @@ describe('matchDemoScript', () => {
   it('matches the canonical prompt for the demo user', () => {
     const r = matchDemoScript({ email, prompt });
     expect(r?.reply).toContain('65%');
-    expect(r?.delayMs).toBeGreaterThanOrEqual(1200);
-    expect(r?.delayMs).toBeLessThanOrEqual(1800);
+    expect(r?.delayMs).toBe(3000);
   });
 
   it('matches the variant without trailing punctuation', () => {

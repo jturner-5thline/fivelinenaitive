@@ -43,10 +43,8 @@ const DEMO_SCRIPTS: Record<string, string> = {
     'About 65% of their current pipeline is committed, with signed LOIs or contracts in place already.',
 };
 
-function randomDelayMs(): number {
-  // Uniform 1200–1800ms.
-  return 1200 + Math.floor(Math.random() * 601);
-}
+/** Fixed thinking delay applied to every scripted demo reply. */
+const DEMO_SCRIPT_DELAY_MS = 3000;
 
 export function matchDemoScript({ email, prompt }: MatchDemoScriptArgs): DemoScriptMatch | null {
   if (!email || email.toLowerCase() !== DEMO_SCRIPT_EMAIL) return null;
@@ -54,5 +52,5 @@ export function matchDemoScript({ email, prompt }: MatchDemoScriptArgs): DemoScr
   const key = normalizeDemoPrompt(prompt);
   const reply = DEMO_SCRIPTS[key];
   if (!reply) return null;
-  return { reply, delayMs: randomDelayMs() };
+  return { reply, delayMs: DEMO_SCRIPT_DELAY_MS };
 }
