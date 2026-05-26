@@ -456,6 +456,14 @@ export function useMyTasks(ownerFilter: TaskOwnerFilter = 'mine') {
             dealName,
             dueDate: (data as any).due_date,
           });
+          createTaskAssignedNotification({
+            taskId: (data as any).id,
+            taskTitle: (data as any).title,
+            assigneeUserId: (data as any).assigned_to,
+            assignedByName: assignerProfile?.display_name || undefined,
+            dealName,
+            dealId: (data as any).deal_id || null,
+          });
         }
 
         // Asana sync (fire-and-forget)
