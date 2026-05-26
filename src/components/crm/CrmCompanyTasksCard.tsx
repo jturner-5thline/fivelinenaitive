@@ -46,7 +46,7 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
   const [description, setDescription] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState('medium');
+  const [priority, setPriority] = useState('');
   const [status, setStatus] = useState('not_started');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filters, setFilters] = useState<TaskFilters>(DEFAULT_TASK_FILTERS);
@@ -67,7 +67,7 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
     setDescription('');
     setAssignedTo(user?.id || '');
     setDueDate('');
-    setPriority('medium');
+    setPriority('');
     setStatus('not_started');
   };
 
