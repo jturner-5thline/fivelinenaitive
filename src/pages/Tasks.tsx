@@ -378,7 +378,7 @@ export default function Tasks() {
       if (debouncedSearch) {
         const q = debouncedSearch.toLowerCase();
         const inTitle = t.title.toLowerCase().includes(q);
-        const dealName = (t.deal?.company || t.deal?.name || t.crm_company?.name || '').toLowerCase();
+        const dealName = (t.deal?.company || t.crm_company?.name || '').toLowerCase();
         const inDeal = dealName.includes(q);
         if (!inTitle && !inDeal) return false;
       }
