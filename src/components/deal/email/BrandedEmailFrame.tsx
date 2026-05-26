@@ -64,9 +64,18 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
       return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>
 html,body{margin:0;padding:0;background:transparent !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 body{padding:8px 0;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;background:transparent !important;}
-/* Neutralize hardcoded white/light backgrounds the email author set on top-level wrappers so the message blends into the Naitive reading surface. */
-body > table, body > div, body > center { background:transparent !important; background-color:transparent !important; }
-body > center > table, body > table > tbody > tr > td { background-color:transparent !important; }
+/* Neutralize hardcoded white/light backgrounds the email author set on
+   outer wrapper elements so the message blends into the Naitive reading
+   surface. We target only the outermost wrappers + any element whose
+   bgcolor attribute is explicitly white — intentional inner fills on
+   buttons, pills, hero blocks, branded sections, etc. are preserved. */
+html, body { background-color: transparent !important; }
+body > table, body > div, body > center,
+body > center > table, body > center > div,
+body > table > tbody > tr > td,
+body > div > table, body > div > div { background: transparent !important; background-color: transparent !important; }
+[bgcolor="#ffffff" i], [bgcolor="#fff" i], [bgcolor="white" i],
+[bgcolor="#FFFFFF"], [bgcolor="#FFF"] { background-color: transparent !important; }
 img{max-width:100% !important;height:auto !important;border:0;}
 table{max-width:100% !important;}
 a{color:${theme.link};}
