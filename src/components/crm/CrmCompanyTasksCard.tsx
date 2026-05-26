@@ -26,13 +26,6 @@ interface CrmCompanyTasksCardProps {
   onExternalShowCreateChange?: (v: boolean) => void;
 }
 
-const PRIORITY_OPTIONS = [
-  { value: 'low', label: 'Low' },
-  { value: 'medium', label: 'Medium' },
-  { value: 'high', label: 'High' },
-  { value: 'urgent', label: 'Urgent' },
-];
-
 const STATUS_OPTIONS = [
   { value: 'not_started', label: 'Not Started' },
   { value: 'in_progress', label: 'In Progress' },
@@ -40,12 +33,6 @@ const STATUS_OPTIONS = [
   { value: 'complete', label: 'Complete' },
 ];
 
-const priorityColor: Record<string, string> = {
-  urgent: 'text-red-400',
-  high: 'text-orange-400',
-  medium: 'text-yellow-400',
-  low: 'text-muted-foreground',
-};
 
 export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate, onExternalShowCreateChange }: CrmCompanyTasksCardProps) {
   const { data: tasks = [], isLoading } = useCrmCompanyTasks(companyId);
@@ -59,7 +46,7 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
   const [description, setDescription] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const [priority, setPriority] = useState('medium');
+  const [priority, setPriority] = useState('');
   const [status, setStatus] = useState('not_started');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filters, setFilters] = useState<TaskFilters>(DEFAULT_TASK_FILTERS);
@@ -80,7 +67,7 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
     setDescription('');
     setAssignedTo(user?.id || '');
     setDueDate('');
-    setPriority('medium');
+    setPriority('');
     setStatus('not_started');
   };
 
@@ -179,9 +166,11 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
                             {format(new Date(task.due_date), 'MMM d')}
                           </span>
                         )}
-                        <Badge variant="outline" className={cn('text-[9px] px-1 py-0 h-4', priorityColor[task.priority])}>
-                          {task.priority}
-                        </Badge>
+                        {task.priority === 'urgent' && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 text-red-400">
+                            Urgent
+                          </Badge>
+                        )}
                          {task.status !== 'not_started' && (
                            <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
                              {STATUS_OPTIONS.find(s => s.value === task.status)?.label || task.status}
@@ -256,10 +245,15 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{PRIORITY_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
-                </Select>
+                <label className="mt-1 flex items-center gap-2 text-xs h-9 px-2 rounded-md border border-input cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={priority === 'urgent'}
+                    onChange={(e) => setPriority(e.target.checked ? 'urgent' : '')}
+                    className="h-3.5 w-3.5"
+                  />
+                  Mark as Urgent
+                </label>
               </div>
               <div>
                 <Label className="text-xs">Status</Label>

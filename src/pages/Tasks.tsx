@@ -86,15 +86,10 @@ type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'bloc
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 type FilterDueDate = 'all' | 'overdue' | 'today' | 'this_week' | 'no_date';
 type FilterRecurring = 'all' | 'recurring' | 'paused';
-type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
-// Colors mirror PRIORITY_PILL in TaskListView so the dots in this filter
-// match the colored markers rendered on task rows exactly.
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: 'urgent', label: 'Urgent', color: '#e57373' },
-  { value: 'high',   label: 'High',   color: '#e89b6c' },
-  { value: 'medium', label: 'Medium', color: '#d4a45a' },
-  { value: 'low',    label: 'Low',    color: '#7a8194' },
-];
+// Priority has been simplified to a single Urgent flag — a task is either
+// urgent (priority === 'urgent') or has no priority (null).
+type TaskPriority = 'urgent';
+const URGENT_COLOR = '#e57373';
 const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
 // Deals are restricted to these stages by default in the Tasks deal picker;
 // the "Show all deals (incl. closed/on-hold)" checkbox lifts the restriction.
@@ -139,7 +134,7 @@ const DUE_LABELS: Record<FilterDueDate, string> = {
   no_date: 'No due date',
 };
 const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
-  urgent: 'Urgent', high: 'High', medium: 'Medium', low: 'Low',
+  urgent: 'Urgent',
 };
 
 export default function Tasks() {
@@ -187,7 +182,7 @@ export default function Tasks() {
   const newTaskRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
-  const [filterPriorities, setFilterPriorities] = useState<Set<TaskPriority>>(new Set());
+  const [urgentOnly, setUrgentOnly] = useState(false);
   const [showAllDeals, setShowAllDeals] = useState(false);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
@@ -289,11 +284,7 @@ export default function Tasks() {
       setFilterDueDate(d);
     }
     const p = params.get('priority');
-    if (p) {
-      const valid = p.split(',').filter((v): v is TaskPriority =>
-        ['urgent','high','medium','low'].includes(v));
-      if (valid.length) setFilterPriorities(new Set(valid));
-    }
+    if (p === 'urgent' || p === '1' || p === 'true') setUrgentOnly(true);
     const deals = params.get('deal');
     if (deals) {
       const ids = deals.split(',').filter(Boolean);
@@ -306,17 +297,17 @@ export default function Tasks() {
     const params = new URLSearchParams(window.location.search);
     if (filterStatus !== 'incomplete') params.set('status', filterStatus); else params.delete('status');
     if (filterDueDate !== 'all') params.set('due', filterDueDate); else params.delete('due');
-    if (filterPriorities.size) params.set('priority', Array.from(filterPriorities).join(',')); else params.delete('priority');
+    if (urgentOnly) params.set('priority', 'urgent'); else params.delete('priority');
     if (filterDealIds.size) params.set('deal', Array.from(filterDealIds).join(',')); else params.delete('deal');
     const qs = params.toString();
     const next = window.location.pathname + (qs ? `?${qs}` : '');
     window.history.replaceState({}, '', next);
-  }, [filterStatus, filterDueDate, filterPriorities, filterDealIds]);
+  }, [filterStatus, filterDueDate, urgentOnly, filterDealIds]);
 
   const clearAllFilters = useCallback(() => {
     setFilterStatus('incomplete');
     setFilterDueDate('all');
-    setFilterPriorities(new Set());
+    setUrgentOnly(false);
     setFilterDealIds(new Set());
     setFilterLabelIds(new Set());
     setFilterRecurring('all');
@@ -324,7 +315,7 @@ export default function Tasks() {
 
   const hasActiveFilters = filterStatus !== 'incomplete'
     || filterDueDate !== 'all'
-    || filterPriorities.size > 0
+    || urgentOnly
     || filterDealIds.size > 0
     || filterLabelIds.size > 0
     || filterRecurring !== 'all';
@@ -342,11 +333,11 @@ export default function Tasks() {
     sortBy,
     groupBy,
     recurring: filterRecurring,
-    priority: Array.from(filterPriorities),
+    urgentOnly,
     deals: Array.from(filterDealIds),
     showClosedDeals: showAllDeals,
     search,
-  }), [filterStatus, filterDueDate, sortBy, groupBy, filterRecurring, filterPriorities, filterDealIds, showAllDeals, search]);
+  }), [filterStatus, filterDueDate, sortBy, groupBy, filterRecurring, urgentOnly, filterDealIds, showAllDeals, search]);
 
   type TaskFilters = typeof taskFilters;
   const patchFilters = useCallback((patch: Partial<TaskFilters>) => {
@@ -355,7 +346,7 @@ export default function Tasks() {
     if (patch.sortBy !== undefined) setSortBy(patch.sortBy);
     if (patch.groupBy !== undefined) setGroupBy(patch.groupBy);
     if (patch.recurring !== undefined) setFilterRecurring(patch.recurring);
-    if (patch.priority !== undefined) setFilterPriorities(new Set(patch.priority));
+    if (patch.urgentOnly !== undefined) setUrgentOnly(patch.urgentOnly);
     if (patch.deals !== undefined) setFilterDealIds(new Set(patch.deals));
     if (patch.showClosedDeals !== undefined) setShowAllDeals(patch.showClosedDeals);
     if (patch.search !== undefined) setSearch(patch.search);
@@ -374,7 +365,7 @@ export default function Tasks() {
     if (t.status === 'complete') return false;
     const bucket = bucketDueDate(t.due_date, dueBoundaries);
     if (bucket === 'overdue' || bucket === 'today' || bucket === 'tomorrow' || bucket === 'this_week') return true;
-    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started') return true;
+    if (t.priority === 'urgent' && t.status === 'not_started') return true;
     return false;
   });
 
@@ -395,7 +386,7 @@ export default function Tasks() {
         if (!inTitle && !inDeal) return false;
       }
       if (filterDealIds.size > 0 && (!t.deal_id || !filterDealIds.has(t.deal_id))) return false;
-      if (filterPriorities.size > 0 && !filterPriorities.has(t.priority as TaskPriority)) return false;
+      if (urgentOnly && t.priority !== 'urgent') return false;
       if (filterLabelIds.size > 0) {
         const taskLabels = taskLabelMap.get(t.id);
         if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
@@ -603,7 +594,7 @@ export default function Tasks() {
         ownerFilter,
         filterDealIds: Array.from(filterDealIds),
         filterLabelIds: Array.from(filterLabelIds),
-        filterPriorities: Array.from(filterPriorities),
+        urgentOnly,
         showAllDeals,
         filterDueDate,
         filterRecurring,
@@ -671,8 +662,12 @@ export default function Tasks() {
     if (c.ownerFilter) setOwnerFilter(c.ownerFilter as TaskOwnerFilter);
     if (Array.isArray(c.filterDealIds)) setFilterDealIds(new Set(c.filterDealIds));
     if (Array.isArray(c.filterLabelIds)) setFilterLabelIds(new Set(c.filterLabelIds));
-    if (Array.isArray((c as any).filterPriorities)) {
-      setFilterPriorities(new Set((c as any).filterPriorities as TaskPriority[]));
+    if (typeof (c as any).urgentOnly === 'boolean') {
+      setUrgentOnly((c as any).urgentOnly);
+    } else if (Array.isArray((c as any).filterPriorities)) {
+      // Back-compat: any priority preset that previously included 'urgent'
+      // now maps to the simplified urgent-only flag; everything else is dropped.
+      setUrgentOnly(((c as any).filterPriorities as string[]).includes('urgent'));
     }
     if (typeof (c as any).showAllDeals === 'boolean') {
       setShowAllDeals((c as any).showAllDeals);
@@ -982,27 +977,34 @@ export default function Tasks() {
           {/* Advanced filters collapsed behind a single entry point */}
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-[12px] gap-1.5"
-                style={{
-                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all')
-                    ? 'rgba(126,184,247,0.35)'
-                    : 'rgba(255,255,255,0.06)',
-                  backgroundColor: 'rgba(255,255,255,0.025)',
-                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') ? '#cfe3ff' : '#b3bccc',
-                }}
-              >
-                <SlidersHorizontal className="h-3 w-3" />
-                Filters
-                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') && (
-                  <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
-                    style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
-                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0) + (filterDueDate !== 'all' ? 1 : 0)}
-                  </span>
-                )}
-              </Button>
+              {(() => {
+                const activeCount = filterDealIds.size + filterLabelIds.size
+                  + (urgentOnly ? 1 : 0)
+                  + (filterRecurring !== 'all' ? 1 : 0)
+                  + (filterDueDate !== 'all' ? 1 : 0);
+                const isActive = activeCount > 0;
+                return (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[12px] gap-1.5"
+                    style={{
+                      borderColor: isActive ? 'rgba(126,184,247,0.35)' : 'rgba(255,255,255,0.06)',
+                      backgroundColor: 'rgba(255,255,255,0.025)',
+                      color: isActive ? '#cfe3ff' : '#b3bccc',
+                    }}
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    Filters
+                    {isActive && (
+                      <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
+                        style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
+                        {activeCount}
+                      </span>
+                    )}
+                  </Button>
+                );
+              })()}
             </PopoverTrigger>
             <PopoverContent
               className="w-[320px] p-3 space-y-3"
@@ -1073,37 +1075,16 @@ export default function Tasks() {
                 </Select>
               </div>
               <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Priority</label>
-                  {filterPriorities.size > 0 && (
-                    <button className="text-[10px] text-destructive hover:underline" onClick={() => patchFilters({ priority: [] })}>Clear</button>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-1">
-                  {PRIORITY_OPTIONS.map(p => {
-                    const checked = filterPriorities.has(p.value);
-                    return (
-                      <button
-                        key={p.value}
-                        type="button"
-                        className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
-                        onClick={() => {
-                          const next = new Set(filterPriorities);
-                          if (next.has(p.value)) next.delete(p.value); else next.add(p.value);
-                          patchFilters({ priority: Array.from(next) });
-                        }}
-                      >
-                        <Checkbox checked={checked} className="h-3.5 w-3.5" />
-                        <span
-                          aria-hidden
-                          className="h-2 w-2 rounded-full shrink-0"
-                          style={{ backgroundColor: p.color }}
-                        />
-                        <span>{p.label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Priority</label>
+                <button
+                  type="button"
+                  className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted"
+                  onClick={() => patchFilters({ urgentOnly: !urgentOnly })}
+                >
+                  <Checkbox checked={urgentOnly} className="h-3.5 w-3.5" />
+                  <span aria-hidden className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: URGENT_COLOR }} />
+                  <span>Urgent only</span>
+                </button>
               </div>
               {allDealOptions.length > 0 && (
                 <div className="space-y-1.5">
@@ -1313,11 +1294,9 @@ export default function Tasks() {
               {filterDueDate !== 'all' && (
                 <FilterChip label={DUE_LABELS[filterDueDate]} onClear={() => setFilterDueDate('all')} />
               )}
-              {Array.from(filterPriorities).map(p => (
-                <FilterChip key={p} label={`Priority: ${PRIORITY_LABEL_MAP[p]}`} onClear={() => {
-                  setFilterPriorities(prev => { const n = new Set(prev); n.delete(p); return n; });
-                }} />
-              ))}
+              {urgentOnly && (
+                <FilterChip label="Priority: Urgent" onClear={() => setUrgentOnly(false)} />
+              )}
               {Array.from(filterDealIds).map(id => {
                 const name = allDealOptions.find(([d]) => d === id)?.[1]
                   || uniqueDeals.find(([d]) => d === id)?.[1] || 'Deal';

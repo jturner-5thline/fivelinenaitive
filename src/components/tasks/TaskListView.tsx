@@ -96,9 +96,6 @@ const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> 
 
 const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
   urgent: { label: 'Urgent', bg: '#e57373' },
-  high: { label: 'High', bg: '#e89b6c' },
-  medium: { label: 'Medium', bg: '#d4a45a' },
-  low: { label: 'Low', bg: '#7a8194' },
 };
 
 export type GroupBy = 'status' | 'time' | 'priority' | 'focus' | 'none';
@@ -154,12 +151,10 @@ function getTimeGroups(tasks: Task[], boundaries: DueBoundaries) {
 }
 
 function getPriorityGroups(tasks: Task[]) {
-  const order = ['urgent', 'high', 'medium', 'low'];
-  return order.map(key => ({
-    key,
-    label: PRIORITY_PILL[key]?.label || key,
-    tasks: tasks.filter(t => t.priority === key),
-  })).filter(g => g.tasks.length > 0);
+  return [
+    { key: 'urgent', label: 'Urgent', tasks: tasks.filter(t => t.priority === 'urgent') },
+    { key: 'not_urgent', label: 'Not urgent', tasks: tasks.filter(t => t.priority !== 'urgent') },
+  ].filter(g => g.tasks.length > 0);
 }
 
 function getFocusGroups(tasks: Task[], boundaries: DueBoundaries) {
@@ -167,7 +162,7 @@ function getFocusGroups(tasks: Task[], boundaries: DueBoundaries) {
     { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[] },
     { key: 'due_today', label: '🟠 Due Today', tasks: [] as Task[] },
     { key: 'due_this_week', label: '🔵 Due This Week', tasks: [] as Task[] },
-    { key: 'high_priority_not_started', label: '🟣 High Priority — Not Started', tasks: [] as Task[] },
+    { key: 'urgent_not_started', label: '🔴 Urgent — Not Started', tasks: [] as Task[] },
   ];
   tasks.forEach(t => {
     if (t.status === 'complete') return;
@@ -178,7 +173,7 @@ function getFocusGroups(tasks: Task[], boundaries: DueBoundaries) {
     else if (bucket === 'tomorrow' || bucket === 'this_week') {
       groups[2].tasks.push(t); placed = true;
     }
-    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started' && !placed) {
+    if (t.priority === 'urgent' && t.status === 'not_started' && !placed) {
       groups[3].tasks.push(t);
     }
   });
@@ -692,7 +687,8 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
     setEditingTitle(false);
   };
 
-  const priorityPill = PRIORITY_PILL[task.priority] || PRIORITY_PILL.medium;
+  const isUrgent = task.priority === 'urgent';
+  const priorityPill = PRIORITY_PILL.urgent;
   const statusConf = STATUS_COLORS[task.status] || STATUS_COLORS.not_started;
 
   // Blocker note (stored as any since it's a new column)
@@ -940,25 +936,26 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       </div>
       )}
 
-      {/* Priority pill */}
+      {/* Urgent flag — single-state pill that toggles priority='urgent' / null. */}
       {visibleSet.has('priority') && (
       <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-        <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
-          <SelectTrigger className={cn('h-6 text-[10px] border-none bg-transparent px-0 focus:ring-0 [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded justify-center', PRIORITY_PILL_MIN_W)}>
+        <button
+          type="button"
+          onClick={() => onUpdate({ priority: isUrgent ? null : 'urgent' } as any)}
+          title={isUrgent ? 'Marked urgent — click to clear' : 'Mark as urgent'}
+          className={cn('h-6 text-[10px] rounded flex items-center justify-center hover:bg-[rgba(255,255,255,0.04)]', PRIORITY_PILL_MIN_W)}
+        >
+          {isUrgent ? (
             <span
               className={cn('inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-medium text-center', PRIORITY_PILL_MIN_W)}
               style={{ backgroundColor: `${priorityPill.bg}1f`, color: priorityPill.bg, border: `1px solid ${priorityPill.bg}33` }}
             >
               {priorityPill.label}
             </span>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="urgent" className="text-xs">Urgent</SelectItem>
-            <SelectItem value="high" className="text-xs">High</SelectItem>
-            <SelectItem value="medium" className="text-xs">Medium</SelectItem>
-            <SelectItem value="low" className="text-xs">Low</SelectItem>
-          </SelectContent>
-        </Select>
+          ) : (
+            <span className="text-[10px] text-muted-foreground/50">—</span>
+          )}
+        </button>
       </div>
       )}
 

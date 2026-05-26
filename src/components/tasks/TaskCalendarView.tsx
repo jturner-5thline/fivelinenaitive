@@ -8,19 +8,12 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const PRIORITY_BORDER: Record<string, string> = {
-  urgent: 'border-l-[hsl(0,84%,60%)]',
-  high: 'border-l-[hsl(25,95%,53%)]',
-  medium: 'border-l-primary',
-  low: 'border-l-muted-foreground/40',
-};
-
-const PRIORITY_BG: Record<string, string> = {
-  urgent: 'bg-[hsl(0,84%,60%,0.08)]',
-  high: 'bg-[hsl(25,95%,53%,0.08)]',
-  medium: 'bg-primary/5',
-  low: 'bg-muted/30',
-};
+const URGENT_BORDER = 'border-l-[hsl(0,84%,60%)]';
+const URGENT_BG = 'bg-[hsl(0,84%,60%,0.08)]';
+const DEFAULT_BORDER = 'border-l-muted-foreground/30';
+const DEFAULT_BG = 'bg-card';
+const priorityBorder = (p: any) => (p === 'urgent' ? URGENT_BORDER : DEFAULT_BORDER);
+const priorityBg = (p: any) => (p === 'urgent' ? URGENT_BG : DEFAULT_BG);
 
 interface TaskCalendarViewProps {
   tasks: Task[];
@@ -144,8 +137,8 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
                       onClick={() => onSelectTask(task.id)}
                       className={cn(
                         'text-[10px] px-1.5 py-0.5 rounded cursor-pointer truncate border-l-2',
-                        PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.medium,
-                        PRIORITY_BG[task.priority] || PRIORITY_BG.medium,
+                        priorityBorder(task.priority),
+                        priorityBg(task.priority),
                         'hover:brightness-95 transition-all',
                         task.status === 'complete' && 'line-through text-muted-foreground opacity-60',
                         selectedTaskId === task.id && 'ring-1 ring-primary',
@@ -206,7 +199,7 @@ export function TaskCalendarView({ tasks, onSelectTask, onUpdateTask, selectedTa
                 onClick={() => onSelectTask(task.id)}
                 className={cn(
                   "text-[10px] px-2 py-0.5 rounded border-l-2 cursor-grab hover:shadow-sm bg-card",
-                  PRIORITY_BORDER[task.priority] || PRIORITY_BORDER.medium,
+                  priorityBorder(task.priority),
                 )}
               >
                 {task.title}

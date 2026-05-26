@@ -17,7 +17,7 @@ export const DEFAULT_TASK_FILTERS: TaskFilters = {
   sort: 'due_asc',
 };
 
-const PRIORITY_RANK: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+const PRIORITY_RANK: Record<string, number> = { urgent: 0 };
 
 export function applyTaskFilters<T extends any>(tasks: T[], filters: TaskFilters): T[] {
   let out = [...tasks];
