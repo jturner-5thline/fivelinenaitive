@@ -357,10 +357,12 @@ export function QuickCreateTaskDialog({
 
   const selectedDeal = dealId ? allDeals.find(d => d.id === dealId) : null;
 
-  // Grouped deal results: active deals first (alpha), then archived/on-hold
-  // (alpha, greyed-out). Search filters across both groups but the grouping
-  // is preserved so users can scan active deals at the top.
-  const dealSearchGroups = useMemo(() => {
+  // Scoped, ordered deal list: company's Active Pipeline + Development
+  // Pipeline only, with stage-level dead deals excluded. Sorted by pipeline
+  // (default first, then development), stage order within the pipeline, then
+  // alpha by deal name. Search filters across name/company/lender/contact
+  // but preserves the ordering.
+  const dealPickerResults = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
     const matches = (d: Deal) =>
       !q ||
@@ -368,20 +370,30 @@ export function QuickCreateTaskDialog({
       (d.company || '').toLowerCase().includes(q) ||
       (d.lender || '').toLowerCase().includes(q) ||
       (d.contact || '').toLowerCase().includes(q);
-    const active: Deal[] = [];
-    const inactive: Deal[] = [];
-    for (const d of allDeals) {
-      if (!matches(d)) continue;
-      (isActiveDeal(d) ? active : inactive).push(d);
-    }
-    const byName = (a: Deal, b: Deal) =>
-      a.name.toLowerCase().localeCompare(b.name.toLowerCase());
-    active.sort(byName);
-    inactive.sort(byName);
-    return { active: active.slice(0, 50), inactive: inactive.slice(0, 50) };
-  }, [allDeals, dealQuery]);
-  const dealResultsEmpty =
-    dealSearchGroups.active.length === 0 && dealSearchGroups.inactive.length === 0;
+    const defaultPipelineId =
+      companyPipelines.find(p => p.isDefault)?.id ?? null;
+    const pipelineRank = (pid?: string) => {
+      if (!pid) return 99;
+      if (pid === defaultPipelineId) return 0;
+      return 1;
+    };
+    const filtered = allDeals.filter(d => {
+      if (!d.pipelineId || !activePipelineIds.has(d.pipelineId)) return false;
+      if (!isActiveDeal(d)) return false;
+      return matches(d);
+    });
+    filtered.sort((a, b) => {
+      const pr = pipelineRank(a.pipelineId) - pipelineRank(b.pipelineId);
+      if (pr !== 0) return pr;
+      const stageMap = stageOrderByPipeline.get(a.pipelineId || '');
+      const sa = stageMap?.get(a.stage as string) ?? 999;
+      const sb = stageMap?.get(b.stage as string) ?? 999;
+      if (sa !== sb) return sa - sb;
+      return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
+    });
+    return filtered.slice(0, 100);
+  }, [allDeals, dealQuery, activePipelineIds, companyPipelines, stageOrderByPipeline]);
+  const dealResultsEmpty = dealPickerResults.length === 0;
 
   const dealStageTone = (stage?: string) => {
     switch (stage) {
