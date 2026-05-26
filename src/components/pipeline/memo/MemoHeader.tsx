@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Loader2, Pencil } from 'lucide-react';
-import { useDeals } from '@/contexts/DealsContext';
+import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
 
 interface MemoHeaderProps {
@@ -70,7 +70,7 @@ export function MemoHeader({ deal, showLiveDot = true }: MemoHeaderProps) {
   // Inline edit state for the Status row. Persists into deal.notes
   // via the same updateDeal mutation used by DealCard + DealDetail so
   // every other consumer (memo, card, detail header) refreshes in lockstep.
-  const { updateDeal } = useDeals();
+  const { updateDeal } = useDealsContext();
   const [isEditing, setIsEditing] = useState(false);
   const [draft, setDraft] = useState('');
   const [optimistic, setOptimistic] = useState<string | null>(null);
