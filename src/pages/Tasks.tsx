@@ -980,7 +980,7 @@ export default function Tasks() {
           </Select>
 
           {/* Advanced filters collapsed behind a single entry point */}
-          <Popover>
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -1004,7 +1004,26 @@ export default function Tasks() {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-3 space-y-3" align="end">
+            <PopoverContent
+              className="w-[320px] p-3 space-y-3"
+              align="end"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              onPointerDownOutside={(e) => {
+                // Keep popover open when interacting with Radix portaled
+                // children (Select dropdowns, etc.) whose content lives
+                // outside the PopoverContent DOM subtree.
+                const target = e.target as HTMLElement | null;
+                if (target?.closest('[data-radix-popper-content-wrapper], [role="listbox"], [role="option"]')) {
+                  e.preventDefault();
+                }
+              }}
+              onInteractOutside={(e) => {
+                const target = e.target as HTMLElement | null;
+                if (target?.closest('[data-radix-popper-content-wrapper], [role="listbox"], [role="option"]')) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Due date</label>
                 <Select value={taskFilters.dueDate} onValueChange={v => patchFilters({ dueDate: v as FilterDueDate })}>
