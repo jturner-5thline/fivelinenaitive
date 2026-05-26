@@ -46,20 +46,14 @@ function PipelineMemoCardImpl({
 
   return (
     <Card
-      onClick={handleOpen}
-      onKeyDown={e => { if (e.key === 'Enter') handleOpen(); }}
-      tabIndex={0}
-      role="button"
-      aria-label={`Open deal memo for ${deal.company || deal.name}`}
       className="
-        cursor-pointer transition-all duration-200
+        transition-all duration-200
         rounded-xl overflow-hidden
         min-h-[20rem] md:min-h-[22rem]
         flex flex-col
-        border border-white/10 hover:border-primary/40
+        border border-white/10
         bg-gradient-to-b from-white/[0.07] via-white/[0.04] to-white/[0.02]
-        shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)] hover:shadow-[0_14px_36px_-16px_rgba(0,0,0,0.7)]
-        focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-background
+        shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)]
       "
       // NOTE: do NOT set `content-visibility: auto` here. The card sits inside
       // a @tanstack/react-virtual absolute-positioned row whose offsets come
@@ -70,7 +64,7 @@ function PipelineMemoCardImpl({
       // into view. `contain: layout paint` is safe and keeps repaints scoped.
       style={{ contain: 'paint' } as React.CSSProperties}
     >
-      <MemoHeader deal={deal} showLiveDot={showLiveDot} />
+      <MemoHeader deal={deal} showLiveDot={showLiveDot} onOpenDeal={handleOpen} />
 
       <NextBestActionRow deal={deal} tasks={tasks} rawDigest={rawDigest} />
 
