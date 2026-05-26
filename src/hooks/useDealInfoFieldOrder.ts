@@ -24,12 +24,19 @@ export interface DealInfoFieldConfig {
   section: 'main' | 'hours-fees';
   column: 'left' | 'right' | 'full';
   canHide: boolean;
+  /**
+   * When true the field is always visible — the visibility toggle is
+   * disabled and locked on. The field can still be reordered or removed
+   * by an admin, but it can never be hidden. Used for Narrative and
+   * Deal Owner per product spec.
+   */
+  lockedVisible?: boolean;
 }
 
 export const DEAL_INFO_FIELD_DEFINITIONS: DealInfoFieldConfig[] = [
-  { id: 'narrative', label: 'Narrative', section: 'main', column: 'full', canHide: true },
+  { id: 'narrative', label: 'Narrative', section: 'main', column: 'full', canHide: true, lockedVisible: true },
   { id: 'dealManager', label: 'Deal Manager', section: 'main', column: 'left', canHide: false },
-  { id: 'dealOwner', label: 'Deal Owner', section: 'main', column: 'left', canHide: true },
+  { id: 'dealOwner', label: 'Deal Owner', section: 'main', column: 'left', canHide: true, lockedVisible: true },
   { id: 'type', label: 'Type', section: 'main', column: 'left', canHide: true },
   { id: 'engagement', label: 'Engagement', section: 'main', column: 'left', canHide: true },
   { id: 'exclusivity', label: 'Exclusivity', section: 'main', column: 'left', canHide: true },
@@ -155,6 +162,7 @@ export function useDealInfoFieldOrder() {
   const toggleFieldVisibility = useCallback((fieldId: DealInfoFieldId) => {
     const config = DEAL_INFO_FIELD_DEFINITIONS.find(f => f.id === fieldId);
     if (!config?.canHide) return;
+    if (config.lockedVisible) return; // always shown, cannot be hidden
     setFieldVisibility(prev => {
       const next = { ...prev, [fieldId]: !prev[fieldId] };
       debouncedSave(fieldOrder, next);
@@ -165,8 +173,26 @@ export function useDealInfoFieldOrder() {
   const isFieldVisible = useCallback((fieldId: DealInfoFieldId): boolean => {
     const config = DEAL_INFO_FIELD_DEFINITIONS.find(f => f.id === fieldId);
     if (config && !config.canHide) return true;
+    if (config?.lockedVisible) return true;
     return fieldVisibility[fieldId] ?? true;
   }, [fieldVisibility]);
+
+  const removeField = useCallback((fieldId: DealInfoFieldId) => {
+    const config = DEAL_INFO_FIELD_DEFINITIONS.find(f => f.id === fieldId);
+    // Required + locked-visible fields cannot be removed from the list.
+    if (!config?.canHide || config.lockedVisible) return;
+    const next = fieldOrder.filter(id => id !== fieldId);
+    setFieldOrder(next);
+    debouncedSave(next, fieldVisibility);
+  }, [debouncedSave, fieldOrder, fieldVisibility]);
+
+  const addField = useCallback((fieldId: DealInfoFieldId) => {
+    if (fieldOrder.includes(fieldId)) return;
+    if (!DEAL_INFO_FIELD_DEFINITIONS.find(f => f.id === fieldId)) return;
+    const next = [...fieldOrder, fieldId];
+    setFieldOrder(next);
+    debouncedSave(next, fieldVisibility);
+  }, [debouncedSave, fieldOrder, fieldVisibility]);
 
   const resetToDefault = useCallback(() => {
     setFieldOrder(DEFAULT_FIELD_ORDER);
@@ -185,6 +211,8 @@ export function useDealInfoFieldOrder() {
     reorderFields,
     toggleFieldVisibility,
     isFieldVisible,
+    removeField,
+    addField,
     resetToDefault,
   };
 }
