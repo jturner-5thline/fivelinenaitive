@@ -297,17 +297,17 @@ export default function Tasks() {
     const params = new URLSearchParams(window.location.search);
     if (filterStatus !== 'incomplete') params.set('status', filterStatus); else params.delete('status');
     if (filterDueDate !== 'all') params.set('due', filterDueDate); else params.delete('due');
-    if (filterPriorities.size) params.set('priority', Array.from(filterPriorities).join(',')); else params.delete('priority');
+    if (urgentOnly) params.set('priority', 'urgent'); else params.delete('priority');
     if (filterDealIds.size) params.set('deal', Array.from(filterDealIds).join(',')); else params.delete('deal');
     const qs = params.toString();
     const next = window.location.pathname + (qs ? `?${qs}` : '');
     window.history.replaceState({}, '', next);
-  }, [filterStatus, filterDueDate, filterPriorities, filterDealIds]);
+  }, [filterStatus, filterDueDate, urgentOnly, filterDealIds]);
 
   const clearAllFilters = useCallback(() => {
     setFilterStatus('incomplete');
     setFilterDueDate('all');
-    setFilterPriorities(new Set());
+    setUrgentOnly(false);
     setFilterDealIds(new Set());
     setFilterLabelIds(new Set());
     setFilterRecurring('all');
@@ -315,7 +315,7 @@ export default function Tasks() {
 
   const hasActiveFilters = filterStatus !== 'incomplete'
     || filterDueDate !== 'all'
-    || filterPriorities.size > 0
+    || urgentOnly
     || filterDealIds.size > 0
     || filterLabelIds.size > 0
     || filterRecurring !== 'all';
@@ -333,11 +333,11 @@ export default function Tasks() {
     sortBy,
     groupBy,
     recurring: filterRecurring,
-    priority: Array.from(filterPriorities),
+    urgentOnly,
     deals: Array.from(filterDealIds),
     showClosedDeals: showAllDeals,
     search,
-  }), [filterStatus, filterDueDate, sortBy, groupBy, filterRecurring, filterPriorities, filterDealIds, showAllDeals, search]);
+  }), [filterStatus, filterDueDate, sortBy, groupBy, filterRecurring, urgentOnly, filterDealIds, showAllDeals, search]);
 
   type TaskFilters = typeof taskFilters;
   const patchFilters = useCallback((patch: Partial<TaskFilters>) => {
@@ -346,7 +346,7 @@ export default function Tasks() {
     if (patch.sortBy !== undefined) setSortBy(patch.sortBy);
     if (patch.groupBy !== undefined) setGroupBy(patch.groupBy);
     if (patch.recurring !== undefined) setFilterRecurring(patch.recurring);
-    if (patch.priority !== undefined) setFilterPriorities(new Set(patch.priority));
+    if (patch.urgentOnly !== undefined) setUrgentOnly(patch.urgentOnly);
     if (patch.deals !== undefined) setFilterDealIds(new Set(patch.deals));
     if (patch.showClosedDeals !== undefined) setShowAllDeals(patch.showClosedDeals);
     if (patch.search !== undefined) setSearch(patch.search);
@@ -386,7 +386,7 @@ export default function Tasks() {
         if (!inTitle && !inDeal) return false;
       }
       if (filterDealIds.size > 0 && (!t.deal_id || !filterDealIds.has(t.deal_id))) return false;
-      if (filterPriorities.size > 0 && !filterPriorities.has(t.priority as TaskPriority)) return false;
+      if (urgentOnly && t.priority !== 'urgent') return false;
       if (filterLabelIds.size > 0) {
         const taskLabels = taskLabelMap.get(t.id);
         if (!taskLabels || ![...filterLabelIds].some(lid => taskLabels.has(lid))) return false;
