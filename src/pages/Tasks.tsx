@@ -242,15 +242,21 @@ export default function Tasks() {
   // surfaces deals already linked to a loaded task).
   const { deals: allDeals } = useDealsContext();
   const allDealOptions = useMemo(() => {
-    const fromTasks = new Map(uniqueDeals);
-    const merged = new Map<string, string>(fromTasks);
+    const merged = new Map<string, string>();
+    const dealById = new Map(allDeals.map(d => [d.id, d] as const));
+    // Default: only deals on the active boards ('pipeline' or
+    // 'development_pipeline'). The "Show all deals" checkbox lifts this.
+    uniqueDeals.forEach(([id, name]) => {
+      if (showAllDeals) { merged.set(id, name); return; }
+      const d = dealById.get(id);
+      if (!d || (typeof d.stage === 'string' && ACTIVE_DEAL_STAGES.has(d.stage))) {
+        merged.set(id, name);
+      }
+    });
     allDeals.forEach(d => {
       if (d.status === 'archived') return;
-      // Default: only include deals on the active board (not closed/on-hold).
-      // Niki can flip "Show all deals" to surface dormant ones. Subtask 3.
       if (!showAllDeals) {
-        if (d.status === 'on-hold') return;
-        if (typeof d.stage === 'string' && ACTIVE_DEAL_INACTIVE_STAGES.has(d.stage)) return;
+        if (typeof d.stage !== 'string' || !ACTIVE_DEAL_STAGES.has(d.stage)) return;
       }
       if (!merged.has(d.id)) merged.set(d.id, d.company || d.name);
     });
