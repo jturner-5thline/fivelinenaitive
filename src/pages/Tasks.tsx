@@ -70,6 +70,7 @@ import { useDueBoundaries } from '@/hooks/useDueBoundaries';
 import { bucketDueDate, isOverdue as isOverdueFn } from '@/lib/taskDateGrouping';
 import { cn } from '@/lib/utils';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
 import {
   DndContext, closestCenter, DragOverlay, PointerSensor, TouchSensor,
   useSensor, useSensors, DragStartEvent, DragEndEvent, DragOverEvent,
