@@ -62,17 +62,15 @@ export function TaskBulkActionBar({ count, teamMembers, onBulkUpdate, onBulkDele
         </SelectContent>
       </Select>
 
-      {/* Priority */}
-      <Select onValueChange={v => onBulkUpdate({ priority: v })}>
-        <SelectTrigger className="h-7 w-[110px] text-xs">
+      {/* Urgent flag (single-state) */}
+      <Select onValueChange={v => onBulkUpdate({ priority: v === 'urgent' ? 'urgent' : null } as any)}>
+        <SelectTrigger className="h-7 w-[130px] text-xs">
           <Flag className="h-3 w-3 mr-1" />
-          <SelectValue placeholder="Priority" />
+          <SelectValue placeholder="Urgent flag" />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="urgent" className="text-xs">🔴 Urgent</SelectItem>
-          <SelectItem value="high" className="text-xs">🟠 High</SelectItem>
-          <SelectItem value="medium" className="text-xs">🔵 Medium</SelectItem>
-          <SelectItem value="low" className="text-xs">⚪ Low</SelectItem>
+          <SelectItem value="urgent" className="text-xs">🔴 Mark urgent</SelectItem>
+          <SelectItem value="none" className="text-xs">Clear urgent</SelectItem>
         </SelectContent>
       </Select>
 
