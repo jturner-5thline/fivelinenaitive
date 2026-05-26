@@ -1244,6 +1244,10 @@ export default function Tasks() {
                 <FileDown className="h-3.5 w-3.5" /> Export CSV
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-xs gap-2" onClick={() => setShowSaveViewDialog(true)}>
+                <BookmarkPlus className="h-3.5 w-3.5" /> Save current as preset
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuLabel className="text-xs text-muted-foreground">Templates</DropdownMenuLabel>
               {templates.map(t => (
                 <DropdownMenuItem key={t.id} className="text-xs gap-2" onClick={() => applyTemplate.mutate(t.id)}>
