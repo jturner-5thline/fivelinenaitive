@@ -151,9 +151,37 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
   };
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={setOpen} modal>
       <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent side="bottom" align="end" className="w-[280px] p-0">
+      <PopoverContent
+        side="bottom"
+        align="end"
+        sideOffset={8}
+        collisionPadding={16}
+        avoidCollisions
+        // Sit above the AI Assist side panel and any other in-page chrome.
+        // PopoverContent is already portaled to <body> via popover.tsx; this
+        // bumps its z-index well above the email view's stacking context so
+        // pointer events actually land on the popover (clicking the search
+        // input or a row used to fall through to the AI Assist panel,
+        // which dismissed the popover via Radix's outside-pointerdown).
+        className="z-[1400] w-[280px] p-0"
+        onOpenAutoFocus={(e) => {
+          // Let the search input's autoFocus take over without Radix
+          // re-focusing the content wrapper (which can race with the
+          // outside-click handler in some browsers).
+          e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          // Defense in depth: if the click target is inside our portaled
+          // content (e.g., the AI Assist panel happens to sit on top in a
+          // weird stacking order), don't dismiss.
+          const target = e.target as Node | null;
+          if (target && (e.currentTarget as HTMLElement).contains(target)) {
+            e.preventDefault();
+          }
+        }}
+      >
         <div className="p-2 border-b">
           <div className="relative">
             <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
