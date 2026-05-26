@@ -1,4 +1,4 @@
-import { useState, useRef, KeyboardEvent, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
+import { useState, useRef, type KeyboardEvent, type ComponentType, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
@@ -159,7 +159,7 @@ const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
 type InlineSelectOption<T extends string> = {
   value: T;
   label: string;
-  icon?: React.ComponentType<{ className?: string }>;
+  icon?: ComponentType<{ className?: string }>;
 };
 
 function InlineFilterSelect<T extends string>({
@@ -336,6 +336,7 @@ export default function Tasks() {
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [filterRecurring, setFilterRecurring] = useState<FilterRecurring>('all');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [openInlineFilter, setOpenInlineFilter] = useState<'dueDate' | 'sortBy' | 'groupBy' | 'recurring' | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
