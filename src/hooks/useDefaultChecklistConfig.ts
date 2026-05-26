@@ -88,13 +88,14 @@ function normalizeForMatch(text: string): string {
   return text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/** Find first matching config for a deal type string (case-insensitive, punctuation-resilient contains) */
+/** Find config for a deal type by exact match (case-insensitive, punctuation-resilient) against configured Deal Types. */
 export function findMatchingConfig(
   configs: DealTypeChecklistConfig[],
   dealTypeText: string,
 ): DealTypeChecklistConfig | null {
+  if (!dealTypeText) return null;
   const normalized = normalizeForMatch(dealTypeText);
-  return configs.find(c => normalized.includes(normalizeForMatch(c.dealTypeMatchString))) || null;
+  return configs.find(c => normalizeForMatch(c.dealTypeMatchString) === normalized) || null;
 }
 
 // ── Seed data ───────────────────────────────────────────────
