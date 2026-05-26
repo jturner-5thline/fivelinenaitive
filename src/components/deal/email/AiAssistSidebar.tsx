@@ -43,6 +43,7 @@ import { StageMeetingTitleChip } from './StageMeetingTitleChip';
 import { AvailabilityCheckCard } from './AvailabilityCheckCard';
 import { OpenAvailabilityCard } from './OpenAvailabilityCard';
 import { EmailQuickActionsToolbar } from './EmailQuickActionsToolbar';
+import { AIAssistOverlayProvider } from './AIAssistOverlay';
 import { CadenceInsightCard } from './CadenceInsightCard';
 import {
   COMPOSE_BODY_EVENT,
