@@ -215,7 +215,11 @@ function InlineFilterSelect<T extends string>({
         aria-controls={`${id}-listbox`}
         className="flex h-8 w-full items-center justify-between rounded-md border px-3 text-xs transition-colors hover:bg-muted/60"
         style={{ borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.02)' }}
-        onClick={onToggle}
+        onMouseDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation();
+          onToggle();
+        }}
         onKeyDown={handleTriggerKeyDown}
       >
         <span className="flex min-w-0 items-center gap-2">
@@ -252,7 +256,9 @@ function InlineFilterSelect<T extends string>({
                   backgroundColor: selectedOption ? 'rgba(126,184,247,0.12)' : 'transparent',
                   color: selectedOption ? '#cfe3ff' : undefined,
                 }}
-                onClick={() => {
+                onMouseDown={(event) => event.stopPropagation()}
+                onClick={(event) => {
+                  event.stopPropagation();
                   onSelect(option.value);
                   onToggle();
                 }}
@@ -1141,7 +1147,7 @@ export default function Tasks() {
               setFiltersOpen(open);
               if (!open) setOpenInlineFilter(null);
             }}
-            modal={false}
+            modal={true}
           >
             <PopoverTrigger asChild>
               {(() => {
