@@ -349,7 +349,7 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving, avail
             <div>
               <Label>Workflow to Trigger</Label>
               <Select
-                value={action.config.workflowId || ''}
+                value={action.config.workflowId || undefined}
                 onValueChange={(v) => updateActionConfig(action.id, { ...action.config, workflowId: v })}
               >
                 <SelectTrigger>
@@ -357,7 +357,7 @@ export function WorkflowBuilder({ initialData, onSave, onCancel, isSaving, avail
                 </SelectTrigger>
                 <SelectContent>
                   {availableWorkflows.length === 0 ? (
-                    <SelectItem value="" disabled>No other workflows available</SelectItem>
+                    <SelectItem value="__none__" disabled>No other workflows available</SelectItem>
                   ) : (
                     availableWorkflows.map(w => (
                       <SelectItem key={w.id} value={w.id}>{w.name}</SelectItem>
