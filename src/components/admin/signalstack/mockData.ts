@@ -336,6 +336,43 @@ export const execInsight = {
   ],
 };
 
+// Plain-language week-over-week summary for the executive header.
+export const weeklyChanges: {
+  headline: string;
+  body: string;
+  bullets: { tone: "up" | "down" | "flat"; label: string; detail: string }[];
+} = {
+  headline: "Onboarding is the story of the week.",
+  body:
+    "12 mid-market accounts stalled on QuickBooks entity mapping, and trust in AI deal summaries softened as users overrode 2× more often than last month. Three fixes are mid-flight and one (EXP-12) is ready to promote.",
+  bullets: [
+    { tone: "up", label: "Onboarding friction +18%", detail: "Company-setup step, mid-market segment" },
+    { tone: "up", label: "AI summary overrides 2× MoM", detail: "Driven by missing evidence citations" },
+    { tone: "down", label: "Task router success 96%", detail: "Pattern ready to extend to lender follow-ups" },
+    { tone: "flat", label: "QBO corpus 27d stale", detail: "Refresh queued for this week" },
+  ],
+};
+
+// Cross-links: which prompt versions back each issue cluster.
+export const clusterPromptLinks: Record<string, string[]> = {
+  "ic-001": ["pv-03", "pv-06"],
+  "ic-002": ["pv-02"],
+  "ic-003": ["pv-01"],
+  "ic-004": [],
+  "ic-005": ["pv-04"],
+  "ic-006": ["pv-05"],
+};
+
+// Cross-links: which journey each cluster lives in.
+export const clusterJourneyLinks: Record<string, string> = {
+  "ic-001": "j-onboarding",
+  "ic-002": "j-onboarding",
+  "ic-003": "j-ai-summary",
+  "ic-004": "j-onboarding",
+  "ic-005": "j-deal-intake",
+  "ic-006": "j-deal-intake",
+};
+
 // --- Audit events ----------------------------------------------------------
 export interface AuditEvent {
   id: string;
