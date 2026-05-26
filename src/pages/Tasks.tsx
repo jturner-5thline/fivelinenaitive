@@ -317,6 +317,42 @@ export default function Tasks() {
     || filterLabelIds.size > 0
     || filterRecurring !== 'all';
 
+  // ── Unified task filter state ────────────────────────────────────────
+  // Single shared object that the status dropdown, the Filters popover,
+  // and the Search input all bind to. The individual `useState`s above
+  // remain the storage layer (URL hydration, saved-presets, etc. all
+  // already read/write them) — `taskFilters` is a read-only aggregator
+  // and `patchFilters` is the unified setter the UI calls. This lets the
+  // list and the "N open" header count stay in sync from a single source.
+  const taskFilters = useMemo(() => ({
+    status: filterStatus,
+    dueDate: filterDueDate,
+    sortBy,
+    groupBy,
+    recurring: filterRecurring,
+    priority: Array.from(filterPriorities),
+    deals: Array.from(filterDealIds),
+    showClosedDeals: showAllDeals,
+    search,
+  }), [filterStatus, filterDueDate, sortBy, groupBy, filterRecurring, filterPriorities, filterDealIds, showAllDeals, search]);
+
+  type TaskFilters = typeof taskFilters;
+  const patchFilters = useCallback((patch: Partial<TaskFilters>) => {
+    if (patch.status !== undefined) setFilterStatus(patch.status);
+    if (patch.dueDate !== undefined) setFilterDueDate(patch.dueDate);
+    if (patch.sortBy !== undefined) setSortBy(patch.sortBy);
+    if (patch.groupBy !== undefined) setGroupBy(patch.groupBy);
+    if (patch.recurring !== undefined) setFilterRecurring(patch.recurring);
+    if (patch.priority !== undefined) setFilterPriorities(new Set(patch.priority));
+    if (patch.deals !== undefined) setFilterDealIds(new Set(patch.deals));
+    if (patch.showClosedDeals !== undefined) setShowAllDeals(patch.showClosedDeals);
+    if (patch.search !== undefined) setSearch(patch.search);
+  }, []);
+
+  // 250ms debounce on the search input so each keystroke doesn't refilter
+  // the entire task set (which would also re-fire the "N open" count).
+  const debouncedSearch = useDebouncedValue(taskFilters.search, 250);
+
   // Single source of truth for "today" / "this week" boundaries — auto-rolls
   // at local midnight so overdue/today/upcoming stay correct without reload.
   const dueBoundaries = useDueBoundaries();
