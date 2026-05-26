@@ -96,9 +96,6 @@ const STATUS_COLORS: Record<string, { label: string; bg: string; dot: string }> 
 
 const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
   urgent: { label: 'Urgent', bg: '#e57373' },
-  high: { label: 'High', bg: '#e89b6c' },
-  medium: { label: 'Medium', bg: '#d4a45a' },
-  low: { label: 'Low', bg: '#7a8194' },
 };
 
 export type GroupBy = 'status' | 'time' | 'priority' | 'focus' | 'none';
@@ -154,12 +151,10 @@ function getTimeGroups(tasks: Task[], boundaries: DueBoundaries) {
 }
 
 function getPriorityGroups(tasks: Task[]) {
-  const order = ['urgent', 'high', 'medium', 'low'];
-  return order.map(key => ({
-    key,
-    label: PRIORITY_PILL[key]?.label || key,
-    tasks: tasks.filter(t => t.priority === key),
-  })).filter(g => g.tasks.length > 0);
+  return [
+    { key: 'urgent', label: 'Urgent', tasks: tasks.filter(t => t.priority === 'urgent') },
+    { key: 'not_urgent', label: 'Not urgent', tasks: tasks.filter(t => t.priority !== 'urgent') },
+  ].filter(g => g.tasks.length > 0);
 }
 
 function getFocusGroups(tasks: Task[], boundaries: DueBoundaries) {
@@ -178,7 +173,7 @@ function getFocusGroups(tasks: Task[], boundaries: DueBoundaries) {
     else if (bucket === 'tomorrow' || bucket === 'this_week') {
       groups[2].tasks.push(t); placed = true;
     }
-    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started' && !placed) {
+    if (t.priority === 'urgent' && t.status === 'not_started' && !placed) {
       groups[3].tasks.push(t);
     }
   });
