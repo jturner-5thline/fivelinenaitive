@@ -182,7 +182,7 @@ export default function Tasks() {
   const newTaskRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
-  const [filterPriorities, setFilterPriorities] = useState<Set<TaskPriority>>(new Set());
+  const [urgentOnly, setUrgentOnly] = useState(false);
   const [showAllDeals, setShowAllDeals] = useState(false);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
