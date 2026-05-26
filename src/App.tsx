@@ -370,6 +370,8 @@ const App = () => (
                             <Route path="/operations" element={<Operations />} />
                             <Route path="/debug/recognition" element={<DebugRecognition />} />
                             <Route path="/settings" element={<Settings />} />
+                            <Route path="/settings/:group" element={<Settings />} />
+                            <Route path="/settings/:group/:section" element={<Settings />} />
                             <Route path="/account" element={<Account />} />
                             <Route path="/lenders" element={<Lenders />} />
                             <Route path="/lenders/config" element={<LenderDatabaseConfig />} />
