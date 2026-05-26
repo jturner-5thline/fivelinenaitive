@@ -20,6 +20,7 @@ import {
   SeverityDot,
   OutcomeBadge,
   ConvergenceBar,
+  PriorityScore,
   TEAL,
 } from "./ui";
 import {
@@ -31,6 +32,8 @@ import {
   promptVersions,
   aiActions,
   execInsight,
+  weeklyChanges,
+  clusterPromptLinks,
 } from "./mockData";
 import {
   ArrowUpRight,
@@ -38,6 +41,8 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  TrendingDown,
+  Minus,
   CircleDot,
 } from "lucide-react";
 
@@ -47,7 +52,42 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (s: string) => void 
   const quotes = feedbackItems.filter(f => f.sentiment === "negative").slice(0, 3);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
+      {/* WHAT CHANGED THIS WEEK — plain-language executive brief */}
+      <Card className="relative overflow-hidden p-5 bg-gradient-to-br from-[hsl(220_25%_10%)] via-[hsl(220_22%_8%)] to-[hsl(174_30%_10%)] border-teal-500/10">
+        <div className="absolute inset-y-0 left-0 w-[3px] bg-teal-400/70" />
+        <div className="flex items-start justify-between gap-6">
+          <div className="min-w-0 max-w-3xl">
+            <div className="flex items-center gap-2 mb-2">
+              <span className="text-[10px] uppercase tracking-[0.18em] text-teal-300/80">What changed this week</span>
+              <span className="text-[10px] text-muted-foreground">· May 19 – May 25</span>
+            </div>
+            <h2 className="text-xl font-semibold tracking-tight text-foreground">{weeklyChanges.headline}</h2>
+            <p className="mt-1.5 text-sm text-foreground/75 leading-relaxed">{weeklyChanges.body}</p>
+          </div>
+          <button
+            onClick={() => onNavigate?.("issue-clusters")}
+            className="shrink-0 hidden md:inline-flex items-center gap-1.5 text-xs font-medium text-teal-200 hover:text-teal-100 px-2.5 py-1.5 rounded-md ring-1 ring-teal-500/30 bg-teal-500/5"
+          >
+            Open prioritization <ArrowUpRight className="h-3 w-3" />
+          </button>
+        </div>
+        <div className="mt-4 grid grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {weeklyChanges.bullets.map((b, i) => {
+            const Icon = b.tone === "up" ? TrendingUp : b.tone === "down" ? TrendingDown : Minus;
+            const tone = b.tone === "up" ? "text-rose-300" : b.tone === "down" ? "text-emerald-300" : "text-muted-foreground";
+            return (
+              <div key={i} className="rounded-md border border-border/40 bg-background/40 px-3 py-2">
+                <div className={`flex items-center gap-1.5 text-[11px] font-semibold ${tone}`}>
+                  <Icon className="h-3 w-3" /> {b.label}
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{b.detail}</div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
       {/* KPI ROW */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <KpiCard
@@ -87,20 +127,20 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (s: string) => void 
         />
       </div>
 
-      {/* CONVERGENCE + EXEC PANEL */}
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
-        <Card className="xl:col-span-2 p-5">
+      {/* CONVERGENCE + RANKED CLUSTERS — primary executive surface */}
+      <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
+        <Card className="xl:col-span-3 p-5">
           <SectionHeader
             eyebrow="Signal convergence"
             title="Where signals are converging"
-            description="Stacked risk index across behavior, feedback, AI failure, and business impact — last 7 days."
+            description="Behavior, feedback, AI failure, and business impact — last 7 days."
             right={
               <StatusBadge tone="warn">
                 <CircleDot className="h-3 w-3" /> 3 hotspots
               </StatusBadge>
             }
           />
-          <div className="h-[240px]">
+          <div className="h-[220px]">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={convergenceSeries} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
                 <defs>
@@ -142,61 +182,58 @@ export function OverviewPage({ onNavigate }: { onNavigate?: (s: string) => void 
           </div>
         </Card>
 
-        <Card className="p-5">
+        <Card className="xl:col-span-2 p-5">
           <SectionHeader
-            eyebrow="Executive insight"
-            title="What changed this week"
-            right={<StatusBadge tone="teal"><Sparkles className="h-3 w-3" /> AI</StatusBadge>}
+            eyebrow="Priority queue"
+            title="Top issue clusters"
+            right={
+              <button
+                onClick={() => onNavigate?.("issue-clusters")}
+                className="text-xs font-medium text-teal-300 hover:text-teal-200 inline-flex items-center gap-1"
+              >
+                All <ArrowUpRight className="h-3 w-3" />
+              </button>
+            }
           />
-          <p className="text-sm leading-relaxed text-foreground/90">{execInsight.weekly}</p>
-          <div className="mt-4 space-y-3">
-            <InsightList icon={<AlertTriangle className="h-3.5 w-3.5 text-rose-400" />} title="Top risks" items={execInsight.risks} />
-            <InsightList icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-400" />} title="Top opportunities" items={execInsight.opportunities} />
-            <InsightList icon={<Target className="h-3.5 w-3.5 text-teal-400" />} title="Recommended next actions" items={execInsight.next} />
+          <div className="space-y-2">
+            {ranked.map(c => {
+              const promptCount = clusterPromptLinks[c.id]?.length ?? 0;
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => onNavigate?.("issue-clusters")}
+                  className="w-full text-left flex items-center gap-3 rounded-md border border-border/40 bg-background/40 hover:bg-muted/20 hover:border-teal-500/30 transition p-2.5"
+                >
+                  <PriorityScore score={c.score} size={44} showLabel={false} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <SeverityDot severity={c.severity} />
+                      <span className="text-sm font-medium truncate">{c.title}</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate mt-0.5">
+                      {c.workflow} · {c.impactedUsers} users · {c.feedbackCount} fb · {c.aiFailures} ai · {promptCount} prompt
+                    </div>
+                    <div className="mt-1.5"><ConvergenceBar signals={c.signals} /></div>
+                  </div>
+                  <ClusterStatus status={c.status} />
+                </button>
+              );
+            })}
           </div>
         </Card>
       </div>
 
-      {/* RANKED CLUSTERS */}
+      {/* EXECUTIVE INSIGHT STRIP — risks / opportunities / next */}
       <Card className="p-5">
         <SectionHeader
-          eyebrow="Priority"
-          title="Top issue clusters"
-          description="Ranked by weighted severity across behavior, feedback, AI failure, and business impact."
-          right={
-            <button
-              onClick={() => onNavigate?.("issue-clusters")}
-              className="text-xs font-medium text-teal-300 hover:text-teal-200 inline-flex items-center gap-1"
-            >
-              View all <ArrowUpRight className="h-3 w-3" />
-            </button>
-          }
+          eyebrow="Executive read"
+          title="Risks, opportunities, next actions"
+          right={<StatusBadge tone="teal"><Sparkles className="h-3 w-3" /> AI-synthesized</StatusBadge>}
         />
-        <div className="divide-y divide-border/60">
-          {ranked.map(c => (
-            <div key={c.id} className="grid grid-cols-12 items-center gap-3 py-2.5 text-sm">
-              <div className="col-span-5 flex items-center gap-2 min-w-0">
-                <SeverityDot severity={c.severity} />
-                <div className="min-w-0">
-                  <div className="font-medium truncate">{c.title}</div>
-                  <div className="text-[11px] text-muted-foreground truncate">
-                    {c.workflow} · {c.impactedUsers} users · {c.evidenceCount} signals
-                  </div>
-                </div>
-              </div>
-              <div className="col-span-3">
-                <ConvergenceBar signals={c.signals} />
-                <div className="text-[10px] text-muted-foreground mt-1">
-                  Behavior · Feedback · AI · Business
-                </div>
-              </div>
-              <div className="col-span-1 text-right text-sm font-semibold tabular-nums">{c.score}</div>
-              <div className="col-span-2 text-xs text-muted-foreground truncate">{c.owner}</div>
-              <div className="col-span-1 flex justify-end">
-                <ClusterStatus status={c.status} />
-              </div>
-            </div>
-          ))}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <InsightList icon={<AlertTriangle className="h-3.5 w-3.5 text-rose-400" />} title="Top risks" items={execInsight.risks} />
+          <InsightList icon={<TrendingUp className="h-3.5 w-3.5 text-emerald-400" />} title="Top opportunities" items={execInsight.opportunities} />
+          <InsightList icon={<Target className="h-3.5 w-3.5 text-teal-400" />} title="Recommended next" items={execInsight.next} />
         </div>
       </Card>
 
