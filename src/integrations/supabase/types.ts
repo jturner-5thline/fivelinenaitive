@@ -20759,7 +20759,7 @@ export type Database = {
           nylas_event_id: string | null
           parent_task_id: string | null
           position: number
-          priority: string
+          priority: string | null
           project_id: string | null
           recurrence_end_date: string | null
           recurrence_parent_id: string | null
@@ -20807,7 +20807,7 @@ export type Database = {
           nylas_event_id?: string | null
           parent_task_id?: string | null
           position?: number
-          priority?: string
+          priority?: string | null
           project_id?: string | null
           recurrence_end_date?: string | null
           recurrence_parent_id?: string | null
@@ -20855,7 +20855,7 @@ export type Database = {
           nylas_event_id?: string | null
           parent_task_id?: string | null
           position?: number
-          priority?: string
+          priority?: string | null
           project_id?: string | null
           recurrence_end_date?: string | null
           recurrence_parent_id?: string | null
