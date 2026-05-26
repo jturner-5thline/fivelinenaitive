@@ -24339,6 +24339,7 @@ export type Database = {
         Args: { _deal_id: string; _user_id: string }
         Returns: boolean
       }
+      can_access_task: { Args: { _task_id: string }; Returns: boolean }
       can_delete_lenders: { Args: { _user_id: string }; Returns: boolean }
       can_view_company_insights: {
         Args: { _company_id: string }
