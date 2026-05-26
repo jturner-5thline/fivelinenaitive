@@ -205,7 +205,7 @@ function DealListRowImpl({ deal, onStatusChange, onStageChange, onMarkReviewed, 
     type: (
       <TableCell key="type">
         <Badge variant="secondary" className="text-xs rounded-lg whitespace-nowrap">
-          {ENGAGEMENT_TYPE_CONFIG[deal.engagementType].label}
+          {ENGAGEMENT_TYPE_CONFIG[deal.engagementType]?.label ?? (deal.engagementType || '—')}
         </Badge>
       </TableCell>
     ),
