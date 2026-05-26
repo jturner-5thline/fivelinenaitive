@@ -192,6 +192,7 @@ export default function Tasks() {
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [filterRecurring, setFilterRecurring] = useState<FilterRecurring>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
@@ -979,7 +980,7 @@ export default function Tasks() {
           </Select>
 
           {/* Advanced filters collapsed behind a single entry point */}
-          <Popover>
+          <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -1003,7 +1004,26 @@ export default function Tasks() {
                 )}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[320px] p-3 space-y-3" align="end">
+            <PopoverContent
+              className="w-[320px] p-3 space-y-3"
+              align="end"
+              onOpenAutoFocus={(e) => e.preventDefault()}
+              onPointerDownOutside={(e) => {
+                // Keep popover open when interacting with Radix portaled
+                // children (Select dropdowns, etc.) whose content lives
+                // outside the PopoverContent DOM subtree.
+                const target = e.target as HTMLElement | null;
+                if (target?.closest('[data-radix-popper-content-wrapper], [role="listbox"], [role="option"]')) {
+                  e.preventDefault();
+                }
+              }}
+              onInteractOutside={(e) => {
+                const target = e.target as HTMLElement | null;
+                if (target?.closest('[data-radix-popper-content-wrapper], [role="listbox"], [role="option"]')) {
+                  e.preventDefault();
+                }
+              }}
+            >
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Due date</label>
                 <Select value={taskFilters.dueDate} onValueChange={v => patchFilters({ dueDate: v as FilterDueDate })}>
@@ -1157,6 +1177,23 @@ export default function Tasks() {
                   </div>
                 </div>
               )}
+              <div className="flex items-center justify-between pt-2 mt-1 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground hover:text-foreground hover:underline"
+                  onClick={() => { clearAllFilters(); patchFilters({ search: '' }); setDealFilterQuery(''); }}
+                >
+                  Clear filters
+                </button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="h-7 text-[11px] px-3"
+                  onClick={() => setFiltersOpen(false)}
+                >
+                  Done
+                </Button>
+              </div>
             </PopoverContent>
           </Popover>
 
