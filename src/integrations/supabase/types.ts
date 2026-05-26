@@ -17337,6 +17337,72 @@ export type Database = {
           },
         ]
       }
+      proposed_meeting_slots: {
+        Row: {
+          accepted_at: string | null
+          accepted_by_email: string | null
+          created_at: string
+          deal_id: string | null
+          duration_minutes: number | null
+          expires_at: string
+          google_event_id: string | null
+          id: string
+          recipient_email: string | null
+          recipient_name: string | null
+          slot_end: string
+          slot_start: string
+          status: Database["public"]["Enums"]["proposed_slot_status"]
+          subject: string | null
+          thread_id: string | null
+          timezone: string | null
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by_email?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_minutes?: number | null
+          expires_at?: string
+          google_event_id?: string | null
+          id?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          slot_end: string
+          slot_start: string
+          status?: Database["public"]["Enums"]["proposed_slot_status"]
+          subject?: string | null
+          thread_id?: string | null
+          timezone?: string | null
+          token?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by_email?: string | null
+          created_at?: string
+          deal_id?: string | null
+          duration_minutes?: number | null
+          expires_at?: string
+          google_event_id?: string | null
+          id?: string
+          recipient_email?: string | null
+          recipient_name?: string | null
+          slot_end?: string
+          slot_start?: string
+          status?: Database["public"]["Enums"]["proposed_slot_status"]
+          subject?: string | null
+          thread_id?: string | null
+          timezone?: string | null
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       qb_cashflow_mapping_rules: {
         Row: {
           categorized: boolean
@@ -24554,6 +24620,7 @@ export type Database = {
         | "feedback_call_attended"
         | "demo_converted"
         | "pilot_converted"
+      proposed_slot_status: "proposed" | "accepted" | "expired" | "cancelled"
       settings_audit_action: "dry_run" | "apply" | "undo" | "deny"
       wf_agreement_type: "nda" | "engagement" | "amendment" | "other"
       wf_deal_stage:
@@ -24834,6 +24901,7 @@ export const Constants = {
         "demo_converted",
         "pilot_converted",
       ],
+      proposed_slot_status: ["proposed", "accepted", "expired", "cancelled"],
       settings_audit_action: ["dry_run", "apply", "undo", "deny"],
       wf_agreement_type: ["nda", "engagement", "amendment", "other"],
       wf_deal_stage: [
