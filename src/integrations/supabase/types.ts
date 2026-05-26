@@ -24346,6 +24346,17 @@ export type Database = {
         Returns: boolean
       }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      create_task_inapp_notification: {
+        Args: {
+          _body: string
+          _context?: Json
+          _recipient_user_id: string
+          _task_id: string
+          _title: string
+          _trigger_key: string
+        }
+        Returns: string
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
