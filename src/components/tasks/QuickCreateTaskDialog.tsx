@@ -899,9 +899,11 @@ export function QuickCreateTaskDialog({
                 </button>
               </PopoverTrigger>
               <PopoverContent
+                data-deal-picker="true"
                 className="p-0 w-[440px] max-h-[320px] overflow-hidden"
                 align="start"
                 style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.08)' }}
+                onOpenAutoFocus={(e) => e.preventDefault()}
               >
                 <div className="p-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
                   <Input
