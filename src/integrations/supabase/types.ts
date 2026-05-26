@@ -10515,6 +10515,42 @@ export type Database = {
         }
         Relationships: []
       }
+      email_suppression_log: {
+        Row: {
+          created_at: string
+          deal_id: string | null
+          function_name: string | null
+          id: string
+          intended_recipient: string
+          metadata: Json
+          reason: string
+          subject: string | null
+          template: string | null
+        }
+        Insert: {
+          created_at?: string
+          deal_id?: string | null
+          function_name?: string | null
+          id?: string
+          intended_recipient: string
+          metadata?: Json
+          reason: string
+          subject?: string | null
+          template?: string | null
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string | null
+          function_name?: string | null
+          id?: string
+          intended_recipient?: string
+          metadata?: Json
+          reason?: string
+          subject?: string | null
+          template?: string | null
+        }
+        Relationships: []
+      }
       email_templates: {
         Row: {
           body_html: string

@@ -588,10 +588,16 @@ async function sendWorkflowEmail(
   try {
     const subject = ((config.subject as string) || "Workflow Update").replace("{deal_name}", dealName);
 
-    // Suppress workflow reminder emails for jturner@5thline.co — these
-    // follow-up reminders are now surfaced in the in-app Daily Briefing
-    // ("Today's Follow-Ups") instead of being delivered via email. The
-    // underlying wf_tasks records and reminder logic remain intact.
+    // Suppress workflow reminder emails for ANY internal 5th Line staff
+    // (any *@5thline.co address). Workflow follow-up reminders (e.g.
+    // "Follow-up: Agreement for {deal_name}") are surfaced in the in-app
+    // Daily Briefing instead of being delivered via email so they never
+    // get routed to internal teammates' real inboxes — the underlying
+    // wf_tasks records and reminder logic remain intact.
+    //
+    // Toggle with EMAIL_INTERNAL_SUPPRESSION_ENABLED env var (default ON).
+    const suppressionEnabled =
+      (Deno.env.get("EMAIL_INTERNAL_SUPPRESSION_ENABLED") ?? "true").toLowerCase() !== "false";
     try {
       const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
       if (supabaseServiceKey) {
@@ -607,16 +613,39 @@ async function sendWorkflowEmail(
         if (userResp.ok) {
           const userJson = await userResp.json();
           const email = (userJson?.email || "").toLowerCase();
-          if (email === "jturner@5thline.co") {
+          if (suppressionEnabled && email.endsWith("@5thline.co")) {
             console.log(
-              `[email] Skipping workflow reminder email to jturner@5thline.co (subject="${subject}") — surfaced in in-app Daily Briefing instead`
+              `[email] internal_user_suppressed recipient=${email} subject="${subject}" deal_id=${dealId}`
             );
+            // Best-effort audit log (do not block on failure)
+            try {
+              await fetch(`${supabaseUrl}/rest/v1/email_suppression_log`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  apikey: supabaseServiceKey,
+                  Authorization: `Bearer ${supabaseServiceKey}`,
+                  Prefer: "return=minimal",
+                },
+                body: JSON.stringify({
+                  intended_recipient: email,
+                  reason: "internal_user_suppressed",
+                  template: (config.template as string) ?? null,
+                  function_name: "wf-stage-trigger",
+                  deal_id: dealId,
+                  subject,
+                  metadata: { assignee_id: assigneeId },
+                }),
+              });
+            } catch (logErr) {
+              console.error("[email] suppression_log insert failed:", logErr);
+            }
             return;
           }
         }
       }
     } catch (lookupErr) {
-      console.error("[email] jturner suppression lookup failed:", lookupErr);
+      console.error("[email] internal-suppression lookup failed:", lookupErr);
     }
 
     await fetch(`${supabaseUrl}/functions/v1/send-notification-email`, {
