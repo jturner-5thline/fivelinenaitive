@@ -355,7 +355,7 @@ export function EmailQuickActionsToolbar({
           onClose={() => setActive(null)}
         />
       </AIAssistOverlay>
-      <AIAssistOverlay open={active === 'suggest_times'} onClose={() => setActive(null)} title="Suggest Times">
+      <AIAssistOverlay open={active === 'suggest_times'} onClose={() => setActive(null)} title="Suggest Times" hideClose>
         <SuggestTimesPanel
           threadId={thread.threadId}
           subject={thread.subject}
