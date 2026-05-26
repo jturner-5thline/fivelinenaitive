@@ -1066,6 +1066,11 @@ export default function Tasks() {
                         }}
                       >
                         <Checkbox checked={checked} className="h-3.5 w-3.5" />
+                        <span
+                          aria-hidden
+                          className="h-2 w-2 rounded-full shrink-0"
+                          style={{ backgroundColor: p.color }}
+                        />
                         <span>{p.label}</span>
                       </button>
                     );
