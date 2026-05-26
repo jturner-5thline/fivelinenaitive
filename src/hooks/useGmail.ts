@@ -41,6 +41,9 @@ interface GmailStatus {
   is_expired?: boolean;
   scope?: string;
   connected_at?: string;
+  /** Which mail provider is connected (gmail via Nylas, microsoft, or none). */
+  provider?: 'gmail' | 'microsoft' | 'none';
+  email_address?: string;
 }
 
 // Demo mock emails for demo@5thline.co.
@@ -215,12 +218,55 @@ export function useGmail() {
         return;
       }
 
-      const { data, error } = await supabase.functions.invoke('gmail-status');
-      
-      if (error) throw error;
-      setStatus(data);
-      cachedStatus = data;
-      persistStatus(data);
+      // Check Gmail (Nylas) and Microsoft in parallel. A user is considered
+      // "mail connected" if EITHER provider has a valid record. This prevents
+      // false "Connect your mail" prompts for users (e.g. polly@blount.capital)
+      // who connected Microsoft instead of Gmail.
+      const [gmailRes, msRes] = await Promise.allSettled([
+        supabase.functions.invoke('gmail-status'),
+        supabase
+          .from('microsoft_tokens')
+          .select('email, connected_at, expires_at, status')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
+
+      const gmailData =
+        gmailRes.status === 'fulfilled' && !gmailRes.value.error
+          ? (gmailRes.value.data as GmailStatus | null)
+          : null;
+      const msRow =
+        msRes.status === 'fulfilled' && !msRes.value.error ? msRes.value.data : null;
+      const msConnected = !!msRow && msRow.status !== 'disconnected';
+
+      let next: GmailStatus;
+      if (gmailData?.connected) {
+        next = { ...gmailData, provider: 'gmail' };
+      } else if (msConnected) {
+        next = {
+          connected: true,
+          provider: 'microsoft',
+          email_address: msRow!.email ?? undefined,
+          connected_at: msRow!.connected_at ?? undefined,
+          expires_at: msRow!.expires_at ?? undefined,
+          is_expired: msRow!.expires_at
+            ? new Date(msRow!.expires_at) < new Date()
+            : false,
+        };
+      } else {
+        next = { connected: false, provider: 'none' };
+      }
+
+      // If BOTH lookups failed (network/transport), don't overwrite a
+      // previously-known connected state — surface as a data error instead
+      // so the UI can distinguish "load failed" from "not connected".
+      if (gmailRes.status === 'rejected' && msRes.status === 'rejected') {
+        throw (gmailRes as PromiseRejectedResult).reason;
+      }
+
+      setStatus(next);
+      cachedStatus = next;
+      persistStatus(next);
       setError(null);
     } catch (err: any) {
       // Suppress 401s — usually means the session expired/logged out between renders
