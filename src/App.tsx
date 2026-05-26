@@ -46,6 +46,22 @@ import { Loader2 } from "lucide-react";
 import { lazyRetry } from "@/lib/lazyRetry";
 import { prefetchCommonRoutes } from "@/lib/routePrefetch";
 import { useAuth } from "@/contexts/AuthContext";
+import { useQueryClient } from "@tanstack/react-query";
+import { runDemoAiChatReset } from "@/lib/ai/resetDemoChats";
+
+/**
+ * Demo-only: wipes prior naitive AI chat history once per page load
+ * for demo@5thline.co. No-op for any other user.
+ */
+function DemoAiChatResetMount() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  useEffect(() => {
+    if (!user?.email) return;
+    void runDemoAiChatReset(user.email, qc);
+  }, [user?.email, qc]);
+  return null;
+}
 
 /**
  * Root + auth-page redirector. Authenticated users always land on /deals.
@@ -293,6 +309,7 @@ const App = () => (
                       <CopyProtection>
                       <UndoSendProvider>
                       <WelcomeScreenWrapper />
+                      <DemoAiChatResetMount />
                       <Toaster />
                       <Sonner />
                       <WorkflowEmailModalListener />

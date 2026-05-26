@@ -24491,6 +24491,7 @@ export type Database = {
         Args: { _company_id: string; _dashboard_id: string }
         Returns: undefined
       }
+      reset_demo_ai_chats: { Args: never; Returns: number }
       save_dashboard_grid_layout: {
         Args: { _company_id: string; _dashboard_id: string; _layout: Json }
         Returns: undefined
