@@ -411,7 +411,7 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                       </button>
                     </div>
                   ))}
-                  <Popover>
+                  <Popover modal>
                     <PopoverTrigger asChild>
                       <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" style={{ border: '1px dashed rgba(255,255,255,0.06)' }} aria-label="Add collaborator">
                         <Plus className="h-3 w-3" style={{ color: '#8b92a5' }} />
