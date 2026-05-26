@@ -1015,16 +1015,17 @@ export default function Tasks() {
                 // children (Select dropdowns, etc.) whose content lives
                 // outside the PopoverContent DOM subtree.
                 const target = e.target as HTMLElement | null;
-                if (target?.closest('[data-radix-popper-content-wrapper], [role="listbox"], [role="option"]')) {
+                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"]')) {
                   e.preventDefault();
                 }
               }}
               onInteractOutside={(e) => {
                 const target = e.target as HTMLElement | null;
-                if (target?.closest('[data-radix-popper-content-wrapper], [role="listbox"], [role="option"]')) {
+                if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"]')) {
                   e.preventDefault();
                 }
               }}
+              onFocusOutside={(e) => e.preventDefault()}
             >
               <div className="space-y-1.5">
                 <label className="text-[10px] uppercase tracking-wide font-medium text-muted-foreground">Due date</label>
