@@ -32,6 +32,7 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
   const [search, setSearch] = useState('');
   const [deals, setDeals] = useState<Deal[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const searchSeq = useRef(0);
@@ -59,19 +60,32 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
   const loadDeals = async (query: string = '') => {
     const seq = ++searchSeq.current;
     setLoading(true);
+    setError(null);
     // Active = anything not archived / closed-won / closed-lost. We sort by
     // most-recently-updated so the user sees deals they're working on first.
+    // NOTE: a bare `.not('status','in',...)` filter silently excludes rows
+    // whose status IS NULL (Postgres NULL semantics), which is exactly the
+    // default for most active deals — that's why the popover used to render
+    // empty. We allow NULL status through explicitly.
     let req = supabase
       .from('deals')
       .select('id, company, stage, status, updated_at')
-      .not('status', 'in', '(archived,closed,closed-won,closed-lost)');
+      .or('status.is.null,status.not.in.(archived,closed,closed-won,closed-lost)');
     if (query) {
       req = req.ilike('company', `%${query}%`);
     }
-    const { data } = await req.order('updated_at', { ascending: false }).limit(50);
+    const { data, error: dbError } = await req.order('updated_at', { ascending: false }).limit(50);
     // Drop stale responses if a newer search has been issued.
     if (seq !== searchSeq.current) return;
+    if (dbError) {
+      console.error('[LinkToDealPopover] deal search failed', { query, error: dbError });
+      setError(dbError.message || 'Could not load deals');
+      setDeals([]);
+      setLoading(false);
+      return;
+    }
     const mapped = (data || []).map(d => ({ ...d, company: d.company || 'Unnamed Deal' })) as Deal[];
+    console.log('[LinkToDealPopover] deal search', { query, rows: mapped.length });
     // Float the AI-suggested deal to the top so the user can confirm with one click.
     if (aiSuggestedDealId) {
       const idx = mapped.findIndex(d => d.id === aiSuggestedDealId);
@@ -164,6 +178,13 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
           {loading ? (
             <div className="flex items-center justify-center py-6">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            </div>
+          ) : error ? (
+            <div className="text-center py-6 px-3 space-y-2">
+              <div className="text-xs text-destructive">{error}</div>
+              <Button size="sm" variant="outline" className="h-7 text-[11px]" onClick={() => loadDeals(search.trim())}>
+                Retry
+              </Button>
             </div>
           ) : filteredDeals.length === 0 ? (
             <div className="text-center py-6 text-xs text-muted-foreground">
