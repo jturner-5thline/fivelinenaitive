@@ -21,6 +21,16 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { MoveToPipelineDialog } from './MoveToPipelineDialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface DealEditDrawerProps {
   deal: Deal;
@@ -31,7 +41,7 @@ interface DealEditDrawerProps {
 
 export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEditDrawerProps) {
   const navigate = useNavigate();
-  const { updateDeal } = useDealsContext();
+  const { updateDeal, deleteDeal } = useDealsContext();
   const { formatCurrencyValue, preferences } = usePreferences();
   const { dealTypes } = useDealTypes();
   const { getStageConfig } = useDealStages();
@@ -47,6 +57,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     ? dealPipeline.stages.map(s => [s.id, { label: s.label, color: s.color }] as const)
     : Object.entries(globalStageConfig);
   const [isPipelineDialogOpen, setIsPipelineDialogOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Animation states - keep mounted during exit animation
   const [isVisible, setIsVisible] = useState(false);
@@ -175,8 +187,33 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   };
 
   const handleDelete = () => {
-    navigate(`/deal/${deal.id}?action=delete`);
-    onClose();
+    setIsDeleteOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteDeal(deal.id);
+      toast({
+        title: 'Deal deleted',
+        description: `“${deal.company}” has been removed.`,
+      });
+      setIsDeleteOpen(false);
+      onClose();
+      // If we're on this deal's detail page, navigate back to deals list
+      if (window.location.pathname.startsWith(`/deal/${deal.id}`)) {
+        navigate('/deals');
+      }
+    } catch (err: any) {
+      console.error('Failed to delete deal:', err);
+      toast({
+        title: 'Error deleting deal',
+        description: err?.message || 'Something went wrong. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   if (!isVisible) return null;
@@ -485,6 +522,26 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
               isOpen={isPipelineDialogOpen}
               onClose={() => setIsPipelineDialogOpen(false)}
             />
+            <AlertDialog open={isDeleteOpen} onOpenChange={(o) => !isDeleting && setIsDeleteOpen(o)}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete “{deal.company}”?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete this deal and its related records. This cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={(e) => { e.preventDefault(); handleConfirmDelete(); }}
+                    disabled={isDeleting}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isDeleting ? 'Deleting…' : 'Delete deal'}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
 
           {/* Footer */}
