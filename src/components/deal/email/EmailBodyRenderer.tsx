@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import type { EmailAttachment } from './mockEmailData';
 import { fetchAttachmentDataUrl } from './useFullEmailMessage';
 import { BrandedEmailFrame, shouldRenderAsBranded } from './BrandedEmailFrame';
+import { EmailMessageShell } from './EmailMessageShell';
 
 interface Props {
   html?: string;
@@ -202,37 +203,40 @@ export function EmailBodyRenderer({
 
   if (useBranded && html) {
     return (
-      <BrandedEmailFrame
-        html={html}
-        className={className}
-        onError={() => setBrandedFailed(true)}
-      />
+      <EmailMessageShell className={className}>
+        <BrandedEmailFrame
+          html={html}
+          onError={() => setBrandedFailed(true)}
+        />
+      </EmailMessageShell>
     );
   }
 
   if (sanitized) {
     return (
-      <div
-        className={cn(
-          'email-html-body w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
-          'break-words',
-          className,
-        )}
-        style={{ width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
-        dangerouslySetInnerHTML={{ __html: sanitized }}
-      />
+      <EmailMessageShell className={className}>
+        <div
+          className={cn(
+            'email-html-body w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
+            'break-words bg-transparent',
+          )}
+          style={{ width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+          dangerouslySetInnerHTML={{ __html: sanitized }}
+        />
+      </EmailMessageShell>
     );
   }
 
   return (
-    <div
-      className={cn(
-        'w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words',
-        className,
-      )}
-      style={{ width: '100%', maxWidth: '100%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
-    >
-      {text || ''}
-    </div>
+    <EmailMessageShell className={className}>
+      <div
+        className={cn(
+          'w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words bg-transparent',
+        )}
+        style={{ width: '100%', maxWidth: '100%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+      >
+        {text || ''}
+      </div>
+    </EmailMessageShell>
   );
 }
