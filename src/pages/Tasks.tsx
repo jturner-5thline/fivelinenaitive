@@ -977,27 +977,34 @@ export default function Tasks() {
           {/* Advanced filters collapsed behind a single entry point */}
           <Popover open={filtersOpen} onOpenChange={setFiltersOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-[12px] gap-1.5"
-                style={{
-                  borderColor: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all')
-                    ? 'rgba(126,184,247,0.35)'
-                    : 'rgba(255,255,255,0.06)',
-                  backgroundColor: 'rgba(255,255,255,0.025)',
-                  color: (filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') ? '#cfe3ff' : '#b3bccc',
-                }}
-              >
-                <SlidersHorizontal className="h-3 w-3" />
-                Filters
-                {(filterDealIds.size + filterLabelIds.size + filterPriorities.size > 0 || filterRecurring !== 'all' || filterDueDate !== 'all') && (
-                  <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
-                    style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
-                    {filterDealIds.size + filterLabelIds.size + filterPriorities.size + (filterRecurring !== 'all' ? 1 : 0) + (filterDueDate !== 'all' ? 1 : 0)}
-                  </span>
-                )}
-              </Button>
+              {(() => {
+                const activeCount = filterDealIds.size + filterLabelIds.size
+                  + (urgentOnly ? 1 : 0)
+                  + (filterRecurring !== 'all' ? 1 : 0)
+                  + (filterDueDate !== 'all' ? 1 : 0);
+                const isActive = activeCount > 0;
+                return (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[12px] gap-1.5"
+                    style={{
+                      borderColor: isActive ? 'rgba(126,184,247,0.35)' : 'rgba(255,255,255,0.06)',
+                      backgroundColor: 'rgba(255,255,255,0.025)',
+                      color: isActive ? '#cfe3ff' : '#b3bccc',
+                    }}
+                  >
+                    <SlidersHorizontal className="h-3 w-3" />
+                    Filters
+                    {isActive && (
+                      <span className="text-[10px] px-1.5 rounded-full tabular-nums min-w-[20px] text-center"
+                        style={{ backgroundColor: 'rgba(126,184,247,0.18)', color: '#cfe3ff' }}>
+                        {activeCount}
+                      </span>
+                    )}
+                  </Button>
+                );
+              })()}
             </PopoverTrigger>
             <PopoverContent
               className="w-[320px] p-3 space-y-3"
