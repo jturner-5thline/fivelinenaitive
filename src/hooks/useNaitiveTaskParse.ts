@@ -93,9 +93,9 @@ export async function createTaskFromDraft(
   companyId: string | null,
   options?: { syncSource?: string; sourceThreadId?: string | null }
 ): Promise<{ id: string; assigned_to: string } | { id: string; assigned_to: string; _error?: never } | null> {
-  // Map priority: tasks table uses 'low'|'medium'|'high'|'urgent'; we normalize 'normal' → 'medium'
-  const priorityMap: Record<string, string> = { low: 'low', normal: 'medium', high: 'high', urgent: 'urgent' };
-  const priority = draft.priority ? priorityMap[draft.priority] || 'medium' : 'medium';
+  // tasks_priority_urgent_only_chk: priority must be NULL or 'urgent'.
+  // Only flag explicitly urgent drafts; everything else leaves priority unset.
+  const priority: string | null = draft.priority === 'urgent' ? 'urgent' : null;
 
   const insertRow: any = {
     title: draft.title,
@@ -124,7 +124,11 @@ export async function createTaskFromDraft(
   insertRow.assigned_to = draft.owner_id || userId;
   insertRow.assigned_by = userId;
   insertRow.status = 'not_started';
-  insertRow.priority = priority;
+  if (priority) {
+    insertRow.priority = priority;
+  } else {
+    delete insertRow.priority;
+  }
   insertRow.task_type = draft.type === 'meeting' ? 'meeting' : draft.type === 'call' ? 'call' : 'task';
   insertRow.sync_source = options?.syncSource || 'naitive_nl_input';
   insertRow.is_recurring = draft.is_recurring;
