@@ -1,136 +1,61 @@
+## Suggest Times — AI Assist email feature
 
-# Flex Sync Requests — Triage & Merge Review Overhaul
+A new "Suggest Times" flow alongside the existing Schedule Meeting button in the AI Assist email panel. Users generate calendar-aware time slot suggestions, insert them into the draft as clickable booking links, and recipients can confirm a slot with one click to auto-book the meeting.
 
-This is a sizable change touching DB schema, a new matching engine, and a rebuilt panel. Proposing a phased plan so we can ship incrementally and you can review after each phase.
+### Scope
 
-## Scope summary
+**1. UI — AI Assist right rail**
+- Add `Suggest Times` button under existing `Schedule Meeting`.
+- Inline panel with controls: duration (15/30/45/60, default 30), window (3/5/7/14 business days, default 5), working hours (prefilled from `useUserCalendarPrefs`), TZ + recipient TZ toggle, slot count (3/5/7, default 5), buffer (0/15/30, default 15), avoid back-to-back toggle (on), focus-time-friendly toggle (off), format (bulleted/inline/numbered).
+- Generated slots render as editable, removable chips (±15min nudge).
+- "Insert into draft" injects formatted text + per-slot confirm links at cursor in the reply composer.
+- After insertion: collapsed state with "Slots inserted — Edit times".
 
-Today `LenderSyncRequestsPanel` is a flat queue with `new_lender / update_existing / merge_conflict` cards and a simple merge dialog. We will turn it into:
+**2. Slot generation**
+- New `lib/calendar/freebusy.ts` wrapping existing `calendar-freebusy` edge function (already present) for the signed-in user.
+- New `lib/calendar/generateSlots.ts` — pure function: takes busy blocks + constraints, returns N candidate slots respecting business days, working hours, buffer, back-to-back avoidance, and focus-time rule.
 
-- 4-tab triage (New / Likely Match / Conflict Review / Completed)
-- A scored matching engine producing confidence labels + candidates per request
-- A side-by-side review drawer with field-level decisions
-- Separate contact reconciliation flow
-- Audit log of every accepted/rejected field change
-- Expanded status model and safer bulk actions
+**3. Backend**
+- Migration: `proposed_meeting_slots` (id, thread_id, user_id, recipient_email, slot_start, slot_end, status enum proposed/accepted/expired, token uuid unique, expires_at default now()+7d, created_at). RLS: owner can CRUD their own; public read by token for confirm page.
+- Edge function `confirm-meeting-slot`: validates token, calls `events.insert` via Nylas (existing pattern used by current Schedule Meeting flow), marks slot accepted + siblings expired, returns confirmation payload. No JWT required (public).
+- Edge function `create-proposed-slots`: bulk-inserts proposed slots for a thread, returns rows with tokens. JWT verified.
 
-## Phase 1 — Data model & matching engine (foundation)
+**4. Public confirm route**
+- `/schedule/confirm?token=<uuid>` — public page that calls `confirm-meeting-slot`, shows success or "no longer available".
 
-**Migration**
-- `lender_sync_requests`: add columns
-  - `confidence` text  (`exact_duplicate | likely_duplicate | possible_match | needs_review | none`)
-  - `suggested_action` text (`add | update | merge | review`)
-  - `match_candidates` jsonb  (array of `{ lender_id, score, reasons[] }`)
-  - `match_reason` text  (top reason, denormalized for table)
-  - `conflict_count` int default 0
-  - `contact_change_count` int default 0
-  - Expand `status` allowed values via CHECK to: `pending_new | pending_match_review | pending_conflict_review | approved_add | approved_update | approved_merge | rejected | completed` (keep legacy values readable; new requests use new states)
-  - `assigned_reviewer_id` uuid
-- New table `lender_sync_request_decisions` (audit log): `id, request_id, field_name, scope ('lender'|'contact'), existing_value jsonb, incoming_value jsonb, action ('keep'|'use_incoming'|'fill_empty'|'append'|'mark_conflict'), decided_by, decided_at, notes`
-- New table `lender_sync_settings` (per-company): `auto_approve_deterministic boolean default false`, `likely_match_threshold numeric default 0.82`, `possible_match_threshold numeric default 0.65`
-- Backfill: compute `confidence/suggested_action/match_candidates` for existing pending rows via one-time SQL using existing similarity helpers
-- RLS: read/write scoped to company members; insert into decisions limited to authenticated reviewers
+**5. AI Assist integration**
+- When `Draft Reply` AI detects scheduling intent (regex/LLM signal on thread text), auto-call slot generator with defaults and surface "Insert suggested times" chip in the draft preview card.
 
-**Matching engine** — `src/lib/lenderMatching.ts`
-- Inputs: incoming `incoming_data`, candidate set from `master_lenders` (company-scoped)
-- Signals & weights:
-  - Exact normalized name → +1.0 (deterministic)
-  - Alias overlap → +0.95
-  - Website/domain exact → +0.9, fuzzy → up to +0.6
-  - Email-domain match (incoming.email vs existing.email) → +0.7
-  - Phone exact → +0.6
-  - Address/geo overlap → +0.3
-  - Shared contact (name+email) → +0.5
-  - Name fuzzy (Dice on normalized) → up to +0.6
-  - Tag/keyword overlap → up to +0.2
-- Output: ranked candidates + `confidence` label using thresholds from settings; `suggested_action = merge` when ≥1 strong candidate, `update` when exactly one strong candidate and source_lender_id already linked, else `add`
-- Pure functions, unit-tested
+### Technical details
 
-**Edge function** — `match-lender-sync-request` (deploys automatically)
-- Triggered on insert via DB trigger (NOTIFY → invoke) OR called by `useLenderSyncRequests` post-insert; also exposed for backfill
-- Persists `confidence`, `suggested_action`, `match_candidates`, `match_reason`, `conflict_count`, `contact_change_count`
-- Auto-approve only when admin setting on AND deterministic exact match with zero populated-field conflicts AND no contact deltas
+- `proposed_meeting_slots` token URL: `${window.location.origin}/schedule/confirm?token=<uuid>` (NOT `app.naitive/schedule/confirm` — use current origin so it works in preview + production).
+- Sibling expiry done in the same edge function transactionally: `UPDATE … SET status='expired' WHERE thread_id=$1 AND id<>$2 AND status='proposed'`.
+- Reuse Nylas grant lookup pattern from `calendar-freebusy` (gmail_tokens.grant_id).
+- Calendar event creation: `POST /v3/grants/{grantId}/events?calendar_id=primary` with attendees=[recipient,user], conferencing none for now (parity with existing flow — will extend later if needed).
+- Slot generation algorithm:
+  1. Build candidate grid: for each business day in window, walk working hours in `duration + buffer` increments.
+  2. Filter out any candidate overlapping a busy block (± buffer if avoid-back-to-back on).
+  3. If focus-time-friendly: drop candidates that would leave a free remainder <60min in their enclosing free block.
+  4. Spread N picks across days (round-robin per day) for diversity.
+- Format helpers in `lib/calendar/formatSlots.ts` (bulleted/inline/numbered, dual-TZ optional).
+- Composer insertion: extend existing reply composer to expose an imperative `insertAtCursor(html)` ref or, if not available, append to current draft value. Will inspect the composer component during implementation.
 
-## Phase 2 — UI: 4-tab panel + filters + list columns
+### Verification
 
-Rewrite `LenderSyncRequestsPanel.tsx` (and supporting components):
-- Tabs: **New | Likely Match | Conflict Review | Completed**
-  - New: `confidence in (none, needs_review)` AND `suggested_action = add`
-  - Likely Match: `suggested_action in (update, merge)` AND no unresolved conflicts
-  - Conflict Review: `conflict_count > 0` OR status `pending_conflict_review`
-  - Completed: terminal statuses
-- Filters bar (per tab, persisted): confidence, source_system, age bucket (24h / 7d / 30d / older), assigned reviewer, suggested action
-- New table/list view `SyncRequestTable.tsx` with sortable columns: request type, suggested action, confidence chip, matched lender, reason, conflict count, contact changes, updated at, reviewer
-- Status chips with semantic tokens; "delta" inline counts (e.g. `+2 new contacts · 1 conflict`)
-- Sort by confidence DESC default
+Run through user's 5-step flow in `/admin` preview.
 
-## Phase 3 — Review drawer (side-by-side)
+### Files touched (estimate)
 
-New `SyncRequestReviewDrawer.tsx`:
-- Layout: 3 columns inside a Sheet
-  - Left: incoming request (read-only)
-  - Right: candidate dropdown + existing record
-  - Center: per-field decision rows: existing value, incoming value, recommended action, override segmented control (Keep / Use incoming / Fill empty / Append / Mark conflict)
-- Contact section (separate from lender fields):
-  - Exact contact match → "merge & backfill missing" preselected
-  - Likely contact match → "Confirm merge contact" button + side-by-side
-  - Net-new contact → add as additional contact
-  - Primary contact unchanged unless toggled
-- Decision summary panel before Confirm: action, fields-to-update count, empty-fields-to-backfill count, conflicting fields needing approval, contacts to merge, net new contacts, "deals/notes/history preserved: yes"
-- Confirm writes:
-  - Apply field decisions to canonical `master_lenders`
-  - Insert per-field rows into `lender_sync_request_decisions`
-  - Upsert contacts into `lender_contacts`, preserving primary
-  - Re-point any deal_lender associations if user changed the canonical
-  - Update request `status` to `approved_add | approved_update | approved_merge`
+New:
+- `src/components/email/SuggestTimesPanel.tsx`
+- `src/lib/calendar/generateSlots.ts` (+ test)
+- `src/lib/calendar/formatSlots.ts`
+- `src/pages/ScheduleConfirm.tsx` + route in `App.tsx`
+- `supabase/functions/create-proposed-slots/index.ts`
+- `supabase/functions/confirm-meeting-slot/index.ts`
+- Migration for `proposed_meeting_slots`
 
-## Phase 4 — Bulk actions + safety
-
-- Bulk bar appears only when selection has uniform `confidence = exact_duplicate` OR `suggested_action = update` with zero populated-field conflicts
-- Actions: "Approve fill-empty updates", "Approve exact contact additions", "Mark for later review"
-- Never auto-merge medium confidence
-- Auto-approve deterministic updates only if `lender_sync_settings.auto_approve_deterministic = true`
-- Reversible: a "View audit" drawer that reads `lender_sync_request_decisions`
-
-## Phase 5 — Polish & verification
-
-- Notification bell counts use new statuses
-- Realtime subscription unchanged but reads new fields
-- Vitest:
-  - matching engine scoring & threshold tests
-  - decision-summary computation
-  - contact reconciliation precedence
-- Manual smoke in preview against existing pending requests
-
-## Technical details
-
-- Schema additions are additive and CHECK-constraint relaxed so legacy statuses still load. Migration includes one-shot backfill that calls the matching engine via PL/pgSQL stub OR leaves `confidence='none'` and lets the edge function backfill on next refetch (preferred — no SQL duplication).
-- Matching engine is a pure TS module re-used by the edge function (Deno-compatible) and by client-side previews.
-- All decisions persisted; nothing destructive happens without a `lender_sync_request_decisions` row.
-- We retain the existing `MergeConflictDialog` path during rollout for back-compat, switching the panel default to the new drawer once Phase 3 lands.
-
-## Files (rough)
-
-```text
-supabase/migrations/<ts>_flex_sync_triage.sql                 (new)
-supabase/functions/match-lender-sync-request/index.ts         (new)
-src/lib/lenderMatching.ts                                     (new, shared)
-src/lib/__tests__/lenderMatching.test.ts                      (new)
-src/hooks/useLenderSyncRequests.ts                            (extend types + write decisions)
-src/hooks/useFlexSyncSettings.ts                              (extend with thresholds)
-src/components/lenders/LenderSyncRequestsPanel.tsx            (rewrite)
-src/components/lenders/SyncRequestTable.tsx                   (new)
-src/components/lenders/SyncRequestReviewDrawer.tsx            (new)
-src/components/lenders/SyncRequestFiltersBar.tsx              (new)
-src/components/lenders/SyncRequestDecisionSummary.tsx         (new)
-src/components/lenders/SyncRequestAuditDrawer.tsx             (new)
-```
-
-## Open questions before I start
-
-1. **Phasing**: ship all 5 phases in one go, or land Phase 1+2 first, review, then 3–5? (Strong recommend the latter — much safer.)
-2. **Reviewer assignment**: assign manually via a dropdown on each row, or auto-round-robin among admins? I'll default to manual.
-3. **Auto-approve setting**: default OFF for everyone, exposed in Integrations → Flex settings — OK?
-4. **Thresholds**: defaults of `likely ≥ 0.82`, `possible ≥ 0.65` (tunable per company). OK to start there?
-
-Confirm phasing and answers to 2–4 and I'll start with Phase 1.
+Modified:
+- AI Assist email panel component (locate via search for existing "Schedule Meeting" button)
+- AI draft preview card to surface the "Insert suggested times" chip when scheduling intent detected
+- Reply composer to expose cursor-insert API if missing
