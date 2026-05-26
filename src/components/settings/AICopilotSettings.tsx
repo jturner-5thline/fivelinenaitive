@@ -182,10 +182,13 @@ export function AICopilotSettings() {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="tone">Tone</Label>
-            <Select value={row.tone_override || ''} onValueChange={(v) => setField('tone_override', (v || '') as ToneOption)}>
+            <Select
+              value={row.tone_override || '__default__'}
+              onValueChange={(v) => setField('tone_override', (v === '__default__' ? '' : v) as ToneOption)}
+            >
               <SelectTrigger id="tone"><SelectValue placeholder="Use platform default" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Use platform default</SelectItem>
+                <SelectItem value="__default__">Use platform default</SelectItem>
                 <SelectItem value="professional_concise">Professional / Concise</SelectItem>
                 <SelectItem value="formal">Formal</SelectItem>
                 <SelectItem value="casual">Casual</SelectItem>
