@@ -119,8 +119,9 @@ export function CreateTaskFromEmailDialog({ open, onOpenChange, email }: Props) 
         assigned_to: assignee || user.id,
         assigned_by: user.id,
         created_by: user.id,
-        // Priority intentionally not set from this flow — DB default applies.
-        priority: 'medium',
+        // Priority intentionally not set from this flow — tasks created from
+        // an email are not flagged urgent by default.
+        priority: null,
         status: 'not_started',
         due_date: dueDate ? format(dueDate, 'yyyy-MM-dd') : null,
         deal_id: email.dealId || null,
