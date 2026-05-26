@@ -133,25 +133,6 @@ const DUE_LABELS: Record<FilterDueDate, string> = {
   this_week: 'Due this week',
   no_date: 'No due date',
 };
-const SORT_LABELS: Record<SortBy, string> = {
-  due_date: 'Due date',
-  priority: 'Priority',
-  deal: 'Deal',
-  created_at: 'Created date',
-  title: 'Name',
-};
-const GROUP_LABELS: Record<GroupBy, string> = {
-  status: 'Status',
-  time: 'Due date',
-  priority: 'Priority',
-  focus: 'Focus',
-  none: 'None',
-};
-const RECURRING_LABELS: Record<FilterRecurring, string> = {
-  all: 'All tasks',
-  recurring: 'Recurring only',
-  paused: 'Paused only',
-};
 const PRIORITY_LABEL_MAP: Record<TaskPriority, string> = {
   urgent: 'Urgent',
 };
