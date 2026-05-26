@@ -853,38 +853,93 @@ export function QuickCreateTaskDialog({
                   />
                 </div>
                 <div className="max-h-[260px] overflow-y-auto py-1">
-                  {dealSearchResults.length === 0 && (
+                  {dealResultsEmpty && (
                     <div className="px-3 py-4 text-[11px] text-center" style={{ color: '#7a8194' }}>
-                      {dealQuery.trim() ? 'No active deals match your search.' : 'No active deals.'}
+                      {dealQuery.trim() ? 'No deals match your search.' : 'No deals available.'}
                     </div>
                   )}
-                  {dealSearchResults.map(d => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => { setDealId(d.id); setDealPickerOpen(false); setDealQuery(''); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.08)]"
-                      style={{ color: dealId === d.id ? '#cfe3ff' : '#eef1f6' }}
-                    >
-                      <span className="flex-1 truncate">
-                        <span className="font-medium">{d.name}</span>
-                        {d.company && d.company !== d.name && (
-                          <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
-                        )}
-                      </span>
-                      {d.stage && (
-                        <span
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
-                          style={{
-                            color: dealStageTone(d.stage),
-                            backgroundColor: `${dealStageTone(d.stage)}1a`,
-                          }}
-                        >
-                          {formatStage(d.stage)}
+                  {dealSearchGroups.active.map(d => {
+                    const commit = () => {
+                      setDealId(d.id);
+                      setDealPickerOpen(false);
+                      setDealQuery('');
+                    };
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        // Use onMouseDown so selection commits before the
+                        // Dialog/Popover focus-restore logic can intercept the
+                        // click. preventDefault keeps focus on the trigger so
+                        // the popover closes cleanly.
+                        onMouseDown={(e) => { e.preventDefault(); commit(); }}
+                        onClick={(e) => { e.preventDefault(); commit(); }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.08)]"
+                        style={{ color: dealId === d.id ? '#cfe3ff' : '#eef1f6' }}
+                      >
+                        <span className="flex-1 truncate">
+                          <span className="font-medium">{d.name}</span>
+                          {d.company && d.company !== d.name && (
+                            <span className="ml-2" style={{ color: '#7a8194' }}>· {d.company}</span>
+                          )}
                         </span>
-                      )}
-                    </button>
-                  ))}
+                        {d.stage && (
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                            style={{
+                              color: dealStageTone(d.stage),
+                              backgroundColor: `${dealStageTone(d.stage)}1a`,
+                            }}
+                          >
+                            {formatStage(d.stage)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                  {dealSearchGroups.inactive.length > 0 && (
+                    <div
+                      className="px-3 pt-2 pb-1 mt-1 border-t text-[9px] uppercase tracking-wider font-semibold"
+                      style={{ color: '#5b6173', borderColor: 'rgba(255,255,255,0.05)' }}
+                    >
+                      — Archived / On Hold —
+                    </div>
+                  )}
+                  {dealSearchGroups.inactive.map(d => {
+                    const commit = () => {
+                      setDealId(d.id);
+                      setDealPickerOpen(false);
+                      setDealQuery('');
+                    };
+                    return (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onMouseDown={(e) => { e.preventDefault(); commit(); }}
+                        onClick={(e) => { e.preventDefault(); commit(); }}
+                        className="w-full flex items-center gap-2 px-3 py-1.5 text-left text-xs hover:bg-[rgba(126,184,247,0.05)] opacity-60"
+                        style={{ color: dealId === d.id ? '#cfe3ff' : '#9aa3b6' }}
+                      >
+                        <span className="flex-1 truncate">
+                          <span className="font-medium">{d.name}</span>
+                          {d.company && d.company !== d.name && (
+                            <span className="ml-2" style={{ color: '#5b6173' }}>· {d.company}</span>
+                          )}
+                        </span>
+                        {d.stage && (
+                          <span
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0"
+                            style={{
+                              color: dealStageTone(d.stage),
+                              backgroundColor: `${dealStageTone(d.stage)}14`,
+                            }}
+                          >
+                            {formatStage(d.stage)}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </PopoverContent>
             </Popover>
