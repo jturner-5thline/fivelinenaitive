@@ -26,6 +26,8 @@ import { SuggestTimesPanel } from './SuggestTimesPanel';
 import { useAuth } from '@/contexts/AuthContext';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
+import { useQueryClient } from '@tanstack/react-query';
+import { prefetchFreeBusy, useSelfEmail } from '@/hooks/useFreeBusyCache';
 
 type QuickActionKey = 'save_dr' | 'lender' | 'draft' | 'task' | 'meeting' | 'suggest_times' | 'summarize' | 'outstanding';
 
@@ -99,6 +101,14 @@ export function EmailQuickActionsToolbar({
   const [summaryDebug, setSummaryDebug] = useState<EmailThreadSummaryDebug | null>(null);
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const { user } = useAuth();
+
+  // Pre-warm the user's freebusy cache as soon as the toolbar mounts so
+  // clicking Suggest Times renders slots from cache instantly.
+  const qc = useQueryClient();
+  const selfEmail = useSelfEmail();
+  useEffect(() => {
+    if (selfEmail) void prefetchFreeBusy(qc, selfEmail);
+  }, [qc, selfEmail, thread?.threadId]);
 
   // Reset summary if thread changes
   useEffect(() => {

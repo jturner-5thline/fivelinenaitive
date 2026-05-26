@@ -4,8 +4,8 @@
  * draft. Each inserted slot is a one-click confirm link that books the
  * meeting on the user's calendar via /schedule/confirm.
  */
-import { useEffect, useMemo, useState } from 'react';
-import { CalendarRange, Loader2, RefreshCcw, Send, X, Minus, Plus } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { CalendarRange, Loader2, RefreshCcw, Send, X, Minus, Plus, WifiOff } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -16,6 +16,10 @@ import { toast } from 'sonner';
 import { useUserCalendarPrefs, DEFAULT_WORKING_HOURS } from '@/hooks/useUserCalendarPrefs';
 import { generateSlots, type Slot } from '@/lib/calendar/generateSlots';
 import { formatSlotsAsHtml, formatSlotsAsText, type SlotFormat } from '@/lib/calendar/formatSlots';
+import { useFreeBusyCache, defaultPrewarmWindow } from '@/hooks/useFreeBusyCache';
+import { useDebouncedValue } from '@/hooks/useDebouncedValue';
+import { useQueryClient } from '@tanstack/react-query';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Props {
   threadId: string;
@@ -72,77 +76,95 @@ export function SuggestTimesPanel({
   const [showRecipientTz, setShowRecipientTz] = useState(false);
   const recipientTz: string | null = null; // not yet inferred from signature
 
-  const [loading, setLoading] = useState(false);
-  const [slots, setSlots] = useState<Slot[]>([]);
+  const [inserting, setInserting] = useState(false);
+  const [nudges, setNudges] = useState<Record<number, number>>({});
   const [removed, setRemoved] = useState<Set<number>>(new Set());
   const [inserted, setInserted] = useState(false);
+  const mountedAt = useRef<number>(performance.now());
+  const firstSlotLogged = useRef(false);
+  const qc = useQueryClient();
+  const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+  // Pre-warm 14-day freebusy window (also used as the cached source).
+  const { startISO: prewarmStartISO, endISO: prewarmEndISO } = useMemo(
+    () => defaultPrewarmWindow(),
+    [],
+  );
+  const { busy: cachedBusy, isLoading: freebusyLoading, isCached, error: freebusyError } =
+    useFreeBusyCache(prewarmStartISO, prewarmEndISO);
 
   useEffect(() => {
     setWhStart(defaultStart);
     setWhEnd(defaultEnd);
   }, [defaultStart, defaultEnd]);
 
+  // Debounce slot-shaping inputs by 100ms so dragging segment controls
+  // doesn't run the generator on every keystroke.
+  const dDuration = useDebouncedValue(duration, 100);
+  const dWindow = useDebouncedValue(windowDays, 100);
+  const dWhStart = useDebouncedValue(whStart, 100);
+  const dWhEnd = useDebouncedValue(whEnd, 100);
+  const dSlotCount = useDebouncedValue(slotCount, 100);
+  const dBuffer = useDebouncedValue(buffer, 100);
+  const dAvoid = useDebouncedValue(avoidBackToBack, 100);
+  const dFocus = useDebouncedValue(focusFriendly, 100);
+
+  // Pure-JS slot generation — derived state. Format changes never reach
+  // this memo, so switching Bulleted/Inline/Numbered won't re-flicker
+  // the chip list.
+  const slots = useMemo<Slot[]>(() => {
+    const windowStart = new Date();
+    windowStart.setDate(windowStart.getDate() + 1);
+    windowStart.setHours(0, 0, 0, 0);
+    return generateSlots({
+      windowStart,
+      businessDays: dWindow,
+      workingHoursStart: dWhStart,
+      workingHoursEnd: dWhEnd,
+      durationMin: dDuration,
+      bufferMin: dBuffer,
+      avoidBackToBack: dAvoid,
+      focusFriendly: dFocus,
+      busy: cachedBusy,
+      maxSlots: dSlotCount,
+    });
+  }, [cachedBusy, dDuration, dWindow, dWhStart, dWhEnd, dSlotCount, dBuffer, dAvoid, dFocus]);
+
+  // Telemetry: log time-to-first-slot once per mount.
+  useEffect(() => {
+    if (!firstSlotLogged.current && slots.length > 0) {
+      firstSlotLogged.current = true;
+      const ms = performance.now() - mountedAt.current;
+      // eslint-disable-next-line no-console
+      console.log(`[SuggestTimes] first slots rendered in ${ms.toFixed(0)}ms (cached=${isCached})`);
+    }
+  }, [slots.length, isCached]);
+
+  // Apply per-slot nudges and removals on top of the derived list.
+  const adjustedSlots = useMemo(() => {
+    return slots.map((s, i) => {
+      const delta = (nudges[i] ?? 0) * 60_000;
+      if (delta === 0) return s;
+      return { start: new Date(s.start.getTime() + delta), end: new Date(s.end.getTime() + delta) };
+    });
+  }, [slots, nudges]);
   const activeSlots = useMemo(
-    () => slots.filter((_, i) => !removed.has(i)),
-    [slots, removed],
+    () => adjustedSlots.filter((_, i) => !removed.has(i)),
+    [adjustedSlots, removed],
   );
 
-  const generate = async () => {
-    setLoading(true);
-    setInserted(false);
+  // Reset edits when the underlying slot set changes shape.
+  useEffect(() => {
     setRemoved(new Set());
-    try {
-      const windowStart = new Date();
-      windowStart.setDate(windowStart.getDate() + 1); // start tomorrow
-      windowStart.setHours(0, 0, 0, 0);
-      const windowEnd = new Date(windowStart);
-      windowEnd.setDate(windowEnd.getDate() + Math.ceil(windowDays * 1.6) + 2);
-      windowEnd.setHours(23, 59, 59, 999);
-
-      const meEmail = (await supabase.auth.getUser()).data.user?.email;
-      const emails = meEmail ? [meEmail] : [];
-      let busy: { start: Date; end: Date }[] = [];
-      if (emails.length > 0) {
-        const { data, error } = await supabase.functions.invoke('calendar-freebusy', {
-          body: { time_min: windowStart.toISOString(), time_max: windowEnd.toISOString(), emails },
-        });
-        if (error) throw new Error(error.message);
-        const results = (data?.results ?? []) as Array<{ busy: { start: string; end: string }[] }>;
-        busy = results.flatMap((r) => (r.busy ?? []).map((b) => ({
-          start: new Date(b.start), end: new Date(b.end),
-        })));
-      }
-
-      const picks = generateSlots({
-        windowStart,
-        businessDays: windowDays,
-        workingHoursStart: whStart,
-        workingHoursEnd: whEnd,
-        durationMin: duration,
-        bufferMin: buffer,
-        avoidBackToBack,
-        focusFriendly,
-        busy,
-        maxSlots: slotCount,
-      });
-      setSlots(picks);
-      if (picks.length === 0) {
-        toast.info('No open slots match your constraints. Try widening the window or working hours.');
-      }
-    } catch (e) {
-      console.error('[SuggestTimes] generate failed', e);
-      toast.error((e as Error).message || 'Could not check calendar availability');
-    } finally {
-      setLoading(false);
-    }
-  };
+    setNudges({});
+  }, [slots.length, dDuration, dWindow]);
 
   const nudge = (index: number, deltaMin: number) => {
-    setSlots((prev) => prev.map((s, i) => {
-      if (i !== index) return s;
-      const ms = deltaMin * 60_000;
-      return { start: new Date(s.start.getTime() + ms), end: new Date(s.end.getTime() + ms) };
-    }));
+    setNudges((prev) => ({ ...prev, [index]: (prev[index] ?? 0) + deltaMin }));
+  };
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ['freebusy-self'] });
   };
 
   const insert = async () => {
@@ -150,7 +172,7 @@ export function SuggestTimesPanel({
       toast.error('Select at least one slot to insert.');
       return;
     }
-    setLoading(true);
+    setInserting(true);
     try {
       const { data, error } = await supabase.functions.invoke('create-proposed-slots', {
         body: {
@@ -194,7 +216,7 @@ export function SuggestTimesPanel({
       console.error('[SuggestTimes] insert failed', e);
       toast.error((e as Error).message || 'Could not save proposed slots');
     } finally {
-      setLoading(false);
+      setInserting(false);
     }
   };
 
@@ -292,21 +314,55 @@ export function SuggestTimesPanel({
       </div>
 
       <div className="flex items-center gap-2">
-        <Button size="sm" onClick={generate} disabled={loading} className="h-7 text-[11.5px] gap-1">
-          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCcw className="h-3 w-3" />}
-          {slots.length === 0 ? 'Generate slots' : 'Regenerate'}
+        <Button
+          size="sm"
+          variant="default"
+          onClick={insert}
+          disabled={inserting || activeSlots.length === 0}
+          className="h-7 text-[11.5px] gap-1"
+        >
+          {inserting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+          Insert into draft
         </Button>
-        {slots.length > 0 && (
-          <Button size="sm" variant="default" onClick={insert} disabled={loading || activeSlots.length === 0}
-                  className="h-7 text-[11.5px] gap-1">
-            <Send className="h-3 w-3" /> Insert into draft
-          </Button>
-        )}
+        <button
+          type="button"
+          onClick={refresh}
+          className="ml-auto inline-flex items-center gap-1 text-[10.5px] text-foreground/60 hover:text-foreground"
+          title="Refresh calendar availability"
+        >
+          <RefreshCcw className="h-3 w-3" /> Regenerate
+        </button>
       </div>
 
-      {slots.length > 0 && (
+      {/* Status pills */}
+      {freebusyLoading && !isCached && (
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-[10.5px] text-foreground/70">
+          <Loader2 className="h-3 w-3 animate-spin" /> Fetching calendar…
+        </div>
+      )}
+      {!isOnline && isCached && (
+        <div className="inline-flex items-center gap-1.5 rounded-md border border-amber-400/30 bg-amber-500/10 px-2 py-1 text-[10.5px] text-amber-200">
+          <WifiOff className="h-3 w-3" /> Cached availability — reconnect to refresh
+        </div>
+      )}
+      {freebusyError && (
+        <div className="text-[10.5px] text-rose-300">Couldn't reach calendar — showing best-effort slots.</div>
+      )}
+
+      {/* Slot chips: skeletons while cold, then real chips */}
+      {slots.length === 0 && freebusyLoading && !isCached ? (
         <div className="space-y-1.5">
-          {slots.map((s, i) => {
+          {Array.from({ length: slotCount }).map((_, i) => (
+            <Skeleton key={i} className="h-7 w-full bg-white/5" />
+          ))}
+        </div>
+      ) : slots.length === 0 ? (
+        <div className="text-[11px] text-foreground/60">
+          No open slots match your constraints. Try widening the window or working hours.
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {adjustedSlots.map((s, i) => {
             const isRemoved = removed.has(i);
             const label = new Intl.DateTimeFormat('en-US', {
               weekday: 'short', month: 'short', day: 'numeric',
