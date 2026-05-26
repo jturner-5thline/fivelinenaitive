@@ -174,47 +174,21 @@ export function SuggestTimesPanel({
     }
     setInserting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('create-proposed-slots', {
-        body: {
-          thread_id: threadId,
-          recipient_email: recipientEmail || null,
-          recipient_name: recipientName || null,
-          subject: subject || null,
-          deal_id: dealId || null,
-          timezone: userTz,
-          duration_minutes: duration,
-          slots: activeSlots.map((s) => ({ start: s.start.toISOString(), end: s.end.toISOString() })),
-        },
-      });
-      if (error) throw new Error(error.message);
-      if (data?.error) throw new Error(data.error);
-
-      const created = (data?.slots ?? []) as Array<{ token: string; slot_start: string; slot_end: string }>;
-      const origin = window.location.origin;
-      const withUrls = created.map((c) => ({
-        start: new Date(c.slot_start),
-        end: new Date(c.slot_end),
-        url: `${origin}/schedule/confirm?token=${encodeURIComponent(c.token)}`,
-      }));
-
-      const html = formatSlotsAsHtml(withUrls, {
+      const payload = activeSlots.map((s) => ({ start: s.start, end: s.end }));
+      const html = formatSlotsAsHtml(payload, {
         format, tz: userTz,
         recipientTz: showRecipientTz ? recipientTz : null,
       });
-      const text = formatSlotsAsText(withUrls, {
+      const text = formatSlotsAsText(payload, {
         format, tz: userTz,
         recipientTz: showRecipientTz ? recipientTz : null,
       });
-
-      // Composer expects a string body. If it already contains markup it
-      // will render as HTML, otherwise as plain text. We send HTML so the
-      // confirm links are clickable.
       onInsertDraft(html || text);
       setInserted(true);
       toast.success('Slots inserted into your draft.');
     } catch (e) {
       console.error('[SuggestTimes] insert failed', e);
-      toast.error((e as Error).message || 'Could not save proposed slots');
+      toast.error((e as Error).message || 'Could not insert slots');
     } finally {
       setInserting(false);
     }
