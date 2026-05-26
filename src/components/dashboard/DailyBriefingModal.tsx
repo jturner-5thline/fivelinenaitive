@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import * as TabsPrimitive from '@radix-ui/react-tabs';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AgendaIntel } from './AgendaIntel';
 import { EndOfDayTab } from './EndOfDayTab';
 import { ScrollArea } from '@/components/ui/scroll-area';
