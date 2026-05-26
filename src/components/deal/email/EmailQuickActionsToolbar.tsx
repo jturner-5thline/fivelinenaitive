@@ -23,6 +23,7 @@ import { UpdateLenderStatusInlineCard } from './UpdateLenderStatusInlineCard';
 import { AddOutstandingItemsInlineCard } from './AddOutstandingItemsInlineCard';
 import { QuickBookMeetingPopover } from './QuickBookMeetingPopover';
 import { SuggestTimesPanel } from './SuggestTimesPanel';
+import { AIAssistOverlay } from './AIAssistOverlay';
 import { useAuth } from '@/contexts/AuthContext';
 import type { EmailThread } from './mockEmailData';
 import { summarizeSelectedEmailThread, type EmailThreadSummaryDebug } from './threadSummaryUtils';
@@ -299,8 +300,12 @@ export function EmailQuickActionsToolbar({
         })}
       </div>
 
-      {/* Inline expansion area. Only one action's panel renders at a time. */}
-      {active === 'save_dr' && (
+      {/* In-scope action panels render as overlays on top of the rail.
+          Only one is open at a time (controlled by `active`). The action
+          buttons above remain mounted so re-opening is instant. The
+          "meeting" tile keeps its existing inline / modal behavior and is
+          intentionally NOT wrapped in AIAssistOverlay. */}
+      <AIAssistOverlay open={active === 'save_dr'} onClose={() => setActive(null)} title="Save to Data Room">
         <SaveToDealCard
           thread={thread}
           attachments={attachments}
@@ -310,15 +315,15 @@ export function EmailQuickActionsToolbar({
           fallbackDealId={fallbackDealId}
           fallbackDealName={fallbackDealName}
         />
-      )}
-      {active === 'lender' && (
+      </AIAssistOverlay>
+      <AIAssistOverlay open={active === 'lender'} onClose={() => setActive(null)} title="Update Lender Stage">
         <UpdateLenderStatusInlineCard
           dealId={dealId || fallbackDealId}
           preselectLenderName={likelyLenderName}
           onClose={() => setActive(null)}
         />
-      )}
-      {active === 'task' && (
+      </AIAssistOverlay>
+      <AIAssistOverlay open={active === 'task'} onClose={() => setActive(null)} title="Create Task">
         <CreateTaskInlineCard
           dealId={dealId || fallbackDealId || null}
           dealName={dealName || fallbackDealName || null}
@@ -329,7 +334,7 @@ export function EmailQuickActionsToolbar({
           defaultOpen
           onCancel={() => setActive(null)}
         />
-      )}
+      </AIAssistOverlay>
       {active === 'meeting' && meetingMode === 'propose' && (
         <MeetingSchedulerCard
           recipientEmail={thread.latestEmail?.from_email}
@@ -341,7 +346,7 @@ export function EmailQuickActionsToolbar({
           onClose={() => setActive(null)}
         />
       )}
-      {active === 'outstanding' && (
+      <AIAssistOverlay open={active === 'outstanding'} onClose={() => setActive(null)} title="Add to Outstanding Items">
         <AddOutstandingItemsInlineCard
           dealId={dealId || fallbackDealId}
           dealName={dealName || fallbackDealName}
@@ -349,8 +354,8 @@ export function EmailQuickActionsToolbar({
           preselectLenderName={likelyLenderName}
           onClose={() => setActive(null)}
         />
-      )}
-      {active === 'suggest_times' && (
+      </AIAssistOverlay>
+      <AIAssistOverlay open={active === 'suggest_times'} onClose={() => setActive(null)} title="Suggest Times">
         <SuggestTimesPanel
           threadId={thread.threadId}
           subject={thread.subject}
@@ -360,8 +365,8 @@ export function EmailQuickActionsToolbar({
           onInsertDraft={(body) => onInsertDraft(body)}
           onClose={() => setActive(null)}
         />
-      )}
-      {active === 'summarize' && (
+      </AIAssistOverlay>
+      <AIAssistOverlay open={active === 'summarize'} onClose={() => setActive(null)} title="Summarize Thread">
         <div className="rounded-xl border border-[hsl(195_85%_60%/0.35)] bg-[hsl(200_75%_55%/0.08)] p-3">
           <div className="flex items-center gap-1.5 mb-2">
             <AlignLeft className="h-3 w-3 text-cyan-300" />
@@ -404,7 +409,7 @@ export function EmailQuickActionsToolbar({
             </div>
           )}
         </div>
-      )}
+      </AIAssistOverlay>
 
       {meetingPopoverOpen && modalRoot && createPortal(
         <div className="absolute inset-0 z-50">
