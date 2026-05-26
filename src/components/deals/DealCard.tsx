@@ -342,91 +342,88 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
             4. The right column is also self-start with a fixed visual height
                so a missing stage pill does not cause baseline drift.
         */}
-        <div className="px-6 pt-5 pb-6 flex flex-col flex-1 gap-3.5">
+        <div className="px-6 pt-5 pb-6 flex flex-col flex-1 gap-3">
 
-          {/* ── TOP ROW: Name + Value (left) | Status + Stage pills (right) ── */}
-          <div className="flex items-start justify-between gap-4 min-w-0">
-            {/* Left: Name + Value — anchored to top of the card body */}
-            <div className="flex-1 min-w-0 self-start">
-              {/* Title sub-row — FIXED 24px height, items-start pins the
-                  text glyphs to the top so the h3 baseline is identical
-                  on every tile (EverFi reference). */}
-              <div className="flex items-start gap-2 min-w-0 h-6">
-                <h3 className="text-lg font-bold leading-6 truncate flex-1 min-w-0" style={{ color: '#f1f6fc' }}>{deal.company}</h3>
-                {/* Action buttons inline with name */}
-                {onToggleFlag && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className={`h-6 w-6 shrink-0 relative ${showFlagIndicator ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setIsFlagDialogOpen(true);
-                      }}
-                    >
-                      <Flag className={`h-3.5 w-3.5 ${showFlagIndicator ? 'fill-current' : ''}`} />
-                      {displayFlagCount > 1 && (
-                        <span className="absolute -top-1 -right-1 h-3.5 min-w-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
-                          {displayFlagCount}
-                        </span>
-                      )}
-                    </Button>
-                  </>
-                )}
+          {/* ── ROW 1: Name (truncates, up to 2 lines) | Status pill ── */}
+          <div className="flex items-start justify-between gap-2 min-w-0">
+            <h3
+              className="text-base font-semibold leading-tight line-clamp-2 break-words min-w-0 flex-1"
+              style={{ color: '#f1f6fc' }}
+              title={deal.company}
+            >
+              {deal.company}
+            </h3>
+            <div className="flex items-center gap-1 shrink-0">
+              {onToggleFlag && (
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-6 w-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                  className={`h-6 w-6 relative ${showFlagIndicator ? 'text-destructive' : 'opacity-0 group-hover:opacity-100'} transition-opacity`}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    setIsEditDrawerMounted(true);
-                    setIsEditDrawerOpen(true);
+                    setIsFlagDialogOpen(true);
                   }}
                 >
-                  <Search className="h-3.5 w-3.5" />
+                  <Flag className={`h-3.5 w-3.5 ${showFlagIndicator ? 'fill-current' : ''}`} />
+                  {displayFlagCount > 1 && (
+                    <span className="absolute -top-1 -right-1 h-3.5 min-w-[14px] rounded-full bg-destructive text-destructive-foreground text-[8px] font-bold flex items-center justify-center px-0.5">
+                      {displayFlagCount}
+                    </span>
+                  )}
                 </Button>
-                {isEditDrawerMounted && (
-                  <DealEditDrawer
-                    deal={deal}
-                    isOpen={isEditDrawerOpen}
-                    onClose={() => {
-                      setIsEditDrawerOpen(false);
-                      setTimeout(() => setIsEditDrawerMounted(false), 350);
-                    }}
-                    onStatusChange={onStatusChange}
-                  />
-                )}
-              </div>
-              {/* Currency value — fixed mt and leading so it sits the same
-                  exact distance below the title on every tile. */}
-              <p
-                className="text-xl font-semibold tracking-tight tabular-nums leading-7 mt-1"
-                style={{ color: '#f1f6fc' }}
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setIsEditDrawerMounted(true);
+                  setIsEditDrawerOpen(true);
+                }}
               >
-                {formatCurrencyValue(deal.value)}
-              </p>
+                <Search className="h-3.5 w-3.5" />
+              </Button>
+              {!hideStatus && (
+                <InlineStatusDropdown
+                  dealId={deal.id}
+                  status={deal.status}
+                  onStatusChange={onStatusChange}
+                />
+              )}
+              {isEditDrawerMounted && (
+                <DealEditDrawer
+                  deal={deal}
+                  isOpen={isEditDrawerOpen}
+                  onClose={() => {
+                    setIsEditDrawerOpen(false);
+                    setTimeout(() => setIsEditDrawerMounted(false), 350);
+                  }}
+                  onStatusChange={onStatusChange}
+                />
+              )}
             </div>
+          </div>
 
-            {/* Right: Status + Stage pills */}
-            {!hideStatus && (
-            <div className="flex flex-col items-end gap-1.5 shrink-0 self-start">
-              <InlineStatusDropdown
-                dealId={deal.id}
-                status={deal.status}
-                onStatusChange={onStatusChange}
-              />
-              {!compact && (
+          {/* ── ROW 2: Size (own row) | Stage pill (wraps below if no room) ── */}
+          <div className="flex items-center justify-between gap-2 flex-wrap min-w-0">
+            <span
+              className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
+              style={{ color: '#f1f6fc' }}
+            >
+              {formatCurrencyValue(deal.value)}
+            </span>
+            {!hideStatus && !compact && (
+              <div className="shrink-0 max-w-full min-w-0">
                 <InlineStageDropdown
                   dealId={deal.id}
                   stage={deal.stage}
                   pipelineId={deal.pipelineId}
                   onStageChange={onStageChange || ((id, newStage) => updateDeal(id, { stage: newStage }))}
                 />
-              )}
-            </div>
+              </div>
             )}
           </div>
 
