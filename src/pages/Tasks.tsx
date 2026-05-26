@@ -86,15 +86,10 @@ type FilterStatus = 'all' | 'incomplete' | 'not_started' | 'in_progress' | 'bloc
 type SortBy = 'due_date' | 'priority' | 'created_at' | 'title' | 'deal';
 type FilterDueDate = 'all' | 'overdue' | 'today' | 'this_week' | 'no_date';
 type FilterRecurring = 'all' | 'recurring' | 'paused';
-type TaskPriority = 'urgent' | 'high' | 'medium' | 'low';
-// Colors mirror PRIORITY_PILL in TaskListView so the dots in this filter
-// match the colored markers rendered on task rows exactly.
-const PRIORITY_OPTIONS: { value: TaskPriority; label: string; color: string }[] = [
-  { value: 'urgent', label: 'Urgent', color: '#e57373' },
-  { value: 'high',   label: 'High',   color: '#e89b6c' },
-  { value: 'medium', label: 'Medium', color: '#d4a45a' },
-  { value: 'low',    label: 'Low',    color: '#7a8194' },
-];
+// Priority has been simplified to a single Urgent flag — a task is either
+// urgent (priority === 'urgent') or has no priority (null).
+type TaskPriority = 'urgent';
+const URGENT_COLOR = '#e57373';
 const ACTIVE_DEAL_INACTIVE_STAGES = new Set(['closed-won', 'closed-lost', 'on-hold']);
 // Deals are restricted to these stages by default in the Tasks deal picker;
 // the "Show all deals (incl. closed/on-hold)" checkbox lifts the restriction.
