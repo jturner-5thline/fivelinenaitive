@@ -2,9 +2,9 @@ import * as React from "react";
 import { Card } from "@/components/ui/card";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
-import { SectionHeader, StatusBadge, OutcomeBadge } from "./ui";
+import { SectionHeader, StatusBadge, OutcomeBadge, ConfidenceMeter } from "./ui";
 import { aiActions, type AIAction } from "./mockData";
-import { Search } from "lucide-react";
+import { Search, FileText, ShieldAlert, ShieldCheck, ArrowRight } from "lucide-react";
 
 const OUTCOMES = ["success", "edited", "overridden", "failed", "pending_review"] as const;
 const BANDS = ["high", "medium", "low"] as const;
@@ -54,12 +54,10 @@ export function AIActionsPage() {
             <thead>
               <tr className="text-left text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/60 bg-muted/20">
                 <th className="py-2.5 px-4 font-medium">Action</th>
-                <th className="py-2.5 px-4 font-medium">Workflow</th>
-                <th className="py-2.5 px-4 font-medium">Account</th>
-                <th className="py-2.5 px-4 font-medium">Confidence</th>
-                <th className="py-2.5 px-4 font-medium">Outcome</th>
-                <th className="py-2.5 px-4 font-medium">Value Δ</th>
-                <th className="py-2.5 px-4 font-medium">Owner</th>
+                <th className="py-2.5 px-4 font-medium">Evidence</th>
+                <th className="py-2.5 px-4 font-medium w-[150px]">Confidence</th>
+                <th className="py-2.5 px-4 font-medium">Result</th>
+                <th className="py-2.5 px-4 font-medium">Human override</th>
                 <th className="py-2.5 px-4 font-medium">Time</th>
               </tr>
             </thead>
@@ -68,24 +66,55 @@ export function AIActionsPage() {
                 <tr
                   key={a.id}
                   onClick={() => setActive(a)}
-                  className="border-b border-border/40 last:border-0 hover:bg-muted/20 cursor-pointer"
+                  className="border-b border-border/40 last:border-0 hover:bg-muted/20 cursor-pointer align-top"
                 >
-                  <td className="py-2.5 px-4 font-medium">{a.actionType}</td>
-                  <td className="py-2.5 px-4 text-muted-foreground">{a.workflow}</td>
-                  <td className="py-2.5 px-4">{a.account}</td>
-                  <td className="py-2.5 px-4">
-                    <BandPill band={a.confidenceBand} value={a.confidence} />
+                  <td className="py-3 px-4">
+                    <div className="font-medium leading-tight">{a.actionType}</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">{a.workflow} · {a.account}</div>
                   </td>
-                  <td className="py-2.5 px-4"><OutcomeBadge outcome={a.outcome} /></td>
-                  <td className="py-2.5 px-4"><ValueDeltaBadge v={a.valueDelta} /></td>
-                  <td className="py-2.5 px-4 text-muted-foreground">{a.owner}</td>
-                  <td className="py-2.5 px-4 text-xs text-muted-foreground tabular-nums">
-                    {new Date(a.timestamp).toLocaleString()}
+                  <td className="py-3 px-4">
+                    <div className="flex items-start gap-1.5 text-[12px] text-foreground/85 leading-snug">
+                      <FileText className="h-3 w-3 mt-0.5 text-teal-300/70 shrink-0" />
+                      <span className="font-mono text-[11px] truncate max-w-[220px]">{a.evidenceSource}</span>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground mt-1 truncate max-w-[260px]">{a.reason}</div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <ConfidenceMeter value={a.confidence} band={a.confidenceBand} />
+                    <div className="text-[10px] text-muted-foreground mt-1 uppercase tracking-wider">{a.confidenceBand}</div>
+                  </td>
+                  <td className="py-3 px-4">
+                    <div className="flex flex-col items-start gap-1">
+                      <OutcomeBadge outcome={a.outcome} />
+                      <ValueDeltaBadge v={a.valueDelta} />
+                    </div>
+                  </td>
+                  <td className="py-3 px-4">
+                    {a.humanOverride ? (
+                      <div className="flex items-start gap-1.5">
+                        <ShieldAlert className="h-3.5 w-3.5 text-amber-400 mt-0.5 shrink-0" />
+                        <div className="min-w-0">
+                          <div className="text-[11px] font-semibold text-amber-200">{a.owner}</div>
+                          <div className="text-[10px] text-muted-foreground leading-snug truncate max-w-[200px]">
+                            {a.overrideReason ?? "Edited before send"}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                        <ShieldCheck className="h-3.5 w-3.5 text-emerald-400/70" />
+                        Autonomous
+                      </div>
+                    )}
+                  </td>
+                  <td className="py-3 px-4 text-[11px] text-muted-foreground tabular-nums whitespace-nowrap">
+                    {new Date(a.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                    <div className="text-teal-300/60 mt-1 inline-flex items-center gap-0.5 opacity-0 hover:opacity-100"><ArrowRight className="h-3 w-3"/></div>
                   </td>
                 </tr>
               ))}
               {filtered.length === 0 && (
-                <tr><td colSpan={8} className="py-10 text-center text-sm text-muted-foreground">No matching actions.</td></tr>
+                <tr><td colSpan={6} className="py-10 text-center text-sm text-muted-foreground">No matching actions.</td></tr>
               )}
             </tbody>
           </table>

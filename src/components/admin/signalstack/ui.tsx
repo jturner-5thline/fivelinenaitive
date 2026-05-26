@@ -16,6 +16,73 @@ import {
 export const TEAL = "hsl(174 72% 48%)";
 export const TEAL_SOFT = "hsl(174 60% 65%)";
 
+/** Priority score ring — makes the 0-100 score visually unmissable. */
+export function PriorityScore({
+  score,
+  size = 56,
+  showLabel = true,
+}: {
+  score: number;
+  size?: number;
+  showLabel?: boolean;
+}) {
+  const stroke = 5;
+  const r = (size - stroke) / 2;
+  const c = 2 * Math.PI * r;
+  const pct = Math.max(0, Math.min(100, score));
+  const offset = c - (pct / 100) * c;
+  const color =
+    pct >= 80
+      ? "hsl(0 75% 62%)"
+      : pct >= 60
+        ? "hsl(35 95% 60%)"
+        : pct >= 40
+          ? "hsl(45 90% 58%)"
+          : "hsl(150 60% 50%)";
+  const label = pct >= 80 ? "Critical" : pct >= 60 ? "High" : pct >= 40 ? "Medium" : "Low";
+  return (
+    <div className="flex flex-col items-center gap-1">
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle cx={size / 2} cy={size / 2} r={r} stroke="hsl(var(--border))" strokeOpacity={0.5} strokeWidth={stroke} fill="none" />
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            stroke={color}
+            strokeWidth={stroke}
+            strokeLinecap="round"
+            strokeDasharray={c}
+            strokeDashoffset={offset}
+            fill="none"
+            style={{ transition: "stroke-dashoffset 600ms ease" }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-sm font-semibold tabular-nums" style={{ color }}>{score}</span>
+        </div>
+      </div>
+      {showLabel && (
+        <span className="text-[9px] uppercase tracking-[0.14em]" style={{ color }}>{label}</span>
+      )}
+    </div>
+  );
+}
+
+/** Confidence meter — compact horizontal bar with band label. */
+export function ConfidenceMeter({ value, band }: { value: number; band: "high" | "medium" | "low" }) {
+  const pct = Math.round(value * 100);
+  const color = band === "high" ? "hsl(150 60% 50%)" : band === "medium" ? "hsl(35 95% 60%)" : "hsl(0 75% 62%)";
+  return (
+    <div className="flex items-center gap-2 min-w-[110px]">
+      <div className="flex-1 h-1.5 rounded-full bg-muted/40 overflow-hidden">
+        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: color }} />
+      </div>
+      <span className="text-xs font-semibold tabular-nums" style={{ color }}>{pct}%</span>
+    </div>
+  );
+}
+
 export function SectionHeader({
   eyebrow,
   title,
