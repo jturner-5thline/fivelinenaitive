@@ -459,6 +459,16 @@ export default function Settings() {
     sectionParam,
   );
 
+  // Redirect unknown/removed groups (e.g. legacy /settings/automation-ai/*) to default
+  useEffect(() => {
+    if (!groupParam) return;
+    const known = groups.some((g) => g.id === groupParam);
+    if (!known && groups[0]) {
+      navigate(`/settings/${groups[0].id}/${groups[0].sections[0].id}`, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groupParam, groups.length]);
+
   // Persist last-visited
   useEffect(() => {
     if (activeGroup && activeSection) {
