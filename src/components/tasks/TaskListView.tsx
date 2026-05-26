@@ -687,7 +687,8 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
     setEditingTitle(false);
   };
 
-  const priorityPill = PRIORITY_PILL[task.priority] || PRIORITY_PILL.medium;
+  const isUrgent = task.priority === 'urgent';
+  const priorityPill = PRIORITY_PILL.urgent;
   const statusConf = STATUS_COLORS[task.status] || STATUS_COLORS.not_started;
 
   // Blocker note (stored as any since it's a new column)
@@ -935,25 +936,26 @@ function SortableTaskRow({ task, todayStr, isSelected, isMultiSelected, isFocuse
       </div>
       )}
 
-      {/* Priority pill */}
+      {/* Urgent flag — single-state pill that toggles priority='urgent' / null. */}
       {visibleSet.has('priority') && (
       <div className="flex items-center justify-center" onClick={e => e.stopPropagation()}>
-        <Select value={task.priority} onValueChange={v => onUpdate({ priority: v } as any)}>
-          <SelectTrigger className={cn('h-6 text-[10px] border-none bg-transparent px-0 focus:ring-0 [&>svg]:hidden hover:bg-[rgba(255,255,255,0.04)] rounded justify-center', PRIORITY_PILL_MIN_W)}>
+        <button
+          type="button"
+          onClick={() => onUpdate({ priority: isUrgent ? null : 'urgent' } as any)}
+          title={isUrgent ? 'Marked urgent — click to clear' : 'Mark as urgent'}
+          className={cn('h-6 text-[10px] rounded flex items-center justify-center hover:bg-[rgba(255,255,255,0.04)]', PRIORITY_PILL_MIN_W)}
+        >
+          {isUrgent ? (
             <span
               className={cn('inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-medium text-center', PRIORITY_PILL_MIN_W)}
               style={{ backgroundColor: `${priorityPill.bg}1f`, color: priorityPill.bg, border: `1px solid ${priorityPill.bg}33` }}
             >
               {priorityPill.label}
             </span>
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="urgent" className="text-xs">Urgent</SelectItem>
-            <SelectItem value="high" className="text-xs">High</SelectItem>
-            <SelectItem value="medium" className="text-xs">Medium</SelectItem>
-            <SelectItem value="low" className="text-xs">Low</SelectItem>
-          </SelectContent>
-        </Select>
+          ) : (
+            <span className="text-[10px] text-muted-foreground/50">—</span>
+          )}
+        </button>
       </div>
       )}
 
