@@ -193,6 +193,20 @@ export function QuickCreateTaskDialog({
     }
   }, [open, currentUserId, teamMembers, initialTitle, initialDealId, initialDueDate]);
 
+  // Collapse the inline deal results list when the user clicks anywhere
+  // outside [data-deal-picker]. Clears query but preserves selection.
+  useEffect(() => {
+    if (!dealPickerOpen) return;
+    const handler = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (t && !t.closest('[data-deal-picker]')) {
+        setDealPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [dealPickerOpen]);
+
   // ─── One-click presets ────────────────────────────────────────────────
   // Combo presets snap several fields at once (priority + due + status).
   // Applying a combo also clears conflicting state: any prior recurrence
