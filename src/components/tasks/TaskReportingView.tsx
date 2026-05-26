@@ -35,14 +35,21 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
       ).length,
     }));
 
-    // Avg days to complete by priority
-    const priorities = ['high', 'medium', 'low'];
-    const avgByPriority = priorities.map(p => {
-      const completedOfPriority = tasks.filter(t => t.priority === p && t.status === 'complete' && t.completed_at && t.created_at);
-      const avgDays = completedOfPriority.length > 0
-        ? completedOfPriority.reduce((sum, t) => sum + differenceInDays(new Date(t.completed_at!), new Date(t.created_at)), 0) / completedOfPriority.length
+    // Avg days to complete — Urgent vs Not urgent.
+    const buckets: { key: 'urgent' | 'not_urgent'; label: string }[] = [
+      { key: 'urgent', label: 'Urgent' },
+      { key: 'not_urgent', label: 'Not urgent' },
+    ];
+    const avgByPriority = buckets.map(b => {
+      const matches = tasks.filter(t => {
+        const isUrgent = t.priority === 'urgent';
+        const wanted = b.key === 'urgent' ? isUrgent : !isUrgent;
+        return wanted && t.status === 'complete' && t.completed_at && t.created_at;
+      });
+      const avgDays = matches.length > 0
+        ? matches.reduce((sum, t) => sum + differenceInDays(new Date(t.completed_at!), new Date(t.created_at)), 0) / matches.length
         : 0;
-      return { priority: p.charAt(0).toUpperCase() + p.slice(1), avgDays: Math.round(avgDays * 10) / 10, count: completedOfPriority.length };
+      return { priority: b.label, avgDays: Math.round(avgDays * 10) / 10, count: matches.length };
     });
 
     // Overdue rate by owner
@@ -64,7 +71,7 @@ export function TaskReportingView({ tasks }: TaskReportingViewProps) {
     return { total, completed, inProgress, blocked, notStarted, overdue, completionRate, completionTrend, avgByPriority, overdueByOwner };
   }, [tasks]);
 
-  const PRIORITY_COLORS: Record<string, string> = { High: '#ff4d4d', Medium: '#f59e0b', Low: '#6b7280' };
+  const PRIORITY_COLORS: Record<string, string> = { Urgent: '#e57373', 'Not urgent': '#6b7280' };
 
   return (
     <div className="p-6 space-y-6 overflow-auto">
