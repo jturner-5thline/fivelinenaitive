@@ -162,7 +162,7 @@ function getFocusGroups(tasks: Task[], boundaries: DueBoundaries) {
     { key: 'overdue', label: '🔴 Overdue', tasks: [] as Task[] },
     { key: 'due_today', label: '🟠 Due Today', tasks: [] as Task[] },
     { key: 'due_this_week', label: '🔵 Due This Week', tasks: [] as Task[] },
-    { key: 'high_priority_not_started', label: '🟣 High Priority — Not Started', tasks: [] as Task[] },
+    { key: 'urgent_not_started', label: '🔴 Urgent — Not Started', tasks: [] as Task[] },
   ];
   tasks.forEach(t => {
     if (t.status === 'complete') return;
