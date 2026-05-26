@@ -125,7 +125,8 @@ export function AddFollowupInlineForm({ deal, defaultTitle, onClose, onCreated }
       }
     } catch (e) {
       console.error('[AddFollowupInlineForm] create failed', e);
-      toast.error('Failed to create task — try again.');
+      const msg = e instanceof Error ? e.message : (e as any)?.message || 'try again';
+      toast.error(`Failed to create task — ${msg}`);
     } finally {
       setBusy(false);
     }
