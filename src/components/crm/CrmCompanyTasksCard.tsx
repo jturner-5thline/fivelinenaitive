@@ -166,9 +166,11 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
                             {format(new Date(task.due_date), 'MMM d')}
                           </span>
                         )}
-                        <Badge variant="outline" className={cn('text-[9px] px-1 py-0 h-4', priorityColor[task.priority])}>
-                          {task.priority}
-                        </Badge>
+                        {task.priority === 'urgent' && (
+                          <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 text-red-400">
+                            Urgent
+                          </Badge>
+                        )}
                          {task.status !== 'not_started' && (
                            <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
                              {STATUS_OPTIONS.find(s => s.value === task.status)?.label || task.status}
@@ -243,10 +245,15 @@ export function CrmCompanyTasksCard({ companyId, companyName, externalShowCreate
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
-                  <SelectContent>{PRIORITY_OPTIONS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}</SelectContent>
-                </Select>
+                <label className="mt-1 flex items-center gap-2 text-xs h-9 px-2 rounded-md border border-input cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={priority === 'urgent'}
+                    onChange={(e) => setPriority(e.target.checked ? 'urgent' : '')}
+                    className="h-3.5 w-3.5"
+                  />
+                  Mark as Urgent
+                </label>
               </div>
               <div>
                 <Label className="text-xs">Status</Label>
