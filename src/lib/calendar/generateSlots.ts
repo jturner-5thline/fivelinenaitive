@@ -77,8 +77,9 @@ export function generateSlots(input: GenerateSlotsInput): Slot[] {
       const dayEnd = atHM(cursor, workingHoursEnd);
       const todayCandidates: Slot[] = [];
 
-      // Walk in 15-minute increments to keep alignment friendly.
-      const stepMs = 15 * 60_000;
+      // Walk in 30-minute increments to keep alignment friendly and avoid
+      // returning near-duplicate adjacent half-hour offsets.
+      const stepMs = 30 * 60_000;
       const durMs = durationMin * 60_000;
       const bufMs = bufferMin * 60_000;
 
@@ -131,12 +132,40 @@ export function generateSlots(input: GenerateSlotsInput): Slot[] {
     if (cursor.getTime() - windowStart.getTime() > 60 * 24 * 60 * 60_000) break;
   }
 
-  // Round-robin pick across days for diversity. Prefer earlier-in-day picks.
+  // Distribute picks across days AND across each day's open intervals so we
+  // don't return "9 AM every day" when each day happens to have multiple
+  // openings. Each day gets `perDay` evenly-spaced indices from its
+  // candidate list, and consecutive days use staggered starting offsets so
+  // the chosen times vary day-to-day instead of always landing at the
+  // earliest opening.
+  const numDays = candidatesByDay.length || 1;
+  const perDay = Math.max(1, Math.ceil(maxSlots / numDays));
+  const dayPicks: Slot[][] = candidatesByDay.map((day, dayIdx) => {
+    if (day.length === 0) return [];
+    if (day.length <= perDay) return day.slice();
+    const out: Slot[] = [];
+    const stride = day.length / perDay;
+    // Stagger per-day starting offset so day 0, day 1, day 2… pick from
+    // different positions of their respective free windows.
+    const startOffset = (dayIdx % perDay) * (stride / numDays);
+    const seen = new Set<number>();
+    for (let k = 0; k < perDay; k += 1) {
+      const rawIdx = Math.floor(startOffset + k * stride);
+      const idx = Math.min(day.length - 1, Math.max(0, rawIdx));
+      if (seen.has(idx)) continue;
+      seen.add(idx);
+      out.push(day[idx]);
+    }
+    return out;
+  });
+
+  // Round-robin merge across days, preserving variety when we're slot-
+  // constrained (e.g. maxSlots === numDays we still get different times).
   const picks: Slot[] = [];
   let round = 0;
   while (picks.length < maxSlots) {
     let pickedThisRound = false;
-    for (const day of candidatesByDay) {
+    for (const day of dayPicks) {
       if (round < day.length) {
         picks.push(day[round]);
         pickedThisRound = true;
