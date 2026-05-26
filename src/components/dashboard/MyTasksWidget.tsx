@@ -13,11 +13,12 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
 // MUST stay aligned with it so dashboard counts and rows always match the
 // Tasks page after refresh, navigation, and live updates.
 import { useMyTasks, type Task, type TaskOwnerFilter } from '@/hooks/useTasks';
+import { useCompany } from '@/hooks/useCompany';
 import { cn } from '@/lib/utils';
 
 type TaskFilter = 'today' | 'overdue' | 'upcoming' | 'all';
 type GroupBy = 'date' | 'deal';
-type Scope = 'mine' | 'team';
+type Scope = 'mine' | 'all';
 
 interface MyTasksWidgetProps {
   variant?: 'compact' | 'expanded';
@@ -30,11 +31,16 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
   const [groupBy, setGroupBy] = useState<GroupBy>('date');
   const [scope, setScope] = useState<Scope>('mine');
   const [isOpen, setIsOpen] = useState(defaultOpen);
+  const { isAdmin } = useCompany();
+
+  // Non-admins cannot view the company-wide pool. Force back to "mine" if
+  // an admin who previously selected "all" loses the role.
+  const effectiveScope: Scope = isAdmin ? scope : 'mine';
 
   // Map widget scope -> canonical owner filter used by /tasks. 'team' fetches
   // the full company task pool (matches /tasks "all"); 'mine' uses the same
   // assignee + collaborator semantics as the Tasks page.
-  const ownerFilter: TaskOwnerFilter = scope === 'mine' ? 'mine' : 'all';
+  const ownerFilter: TaskOwnerFilter = effectiveScope === 'mine' ? 'mine' : 'all';
   const { tasks: allTasks, isLoading, updateTask } = useMyTasks(ownerFilter);
   const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
 
@@ -152,7 +158,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
             <CardTitle className="text-base font-medium flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <ListTodo className="h-4 w-4 text-primary" />
-                {scope === 'mine' ? 'My Tasks' : 'Team Tasks'}
+                {effectiveScope === 'mine' ? 'My Tasks' : 'All Tasks'}
                 {overdueCount > 0 && (
                   <Badge variant="destructive" className="text-[10px] h-5">{overdueCount} overdue</Badge>
                 )}
@@ -186,16 +192,22 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                 </ToggleGroup>
                 <ToggleGroup
                   type="single"
-                  value={scope}
-                  onValueChange={(v) => v && setScope(v as Scope)}
+                  value={effectiveScope}
+                  onValueChange={(v) => v && isAdmin && setScope(v as Scope)}
                   className="gap-0.5"
                 >
                   <ToggleGroupItem value="mine" className="text-[11px] h-7 px-2 font-medium whitespace-nowrap text-muted-foreground data-[state=on]:text-foreground" title="My tasks only">
                     Mine
                   </ToggleGroupItem>
-                  <ToggleGroupItem value="team" className="text-[11px] h-7 px-2 font-medium gap-1 whitespace-nowrap text-muted-foreground data-[state=on]:text-foreground" title="All team tasks">
-                    <Users className="h-3 w-3" />Team
-                  </ToggleGroupItem>
+                  {isAdmin && (
+                    <ToggleGroupItem
+                      value="all"
+                      className="text-[11px] h-7 px-2 font-medium gap-1 whitespace-nowrap text-muted-foreground data-[state=on]:text-foreground"
+                      title="All tasks across your company (admin only)"
+                    >
+                      <Users className="h-3 w-3" />All
+                    </ToggleGroupItem>
+                  )}
                 </ToggleGroup>
                 <ToggleGroup
                   type="single"
