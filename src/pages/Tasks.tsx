@@ -365,7 +365,7 @@ export default function Tasks() {
     if (t.status === 'complete') return false;
     const bucket = bucketDueDate(t.due_date, dueBoundaries);
     if (bucket === 'overdue' || bucket === 'today' || bucket === 'tomorrow' || bucket === 'this_week') return true;
-    if ((t.priority === 'urgent' || t.priority === 'high') && t.status === 'not_started') return true;
+    if (t.priority === 'urgent' && t.status === 'not_started') return true;
     return false;
   });
 
