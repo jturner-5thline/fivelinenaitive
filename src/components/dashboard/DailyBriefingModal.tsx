@@ -1799,7 +1799,6 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
             {/* Left vertical icon rail */}
             <TooltipProvider delayDuration={150}>
               <TabsPrimitive.List
-                orientation="vertical"
                 aria-orientation="vertical"
                 className="shrink-0 flex flex-col items-center gap-2 w-14 sm:w-16 py-3 border-r border-border/40 bg-white/[0.02]"
               >
