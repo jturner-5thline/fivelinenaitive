@@ -1140,6 +1140,18 @@ export default function Tasks() {
             </PopoverContent>
           </Popover>
 
+          {(hasActiveFilters || taskFilters.search) && (
+            <button
+              type="button"
+              onClick={() => { clearAllFilters(); patchFilters({ search: '' }); }}
+              className="h-8 px-2 text-[11px] underline-offset-2 hover:underline shrink-0"
+              style={{ color: '#ef8a8a' }}
+              data-testid="clear-filters-link"
+            >
+              Clear filters
+            </button>
+          )}
+
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5" style={{ borderColor: 'rgba(255,255,255,0.06)', backgroundColor: 'rgba(255,255,255,0.025)', color: '#b3bccc' }}>
