@@ -116,6 +116,73 @@ async function getGrantId(supabase: any, userId: string): Promise<string | null>
   return data.grant_id;
 }
 
+async function hasMicrosoftConnection(supabase: any, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("microsoft_tokens")
+    .select("user_id, status")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data && data.status !== "disconnected";
+}
+
+/**
+ * Microsoft fallback for calendar `list`. Reads from the unified
+ * `calendar_events` table (populated by `microsoft-sync-calendar`) so users
+ * connected only to Outlook still see their events in the canonical calendar.
+ */
+async function listMicrosoftEvents(
+  supabase: any,
+  userId: string,
+  body: EventsRequest,
+): Promise<Response> {
+  const now = new Date();
+  const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const timeMin = body.time_min || now.toISOString();
+  const timeMax = body.time_max || weekFromNow.toISOString();
+  const max = Math.min(body.max_results || 200, 500);
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select("event_id, title, start_time, end_time, organizer_email, attendees, location, meeting_url, is_all_day, is_cancelled")
+    .eq("user_id", userId)
+    .eq("provider", "microsoft")
+    .gte("start_time", timeMin)
+    .lte("start_time", timeMax)
+    .order("start_time", { ascending: true })
+    .limit(max);
+  if (error) {
+    console.error(`[calendar-events][microsoft] read error user=${userId}:`, error);
+    return new Response(
+      JSON.stringify({ error: error.message, error_code: "microsoft_read_failed", provider: "microsoft" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  console.log(`[calendar-events][microsoft] list user=${userId} count=${data?.length ?? 0} window=${timeMin}..${timeMax}`);
+  const events = (data || [])
+    .filter((e: any) => !e.is_cancelled)
+    .map((e: any) => ({
+      id: e.event_id,
+      calendar_id: "primary",
+      title: e.title || "(No title)",
+      summary: e.title || "(No title)",
+      description: null,
+      location: e.location || null,
+      start: e.start_time,
+      end: e.end_time,
+      all_day: !!e.is_all_day,
+      status: "confirmed",
+      htmlLink: null,
+      hangoutLink: e.meeting_url || null,
+      attendees: Array.isArray(e.attendees) ? e.attendees : null,
+      organizer: e.organizer_email ? { email: e.organizer_email } : null,
+      color: null,
+      provider: "microsoft",
+    }));
+  return new Response(
+    JSON.stringify({ events, next_page_token: null, provider: "microsoft" }),
+    { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+}
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -150,16 +217,34 @@ serve(async (req: Request): Promise<Response> => {
     }
     const user = { id: claimsData.claims.sub as string };
 
-    const grantId = await getGrantId(supabase, user.id);
-    if (!grantId) {
-      return new Response(JSON.stringify({ error: "Calendar not connected. Connect your Google account first." }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const body: EventsRequest = await req.json();
     console.log("Calendar events action:", body.action, "for user:", user.id);
+
+    const grantId = await getGrantId(supabase, user.id);
+    if (!grantId) {
+      const msConnected = await hasMicrosoftConnection(supabase, user.id);
+      console.log(`[calendar-events] no Nylas grant user=${user.id} ms_connected=${msConnected} action=${body.action}`);
+      if (msConnected && body.action === "list") {
+        return await listMicrosoftEvents(supabase, user.id, body);
+      }
+      if (msConnected) {
+        return new Response(
+          JSON.stringify({
+            error: `Calendar action '${body.action}' is not supported for Microsoft yet.`,
+            error_code: "microsoft_action_unsupported",
+            provider: "microsoft",
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+      return new Response(
+        JSON.stringify({
+          error: "Calendar not connected. Connect Google or Microsoft in Integrations.",
+          error_code: "calendar_not_connected",
+        }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
 
     const headers = nylasHeaders();
     const baseUrl = `${NYLAS_API_URI}/v3/grants/${grantId}`;

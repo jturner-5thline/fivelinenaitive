@@ -262,6 +262,137 @@ async function getGrantId(supabase: any, userId: string): Promise<string | null>
   return data.grant_id || data.account_id || null;
 }
 
+async function hasMicrosoftConnection(supabase: any, userId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from("microsoft_tokens")
+    .select("user_id, status")
+    .eq("user_id", userId)
+    .maybeSingle();
+  return !!data && data.status !== "disconnected";
+}
+
+/**
+ * Microsoft fallback for the `list` and `get` actions. Reads from the unified
+ * `emails` table (populated by `microsoft-sync-emails`) so users connected to
+ * Outlook (and not Nylas/Gmail) still get inbox + message body responses with
+ * the same shape the UI already consumes.
+ */
+async function handleMicrosoftAction(
+  supabase: any,
+  userId: string,
+  requestData: MessageRequest,
+): Promise<Response | null> {
+  const action = requestData.action;
+  if (action === "list") {
+    const max = Math.min((requestData as any).max_results || 50, 200);
+    const labelIds = (requestData as any).label_ids as string[] | undefined;
+    const explicit = labelIds?.[0]?.toUpperCase();
+    // Only INBOX-style lists are supported today (Microsoft sync covers inbox).
+    if (explicit && explicit !== "INBOX") {
+      console.log(`[gmail-messages][microsoft] unsupported folder=${explicit} for user=${userId}; returning []`);
+      return new Response(
+        JSON.stringify({ messages: [], next_page_token: null, provider: "microsoft" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const { data, error } = await supabase
+      .from("emails")
+      .select("message_id, thread_id, subject, from_email, from_name, to_emails, preview, received_at, is_read, has_attachments")
+      .eq("user_id", userId)
+      .eq("provider", "microsoft")
+      .order("received_at", { ascending: false })
+      .limit(max);
+    if (error) {
+      console.error(`[gmail-messages][microsoft] list error user=${userId}:`, error);
+      return new Response(
+        JSON.stringify({ error: error.message, error_code: "microsoft_read_failed", provider: "microsoft" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    console.log(`[gmail-messages][microsoft] list user=${userId} count=${data?.length ?? 0}`);
+    const messages = (data || []).map((m: any) => ({
+      id: m.message_id,
+      thread_id: m.thread_id,
+      subject: m.subject,
+      from_email: m.from_email,
+      from_name: m.from_name,
+      to_emails: m.to_emails ?? [],
+      snippet: m.preview ?? "",
+      received_at: m.received_at,
+      is_read: !!m.is_read,
+      is_starred: false,
+      labels: ["INBOX"],
+      has_attachments: !!m.has_attachments,
+      provider: "microsoft",
+    }));
+    return new Response(
+      JSON.stringify({ messages, next_page_token: null, provider: "microsoft" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  if (action === "get") {
+    const messageId = (requestData as any).message_id as string | undefined;
+    if (!messageId) {
+      return new Response(JSON.stringify({ error: "message_id required" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data, error } = await supabase
+      .from("emails")
+      .select("message_id, thread_id, subject, from_email, from_name, to_emails, preview, received_at, is_read, has_attachments, raw")
+      .eq("user_id", userId)
+      .eq("provider", "microsoft")
+      .eq("message_id", messageId)
+      .maybeSingle();
+    if (error || !data) {
+      console.error(`[gmail-messages][microsoft] get error user=${userId} msg=${messageId}:`, error);
+      return new Response(
+        JSON.stringify({ error: error?.message || "Message not found", error_code: "microsoft_read_failed", provider: "microsoft" }),
+        { status: error ? 500 : 404, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+    const raw = (data.raw as any) || {};
+    const bodyHtml = raw?.body?.contentType === "html"
+      ? raw?.body?.content
+      : raw?.body?.content || "";
+    return new Response(
+      JSON.stringify({
+        message: {
+          id: data.message_id,
+          thread_id: data.thread_id,
+          subject: data.subject,
+          from_email: data.from_email,
+          from_name: data.from_name,
+          to_emails: data.to_emails ?? [],
+          snippet: data.preview ?? "",
+          body_text: raw?.body?.contentType === "text" ? raw?.body?.content : "",
+          body_html: bodyHtml,
+          is_read: !!data.is_read,
+          is_starred: false,
+          labels: ["INBOX"],
+          received_at: data.received_at,
+          has_attachments: !!data.has_attachments,
+          provider: "microsoft",
+        },
+        provider: "microsoft",
+      }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+  // Write actions (send/mark/star/move/trash/archive) not yet supported on
+  // Microsoft path — surface a structured error the UI can act on.
+  console.log(`[gmail-messages][microsoft] unsupported action=${action} user=${userId}`);
+  return new Response(
+    JSON.stringify({
+      error: `Action '${action}' is not yet supported for Microsoft mail.`,
+      error_code: "microsoft_action_unsupported",
+      provider: "microsoft",
+    }),
+    { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+  );
+}
+
 serve(async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -298,16 +429,24 @@ serve(async (req: Request): Promise<Response> => {
     const userId = claimsData.claims.sub as string;
     const user = { id: userId } as { id: string };
 
-    const grantId = await getGrantId(supabase, user.id);
-    if (!grantId) {
-      return new Response(JSON.stringify({ error: "Gmail not connected. Please connect your Gmail account." }), {
-        status: 401,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const requestData: MessageRequest = await req.json();
     const { action } = requestData;
+
+    const grantId = await getGrantId(supabase, user.id);
+    if (!grantId) {
+      const msConnected = await hasMicrosoftConnection(supabase, user.id);
+      console.log(`[gmail-messages] no Nylas grant for user=${user.id} ms_connected=${msConnected} action=${action}`);
+      if (msConnected) {
+        return await handleMicrosoftAction(supabase, user.id, requestData);
+      }
+      return new Response(
+        JSON.stringify({
+          error: "Mail not connected. Please connect Gmail or Microsoft in Integrations.",
+          error_code: "mail_not_connected",
+        }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     console.log(`Nylas messages action: ${action} for user: ${user.id}`);
 
     const headers = nylasHeaders();

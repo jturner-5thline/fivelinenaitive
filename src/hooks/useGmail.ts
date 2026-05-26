@@ -44,6 +44,10 @@ interface GmailStatus {
   /** Which mail provider is connected (gmail via Nylas, microsoft, or none). */
   provider?: 'gmail' | 'microsoft' | 'none';
   email_address?: string;
+  /** True when a connection record exists but the most recent read failed. */
+  read_failed?: boolean;
+  /** Last error surfaced from the data-fetch pipeline, for UI diagnostics. */
+  last_error?: string | null;
 }
 
 // Demo mock emails for demo@5thline.co.
