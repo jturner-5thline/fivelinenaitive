@@ -102,6 +102,14 @@ export function EmailQuickActionsToolbar({
   const [summaryError, setSummaryError] = useState<string | null>(null);
   const { user } = useAuth();
 
+  // Pre-warm the user's freebusy cache as soon as the toolbar mounts so
+  // clicking Suggest Times renders slots from cache instantly.
+  const qc = useQueryClient();
+  const selfEmail = useSelfEmail();
+  useEffect(() => {
+    if (selfEmail) void prefetchFreeBusy(qc, selfEmail);
+  }, [qc, selfEmail, thread?.threadId]);
+
   // Reset summary if thread changes
   useEffect(() => {
     setSummary(null);
