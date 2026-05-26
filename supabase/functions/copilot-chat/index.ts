@@ -5358,10 +5358,31 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.narrative !== undefined) updateFields.narrative = params.narrative;
       if (params.deal_type !== undefined) updateFields.deal_type = params.deal_type;
       if (params.engagement_type !== undefined) updateFields.engagement_type = params.engagement_type;
+      // Hours: support both absolute set (pre/post_signing_hours) and deltas.
+      // If a delta is provided without a pre-resolved absolute, read current
+      // and add. The confirm branch usually pre-resolves into the absolute
+      // field, so the delta path is a safety net for direct executes.
+      if (params.pre_signing_hours !== undefined && params.pre_signing_hours !== null) {
+        updateFields.pre_signing_hours = Number(params.pre_signing_hours);
+      } else if (params.pre_signing_hours_delta !== undefined && params.pre_signing_hours_delta !== null) {
+        const { data: cur } = await supabase.from("deals").select("pre_signing_hours").eq("id", params.deal_id).maybeSingle();
+        updateFields.pre_signing_hours = Number((cur as any)?.pre_signing_hours || 0) + Number(params.pre_signing_hours_delta);
+      }
+      if (params.post_signing_hours !== undefined && params.post_signing_hours !== null) {
+        updateFields.post_signing_hours = Number(params.post_signing_hours);
+      } else if (params.post_signing_hours_delta !== undefined && params.post_signing_hours_delta !== null) {
+        const { data: cur } = await supabase.from("deals").select("post_signing_hours").eq("id", params.deal_id).maybeSingle();
+        updateFields.post_signing_hours = Number((cur as any)?.post_signing_hours || 0) + Number(params.post_signing_hours_delta);
+      }
       // Capture "before" snapshot of the exact fields we are about to change
       const beforeCols = Object.keys(updateFields);
+      console.log("[copilot-chat] update_deal_fields execute — deal_id=%s fields=%j params=%j", params.deal_id, beforeCols, params);
       if (beforeCols.length === 0) {
-        return { success: false, error: "No deal fields provided to update." };
+        return {
+          success: false,
+          error: "No deal fields provided to update. Re-emit update_deal_fields with at least one writable field (e.g. post_signing_hours_delta: 0.5 to add Post-Signing hours).",
+          error_code: "EMPTY_FIELDS",
+        };
       }
       const { data: beforeRow } = await supabase
         .from("deals")
@@ -5389,6 +5410,8 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.deal_type !== undefined) changes.push(`type to ${params.deal_type}`);
       if (params.engagement_type !== undefined) changes.push(`engagement to ${params.engagement_type}`);
       if (params.narrative !== undefined) changes.push(`narrative updated`);
+      if (updateFields.pre_signing_hours !== undefined) changes.push(`pre-signing hours to ${updateFields.pre_signing_hours}`);
+      if (updateFields.post_signing_hours !== undefined) changes.push(`post-signing hours to ${updateFields.post_signing_hours}`);
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id, activity_type: "deal_updated",
         description: `Deal updated: ${changes.join(', ')} via AI Copilot`,
