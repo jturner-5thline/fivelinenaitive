@@ -50,6 +50,7 @@ import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal"
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
 import { BlogManagementPanel } from "@/components/admin/BlogManagementPanel";
+import { SignalStackApp } from "@/components/admin/signalstack/SignalStackApp";
 
 // Sub-page configurations
 const usersSubPages = [
@@ -89,10 +90,7 @@ const settingsSubPages = [
 ];
 
 const productEnhancementSubPages = [
-  { id: "ux-analytics", label: "UX Analytics", icon: Lightbulb },
-  { id: "feedback", label: "Feedback", icon: MessageSquare },
-  { id: "ai-training", label: "AI Training", icon: Brain },
-  { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList },
+  { id: "signalstack", label: "SignalStack", icon: Lightbulb },
 ];
 
 const supportSubPages = [
@@ -147,7 +145,7 @@ const Admin = () => {
     access: "pages",
     "data-security": "data",
     settings: "settings",
-    "product-enhancement": "ux-analytics",
+    "product-enhancement": "signalstack",
     support: "client-viewer",
     "usage-analytics": "usage-overview",
     blog: "blog-all",
@@ -520,6 +518,8 @@ const Admin = () => {
         );
       case "ux-analytics":
         return <UXAnalyticsPanel />;
+      case "signalstack":
+        return <SignalStackApp />;
       case "ai-training":
         return (
           <Card>
