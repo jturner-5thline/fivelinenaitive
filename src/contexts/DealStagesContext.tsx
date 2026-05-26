@@ -83,54 +83,57 @@ export function DealStagesProvider({ children }: { children: ReactNode }) {
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [isLoadingDefault, setIsLoadingDefault] = useState(true);
 
-  // Fetch company ID, default stage, and stages from database
-  useEffect(() => {
-    const fetchCompanySettings = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          setIsLoadingDefault(false);
-          return;
-        }
+  // Fetch tenant company, default stage marker, and stages.
+  // Stages source-of-truth = the company's default `deal_pipelines` row.
+  const loadCompanyStages = useCallback(async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setIsLoadingDefault(false); return; }
 
-        // Get user's company
-        const { data: membership } = await supabase
-          .from('company_members')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
+      const { data: membership } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .maybeSingle();
 
-        if (membership?.company_id) {
-          setCompanyId(membership.company_id);
+      if (!membership?.company_id) { setIsLoadingDefault(false); return; }
+      setCompanyId(membership.company_id);
 
-          // Get company settings including stages
-          const { data: settings } = await supabase
-            .from('company_settings')
-            .select('default_deal_stage_id, deal_stages')
-            .eq('company_id', membership.company_id)
-            .maybeSingle();
-
-          if (settings?.default_deal_stage_id) {
-            setDefaultStageIdState(settings.default_deal_stage_id);
-          }
-          
-          // Load stages from database if available
-          const dbStages = parseStagesFromJson(settings?.deal_stages ?? null);
-          if (dbStages) {
-            setStages(dbStages);
-            // Sync to localStorage as backup
-            localStorage.setItem('dealStages', JSON.stringify(dbStages));
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching company settings:', error);
-      } finally {
-        setIsLoadingDefault(false);
+      // Default stage marker is still stored on company_settings.
+      const { data: settings } = await supabase
+        .from('company_settings')
+        .select('default_deal_stage_id')
+        .eq('company_id', membership.company_id)
+        .maybeSingle();
+      if (settings?.default_deal_stage_id) {
+        setDefaultStageIdState(settings.default_deal_stage_id);
       }
-    };
 
-    fetchCompanySettings();
+      // Stages — load from the tenant's default deal_pipelines row.
+      const { data: pipelineRows } = await supabase
+        .from('deal_pipelines')
+        .select('stages, is_default, position')
+        .eq('company_id', membership.company_id)
+        .order('position', { ascending: true });
+      const active = (pipelineRows || []).find(p => p.is_default) || (pipelineRows || [])[0];
+      const dbStages = parseStagesFromJson(active?.stages ?? null);
+      if (dbStages) {
+        setStages(dbStages);
+        localStorage.setItem('dealStages', JSON.stringify(dbStages));
+      }
+    } catch (error) {
+      console.error('Error fetching company stages:', error);
+    } finally {
+      setIsLoadingDefault(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadCompanyStages();
+    const handler = () => { loadCompanyStages(); };
+    window.addEventListener('deal-pipelines-updated', handler);
+    return () => window.removeEventListener('deal-pipelines-updated', handler);
+  }, [loadCompanyStages]);
 
   // Save stages to both localStorage and database
   const saveStages = useCallback(async (newStages: DealStageOption[]) => {

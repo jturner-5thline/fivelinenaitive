@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { GripVertical, Plus, Pencil, Trash2, GitBranch, Star, Save, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAdminCompanyOverride } from '@/contexts/AdminCompanyOverrideContext';
@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   DndContext,
@@ -28,9 +29,9 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { STAGE_CONFIG } from '@/types/deal';
 import { supabase } from '@/integrations/supabase/client';
 import { Json } from '@/integrations/supabase/types';
+import { useQueryClient } from '@tanstack/react-query';
 
 export interface DealStageOption {
   id: string;
@@ -52,13 +53,6 @@ const STAGE_COLORS = [
   { value: 'bg-orange-500', label: 'Orange' },
   { value: 'bg-yellow-500', label: 'Yellow' },
 ];
-
-// Convert STAGE_CONFIG to array format for default stages
-const defaultStages: DealStageOption[] = Object.entries(STAGE_CONFIG).map(([id, config]) => ({
-  id,
-  label: config.label,
-  color: config.color,
-}));
 
 interface SortableStageItemProps {
   stage: DealStageOption;
@@ -160,16 +154,26 @@ const parseStagesFromJson = (json: Json | null): DealStageOption[] | null => {
   return validStages.length > 0 ? validStages : null;
 };
 
+interface PipelineRow {
+  id: string;
+  name: string;
+  isDefault: boolean;
+  stages: DealStageOption[];
+}
+
 export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) {
   const adminOverride = useAdminCompanyOverride();
-  // Local state for editing
-  const [stages, setStages] = useState<DealStageOption[]>(defaultStages);
+  const queryClient = useQueryClient();
+  // Local state for editing — sourced from the selected deal pipeline (tenant-scoped)
+  const [pipelines, setPipelines] = useState<PipelineRow[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState<string | null>(null);
+  const [stages, setStages] = useState<DealStageOption[]>([]);
   const [defaultStageId, setDefaultStageId] = useState<string | null>(null);
   const [companyId, setCompanyId] = useState<string | null>(adminOverride?.companyId ?? null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Track saved state for comparison
-  const [savedStages, setSavedStages] = useState<DealStageOption[]>(defaultStages);
+  const [savedStages, setSavedStages] = useState<DealStageOption[]>([]);
   const [savedDefaultStageId, setSavedDefaultStageId] = useState<string | null>(null);
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -179,47 +183,57 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Load from database on mount
+  // Load pipelines (tenant-scoped source of truth for deal stages)
   useEffect(() => {
     const fetchData = async () => {
+      setIsLoading(true);
       try {
         let resolvedCompanyId = adminOverride?.companyId ?? null;
 
         if (!resolvedCompanyId) {
           const { data: { user } } = await supabase.auth.getUser();
-          if (!user) {
-            setIsLoading(false);
-            return;
-          }
-
+          if (!user) { setIsLoading(false); return; }
           const { data: membership } = await supabase
             .from('company_members')
             .select('company_id')
             .eq('user_id', user.id)
             .maybeSingle();
-
           resolvedCompanyId = membership?.company_id ?? null;
         }
 
-        if (resolvedCompanyId) {
-          setCompanyId(resolvedCompanyId);
+        if (!resolvedCompanyId) { setIsLoading(false); return; }
+        setCompanyId(resolvedCompanyId);
 
-          const { data: settings } = await supabase
-            .from('company_settings')
-            .select('default_deal_stage_id, deal_stages')
-            .eq('company_id', resolvedCompanyId)
-            .maybeSingle();
+        const { data: pipelineRows } = await supabase
+          .from('deal_pipelines')
+          .select('id, name, is_default, stages, position')
+          .eq('company_id', resolvedCompanyId)
+          .order('position', { ascending: true });
 
-          const dbStages = parseStagesFromJson(settings?.deal_stages ?? null);
-          if (dbStages) {
-            setStages(dbStages);
-            setSavedStages(dbStages);
-          }
-          
-          if (settings?.default_deal_stage_id) {
-            setDefaultStageId(settings.default_deal_stage_id);
-            setSavedDefaultStageId(settings.default_deal_stage_id);
-          }
+        const mapped: PipelineRow[] = (pipelineRows || []).map(p => ({
+          id: p.id,
+          name: p.name,
+          isDefault: p.is_default,
+          stages: parseStagesFromJson(p.stages) ?? [],
+        }));
+        setPipelines(mapped);
+
+        const active = mapped.find(p => p.isDefault) || mapped[0] || null;
+        if (active) {
+          setSelectedPipelineId(active.id);
+          setStages(active.stages);
+          setSavedStages(active.stages);
+        }
+
+        const { data: settings } = await supabase
+          .from('company_settings')
+          .select('default_deal_stage_id')
+          .eq('company_id', resolvedCompanyId)
+          .maybeSingle();
+
+        if (settings?.default_deal_stage_id) {
+          setDefaultStageId(settings.default_deal_stage_id);
+          setSavedDefaultStageId(settings.default_deal_stage_id);
         }
       } catch (error) {
         console.error('Error fetching deal stages:', error);
@@ -230,6 +244,18 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
 
     fetchData();
   }, [adminOverride?.companyId]);
+
+  // When user switches pipeline in the picker, reload its stages
+  const switchPipeline = (id: string) => {
+    if (hasUnsavedChanges) {
+      if (!window.confirm('Discard unsaved stage changes and switch pipeline?')) return;
+    }
+    const p = pipelines.find(x => x.id === id);
+    if (!p) return;
+    setSelectedPipelineId(id);
+    setStages(p.stages);
+    setSavedStages(p.stages);
+  };
 
   // Check if there are unsaved changes
   const hasUnsavedChanges = 
@@ -302,38 +328,46 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
   };
 
   const handleSave = async () => {
+    if (!selectedPipelineId) return;
     setIsSaving(true);
     try {
-      // Save to database if user has a company
-      if (companyId) {
+      // Persist stages to the tenant's deal_pipelines row (single source of truth)
+      const { error: pipeErr } = await supabase
+        .from('deal_pipelines')
+        .update({ stages: stages as unknown as Json })
+        .eq('id', selectedPipelineId);
+      if (pipeErr) throw pipeErr;
+
+      // Persist default stage marker (tenant-scoped) in company_settings.
+      if (companyId && defaultStageId !== savedDefaultStageId) {
         const { data: existing } = await supabase
           .from('company_settings')
           .select('id')
           .eq('company_id', companyId)
           .maybeSingle();
-
         if (existing) {
           await supabase
             .from('company_settings')
-            .update({ 
-              deal_stages: stages as unknown as Json,
-              default_deal_stage_id: defaultStageId 
-            })
+            .update({ default_deal_stage_id: defaultStageId })
             .eq('company_id', companyId);
         } else {
           await supabase
             .from('company_settings')
-            .insert({ 
-              company_id: companyId, 
-              deal_stages: stages as unknown as Json,
-              default_deal_stage_id: defaultStageId 
-            });
+            .insert({ company_id: companyId, default_deal_stage_id: defaultStageId });
         }
       }
 
+      // Mirror to local pipelines list so the dropdown reflects the new stages immediately
+      setPipelines(prev => prev.map(p => p.id === selectedPipelineId ? { ...p, stages } : p));
       setSavedStages(stages);
       setSavedDefaultStageId(defaultStageId);
-      toast.success('Deal stages saved successfully');
+
+      // Invalidate downstream caches (kanban, filters, selectors, deal stage configs)
+      queryClient.invalidateQueries({ queryKey: ['deal_pipelines'] });
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] });
+      queryClient.invalidateQueries({ queryKey: ['deals'] });
+      window.dispatchEvent(new CustomEvent('deal-pipelines-updated', { detail: { companyId, pipelineId: selectedPipelineId } }));
+      toast.success('Deal stages saved');
     } catch (error) {
       console.error('Error saving deal stages:', error);
       toast.error('Failed to save deal stages');
@@ -413,7 +447,7 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
                   <GitBranch className="h-5 w-5 text-primary" />
                   <div>
                     <CardTitle className="text-lg">Deal Stages</CardTitle>
-                    <CardDescription>Configure the stages in your deal pipeline</CardDescription>
+                    <CardDescription>Edit the stages of your configured deal pipeline. Changes apply across kanban, filters and stage selectors.</CardDescription>
                   </div>
                 </div>
                 {isOpen ? (
@@ -428,7 +462,29 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
             <CardContent className="space-y-4">
               {/* Top Save Bar */}
               <SaveBar />
-              
+
+              {pipelines.length > 1 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Pipeline</Label>
+                  <Select value={selectedPipelineId ?? undefined} onValueChange={switchPipeline}>
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select a pipeline" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {pipelines.map(p => (
+                        <SelectItem key={p.id} value={p.id}>
+                          {p.name}{p.isDefault ? ' (Active)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {pipelines.length === 0 && (
+                <p className="text-sm text-muted-foreground">No deal pipeline configured for this account yet.</p>
+              )}
+
               <DndContext
                 sensors={sensors}
                 collisionDetection={closestCenter}
