@@ -1011,13 +1011,15 @@ export default function Tasks() {
               align="end"
               onOpenAutoFocus={(e) => e.preventDefault()}
               onPointerDownOutside={(e) => {
-                const target = e.target as HTMLElement | null;
+                const orig = (e as any).detail?.originalEvent;
+                const target = (orig?.target ?? e.target) as HTMLElement | null;
                 if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"], [cmdk-root]')) {
                   e.preventDefault();
                 }
               }}
               onInteractOutside={(e) => {
-                const target = e.target as HTMLElement | null;
+                const orig = (e as any).detail?.originalEvent;
+                const target = (orig?.target ?? e.target) as HTMLElement | null;
                 if (target?.closest('[data-radix-popper-content-wrapper], [data-radix-select-content], [data-radix-popover-content], [role="listbox"], [role="option"], [cmdk-root]')) {
                   e.preventDefault();
                 }
