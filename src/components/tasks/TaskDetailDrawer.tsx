@@ -92,9 +92,6 @@ const STATUS_COLORS: Record<string, { label: string; bg: string }> = {
 
 const PRIORITY_PILL: Record<string, { label: string; bg: string }> = {
   urgent: { label: 'Urgent', bg: '#ff4d4d' },
-  high: { label: 'High', bg: '#ff4d4d' },
-  medium: { label: 'Medium', bg: '#f59e0b' },
-  low: { label: 'Low', bg: '#6b7280' },
 };
 
 export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage = false }: TaskDetailDrawerProps) {
