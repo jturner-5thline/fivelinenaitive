@@ -27,6 +27,9 @@ import {
   Popover, PopoverContent, PopoverTrigger,
 } from '@/components/ui/popover';
 import {
+  Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList,
+} from '@/components/ui/command';
+import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
@@ -398,33 +401,67 @@ export function TaskDetailDrawer({ task, onClose, onUpdate, onDelete, fullPage =
                         </AvatarFallback>
                       </Avatar>
                       <span className="text-[10px]" style={{ color: 'white' }}>{c.profile?.display_name?.split(' ')[0] || 'User'}</span>
-                      <button onClick={() => removeCollaborator.mutate(c.user_id)} className="opacity-0 group-hover/collab:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        aria-label={`Remove ${c.profile?.display_name || 'collaborator'}`}
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeCollaborator.mutate(c.user_id); }}
+                        className="opacity-60 hover:opacity-100 group-hover/collab:opacity-100 transition-opacity"
+                      >
                         <X className="h-2.5 w-2.5" style={{ color: '#8b92a5' }} />
                       </button>
                     </div>
                   ))}
                   <Popover>
                     <PopoverTrigger asChild>
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" style={{ border: '1px dashed rgba(255,255,255,0.06)' }}>
+                      <Button type="button" variant="ghost" size="sm" className="h-6 w-6 p-0 rounded-full" style={{ border: '1px dashed rgba(255,255,255,0.06)' }} aria-label="Add collaborator">
                         <Plus className="h-3 w-3" style={{ color: '#8b92a5' }} />
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-[200px] p-1 max-h-[200px] overflow-auto" align="start">
-                      <p className="text-[10px] px-2 py-1" style={{ color: '#8b92a5' }}>Add collaborator</p>
-                      {members
-                        .filter(m => m.id !== task.assigned_to && !collaborators.some(c => c.user_id === m.id))
-                        .map(m => (
-                          <button key={m.id} className="w-full flex items-center gap-2 px-2 py-1.5 text-xs rounded hover:bg-muted transition-colors" onClick={() => addCollaborator.mutate(m.id)}>
-                            <Avatar className="h-4 w-4">
-                              <AvatarImage src={m.avatar_url || undefined} />
-                              <AvatarFallback className="text-[7px]">{m.display_name?.slice(0, 2).toUpperCase()}</AvatarFallback>
-                            </Avatar>
-                            {m.display_name}
-                          </button>
-                        ))}
-                      {members.filter(m => m.id !== task.assigned_to && !collaborators.some(c => c.user_id === m.id)).length === 0 && (
-                        <p className="text-[10px] p-2" style={{ color: '#8b92a5' }}>All team members added</p>
-                      )}
+                    <PopoverContent
+                      className="w-[240px] p-0"
+                      align="start"
+                      onOpenAutoFocus={(e) => {
+                        // Let the CommandInput take focus naturally instead of
+                        // the popover container, so arrow keys/Enter work.
+                      }}
+                    >
+                      {(() => {
+                        const available = members.filter(
+                          m => m.id !== task.assigned_to && !collaborators.some(c => c.user_id === m.id),
+                        );
+                        return (
+                          <Command>
+                            <CommandInput placeholder="Add collaborator…" className="h-8 text-xs" />
+                            <CommandList className="max-h-[220px]">
+                              <CommandEmpty className="py-3 text-center text-[11px] text-muted-foreground">
+                                {members.length === 0 ? 'No team members found' : 'All team members added'}
+                              </CommandEmpty>
+                              {available.length > 0 && (
+                                <CommandGroup>
+                                  {available.map(m => (
+                                    <CommandItem
+                                      key={m.id}
+                                      value={`${m.display_name} ${m.email || ''}`}
+                                      onSelect={() => {
+                                        addCollaborator.mutate(m.id);
+                                      }}
+                                      className="flex items-center gap-2 text-xs cursor-pointer"
+                                    >
+                                      <Avatar className="h-5 w-5">
+                                        <AvatarImage src={m.avatar_url || undefined} />
+                                        <AvatarFallback className="text-[8px]">
+                                          {m.display_name?.slice(0, 2).toUpperCase()}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="truncate">{m.display_name}</span>
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              )}
+                            </CommandList>
+                          </Command>
+                        );
+                      })()}
                     </PopoverContent>
                   </Popover>
                 </div>

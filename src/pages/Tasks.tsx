@@ -293,7 +293,8 @@ export default function Tasks() {
   // Auto-open task from ?task= query parameter (e.g. from email deep link)
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const taskParam = params.get('task');
+    // Accept both ?task=<id> (legacy) and ?taskId=<id>&view=mine (new email deep-link)
+    const taskParam = params.get('task') || params.get('taskId');
     if (taskParam && tasks.length > 0) {
       const found = tasks.find(t => t.id === taskParam);
       if (found) {
