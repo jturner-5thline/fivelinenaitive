@@ -27,12 +27,12 @@ async function sendTaskAssignedEmail(params: {
   dueDate?: string | null;
 }) {
   try {
-    const taskUrl = `https://fivelinenaitive.lovable.app/tasks?task=${params.taskId}`;
+    const taskUrl = `https://fivelinenaitive.lovable.app/tasks?taskId=${params.taskId}&view=mine`;
     await supabase.functions.invoke('send-transactional-email', {
       body: {
         templateName: 'task-assigned',
         recipientEmail: params.assigneeEmail,
-        idempotencyKey: `task-assigned-${params.taskId}-${Date.now()}`,
+        idempotencyKey: `task-assigned-${params.taskId}-${params.assigneeEmail}`,
         templateData: {
           assigneeName: params.assigneeName || undefined,
           taskTitle: params.taskTitle,
@@ -46,6 +46,34 @@ async function sendTaskAssignedEmail(params: {
     console.log('[TaskEmail] Task assigned email sent to', params.assigneeEmail);
   } catch (e) {
     console.error('[TaskEmail] Failed to send task assigned email:', e);
+  }
+}
+
+async function createTaskAssignedNotification(params: {
+  taskId: string;
+  taskTitle: string;
+  assigneeUserId: string;
+  assignedByName?: string;
+  dealName?: string;
+  dealId?: string | null;
+}) {
+  try {
+    await supabase.rpc('create_task_inapp_notification' as any, {
+      _task_id: params.taskId,
+      _recipient_user_id: params.assigneeUserId,
+      _trigger_key: 'task_assigned',
+      _title: 'New task assigned',
+      _body: params.assignedByName
+        ? `${params.assignedByName} assigned you "${params.taskTitle}"${params.dealName ? ` on ${params.dealName}` : ''}`
+        : `You were assigned "${params.taskTitle}"`,
+      _context: {
+        task_id: params.taskId,
+        task_title: params.taskTitle,
+        deal_id: params.dealId ?? null,
+      },
+    });
+  } catch (e) {
+    console.warn('[TaskNotif] in-app task_assigned notification failed (non-fatal)', e);
   }
 }
 
