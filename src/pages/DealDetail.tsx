@@ -10,6 +10,7 @@ import { LenderCommsTimeline } from '@/components/lenders/LenderCommsTimeline';
 import { LenderHistoryHint } from '@/components/deal/LenderHistoryHint';
 import { StaleStatusNudge } from '@/components/deal/StaleStatusNudge';
 import { LenderNotesField } from '@/components/deal/LenderNotesField';
+import { LenderNoteTimestamp } from '@/components/deal/LenderNoteTimestamp';
 import { LenderHistoryDrawer } from '@/components/deal/LenderHistoryDrawer';
 import { useLenderHistoryWarnings } from '@/hooks/useLenderHistoryWarning';
 import { supabase } from '@/integrations/supabase/client';
