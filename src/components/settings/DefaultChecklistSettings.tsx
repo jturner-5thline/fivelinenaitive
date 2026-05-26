@@ -28,6 +28,8 @@ import {
   type ChecklistItemConfig,
 } from '@/hooks/useDefaultChecklistConfig';
 import { useCompany } from '@/hooks/useCompany';
+import { useDealTypes } from '@/contexts/DealTypesContext';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 
 interface DefaultChecklistSettingsProps {
@@ -38,6 +40,7 @@ interface DefaultChecklistSettingsProps {
 export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: DefaultChecklistSettingsProps) {
   const { company } = useCompany();
   const { config, loading, saveConfig } = useDefaultChecklistConfig(company?.id);
+  const { dealTypes: availableDealTypes } = useDealTypes();
   const [isOpen, setIsOpen] = useState(false);
   const [localConfig, setLocalConfig] = useState<DefaultChecklistConfigV2>({ version: 2, configs: [] });
   const [isSaving, setIsSaving] = useState(false);
@@ -75,6 +78,11 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
   }, [localConfig.configs, selectedConfigId]);
 
   const selectedConfig = localConfig.configs.find(c => c.id === selectedConfigId) || null;
+  const usedLabels = new Set(localConfig.configs.map(c => c.dealTypeMatchString.toLowerCase()));
+  const availableForAdd = availableDealTypes.filter(dt => !usedLabels.has(dt.label.toLowerCase()));
+  const availableForEdit = (currentLabel: string) => availableDealTypes.filter(
+    dt => dt.label.toLowerCase() === currentLabel.toLowerCase() || !usedLabels.has(dt.label.toLowerCase())
+  );
   const hasChanges = JSON.stringify(localConfig) !== JSON.stringify(config);
 
   const updateLocal = useCallback((updater: (draft: DefaultChecklistConfigV2) => void) => {
@@ -87,19 +95,42 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
 
   // ── Config (deal type) CRUD ──
   const handleAddConfig = () => {
-    if (!newMatchString.trim()) return;
+    const label = newMatchString.trim();
+    if (!label) return;
+    // Must be a configured deal type
+    if (!availableDealTypes.some(dt => dt.label.toLowerCase() === label.toLowerCase())) {
+      toast.error('Please select a configured Deal Type.');
+      return;
+    }
+    // Prevent duplicates
+    if (usedLabels.has(label.toLowerCase())) {
+      toast.error('A checklist for this Deal Type already exists.');
+      return;
+    }
     updateLocal(d => {
-      d.configs.push({ id: genId(), dealTypeMatchString: newMatchString.trim(), rounds: [] });
+      d.configs.push({ id: genId(), dealTypeMatchString: label, rounds: [] });
     });
     setNewMatchString('');
     setAddConfigOpen(false);
   };
 
   const handleEditConfig = () => {
-    if (!editConfigId || !editMatchString.trim()) return;
+    const label = editMatchString.trim();
+    if (!editConfigId || !label) return;
+    if (!availableDealTypes.some(dt => dt.label.toLowerCase() === label.toLowerCase())) {
+      toast.error('Please select a configured Deal Type.');
+      return;
+    }
+    const dup = localConfig.configs.some(
+      c => c.id !== editConfigId && c.dealTypeMatchString.toLowerCase() === label.toLowerCase(),
+    );
+    if (dup) {
+      toast.error('A checklist for this Deal Type already exists.');
+      return;
+    }
     updateLocal(d => {
       const c = d.configs.find(x => x.id === editConfigId);
-      if (c) c.dealTypeMatchString = editMatchString.trim();
+      if (c) c.dealTypeMatchString = label;
     });
     setEditConfigId(null);
   };
@@ -263,7 +294,7 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
                 <>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Match string:</span>
+                      <span className="text-sm font-medium">Deal Type:</span>
                       <Badge variant="outline">{selectedConfig.dealTypeMatchString}</Badge>
                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => {
                         setEditConfigId(selectedConfig.id);
@@ -387,7 +418,7 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
       {embedded ? (
         <div>
           <p className="text-xs text-muted-foreground mb-3">
-            Configure default checklist rounds &amp; items per deal type (matched by &quot;contains&quot;).
+            Configure default checklist rounds &amp; items per configured Deal Type.
             {' '}{localConfig.configs.length} types, {totalItems} total items
           </p>
           {innerContent}
@@ -405,7 +436,7 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
                     Deal-Type Data Room Checklists
                   </CardTitle>
                   <CardDescription>
-                    Configure default checklist rounds &amp; items per deal type (matched by &quot;contains&quot;).
+                    Configure default checklist rounds &amp; items per configured Deal Type.
                     {' '}{localConfig.configs.length} types, {totalItems} total items
                   </CardDescription>
                 </div>
@@ -425,27 +456,50 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
       {/* ─── Dialogs ─── */}
 
       {/* Add deal type config */}
-      <Dialog open={addConfigOpen} onOpenChange={setAddConfigOpen}>
+      <Dialog open={addConfigOpen} onOpenChange={(o) => { setAddConfigOpen(o); if (!o) setNewMatchString(''); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader><DialogTitle>Add Deal Type Checklist</DialogTitle></DialogHeader>
           <div className="space-y-2">
-            <Label>Match String (e.g. &quot;Growth Capital&quot;)</Label>
-            <Input value={newMatchString} onChange={e => setNewMatchString(e.target.value)} placeholder="Growth Capital"
-              onKeyDown={e => e.key === 'Enter' && handleAddConfig()} />
-            <p className="text-[11px] text-muted-foreground">Deals whose type contains this string will use this checklist.</p>
+            <Label>Deal Type</Label>
+            {availableForAdd.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2">
+                All configured Deal Types already have a checklist. Add a new Deal Type in Settings → Deal Types to create another.
+              </p>
+            ) : (
+              <Select value={newMatchString} onValueChange={setNewMatchString}>
+                <SelectTrigger><SelectValue placeholder="Select a Deal Type" /></SelectTrigger>
+                <SelectContent>
+                  {availableForAdd.map(dt => (
+                    <SelectItem key={dt.id} value={dt.label}>{dt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              Checklist will apply to deals with this exact Deal Type. Manage Deal Types in Settings → Deal Types.
+            </p>
           </div>
           <DialogFooter>
-            <Button size="sm" onClick={handleAddConfig} disabled={!newMatchString.trim()}>Add</Button>
+            <Button size="sm" onClick={handleAddConfig} disabled={!newMatchString.trim() || availableForAdd.length === 0}>Add</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit deal type match string */}
+      {/* Edit deal type */}
       <Dialog open={!!editConfigId} onOpenChange={o => !o && setEditConfigId(null)}>
         <DialogContent className="max-w-sm">
-          <DialogHeader><DialogTitle>Edit Match String</DialogTitle></DialogHeader>
-          <Input value={editMatchString} onChange={e => setEditMatchString(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleEditConfig()} />
+          <DialogHeader><DialogTitle>Edit Deal Type</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <Label>Deal Type</Label>
+            <Select value={editMatchString} onValueChange={setEditMatchString}>
+              <SelectTrigger><SelectValue placeholder="Select a Deal Type" /></SelectTrigger>
+              <SelectContent>
+                {availableForEdit(editMatchString).map(dt => (
+                  <SelectItem key={dt.id} value={dt.label}>{dt.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <DialogFooter>
             <Button size="sm" onClick={handleEditConfig} disabled={!editMatchString.trim()}>Save</Button>
           </DialogFooter>
