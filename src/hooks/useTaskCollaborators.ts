@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export interface TaskCollaborator {
   id: string;
@@ -56,9 +57,30 @@ export function useTaskCollaborators(taskId: string | null) {
       const { error } = await supabase
         .from('task_collaborators' as any)
         .insert({ task_id: taskId, user_id: userId });
-      if (error) throw error;
+      if (error) {
+        console.error('[task_collaborators] insert failed', { taskId, userId, error });
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onMutate: async (userId: string) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData<TaskCollaborator[]>(key);
+      const optimistic: TaskCollaborator = {
+        id: `optimistic-${userId}`,
+        task_id: taskId || '',
+        user_id: userId,
+        created_at: new Date().toISOString(),
+        profile: null,
+      };
+      queryClient.setQueryData<TaskCollaborator[]>(key, [...(prev || []), optimistic]);
+      return { prev };
+    },
+    onError: (err: any, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
+      const msg = err?.message || 'Failed to add collaborator';
+      toast.error(msg.includes('row-level') ? "You don't have permission to add collaborators on this task" : `Failed to add collaborator: ${msg}`);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key });
       queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
     },
@@ -72,9 +94,22 @@ export function useTaskCollaborators(taskId: string | null) {
         .delete()
         .eq('task_id', taskId)
         .eq('user_id', userId);
-      if (error) throw error;
+      if (error) {
+        console.error('[task_collaborators] delete failed', { taskId, userId, error });
+        throw error;
+      }
     },
-    onSuccess: () => {
+    onMutate: async (userId: string) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      const prev = queryClient.getQueryData<TaskCollaborator[]>(key);
+      queryClient.setQueryData<TaskCollaborator[]>(key, (prev || []).filter(c => c.user_id !== userId));
+      return { prev };
+    },
+    onError: (err: any, _vars, ctx) => {
+      if (ctx?.prev) queryClient.setQueryData(key, ctx.prev);
+      toast.error(err?.message || 'Failed to remove collaborator');
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: key });
       queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
     },
