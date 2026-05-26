@@ -192,6 +192,7 @@ export default function Tasks() {
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
   const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
   const [filterRecurring, setFilterRecurring] = useState<FilterRecurring>('all');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showFocusMode, setShowFocusMode] = useState(false);
   const [showQuickCreate, setShowQuickCreate] = useState(false);
