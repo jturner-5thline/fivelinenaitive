@@ -30,6 +30,13 @@ export function PipelineProvider({ children }: { children: ReactNode }) {
     }
   }, [pipelines]);
 
+  // Listen for tenant deal-pipeline updates triggered from Settings and refetch
+  useEffect(() => {
+    const handler = () => { refetch(); };
+    window.addEventListener('deal-pipelines-updated', handler);
+    return () => window.removeEventListener('deal-pipelines-updated', handler);
+  }, [refetch]);
+
   const setActivePipelineId = useCallback((id: string | null) => {
     setActivePipelineIdState(id);
   }, []);
