@@ -35,6 +35,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { logUsage } from '@/lib/usageLogger';
 import { useCopilotChatScope, serializeScope, type CopilotScopeOverride } from '@/lib/copilotChatScope';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { matchDemoScript } from '@/lib/ai/demoScripts';
 
 const COPILOT_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/copilot-chat`;
 
@@ -1445,6 +1446,42 @@ export function AICopilotPanel() {
         timestamp: new Date(),
       });
       return;
+    }
+
+    // Demo-only scripted prompts (gated strictly to demo@5thline.co).
+    // Shows the normal "thinking" indicator, then streams the canned
+    // response character-by-character so it reads like a live generation.
+    // No real LLM call is made on this path.
+    {
+      const demo = matchDemoScript({ email: user?.email, prompt: text });
+      if (demo) {
+        const assistantId = crypto.randomUUID();
+        setProcessing(true);
+        const startStream = () => {
+          addMessage({
+            id: assistantId,
+            role: 'assistant',
+            content: '',
+            timestamp: new Date(),
+          });
+          setProcessing(false);
+          const full = demo.reply;
+          let i = 0;
+          const STEP_MS = 33; // ~30 chars/sec
+          const tick = () => {
+            i = Math.min(full.length, i + 1);
+            const store = useCopilotStore.getState();
+            const existing = store.messages.find((m) => m.id === assistantId);
+            if (existing) {
+              store.addMessage({ ...existing, content: full.slice(0, i) });
+            }
+            if (i < full.length) window.setTimeout(tick, STEP_MS);
+          };
+          window.setTimeout(tick, STEP_MS);
+        };
+        window.setTimeout(startStream, demo.delayMs);
+        return;
+      }
     }
 
     // Agent mode: instead of streaming a chat reply, push an assistant
