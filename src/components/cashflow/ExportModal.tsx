@@ -58,6 +58,10 @@ interface ExportModalProps {
   weeksPast?: number;
   /** Current viewport: weeks after the current week visible in the table. */
   weeksFuture?: number;
+  /** Custom receipt rows configured for this company — mirrors the live table. */
+  customReceiptRows?: string[];
+  /** Custom disbursement rows configured for this company — mirrors the live table. */
+  customDisbursementRows?: string[];
   onClose: () => void;
   onArchive: (entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => void;
 }
@@ -118,6 +122,8 @@ export const ExportModal = memo(function ExportModal({
   weeklyData,
   weeksPast = 4,
   weeksFuture = 12,
+  customReceiptRows = [],
+  customDisbursementRows = [],
   onClose,
   onArchive,
 }: ExportModalProps) {
@@ -125,6 +131,27 @@ export const ExportModal = memo(function ExportModal({
   const [flags, setFlags] = useState<ExportFlag[]>([]);
   const [notes, setNotes] = useState('');
   const [customFlag, setCustomFlag] = useState('');
+
+  // Build the effective row order, injecting custom rows just before each
+  // section's TOTAL — matches WeeklyReportTab's effectiveRowOrder so the PDF
+  // includes any company-specific lines (e.g. Ramp, M&T).
+  const EXPORT_ROWS = useMemo<ExportRow[]>(() => {
+    const out: ExportRow[] = [];
+    for (const row of BASE_EXPORT_ROWS) {
+      if (row.type === 'line' && row.key === 'TOTAL RECEIPTS') {
+        for (const name of customReceiptRows) {
+          out.push({ type: 'line', key: name, label: name, section: 'receipts' });
+        }
+      }
+      if (row.type === 'line' && row.key === 'TOTAL DISBURSEMENTS') {
+        for (const name of customDisbursementRows) {
+          out.push({ type: 'line', key: name, label: name, section: 'disbursements' });
+        }
+      }
+      out.push(row);
+    }
+    return out;
+  }, [customReceiptRows, customDisbursementRows]);
 
   // Compute the viewport slice the user is actually looking at — same logic
   // as WeeklyReportTab so the PDF matches the on-screen Weeks Past/Future.
