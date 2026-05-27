@@ -31,6 +31,24 @@ const formatCurrency = (value: number) => {
   return `$${value.toFixed(0)}`;
 };
 
+/** Return a renderer that only emits a label for values >= the 80th percentile
+ *  of the supplied dataset, formatted as `$Xk`. Reduces label collision on
+ *  dense charts. */
+function makeLabelFormatter(values: number[]) {
+  if (!values.length) return () => '';
+  const sorted = [...values].filter(v => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  if (!sorted.length) return () => '';
+  const idx = Math.floor(sorted.length * 0.2); // bottom 20% suppressed
+  const threshold = sorted[idx] ?? 0;
+  return (v: number) => (v >= threshold ? formatCurrency(v) : '');
+}
+
+const dataLabelStyle = {
+  fill: 'hsl(var(--muted-foreground))',
+  fontSize: 10,
+  fontWeight: 500,
+} as const;
+
 interface Props {
   /** Optional period filter for flow-based metrics (revenue/payments/etc). */
   period?: QuickBooksMetricsPeriod & { label: string };
@@ -180,7 +198,16 @@ export function QuickBooksFinancialDashboard({
                       { metric: 'Revenue', value: formatCurrency(Number(d?.revenue) || 0) },
                       { metric: 'Payments', value: formatCurrency(Number(d?.payments) || 0) },
                     ])}
-                  />
+                  >
+                    {showDataLabels && (
+                      <LabelList
+                        dataKey="revenue"
+                        position="top"
+                        formatter={makeLabelFormatter(metrics.monthlyRevenue.map(d => d.revenue))}
+                        style={dataLabelStyle}
+                      />
+                    )}
+                  </Bar>
                   <Line type="monotone" dataKey="payments" stroke="hsl(var(--chart-2))" name="Payments" strokeWidth={1} dot={{ r: 3 }} />
                 </ComposedChart>
               </ResponsiveContainer>
@@ -214,6 +241,14 @@ export function QuickBooksFinancialDashboard({
                     {metrics.arAgingData.map((entry, index) => (
                       <Cell key={index} fill={index <= 1 ? "hsl(var(--primary))" : index <= 2 ? "hsl(var(--chart-4))" : "hsl(var(--destructive))"} />
                     ))}
+                    {showDataLabels && (
+                      <LabelList
+                        dataKey="value"
+                        position="top"
+                        formatter={makeLabelFormatter(metrics.arAgingData.map(d => d.value))}
+                        style={dataLabelStyle}
+                      />
+                    )}
                   </Bar>
                 </BarChart>
               </ResponsiveContainer>
@@ -251,6 +286,14 @@ export function QuickBooksFinancialDashboard({
                       {metrics.topCustomers.map((_, index) => (
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
+                      {showDataLabels && (
+                        <LabelList
+                          dataKey="revenue"
+                          position="right"
+                          formatter={makeLabelFormatter(metrics.topCustomers.map(d => d.revenue))}
+                          style={dataLabelStyle}
+                        />
+                      )}
                     </Bar>
                   </BarChart>
                 </ResponsiveContainer>
