@@ -6,8 +6,9 @@ import { useQuickBooksMetrics, type QuickBooksMetricsPeriod } from '@/hooks/useQ
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Area,
+  ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Area, LabelList,
 } from 'recharts';
+import type { Granularity } from '@/lib/insightsTimeRange';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
 import { DollarSign, Users, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
@@ -35,13 +36,23 @@ interface Props {
   period?: QuickBooksMetricsPeriod & { label: string };
   /** Optional text rendered as a Badge on each tile header (e.g. "Monthly · 2026 YTD"). */
   periodBadge?: string;
+  /** Bucket granularity for the trend chart. Defaults to monthly. */
+  granularity?: Granularity;
+  /** Toggle inline $ data labels on bars. Defaults to true. */
+  showDataLabels?: boolean;
 }
 
-export function QuickBooksFinancialDashboard({ period, periodBadge }: Props = {}) {
+export function QuickBooksFinancialDashboard({
+  period,
+  periodBadge,
+  granularity = 'monthly',
+  showDataLabels = true,
+}: Props = {}) {
   const { data: status } = useQuickBooksStatus();
   const { data: metrics, isLoading } = useQuickBooksMetrics(
     undefined,
     period ? { start: period.start, end: period.end } : undefined,
+    granularity,
   );
   const [drill, setDrill] = useState<{
     context: DrilldownContext;
