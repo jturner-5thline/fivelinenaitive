@@ -1814,6 +1814,8 @@ export function CashFlowManager() {
           weeklyData={filteredWeekly}
           weeksPast={weeksPast}
           weeksFuture={weeksFuture}
+          customReceiptRows={customRows.receipts}
+          customDisbursementRows={customRows.disbursements}
           onClose={handleCloseExport}
           onArchive={handleArchive}
         />
