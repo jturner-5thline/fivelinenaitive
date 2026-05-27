@@ -9,6 +9,7 @@ import { SecuritySettings } from '@/components/settings/SecuritySettings';
 import { DealSummarySettings } from '@/components/settings/DealSummarySettings';
 import { TaskDefaultsSettings } from '@/components/settings/TaskDefaultsSettings';
 import { NotificationLinkSettings } from '@/components/settings/NotificationLinkSettings';
+import { useAuth } from '@/contexts/AuthContext';
 
 type SectionId = 'profile' | 'security' | 'notifications' | 'emails' | 'tasks';
 
@@ -62,8 +63,12 @@ const SECTIONS: Array<{
 
 export default function Account() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeId = (searchParams.get('section') as SectionId) || 'profile';
-  const active = SECTIONS.find((s) => s.id === activeId) ?? SECTIONS[0];
+  const { user } = useAuth();
+  const is5thLine = user?.email?.endsWith('@5thline.co') ?? false;
+  const visibleSections = SECTIONS.filter((s) => s.id !== 'tasks' || is5thLine);
+  const requestedId = (searchParams.get('section') as SectionId) || 'profile';
+  const active =
+    visibleSections.find((s) => s.id === requestedId) ?? visibleSections[0];
 
   const setActive = (id: SectionId) => {
     const next = new URLSearchParams(searchParams);
@@ -104,7 +109,7 @@ export default function Account() {
           {/* Pills */}
           <div className="mb-6 -mx-1 overflow-x-auto">
             <div className="flex items-center gap-1 px-1 pb-1">
-              {SECTIONS.map((s) => {
+              {visibleSections.map((s) => {
                 const isActive = s.id === active.id;
                 return (
                   <button
