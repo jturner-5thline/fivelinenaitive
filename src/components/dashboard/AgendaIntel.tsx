@@ -244,6 +244,10 @@ function MeetingCard({
   event,
   dealMatch,
   onLinkDeal,
+  onUnlinkDeal,
+  onPickSuggested,
+  suggestions,
+  linkBusy,
   isPersonal,
   isInternalOnly,
   prep,
@@ -255,6 +259,10 @@ function MeetingCard({
   event: CalendarEvent;
   dealMatch: DealRow | null;
   onLinkDeal: () => void;
+  onUnlinkDeal: () => void;
+  onPickSuggested: (deal: DealRow) => void;
+  suggestions: DealRow[];
+  linkBusy: boolean;
   isPersonal: boolean;
   isInternalOnly: boolean;
   prep: PrepCacheEntry | null;
@@ -352,28 +360,82 @@ function MeetingCard({
 
       {/* Section 2 — Deal link */}
       {!isPersonal && (
-        <div className="flex items-center gap-2">
+        <div className="space-y-1.5">
           {dealMatch ? (
-            <button
-              onClick={() =>
-                window.open(`/deals?deal=${dealMatch.id}`, '_blank', 'noopener,noreferrer')
-              }
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/15 text-primary text-xs font-medium hover:bg-primary/25 transition-colors"
-            >
-              <Briefcase className="h-3 w-3" />
-              {dealMatch.name} — {dealMatch.stage}
-            </button>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="inline-flex items-center gap-1 rounded-md bg-primary/15 text-primary text-xs font-medium pl-2 pr-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => window.open(`/deals?deal=${dealMatch.id}`, '_blank', 'noopener,noreferrer')}
+                  className="inline-flex items-center gap-1.5 hover:underline"
+                >
+                  <Briefcase className="h-3 w-3" />
+                  <span className="truncate max-w-[200px]">{dealMatch.name}</span>
+                  {dealMatch.category && (
+                    <Badge
+                      variant="outline"
+                      className={cn('text-[9px] font-normal px-1.5 py-0 ml-1', CATEGORY_BADGE[dealMatch.category].cls)}
+                    >
+                      {CATEGORY_BADGE[dealMatch.category].label}
+                    </Badge>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={onUnlinkDeal}
+                  disabled={linkBusy}
+                  aria-label="Unlink deal"
+                  className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-primary/20 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-white/80 hover:text-white"
+                onClick={onLinkDeal}
+                disabled={linkBusy}
+              >
+                <Pencil className="h-3 w-3 mr-1" /> Change
+              </Button>
+            </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-white/70">
+            <div className="flex items-center gap-2 text-xs text-white/70 flex-wrap">
               <span>No linked deal</span>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-xs text-white hover:text-white"
+                className="h-6 px-2 text-xs text-white hover:text-white hover:bg-white/[0.08] cursor-pointer transition-colors"
                 onClick={onLinkDeal}
+                disabled={linkBusy}
               >
-                <Plus className="h-3 w-3 mr-1 text-white" /> Link deal
+                {linkBusy ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Plus className="h-3 w-3 mr-1 text-white" />
+                )}
+                Link deal
               </Button>
+            </div>
+          )}
+          {!dealMatch && suggestions.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide text-white/55 inline-flex items-center gap-1">
+                <Sparkle className="h-3 w-3" /> Suggested
+              </span>
+              {suggestions.slice(0, 3).map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onPickSuggested(s)}
+                  disabled={linkBusy}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 text-primary text-[11px] hover:bg-primary/20 transition-colors"
+                >
+                  <Briefcase className="h-3 w-3" />
+                  <span className="truncate max-w-[160px]">{s.name}</span>
+                </button>
+              ))}
             </div>
           )}
         </div>
