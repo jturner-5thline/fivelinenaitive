@@ -2965,6 +2965,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             )}
 
 
+            <span ref={linkPreviewAnchorRef} className="inline-flex">
             <LinkToDealPopover
               trigger={
                 <button
@@ -2989,6 +2990,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 setLinkedDealId(id);
                 setLinkedDealName(name);
                 onToggleLink(thread.latestEmail);
+
+                // Open the floating preview deterministically BEFORE the
+                // picker closes — preview lives as a sibling so the picker's
+                // unmount cannot race the preview state.
+                setLinkPreviewDealId(id);
+                setLinkPreviewOpen(true);
 
                 // Persist a deal_emails row per real Gmail message in the
                 // thread (skip mocks). Idempotent via the (deal_id, gmail_message_id)
@@ -3019,6 +3026,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 setLinkedDealId(undefined);
                 setLinkedDealName(undefined);
                 onToggleLink(thread.latestEmail);
+                setLinkPreviewOpen(false);
+                setLinkPreviewDealId(null);
 
                 if (prevId) {
                   try {
@@ -3038,6 +3047,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 }
               }}
             />
+            <LinkedDealPreviewPopover
+              anchorRef={linkPreviewAnchorRef}
+              open={linkPreviewOpen}
+              dealId={linkPreviewDealId}
+              onOpenChange={(o) => {
+                setLinkPreviewOpen(o);
+                if (!o) setLinkPreviewDealId(null);
+              }}
+            />
+            </span>
 
             {onToggleExpand && (
               <>
