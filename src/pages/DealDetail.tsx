@@ -2235,6 +2235,89 @@ export default function DealDetail() {
     }
   }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync]);
 
+  /**
+   * Move a lender to a *specific* stage (not just "first stage in group").
+   * Used by the Lenders Kanban which groups columns by stage. We derive the
+   * tracking-status group from the target stage so the existing group-based
+   * UI and filters stay in sync.
+   */
+  const updateLenderStageDirect = useCallback((lenderId: string, newStageId: string, passReason?: string) => {
+    const targetStage = configuredStages.find(s => s.id === newStageId);
+    if (!targetStage) return;
+    const lender = deal?.lenders?.find(l => l.id === lenderId);
+    const oldStage = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
+    const newGroup = targetStage.group as StageGroup;
+
+    if (lender) {
+      setLastLenderChange({
+        lenderId,
+        previousStage: lender.stage,
+        previousTrackingStatus: lender.trackingStatus || 'active',
+        previousPassReason: lender.passReason,
+        lenderName: lender.name,
+      });
+    }
+
+    setFailedLenderSaves(prev => {
+      const next = new Set(prev);
+      next.delete(lenderId);
+      return next;
+    });
+
+    const autoNote = newGroup === 'passed' && passReason
+      ? `Lender passed due to ${passReason}`
+      : undefined;
+
+    withSavingAsync(`lender-stage-${lenderId}`, async () => {
+      try {
+        await updateLenderInDb(lenderId, {
+          stage: targetStage.id,
+          trackingStatus: newGroup,
+          passReason: newGroup === 'passed' ? (passReason || null) : null,
+          ...(autoNote ? { notes: autoNote } : {}),
+        });
+      } catch (err) {
+        setFailedLenderSaves(prev => new Set(prev).add(lenderId));
+        throw err;
+      }
+    });
+
+    if (lender) {
+      logActivity('lender_stage_change', `${lender.name} stage changed`, {
+        lender_id: lender.id,
+        lender_name: lender.name,
+        from: oldStage?.label || lender.stage,
+        to: targetStage.label,
+      });
+    }
+
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l =>
+        l.id === lenderId
+          ? { ...l, stage: targetStage.id as any, trackingStatus: newGroup, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() }
+          : l,
+      );
+      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+
+    if (lender && newGroup !== 'passed') {
+      toast({
+        title: 'Stage updated',
+        description: `${lender.name} moved to ${targetStage.label}`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => undoLenderChange(lenderId, lender.stage, lender.trackingStatus || 'active', lender.passReason)}
+          >
+            Undo
+          </Button>
+        ),
+      });
+    }
+  }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync]);
+
   const undoLenderChange = useCallback((lenderId: string, previousStage: string, previousTrackingStatus: string, previousPassReason?: string) => {
     // Persist undo to database
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
@@ -5633,9 +5716,17 @@ export default function DealDetail() {
 
       {/* Lenders Kanban Dialog */}
       <Dialog open={isLendersKanbanOpen} onOpenChange={setIsLendersKanbanOpen}>
-        <DialogContent className="max-w-[90vw] w-full max-h-[90vh] overflow-auto">
+        <DialogContent
+          className="max-w-[90vw] w-full max-h-[90vh] overflow-auto border-white/10 bg-gradient-to-b from-card/95 via-card/90 to-background/95 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)]"
+          style={{
+            backgroundImage:
+              "radial-gradient(900px 320px at 12% -10%, hsl(var(--primary) / 0.12), transparent 60%), radial-gradient(700px 280px at 88% 110%, hsl(var(--primary) / 0.08), transparent 60%), linear-gradient(to bottom, hsl(var(--card) / 0.96), hsl(var(--background) / 0.96))",
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>Lenders Kanban View</DialogTitle>
+            <DialogTitle className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground/80">
+              Lenders · By Stage
+            </DialogTitle>
           </DialogHeader>
           {deal && deal.lenders && (
             <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading lenders…</div>}>
@@ -5649,6 +5740,7 @@ export default function DealDetail() {
               stageGroups={stageGroups}
               passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
+              onUpdateLenderStage={updateLenderStageDirect}
               onEditPassReasons={(lenderId) => {
                 const lender = deal.lenders?.find(l => l.id === lenderId);
                 if (lender) {
