@@ -1005,9 +1005,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                                 className={cellCommentsHere.length > 0 ? 'cf-cell-has-comment' : undefined}
                               >
                                 {fmtAbbrev(display)}
-                                {cellCommentsHere.length > 0 && (
-                                  <span className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`} aria-hidden />
-                                )}
+                                <CellCommentIndicator
+                                  comments={cellCommentsHere}
+                                  onOpen={(e) => openCommentPopoverForCell(e, cellCtx)}
+                                />
                               </td>
                             );
                           })}
