@@ -729,6 +729,17 @@ export default function Tasks() {
     const handleKeyDown = (e: globalThis.KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || (e.target as HTMLElement)?.isContentEditable) return;
+      // Cmd/Ctrl+Z — pop the most recent reversible action.
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z') && !e.shiftKey) {
+        if (undoStack.canUndo) {
+          e.preventDefault();
+          const action = undoStack.pop();
+          if (action) {
+            Promise.resolve(action.undo()).then(() => toast.success(`Undone: ${action.label}`));
+          }
+        }
+        return;
+      }
       if (selectedTaskId) return;
 
       if (e.key === 'n' || e.key === 'N') {
