@@ -4,6 +4,21 @@ import { fmtAbbrev } from './formatters';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+/**
+ * Format a YYYY-MM-DD week-start date as "MMM D" in en-US, parsed in UTC
+ * so dates don't drift across timezones (matches Insights bucketing fix).
+ */
+function formatWeekStartLabel(dateKey: string): string {
+  const [y, m, d] = dateKey.slice(0, 10).split('-').map(Number);
+  if (!y || !m || !d) return dateKey;
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  }).format(dt);
+}
+
 const PRESET_FLAGS: ExportFlag[] = [
   { label: 'Cash Alert', color: '#ef4444' },
   { label: 'Needs Review', color: '#f59e0b' },
@@ -116,7 +131,7 @@ export const ExportModal = memo(function ExportModal({
         x += doc.getTextWidth(flag.label) + 24;
       });
     }
-    const headers = ['Line Item', ...weeks.map(([, v]) => `Wk ${v.week_num}`)];
+    const headers = ['Line Item', ...weeks.map(([dateKey]) => formatWeekStartLabel(dateKey))];
     const body: any[] = [];
     const rowStyles: Record<number, any> = {};
     EXPORT_ROWS.forEach((row, idx) => {
@@ -281,9 +296,9 @@ export const ExportModal = memo(function ExportModal({
             <thead>
               <tr>
                 <th style={{ background: '#e8edf3', padding: 3, border: '1px solid #cbd5e1', textAlign: 'left', color: '#1e293b' }}>Line Item</th>
-                {weeks.slice(0, 8).map(([, v]) => (
+                {weeks.slice(0, 8).map(([dateKey, v]) => (
                   <th key={v.week_num} style={{ background: '#e8edf3', padding: 3, border: '1px solid #cbd5e1', textAlign: 'center', color: '#1e293b' }}>
-                    Wk {v.week_num}
+                    {formatWeekStartLabel(dateKey)}
                   </th>
                 ))}
               </tr>
