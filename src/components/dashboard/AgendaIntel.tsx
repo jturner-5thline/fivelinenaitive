@@ -24,6 +24,9 @@ import {
   RefreshCw,
   ChevronLeft,
   Inbox,
+  X,
+  Pencil,
+  Sparkle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +53,8 @@ import { useMyTasks } from '@/hooks/useTasks';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { useAuth } from '@/contexts/AuthContext';
+import { isActiveDeal } from '@/lib/deals';
+import { extractEmailDomain } from '@/lib/extractEmailDomain';
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
@@ -59,7 +64,15 @@ interface DealRow {
   id: string;
   name: string;
   stage: string;
+  status?: string | null;
+  owner?: string | null;
+  crm_company_id?: string | null;
+  company_id?: string | null;
+  updated_at?: string | null;
+  category?: DealCategory;
 }
+
+type DealCategory = 'active' | 'on-hold' | 'prospect' | 'closed-lost' | 'closed-won' | 'other';
 
 interface PrepCacheEntry {
   bullets: string;
@@ -102,6 +115,56 @@ function eventSignature(ev: CalendarEvent): string {
     ev.updated || '',
     (ev.attendees || []).map(a => a.email).sort().join('|'),
   ].join('::');
+}
+
+// ── Deal categorization / badges ──────────────────────────────
+function classifyDeal(d: Pick<DealRow, 'stage' | 'status'>): DealCategory {
+  const status = String(d.status ?? '').toLowerCase().trim();
+  const stage = String(d.stage ?? '').toLowerCase().replace(/[-_]+/g, ' ').trim();
+  if (status === 'archived' || stage.includes('archived')) return 'closed-lost';
+  if (stage.includes('won')) return 'closed-won';
+  if (stage.includes('closed') && stage.includes('lost')) return 'closed-lost';
+  if (stage === 'passed' || stage.startsWith('passed') || stage.includes('not a fit')) return 'closed-lost';
+  if (stage.includes('dead') || stage.includes('do not contact')) return 'closed-lost';
+  if (status === 'on hold' || stage.includes('hold') || stage.includes('paused')) return 'on-hold';
+  if (stage.startsWith('prospect')) return 'prospect';
+  if (stage.includes('unqualified') || stage.includes('dormant')) return 'prospect';
+  if (isActiveDeal(d as any)) return 'active';
+  return 'other';
+}
+
+const CATEGORY_RANK: Record<DealCategory, number> = {
+  active: 0,
+  prospect: 1,
+  'on-hold': 2,
+  other: 3,
+  'closed-won': 4,
+  'closed-lost': 5,
+};
+
+const CATEGORY_BADGE: Record<DealCategory, { label: string; cls: string }> = {
+  active: { label: 'Active', cls: 'border-green-500/30 bg-green-500/10 text-green-300' },
+  prospect: { label: 'Prospect', cls: 'border-blue-500/30 bg-blue-500/10 text-blue-300' },
+  'on-hold': { label: 'On hold', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-300' },
+  'closed-won': { label: 'Won', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
+  'closed-lost': { label: 'Closed lost', cls: 'border-white/15 bg-white/[0.05] text-white/60' },
+  other: { label: '—', cls: 'border-white/15 bg-white/[0.05] text-white/60' },
+};
+
+function highlightMatch(text: string, q: string): React.ReactNode {
+  const term = q.trim();
+  if (!term) return text;
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx < 0) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-primary/30 text-white rounded px-0.5">
+        {text.slice(idx, idx + term.length)}
+      </mark>
+      {text.slice(idx + term.length)}
+    </>
+  );
 }
 
 // ── Card ──────────────────────────────────────────────────────
@@ -181,6 +244,10 @@ function MeetingCard({
   event,
   dealMatch,
   onLinkDeal,
+  onUnlinkDeal,
+  onPickSuggested,
+  suggestions,
+  linkBusy,
   isPersonal,
   isInternalOnly,
   prep,
@@ -192,6 +259,10 @@ function MeetingCard({
   event: CalendarEvent;
   dealMatch: DealRow | null;
   onLinkDeal: () => void;
+  onUnlinkDeal: () => void;
+  onPickSuggested: (deal: DealRow) => void;
+  suggestions: DealRow[];
+  linkBusy: boolean;
   isPersonal: boolean;
   isInternalOnly: boolean;
   prep: PrepCacheEntry | null;
@@ -289,28 +360,82 @@ function MeetingCard({
 
       {/* Section 2 — Deal link */}
       {!isPersonal && (
-        <div className="flex items-center gap-2">
+        <div className="space-y-1.5">
           {dealMatch ? (
-            <button
-              onClick={() =>
-                window.open(`/deals?deal=${dealMatch.id}`, '_blank', 'noopener,noreferrer')
-              }
-              className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-primary/15 text-primary text-xs font-medium hover:bg-primary/25 transition-colors"
-            >
-              <Briefcase className="h-3 w-3" />
-              {dealMatch.name} — {dealMatch.stage}
-            </button>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="inline-flex items-center gap-1 rounded-md bg-primary/15 text-primary text-xs font-medium pl-2 pr-1 py-1">
+                <button
+                  type="button"
+                  onClick={() => window.open(`/deals?deal=${dealMatch.id}`, '_blank', 'noopener,noreferrer')}
+                  className="inline-flex items-center gap-1.5 hover:underline"
+                >
+                  <Briefcase className="h-3 w-3" />
+                  <span className="truncate max-w-[200px]">{dealMatch.name}</span>
+                  {dealMatch.category && (
+                    <Badge
+                      variant="outline"
+                      className={cn('text-[9px] font-normal px-1.5 py-0 ml-1', CATEGORY_BADGE[dealMatch.category].cls)}
+                    >
+                      {CATEGORY_BADGE[dealMatch.category].label}
+                    </Badge>
+                  )}
+                </button>
+                <button
+                  type="button"
+                  onClick={onUnlinkDeal}
+                  disabled={linkBusy}
+                  aria-label="Unlink deal"
+                  className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-primary/20 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </div>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs text-white/80 hover:text-white"
+                onClick={onLinkDeal}
+                disabled={linkBusy}
+              >
+                <Pencil className="h-3 w-3 mr-1" /> Change
+              </Button>
+            </div>
           ) : (
-            <div className="flex items-center gap-2 text-xs text-white/70">
+            <div className="flex items-center gap-2 text-xs text-white/70 flex-wrap">
               <span>No linked deal</span>
               <Button
                 size="sm"
                 variant="ghost"
-                className="h-6 px-2 text-xs text-white hover:text-white"
+                className="h-6 px-2 text-xs text-white hover:text-white hover:bg-white/[0.08] cursor-pointer transition-colors"
                 onClick={onLinkDeal}
+                disabled={linkBusy}
               >
-                <Plus className="h-3 w-3 mr-1 text-white" /> Link deal
+                {linkBusy ? (
+                  <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                ) : (
+                  <Plus className="h-3 w-3 mr-1 text-white" />
+                )}
+                Link deal
               </Button>
+            </div>
+          )}
+          {!dealMatch && suggestions.length > 0 && (
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] uppercase tracking-wide text-white/55 inline-flex items-center gap-1">
+                <Sparkle className="h-3 w-3" /> Suggested
+              </span>
+              {suggestions.slice(0, 3).map(s => (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => onPickSuggested(s)}
+                  disabled={linkBusy}
+                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 text-primary text-[11px] hover:bg-primary/20 transition-colors"
+                >
+                  <Briefcase className="h-3 w-3" />
+                  <span className="truncate max-w-[160px]">{s.name}</span>
+                </button>
+              ))}
             </div>
           )}
         </div>
@@ -403,6 +528,7 @@ function MeetingCard({
 // ── Main component ────────────────────────────────────────────
 export function AgendaIntel() {
   const { listEvents, status } = useGoogleCalendar();
+  const navigate = useNavigate();
   const [range, setRange] = useState<RangeKey>('today');
   const [audience, setAudience] = useState<AudienceKey>('all');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -411,6 +537,10 @@ export function AgendaIntel() {
   const [dealLinkOverrides, setDealLinkOverrides] = useState<Record<string, string>>({});
   const [linkPickerEventId, setLinkPickerEventId] = useState<string | null>(null);
   const [linkPickerQuery, setLinkPickerQuery] = useState('');
+  const [persistedLinks, setPersistedLinks] = useState<Record<string, { id: string; dealId: string }>>({});
+  const [orgCompanyId, setOrgCompanyId] = useState<string | null>(null);
+  const [crmCompanies, setCrmCompanies] = useState<Array<{ id: string; name: string; domains: string[] }>>([]);
+  const [linkBusyEventId, setLinkBusyEventId] = useState<string | null>(null);
   const [prepCache, setPrepCache] = useState<Record<string, PrepCacheEntry>>(() =>
     loadPrepCache(),
   );
@@ -452,11 +582,83 @@ export function AgendaIntel() {
     (async () => {
       const { data } = await supabase
         .from('deals')
-        .select('id, company, stage')
-        .limit(500);
-      if (data) setDeals(data.map(d => ({ id: d.id, name: d.company, stage: d.stage })));
+        .select('id, company, stage, status, deal_owner, manager, crm_company_id, company_id, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(1000);
+      if (data) {
+        setDeals(
+          data.map(d => {
+            const cat = classifyDeal({ stage: d.stage, status: d.status });
+            return {
+              id: d.id,
+              name: d.company,
+              stage: d.stage,
+              status: d.status,
+              owner: d.deal_owner || d.manager,
+              crm_company_id: d.crm_company_id,
+              company_id: d.company_id,
+              updated_at: d.updated_at,
+              category: cat,
+            };
+          }),
+        );
+      }
     })();
   }, []);
+
+  // Resolve current user's primary org_company_id (for meeting_deal_links scoping)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      setOrgCompanyId(data?.company_id ?? null);
+    })();
+  }, [user]);
+
+  // Fetch CRM company domains (for attendee-domain suggestions)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('crm_companies')
+        .select('id, name, domain, additional_domains')
+        .limit(2000);
+      if (data) {
+        setCrmCompanies(
+          data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            domains: [c.domain, ...(c.additional_domains || [])]
+              .filter(Boolean)
+              .map((d: string) => d.toLowerCase()),
+          })),
+        );
+      }
+    })();
+  }, []);
+
+  // Load persisted meeting→deal links once we know the org
+  useEffect(() => {
+    if (!orgCompanyId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('meeting_deal_links')
+        .select('id, meeting_external_id, deal_id')
+        .eq('org_company_id', orgCompanyId)
+        .is('deleted_at', null);
+      if (data) {
+        const map: Record<string, { id: string; dealId: string }> = {};
+        for (const r of data as any[]) {
+          map[r.meeting_external_id] = { id: r.id, dealId: r.deal_id };
+        }
+        setPersistedLinks(map);
+      }
+    })();
+  }, [orgCompanyId]);
 
   // Fetch events whenever range changes
   const rangeDays = range === 'today' ? 0 : range === '3d' ? 3 : 7;
@@ -481,6 +683,11 @@ export function AgendaIntel() {
   // Match deals to events
   const matchDeal = useCallback(
     (event: CalendarEvent): DealRow | null => {
+      const persisted = persistedLinks[event.id]?.dealId;
+      if (persisted) {
+        const d = deals.find(x => x.id === persisted);
+        if (d) return d;
+      }
       const override = dealLinkOverrides[event.id];
       if (override) {
         const d = deals.find(x => x.id === override);
@@ -496,8 +703,34 @@ export function AgendaIntel() {
       }
       return null;
     },
-    [deals, dealLinkOverrides],
+    [deals, dealLinkOverrides, persistedLinks],
   );
+
+  // Attendee-domain → suggested active deals
+  const suggestionsByEvent = useMemo(() => {
+    const out: Record<string, DealRow[]> = {};
+    if (!crmCompanies.length || !deals.length) return out;
+    for (const ev of events) {
+      const externals = (ev.attendees || []).filter(
+        a => a.email && !isInternalAttendee(a.email) && !a.self,
+      );
+      const domains = new Set(
+        externals.map(a => extractEmailDomain(a.email)).filter((d): d is string => !!d),
+      );
+      if (!domains.size) continue;
+      const matchedCompanyIds = new Set<string>();
+      for (const c of crmCompanies) {
+        if (c.domains.some(d => domains.has(d))) matchedCompanyIds.add(c.id);
+      }
+      if (!matchedCompanyIds.size) continue;
+      const matchedDeals = deals
+        .filter(d => d.crm_company_id && matchedCompanyIds.has(d.crm_company_id))
+        .filter(d => d.category === 'active' || d.category === 'prospect')
+        .sort((a, b) => (CATEGORY_RANK[a.category!] - CATEGORY_RANK[b.category!]));
+      if (matchedDeals.length) out[ev.id] = matchedDeals.slice(0, 3);
+    }
+    return out;
+  }, [events, crmCompanies, deals]);
 
   // Classify events
   const classified = useMemo(() => {
@@ -609,14 +842,103 @@ export function AgendaIntel() {
     setLinkPickerEventId(eventId);
   };
 
-  const handlePickDeal = (dealId: string) => {
+  const persistLink = useCallback(
+    async (eventId: string, deal: DealRow) => {
+      if (!user || !orgCompanyId) {
+        toast.error('Workspace not ready — try again in a moment.');
+        return false;
+      }
+      setLinkBusyEventId(eventId);
+      try {
+        // Soft-delete any existing active link for this meeting first.
+        const existing = persistedLinks[eventId];
+        if (existing) {
+          await supabase
+            .from('meeting_deal_links')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', existing.id);
+        }
+        const { data, error } = await supabase
+          .from('meeting_deal_links')
+          .insert({
+            meeting_external_id: eventId,
+            deal_id: deal.id,
+            org_company_id: orgCompanyId,
+            linked_by_user_id: user.id,
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        setPersistedLinks(prev => ({ ...prev, [eventId]: { id: data!.id, dealId: deal.id } }));
+        toast.success(`Linked to ${deal.name}`, {
+          action: { label: 'View deal', onClick: () => navigate(`/deals?deal=${deal.id}`) },
+        });
+        return true;
+      } catch (e: any) {
+        toast.error(e?.message || 'Could not link deal');
+        return false;
+      } finally {
+        setLinkBusyEventId(null);
+      }
+    },
+    [user, orgCompanyId, persistedLinks, navigate],
+  );
+
+  const handlePickDeal = async (dealId: string) => {
     if (!linkPickerEventId || !dealId) return;
     const match = deals.find(d => d.id === dealId);
-    setDealLinkOverrides(prev => ({ ...prev, [linkPickerEventId]: dealId }));
+    if (!match) return;
+    const eventId = linkPickerEventId;
     setLinkPickerEventId(null);
     setLinkPickerQuery('');
-    if (match) toast.success(`Linked to ${match.name}`);
+    await persistLink(eventId, match);
   };
+
+  const handleUnlinkDeal = useCallback(
+    async (eventId: string) => {
+      const existing = persistedLinks[eventId];
+      if (!existing) {
+        // Fall back to clearing in-memory override.
+        setDealLinkOverrides(prev => {
+          const next = { ...prev };
+          delete next[eventId];
+          return next;
+        });
+        return;
+      }
+      const deal = deals.find(d => d.id === existing.dealId);
+      setLinkBusyEventId(eventId);
+      try {
+        const { error } = await supabase
+          .from('meeting_deal_links')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+        setPersistedLinks(prev => {
+          const next = { ...prev };
+          delete next[eventId];
+          return next;
+        });
+        let undone = false;
+        toast.success(`Unlinked from ${deal?.name || 'deal'}`, {
+          duration: 5000,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              if (undone || !deal) return;
+              undone = true;
+              await persistLink(eventId, deal);
+            },
+          },
+        });
+      } catch (e: any) {
+        toast.error(e?.message || 'Could not unlink');
+      } finally {
+        setLinkBusyEventId(null);
+      }
+    },
+    [persistedLinks, deals, persistLink],
+  );
 
   // ── Render ─────────────────────────────────────────────────
   // Keep selection valid as the filter set changes — clear if the
@@ -771,6 +1093,10 @@ export function AgendaIntel() {
               isPersonal={selectedRecord.isPersonal}
               isInternalOnly={selectedRecord.isInternalOnly}
               onLinkDeal={() => handleLinkDeal(selectedRecord.event.id)}
+              onUnlinkDeal={() => handleUnlinkDeal(selectedRecord.event.id)}
+              onPickSuggested={(deal) => persistLink(selectedRecord.event.id, deal)}
+              suggestions={suggestionsByEvent[selectedRecord.event.id] || []}
+              linkBusy={linkBusyEventId === selectedRecord.event.id}
               prep={prepCache[selectedRecord.event.id] || null}
               prepLoading={!!prepLoading[selectedRecord.event.id]}
               onRegenerate={() => handleRegenerate(selectedRecord.event.id)}
@@ -817,39 +1143,15 @@ export function AgendaIntel() {
           </>
         )}
       </div>
-      <CommandDialog
+      <DealLinkPicker
         open={!!linkPickerEventId}
-        onOpenChange={(open) => {
-          if (!open) {
-            setLinkPickerEventId(null);
-            setLinkPickerQuery('');
-          }
-        }}
-      >
-        <CommandInput
-          placeholder="Search deals to link..."
-          value={linkPickerQuery}
-          onValueChange={setLinkPickerQuery}
-        />
-        <CommandList>
-          <CommandEmpty>
-            {deals.length === 0 ? 'No deals available.' : 'No matching deals.'}
-          </CommandEmpty>
-          <CommandGroup heading="Deals">
-            {deals.map(d => (
-              <CommandItem
-                key={d.id}
-                value={`${d.name} ${d.stage}`}
-                onSelect={() => handlePickDeal(d.id)}
-              >
-                <Briefcase className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                <span className="flex-1 truncate">{d.name}</span>
-                <span className="text-xs text-muted-foreground ml-2">{d.stage}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>
-      </CommandDialog>
+        query={linkPickerQuery}
+        onQueryChange={setLinkPickerQuery}
+        onClose={() => { setLinkPickerEventId(null); setLinkPickerQuery(''); }}
+        deals={deals}
+        onPick={(id) => handlePickDeal(id)}
+        busy={!!linkBusyEventId}
+      />
       <QuickCreateTaskDialog
         open={!!taskDialogEvent}
         onClose={() => setTaskDialogEvent(null)}

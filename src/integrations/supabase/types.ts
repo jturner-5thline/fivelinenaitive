@@ -15209,6 +15209,57 @@ export type Database = {
           },
         ]
       }
+      meeting_deal_links: {
+        Row: {
+          created_at: string
+          deal_id: string
+          deleted_at: string | null
+          id: string
+          linked_at: string
+          linked_by_user_id: string
+          meeting_external_id: string
+          org_company_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          deleted_at?: string | null
+          id?: string
+          linked_at?: string
+          linked_by_user_id: string
+          meeting_external_id: string
+          org_company_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          deleted_at?: string | null
+          id?: string
+          linked_at?: string
+          linked_by_user_id?: string
+          meeting_external_id?: string
+          org_company_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_deal_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_deal_links_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_holds: {
         Row: {
           attendees: Json
