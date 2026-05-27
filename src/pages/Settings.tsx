@@ -93,6 +93,7 @@ type GateCtx = {
   agreementVisible: boolean;
   agreementAccess: boolean;
   canEditPartnerRules: boolean;
+  gammaEnabled: boolean;
 };
 
 const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
@@ -198,6 +199,7 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
         label: 'Gamma',
         description: 'Presentation templates for pitches and status updates.',
         keywords: ['gamma', 'templates', 'presentation', 'pitch'],
+        visible: (g) => g.gammaEnabled,
         render: ({ isAdmin }) => <GammaTemplatesSettings isAdmin={isAdmin} />,
       },
       {
@@ -403,6 +405,7 @@ export default function Settings() {
     agreementVisible: !!companyFeatures.agreement_icon_visible,
     agreementAccess: hasPageAccess('agreement_drafter'),
     canEditPartnerRules: !!canEditPartnerRules,
+    gammaEnabled: !!companyFeatures.gamma_enabled,
   };
 
   const allGroups = useMemo(() => buildGroups({ pendingJoinCount }), [pendingJoinCount]);
@@ -416,7 +419,7 @@ export default function Settings() {
         }))
         .filter((g) => g.sections.length > 0),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [allGroups, gateCtx.workflowsEnabled, gateCtx.agreementVisible, gateCtx.agreementAccess, gateCtx.isAdmin, gateCtx.canEditPartnerRules],
+    [allGroups, gateCtx.workflowsEnabled, gateCtx.agreementVisible, gateCtx.agreementAccess, gateCtx.isAdmin, gateCtx.canEditPartnerRules, gateCtx.gammaEnabled],
   );
 
   // Legacy ?tab= URL → group redirect (maintain backwards-compatibility with old links)
