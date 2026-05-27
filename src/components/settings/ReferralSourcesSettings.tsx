@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Users, Trash2, Pencil, Plus, X, Check, Loader2, ChevronDown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useReferralSources, ReferralSource } from '@/hooks/useReferralSources';
@@ -108,12 +107,12 @@ export function ReferralSourcesSettings({ isAdmin = true }: ReferralSourcesSetti
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+    
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CollapsibleTrigger asChild>
+          
             <button className="flex items-center gap-2 text-left flex-1">
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Users className="h-5 w-5" />
@@ -122,7 +121,7 @@ export function ReferralSourcesSettings({ isAdmin = true }: ReferralSourcesSetti
                 <CardDescription>Manage your list of referral sources for deals</CardDescription>
               </div>
             </button>
-          </CollapsibleTrigger>
+          
           {isAdmin && referralSources.length > 0 && !showAddForm && (
             <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setShowAddForm(true); }} className="gap-1">
               <Plus className="h-4 w-4" />
@@ -130,7 +129,7 @@ export function ReferralSourcesSettings({ isAdmin = true }: ReferralSourcesSetti
             </Button>
           )}
         </CardHeader>
-        <CollapsibleContent>
+        
           <CardContent className="space-y-4">
         {isLoading ? (
           <div className="flex items-center justify-center py-8">
@@ -267,8 +266,8 @@ export function ReferralSourcesSettings({ isAdmin = true }: ReferralSourcesSetti
           </>
         )}
       </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
   );
 }

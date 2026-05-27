@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -438,10 +437,10 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      
         <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+          
+            <CardHeader className="">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <GitBranch className="h-5 w-5 text-primary" />
@@ -457,8 +456,8 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
                 )}
               </div>
             </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
+          
+          
             <CardContent className="space-y-4">
               {/* Top Save Bar */}
               <SaveBar />
@@ -524,9 +523,9 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
               {/* Bottom Save Bar */}
               <SaveBar />
             </CardContent>
-          </CollapsibleContent>
+          
         </Card>
-      </Collapsible>
+      
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

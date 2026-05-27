@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Plus, GripVertical, Pencil, Trash2, FileCheck, ShieldAlert, ChevronDown } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -422,12 +421,12 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
         {tabsContent}
       </div>
     ) : (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CollapsibleTrigger asChild>
+          
             <button className="flex items-center gap-2 text-left flex-1">
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
               <div>
                 <CardTitle className="flex items-center gap-2">
                   <FileCheck className="h-5 w-5" />
@@ -441,15 +440,15 @@ export function DataRoomChecklistSettings({ embedded = false }: DataRoomChecklis
                 </CardDescription>
               </div>
             </button>
-          </CollapsibleTrigger>
+          
         </CardHeader>
-        <CollapsibleContent>
+        
           <CardContent>
             {tabsContent}
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
     )}
 
       {/* Add/Edit Item Dialog */}

@@ -5,7 +5,6 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -156,8 +155,8 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
   const isOpen = open ?? true;
 
   const cardHeader = collapsible ? (
-    <CollapsibleTrigger className="w-full group">
-      <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+    
+      <CardHeader className=" rounded-t-lg">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5" />
@@ -166,10 +165,10 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
               <CardDescription>Manage how you receive notifications</CardDescription>
             </div>
           </div>
-          <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+          
         </div>
       </CardHeader>
-    </CollapsibleTrigger>
+    
   ) : (
     <CardHeader>
       <CardTitle className="text-lg flex items-center gap-2">
@@ -626,14 +625,14 @@ export function NotificationSettings({ collapsible = false, open, onOpenChange }
 
   if (collapsible) {
     return (
-      <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+      
         <Card>
           {cardHeader}
-          <CollapsibleContent>
+          
             {cardContent}
-          </CollapsibleContent>
+          
         </Card>
-      </Collapsible>
+      
     );
   }
 

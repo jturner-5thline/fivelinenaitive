@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Plus, GripVertical, Pencil, Trash2, XCircle, ChevronDown, Save, Loader2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -255,12 +254,12 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+    
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CollapsibleTrigger asChild>
+          
             <button className="flex items-center gap-2 text-left flex-1">
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <XCircle className="h-5 w-5" />
@@ -269,7 +268,7 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
                 <CardDescription>Configure the reasons shown when marking a funding source as passed. Changes sync to your entire team.</CardDescription>
               </div>
             </button>
-          </CollapsibleTrigger>
+          
           {isAdmin && (
             <Button variant="gradient" size="sm" onClick={(e) => { e.stopPropagation(); setIsAddDialogOpen(true); }} className="gap-1">
               <Plus className="h-4 w-4" />
@@ -277,7 +276,7 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
             </Button>
           )}
         </CardHeader>
-        <CollapsibleContent>
+        
           <CardContent className="space-y-4">
             {/* Top Save Bar */}
             <SaveBar />
@@ -314,7 +313,7 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
             {/* Bottom Save Bar */}
             <SaveBar />
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
 
       {/* Add Dialog */}
@@ -374,6 +373,6 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </Collapsible>
+    
   );
 }

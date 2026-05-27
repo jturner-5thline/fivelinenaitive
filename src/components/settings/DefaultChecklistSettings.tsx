@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, ChevronDown, Save, Loader2, FileText, GripVertical, Pencil, ChevronRight, AlertCircle, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -327,7 +326,7 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
                           <div key={round.id} className="border rounded-lg overflow-hidden">
                             {/* Round header */}
                             <div
-                              className="flex items-center gap-2 px-3 py-2 bg-muted/30 cursor-pointer hover:bg-muted/50 transition-colors"
+                              className="flex items-center gap-2 px-3 py-2 bg-muted/30 "
                               onClick={() => toggleRound(round.id)}
                             >
                               <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", isExpanded && 'rotate-90')} />
@@ -424,10 +423,10 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
           {innerContent}
         </div>
       ) : (
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CollapsibleTrigger asChild>
+            
               <button className="flex items-center gap-2 text-left flex-1">
                 <ChevronDown className={cn("h-4 w-4 text-muted-foreground transition-transform", isOpen && 'rotate-180')} />
                 <div>
@@ -441,16 +440,16 @@ export function DefaultChecklistSettings({ isAdmin = true, embedded = false }: D
                   </CardDescription>
                 </div>
               </button>
-            </CollapsibleTrigger>
+            
           </CardHeader>
 
-          <CollapsibleContent>
+          
             <CardContent>
               {innerContent}
             </CardContent>
-          </CollapsibleContent>
+          
         </Card>
-      </Collapsible>
+      
       )}
 
       {/* ─── Dialogs ─── */}

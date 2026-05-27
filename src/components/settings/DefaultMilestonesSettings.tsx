@@ -3,7 +3,6 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Plus, Pencil, Trash2, Flag, ChevronDown, GripVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -292,12 +291,12 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+      
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CollapsibleTrigger asChild>
+            
               <button className="flex items-center gap-2 text-left flex-1">
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Flag className="h-5 w-5" />
@@ -306,7 +305,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
                   <CardDescription>Milestones automatically added to new deals</CardDescription>
                 </div>
               </button>
-            </CollapsibleTrigger>
+            
             {isAdmin && (
               <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
                 <Plus className="h-4 w-4" />
@@ -314,7 +313,7 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
               </Button>
             )}
           </CardHeader>
-          <CollapsibleContent>
+          
             <CardContent>
               <DndContext
                 sensors={sensors}
@@ -346,9 +345,9 @@ export function DefaultMilestonesSettings({ isAdmin = true }: DefaultMilestonesS
                 </SortableContext>
               </DndContext>
             </CardContent>
-          </CollapsibleContent>
+          
         </Card>
-      </Collapsible>
+      
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

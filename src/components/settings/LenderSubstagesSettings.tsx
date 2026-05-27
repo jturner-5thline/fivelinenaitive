@@ -19,7 +19,6 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -285,12 +284,12 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={handleOpenChange}>
+      
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CollapsibleTrigger asChild>
+            
               <button className="flex items-center gap-2 text-left flex-1">
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Flag className="h-5 w-5" />
@@ -299,7 +298,7 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
                   <CardDescription>Configure milestone options for detailed lender tracking. Changes sync to your entire team.</CardDescription>
                 </div>
               </button>
-            </CollapsibleTrigger>
+            
             {isAdmin && (
               <Button variant="gradient" onClick={(e) => { e.stopPropagation(); openAddDialog(); }} size="sm" className="gap-1">
                 <Plus className="h-4 w-4" />
@@ -307,7 +306,7 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
               </Button>
             )}
           </CardHeader>
-          <CollapsibleContent>
+          
             <CardContent className="space-y-4">
               {/* Top Save Bar */}
               <SaveBar />
@@ -341,9 +340,9 @@ export function LenderSubstagesSettings({ isAdmin = true }: LenderSubstagesSetti
               {/* Bottom Save Bar */}
               <SaveBar />
             </CardContent>
-          </CollapsibleContent>
+          
         </Card>
-      </Collapsible>
+      
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>

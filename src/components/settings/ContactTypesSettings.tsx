@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Plus, Pencil, Trash2, Users, ChevronDown, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -45,12 +44,12 @@ export function ContactTypesSettings({ isAdmin = true }: Props) {
 
   return (
     <>
-      <Collapsible open={open} onOpenChange={setOpen}>
+      
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0">
-            <CollapsibleTrigger asChild>
+            
               <button className="flex items-center gap-2 text-left flex-1">
-                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${open ? 'rotate-180' : ''}`} />
+                
                 <div>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Users className="h-5 w-5" /> Contact Types
@@ -58,14 +57,14 @@ export function ContactTypesSettings({ isAdmin = true }: Props) {
                   <CardDescription>Manage the contact type options shown in contact forms</CardDescription>
                 </div>
               </button>
-            </CollapsibleTrigger>
+            
             {isAdmin && (
               <Button variant="gradient" size="sm" className="gap-1" onClick={(e) => { e.stopPropagation(); openAdd(); }}>
                 <Plus className="h-4 w-4" /> Add Type
               </Button>
             )}
           </CardHeader>
-          <CollapsibleContent>
+          
             <CardContent className="space-y-2">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -118,9 +117,9 @@ export function ContactTypesSettings({ isAdmin = true }: Props) {
                 ))
               )}
             </CardContent>
-          </CollapsibleContent>
+          
         </Card>
-      </Collapsible>
+      
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
