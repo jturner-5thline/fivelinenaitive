@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,9 +16,16 @@ export function TaskCompletionCheckbox({
   className,
 }: TaskCompletionCheckboxProps) {
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isHovering, setIsHovering] = useState(false);
+  // Debounce rapid clicks on adjacent rows (~300ms) so a stray scroll-click
+  // on the wrong task doesn't accidentally mark it complete.
+  const lastClickRef = useRef<number>(0);
 
   const handleClick = useCallback(() => {
     if (disabled) return;
+    const now = Date.now();
+    if (now - lastClickRef.current < 300) return;
+    lastClickRef.current = now;
     setIsAnimating(true);
     onChange(!checked);
     // Allow animation to finish
@@ -43,6 +50,8 @@ export function TaskCompletionCheckbox({
       tabIndex={0}
       disabled={disabled}
       onClick={handleClick}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
       onKeyDown={handleKeyDown}
       className={cn(
         // Large hit area, compact visual
@@ -60,7 +69,7 @@ export function TaskCompletionCheckbox({
           "relative flex items-center justify-center w-[18px] h-[18px] rounded-full border-2 transition-all duration-200 ease-out",
           // Unchecked
           !checked && "border-muted-foreground/50 bg-transparent",
-          !checked && "group-hover:border-primary/70",
+          !checked && isHovering && "border-primary/80 bg-primary/15",
           // Checked
           checked && "border-primary bg-primary",
           // Pop animation on complete
@@ -74,7 +83,11 @@ export function TaskCompletionCheckbox({
           viewBox="0 0 12 12"
           className={cn(
             "w-3 h-3 transition-all duration-200",
-            checked ? "opacity-100 scale-100" : "opacity-0 scale-50"
+            checked
+              ? "opacity-100 scale-100"
+              : isHovering
+                ? "opacity-60 scale-90"
+                : "opacity-0 scale-50"
           )}
           fill="none"
           stroke="hsl(var(--primary-foreground))"
@@ -89,7 +102,7 @@ export function TaskCompletionCheckbox({
             )}
             style={{
               strokeDasharray: 12,
-              strokeDashoffset: checked ? 0 : 12,
+              strokeDashoffset: checked || isHovering ? 0 : 12,
               transition: "stroke-dashoffset 250ms ease-out 50ms",
             }}
           />
