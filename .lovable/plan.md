@@ -1,58 +1,65 @@
-# Controller Dashboard fix sweep
+## Controller Dashboard — Scott follow-up
 
-The Controller Dashboard lives in `src/components/metrics/dashboards/ControllerDashboard.tsx` and embeds `QuickBooksFinancialDashboard.tsx`. Shared metrics flow through `src/hooks/useQuickBooksMetrics.ts`. I'll fix each item below, scoped strictly to those three files + the QBO hook layer.
+Scope: `/insights` Controller Dashboard only. No other dashboards or pages touched.
 
-## 1. Top Customers ranking — Enklu / i-Genie missing (real bug)
+### 1. Revenue overstatement — switch to P&L "Total Income"
 
-Root cause (confirmed in DB): `useQuickBooksMetrics` builds `customerById` keyed by `qb_id` only. Across the three QBO realms, `qb_id` collides — e.g. `qb_id=20` is `i-Genie.ai` in FinServ but `Vivid Robotics, Inc. (Mr Clayton Wood)` in Debt. The Debt customer overwrites the FinServ one in the map, so FinServ invoices for i-Genie/Enklu get bucketed under "Vivid Robotics" / "Engage Mobilize" and disappear from the top‑10. The aggregation also already pulls from all realms (the hook is called with `realmId = undefined`) — that part is fine.
+Root cause (verified in the DB):
+- FinServ + Debt invoices sum to **$1.5M TTM** and **$612k YTD-2026**.
+- FinServ-only TTM income = **$394.5k**, which matches Scott's "verified YTD $394,989" baseline.
+- All Debt invoice line accounts ARE classified as Income in QBO, so the "filter non-revenue accounts" rule is a no-op for current data. The real driver is that Debt closing-fee invoices show in QBO P&L on **cash basis only when paid**, so accrual invoice-sum (the current calc) overstates recognized revenue.
 
-Fix: key `customerById` by `\`${realm_id}:${qb_id}\`` and look up using `\`${inv.realm_id}:${inv.customer_id}\``. Apply the same realm‑scoped key to the customer count and to the `topCustomers` reducer. Verified against DB that this puts Enklu ($35.2k) and i-Genie ($33.2k) into the YTD top‑10.
+Fix:
+- New hook `useQBTotalIncomeSeries(period, granularity)` (in `src/hooks/useQBTotalIncomeSeries.ts`) that:
+  - Reads stored `quickbooks_reports` rows of type `profit_and_loss` for the **3 active realms** (Debt, FinServ, Tech) intersecting the selected period.
+  - Parses each report via the existing `parseQBProfitAndLoss` and sums `totalIncome` per realm.
+  - Builds per-bucket revenue by selecting, for each bucket, the P&L report whose `period_start`/`period_end` matches the bucket; falls back to scaling the closest enclosing report by day-overlap when a bucket-precise report is not yet synced, and surfaces a small "Some buckets approximated — sync P&L for exact figures" hint.
+  - On mount, fires a background `invoke('quickbooks-sync', { syncType: 'profit_and_loss', start_date, end_date })` for each missing (realm, bucket) pair so the next refresh is exact. Throttled (max 1 per realm per minute) to avoid hammering QBO.
+- `useQuickBooksMetrics` gains a `revenueSource: 'invoices' | 'pl'` option. The Controller dashboard passes `'pl'`. Other consumers (Operations, FinServ board) keep the current `'invoices'` default — out of scope.
+- `monthlyRevenue[].revenue` and the top-level `totalRevenue` are sourced from the new hook when `revenueSource === 'pl'`; `payments` continues to come from `quickbooks_payments` (unchanged — Scott already accepts payments-received as the cash-in figure).
+- Acceptance: May-26 bar ≈ $32,200 once the May-only P&L sync completes; YTD-2026 total = ~$394k (FinServ + Debt + Tech P&L Total Income).
 
-## 2. Revenue & Payments — May discrepancy
+### 2. "Steven Adler" → company resolution + admin warning
 
-The earlier ETL fix (timezone bucketing by `yyyy-MM` prefix) is already live in `useQuickBooksMetrics.ts` lines 105–113. After fix #1 lands, re-verify in the preview that May‑26 reads ~$32k. If still off, the issue is upstream sync — flag for QBO ETL, no further code change here.
+Update `src/lib/qboClientName.ts`:
+1. First-pass (new): given a QBO customer, look up `deals` rows joined via `qb_customer_id`/`qb_realm_id` (or by fuzzy customer-name match) and prefer `companies.name` of the linked company.
+2. Existing pass: `customer.company_name`.
+3. Existing pass: `customer.display_name`.
+4. NEW final fallback: when the resolved label looks like a personal name (two-word, both Title-cased, no Inc/LLC/Corp/Ltd/Co token), bucket under **"Other / Individuals"** instead of leaking the personal name.
 
-## 3. Debt Revenue by Client — person names instead of companies
+Person-name heuristic: `^\s*[A-Z][a-z]+(?:[- ][A-Z][a-z]+)?\s+[A-Z][a-z]+\s*$` and no company suffix tokens — kept conservative.
 
-`ControllerDashboard.useRevenueByClient` already resolves via `company_name → display_name`. The remaining person‑named rows come from Debt QBO customers where `company_name` is genuinely NULL (e.g. "Steven Adler"). There is no `deal_id`/`company_id` column on `quickbooks_customers`, so a robust cross-table join is out of scope for this pass.
+Wire-up:
+- `useRevenueByClient` (Controller) prefetches the CRM `companies` ↔ QBO customer mapping and passes it into a new `resolveQboClientLabelEnriched({ customerName, customer, dealCompanyName })` so the same logic applies to FinServ and Debt charts plus the embedded QuickBooks Financial top-customers list.
+- Add a small `QboUnlinkedCustomersWarning` card at the top of the Controller dashboard (collapsible) listing N customers that fell through to "Other / Individuals" with a deep link to `/contacts`, so the data hygiene is visible.
 
-Pragmatic fix: build a name‑match fallback against the deals/companies tables by `email` → `companies.primary_contact_email`, then by fuzzy display_name → `companies.name`. Use the resolved company name when found; otherwise keep the current label and tag the data‑quality export so finance can backfill in QBO. Apply the same resolver to FinServ.
+### 3. Quarterly / Yearly toggle — verify and complete
 
-## 4. Data labels on charts
+Current state: the toggle is already wired through `useQuickBooksMetrics(period, granularity)` and `buildBuckets`, but I'll re-verify and fix any gaps:
+- Confirm `range.granularity` propagates to FinServ/Debt Revenue by Client → currently both ignore granularity (they aggregate the full period into a single bar per client). Acceptance language asks for re-bucketing, so I'll refactor both charts to a stacked layout when granularity ≠ "client-total": x-axis = bucket label, stacks = top-N clients, "Other" rollup. Keep the current single-bar mode when granularity is "off" (we'll keep the existing visualization as the default and add a small "Group by period" switch — defaults to off to preserve today's UX).
+- Persist toggle + group-by-period switch via the existing `loadPersistedRange('controller-dashboard')` plus a new `localStorage` key for the per-board "group by period" boolean.
+- KPI cards on the embedded `QuickBooksFinancialDashboard` already re-scope via `period`; verified — no code change needed beyond #1.
+- X-axis labels: `buildBuckets` already emits `Q1 26` / `2026`. Will widen to `Q1 2026` / `2026` for clarity.
 
-Add a small `<LabelList>` (recharts) to: FinServ Revenue by Client, Debt Revenue by Client, Revenue & Payments Trend, A/R Aging, Top Customers by Revenue. Format via the existing `formatCurrency` (`$Xk` / `$X.XM`). Color `hsl(var(--muted-foreground))`, 10px. Only render labels for bars in the top 80th percentile of the dataset to avoid overlap.
+### Files
 
-Add a `Show data labels` `Switch` next to `InsightsTimeRangeSelector` in `ControllerDashboard`. Persist via `useLocalStorageState('controller-dashboard:data-labels', true)`. Pipe the boolean into `QuickBooksFinancialDashboard` as a new prop.
+```text
+src/hooks/useQBTotalIncomeSeries.ts            (new)
+src/hooks/useQuickBooksMetrics.ts              (revenueSource option)
+src/lib/qboClientName.ts                       (enriched resolver + "Other / Individuals")
+src/components/metrics/dashboards/ControllerDashboard.tsx
+  - revenueSource='pl'
+  - enriched client resolver in useRevenueByClient
+  - QboUnlinkedCustomersWarning card
+  - widen quarterly/yearly axis labels
+src/components/metrics/dashboards/QuickBooksFinancialDashboard.tsx
+  - accept revenueSource prop, plumb through
+src/lib/insightsTimeRange.ts                   (Q1 2026 / 2026 labels)
+```
 
-## 5. Quarterly/Yearly toggle does nothing for the embedded panel
+No DB migrations. No edge-function edits. No changes outside `/insights`.
 
-`InsightsTimeRangeSelector` already persists `granularity` and updates `range.resolved.start/end`. The QBO trend chart however always renders 1‑month buckets (`subMonths` loop in `useQuickBooksMetrics.ts`). Re‑bucket `monthlyRevenue` based on `granularity`:
+### Verification
 
-- `monthly` → existing behavior
-- `quarterly` → bucket by `yyyy-Qn`, label `"Q1 2026"`
-- `yearly` → bucket by `yyyy`, label `"2026"`
-
-Plumb `granularity` from `ControllerDashboard` → `QuickBooksFinancialDashboard` → `useQuickBooksMetrics`. KPI cards already recompute correctly because they sum over `periodInvoices` (period‑filtered). Range/granularity already persist via `loadPersistedRange`.
-
-## 6. Consolidate QBO widgets into Controller view
-
-`QuickBooksFinancialDashboard` is already embedded at the bottom of `ControllerDashboard` (line 511). No standalone route currently surfaces it elsewhere — `grep` confirms only the controller imports it. So requirement #6 is already satisfied. I'll add an explicit section header `"QuickBooks Financials"` (already present) and confirm no duplicate widgets exist in sibling dashboards.
-
-## Technical details
-
-Files I'll touch:
-- `src/hooks/useQuickBooksMetrics.ts` — realm‑scoped customer map; granularity‑aware bucketing; accept `granularity?: 'monthly'|'quarterly'|'yearly'`.
-- `src/components/metrics/dashboards/QuickBooksFinancialDashboard.tsx` — `<LabelList>` on bars; accept `showDataLabels` + `granularity` props; pass to hook.
-- `src/components/metrics/dashboards/ControllerDashboard.tsx` — `<Switch>` for data labels, persist in `localStorage`; `<LabelList>` on FinServ/Debt revenue + currency tooltip already in place; pass `granularity` + `showDataLabels` to embedded `QuickBooksFinancialDashboard`.
-- (optional, only if #3 needs cross-table resolution) `src/lib/qboClientName.ts` — add `resolveQboClientLabelWithCrm(...)` accepting a Map<email|name, companyName>.
-
-No new libs, no other dashboards touched.
-
-## Verification
-
-After merge, on `/insights → Controller`:
-- Top Customers shows Enklu + i-Genie in YTD top‑10
-- May‑26 bar ≈ $32k (Total Revenue YTD ≈ $394k)
-- Quarterly toggle re‑buckets the trend chart to Q1/Q2/Q3/Q4 labels
-- `$Xk` labels render on bars; toggle hides them and persists across reloads
-- Debt chart x‑axis shows company names where available; remaining person names appear only when the underlying QBO customer truly has no company set
+- Manual: refresh `/insights`, screenshot Revenue & Payments Trend (May-26 ≈ $32.2k), Total Revenue KPI (~$394k YTD), Debt Revenue by Client (no "Steven Adler" bar, "Other / Individuals" present), toggle Quarterly → Q1 26..Q2 26 buckets visible, refresh page and confirm toggle persists.
+- Console log assertions added behind `VITE_DEBUG_CONTROLLER=true` so QA can audit the underlying P&L picks.

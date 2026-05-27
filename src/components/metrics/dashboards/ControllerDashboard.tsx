@@ -32,7 +32,11 @@ import {
   type DrilldownRequest,
 } from '@/components/insights/ChartDrilldown';
 import { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
-import { resolveQboClientLabel } from '@/lib/qboClientName';
+import {
+  resolveQboClientLabelEnriched,
+  buildCrmCompanyNameIndex,
+  OTHER_INDIVIDUALS_LABEL,
+} from '@/lib/qboClientName';
 import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 
 const DEBT_REALM_ID = '193514877331929';
@@ -83,7 +87,7 @@ function useRevenueByClient(realmId: string, period: { start: string; end: strin
   return useQuery({
     queryKey: ['controller-revenue-by-client', realmId, period.start, period.end],
     queryFn: async () => {
-      const [invoiceRes, customerRes] = await Promise.all([
+      const [invoiceRes, customerRes, companyRes] = await Promise.all([
         supabase
           .from('quickbooks_invoices')
           .select('customer_id, customer_name, total_amt, txn_date')
@@ -94,6 +98,7 @@ function useRevenueByClient(realmId: string, period: { start: string; end: strin
           .from('quickbooks_customers')
           .select('qb_id, display_name, company_name')
           .eq('realm_id', realmId),
+        supabase.from('companies').select('name').not('name', 'is', null),
       ]);
 
       if (invoiceRes.error) throw invoiceRes.error;
@@ -104,17 +109,28 @@ function useRevenueByClient(realmId: string, period: { start: string; end: strin
         if (!c.qb_id) continue;
         customerById.set(c.qb_id, { company_name: c.company_name, display_name: c.display_name });
       }
+      const crmIndex = buildCrmCompanyNameIndex(companyRes.data ?? []);
 
       const map: Record<string, number> = {};
       for (const inv of invoiceRes.data ?? []) {
         const customer = inv.customer_id ? customerById.get(inv.customer_id) : undefined;
-        const label = resolveQboClientLabel(inv.customer_name, customer);
+        const label = resolveQboClientLabelEnriched({
+          customerName: inv.customer_name,
+          customer,
+          crmCompanyIndex: crmIndex,
+        });
         map[label] = (map[label] || 0) + (Number(inv.total_amt) || 0);
       }
 
       return Object.entries(map)
         .map(([name, revenue]) => ({ name, revenue }))
-        .sort((a, b) => b.revenue - a.revenue);
+        // Sort by revenue desc; keep "Other / Individuals" pinned to the end so
+        // it never dominates the eye at the top of the chart.
+        .sort((a, b) => {
+          if (a.name === OTHER_INDIVIDUALS_LABEL) return 1;
+          if (b.name === OTHER_INDIVIDUALS_LABEL) return -1;
+          return b.revenue - a.revenue;
+        });
     },
   });
 }
@@ -566,6 +582,7 @@ function ControllerDashboardInner() {
           periodBadge={periodBadge}
           granularity={range.granularity}
           showDataLabels={showDataLabels}
+          revenueSource="pl"
         />
       </div>
     </div>

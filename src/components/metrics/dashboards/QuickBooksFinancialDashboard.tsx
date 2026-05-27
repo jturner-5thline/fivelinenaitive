@@ -4,6 +4,14 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useQuickBooksMetrics, type QuickBooksMetricsPeriod } from '@/hooks/useQuickBooksMetrics';
 import { useQuickBooksStatus } from '@/hooks/useQuickBooks';
+import { useQBTotalIncomeSeries } from '@/hooks/useQBTotalIncomeSeries';
+import {
+  resolveQboClientLabelEnriched,
+  buildCrmCompanyNameIndex,
+  OTHER_INDIVIDUALS_LABEL,
+} from '@/lib/qboClientName';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, PieChart, Pie, Cell, ComposedChart, Line, Area, LabelList,
@@ -58,6 +66,11 @@ interface Props {
   granularity?: Granularity;
   /** Toggle inline $ data labels on bars. Defaults to true. */
   showDataLabels?: boolean;
+  /** Where revenue numbers come from. 'pl' sources from QBO ProfitAndLoss
+   *  "Total Income" (accurate; matches QBO's native consolidated P&L). 'invoices'
+   *  sums quickbooks_invoices.total_amt (legacy; overstates Debt). Defaults to
+   *  'invoices' for backwards compatibility — Controller passes 'pl'. */
+  revenueSource?: 'pl' | 'invoices';
 }
 
 export function QuickBooksFinancialDashboard({
@@ -65,6 +78,7 @@ export function QuickBooksFinancialDashboard({
   periodBadge,
   granularity = 'monthly',
   showDataLabels = true,
+  revenueSource = 'invoices',
 }: Props = {}) {
   const { data: status } = useQuickBooksStatus();
   const { data: metrics, isLoading } = useQuickBooksMetrics(
@@ -72,6 +86,27 @@ export function QuickBooksFinancialDashboard({
     period ? { start: period.start, end: period.end } : undefined,
     granularity,
   );
+  // P&L-sourced revenue series (Scott / 2026-05-27 fix). Only consulted when
+  // revenueSource === 'pl'. Falls back transparently to invoice-sums when no
+  // stored P&L exists for the period.
+  const plSeries = useQBTotalIncomeSeries(
+    revenueSource === 'pl' && period ? { start: period.start, end: period.end } : undefined,
+    granularity,
+  );
+  // CRM company index for the "Other / Individuals" enriched resolver.
+  const { data: crmCompanies = [] } = useQuery({
+    queryKey: ['qb-fin-crm-companies'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('companies')
+        .select('name')
+        .not('name', 'is', null);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  const crmIndex = useMemo(() => buildCrmCompanyNameIndex(crmCompanies), [crmCompanies]);
   const [drill, setDrill] = useState<{
     context: DrilldownContext;
     columns: DrilldownColumn[];
@@ -124,15 +159,49 @@ export function QuickBooksFinancialDashboard({
 
   if (!metrics) return null;
 
+  // Effective revenue figures — P&L-sourced when revenueSource === 'pl'.
+  const effectiveTotalRevenue =
+    revenueSource === 'pl' ? plSeries.totalIncome : metrics.totalRevenue;
+  const effectiveMonthlyRevenue =
+    revenueSource === 'pl'
+      ? metrics.monthlyRevenue.map((m, i) => ({
+          ...m,
+          revenue: plSeries.buckets[i]?.value ?? m.revenue,
+        }))
+      : metrics.monthlyRevenue;
+
+  // Re-bucket Top Customers using the enriched resolver so "Other / Individuals"
+  // replaces personal-name leakage on the chart.
+  const enrichedTopCustomers = (() => {
+    const map = new Map<string, number>();
+    for (const c of metrics.topCustomers) {
+      const label = resolveQboClientLabelEnriched({
+        customerName: c.name,
+        customer: { display_name: c.name, company_name: null },
+        crmCompanyIndex: crmIndex,
+      });
+      map.set(label, (map.get(label) ?? 0) + c.revenue);
+    }
+    return Array.from(map.entries())
+      .map(([name, revenue]) => ({ name, revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10);
+  })();
+
+  const effectiveCollectionRate =
+    effectiveTotalRevenue > 0
+      ? ((effectiveTotalRevenue - metrics.totalAR) / effectiveTotalRevenue) * 100
+      : 0;
+
   const statCards = [
-    { title: 'Total Revenue', value: formatCurrency(metrics.totalRevenue), icon: DollarSign, color: 'hsl(var(--primary))', onClick: () => showDrill('Total Revenue', 'All-time', [{ metric: 'Total Revenue', value: formatCurrency(metrics.totalRevenue) }]) },
+    { title: 'Total Revenue', value: formatCurrency(effectiveTotalRevenue), icon: DollarSign, color: 'hsl(var(--primary))', subtitle: revenueSource === 'pl' ? 'QBO P&L Total Income' : undefined, onClick: () => showDrill('Total Revenue', revenueSource === 'pl' ? 'QBO P&L Total Income' : 'Sum of invoices', [{ metric: 'Total Revenue', value: formatCurrency(effectiveTotalRevenue) }, { metric: 'Source', value: revenueSource === 'pl' ? 'P&L · Total Income' : 'Invoices · total_amt' }]) },
     { title: 'Accounts Receivable', value: formatCurrency(metrics.totalAR), icon: FileText, color: 'hsl(var(--chart-2))', onClick: () => showDrill('Accounts Receivable', 'Outstanding', [{ metric: 'Outstanding A/R', value: formatCurrency(metrics.totalAR) }]) },
     { title: 'Payments Received', value: formatCurrency(metrics.totalPayments), icon: CreditCard, color: 'hsl(var(--success, 142 71% 45%))', onClick: () => showDrill('Payments Received', 'All-time', [{ metric: 'Payments Received', value: formatCurrency(metrics.totalPayments) }]) },
     { title: 'Active Customers', value: `${metrics.activeCustomers}`, icon: Users, color: 'hsl(var(--chart-4))', onClick: () => showDrill('Active Customers', 'Currently active', [{ metric: 'Active Customers', value: `${metrics.activeCustomers}` }]) },
-    { title: 'Collection Rate', value: `${metrics.collectionRate.toFixed(1)}%`, icon: Percent, color: 'hsl(var(--chart-3))', onClick: () => showDrill('Collection Rate', 'Payments / Revenue', [
+    { title: 'Collection Rate', value: `${effectiveCollectionRate.toFixed(1)}%`, icon: Percent, color: 'hsl(var(--chart-3))', onClick: () => showDrill('Collection Rate', 'Payments / Revenue', [
       { metric: 'Payments', value: formatCurrency(metrics.totalPayments) },
-      { metric: 'Revenue', value: formatCurrency(metrics.totalRevenue) },
-      { metric: 'Collection Rate', value: `${metrics.collectionRate.toFixed(1)}%` },
+      { metric: 'Revenue', value: formatCurrency(effectiveTotalRevenue) },
+      { metric: 'Collection Rate', value: `${effectiveCollectionRate.toFixed(1)}%` },
     ]) },
     { title: 'Overdue', value: formatCurrency(metrics.overdueAmount), subtitle: `${metrics.overdueCount} invoices`, icon: AlertTriangle, color: 'hsl(var(--destructive))', onClick: () => showDrill('Overdue Invoices', `${metrics.overdueCount} invoices`, [
       { metric: 'Overdue Amount', value: formatCurrency(metrics.overdueAmount) },
@@ -148,6 +217,12 @@ export function QuickBooksFinancialDashboard({
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs">{periodBadge}</Badge>
           <span className="text-[11px] text-muted-foreground">A/R, A/P, aging &amp; overdue are current snapshots</span>
+          {revenueSource === 'pl' && (
+            <span className="text-[11px] text-muted-foreground">
+              · Revenue from QBO P&amp;L Total Income
+              {plSeries.isSyncingMissing && ' (syncing missing periods…)'}
+            </span>
+          )}
         </div>
       )}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -182,7 +257,7 @@ export function QuickBooksFinancialDashboard({
           <CardContent>
             <div style={{ height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={metrics.monthlyRevenue}>
+                <ComposedChart data={effectiveMonthlyRevenue}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
@@ -203,7 +278,7 @@ export function QuickBooksFinancialDashboard({
                       <LabelList
                         dataKey="revenue"
                         position="top"
-                        formatter={makeLabelFormatter(metrics.monthlyRevenue.map(d => d.revenue))}
+                        formatter={makeLabelFormatter(effectiveMonthlyRevenue.map(d => d.revenue))}
                         style={dataLabelStyle}
                       />
                     )}
@@ -267,9 +342,9 @@ export function QuickBooksFinancialDashboard({
           </CardHeader>
           <CardContent>
             <div style={{ height: 280 }}>
-              {metrics.topCustomers.length > 0 ? (
+              {enrichedTopCustomers.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={metrics.topCustomers} layout="vertical">
+                  <BarChart data={enrichedTopCustomers} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
@@ -283,14 +358,14 @@ export function QuickBooksFinancialDashboard({
                         { metric: 'Revenue', value: formatCurrency(Number(d?.revenue) || 0) },
                       ])}
                     >
-                      {metrics.topCustomers.map((_, index) => (
+                      {enrichedTopCustomers.map((_, index) => (
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
                       {showDataLabels && (
                         <LabelList
                           dataKey="revenue"
                           position="right"
-                          formatter={makeLabelFormatter(metrics.topCustomers.map(d => d.revenue))}
+                          formatter={makeLabelFormatter(enrichedTopCustomers.map(d => d.revenue))}
                           style={dataLabelStyle}
                         />
                       )}
