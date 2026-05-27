@@ -683,17 +683,34 @@ export default function Tasks() {
     const newStatus = currentStatus === 'complete' ? 'not_started' : 'complete';
     updateTask.mutate({ id: taskId, status: newStatus } as any);
     if (newStatus === 'complete') {
+      undoStack.push({
+        label: 'Complete task',
+        undo: () => updateTask.mutate({ id: taskId, status: currentStatus } as any),
+      });
       toast.success('Task completed! 🎉', {
         action: { label: 'Undo', onClick: () => updateTask.mutate({ id: taskId, status: currentStatus } as any) },
         duration: 5000,
       });
     }
-  }, [updateTask]);
+  }, [updateTask, undoStack]);
 
   const handleDeleteWithUndo = useCallback((taskId: string) => {
+    const snapshot = tasks.find(t => t.id === taskId);
     deleteTask.mutate(taskId);
+    if (snapshot) {
+      undoStack.push({
+        label: 'Delete task',
+        undo: () => createTask.mutate({
+          title: snapshot.title,
+          status: snapshot.status as any,
+          priority: snapshot.priority as any,
+          due_date: snapshot.due_date ?? undefined,
+          deal_id: snapshot.deal_id ?? undefined,
+        } as any),
+      });
+    }
     toast.success('Task deleted');
-  }, [deleteTask]);
+  }, [deleteTask, createTask, tasks, undoStack]);
 
   const handleToggleStar = useCallback((taskId: string, currentlyStarred: boolean) => {
     updateTask.mutate({ id: taskId, is_starred: !currentlyStarred } as any);
