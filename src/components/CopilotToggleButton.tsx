@@ -448,7 +448,7 @@ export function CopilotToggleButton() {
               onFocus={() => setHovered(true)}
               className={cn(
                 'group pointer-events-auto flex items-center justify-center',
-                'relative h-8 w-16 rounded-full cursor-pointer',
+                'relative h-6 w-[52px] rounded-full cursor-pointer',
                 'transition-[transform,box-shadow,opacity] duration-200 ease-out',
                 'motion-reduce:transition-none',
                 'hover:scale-[1.04] focus-visible:scale-[1.04]',
@@ -468,7 +468,7 @@ export function CopilotToggleButton() {
                 src={naitiveBrandIcon}
                 alt=""
                 aria-hidden="true"
-                className="h-6 w-6"
+                className="h-[18px] w-[18px]"
               />
               {(!isOpen || isMinimized) && unreadCount > 0 && (
                 <span
