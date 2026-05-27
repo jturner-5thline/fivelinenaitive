@@ -430,75 +430,29 @@ const tools = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a task. Returns a confirmation card. To assign to a teammate, first call search_team_members to resolve their user UUID, then pass it as assignee_user_id.",
+      description: "Create a task. Returns a confirmation card the user must approve. To assign to a teammate, first call search_team_members to resolve their user UUID, then pass it as assignee_id. The tasks table has NO priority column the AI may set, NO calendar field, and due_date is DATE-ONLY (no time-of-day).",
       parameters: {
         type: "object",
+        additionalProperties: false,
         properties: {
-          title: { type: "string" },
-          description: { type: "string" },
-          deal_id: { type: "string" },
-          contact_id: { type: "string" },
-          assignee_user_id: { type: "string", description: "User UUID. Resolve names via search_team_members first. Defaults to the current user." },
-          assignee_name: { type: "string", description: "Display name of the assignee (for the confirm card label only)." },
-          priority: { type: "string", enum: ["low", "medium", "high", "urgent"] },
-          due_date: { type: "string", description: "ISO date string YYYY-MM-DD" },
-          due_time: { type: "string", description: "Time-of-day in 24h HH:MM (user-local, America/New_York). Examples: '10:00' for 10am, '17:00' for EOD, '14:00' for afternoon, '09:00' for morning. Default to 09:00 when the user gives a date but no time. Honor explicit times verbatim." },
-          task_type: { type: "string", enum: ["task", "follow_up", "call", "email", "meeting"], description: "Task category. Default 'task'. Set to follow_up/call/email/meeting only when the user explicitly says so." },
-          rationale: { type: "string", description: "One short sentence explaining WHY the linked entity was chosen (e.g. 'Linked to Worthy because that is the deal currently open.'). Shown verbatim on the approval card. Required when deal_id/contact_id is INFERRED rather than explicitly named by the user; optional otherwise." },
-          duplicate_status: { type: "string", enum: ["none", "low", "possible", "high"], description: "Result of the pre-create duplicate check. 'none' = no similar task. 'low' = weak overlap, proceed. 'possible' (medium) = similar task — surface side-by-side on the card. 'high' = strong duplicate — recommend reuse." },
-          duplicate_match: {
-            type: "object",
-            description: "The single best existing-task candidate when duplicate_status is 'low' | 'possible' | 'high'. Omit when 'none'. Pull fields directly from get_tasks output — never fabricate.",
-            properties: {
-              task_id: { type: "string", description: "Existing task UUID." },
-              title: { type: "string" },
-              status: { type: "string" },
-              priority: { type: "string" },
-              due_date: { type: "string", description: "YYYY-MM-DD or null." },
-              assignee_name: { type: "string" },
-              deal_name: { type: "string" },
-              completed_at: { type: "string" },
-              why: { type: "string", description: "One sentence covering which signals matched (verb+object, entity, date, etc.)." },
-              differences: { type: "string", description: "One sentence calling out due-date / assignee / linked-entity diffs vs the proposed task. Empty string if none." },
-            },
-          },
-          duplicate_candidates: {
-            type: "array",
-            description: "All existing-task candidates considered during the duplicate check, ranked best-first. Persisted for audit even when none is a strong duplicate. Pull fields directly from get_tasks output — never fabricate.",
-            items: {
-              type: "object",
-              properties: {
-                task_id: { type: "string" },
-                title: { type: "string" },
-                status: { type: "string" },
-                due_date: { type: "string" },
-                assignee_name: { type: "string" },
-                deal_name: { type: "string" },
-                score: { type: "number", description: "0.0-1.0 similarity score." },
-                why: { type: "string" },
-              },
-            },
-          },
-          inferred: {
-            type: "array",
-            items: { type: "string", enum: ["title", "description", "deal_id", "assignee_user_id", "due_date", "priority", "task_type"] },
-            description: "Field names you INFERRED rather than the user explicitly stating them (e.g. defaulted deal_id from page context, defaulted priority to medium). The approval card highlights inferred fields so the user can correct them.",
-          },
-          intent: {
+          title: { type: "string", description: "Required. Concise, action-oriented title." },
+          description: { type: "string", description: "Optional. Maps to the task's Notes field." },
+          assignee_id: { type: "string", description: "Optional UUID of the owner. Resolve names via search_team_members first. Defaults to the current user when omitted." },
+          due_date: {
             type: "string",
-            enum: ["personal_task", "deal_task", "delegated_task"],
-            description: "Which intent classification this draft falls under. Used for audit logging.",
+            pattern: "^\\d{4}-\\d{2}-\\d{2}$",
+            description: "Optional date-only string YYYY-MM-DD. NEVER include a time-of-day, timezone, or 'T...' component — the tasks table stores date only.",
           },
-          confidence: {
-            type: "object",
-            description: "Self-reported 0.0-1.0 confidence per resolution dimension. Used for audit logging and to gate clarifications. Below 0.7 you MUST ask a clarifying question instead of calling create_task.",
-            properties: {
-              deal: { type: "number", description: "Confidence the resolved deal_id is correct (omit if no deal). 1.0 if the user is on the deal page or named it explicitly." },
-              assignee: { type: "number", description: "Confidence the resolved assignee_user_id is correct (omit if defaulting to current user). 1.0 if user explicitly named one teammate and search_team_members returned exactly one match." },
-              due_date: { type: "number", description: "Confidence the parsed due_date is what the user meant. 1.0 for explicit YYYY-MM-DD; lower for ambiguous relative phrases." },
-              task_type: { type: "number", description: "Confidence in the task_type classification. Default 1.0 for the default 'task' value." },
-              overall: { type: "number", description: "Overall confidence in this draft." },
-            },
+          deal_id: { type: "string", description: "Optional UUID of a deal to link." },
+          type: {
+            type: "string",
+            enum: ["task", "follow_up", "call", "email", "meeting"],
+            description: "Task category. Default 'task'.",
+          },
+          collaborator_ids: {
+            type: "array",
+            items: { type: "string" },
+            description: "Optional UUIDs of additional collaborators (read-only watchers). Resolve names via search_team_members.",
           },
         },
         required: ["title"],
@@ -2117,29 +2071,43 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           dealName = d?.company || null;
         } catch { /* non-fatal */ }
       }
+      // Resolve display name for the assignee when one was provided.
+      let assigneeName: string | null = null;
+      if (args.assignee_id) {
+        try {
+          const { data: p } = await supabase.from("profiles").select("display_name, email").eq("user_id", args.assignee_id).maybeSingle();
+          assigneeName = p?.display_name || p?.email || null;
+        } catch { /* non-fatal */ }
+      }
+      // Strip any fields the LLM may have hallucinated outside the schema (priority, calendar, time, etc.)
+      const ALLOWED = new Set(["title", "description", "assignee_id", "due_date", "deal_id", "type", "collaborator_ids"]);
+      for (const k of Object.keys(args)) {
+        if (!ALLOWED.has(k)) {
+          console.warn(`[create_task] dropping unsupported field from tool args: ${k}`);
+        }
+      }
+      // Force due_date to date-only if the model snuck a time in.
+      let safeDue: string | null = null;
+      if (typeof args.due_date === "string" && args.due_date.trim()) {
+        safeDue = args.due_date.slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDue)) safeDue = null;
+      }
       return {
         action: "confirm",
         action_type: "create_task",
-        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date}${args.due_time ? ` ${args.due_time}` : ""})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
+        description: `Create task${assigneeName ? ` for ${assigneeName}` : ""}: "${args.title}"${safeDue ? ` (due: ${safeDue})` : ""}`,
         params: {
           title: args.title,
           description: args.description,
           deal_id: args.deal_id,
           deal_name: dealName,
-          contact_id: args.contact_id,
-          assignee_user_id: args.assignee_user_id,
-          assignee_name: args.assignee_name,
-          priority: args.priority || "medium",
-          due_date: args.due_date,
-          due_time: typeof args.due_time === "string" ? args.due_time : null,
-          task_type: args.task_type || "task",
-          rationale: typeof args.rationale === "string" ? args.rationale : null,
-          duplicate_status: ["none", "low", "possible", "high"].includes(args.duplicate_status) ? args.duplicate_status : "none",
-          duplicate_match: args.duplicate_status && args.duplicate_status !== "none" && typeof args.duplicate_match === "object" && args.duplicate_match ? args.duplicate_match : null,
-          duplicate_candidates: Array.isArray(args.duplicate_candidates) ? args.duplicate_candidates.slice(0, 10) : [],
-          inferred: Array.isArray(args.inferred) ? args.inferred : [],
-          intent: args.intent || (args.assignee_user_id ? "delegated_task" : (args.deal_id ? "deal_task" : "personal_task")),
-          confidence: typeof args.confidence === "object" && args.confidence ? args.confidence : {},
+          assignee_user_id: args.assignee_id || null,
+          assignee_name: assigneeName,
+          due_date: safeDue,
+          task_type: args.type || "task",
+          collaborator_ids: Array.isArray(args.collaborator_ids)
+            ? args.collaborator_ids.filter((x: unknown) => typeof x === "string")
+            : [],
         },
       };
     }
@@ -5083,34 +5051,32 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       };
     }
     case "create_task": {
-      // ── Server-side safety guardrails (orchestration layer) ──
-      // These run AFTER explicit user approval but BEFORE persistence so a
-      // compromised/buggy client cannot bypass low-confidence or duplicate
-      // rules. Pair with the UI duplicate-review card and the LLM's
-      // pre-call gating prompt.
-      const conf = (params as any).confidence || {};
-      const dupStatus = (params as any).duplicate_status || "none";
-      const forceCreate = !!(params as any).force_create;
-      const linkedEntityProvided = !!(params.deal_id || params.contact_id);
-      if (linkedEntityProvided && typeof conf.deal === "number" && conf.deal < 0.7 && !forceCreate) {
-        return {
-          success: false,
-          error: "Linked entity confidence is too low to create this task automatically. Confirm the deal or contact and try again.",
-          actionType: "create_task",
-        };
+      // ── Server-side guardrail: validate against real tasks schema ──
+      // The tasks table has NO priority column writable from the AI (CHECK
+      // constraint allows only NULL or 'urgent'), NO calendar field, and
+      // due_date is date-only. Strip / coerce anything else.
+      const ALLOWED_PARAMS = new Set([
+        "title", "description", "deal_id", "assignee_user_id", "assignee_name",
+        "due_date", "task_type", "deal_name", "collaborator_ids", "tz",
+        // legacy-passthrough (ignored here but tolerated):
+        "audit_id", "force_create",
+      ]);
+      for (const k of Object.keys(params || {})) {
+        if (!ALLOWED_PARAMS.has(k)) {
+          console.warn(`[create_task] stripping unknown param: ${k}`);
+          delete (params as any)[k];
+        }
       }
-      if (dupStatus === "high" && !forceCreate) {
-        return {
-          success: false,
-          error: "A strong duplicate of this task already exists. Re-open the existing task or confirm 'Create anyway' to proceed.",
-          actionType: "create_task",
-        };
+      if (!params.title || typeof params.title !== "string" || !params.title.trim()) {
+        return { success: false, error: "Title is required.", actionType: "create_task" };
       }
 
       // Normalise due_date — accept YYYY-MM-DD, ISO timestamps, or relative words.
       let dueDate: string | null = null;
       const rawDue = params.due_date ? String(params.due_date).trim() : "";
       if (rawDue) {
+        // Truncate any time component the model may have sent.
+        const dateOnly = rawDue.split("T")[0];
         const lower = rawDue.toLowerCase();
         const tz = (params as any).tz || "America/New_York";
         // Today in user's timezone as YYYY-MM-DD parts
@@ -5131,8 +5097,8 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
           if (delta === 0 || force7) delta = delta === 0 ? 7 : delta;
           return addDays(delta);
         };
-        if (/^\d{4}-\d{2}-\d{2}/.test(rawDue)) {
-          dueDate = rawDue.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateOnly)) {
+          dueDate = dateOnly.slice(0, 10);
         } else if (lower === "today" || lower === "this afternoon" || lower === "tonight" || lower === "later today" || lower === "eod") {
           dueDate = fmt(today);
         } else if (lower === "tomorrow" || lower === "tmrw") {
@@ -5186,43 +5152,11 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         companyId = cm?.company_id || null;
       }
 
-      // Build due_at (timestamptz) from due_date + due_time in user's tz.
-      // Default time of day = 09:00 local when a date is set without a time.
-      const userTz = (params as any).tz || "America/New_York";
-      let dueAt: string | null = null;
-      if (dueDate) {
-        const rawTime = typeof (params as any).due_time === "string" ? (params as any).due_time.trim() : "";
-        const timeStr = /^\d{1,2}:\d{2}$/.test(rawTime)
-          ? rawTime.padStart(5, "0")
-          : "09:00";
-        try {
-          // Walltime in user's tz → UTC ISO. Compute the tz offset for that
-          // specific instant so DST is handled correctly.
-          const wall = new Date(`${dueDate}T${timeStr}:00Z`);
-          const tzParts = new Intl.DateTimeFormat("en-US", {
-            timeZone: userTz,
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-          }).formatToParts(wall).reduce<Record<string, string>>((acc, p) => { acc[p.type] = p.value; return acc; }, {});
-          const tzAsUtc = Date.UTC(
-            +tzParts.year, +tzParts.month - 1, +tzParts.day,
-            +tzParts.hour % 24, +tzParts.minute, +tzParts.second,
-          );
-          const offsetMs = tzAsUtc - wall.getTime();
-          dueAt = new Date(wall.getTime() - offsetMs).toISOString();
-        } catch {
-          dueAt = null;
-        }
-      }
-
       const insertRow: Record<string, unknown> = {
         title: params.title,
         description: params.description || null,
         deal_id: params.deal_id || null,
-        contact_id: params.contact_id || null,
-        priority: params.priority || "medium",
         due_date: dueDate,
-        due_at: dueAt,
         status: "not_started",
         task_type: params.task_type || "task",
         assigned_to: assignee,
@@ -5243,58 +5177,30 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       }
       if (!newTask) return { success: false, error: `Failed to create task "${params.title}".` };
 
-      // Optional: also create a Google Calendar event via Nylas v3 unified sync.
-      let calendarEventId: string | null = null;
-      let calendarError: string | null = null;
-      if ((params as any).add_to_calendar && dueAt) {
+      // Insert collaborators (best-effort; non-fatal).
+      const collabIds = Array.isArray((params as any).collaborator_ids)
+        ? ((params as any).collaborator_ids as unknown[]).filter((x): x is string => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x))
+        : [];
+      if (collabIds.length > 0) {
         try {
-          const startMs = new Date(dueAt).getTime();
-          const endIso = new Date(startMs + 30 * 60 * 1000).toISOString(); // 30-min default
-          const calResp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/calendar-events`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: authHeader,
-              apikey: Deno.env.get("SUPABASE_ANON_KEY") || "",
-            },
-            body: JSON.stringify({
-              action: "create",
-              calendar_id: "primary",
-              timezone: userTz,
-              event_data: {
-                summary: params.title,
-                description: params.description || undefined,
-                start: dueAt,
-                end: endIso,
-              },
-            }),
-          });
-          const calData = await calResp.json().catch(() => ({}));
-          if (calResp.ok && calData?.event?.id) {
-            calendarEventId = calData.event.id;
-            await supabase.from("tasks").update({ nylas_event_id: calendarEventId }).eq("id", newTask.id);
-          } else {
-            calendarError = calData?.error || `Calendar event create failed (${calResp.status})`;
-            console.error("[create_task] calendar error:", calendarError);
-          }
-        } catch (e: any) {
-          calendarError = e?.message || "Calendar event create threw";
-          console.error("[create_task] calendar exception:", calendarError);
+          await supabase.from("task_collaborators").insert(
+            collabIds.map((uid) => ({ task_id: newTask.id, user_id: uid }))
+          );
+        } catch (e) {
+          console.warn("[create_task] collaborator insert failed (non-fatal):", (e as Error).message);
         }
       }
 
       const who = params.assignee_name && assignee !== userId ? ` for ${params.assignee_name}` : "";
       return {
         success: true,
-        message: `Task "${params.title}" created${who}${calendarEventId ? " · added to calendar" : ""}${calendarError ? ` (calendar: ${calendarError})` : ""}`,
+        message: `Task "${params.title}" created${who}`,
         actionType: "create_task",
         params: {
           task_id: newTask.id,
           deal_id: params.deal_id,
           assigned_to: newTask.assigned_to,
-          due_at: dueAt,
-          calendar_event_id: calendarEventId,
-          calendar_error: calendarError,
+          due_date: dueDate,
         },
       };
     }
@@ -6429,11 +6335,12 @@ DEAL-SPACE QUESTION ANSWERING (apply when the focused deal is set):
 
 PERSONAL TASK & REMINDER CREATION (apply when the user says "remind me to …", "create a task for me to …", "add a to-do for …", "set a reminder", or any equivalent natural-language reminder):
 - ALWAYS use the create_task tool. NEVER persist the task yourself or in any other way — create_task returns an { action: "confirm", action_type: "create_task" } payload that the UI renders as an approval card. The user must click Save before anything is written.
+- ALLOWED FIELDS (the only keys you may pass): title (required), description (optional, maps to Notes), assignee_id (uuid, optional owner — defaults to current user), due_date (YYYY-MM-DD only — NEVER include a time-of-day, "T...", or timezone), deal_id (uuid, optional), type (one of task | follow_up | call | email | meeting), collaborator_ids (uuid[]). DO NOT pass priority, due_time, add_to_calendar, calendar, or any other key — the tasks table has no priority column the AI may set and no calendar field. The schema rejects extra keys.
 - Owner default: leave assignee_user_id and assignee_name UNSET. The executor falls back to the current user — that is the correct behavior for "remind me", "create a task for me", and any first-person reminder. NEVER silently set assignee_user_id to another teammate. Only set assignee_user_id when the user EXPLICITLY says "assign to <Person>" / "task for <Person>" — and even then, first call search_team_members to resolve the UUID, and only one match. If multiple matches, ask the user to pick before calling create_task.
 - Deal link: if the focused deal is set (entityType=deal above OR a RESOLVED DEAL FROM PROMPT block is present) AND the reminder text plausibly relates to that deal (mentions the company, the lender on it, "this deal", "this company", "here", "the write-up", "the memo", a milestone, etc.), set deal_id to that focused deal's UUID — task_type stays the default "task" and the tool will treat it as a deal-linked task. If the user is NOT on a deal page and does not name a deal, omit deal_id — it becomes a personal task for the current user.
 - Title: extract a concise, action-oriented title from the reminder. Strip the "remind me to" / "create a task to" prefix. Keep the verb. Example: "Remind me to call Dan tomorrow" → title "Call Dan". "Create a task for me to review the write-up on Friday" → title "Review the write-up".
-- Due date: parse natural-language dates ("today", "tomorrow", "Friday", "next Tuesday", "in two weeks", "Mar 15") into a YYYY-MM-DD string and pass as due_date. If the user gave NO date at all, DEFAULT due_date to TODAY in the user's local timezone (from CURRENT CONTEXT) — do NOT leave due_date blank, and do NOT default to tomorrow or the next business day. Mark "due_date" in the inferred[] array so the approval card flags it as AI-inferred and the user can adjust before saving. If the date is genuinely AMBIGUOUS (e.g. "Tuesday" when both this and next Tuesday are plausible, or a date that has already passed this year), ask ONE short clarifying question before calling create_task. Do not guess.
-- Priority: default to "medium". Set "high" only if the user uses urgency words ("urgent", "asap", "high priority", "important"). Never set "urgent".
+- Due date: parse natural-language dates ("today", "tomorrow", "Friday", "next Tuesday", "in two weeks", "Mar 15") into a YYYY-MM-DD string (date only, no time) and pass as due_date. If the user gave NO date at all, DEFAULT due_date to TODAY in the user's local timezone. If genuinely AMBIGUOUS, ask ONE short clarifying question first.
+- Priority / calendar: NEVER set or mention priority, urgency level, or calendar-add — those fields do not exist on the task and the schema will reject them.
 - Description: optional. Only set if the user explicitly added context beyond the title (e.g. "remind me to call Dan tomorrow about the term sheet" → description can include "about the term sheet").
 - After calling create_task, do NOT add a follow-up confirmation message in plain text — the UI already shows the approval card. Just emit the tool call.
 - Safety: never auto-execute. If the user later says "yes do it" / "confirm" / "save it" without the UI card being clicked, do NOT call any other write tool to bypass the card — instead, instruct them to click Save on the card that's already shown.
@@ -6448,9 +6355,9 @@ DEAL TASK CREATION (apply when the user wants a task tied to a SPECIFIC deal —
   5. If the user clearly intends a personal (non-deal) task even from a deal page (e.g. "remind me to pick up groceries", "personal task: book flight"), omit deal_id — fall back to the PERSONAL TASK rules above.
 - Owner: default to the current user (omit assignee_user_id). Only set assignee_user_id when the user explicitly says "assign to <Person>" / "task for <Person>" — first call search_team_members to resolve a single UUID; if multiple matches, ask before calling create_task. Never silently reassign.
 - Title: concise and action-oriented. Strip "create a task to" / "remind me to" / "add a task on <Deal> to" prefixes and any deal-name preamble. Example: "Create a task to follow up with management on Xnergy" → title "Follow up with management". "Add a task on Worthy to check in with Dan in 5 days" → "Check in with Dan".
-- Due date: parse natural-language dates ("tomorrow", "Friday", "next Monday", "in 5 days", "Mar 15") into YYYY-MM-DD and pass as due_date. If genuinely ambiguous, ask ONE clarifying question. If no date is given, DEFAULT due_date to TODAY in the user's local timezone (from CURRENT CONTEXT) and mark "due_date" in inferred[].
+- Due date: parse natural-language dates ("tomorrow", "Friday", "next Monday", "in 5 days", "Mar 15") into YYYY-MM-DD (date only — no time-of-day) and pass as due_date. If genuinely ambiguous, ask ONE clarifying question. If no date is given, DEFAULT due_date to TODAY in the user's local timezone.
 - Description: optional. Only include if the user added context beyond the title (e.g. "…about the CIM revisions" → description carries that detail). Do not invent context.
-- Priority: default "medium". Use "high" only if the user uses urgency words ("urgent", "asap", "important", "high priority"). Never "urgent".
+- Priority / calendar: NEVER pass priority or any calendar field. The schema only accepts title, description, assignee_id, due_date, deal_id, type, collaborator_ids.
 - Confirmation UX: do NOT add a plain-text "I've created the task" message after calling create_task — the approval card is the confirmation surface. If the user later says "yes" / "save it" without clicking the card, point them to the Save button on the card; never bypass it with another write tool.
 - Safety summary: (a) never write without the user clicking Save on the card, (b) never link to a deal you're not confident about — ask first, (c) never silently change the owner.
 
@@ -6467,25 +6374,32 @@ DELEGATED TASK ASSIGNMENT (apply when the user asks to create a task for ANOTHER
   - User explicitly names a different deal → resolve via RESOLVED DEAL FROM PROMPT or search_deals. If ambiguous, ask before calling create_task.
   - Off-page generic delegation with no deal mentioned → omit deal_id (personal-style task assigned to the named teammate).
 - Title: concise, action-oriented. Strip the "<Person> needs to" / "create a task for <Person> to" / "<Person> should" prefix and the assignee name. Example: "Niki needs to send the daily briefing tomorrow" → title "Send the daily briefing". "Create a task for Scott to review the lender update" → "Review the lender update".
-- Due date: parse natural-language dates ("tomorrow", "Friday", "next week", "in 5 days", "Mar 15") into YYYY-MM-DD and pass as due_date. "Next week" without a specific day → ask one clarifying question (Monday? end of week?). If no date is given, DEFAULT due_date to TODAY in the user's local timezone (from CURRENT CONTEXT) and mark "due_date" in inferred[].
-- Task type: keep the default "task" unless the user explicitly says "follow-up", "call", "email", "meeting", etc. and the create_task tool exposes a matching task_type — otherwise leave default.
-- Priority: default "medium". Use "high" only on explicit urgency words.
+- Due date: parse natural-language dates ("tomorrow", "Friday", "next week", "in 5 days", "Mar 15") into YYYY-MM-DD (date only — never include a time) and pass as due_date.
+- Task type: keep the default "task" unless the user explicitly says "follow-up", "call", "email", "meeting", etc.
+- Priority / calendar: NEVER set these — they are not part of the create_task schema and will be rejected.
 - Description: optional; only include extra context the user gave beyond the title.
 - Approval-card UX: do NOT write a plain-text "I've assigned this to <Person>" message after the tool call — the card itself is the proposed-assignment surface and labels who it will go to. If the user later says "yes" / "confirm" / "assign it" without clicking the card, point them to the Save button on the card; never bypass it with another write tool.
 - Permissions: the create_task executor enforces who-can-assign-to-whom server-side. If it returns a permission error, surface that to the user verbatim — do NOT retry by reassigning to the current user.
 - Safety summary: (a) never assign without the user clicking Save on the card, (b) never guess between multiple name matches — always ask, (c) never silently fall back to assigning yourself, (d) never link to a deal you're not confident about.
 
-APPROVAL CARD INFERENCE FLAGS (apply to EVERY create_task call — personal, deal, or delegated):
-- create_task accepts an "inferred" string-array parameter. Populate it with the names of fields you DEFAULTED or INFERRED rather than fields the user explicitly stated. The approval card uses this to mark inferred values with a subtle "AI" tag so the user can correct them.
-- Mark a field as inferred when:
-  - deal_id was set from page context but the user did not name the deal in this turn → include "deal_id".
-  - priority was defaulted to "medium" because the user gave no urgency → include "priority".
-  - task_type was defaulted to "task" because the user gave no category → include "task_type".
-  - title was paraphrased/cleaned beyond a verbatim quote → include "title".
-  - due_date was inferred from a relative phrase (e.g. "tomorrow", "in 5 days") rather than an explicit date → include "due_date".
-  - assignee_user_id was set to anything other than the user's explicit "assign to <Person>" / "<Person> needs to" → include "assignee_user_id". Personal first-person reminders (omit assignee_user_id) do NOT count as inferred.
-  - description was synthesised by you rather than quoted from the user → include "description".
-- Do NOT mark fields the user stated literally. The list may be empty. Prefer accuracy over completeness.
+CREATE_TASK SCHEMA (HARD CONTRACT — the function call WILL fail with additionalProperties if violated):
+Allowed keys, and ONLY these: title, description, assignee_id, due_date, deal_id, type, collaborator_ids.
+- title: string (required) — concise, action-oriented.
+- description: string — maps to the task's Notes field.
+- assignee_id: uuid — the Owner. Omit to default to the current user.
+- due_date: string matching ^\d{4}-\d{2}-\d{2}$ — DATE ONLY. NEVER include a time-of-day ("9:00 AM", "T09:00", a timezone, etc.).
+- deal_id: uuid — linked deal.
+- type: one of task | follow_up | call | email | meeting.
+- collaborator_ids: uuid[] — read-only watchers.
+FORBIDDEN (will be rejected by the schema and stripped server-side, do NOT generate them): priority, urgency, due_time, time, add_to_calendar, calendar, reminder_time, contact_id, inferred, confidence, duplicate_status, rationale, intent.
+
+FEW-SHOT — POSITIVE (do this):
+  User: "Check in with Steven & Ryan regarding the Upflex deal"
+  Tool call: create_task({ "title": "Check in with Steven & Ryan", "due_date": "2026-05-27", "deal_id": "<upflex-uuid>", "type": "task" })
+
+FEW-SHOT — NEGATIVE (NEVER do this — the call will fail and the user has already complained about this exact pattern):
+  create_task({ "title": "Check in with Steven & Ryan", "priority": "medium", "due_date": "2026-05-26T09:00:00-07:00", "add_to_calendar": true, "deal_id": "<upflex-uuid>" })
+  Wrong because: priority is not a valid field, due_date includes a time-of-day, and add_to_calendar does not exist. Strip all three.
 
 ENTITY-LINK RATIONALE (apply to EVERY create_task call where deal_id, contact_id, or crm_company_id was INFERRED rather than explicitly named by the user):
 - Prepend ONE short sentence to the description explaining why that entity was chosen, in this exact format: "Linked to <Entity Name> because <reason>." Examples: "Linked to Worthy because it is the deal currently open." "Linked to Censys because it was the most recently discussed deal in this conversation." Keep it to a single sentence and put it on its own line before any other description content.

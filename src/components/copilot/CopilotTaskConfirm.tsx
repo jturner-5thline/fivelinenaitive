@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, Flag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight } from 'lucide-react';
+import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -37,12 +37,9 @@ interface ConfirmAction {
     description?: string | null;
     deal_id?: string | null;
     deal_name?: string | null;
-    contact_id?: string | null;
     assignee_user_id?: string | null;
     assignee_name?: string | null;
-    priority?: 'low' | 'medium' | 'high' | 'urgent';
     due_date?: string | null;
-    due_time?: string | null;
     task_type?: 'task' | 'follow_up' | 'call' | 'email' | 'meeting';
     inferred?: string[];
     rationale?: string | null;
@@ -61,13 +58,6 @@ const TYPE_LABELS: Record<string, string> = {
   call: 'Call',
   email: 'Email',
   meeting: 'Meeting',
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
 };
 
 const quickActionStyle: React.CSSProperties = {
@@ -98,18 +88,13 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [title, setTitle] = useState<string>(initial.title || '');
   const [description, setDescription] = useState<string>(initial.description || '');
   const [dueDate, setDueDate] = useState<string>(initial.due_date || '');
-  const [dueTime, setDueTime] = useState<string>(() => {
-    const raw = (initial.due_time || '').trim();
-    return /^\d{1,2}:\d{2}$/.test(raw) ? raw.padStart(5, '0') : '09:00';
-  });
-  const [addToCalendar, setAddToCalendar] = useState<boolean>(false);
-  const [priority, setPriority] = useState<string>(initial.priority || 'medium');
   const [taskType, setTaskType] = useState<string>(initial.task_type || 'task');
   const [dealLinked, setDealLinked] = useState<boolean>(!!initial.deal_id);
   const [assigneeMe, setAssigneeMe] = useState<boolean>(!initial.assignee_user_id);
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'used_existing'>('pending');
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const candidates: DealCandidate[] = Array.isArray(initial.deal_candidates) ? initial.deal_candidates! : [];
   const [candidatesDismissed, setCandidatesDismissed] = useState(false);
@@ -133,27 +118,19 @@ export function CopilotTaskConfirm({ action }: Props) {
   const showDupCompare = (dupStatus === 'high' || dupStatus === 'possible') && !!dup;
   const showDupLowHint = dupStatus === 'low' && !!dup;
   const dueIsInferredToday = isInferred('due_date') && !!dueDate && dueDate === new Date().toISOString().slice(0, 10);
-  const entityInferred = (isInferred('deal_id') && !!resolvedDealId) || (isInferred('contact_id') && !!initial.contact_id);
-  const entityLabel = resolvedDealName || (initial.contact_id ? 'this contact' : '');
+  const entityInferred = isInferred('deal_id') && !!resolvedDealId;
+  const entityLabel = resolvedDealName || '';
 
   const userTz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; }
   })();
-  const tzAbbrev = (() => {
-    if (!dueDate) return '';
-    try {
-      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
-      const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTz, timeZoneName: 'short' }).formatToParts(d);
-      return parts.find(p => p.type === 'timeZoneName')?.value || '';
-    } catch { return ''; }
-  })();
   const formatDueLabel = () => {
     if (!dueDate) return 'No due date';
     try {
-      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
-      const dateStr = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-      const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      return `${dateStr} · ${timeStr}${tzAbbrev ? ` ${tzAbbrev}` : ''}`;
+      // Render date-only — never a time-of-day (tasks.due_date is date-only).
+      const [y, m, d] = dueDate.split('-').map(Number);
+      const dt = new Date(y, (m || 1) - 1, d || 1);
+      return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     } catch {
       return dueDate;
     }
@@ -165,6 +142,7 @@ export function CopilotTaskConfirm({ action }: Props) {
       return;
     }
     setStatus('loading');
+    setSubmitError(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -175,13 +153,10 @@ export function CopilotTaskConfirm({ action }: Props) {
         description: description.trim() || null,
         deal_id: dealLinked ? (resolvedDealId || null) : null,
         deal_name: dealLinked ? (resolvedDealName || null) : null,
-        contact_id: initial.contact_id || null,
         assignee_user_id: assigneeMe ? null : initial.assignee_user_id || null,
         assignee_name: assigneeMe ? null : initial.assignee_name || null,
-        priority,
-        due_date: dueDate || null,
-        due_time: dueDate ? (dueTime || '09:00') : null,
-        add_to_calendar: !!addToCalendar && !!dueDate,
+        // due_date is DATE ONLY — strip any 'T...' that slipped through.
+        due_date: dueDate ? dueDate.split('T')[0] : null,
         task_type: taskType,
         tz: userTz,
       };
@@ -191,8 +166,12 @@ export function CopilotTaskConfirm({ action }: Props) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ confirmAction: { ...action, params } }),
       });
-      const result = await resp.json();
-      if (!result.success) throw new Error(result.error || 'Failed to create task');
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok || !result?.success) {
+        const reason = result?.error || `HTTP ${resp.status}`;
+        console.error('[CopilotTaskConfirm] create_task failed', { status: resp.status, result });
+        throw new Error(reason);
+      }
 
       setStatus('done');
       setCreatedTaskId(result?.params?.task_id || null);
@@ -209,7 +188,9 @@ export function CopilotTaskConfirm({ action }: Props) {
       window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType: 'create_task', params } }));
     } catch (err: any) {
       setStatus('pending');
-      toast.error(err.message || 'Failed to create task');
+      const msg = err?.message || 'Failed to create task';
+      setSubmitError(msg);
+      toast.error(`Couldn't create task: ${msg}`);
     }
   }
 
@@ -229,7 +210,7 @@ export function CopilotTaskConfirm({ action }: Props) {
     if (!assigneeMe && initial.assignee_name) linkedSummary.push(`assigned to ${initial.assignee_name}`);
     else linkedSummary.push('assigned to you');
     if (dueDate) linkedSummary.push(`due ${formatDueLabel()}`);
-    if (addToCalendar) linkedSummary.push('added to calendar');
+    // (calendar add removed — not a task field)
     return (
       <div
         style={{
@@ -467,7 +448,7 @@ export function CopilotTaskConfirm({ action }: Props) {
               <div style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.4, color: 'hsl(var(--muted-foreground))', marginBottom: 4 }}>Proposed (new)</div>
               <div style={{ fontWeight: 500, color: 'hsl(var(--foreground))' }}>{title || <em>Untitled</em>}</div>
               <div style={{ marginTop: 4, color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>
-                {dueDate ? `Due ${dueDate}` : 'No due date'} · {PRIORITY_LABELS[priority] || priority}
+                {dueDate ? `Due ${dueDate}` : 'No due date'}
               </div>
               <div style={{ color: 'hsl(var(--muted-foreground))', fontSize: 11 }}>
                 {initial.deal_name ? `Deal: ${initial.deal_name}` : 'No deal'} · {assigneeMe || !initial.assignee_name ? 'You' : initial.assignee_name}
@@ -517,56 +498,9 @@ export function CopilotTaskConfirm({ action }: Props) {
             <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Title{isInferred('title') && ' '} {isInferred('title') && <InferredTag />}</label>
             <Input value={title} onChange={e => setTitle(e.target.value)} placeholder="Task title" style={{ marginTop: 4, height: 32, fontSize: 13 }} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div>
-              <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Due {isInferred('due_date') && <InferredTag />}</label>
-              <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ marginTop: 4, height: 32, fontSize: 13 }} />
-            </div>
-            <div>
-              <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Due time</label>
-              <Input
-                type="time"
-                value={dueTime}
-                onChange={e => setDueTime(e.target.value)}
-                disabled={!dueDate}
-                style={{ marginTop: 4, height: 32, fontSize: 13 }}
-              />
-            </div>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-            <div>
-              <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Priority {isInferred('priority') && <InferredTag />}</label>
-              <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger style={{ marginTop: 4, height: 32, fontSize: 13 }}><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PRIORITY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-              <label
-                style={{
-                  display: 'inline-flex', alignItems: 'center', gap: 8,
-                  fontSize: 12, color: 'var(--foreground)',
-                  padding: '7px 10px', borderRadius: 6,
-                  background: 'var(--glass-surface)', border: '1px solid var(--glass-border)',
-                  cursor: dueDate ? 'pointer' : 'not-allowed',
-                  opacity: dueDate ? 1 : 0.55,
-                  width: '100%', height: 32, marginTop: 4,
-                }}
-                title={dueDate ? 'Also create a Google Calendar event via your connected calendar' : 'Set a due date to enable'}
-              >
-                <input
-                  type="checkbox"
-                  checked={addToCalendar}
-                  disabled={!dueDate}
-                  onChange={e => setAddToCalendar(e.target.checked)}
-                  style={{ accentColor: 'hsl(var(--primary))' }}
-                />
-                <CalendarIcon size={12} />
-                <span>Add to calendar</span>
-              </label>
-            </div>
+          <div>
+            <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Due {isInferred('due_date') && <InferredTag />}</label>
+            <Input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={{ marginTop: 4, height: 32, fontSize: 13 }} />
           </div>
           <div>
             <label style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', textTransform: 'uppercase', letterSpacing: 0.4, fontWeight: 600 }}>Type {isInferred('task_type') && <InferredTag />}</label>
@@ -613,24 +547,10 @@ export function CopilotTaskConfirm({ action }: Props) {
           <Row icon={Plus} label="Title" value={title} inferred={isInferred('title')} />
           <Row icon={UserIcon} label="Owner" value={assigneeMe || !initial.assignee_name ? 'You' : initial.assignee_name} inferred={isInferred('assignee_user_id') && !assigneeMe} />
           <Row icon={CalendarIcon} label="Due" value={formatDueLabel()} inferred={isInferred('due_date')} />
-          {dueDate && (
-            <Row icon={CalendarIcon} label="Calendar">
-              <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer', fontSize: 13 }}>
-                <input
-                  type="checkbox"
-                  checked={addToCalendar}
-                  onChange={e => setAddToCalendar(e.target.checked)}
-                  style={{ accentColor: 'hsl(var(--primary))' }}
-                />
-                <span>Add to calendar</span>
-              </label>
-            </Row>
-          )}
           {resolvedDealId && dealLinked && (
             <Row icon={Building2} label="Deal" value={resolvedDealName || initial.deal_name || 'Linked deal'} inferred={isInferred('deal_id')} />
           )}
           <Row icon={Tag} label="Type" value={TYPE_LABELS[taskType] || taskType} inferred={isInferred('task_type')} />
-          <Row icon={Flag} label="Priority" value={PRIORITY_LABELS[priority] || priority} inferred={isInferred('priority')} />
           {description && <Row icon={AlignLeft} label="Notes" value={description} inferred={isInferred('description')} />}
         </div>
       )}
@@ -638,6 +558,13 @@ export function CopilotTaskConfirm({ action }: Props) {
       {ambiguous && (
         <div style={{ marginTop: 8, fontSize: 11, color: 'hsl(var(--destructive))' }}>
           A title is required before this task can be created. Click Edit to add one.
+        </div>
+      )}
+
+      {submitError && (
+        <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.30)', fontSize: 12, color: 'hsl(var(--destructive))', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+          <AlertTriangle size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+          <span><strong>Couldn't create task:</strong> {submitError}</span>
         </div>
       )}
 
