@@ -1506,6 +1506,15 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   const trimmedResolvedText = resolvedText.trim();
   const hasRenderableBody = !!resolvedHtml || trimmedResolvedText.length > 0;
   const gmailThreadTarget = email.provider_thread_id || email.threadId || threadId;
+  // Gmail truncates very large outbound messages (>102KB) and appends a
+  // "[Message clipped]" / "...This message has been truncated" tail. Nylas
+  // returns the truncated payload as-is. Surface a clear link to view the
+  // full message in Gmail (Niki bug, Asana #1215178140447221).
+  const truncationProbe = (resolvedHtml || resolvedText).toLowerCase();
+  const looksTruncated = /\[message clipped\]|message has been truncated|view entire message/.test(truncationProbe);
+  const gmailOpenUrl = email.id
+    ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(email.id)}`
+    : null;
 
   // For plain-text bodies, split off the quoted reply chain so we can show/hide it.
   const { main: textMain, quoted: textQuoted } = resolvedHtml
