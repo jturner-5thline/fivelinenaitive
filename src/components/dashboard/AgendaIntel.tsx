@@ -230,7 +230,8 @@ function AgendaListItem({
             variant="outline"
             className="text-[9px] font-normal border-primary/30 bg-primary/10 text-primary px-1.5 py-0"
           >
-            <Briefcase className="h-2.5 w-2.5 mr-0.5" />{deal.name}
+            <LinkIcon className="h-2.5 w-2.5 mr-0.5" />
+            <span className="truncate max-w-[140px]">{deal.name}</span>
           </Badge>
         )}
         {isPersonal && (
