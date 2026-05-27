@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, Flag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight } from 'lucide-react';
+import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -37,12 +37,9 @@ interface ConfirmAction {
     description?: string | null;
     deal_id?: string | null;
     deal_name?: string | null;
-    contact_id?: string | null;
     assignee_user_id?: string | null;
     assignee_name?: string | null;
-    priority?: 'low' | 'medium' | 'high' | 'urgent';
     due_date?: string | null;
-    due_time?: string | null;
     task_type?: 'task' | 'follow_up' | 'call' | 'email' | 'meeting';
     inferred?: string[];
     rationale?: string | null;
@@ -61,13 +58,6 @@ const TYPE_LABELS: Record<string, string> = {
   call: 'Call',
   email: 'Email',
   meeting: 'Meeting',
-};
-
-const PRIORITY_LABELS: Record<string, string> = {
-  low: 'Low',
-  medium: 'Medium',
-  high: 'High',
-  urgent: 'Urgent',
 };
 
 const quickActionStyle: React.CSSProperties = {
@@ -98,18 +88,13 @@ export function CopilotTaskConfirm({ action }: Props) {
   const [title, setTitle] = useState<string>(initial.title || '');
   const [description, setDescription] = useState<string>(initial.description || '');
   const [dueDate, setDueDate] = useState<string>(initial.due_date || '');
-  const [dueTime, setDueTime] = useState<string>(() => {
-    const raw = (initial.due_time || '').trim();
-    return /^\d{1,2}:\d{2}$/.test(raw) ? raw.padStart(5, '0') : '09:00';
-  });
-  const [addToCalendar, setAddToCalendar] = useState<boolean>(false);
-  const [priority, setPriority] = useState<string>(initial.priority || 'medium');
   const [taskType, setTaskType] = useState<string>(initial.task_type || 'task');
   const [dealLinked, setDealLinked] = useState<boolean>(!!initial.deal_id);
   const [assigneeMe, setAssigneeMe] = useState<boolean>(!initial.assignee_user_id);
   const [editing, setEditing] = useState(false);
   const [status, setStatus] = useState<'pending' | 'loading' | 'done' | 'cancelled' | 'used_existing'>('pending');
   const [createdTaskId, setCreatedTaskId] = useState<string | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const candidates: DealCandidate[] = Array.isArray(initial.deal_candidates) ? initial.deal_candidates! : [];
   const [candidatesDismissed, setCandidatesDismissed] = useState(false);
@@ -139,21 +124,13 @@ export function CopilotTaskConfirm({ action }: Props) {
   const userTz = (() => {
     try { return Intl.DateTimeFormat().resolvedOptions().timeZone; } catch { return 'America/New_York'; }
   })();
-  const tzAbbrev = (() => {
-    if (!dueDate) return '';
-    try {
-      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
-      const parts = new Intl.DateTimeFormat('en-US', { timeZone: userTz, timeZoneName: 'short' }).formatToParts(d);
-      return parts.find(p => p.type === 'timeZoneName')?.value || '';
-    } catch { return ''; }
-  })();
   const formatDueLabel = () => {
     if (!dueDate) return 'No due date';
     try {
-      const d = new Date(`${dueDate}T${dueTime || '09:00'}:00`);
-      const dateStr = d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-      const timeStr = d.toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' });
-      return `${dateStr} · ${timeStr}${tzAbbrev ? ` ${tzAbbrev}` : ''}`;
+      // Render date-only — never a time-of-day (tasks.due_date is date-only).
+      const [y, m, d] = dueDate.split('-').map(Number);
+      const dt = new Date(y, (m || 1) - 1, d || 1);
+      return dt.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
     } catch {
       return dueDate;
     }
@@ -165,6 +142,7 @@ export function CopilotTaskConfirm({ action }: Props) {
       return;
     }
     setStatus('loading');
+    setSubmitError(null);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
@@ -175,13 +153,10 @@ export function CopilotTaskConfirm({ action }: Props) {
         description: description.trim() || null,
         deal_id: dealLinked ? (resolvedDealId || null) : null,
         deal_name: dealLinked ? (resolvedDealName || null) : null,
-        contact_id: initial.contact_id || null,
         assignee_user_id: assigneeMe ? null : initial.assignee_user_id || null,
         assignee_name: assigneeMe ? null : initial.assignee_name || null,
-        priority,
-        due_date: dueDate || null,
-        due_time: dueDate ? (dueTime || '09:00') : null,
-        add_to_calendar: !!addToCalendar && !!dueDate,
+        // due_date is DATE ONLY — strip any 'T...' that slipped through.
+        due_date: dueDate ? dueDate.split('T')[0] : null,
         task_type: taskType,
         tz: userTz,
       };
@@ -191,8 +166,12 @@ export function CopilotTaskConfirm({ action }: Props) {
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ confirmAction: { ...action, params } }),
       });
-      const result = await resp.json();
-      if (!result.success) throw new Error(result.error || 'Failed to create task');
+      const result = await resp.json().catch(() => ({}));
+      if (!resp.ok || !result?.success) {
+        const reason = result?.error || `HTTP ${resp.status}`;
+        console.error('[CopilotTaskConfirm] create_task failed', { status: resp.status, result });
+        throw new Error(reason);
+      }
 
       setStatus('done');
       setCreatedTaskId(result?.params?.task_id || null);
@@ -209,7 +188,9 @@ export function CopilotTaskConfirm({ action }: Props) {
       window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType: 'create_task', params } }));
     } catch (err: any) {
       setStatus('pending');
-      toast.error(err.message || 'Failed to create task');
+      const msg = err?.message || 'Failed to create task';
+      setSubmitError(msg);
+      toast.error(`Couldn't create task: ${msg}`);
     }
   }
 
