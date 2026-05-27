@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Building2, Sparkles } from 'lucide-react';
+import { Building2, Sparkles, Presentation } from 'lucide-react';
 
 const FEATURE_FLAGS = [
   { key: 'workflows_enabled', label: 'Workflows', description: 'Enable the Workflows page in the sidebar' },
@@ -25,18 +25,22 @@ type FeatureKey = typeof FEATURE_FLAGS[number]['key'];
  * surfaced separately from the simple boolean toggles so admins can see
  * and choose inheritance explicitly.
  */
-type AssistOverride = 'inherit' | 'on' | 'off';
+type TriStateOverride = 'inherit' | 'on' | 'off';
 
-function assistValueToChoice(v: boolean | null | undefined): AssistOverride {
+function triValueToChoice(v: boolean | null | undefined): TriStateOverride {
   if (v === true) return 'on';
   if (v === false) return 'off';
   return 'inherit';
 }
-function assistChoiceToValue(c: AssistOverride): boolean | null {
+function triChoiceToValue(c: TriStateOverride): boolean | null {
   if (c === 'on') return true;
   if (c === 'off') return false;
   return null;
 }
+// Back-compat aliases (kept to minimise diff for existing assist handler).
+const assistValueToChoice = triValueToChoice;
+const assistChoiceToValue = triChoiceToValue;
+type AssistOverride = TriStateOverride;
 
 export function CompanyFeaturesPanel() {
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
@@ -71,6 +75,19 @@ export function CompanyFeaturesPanel() {
       );
     } catch (error: any) {
       toast.error(error.message || 'Failed to update Assist setting');
+    }
+  };
+
+  const handleGammaChange = async (choice: TriStateOverride) => {
+    try {
+      await updateFeatures.mutateAsync({ gamma_enabled: triChoiceToValue(choice) });
+      toast.success(
+        choice === 'inherit'
+          ? 'Gamma reverted to account default'
+          : `Gamma ${choice === 'on' ? 'enabled' : 'disabled'} for this company`,
+      );
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update Gamma setting');
     }
   };
 
@@ -149,6 +166,45 @@ export function CompanyFeaturesPanel() {
               <Select
                 value={assistValueToChoice(features?.assist_enabled)}
                 onValueChange={(v) => handleAssistChange(v as AssistOverride)}
+                disabled={updateFeatures.isPending}
+              >
+                <SelectTrigger className="w-[180px] shrink-0">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="inherit">Inherit (default)</SelectItem>
+                  <SelectItem value="on">Enabled</SelectItem>
+                  <SelectItem value="off">Disabled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {!featuresLoading && (
+            <div className="flex items-start justify-between rounded-lg border border-border p-4 gap-4">
+              <div className="space-y-1 min-w-0">
+                <Label className="text-sm font-medium inline-flex items-center gap-1.5">
+                  <Presentation className="h-3.5 w-3.5 text-[hsl(var(--outlook-blue))]" />
+                  Gamma
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Gamma presentation tab on deals and the Gamma templates settings section.
+                  Inherit follows the account default — on for 5th Line accounts, off for all others.
+                </p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  Current effective state:{' '}
+                  <span className="font-medium text-foreground">
+                    {triValueToChoice(features?.gamma_enabled) === 'inherit'
+                      ? 'Inherited from account default'
+                      : triValueToChoice(features?.gamma_enabled) === 'on'
+                      ? 'Explicitly enabled for this company'
+                      : 'Explicitly disabled for this company'}
+                  </span>
+                </p>
+              </div>
+              <Select
+                value={triValueToChoice(features?.gamma_enabled)}
+                onValueChange={(v) => handleGammaChange(v as TriStateOverride)}
                 disabled={updateFeatures.isPending}
               >
                 <SelectTrigger className="w-[180px] shrink-0">
