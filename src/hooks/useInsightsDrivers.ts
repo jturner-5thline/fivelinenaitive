@@ -41,10 +41,13 @@ export function useInsightsDrivers(): {
     const prevMonthStart = startOfMonth(subMonths(now, monthsBack + 1));
     const nextMonthStart = startOfMonth(subMonths(now, monthsBack - 1));
 
-    const inMonth = (date: string | null, start: Date, end: Date) => {
+    // Compare on YYYY-MM string prefix to avoid timezone drift on
+    // UTC-midnight QBO dates (e.g. "2026-05-01" landing in April locally).
+    const curKey = `${curMonthStart.getFullYear()}-${String(curMonthStart.getMonth() + 1).padStart(2, '0')}`;
+    const prevKey = `${prevMonthStart.getFullYear()}-${String(prevMonthStart.getMonth() + 1).padStart(2, '0')}`;
+    const inMonth = (date: string | null, key: string) => {
       if (!date) return false;
-      const d = new Date(date);
-      return d >= start && d < end;
+      return date.slice(0, 7) === key;
     };
 
     const buildBreakdown = <T,>(
@@ -59,8 +62,8 @@ export function useInsightsDrivers(): {
         const d = getDate(it);
         const k = getKey(it) || 'Unknown';
         const v = getAmt(it) || 0;
-        if (inMonth(d, curMonthStart, nextMonthStart)) cur.set(k, (cur.get(k) || 0) + v);
-        else if (inMonth(d, prevMonthStart, curMonthStart)) prev.set(k, (prev.get(k) || 0) + v);
+        if (inMonth(d, curKey)) cur.set(k, (cur.get(k) || 0) + v);
+        else if (inMonth(d, prevKey)) prev.set(k, (prev.get(k) || 0) + v);
       }
       const keys = new Set<string>([...cur.keys(), ...prev.keys()]);
       const totalDelta = [...keys].reduce((s, k) => s + ((cur.get(k) || 0) - (prev.get(k) || 0)), 0);
