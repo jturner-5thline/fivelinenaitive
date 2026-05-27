@@ -274,6 +274,12 @@ function ControllerDashboardInner() {
     [range.resolved.start, range.resolved.end, range.resolved.label],
   );
 
+  // Per-user "show data labels" toggle (Scott's nice-to-have).
+  const [showDataLabels, setShowDataLabels] = useLocalStorageState<boolean>(
+    'controller-dashboard:data-labels',
+    true,
+  );
+
   // Data — every period-bound hook resubscribes when the selector changes.
   const finservRevenue = useRevenueByClient(FINSERV_REALM_ID, period);
   const debtRevenue    = useRevenueByClient(DEBT_REALM_ID, period);
@@ -337,6 +343,16 @@ function ControllerDashboardInner() {
           defaultGranularity="monthly"
           onChange={setRange}
         />
+        <div className="flex items-center gap-2 ml-auto">
+          <Switch
+            id="controller-data-labels"
+            checked={showDataLabels}
+            onCheckedChange={setShowDataLabels}
+          />
+          <Label htmlFor="controller-data-labels" className="text-xs text-muted-foreground cursor-pointer">
+            Show data labels
+          </Label>
+        </div>
         {(finservRevenue.isLoading || debtRevenue.isLoading) && (
           <Badge variant="outline" className="text-xs animate-pulse">Loading from QuickBooks…</Badge>
         )}
