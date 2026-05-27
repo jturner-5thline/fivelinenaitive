@@ -1,6 +1,8 @@
 import { useState, useRef, type KeyboardEvent, type ComponentType, useCallback, useMemo, useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLocalStorageState } from '@/hooks/useLocalStorageState';
+import { useUndoStack } from '@/hooks/useUndoStack';
 import { ClaapRoutingTasksBadge } from '@/components/integrations/claap/ClaapRoutingTasksBadge';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -63,7 +65,7 @@ import {
   Tag, ClipboardList, Users, Briefcase, Building2, CalendarDays, X,
   Pencil, Copy as CopyIcon, Check,
   Link2, Pin, PinOff, Repeat, ChevronDown,
-  Columns3,
+  Columns3, Undo2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useDueBoundaries } from '@/hooks/useDueBoundaries';
