@@ -278,7 +278,7 @@ export function QuickBooksFinancialDashboard({
                       <LabelList
                         dataKey="revenue"
                         position="top"
-                        formatter={makeLabelFormatter(metrics.monthlyRevenue.map(d => d.revenue))}
+                        formatter={makeLabelFormatter(effectiveMonthlyRevenue.map(d => d.revenue))}
                         style={dataLabelStyle}
                       />
                     )}
@@ -342,9 +342,9 @@ export function QuickBooksFinancialDashboard({
           </CardHeader>
           <CardContent>
             <div style={{ height: 280 }}>
-              {metrics.topCustomers.length > 0 ? (
+              {enrichedTopCustomers.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={metrics.topCustomers} layout="vertical">
+                  <BarChart data={enrichedTopCustomers} layout="vertical">
                     <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                     <XAxis type="number" tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
                     <YAxis dataKey="name" type="category" width={120} tick={{ fontSize: 9 }} />
@@ -358,14 +358,14 @@ export function QuickBooksFinancialDashboard({
                         { metric: 'Revenue', value: formatCurrency(Number(d?.revenue) || 0) },
                       ])}
                     >
-                      {metrics.topCustomers.map((_, index) => (
+                      {enrichedTopCustomers.map((_, index) => (
                         <Cell key={index} fill={COLORS[index % COLORS.length]} />
                       ))}
                       {showDataLabels && (
                         <LabelList
                           dataKey="revenue"
                           position="right"
-                          formatter={makeLabelFormatter(metrics.topCustomers.map(d => d.revenue))}
+                          formatter={makeLabelFormatter(enrichedTopCustomers.map(d => d.revenue))}
                           style={dataLabelStyle}
                         />
                       )}
