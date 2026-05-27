@@ -797,6 +797,21 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         }}
       >
         <DialogTitle className="sr-only">Email</DialogTitle>
+        {/* Thin top loading bar shown while a background refresh is in
+            flight. Sits above the list so the cached content stays
+            visible behind it. Respects prefers-reduced-motion via plain
+            opacity transitions. */}
+        {isRefreshing && (
+          <div className="absolute left-0 right-0 top-0 z-50 h-0.5 overflow-hidden pointer-events-none">
+            <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-[shimmer_1.2s_ease-in-out_infinite]" />
+          </div>
+        )}
+        <InboxRefreshStatus
+          isRefreshing={isRefreshing}
+          lastRefreshAt={lastRefreshAt}
+          error={refreshError}
+          onRetry={forceRefresh}
+        />
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Error boundary so a single bad message / thread / attachment
               cannot crash the entire inbox popup. Reset key tied to
