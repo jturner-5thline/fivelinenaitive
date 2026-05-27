@@ -27,9 +27,10 @@ import {
 import { mockReferrers } from '@/data/mockDeals';
 import { MultiSelectFilter } from './MultiSelectFilter';
 import { useDealsContext } from '@/contexts/DealsContext';
+import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 
 
-export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'lender' | 'referredBy';
+export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'lender' | 'referredBy' | 'sourcedVia';
 
 export const FILTER_LABELS: Record<FilterKey, string> = {
   stage: 'Stage',
@@ -38,6 +39,7 @@ export const FILTER_LABELS: Record<FilterKey, string> = {
   manager: 'Manager',
   lender: 'Lender',
   referredBy: 'Referred By',
+  sourcedVia: 'Sourced via',
 };
 
 interface FiltersPopoverProps {
@@ -97,6 +99,11 @@ export function FiltersPopover({
     label: referrer.name,
   }));
 
+  const sourcedViaOptions = DEAL_SOURCED_VIA_OPTIONS.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
   const clearAllFilters = () => {
     onFilterChange({
       stage: [],
@@ -105,6 +112,7 @@ export function FiltersPopover({
       manager: [],
       lender: [],
       referredBy: [],
+      sourcedVia: [],
       staleOnly: false,
       flaggedOnly: false,
       hasNotificationsOnly: false,
@@ -141,6 +149,11 @@ export function FiltersPopover({
       key: 'referredBy', 
       options: referredByOptions, 
       onChange: (referredBy) => onFilterChange({ referredBy }) 
+    },
+    {
+      key: 'sourcedVia',
+      options: sourcedViaOptions,
+      onChange: (sourcedVia) => onFilterChange({ sourcedVia }),
     },
   ];
 
@@ -285,6 +298,11 @@ export function useFilterConfigs() {
     label: referrer.name,
   }));
 
+  const sourcedViaOptions = DEAL_SOURCED_VIA_OPTIONS.map((option) => ({
+    value: option,
+    label: option,
+  }));
+
   return {
     stage: stageOptions,
     status: statusOptions,
@@ -292,5 +310,6 @@ export function useFilterConfigs() {
     manager: managerOptions,
     lender: lenderOptions,
     referredBy: referredByOptions,
+    sourcedVia: sourcedViaOptions,
   };
 }

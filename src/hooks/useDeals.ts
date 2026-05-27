@@ -19,6 +19,7 @@ export interface DealFilters {
   manager: string[];
   lender: string[];
   referredBy: string[];
+  sourcedVia: string[];
   staleOnly: boolean;
   flaggedOnly: boolean;
   hasNotificationsOnly: boolean;
@@ -37,6 +38,7 @@ export const DEFAULT_DEAL_FILTERS: DealFilters = {
   manager: [],
   lender: [],
   referredBy: [],
+  sourcedVia: [],
   staleOnly: false,
   flaggedOnly: false,
   hasNotificationsOnly: false,
@@ -102,6 +104,10 @@ export function useDeals(options?: UseDealsOptions) {
 
     if (filters.referredBy.length > 0) {
       result = result.filter((deal) => deal.referredBy && filters.referredBy.includes(deal.referredBy.id));
+    }
+
+    if (filters.sourcedVia.length > 0) {
+      result = result.filter((deal) => deal.sourcedVia && filters.sourcedVia.includes(deal.sourcedVia));
     }
 
     if (filters.staleOnly) {
