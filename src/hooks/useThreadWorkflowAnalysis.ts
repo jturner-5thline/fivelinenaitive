@@ -187,6 +187,7 @@ export function useThreadWorkflowAnalysis({
   const queryClient = useQueryClient();
   const [analysis, setAnalysis] = useState<WorkflowAnalysis | null>(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [committing, setCommitting] = useState(false);
   const [dismissedKeys, setDismissedKeys] = useState<DismissalState>(() => readDismissed());
   const lastRunKey = useRef<string | null>(null);
@@ -211,6 +212,16 @@ export function useThreadWorkflowAnalysis({
   const run = useCallback(async () => {
     if (!threadData || !latestInbound || !messageId) return;
     setLoading(true);
+    setError(null);
+    // Hard timeout — if the AI/edge-function hangs we surface a clear
+    // error state instead of leaving the AI Assist header stuck on
+    // "Analyzing thread…" indefinitely (Niki bug, Asana #1215178140447221).
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setError('Analysis timed out — tap retry');
+      setLoading(false);
+    }, 25_000);
     try {
       const { data, error } = await supabase.functions.invoke('smart-email-ai', {
         body: {
@@ -416,7 +427,10 @@ export function useThreadWorkflowAnalysis({
       }
     } catch (err: any) {
       console.warn('[useThreadWorkflowAnalysis] error:', err?.message || err);
+      if (!timedOut) setError(err?.message || 'Couldn’t analyze thread');
     } finally {
+      clearTimeout(timeoutId);
+      if (timedOut) return;
       setLoading(false);
     }
   }, [dealId, threadData, latestInbound, messageId]);
@@ -1028,6 +1042,7 @@ export function useThreadWorkflowAnalysis({
   return {
     analysis,
     loading,
+    error,
     committing,
     isDismissed,
     run,
