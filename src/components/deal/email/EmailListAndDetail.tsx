@@ -1701,6 +1701,19 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
               )}
             </EmailPaneErrorBoundary>
           </EmailSelectionActionMenu>
+          {looksTruncated && gmailOpenUrl && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded border border-[hsl(var(--email-border))] bg-[hsl(var(--foreground)/0.03)] px-3 py-2 text-[11px] text-[hsl(var(--email-text-secondary))]">
+              <span>This message was clipped by Gmail (over 102KB). The full body isn’t available here.</span>
+              <a
+                href={gmailOpenUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 rounded border border-[hsl(var(--email-border))] bg-background px-2 py-1 font-medium hover:bg-[hsl(var(--foreground)/0.04)]"
+              >
+                View full message in Gmail
+              </a>
+            </div>
+          )}
 
           {/* Quoted text (only meaningful for plain text bodies) */}
           {!resolvedHtml && hasRenderableBody && textQuoted && (
