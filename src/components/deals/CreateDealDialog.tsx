@@ -49,6 +49,7 @@ import { useDefaultMilestones } from '@/contexts/DefaultMilestonesContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
 import { formatAmountWithCommas, parseAmountToNumber } from '@/utils/currencyFormat';
 import { addDays, format } from 'date-fns';
+import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 
 export interface CreateDealInitialValues {
   dealName?: string;
