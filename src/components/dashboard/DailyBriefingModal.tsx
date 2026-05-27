@@ -7,6 +7,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AgendaIntel } from './AgendaIntel';
+import { MoffittDealRundown } from './MoffittDealRundown';
+import { MOFFITT_USER_ID } from '@/constants/moffittBriefing';
 import { EndOfDayTab } from './EndOfDayTab';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
