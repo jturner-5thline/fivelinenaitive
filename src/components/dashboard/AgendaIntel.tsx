@@ -24,6 +24,9 @@ import {
   RefreshCw,
   ChevronLeft,
   Inbox,
+  X,
+  Pencil,
+  Sparkle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +53,8 @@ import { useMyTasks } from '@/hooks/useTasks';
 import { useUserEmailSignature } from '@/hooks/useUserEmailSignature';
 import { useGmail } from '@/hooks/useGmail';
 import { useAuth } from '@/contexts/AuthContext';
+import { isActiveDeal } from '@/lib/deals';
+import { extractEmailDomain } from '@/lib/extractEmailDomain';
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
@@ -59,7 +64,15 @@ interface DealRow {
   id: string;
   name: string;
   stage: string;
+  status?: string | null;
+  owner?: string | null;
+  crm_company_id?: string | null;
+  company_id?: string | null;
+  updated_at?: string | null;
+  category?: DealCategory;
 }
+
+type DealCategory = 'active' | 'on-hold' | 'prospect' | 'closed-lost' | 'closed-won' | 'other';
 
 interface PrepCacheEntry {
   bullets: string;
