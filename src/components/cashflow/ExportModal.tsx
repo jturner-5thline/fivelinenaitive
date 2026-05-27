@@ -350,7 +350,7 @@ export const ExportModal = memo(function ExportModal({
                     return (
                       <td key={wk} style={{
                         padding: 3, border: '1px solid #cbd5e1', textAlign: 'center',
-                        color: val > 0 ? '#16a34a' : val < 0 ? '#dc2626' : '#94a3b8',
+                        color: cellTextColor(val, { muted: true }),
                       }}>
                         {fmtAbbrev(val)}
                       </td>
