@@ -5716,9 +5716,17 @@ export default function DealDetail() {
 
       {/* Lenders Kanban Dialog */}
       <Dialog open={isLendersKanbanOpen} onOpenChange={setIsLendersKanbanOpen}>
-        <DialogContent className="max-w-[90vw] w-full max-h-[90vh] overflow-auto">
+        <DialogContent
+          className="max-w-[90vw] w-full max-h-[90vh] overflow-auto border-white/10 bg-gradient-to-b from-card/95 via-card/90 to-background/95 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.7)]"
+          style={{
+            backgroundImage:
+              "radial-gradient(900px 320px at 12% -10%, hsl(var(--primary) / 0.12), transparent 60%), radial-gradient(700px 280px at 88% 110%, hsl(var(--primary) / 0.08), transparent 60%), linear-gradient(to bottom, hsl(var(--card) / 0.96), hsl(var(--background) / 0.96))",
+          }}
+        >
           <DialogHeader>
-            <DialogTitle>Lenders Kanban View</DialogTitle>
+            <DialogTitle className="text-[11px] font-medium uppercase tracking-[0.16em] text-muted-foreground/80">
+              Lenders · By Stage
+            </DialogTitle>
           </DialogHeader>
           {deal && deal.lenders && (
             <Suspense fallback={<div className="p-4 text-sm text-muted-foreground">Loading lenders…</div>}>
@@ -5732,6 +5740,7 @@ export default function DealDetail() {
               stageGroups={stageGroups}
               passReasons={passReasons}
               onUpdateLenderGroup={updateLenderGroup}
+              onUpdateLenderStage={updateLenderStageDirect}
               onEditPassReasons={(lenderId) => {
                 const lender = deal.lenders?.find(l => l.id === lenderId);
                 if (lender) {
