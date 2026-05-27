@@ -10,6 +10,7 @@ import { ACCOUNT_OPTIONS } from './scheduledCashFlows';
 import { useCellComments, cellCommentKey } from './cellComments/useCellComments';
 import { CellCommentMenu } from './cellComments/CellCommentMenu';
 import { CellCommentPopover } from './cellComments/CellCommentPopover';
+import { CellCommentIndicator } from './cellComments/CellCommentIndicator';
 import type { CellComment } from './cellComments/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { CashFlowDrilldownModal, type DrilldownContext } from './CashFlowDrilldownModal';
@@ -694,6 +695,14 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
     setMenuState({ x: e.clientX, y: e.clientY, ctx });
   }, []);
 
+  // Open the comment popover anchored to a click event (used by the in-cell
+  // indicator button so clicking it shows the same view popover as the
+  // right-click → "View comments" flow).
+  const openCommentPopoverForCell = useCallback((e: React.MouseEvent, ctx: CellCtx) => {
+    setMenuState(null);
+    setPopoverState({ x: e.clientX, y: e.clientY, ctx, mode: 'view' });
+  }, []);
+
   const handleMenuAdd = useCallback(() => {
     if (!menuState) return;
     setPopoverState({ x: menuState.x, y: menuState.y, ctx: menuState.ctx, mode: 'compose' });
@@ -996,9 +1005,10 @@ export const WeeklyReportTab = memo(function WeeklyReportTab({
                                 className={cellCommentsHere.length > 0 ? 'cf-cell-has-comment' : undefined}
                               >
                                 {fmtAbbrev(display)}
-                                {cellCommentsHere.length > 0 && (
-                                  <span className={`cf-cell-comment-indicator${cellCommentsHere.length > 1 ? ' has-multiple' : ''}`} aria-hidden />
-                                )}
+                                <CellCommentIndicator
+                                  comments={cellCommentsHere}
+                                  onOpen={(e) => openCommentPopoverForCell(e, cellCtx)}
+                                />
                               </td>
                             );
                           })}

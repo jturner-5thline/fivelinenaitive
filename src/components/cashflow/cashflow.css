@@ -874,21 +874,34 @@ tr:hover .cf-row-remove { opacity: 1; }
   display: block;
 }
 
-/* Indicator dot in cell corner — non layout-shifting */
+/* Subtle comment marker (icon button) in cell corner — non layout-shifting */
 .cf-cell-comment-indicator {
   position: absolute;
-  top: 2px;
-  right: 2px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  box-shadow: 0 0 0 1px var(--color-surface);
-  pointer-events: none;
+  top: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--color-text-muted, #94a3b8);
+  opacity: 0.6;
   cursor: pointer;
+  transition: opacity 120ms ease, color 120ms ease, background 120ms ease;
+  z-index: 2;
+}
+.cf-cell-comment-indicator:hover {
+  opacity: 1;
+  background: rgba(148, 163, 184, 0.18);
 }
 .cf-cell-comment-indicator.has-multiple {
-  background: var(--color-warning);
+  color: var(--color-warning, #d97706);
+  opacity: 0.75;
 }
 
 /* Brief highlight when scrolling to a referenced cell */
