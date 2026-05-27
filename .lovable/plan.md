@@ -1,61 +1,58 @@
-## Suggest Times — AI Assist email feature
+# Controller Dashboard fix sweep
 
-A new "Suggest Times" flow alongside the existing Schedule Meeting button in the AI Assist email panel. Users generate calendar-aware time slot suggestions, insert them into the draft as clickable booking links, and recipients can confirm a slot with one click to auto-book the meeting.
+The Controller Dashboard lives in `src/components/metrics/dashboards/ControllerDashboard.tsx` and embeds `QuickBooksFinancialDashboard.tsx`. Shared metrics flow through `src/hooks/useQuickBooksMetrics.ts`. I'll fix each item below, scoped strictly to those three files + the QBO hook layer.
 
-### Scope
+## 1. Top Customers ranking — Enklu / i-Genie missing (real bug)
 
-**1. UI — AI Assist right rail**
-- Add `Suggest Times` button under existing `Schedule Meeting`.
-- Inline panel with controls: duration (15/30/45/60, default 30), window (3/5/7/14 business days, default 5), working hours (prefilled from `useUserCalendarPrefs`), TZ + recipient TZ toggle, slot count (3/5/7, default 5), buffer (0/15/30, default 15), avoid back-to-back toggle (on), focus-time-friendly toggle (off), format (bulleted/inline/numbered).
-- Generated slots render as editable, removable chips (±15min nudge).
-- "Insert into draft" injects formatted text + per-slot confirm links at cursor in the reply composer.
-- After insertion: collapsed state with "Slots inserted — Edit times".
+Root cause (confirmed in DB): `useQuickBooksMetrics` builds `customerById` keyed by `qb_id` only. Across the three QBO realms, `qb_id` collides — e.g. `qb_id=20` is `i-Genie.ai` in FinServ but `Vivid Robotics, Inc. (Mr Clayton Wood)` in Debt. The Debt customer overwrites the FinServ one in the map, so FinServ invoices for i-Genie/Enklu get bucketed under "Vivid Robotics" / "Engage Mobilize" and disappear from the top‑10. The aggregation also already pulls from all realms (the hook is called with `realmId = undefined`) — that part is fine.
 
-**2. Slot generation**
-- New `lib/calendar/freebusy.ts` wrapping existing `calendar-freebusy` edge function (already present) for the signed-in user.
-- New `lib/calendar/generateSlots.ts` — pure function: takes busy blocks + constraints, returns N candidate slots respecting business days, working hours, buffer, back-to-back avoidance, and focus-time rule.
+Fix: key `customerById` by `\`${realm_id}:${qb_id}\`` and look up using `\`${inv.realm_id}:${inv.customer_id}\``. Apply the same realm‑scoped key to the customer count and to the `topCustomers` reducer. Verified against DB that this puts Enklu ($35.2k) and i-Genie ($33.2k) into the YTD top‑10.
 
-**3. Backend**
-- Migration: `proposed_meeting_slots` (id, thread_id, user_id, recipient_email, slot_start, slot_end, status enum proposed/accepted/expired, token uuid unique, expires_at default now()+7d, created_at). RLS: owner can CRUD their own; public read by token for confirm page.
-- Edge function `confirm-meeting-slot`: validates token, calls `events.insert` via Nylas (existing pattern used by current Schedule Meeting flow), marks slot accepted + siblings expired, returns confirmation payload. No JWT required (public).
-- Edge function `create-proposed-slots`: bulk-inserts proposed slots for a thread, returns rows with tokens. JWT verified.
+## 2. Revenue & Payments — May discrepancy
 
-**4. Public confirm route**
-- `/schedule/confirm?token=<uuid>` — public page that calls `confirm-meeting-slot`, shows success or "no longer available".
+The earlier ETL fix (timezone bucketing by `yyyy-MM` prefix) is already live in `useQuickBooksMetrics.ts` lines 105–113. After fix #1 lands, re-verify in the preview that May‑26 reads ~$32k. If still off, the issue is upstream sync — flag for QBO ETL, no further code change here.
 
-**5. AI Assist integration**
-- When `Draft Reply` AI detects scheduling intent (regex/LLM signal on thread text), auto-call slot generator with defaults and surface "Insert suggested times" chip in the draft preview card.
+## 3. Debt Revenue by Client — person names instead of companies
 
-### Technical details
+`ControllerDashboard.useRevenueByClient` already resolves via `company_name → display_name`. The remaining person‑named rows come from Debt QBO customers where `company_name` is genuinely NULL (e.g. "Steven Adler"). There is no `deal_id`/`company_id` column on `quickbooks_customers`, so a robust cross-table join is out of scope for this pass.
 
-- `proposed_meeting_slots` token URL: `${window.location.origin}/schedule/confirm?token=<uuid>` (NOT `app.naitive/schedule/confirm` — use current origin so it works in preview + production).
-- Sibling expiry done in the same edge function transactionally: `UPDATE … SET status='expired' WHERE thread_id=$1 AND id<>$2 AND status='proposed'`.
-- Reuse Nylas grant lookup pattern from `calendar-freebusy` (gmail_tokens.grant_id).
-- Calendar event creation: `POST /v3/grants/{grantId}/events?calendar_id=primary` with attendees=[recipient,user], conferencing none for now (parity with existing flow — will extend later if needed).
-- Slot generation algorithm:
-  1. Build candidate grid: for each business day in window, walk working hours in `duration + buffer` increments.
-  2. Filter out any candidate overlapping a busy block (± buffer if avoid-back-to-back on).
-  3. If focus-time-friendly: drop candidates that would leave a free remainder <60min in their enclosing free block.
-  4. Spread N picks across days (round-robin per day) for diversity.
-- Format helpers in `lib/calendar/formatSlots.ts` (bulleted/inline/numbered, dual-TZ optional).
-- Composer insertion: extend existing reply composer to expose an imperative `insertAtCursor(html)` ref or, if not available, append to current draft value. Will inspect the composer component during implementation.
+Pragmatic fix: build a name‑match fallback against the deals/companies tables by `email` → `companies.primary_contact_email`, then by fuzzy display_name → `companies.name`. Use the resolved company name when found; otherwise keep the current label and tag the data‑quality export so finance can backfill in QBO. Apply the same resolver to FinServ.
 
-### Verification
+## 4. Data labels on charts
 
-Run through user's 5-step flow in `/admin` preview.
+Add a small `<LabelList>` (recharts) to: FinServ Revenue by Client, Debt Revenue by Client, Revenue & Payments Trend, A/R Aging, Top Customers by Revenue. Format via the existing `formatCurrency` (`$Xk` / `$X.XM`). Color `hsl(var(--muted-foreground))`, 10px. Only render labels for bars in the top 80th percentile of the dataset to avoid overlap.
 
-### Files touched (estimate)
+Add a `Show data labels` `Switch` next to `InsightsTimeRangeSelector` in `ControllerDashboard`. Persist via `useLocalStorageState('controller-dashboard:data-labels', true)`. Pipe the boolean into `QuickBooksFinancialDashboard` as a new prop.
 
-New:
-- `src/components/email/SuggestTimesPanel.tsx`
-- `src/lib/calendar/generateSlots.ts` (+ test)
-- `src/lib/calendar/formatSlots.ts`
-- `src/pages/ScheduleConfirm.tsx` + route in `App.tsx`
-- `supabase/functions/create-proposed-slots/index.ts`
-- `supabase/functions/confirm-meeting-slot/index.ts`
-- Migration for `proposed_meeting_slots`
+## 5. Quarterly/Yearly toggle does nothing for the embedded panel
 
-Modified:
-- AI Assist email panel component (locate via search for existing "Schedule Meeting" button)
-- AI draft preview card to surface the "Insert suggested times" chip when scheduling intent detected
-- Reply composer to expose cursor-insert API if missing
+`InsightsTimeRangeSelector` already persists `granularity` and updates `range.resolved.start/end`. The QBO trend chart however always renders 1‑month buckets (`subMonths` loop in `useQuickBooksMetrics.ts`). Re‑bucket `monthlyRevenue` based on `granularity`:
+
+- `monthly` → existing behavior
+- `quarterly` → bucket by `yyyy-Qn`, label `"Q1 2026"`
+- `yearly` → bucket by `yyyy`, label `"2026"`
+
+Plumb `granularity` from `ControllerDashboard` → `QuickBooksFinancialDashboard` → `useQuickBooksMetrics`. KPI cards already recompute correctly because they sum over `periodInvoices` (period‑filtered). Range/granularity already persist via `loadPersistedRange`.
+
+## 6. Consolidate QBO widgets into Controller view
+
+`QuickBooksFinancialDashboard` is already embedded at the bottom of `ControllerDashboard` (line 511). No standalone route currently surfaces it elsewhere — `grep` confirms only the controller imports it. So requirement #6 is already satisfied. I'll add an explicit section header `"QuickBooks Financials"` (already present) and confirm no duplicate widgets exist in sibling dashboards.
+
+## Technical details
+
+Files I'll touch:
+- `src/hooks/useQuickBooksMetrics.ts` — realm‑scoped customer map; granularity‑aware bucketing; accept `granularity?: 'monthly'|'quarterly'|'yearly'`.
+- `src/components/metrics/dashboards/QuickBooksFinancialDashboard.tsx` — `<LabelList>` on bars; accept `showDataLabels` + `granularity` props; pass to hook.
+- `src/components/metrics/dashboards/ControllerDashboard.tsx` — `<Switch>` for data labels, persist in `localStorage`; `<LabelList>` on FinServ/Debt revenue + currency tooltip already in place; pass `granularity` + `showDataLabels` to embedded `QuickBooksFinancialDashboard`.
+- (optional, only if #3 needs cross-table resolution) `src/lib/qboClientName.ts` — add `resolveQboClientLabelWithCrm(...)` accepting a Map<email|name, companyName>.
+
+No new libs, no other dashboards touched.
+
+## Verification
+
+After merge, on `/insights → Controller`:
+- Top Customers shows Enklu + i-Genie in YTD top‑10
+- May‑26 bar ≈ $32k (Total Revenue YTD ≈ $394k)
+- Quarterly toggle re‑buckets the trend chart to Q1/Q2/Q3/Q4 labels
+- `$Xk` labels render on bars; toggle hides them and persists across reloads
+- Debt chart x‑axis shows company names where available; remaining person names appear only when the underlying QBO customer truly has no company set

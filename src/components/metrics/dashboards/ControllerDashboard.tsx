@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Loader2, AlertCircle } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,6 +14,7 @@ import {
   YAxis,
   Tooltip,
   CartesianGrid,
+  LabelList,
 } from 'recharts';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import {
@@ -30,6 +33,7 @@ import {
 } from '@/components/insights/ChartDrilldown';
 import { QuickBooksFinancialDashboard } from './QuickBooksFinancialDashboard';
 import { resolveQboClientLabel } from '@/lib/qboClientName';
+import { useLocalStorageState } from '@/hooks/useLocalStorageState';
 
 const DEBT_REALM_ID = '193514877331929';
 const FINSERV_REALM_ID = '9341451968897660';
@@ -58,6 +62,21 @@ const formatCurrencyFull = (value: number) =>
 
 const truncateLabel = (label: string, maxLen = 14) =>
   label.length > maxLen ? label.slice(0, maxLen) + '…' : label;
+
+/** 80th-percentile data-label formatter — only labels bars that are large
+ *  enough to read without colliding with neighbors. */
+function makeLabelFormatter(values: number[]) {
+  const sorted = [...values].filter(v => Number.isFinite(v) && v > 0).sort((a, b) => a - b);
+  if (!sorted.length) return () => '';
+  const threshold = sorted[Math.floor(sorted.length * 0.2)] ?? 0;
+  return (v: number) => (v >= threshold ? formatCurrency(v) : '');
+}
+
+const dataLabelStyle = {
+  fill: 'hsl(var(--muted-foreground))',
+  fontSize: 10,
+  fontWeight: 500,
+} as const;
 
 /* ─── Revenue-by-Client hook (period-aware) ─── */
 function useRevenueByClient(realmId: string, period: { start: string; end: string }) {
@@ -255,6 +274,12 @@ function ControllerDashboardInner() {
     [range.resolved.start, range.resolved.end, range.resolved.label],
   );
 
+  // Per-user "show data labels" toggle (Scott's nice-to-have).
+  const [showDataLabels, setShowDataLabels] = useLocalStorageState<boolean>(
+    'controller-dashboard:data-labels',
+    true,
+  );
+
   // Data — every period-bound hook resubscribes when the selector changes.
   const finservRevenue = useRevenueByClient(FINSERV_REALM_ID, period);
   const debtRevenue    = useRevenueByClient(DEBT_REALM_ID, period);
@@ -318,6 +343,16 @@ function ControllerDashboardInner() {
           defaultGranularity="monthly"
           onChange={setRange}
         />
+        <div className="flex items-center gap-2 ml-auto">
+          <Switch
+            id="controller-data-labels"
+            checked={showDataLabels}
+            onCheckedChange={setShowDataLabels}
+          />
+          <Label htmlFor="controller-data-labels" className="text-xs text-muted-foreground cursor-pointer">
+            Show data labels
+          </Label>
+        </div>
         {(finservRevenue.isLoading || debtRevenue.isLoading) && (
           <Badge variant="outline" className="text-xs animate-pulse">Loading from QuickBooks…</Badge>
         )}
@@ -357,7 +392,16 @@ function ControllerDashboardInner() {
                   cursor="pointer"
                   aria-label="Click a client bar to open drilldown"
                   onClick={(d: any) => openClientDrill(d?.name, 'FinServ Revenue by Client', FINSERV_REALM_ID, Number(d?.revenue) || 0)}
-                />
+                >
+                  {showDataLabels && finservRevenue.data && (
+                    <LabelList
+                      dataKey="revenue"
+                      position="top"
+                      formatter={makeLabelFormatter(finservRevenue.data.map(d => d.revenue))}
+                      style={dataLabelStyle}
+                    />
+                  )}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -395,7 +439,16 @@ function ControllerDashboardInner() {
                   cursor="pointer"
                   aria-label="Click a client bar to open drilldown"
                   onClick={(d: any) => openClientDrill(d?.name, 'Debt Revenue by Client', DEBT_REALM_ID, Number(d?.revenue) || 0)}
-                />
+                >
+                  {showDataLabels && debtRevenue.data && (
+                    <LabelList
+                      dataKey="revenue"
+                      position="top"
+                      formatter={makeLabelFormatter(debtRevenue.data.map(d => d.revenue))}
+                      style={dataLabelStyle}
+                    />
+                  )}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -508,7 +561,12 @@ function ControllerDashboardInner() {
             P&amp;L, A/R, payments, and customer-level reporting across connected QuickBooks entities.
           </p>
         </div>
-        <QuickBooksFinancialDashboard period={period} periodBadge={periodBadge} />
+        <QuickBooksFinancialDashboard
+          period={period}
+          periodBadge={periodBadge}
+          granularity={range.granularity}
+          showDataLabels={showDataLabels}
+        />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { useQuickBooksInvoices, useQuickBooksCustomers, useQuickBooksPayments } 
 import { useQuickBooksExpanded } from '@/hooks/useQuickBooksExpanded';
 import { format, subMonths } from 'date-fns';
 import { resolveQboClientLabel } from '@/lib/qboClientName';
+import { buildBuckets, type Granularity } from '@/lib/insightsTimeRange';
 
 export interface QuickBooksMetricsPeriod {
   /** Inclusive ymd start. */
@@ -11,7 +12,11 @@ export interface QuickBooksMetricsPeriod {
   end: string;
 }
 
-export function useQuickBooksMetrics(realmId?: string, period?: QuickBooksMetricsPeriod) {
+export function useQuickBooksMetrics(
+  realmId?: string,
+  period?: QuickBooksMetricsPeriod,
+  granularity: Granularity = 'monthly',
+) {
   const { data: invoices = [], isLoading: invoicesLoading } = useQuickBooksInvoices(realmId);
   const { data: customers = [], isLoading: customersLoading } = useQuickBooksCustomers(realmId);
   const { data: payments = [], isLoading: paymentsLoading } = useQuickBooksPayments(realmId);
@@ -88,55 +93,50 @@ export function useQuickBooksMetrics(realmId?: string, period?: QuickBooksMetric
     // Net income proxy (revenue - expenses)
     const netIncome = totalRevenue - totalExpenses;
 
-    // Monthly revenue trend — buckets the active period when one is supplied,
-    // otherwise falls back to the legacy "rolling 12 months from today" view.
-    const monthlyRevenue: { month: string; revenue: number; payments: number; expenses: number; invoiceCount: number }[] = [];
-    const trendEnd = period ? new Date(period.end + 'T00:00:00') : now;
+    // Trend buckets — honor the active period AND granularity (monthly /
+    // quarterly / yearly). Date strings are compared as ymd prefixes to
+    // avoid timezone drift around UTC-midnight boundaries.
+    const trendEnd = period ? period.end : format(now, 'yyyy-MM-dd');
     const trendStart = period
-      ? new Date(period.start + 'T00:00:00')
-      : subMonths(now, 11);
-    const monthsToRender = Math.max(
-      1,
-      (trendEnd.getFullYear() - trendStart.getFullYear()) * 12 +
-        (trendEnd.getMonth() - trendStart.getMonth()) + 1,
-    );
-    for (let i = monthsToRender - 1; i >= 0; i--) {
-      const monthDate = subMonths(trendEnd, i);
-      const monthStr = format(monthDate, 'MMM-yy');
-      // Bucket by YYYY-MM string prefix to avoid timezone shifts that push
-      // UTC-midnight dates like "2026-05-01" into the prior month in negative
-      // UTC offsets (was hiding ~$30k of May FinServ revenue on /insights).
-      const monthKey = format(monthDate, 'yyyy-MM');
-      const inRange = (dateStr: string | null) => {
-        if (!dateStr) return false;
-        return dateStr.slice(0, 7) === monthKey;
+      ? period.start
+      : format(subMonths(now, 11), 'yyyy-MM-dd');
+    const buckets = buildBuckets(trendStart, trendEnd, granularity);
+    const monthlyRevenue = buckets.map(b => {
+      const inBucket = (d: string | null) =>
+        !!d && d >= b.start_date && d <= b.end_date;
+      const bi = invoices.filter(inv => inBucket(inv.txn_date));
+      const bp = payments.filter(p => inBucket(p.txn_date));
+      const be = expenses.filter(e => inBucket(e.txn_date));
+      return {
+        month: b.label,
+        revenue: bi.reduce((s, inv) => s + (inv.total_amt || 0), 0),
+        payments: bp.reduce((s, p) => s + (p.total_amt || 0), 0),
+        expenses: be.reduce((s, e) => s + (e.total_amt || 0), 0),
+        invoiceCount: bi.length,
       };
-
-      const monthInvoices = invoices.filter(inv => inRange(inv.txn_date));
-      const monthPayments = payments.filter(p => inRange(p.txn_date));
-      const monthExpenses = expenses.filter(e => inRange(e.txn_date));
-
-      monthlyRevenue.push({
-        month: monthStr,
-        revenue: monthInvoices.reduce((s, inv) => s + (inv.total_amt || 0), 0),
-        payments: monthPayments.reduce((s, p) => s + (p.total_amt || 0), 0),
-        expenses: monthExpenses.reduce((s, e) => s + (e.total_amt || 0), 0),
-        invoiceCount: monthInvoices.length,
-      });
-    }
+    });
 
     // Top customers by revenue — bucket by COMPANY name (falls back to display
-    // name only when QBO has no company set). Period-aware. See src/lib/qboClientName.ts.
-    const customerById = new Map<string, { company_name: string | null; display_name: string | null }>();
+    // name only when QBO has no company set). Period-aware. The lookup key is
+    // `${realm_id}:${qb_id}` because qb_id collides across realms (e.g. qb_id
+    // 20 = i-Genie in FinServ but Vivid Robotics in Debt). Without the realm
+    // prefix, FinServ invoices were getting bucketed under the wrong Debt
+    // customer and large clients like Enklu / i-Genie.ai vanished from
+    // the top-10. See src/lib/qboClientName.ts.
+    const customerByKey = new Map<string, { company_name: string | null; display_name: string | null }>();
     customers.forEach((c: any) => {
-      if (!c.qb_id) return;
-      customerById.set(c.qb_id, { company_name: c.company_name ?? null, display_name: c.display_name ?? null });
+      if (!c.qb_id || !c.realm_id) return;
+      customerByKey.set(`${c.realm_id}:${c.qb_id}`, {
+        company_name: c.company_name ?? null,
+        display_name: c.display_name ?? null,
+      });
     });
     const customerRevenue: Record<string, { name: string; revenue: number; balance: number; invoiceCount: number }> = {};
     periodInvoices.forEach((inv: any) => {
+      const key = inv.customer_id && inv.realm_id ? `${inv.realm_id}:${inv.customer_id}` : null;
       const name = resolveQboClientLabel(
         inv.customer_name,
-        inv.customer_id ? customerById.get(inv.customer_id) : undefined,
+        key ? customerByKey.get(key) : undefined,
       );
       if (!customerRevenue[name]) {
         customerRevenue[name] = { name, revenue: 0, balance: 0, invoiceCount: 0 };
@@ -269,7 +269,7 @@ export function useQuickBooksMetrics(realmId?: string, period?: QuickBooksMetric
       apAgingData,
       accountTypeData: Object.values(accountTypes).sort((a, b) => Math.abs(b.balance) - Math.abs(a.balance)),
     };
-  }, [invoices, customers, payments, expenses, bills, vendors, accounts, estimates, creditMemos, period?.start, period?.end]);
+  }, [invoices, customers, payments, expenses, bills, vendors, accounts, estimates, creditMemos, period?.start, period?.end, granularity]);
 
   return { data: metrics, isLoading, rawInvoices: invoices, rawPayments: payments, rawExpenses: expenses };
 }
