@@ -26,7 +26,6 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { GripVertical, RotateCcw, Save, Loader2, Target, Scale, AlertTriangle, ChevronDown } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useLenderMatchingConfig, MatchingCriterion, LenderMatchingConfig } from '@/hooks/useLenderMatchingConfig';
 import { cn } from '@/lib/utils';
 import {
@@ -217,12 +216,12 @@ export function LenderMatchingSettings() {
   const sortedCriteria = [...localConfig.criteria].sort((a, b) => a.position - b.position);
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CollapsibleTrigger asChild>
+          
             <button className="flex items-center gap-2 text-left flex-1">
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Target className="h-5 w-5" />
@@ -233,7 +232,7 @@ export function LenderMatchingSettings() {
                 </CardDescription>
               </div>
             </button>
-          </CollapsibleTrigger>
+          
           <div className="flex items-center gap-2">
             <Button
               variant="outline"
@@ -259,7 +258,7 @@ export function LenderMatchingSettings() {
             </Button>
           </div>
         </CardHeader>
-        <CollapsibleContent>
+        
           <CardContent className="space-y-6">
         {/* Matching Criteria Section */}
         <div className="space-y-3">
@@ -355,8 +354,8 @@ export function LenderMatchingSettings() {
           </div>
         )}
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
   );
 }

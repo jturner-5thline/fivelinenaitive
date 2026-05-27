@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuth } from '@/contexts/AuthContext';
 import { AvatarCropper } from './AvatarCropper';
@@ -205,10 +204,10 @@ export function ProfileSettings({ collapsible = false, open, onOpenChange }: Pro
   if (collapsible) {
     return (
       <>
-        <Collapsible open={isOpen} onOpenChange={onOpenChange}>
+        
           <Card>
-            <CollapsibleTrigger className="w-full group">
-              <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+            
+              <CardHeader className=" rounded-t-lg">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <User className="h-5 w-5" />
@@ -219,15 +218,15 @@ export function ProfileSettings({ collapsible = false, open, onOpenChange }: Pro
                       </CardDescription>
                     </div>
                   </div>
-                  <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                  
                 </div>
               </CardHeader>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
+            
+            
               {cardContent}
-            </CollapsibleContent>
+            
           </Card>
-        </Collapsible>
+        
         {cropper}
       </>
     );

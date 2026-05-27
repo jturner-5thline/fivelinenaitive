@@ -18,7 +18,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import { Plus, Trash2, Edit2, X, Check, Zap, Copy, Hash, ChevronDown } from 'lucide-react';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useEmailSnippets, SNIPPET_TOKENS, type EmailSnippetInsert } from '@/hooks/useEmailSnippets';
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
@@ -65,12 +64,12 @@ export function EmailSnippetsSettings() {
   const isFormOpen = showCreate || editingId;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CollapsibleTrigger asChild>
+          
             <button className="flex items-center gap-2 text-left flex-1">
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Zap className="h-4 w-4 text-primary" />
@@ -81,7 +80,7 @@ export function EmailSnippetsSettings() {
                 </CardDescription>
               </div>
             </button>
-          </CollapsibleTrigger>
+          
           {!isFormOpen && (
             <Button size="sm" onClick={(e) => { e.stopPropagation(); setIsOpen(true); setShowCreate(true); }} className="gap-1.5">
               <Plus className="h-3.5 w-3.5" />
@@ -89,7 +88,7 @@ export function EmailSnippetsSettings() {
             </Button>
           )}
         </CardHeader>
-        <CollapsibleContent>
+        
           <CardContent className="space-y-4">
         {/* Create/Edit Form */}
         {isFormOpen && (
@@ -237,8 +236,8 @@ export function EmailSnippetsSettings() {
           </ScrollArea>
         )}
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
   );
 }

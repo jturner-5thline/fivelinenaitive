@@ -27,11 +27,6 @@ import {
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from '@/components/ui/collapsible';
-import {
   Tags, Plus, Trash2, Edit2, X, Check, ChevronDown, ChevronRight,
   Zap, Shield, User, Info,
 } from 'lucide-react';
@@ -172,15 +167,15 @@ function LabelCard({ label, rules, onEdit, onDelete, onCreateRule, onToggleRule,
       </div>
 
       {/* Rules section */}
-      <Collapsible open={rulesOpen} onOpenChange={setRulesOpen}>
-        <CollapsibleTrigger asChild>
+      
+        
           <button className="flex items-center gap-1.5 mt-2 text-[11px] text-muted-foreground hover:text-foreground transition-colors">
-            {rulesOpen ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+            
             <Zap className="h-3 w-3" />
             {rules.length} rule{rules.length !== 1 ? 's' : ''} · {rules.filter(r => r.is_active).length} active
           </button>
-        </CollapsibleTrigger>
-        <CollapsibleContent className="mt-2 space-y-1.5">
+        
+        
           {rules.map(rule => (
             <RuleRow
               key={rule.id}
@@ -238,8 +233,8 @@ function LabelCard({ label, rules, onEdit, onDelete, onCreateRule, onToggleRule,
               Add rule
             </Button>
           )}
-        </CollapsibleContent>
-      </Collapsible>
+        
+      
     </div>
   );
 }

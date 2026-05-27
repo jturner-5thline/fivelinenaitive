@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Save, Loader2, RotateCcw, ChevronDown, Hash, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -106,10 +105,10 @@ export function LenderScoreSettings({ isAdmin = true }: LenderScoreSettingsProps
   };
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    
       <Card>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg">
+        
+          <CardHeader className=" rounded-t-lg">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -120,12 +119,12 @@ export function LenderScoreSettings({ isAdmin = true }: LenderScoreSettingsProps
                   <CardDescription>Configure score labels, colors, and visibility</CardDescription>
                 </div>
               </div>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
             </div>
           </CardHeader>
-        </CollapsibleTrigger>
+        
 
-        <CollapsibleContent>
+        
           <CardContent className="space-y-5 pt-0">
             {!isAdmin && (
               <p className="text-xs text-muted-foreground">Only admins can modify these settings.</p>
@@ -256,8 +255,8 @@ export function LenderScoreSettings({ isAdmin = true }: LenderScoreSettingsProps
               </div>
             )}
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
   );
 }

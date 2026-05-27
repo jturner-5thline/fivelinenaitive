@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
@@ -317,10 +316,10 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
 
   return (
     <>
-      <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      
         <Card>
-          <CollapsibleTrigger asChild>
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+          
+            <CardHeader className="">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Layers className="h-5 w-5 text-primary" />
@@ -331,12 +330,12 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary">{pipelines.length}</Badge>
-                  {isOpen ? <ChevronDown className="h-5 w-5 text-muted-foreground" /> : <ChevronRight className="h-5 w-5 text-muted-foreground" />}
+                  
                 </div>
               </div>
             </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
+          
+          
             <CardContent className="space-y-3">
               {isLoading ? (
                 <div className="flex items-center justify-center py-8">
@@ -347,7 +346,7 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
                   {pipelines.map(pipeline => (
                     <div key={pipeline.id} className="border rounded-lg">
                       <div
-                        className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30 transition-colors"
+                        className="flex items-center justify-between p-3 "
                         onClick={() => toggleExpanded(pipeline.id)}
                       >
                         <div className="flex items-center gap-2">
@@ -399,9 +398,9 @@ export function PipelineSettings({ isAdmin = true }: PipelineSettingsProps) {
                 </>
               )}
             </CardContent>
-          </CollapsibleContent>
+          
         </Card>
-      </Collapsible>
+      
 
       {/* Create/Edit Pipeline Dialog */}
       <Dialog open={pipelineDialogOpen} onOpenChange={handlePipelineDialogClose}>

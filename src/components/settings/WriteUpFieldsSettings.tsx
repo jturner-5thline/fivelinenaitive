@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { GripVertical, RotateCcw, ChevronDown, FileText, Pencil, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -174,10 +173,10 @@ export function WriteUpFieldsSettings({ isAdmin = true }: WriteUpFieldsSettingsP
   if (!isAdmin) return null;
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    
       <Card>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+        
+          <CardHeader className="">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-muted-foreground" />
@@ -186,11 +185,11 @@ export function WriteUpFieldsSettings({ isAdmin = true }: WriteUpFieldsSettingsP
                   <CardDescription>Configure which fields appear on deal write-ups, their labels, order, and requirements</CardDescription>
                 </div>
               </div>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
             </div>
           </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+        
+        
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
               <p className="text-sm text-muted-foreground">
@@ -226,8 +225,8 @@ export function WriteUpFieldsSettings({ isAdmin = true }: WriteUpFieldsSettingsP
               </DndContext>
             )}
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
   );
 }

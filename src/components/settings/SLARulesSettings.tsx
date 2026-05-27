@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -207,7 +206,7 @@ function SLARuleCard({ rule }: { rule: SLARule }) {
   const actionInfo = ACTION_TYPES.find(t => t.id === rule.action_type);
 
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded}>
+    
       <div className="border rounded-lg p-3">
         <div className="flex items-center gap-3">
           <AlertTriangle className={cn('h-4 w-4 shrink-0', rule.is_active ? 'text-yellow-500' : 'text-muted-foreground')} />
@@ -231,15 +230,15 @@ function SLARuleCard({ rule }: { rule: SLARule }) {
               checked={rule.is_active}
               onCheckedChange={(checked) => updateRule.mutate({ id: rule.id, is_active: checked })}
             />
-            <CollapsibleTrigger asChild>
+            
               <Button variant="ghost" size="icon" className="h-7 w-7">
-                {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                
               </Button>
-            </CollapsibleTrigger>
+            
           </div>
         </div>
 
-        <CollapsibleContent>
+        
           <div className="mt-3 pt-3 border-t space-y-2">
             {rule.description && <p className="text-sm text-muted-foreground">{rule.description}</p>}
             <div className="text-xs text-muted-foreground space-y-1">
@@ -252,9 +251,9 @@ function SLARuleCard({ rule }: { rule: SLARule }) {
               </Button>
             </div>
           </div>
-        </CollapsibleContent>
+        
       </div>
-    </Collapsible>
+    
   );
 }
 

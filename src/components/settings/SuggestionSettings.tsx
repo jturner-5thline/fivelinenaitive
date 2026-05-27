@@ -4,7 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { usePreferences, SuggestionPreferences } from '@/contexts/PreferencesContext';
 import { toast } from '@/hooks/use-toast';
 
@@ -202,9 +201,9 @@ export function SuggestionSettings({ collapsible = true, open, onOpenChange }: S
   if (collapsible) {
     return (
       <Card>
-        <Collapsible open={isOpen} onOpenChange={onOpenChange}>
-          <CollapsibleTrigger className="w-full group">
-            <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors rounded-t-lg">
+        
+          
+            <CardHeader className=" rounded-t-lg">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Lightbulb className="h-5 w-5" />
@@ -213,14 +212,14 @@ export function SuggestionSettings({ collapsible = true, open, onOpenChange }: S
                     <CardDescription>Customize which suggestions appear</CardDescription>
                   </div>
                 </div>
-                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
+                
               </div>
             </CardHeader>
-          </CollapsibleTrigger>
-          <CollapsibleContent>
+          
+          
             {content}
-          </CollapsibleContent>
-        </Collapsible>
+          
+        
       </Card>
     );
   }

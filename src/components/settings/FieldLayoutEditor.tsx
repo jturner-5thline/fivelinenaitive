@@ -7,7 +7,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import {
   GripVertical, Plus, Trash2, ChevronDown, ChevronRight,
   Eye, EyeOff, Search, Columns2, Columns3, RotateCcw, Save, Loader2, Sparkles
@@ -372,7 +371,7 @@ function SectionCard({
         </div>
         <GripVertical className="h-4 w-4 text-muted-foreground shrink-0" />
         <button onClick={() => setIsOpen(!isOpen)} className="shrink-0">
-          {isOpen ? <ChevronDown className="h-4 w-4 text-muted-foreground" /> : <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+          
         </button>
         {editingTitle ? (
           <Input

@@ -5,7 +5,6 @@ import { useCompany } from '@/hooks/useCompany';
 import { GripVertical, Eye, EyeOff, RotateCcw, ChevronDown, LayoutList, Lock, Plus, X, ShieldAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { useDealInfoFieldOrder, DEAL_INFO_FIELD_DEFINITIONS, DEFAULT_FIELD_ORDER, DealInfoFieldId } from '@/hooks/useDealInfoFieldOrder';
@@ -219,10 +218,10 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
   const availableToAdd = DEAL_INFO_FIELD_DEFINITIONS.filter(f => !fieldOrder.includes(f.id));
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    
       <Card>
-        <CollapsibleTrigger asChild>
-          <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+        
+          <CardHeader className="">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <LayoutList className="h-5 w-5 text-muted-foreground" />
@@ -235,11 +234,11 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
                   </CardDescription>
                 </div>
               </div>
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
             </div>
           </CardHeader>
-        </CollapsibleTrigger>
-        <CollapsibleContent>
+        
+        
           <CardContent className="space-y-4">
             {readOnly && (
               <div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2.5 text-xs text-amber-700 dark:text-amber-300">
@@ -359,8 +358,8 @@ export function DealInfoFieldsSettings({ isAdmin = true }: DealInfoFieldsSetting
               </div>
             )}
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
   );
 }

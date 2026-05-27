@@ -6,7 +6,6 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
@@ -159,7 +158,7 @@ function ReportCard({ report }: { report: ScheduledReport }) {
   const scheduleLabel = SCHEDULE_PRESETS.find(p => p.cron === report.schedule_cron)?.label || report.schedule_cron;
 
   return (
-    <Collapsible open={expanded} onOpenChange={setExpanded}>
+    
       <div className="border rounded-lg p-3">
         <div className="flex items-center gap-3">
           <span className="text-lg">{typeInfo?.emoji || '📊'}</span>
@@ -195,15 +194,15 @@ function ReportCard({ report }: { report: ScheduledReport }) {
             >
               {runNow.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3" />}
             </Button>
-            <CollapsibleTrigger asChild>
+            
               <Button variant="ghost" size="icon" className="h-7 w-7">
-                {expanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                
               </Button>
-            </CollapsibleTrigger>
+            
           </div>
         </div>
 
-        <CollapsibleContent>
+        
           <div className="mt-3 pt-3 border-t space-y-3">
             {report.description && (
               <p className="text-sm text-muted-foreground">{report.description}</p>
@@ -221,9 +220,9 @@ function ReportCard({ report }: { report: ScheduledReport }) {
               </Button>
             </div>
           </div>
-        </CollapsibleContent>
+        
       </div>
-    </Collapsible>
+    
   );
 }
 
@@ -233,12 +232,12 @@ export function ScheduledReportsSettings() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+    
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <CollapsibleTrigger asChild>
+          
             <button className="flex items-center gap-2 text-left flex-1">
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+              
               <div>
                 <CardTitle className="text-lg flex items-center gap-2">
                   <Calendar className="h-5 w-5" />
@@ -247,7 +246,7 @@ export function ScheduledReportsSettings() {
                 <CardDescription>Automated AI-powered reports delivered on schedule</CardDescription>
               </div>
             </button>
-          </CollapsibleTrigger>
+          
           <Dialog open={showCreate} onOpenChange={setShowCreate}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-2" onClick={(e) => { e.stopPropagation(); setIsOpen(true); }}>
@@ -263,7 +262,7 @@ export function ScheduledReportsSettings() {
             </DialogContent>
           </Dialog>
         </CardHeader>
-        <CollapsibleContent>
+        
           <CardContent>
         {isLoading ? (
           <div className="text-sm text-muted-foreground">Loading reports...</div>
@@ -281,8 +280,8 @@ export function ScheduledReportsSettings() {
           </div>
         )}
           </CardContent>
-        </CollapsibleContent>
+        
       </Card>
-    </Collapsible>
+    
   );
 }
