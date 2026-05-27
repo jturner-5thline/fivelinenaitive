@@ -18,6 +18,7 @@ import { naturalLanguageToDealFilter } from '@/lib/naturalLanguageToDealFilter';
 import { useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
 import naitiveAiIcon from '@/assets/naitive-ai-icon.png';
+import naitiveBrandIcon from '@/assets/naitive-icon-light.png';
 import { cn } from '@/lib/utils';
 import { AICopilotPanel } from '@/components/AICopilotPanel';
 import { AskNaitiveBar } from '@/components/copilot/AskNaitiveBar';
@@ -84,6 +85,8 @@ export function CopilotToggleButton() {
   const hasOpenModal = useAnyDialogOpen();
   const [value, setValue] = useState('');
   const [focused, setFocused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const collapseTimerRef = useRef<number | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   // Most recently submitted prompt — used by ArrowUp to recall the
   // previous query when the input is empty (terminal-style history).
@@ -274,7 +277,11 @@ export function CopilotToggleButton() {
         if (e.key === 'j' && isOpen) {
           togglePanel();
         } else {
-          inputRef.current?.focus();
+          // Force-expand the pill first so the textarea exists, then focus.
+          setHovered(true);
+          requestAnimationFrame(() => {
+            inputRef.current?.focus();
+          });
         }
       }
     };
