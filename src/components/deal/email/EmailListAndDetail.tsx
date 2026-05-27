@@ -1991,6 +1991,15 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
+  // Floating "you just linked this deal" preview card. Opens deterministically
+  // when a user picks a deal in LinkToDealPopover so the toolbar's Linked
+  // state isn't mistaken for a stuck spinner. Lives as a sibling of the
+  // picker — not nested — so the picker's outside-click handler can't race
+  // the preview's mount.
+  const [linkPreviewDealId, setLinkPreviewDealId] = useState<string | null>(null);
+  const [linkPreviewOpen, setLinkPreviewOpen] = useState(false);
+  const linkPreviewAnchorRef = useRef<HTMLSpanElement | null>(null);
+
   // Pre-send link-to-deal prompt removed — replies send immediately and
   // inherit any pre-resolved deal link silently. Manual linking remains
   // available via the "Link Deal" toolbar action.
