@@ -103,13 +103,13 @@ export function useQuickBooksMetrics(realmId?: string, period?: QuickBooksMetric
     for (let i = monthsToRender - 1; i >= 0; i--) {
       const monthDate = subMonths(trendEnd, i);
       const monthStr = format(monthDate, 'MMM-yy');
-      const monthStart = startOfMonth(monthDate);
-      const nextMonthStart = startOfMonth(subMonths(trendEnd, i - 1));
-
+      // Bucket by YYYY-MM string prefix to avoid timezone shifts that push
+      // UTC-midnight dates like "2026-05-01" into the prior month in negative
+      // UTC offsets (was hiding ~$30k of May FinServ revenue on /insights).
+      const monthKey = format(monthDate, 'yyyy-MM');
       const inRange = (dateStr: string | null) => {
         if (!dateStr) return false;
-        const d = new Date(dateStr);
-        return d >= monthStart && d < nextMonthStart;
+        return dateStr.slice(0, 7) === monthKey;
       };
 
       const monthInvoices = invoices.filter(inv => inRange(inv.txn_date));
