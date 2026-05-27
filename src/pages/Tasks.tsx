@@ -1071,7 +1071,25 @@ export default function Tasks() {
               })()}
             </p>
           </div>
-          <div className="shrink-0 flex items-center">
+          <div className="shrink-0 flex items-center gap-2">
+            {undoStack.canUndo && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-[12px]"
+                title="Undo last action (⌘Z)"
+                onClick={() => {
+                  const action = undoStack.pop();
+                  if (action) {
+                    Promise.resolve(action.undo()).then(() => toast.success(`Undone: ${action.label}`));
+                  }
+                }}
+              >
+                <Undo2 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Undo</span>
+              </Button>
+            )}
             <HintTooltip
               hint="Click here to create a new task."
               visible={isHintVisible('tasks-add')}
