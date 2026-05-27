@@ -487,7 +487,20 @@ export function DealsHeader() {
       <Suspense fallback={isMailOpen ? <OverlayLoadingShell kind="mail" onClose={() => setIsMailOpen(false)} /> : null}>
         <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
       </Suspense>
-      {canSeeBriefingHeaderItems && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
+      {canSeeBriefingHeaderItems && (
+        <DailyBriefingModal
+          open={isBriefingOpen}
+          onOpenChange={setIsBriefingOpen}
+          {...(isNikiMirror
+            ? {
+                title: "Daily Rundown",
+                targetUserId: NIKI_USER_ID,
+                targetAssigneeName: NIKI_ASSIGNEE_NAME,
+                excludeTabs: ['financial'] as const as any,
+              }
+            : {})}
+        />
+      )}
       {canSeeNiki && (
         <DailyBriefingModal
           open={isNikiBriefingOpen}
