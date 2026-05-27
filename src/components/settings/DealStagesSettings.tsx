@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { ChevronDown, ChevronRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
@@ -437,32 +436,21 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
 
   return (
     <>
-      
-        <Card>
-          
-            <CardHeader className="">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <GitBranch className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle className="text-lg">Deal Stages</CardTitle>
-                    <CardDescription>Edit the stages of your configured deal pipeline. Changes apply across kanban, filters and stage selectors.</CardDescription>
-                  </div>
-                </div>
-                {isOpen ? (
-                  <ChevronDown className="h-5 w-5 text-muted-foreground" />
-                ) : (
-                  <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                )}
-              </div>
-            </CardHeader>
-          
-          
-            <CardContent className="space-y-4">
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <GitBranch className="h-5 w-5 text-primary" />
+            <div>
+              <CardTitle className="text-lg">Deal Stages</CardTitle>
+              <CardDescription>Stages for the selected pipeline. Each pipeline has its own independent ordered list of stages — changes apply across kanban, filters and stage selectors for that pipeline only.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
               {/* Top Save Bar */}
               <SaveBar />
 
-              {pipelines.length > 1 && (
+              {pipelines.length > 0 && (
                 <div className="space-y-1.5">
                   <Label className="text-xs text-muted-foreground">Pipeline</Label>
                   <Select value={selectedPipelineId ?? undefined} onValueChange={switchPipeline}>
@@ -477,6 +465,9 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
                       ))}
                     </SelectContent>
                   </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Editing stages for <span className="font-medium text-foreground">{pipelines.find(p => p.id === selectedPipelineId)?.name ?? '—'}</span>. Changes are scoped to this pipeline only.
+                  </p>
                 </div>
               )}
 
@@ -522,10 +513,8 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
               
               {/* Bottom Save Bar */}
               <SaveBar />
-            </CardContent>
-          
-        </Card>
-      
+        </CardContent>
+      </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent>
