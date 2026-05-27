@@ -292,7 +292,7 @@ function DraggableLenderTile({
 
 // Droppable Kanban Column with larger drop target
 function DroppableColumn({
-  group,
+  column,
   dealId,
   dealName,
   dealCompany,
@@ -311,7 +311,7 @@ function DroppableColumn({
   dealId?: string;
   dealName?: string;
   dealCompany?: string;
-  group: { id: StageGroup; label: string; color: string };
+  column: { id: string; label: string; color: string };
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
   isSaving?: (id: string) => boolean;
@@ -325,14 +325,14 @@ function DroppableColumn({
   onFollowUpSent?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: group.id,
+    id: column.id,
   });
 
   return (
     <div className="flex flex-col min-w-0 overflow-hidden">
       <div className="flex items-center gap-2 mb-3 px-1">
-        <div className={cn("w-3 h-3 rounded-full shrink-0", group.color)} />
-        <h3 className="font-medium text-sm truncate">{group.label}</h3>
+        <div className={cn("w-3 h-3 rounded-full shrink-0", column.color)} />
+        <h3 className="font-medium text-sm truncate">{column.label}</h3>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
           {lenders.length}
         </span>
@@ -389,6 +389,7 @@ export function LendersKanban({
   stageGroups,
   passReasons,
   onUpdateLenderGroup,
+  onUpdateLenderStage,
   onEditPassReasons,
   isSaving,
   failedSaves,
@@ -401,7 +402,7 @@ export function LendersKanban({
 }: LendersKanbanProps) {
   const [activeLender, setActiveLender] = useState<DealLender | null>(null);
   const [passReasonDialogOpen, setPassReasonDialogOpen] = useState(false);
-  const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string } | null>(null);
+  const [pendingPassChange, setPendingPassChange] = useState<{ lenderId: string; stageId: string } | null>(null);
   const [selectedPassReasons, setSelectedPassReasons] = useState<string[]>([]);
   const [passReasonSearch, setPassReasonSearch] = useState('');
 
@@ -435,24 +436,38 @@ export function LendersKanban({
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveLender(null);
+    if (!over || active.id === over.id) return;
 
-    if (over && active.id !== over.id) {
-      const targetGroup = over.id as StageGroup;
-      if (stageGroups.some(g => g.id === targetGroup)) {
-        if (targetGroup === 'passed') {
-          setPendingPassChange({ lenderId: active.id as string });
-          setSelectedPassReasons([]);
-          setPassReasonDialogOpen(true);
-        } else {
-          onUpdateLenderGroup(active.id as string, targetGroup);
-        }
-      }
+    const targetId = String(over.id);
+    const lenderId = String(active.id);
+
+    if (targetId === '__unassigned__') return;
+
+    const targetStage = configuredStages.find(s => s.id === targetId);
+    if (!targetStage) return;
+
+    if (targetStage.group === 'passed') {
+      setPendingPassChange({ lenderId, stageId: targetStage.id });
+      setSelectedPassReasons([]);
+      setPassReasonDialogOpen(true);
+      return;
+    }
+
+    if (onUpdateLenderStage) {
+      onUpdateLenderStage(lenderId, targetStage.id);
+    } else {
+      onUpdateLenderGroup(lenderId, targetStage.group);
     }
   };
 
   const handleConfirmPass = () => {
     if (pendingPassChange && selectedPassReasons.length > 0) {
-      onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', selectedPassReasons.join(', '));
+      const reason = selectedPassReasons.join(', ');
+      if (onUpdateLenderStage) {
+        onUpdateLenderStage(pendingPassChange.lenderId, pendingPassChange.stageId, reason);
+      } else {
+        onUpdateLenderGroup(pendingPassChange.lenderId, 'passed', reason);
+      }
       setPassReasonDialogOpen(false);
       setPendingPassChange(null);
       setSelectedPassReasons([]);
@@ -474,16 +489,32 @@ export function LendersKanban({
     });
   };
 
-  const isStageGroup = (value: unknown): value is StageGroup =>
-    typeof value === 'string' && stageGroups.some(g => g.id === value);
+  // Build columns from configured stages (one column per stage), preserving order.
+  const stageColumns = useMemo(() => {
+    const groupColorById = new Map(stageGroups.map(g => [g.id, g.color] as const));
+    return configuredStages.map(s => ({
+      id: s.id,
+      label: s.label,
+      color: groupColorById.get(s.group as StageGroup) || 'bg-muted',
+    }));
+  }, [configuredStages, stageGroups]);
 
-  const getLendersByGroup = (groupId: StageGroup) => {
-    return lenders.filter((lender) => {
-      if (isStageGroup(lender.trackingStatus) && lender.trackingStatus === groupId) return true;
-      const stage = configuredStages.find((s) => s.id === lender.stage);
-      return stage?.group === groupId;
+  const lendersByStage = useMemo(() => {
+    const map = new Map<string, DealLender[]>();
+    map.set('__unassigned__', []);
+    stageColumns.forEach(c => map.set(c.id, []));
+    const validIds = new Set(stageColumns.map(c => c.id));
+    lenders.forEach(l => {
+      const key = l.stage && validIds.has(l.stage) ? l.stage : '__unassigned__';
+      map.get(key)!.push(l);
     });
-  };
+    return map;
+  }, [lenders, stageColumns]);
+
+  const hasUnassigned = (lendersByStage.get('__unassigned__')?.length ?? 0) > 0;
+  const renderedColumns = hasUnassigned
+    ? [{ id: '__unassigned__', label: 'Unassigned', color: 'bg-muted-foreground/40' }, ...stageColumns]
+    : stageColumns;
 
   const overlayStageLabel = activeLender ? configuredStages.find(s => s.id === activeLender.stage)?.label || activeLender.stage : '';
   const overlayMetrics = activeLender ? lenderMetrics?.[activeLender.name.toLowerCase().trim()] : undefined;
@@ -497,15 +528,15 @@ export function LendersKanban({
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        <div className={`grid gap-4 overflow-hidden py-2`} style={{ gridTemplateColumns: `repeat(${stageGroups.length}, minmax(0, 1fr))` }}>
-          {stageGroups.map((group) => (
+        <div className={`grid gap-4 overflow-x-auto py-2`} style={{ gridTemplateColumns: `repeat(${renderedColumns.length}, minmax(220px, 1fr))` }}>
+          {renderedColumns.map((col) => (
             <DroppableColumn
-              key={group.id}
-              group={group}
+              key={col.id}
+              column={col}
               dealId={dealId}
               dealName={dealName}
               dealCompany={dealCompany}
-              lenders={getLendersByGroup(group.id)}
+              lenders={lendersByStage.get(col.id) || []}
               configuredStages={configuredStages}
               isSaving={isSaving}
               failedSaves={failedSaves}
