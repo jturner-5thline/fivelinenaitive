@@ -6835,6 +6835,53 @@ export type Database = {
           },
         ]
       }
+      deal_calendar_items: {
+        Row: {
+          created_at: string
+          created_by: string
+          date: string
+          deal_id: string
+          id: string
+          notes: string | null
+          time: string | null
+          title: string
+          type: Database["public"]["Enums"]["deal_calendar_item_type"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          date: string
+          deal_id: string
+          id?: string
+          notes?: string | null
+          time?: string | null
+          title: string
+          type?: Database["public"]["Enums"]["deal_calendar_item_type"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          date?: string
+          deal_id?: string
+          id?: string
+          notes?: string | null
+          time?: string | null
+          title?: string
+          type?: Database["public"]["Enums"]["deal_calendar_item_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_calendar_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       deal_call_transcripts: {
         Row: {
           call_date: string | null
@@ -24627,6 +24674,7 @@ export type Database = {
       copilot_preference_source: "manual" | "thumbs_down" | "chat_command"
       data_access_scope: "all" | "team" | "own" | "none"
       deal_access_request_status: "pending" | "approved" | "declined"
+      deal_calendar_item_type: "meeting" | "deadline" | "reminder" | "note"
       feature_status: "disabled" | "staging" | "deployed" | "james_only"
       financial_column_type: "actual" | "projection"
       financial_period_type: "monthly" | "quarterly" | "annual"
@@ -24904,6 +24952,7 @@ export const Constants = {
       copilot_preference_source: ["manual", "thumbs_down", "chat_command"],
       data_access_scope: ["all", "team", "own", "none"],
       deal_access_request_status: ["pending", "approved", "declined"],
+      deal_calendar_item_type: ["meeting", "deadline", "reminder", "note"],
       feature_status: ["disabled", "staging", "deployed", "james_only"],
       financial_column_type: ["actual", "projection"],
       financial_period_type: ["monthly", "quarterly", "annual"],
