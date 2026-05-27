@@ -73,6 +73,7 @@ export function DealFilters({
     filters.manager.length > 0,
     filters.lender.length > 0,
     filters.referredBy.length > 0,
+    filters.sourcedVia.length > 0,
     filters.staleOnly,
     filters.flaggedOnly,
     filters.hasNotificationsOnly,
@@ -87,6 +88,7 @@ export function DealFilters({
       manager: [],
       lender: [],
       referredBy: [],
+      sourcedVia: [],
       staleOnly: false,
       flaggedOnly: false,
       hasNotificationsOnly: false,
@@ -133,6 +135,10 @@ export function DealFilters({
       chips.push({ type: 'referredBy', value, label: referrer?.name || value });
     });
 
+    filters.sourcedVia.forEach((value) => {
+      chips.push({ type: 'sourcedVia', value, label: value });
+    });
+
     return chips;
   };
 
@@ -150,6 +156,8 @@ export function DealFilters({
         return (values: string[]) => onFilterChange({ lender: values });
       case 'referredBy':
         return (values: string[]) => onFilterChange({ referredBy: values });
+      case 'sourcedVia':
+        return (values: string[]) => onFilterChange({ sourcedVia: values });
     }
   };
 
