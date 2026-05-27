@@ -324,9 +324,9 @@ function DroppableColumn({
   scoreConfig?: LenderScoreConfig;
   onFollowUpSent?: () => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: column.id,
-  });
+  const safeId = column?.id ?? '__missing__';
+  const { setNodeRef, isOver } = useDroppable({ id: safeId });
+  if (!column) return null;
 
   return (
     <div className="flex flex-col min-w-0 overflow-hidden">
