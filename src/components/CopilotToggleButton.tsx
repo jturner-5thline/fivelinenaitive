@@ -379,6 +379,15 @@ export function CopilotToggleButton() {
   const aiIntent = isAiIntent(value);
   const dropdownItemCount = suggestions.length + 1; // +1 for the AI row at index 0
 
+  // Compact idle pill: when the user isn't interacting with the bar and
+  // there's no in-flight value/panel, collapse to a small icon-only pill.
+  const collapsed =
+    !hovered &&
+    !focused &&
+    !value &&
+    (!isOpen || isMinimized) &&
+    !demoMode;
+
   // Compute debug numbers up-front so the overlay JSX stays simple.
   const debugView = (() => {
     if (!debug || !debugRects) return null;
@@ -426,15 +435,7 @@ export function CopilotToggleButton() {
             wrapper as the Ask bar so it inherits identical horizontal
             bounds (no independent width math). */}
         <AICopilotPanel />
-        {(() => {
-          const collapsed =
-            !hovered &&
-            !focused &&
-            !value &&
-            (!isOpen || isMinimized) &&
-            !demoMode;
-          if (!collapsed) return null;
-          return (
+        {collapsed && (
             <button
               type="button"
               role="button"
@@ -447,7 +448,7 @@ export function CopilotToggleButton() {
               onFocus={() => setHovered(true)}
               className={cn(
                 'group pointer-events-auto flex items-center justify-center',
-                'h-8 w-16 rounded-full cursor-pointer',
+                'relative h-8 w-16 rounded-full cursor-pointer',
                 'transition-[transform,box-shadow,opacity] duration-200 ease-out',
                 'motion-reduce:transition-none',
                 'hover:scale-[1.04] focus-visible:scale-[1.04]',
@@ -478,8 +479,7 @@ export function CopilotToggleButton() {
                 </span>
               )}
             </button>
-          );
-        })()}
+        )}
         {showDropdown && (
           <div
             id="naitive-unified-suggestions"
@@ -571,6 +571,7 @@ export function CopilotToggleButton() {
           </div>
         )}
 
+        <div className={cn(collapsed && 'hidden')}>
         <AskNaitiveBar
           ref={barRef}
           inputRef={inputRef}
@@ -630,6 +631,7 @@ export function CopilotToggleButton() {
             </>
           }
         />
+        </div>
       </div>
     </div>,
     document.body)}
