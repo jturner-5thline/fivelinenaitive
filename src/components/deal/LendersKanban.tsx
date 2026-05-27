@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { SaveIndicator } from '@/components/ui/save-indicator';
 import { CreateLenderTaskButton } from '@/components/deal/CreateLenderTaskButton';
 import { LenderFollowUpPopover } from '@/components/deal/LenderFollowUpPopover';
@@ -37,10 +38,12 @@ interface LendersKanbanProps {
   dealId?: string;
   dealName?: string;
   dealCompany?: string;
-  configuredStages: { id: string; label: string; group: StageGroup }[];
+  configuredStages: { id: string; label: string; group: StageGroup; description?: string }[];
   stageGroups: { id: StageGroup; label: string; color: string }[];
   passReasons: PassReasonOption[];
   onUpdateLenderGroup: (lenderId: string, newGroup: StageGroup, passReason?: string) => void;
+  /** Move a lender to a specific stage (preferred by the kanban). */
+  onUpdateLenderStage?: (lenderId: string, newStageId: string, passReason?: string) => void;
   onEditPassReasons?: (lenderId: string) => void;
   isSaving?: (id: string) => boolean;
   failedSaves?: Set<string>;
@@ -131,8 +134,9 @@ function DraggableLenderTile({
       ref={setNodeRef}
       style={style}
       className={cn(
-        "bg-card border border-border/50 rounded-lg p-3.5 shadow-sm cursor-grab active:cursor-grabbing relative select-none overflow-hidden",
-        !isDragging && "transition-shadow transition-opacity duration-200 ease-out hover:shadow-lg hover:border-primary/30",
+        "bg-card border border-white/10 rounded-xl p-3.5 cursor-grab active:cursor-grabbing relative select-none overflow-hidden",
+        "shadow-[0_6px_18px_-12px_rgba(0,0,0,0.6)]",
+        !isDragging && "transition-all duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_10px_24px_-12px_rgba(0,0,0,0.7)]",
         isDragging && "opacity-40 scale-[1.03] shadow-2xl ring-2 ring-primary/40",
         hasFailed && "border-destructive/50 bg-destructive/5"
       )}
