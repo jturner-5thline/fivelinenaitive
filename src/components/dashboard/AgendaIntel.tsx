@@ -117,6 +117,56 @@ function eventSignature(ev: CalendarEvent): string {
   ].join('::');
 }
 
+// ── Deal categorization / badges ──────────────────────────────
+function classifyDeal(d: Pick<DealRow, 'stage' | 'status'>): DealCategory {
+  const status = String(d.status ?? '').toLowerCase().trim();
+  const stage = String(d.stage ?? '').toLowerCase().replace(/[-_]+/g, ' ').trim();
+  if (status === 'archived' || stage.includes('archived')) return 'closed-lost';
+  if (stage.includes('won')) return 'closed-won';
+  if (stage.includes('closed') && stage.includes('lost')) return 'closed-lost';
+  if (stage === 'passed' || stage.startsWith('passed') || stage.includes('not a fit')) return 'closed-lost';
+  if (stage.includes('dead') || stage.includes('do not contact')) return 'closed-lost';
+  if (status === 'on hold' || stage.includes('hold') || stage.includes('paused')) return 'on-hold';
+  if (stage.startsWith('prospect')) return 'prospect';
+  if (stage.includes('unqualified') || stage.includes('dormant')) return 'prospect';
+  if (isActiveDeal(d as any)) return 'active';
+  return 'other';
+}
+
+const CATEGORY_RANK: Record<DealCategory, number> = {
+  active: 0,
+  prospect: 1,
+  'on-hold': 2,
+  other: 3,
+  'closed-won': 4,
+  'closed-lost': 5,
+};
+
+const CATEGORY_BADGE: Record<DealCategory, { label: string; cls: string }> = {
+  active: { label: 'Active', cls: 'border-green-500/30 bg-green-500/10 text-green-300' },
+  prospect: { label: 'Prospect', cls: 'border-blue-500/30 bg-blue-500/10 text-blue-300' },
+  'on-hold': { label: 'On hold', cls: 'border-amber-500/30 bg-amber-500/10 text-amber-300' },
+  'closed-won': { label: 'Won', cls: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' },
+  'closed-lost': { label: 'Closed lost', cls: 'border-white/15 bg-white/[0.05] text-white/60' },
+  other: { label: '—', cls: 'border-white/15 bg-white/[0.05] text-white/60' },
+};
+
+function highlightMatch(text: string, q: string): React.ReactNode {
+  const term = q.trim();
+  if (!term) return text;
+  const idx = text.toLowerCase().indexOf(term.toLowerCase());
+  if (idx < 0) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-primary/30 text-white rounded px-0.5">
+        {text.slice(idx, idx + term.length)}
+      </mark>
+      {text.slice(idx + term.length)}
+    </>
+  );
+}
+
 // ── Card ──────────────────────────────────────────────────────
 // Compact left-pane list item — title, time, lightweight context only.
 // All actions and rich detail live in the right-side detail pane.
