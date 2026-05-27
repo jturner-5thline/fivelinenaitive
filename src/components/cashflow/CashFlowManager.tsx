@@ -13,6 +13,7 @@ import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
 import { WeeklyReportTab, WEEKLY_ROW_ORDER } from './WeeklyReportTab';
 import { ExportModal } from './ExportModal';
+import { generateSupersetCashFlowPdf } from './exportSupersetPdf';
 import { ActivityLogDialog } from './ActivityLogDialog';
 import { AddCashInModal } from './AddCashInModal';
 import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
