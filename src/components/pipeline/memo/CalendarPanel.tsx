@@ -1,7 +1,6 @@
-import { useMemo, useState, useEffect, useRef } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import {
-  format, parseISO, startOfMonth, endOfMonth, startOfWeek, endOfWeek,
-  eachDayOfInterval, isSameMonth, isToday, isSameDay, addMonths, subMonths, addDays,
+  format, parseISO, startOfWeek, eachDayOfInterval, isToday, addDays, getDay,
 } from 'date-fns';
 import { ChevronLeft, ChevronRight, Plus, Lock, Trash2, Pencil, X, Check } from 'lucide-react';
 import type { Deal } from '@/types/deal';
@@ -28,6 +27,8 @@ interface DayItem {
   notes?: string | null;
   editable: boolean;
   raw?: DealCalendarItem;
+  /** Set when the source date fell on a weekend and was rolled to Friday. */
+  weekendTag?: 'Sat' | 'Sun';
   ref?: { milestoneId?: string; taskId?: string };
 }
 
@@ -38,9 +39,11 @@ const KIND_COLORS: Record<ItemKind, { dot: string; bar: string; label: string }>
   lender: { dot: 'bg-amber-500', bar: 'bg-amber-500', label: 'Lender' },
 };
 
+const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+
 function toDateKey(value: string | null | undefined): string | null {
   if (!value) return null;
-  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value.slice(0, 10);
   try {
     const d = parseISO(value);
     if (isNaN(d.getTime())) return null;
@@ -50,15 +53,29 @@ function toDateKey(value: string | null | undefined): string | null {
   }
 }
 
-const WEEK_DAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+/**
+ * Roll a date to the nearest preceding Friday if it falls on a weekend.
+ * Returns { key, weekendTag } — weekendTag set only when rolled.
+ */
+function rollWeekendToFriday(dateKey: string): { key: string; weekendTag?: 'Sat' | 'Sun' } {
+  const d = parseISO(dateKey);
+  const dow = getDay(d); // 0=Sun, 6=Sat
+  if (dow === 6) return { key: format(addDays(d, -1), 'yyyy-MM-dd'), weekendTag: 'Sat' };
+  if (dow === 0) return { key: format(addDays(d, -2), 'yyyy-MM-dd'), weekendTag: 'Sun' };
+  return { key: dateKey };
+}
+
+function defaultWindowStart(now: Date = new Date()): Date {
+  return startOfWeek(now, { weekStartsOn: 1 });
+}
 
 export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelProps) {
   const { milestones } = useDealMilestones(deal.id);
   const { items: customItems, addItem, updateItem, deleteItem } = useDealCalendarItems(deal.id);
 
-  const [cursor, setCursor] = useState<Date>(() => new Date());
+  // Visible window = 2 work weeks starting at `windowStart` (a Monday).
+  const [windowStart, setWindowStart] = useState<Date>(() => defaultWindowStart());
   const [selectedKey, setSelectedKey] = useState<string>(() => format(new Date(), 'yyyy-MM-dd'));
-  const [mobileWeekMode, setMobileWeekMode] = useState<boolean>(false);
 
   // Add / edit form
   const [formOpen, setFormOpen] = useState(false);
@@ -70,40 +87,39 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
   const [formType, setFormType] = useState<DealCalendarItemType>('meeting');
   const titleRef = useRef<HTMLInputElement>(null);
 
-  // Build map: date -> items
+  // Build map: date key -> items (weekend items rolled to Friday)
   const itemsByDate = useMemo(() => {
     const map = new Map<string, DayItem[]>();
-    const push = (key: string | null, item: DayItem) => {
-      if (!key) return;
+    const push = (rawKey: string | null, build: (k: string, tag?: 'Sat' | 'Sun') => DayItem) => {
+      if (!rawKey) return;
+      const { key, weekendTag } = rollWeekendToFriday(rawKey);
       const arr = map.get(key) || [];
-      arr.push(item);
+      arr.push(build(key, weekendTag));
       map.set(key, arr);
     };
     for (const m of milestones) {
-      const k = toDateKey(m.dueDate);
-      if (!k) continue;
-      push(k, {
+      push(toDateKey(m.dueDate), (_k, weekendTag) => ({
         id: `m-${m.id}`,
         kind: 'milestone',
         title: m.title,
         editable: false,
+        weekendTag,
         ref: { milestoneId: m.id },
-      });
+      }));
     }
     for (const t of tasks) {
       if (t.kind !== 'task') continue;
-      const k = toDateKey(t.dueDate);
-      if (!k) continue;
-      push(k, {
+      push(toDateKey(t.dueDate), (_k, weekendTag) => ({
         id: `t-${t.id}`,
         kind: 'task',
         title: t.title,
         editable: false,
+        weekendTag,
         ref: { taskId: t.id },
-      });
+      }));
     }
     for (const c of customItems) {
-      push(c.date, {
+      push(c.date, (_k, weekendTag) => ({
         id: `c-${c.id}`,
         kind: 'custom',
         title: c.title,
@@ -111,22 +127,31 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
         type: c.type,
         notes: c.notes,
         editable: true,
+        weekendTag,
         raw: c,
-      });
+      }));
     }
     return map;
   }, [milestones, tasks, customItems]);
 
-  // Grid days
+  // Visible Mon–Fri days for the 2-week window.
   const days = useMemo(() => {
-    if (mobileWeekMode) {
-      const start = startOfWeek(cursor, { weekStartsOn: 1 });
-      return eachDayOfInterval({ start, end: addDays(start, 6) });
-    }
-    const start = startOfWeek(startOfMonth(cursor), { weekStartsOn: 1 });
-    const end = endOfWeek(endOfMonth(cursor), { weekStartsOn: 1 });
-    return eachDayOfInterval({ start, end });
-  }, [cursor, mobileWeekMode]);
+    const all = eachDayOfInterval({ start: windowStart, end: addDays(windowStart, 13) });
+    return all.filter((d) => {
+      const dow = getDay(d);
+      return dow >= 1 && dow <= 5;
+    });
+  }, [windowStart]);
+
+  const rangeLabel = useMemo(() => {
+    const start = windowStart;
+    const end = addDays(windowStart, 11); // Friday of week 2
+    const sameMonth = format(start, 'LLL') === format(end, 'LLL');
+    const sameYear = format(start, 'yyyy') === format(end, 'yyyy');
+    if (sameMonth) return `${format(start, 'MMM d')} – ${format(end, 'd')}, ${format(end, 'yyyy')}`;
+    if (sameYear) return `${format(start, 'MMM d')} – ${format(end, 'MMM d')}`;
+    return `${format(start, 'MMM d, yyyy')} – ${format(end, 'MMM d, yyyy')}`;
+  }, [windowStart]);
 
   const selectedItems = itemsByDate.get(selectedKey) || [];
 
@@ -163,23 +188,26 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
       notes: formNotes.trim() || null,
       type: formType,
     };
-    if (editingId) {
-      await updateItem({ id: editingId, updates: payload });
-    } else {
-      await addItem(payload);
-    }
+    if (editingId) await updateItem({ id: editingId, updates: payload });
+    else await addItem(payload);
     setFormOpen(false);
   };
 
-  // Keyboard nav on grid
+  // Keyboard nav across the visible Mon–Fri grid.
   const onDayKeyDown = (e: React.KeyboardEvent, day: Date) => {
+    const idx = days.findIndex((d) => format(d, 'yyyy-MM-dd') === format(day, 'yyyy-MM-dd'));
     if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
       e.preventDefault();
-      const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' ? -7 : 7;
-      const next = addDays(day, delta);
-      setSelectedKey(format(next, 'yyyy-MM-dd'));
-      if (!isSameMonth(next, cursor) && !mobileWeekMode) setCursor(next);
-      if (mobileWeekMode) setCursor(next);
+      const delta = e.key === 'ArrowLeft' ? -1 : e.key === 'ArrowRight' ? 1 : e.key === 'ArrowUp' ? -5 : 5;
+      const nextIdx = idx + delta;
+      if (nextIdx >= 0 && nextIdx < days.length) {
+        setSelectedKey(format(days[nextIdx], 'yyyy-MM-dd'));
+      } else {
+        // Step window by a week.
+        const shift = nextIdx < 0 ? -7 : 7;
+        setWindowStart((w) => addDays(w, shift));
+        setSelectedKey(format(addDays(day, delta), 'yyyy-MM-dd'));
+      }
     } else if (e.key === 'Enter') {
       e.preventDefault();
       setSelectedKey(format(day, 'yyyy-MM-dd'));
@@ -188,13 +216,42 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     }
   };
 
-  // Click on item: deep link behavior
   const handleItemClick = (item: DayItem) => {
     if (item.kind === 'milestone' || item.kind === 'task') {
       onOpenDeal?.();
     } else if (item.editable) {
       openEditForm(item);
     }
+  };
+
+  // Swipe support (mobile).
+  const touchStartX = useRef<number | null>(null);
+  const onTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current == null) return;
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    touchStartX.current = null;
+    if (Math.abs(dx) > 40) {
+      setWindowStart((w) => addDays(w, dx < 0 ? 7 : -7));
+    }
+  };
+
+  // Horizontal wheel scroll → step weeks.
+  const wheelAccum = useRef(0);
+  const onWheel = (e: React.WheelEvent) => {
+    if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) return;
+    wheelAccum.current += e.deltaX;
+    if (Math.abs(wheelAccum.current) > 60) {
+      setWindowStart((w) => addDays(w, wheelAccum.current > 0 ? 7 : -7));
+      wheelAccum.current = 0;
+    }
+  };
+
+  const goToday = () => {
+    setWindowStart(defaultWindowStart());
+    setSelectedKey(format(new Date(), 'yyyy-MM-dd'));
   };
 
   return (
@@ -208,22 +265,29 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
           <div className="flex items-center gap-1">
             <button
               type="button"
-              onClick={() => setCursor(mobileWeekMode ? addDays(cursor, -7) : subMonths(cursor, 1))}
+              onClick={() => setWindowStart((w) => addDays(w, -7))}
               className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-white/5 text-muted-foreground"
-              aria-label="Previous month"
+              aria-label="Previous week"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
-            <span className="text-[11px] font-medium text-foreground/90 min-w-[5.5rem] text-center">
-              {format(cursor, 'MMM yyyy')}
+            <span className="text-[11px] font-medium text-foreground/90 text-center px-0.5 whitespace-nowrap">
+              {rangeLabel}
             </span>
             <button
               type="button"
-              onClick={() => setCursor(mobileWeekMode ? addDays(cursor, 7) : addMonths(cursor, 1))}
+              onClick={() => setWindowStart((w) => addDays(w, 7))}
               className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-white/5 text-muted-foreground"
-              aria-label="Next month"
+              aria-label="Next week"
             >
               <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={goToday}
+              className="ml-1 text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
+            >
+              Today
             </button>
             <button
               type="button"
@@ -233,31 +297,28 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
             >
               <Plus className="h-3 w-3" /> Add
             </button>
-            <button
-              type="button"
-              onClick={() => setMobileWeekMode((v) => !v)}
-              className="sm:hidden ml-1 text-[10px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline"
-            >
-              {mobileWeekMode ? 'View month' : 'Week'}
-            </button>
           </div>
         </div>
 
         {/* Weekday header */}
-        <div className="grid grid-cols-7 mb-1">
-          {WEEK_DAYS.map((d, i) => (
-            <div key={i} className="text-center text-[9px] font-medium text-muted-foreground/60 py-0.5">
+        <div className="grid grid-cols-5 mb-1">
+          {WEEKDAY_LABELS.map((d) => (
+            <div key={d} className="text-center text-[9px] font-medium text-muted-foreground/60 py-0.5">
               {d}
             </div>
           ))}
         </div>
 
-        {/* Grid */}
-        <div className="grid grid-cols-7 gap-[2px]">
+        {/* Grid: 5 columns × 2 rows (Mon–Fri × 2 weeks) */}
+        <div
+          className="grid grid-cols-5 gap-[3px] touch-pan-y"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          onWheel={onWheel}
+        >
           {days.map((day) => {
             const key = format(day, 'yyyy-MM-dd');
             const dayItems = itemsByDate.get(key) || [];
-            const inMonth = mobileWeekMode || isSameMonth(day, cursor);
             const today = isToday(day);
             const isSelected = key === selectedKey;
             const visible = dayItems.slice(0, 3);
@@ -269,20 +330,17 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                   <button
                     type="button"
                     onClick={() => {
-                      if (dayItems.length === 0) {
-                        openAddForm(key);
-                      }
+                      if (dayItems.length === 0) openAddForm(key);
                       setSelectedKey(key);
                     }}
                     onKeyDown={(e) => onDayKeyDown(e, day)}
                     aria-label={`${format(day, 'EEEE, MMMM d')} — ${dayItems.length} item${dayItems.length === 1 ? '' : 's'}`}
                     className={cn(
-                      'relative aspect-square min-h-[34px] rounded-md flex flex-col items-center justify-start py-1 transition-colors',
+                      'relative min-h-[44px] rounded-md flex flex-col items-center justify-start py-1 px-1 transition-colors',
                       'border focus:outline-none focus-visible:ring-1 focus-visible:ring-primary/60',
                       isSelected
                         ? 'border-primary/60 bg-primary/10'
                         : 'border-white/[0.04] hover:bg-white/[0.04] hover:border-white/10',
-                      !inMonth && 'opacity-30',
                     )}
                   >
                     <span
@@ -294,11 +352,11 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                       {format(day, 'd')}
                     </span>
                     {dayItems.length > 0 && (
-                      <div className="mt-auto flex items-center gap-[2px] pb-0.5">
+                      <div className="mt-auto flex items-center gap-[2px] pb-0.5 flex-wrap justify-center">
                         {visible.map((it) => (
                           <span
                             key={it.id}
-                            className={cn('h-1 w-1 rounded-full', KIND_COLORS[it.kind].dot)}
+                            className={cn('h-1.5 w-1.5 rounded-full', KIND_COLORS[it.kind].dot)}
                           />
                         ))}
                         {overflow > 0 && (
@@ -317,6 +375,9 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                           <span className={cn('h-1.5 w-1.5 rounded-full', KIND_COLORS[it.kind].dot)} />
                           <span className="text-muted-foreground">{KIND_COLORS[it.kind].label}:</span>
                           <span className="truncate max-w-[8rem]">{it.title}</span>
+                          {it.weekendTag && (
+                            <span className="text-[9px] text-muted-foreground/70">({it.weekendTag})</span>
+                          )}
                         </li>
                       ))}
                       {dayItems.length > 6 && (
@@ -363,6 +424,9 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                     <span className="text-foreground">{it.title}</span>
                     {it.time && (
                       <span className="text-muted-foreground"> · {it.time.slice(0, 5)}</span>
+                    )}
+                    {it.weekendTag && (
+                      <span className="text-[9px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
                     )}
                   </button>
                   {it.editable ? (
