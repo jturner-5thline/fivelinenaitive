@@ -2235,6 +2235,89 @@ export default function DealDetail() {
     }
   }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync]);
 
+  /**
+   * Move a lender to a *specific* stage (not just "first stage in group").
+   * Used by the Lenders Kanban which groups columns by stage. We derive the
+   * tracking-status group from the target stage so the existing group-based
+   * UI and filters stay in sync.
+   */
+  const updateLenderStageDirect = useCallback((lenderId: string, newStageId: string, passReason?: string) => {
+    const targetStage = configuredStages.find(s => s.id === newStageId);
+    if (!targetStage) return;
+    const lender = deal?.lenders?.find(l => l.id === lenderId);
+    const oldStage = lender?.stage ? configuredStages.find(s => s.id === lender.stage) : undefined;
+    const newGroup = targetStage.group as StageGroup;
+
+    if (lender) {
+      setLastLenderChange({
+        lenderId,
+        previousStage: lender.stage,
+        previousTrackingStatus: lender.trackingStatus || 'active',
+        previousPassReason: lender.passReason,
+        lenderName: lender.name,
+      });
+    }
+
+    setFailedLenderSaves(prev => {
+      const next = new Set(prev);
+      next.delete(lenderId);
+      return next;
+    });
+
+    const autoNote = newGroup === 'passed' && passReason
+      ? `Lender passed due to ${passReason}`
+      : undefined;
+
+    withSavingAsync(`lender-stage-${lenderId}`, async () => {
+      try {
+        await updateLenderInDb(lenderId, {
+          stage: targetStage.id,
+          trackingStatus: newGroup,
+          passReason: newGroup === 'passed' ? (passReason || null) : null,
+          ...(autoNote ? { notes: autoNote } : {}),
+        });
+      } catch (err) {
+        setFailedLenderSaves(prev => new Set(prev).add(lenderId));
+        throw err;
+      }
+    });
+
+    if (lender) {
+      logActivity('lender_stage_change', `${lender.name} stage changed`, {
+        lender_id: lender.id,
+        lender_name: lender.name,
+        from: oldStage?.label || lender.stage,
+        to: targetStage.label,
+      });
+    }
+
+    setDeal(prev => {
+      if (!prev) return prev;
+      const updatedLenders = prev.lenders?.map(l =>
+        l.id === lenderId
+          ? { ...l, stage: targetStage.id as any, trackingStatus: newGroup, passReason: newGroup === 'passed' ? passReason : undefined, updatedAt: new Date().toISOString() }
+          : l,
+      );
+      return { ...prev, lenders: updatedLenders, updatedAt: new Date().toISOString() };
+    });
+
+    if (lender && newGroup !== 'passed') {
+      toast({
+        title: 'Stage updated',
+        description: `${lender.name} moved to ${targetStage.label}`,
+        action: (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => undoLenderChange(lenderId, lender.stage, lender.trackingStatus || 'active', lender.passReason)}
+          >
+            Undo
+          </Button>
+        ),
+      });
+    }
+  }, [configuredStages, updateLenderInDb, deal?.lenders, logActivity, withSavingAsync]);
+
   const undoLenderChange = useCallback((lenderId: string, previousStage: string, previousTrackingStatus: string, previousPassReason?: string) => {
     // Persist undo to database
     withSavingAsync(`lender-stage-${lenderId}`, async () => {
