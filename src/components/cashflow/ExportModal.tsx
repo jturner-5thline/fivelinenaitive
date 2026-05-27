@@ -19,6 +19,31 @@ function formatWeekStartLabel(dateKey: string): string {
   }).format(dt);
 }
 
+/**
+ * Shared cell color logic — mirrors `.cf-val-pos` / `.cf-val-neg` from
+ * cashflow.css so the PDF and on-screen table stay in sync. Returns a hex
+ * for the table preview and an RGB triple for jsPDF.
+ */
+const CF_POSITIVE_HEX = '#16a34a';
+const CF_NEGATIVE_HEX = '#dc2626';
+const CF_NEUTRAL_HEX = '#334155';
+const CF_MUTED_HEX = '#94a3b8';
+
+function cellTextColor(val: number, opts?: { muted?: boolean }): string {
+  if (val > 0) return CF_POSITIVE_HEX;
+  if (val < 0) return CF_NEGATIVE_HEX;
+  return opts?.muted ? CF_MUTED_HEX : CF_NEUTRAL_HEX;
+}
+
+function hexToRgb(hex: string): [number, number, number] {
+  const h = hex.replace('#', '');
+  return [
+    parseInt(h.slice(0, 2), 16),
+    parseInt(h.slice(2, 4), 16),
+    parseInt(h.slice(4, 6), 16),
+  ];
+}
+
 const PRESET_FLAGS: ExportFlag[] = [
   { label: 'Cash Alert', color: '#ef4444' },
   { label: 'Needs Review', color: '#f59e0b' },
