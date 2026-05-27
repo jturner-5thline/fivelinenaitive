@@ -2962,20 +2962,25 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── HIGH RISK: Confirm lender status update ──
     case "update_lender_status": {
-      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status").eq("id", args.lender_id).single();
+      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status, notes").eq("id", args.lender_id).single();
       if (!lender) return { error: "Lender not found" };
       const parts = [];
       if (args.stage) parts.push(`stage to "${args.stage}"`);
       if (args.tracking_status) parts.push(`status to "${args.tracking_status}"`);
       if (args.pass_reason) parts.push(`pass reason: "${args.pass_reason}"`);
+      if (typeof args.notes === "string") parts.push(`notes to "${String(args.notes).slice(0, 80)}${String(args.notes).length > 80 ? '…' : ''}"`);
+      if (typeof args.notes_append === "string") parts.push(`append note: "${String(args.notes_append).slice(0, 80)}${String(args.notes_append).length > 80 ? '…' : ''}"`);
       return {
         action: "confirm",
         action_type: "update_lender_status",
-        description: `Update ${args.lender_name}: ${parts.join(' and ')}`,
+        description: parts.length ? `Update ${args.lender_name}: ${parts.join(' and ')}` : `Update ${args.lender_name}`,
         params: {
           lender_id: args.lender_id, lender_name: args.lender_name,
           stage: args.stage, tracking_status: args.tracking_status,
           pass_reason: args.pass_reason, deal_id: args.deal_id,
+          notes: typeof args.notes === "string" ? args.notes : undefined,
+          notes_append: typeof args.notes_append === "string" ? args.notes_append : undefined,
+          current_notes: (lender as any)?.notes || null,
         },
       };
     }
