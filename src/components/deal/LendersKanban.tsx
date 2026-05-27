@@ -324,9 +324,9 @@ function DroppableColumn({
   scoreConfig?: LenderScoreConfig;
   onFollowUpSent?: () => void;
 }) {
-  const { setNodeRef, isOver } = useDroppable({
-    id: column.id,
-  });
+  const safeId = column?.id ?? '__missing__';
+  const { setNodeRef, isOver } = useDroppable({ id: safeId });
+  if (!column) return null;
 
   return (
     <div className="flex flex-col min-w-0 overflow-hidden">
@@ -491,12 +491,14 @@ export function LendersKanban({
 
   // Build columns from configured stages (one column per stage), preserving order.
   const stageColumns = useMemo(() => {
-    const groupColorById = new Map(stageGroups.map(g => [g.id, g.color] as const));
-    return configuredStages.map(s => ({
-      id: s.id,
-      label: s.label,
-      color: groupColorById.get(s.group as StageGroup) || 'bg-muted',
-    }));
+    const groupColorById = new Map((stageGroups || []).map(g => [g.id, g.color] as const));
+    return (configuredStages || [])
+      .filter((s): s is { id: string; label: string; group: StageGroup; description?: string } => !!s && !!s.id)
+      .map(s => ({
+        id: s.id,
+        label: s.label || s.id,
+        color: groupColorById.get(s.group as StageGroup) || 'bg-muted',
+      }));
   }, [configuredStages, stageGroups]);
 
   const lendersByStage = useMemo(() => {
@@ -505,8 +507,18 @@ export function LendersKanban({
     stageColumns.forEach(c => map.set(c.id, []));
     const validIds = new Set(stageColumns.map(c => c.id));
     lenders.forEach(l => {
-      const key = l.stage && validIds.has(l.stage) ? l.stage : '__unassigned__';
-      map.get(key)!.push(l);
+      const key = l?.stage && validIds.has(l.stage) ? l.stage : '__unassigned__';
+      if (!l?.stage || !validIds.has(l.stage)) {
+        if (l?.stage) {
+          // eslint-disable-next-line no-console
+          console.warn('[LendersKanban] deal_lender has unknown stage, routing to Unassigned', {
+            lenderId: l?.id,
+            stage: l?.stage,
+          });
+        }
+      }
+      const bucket = map.get(key);
+      if (bucket) bucket.push(l);
     });
     return map;
   }, [lenders, stageColumns]);
@@ -529,7 +541,7 @@ export function LendersKanban({
         onDragEnd={handleDragEnd}
       >
         <div className={`grid gap-4 overflow-x-auto py-2`} style={{ gridTemplateColumns: `repeat(${renderedColumns.length}, minmax(220px, 1fr))` }}>
-          {renderedColumns.map((col) => (
+          {renderedColumns.filter(Boolean).map((col) => (
             <DroppableColumn
               key={col.id}
               column={col}
