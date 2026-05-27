@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
 import { Plus, X, Check, Pencil, Calendar, User, ChevronDown, ChevronRight, LayoutGrid, ArrowRight, GripVertical, CheckSquare, Square, Search, AlertTriangle, ArrowUp, ArrowUpRight, ClipboardPaste, UserPlus, Group } from 'lucide-react';
 import { format, isPast, isToday, isTomorrow, differenceInDays } from 'date-fns';
@@ -359,6 +359,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
   const [bulkImportText, setBulkImportText] = useState('');
   const [bulkImportRequestedBy, setBulkImportRequestedBy] = useState<string[]>([]);
+  const bulkImportDialogContentRef = useRef<HTMLDivElement>(null);
   // Individual-add mode rows inside the Bulk Import dialog. Each row has
   // its own text and an optional requester override; if the override is
   // empty, it falls back to the dialog-level "Assign requester to all".
@@ -1165,8 +1166,8 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
       </Dialog>
 
       {/* Bulk Import Dialog */}
-      <Dialog open={isBulkImportOpen} onOpenChange={(open) => { setIsBulkImportOpen(open); if (!open) { setBulkImportRequestedBy([]); setIndividualRows([]); setBulkImportText(''); } }}>
-        <DialogContent className="max-w-lg">
+      <Dialog modal={false} open={isBulkImportOpen} onOpenChange={(open) => { setIsBulkImportOpen(open); if (!open) { setBulkImportRequestedBy([]); setIndividualRows([]); setBulkImportText(''); } }}>
+        <DialogContent ref={bulkImportDialogContentRef} className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ClipboardPaste className="h-5 w-5" />
@@ -1218,7 +1219,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                           <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-[220px] p-0 bg-popover" align="end">
+                      <PopoverContent container={bulkImportDialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0 bg-popover" align="end">
                         <SearchableRequesterList
                           options={requestedByOptions}
                           selected={row.requestedBy}
@@ -1254,7 +1255,7 @@ export function OutstandingItems({ items, lenderNames, companyName, onAdd: rawOn
                     <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-[220px] p-0 bg-popover" align="start">
+                <PopoverContent container={bulkImportDialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0 bg-popover" align="start">
                   <SearchableRequesterList
                     options={requestedByOptions}
                     selected={bulkImportRequestedBy}
