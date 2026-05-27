@@ -841,14 +841,103 @@ export function AgendaIntel() {
     setLinkPickerEventId(eventId);
   };
 
-  const handlePickDeal = (dealId: string) => {
+  const persistLink = useCallback(
+    async (eventId: string, deal: DealRow) => {
+      if (!user || !orgCompanyId) {
+        toast.error('Workspace not ready — try again in a moment.');
+        return false;
+      }
+      setLinkBusyEventId(eventId);
+      try {
+        // Soft-delete any existing active link for this meeting first.
+        const existing = persistedLinks[eventId];
+        if (existing) {
+          await supabase
+            .from('meeting_deal_links')
+            .update({ deleted_at: new Date().toISOString() })
+            .eq('id', existing.id);
+        }
+        const { data, error } = await supabase
+          .from('meeting_deal_links')
+          .insert({
+            meeting_external_id: eventId,
+            deal_id: deal.id,
+            org_company_id: orgCompanyId,
+            linked_by_user_id: user.id,
+          })
+          .select('id')
+          .single();
+        if (error) throw error;
+        setPersistedLinks(prev => ({ ...prev, [eventId]: { id: data!.id, dealId: deal.id } }));
+        toast.success(`Linked to ${deal.name}`, {
+          action: { label: 'View deal', onClick: () => navigate(`/deals?deal=${deal.id}`) },
+        });
+        return true;
+      } catch (e: any) {
+        toast.error(e?.message || 'Could not link deal');
+        return false;
+      } finally {
+        setLinkBusyEventId(null);
+      }
+    },
+    [user, orgCompanyId, persistedLinks, navigate],
+  );
+
+  const handlePickDeal = async (dealId: string) => {
     if (!linkPickerEventId || !dealId) return;
     const match = deals.find(d => d.id === dealId);
-    setDealLinkOverrides(prev => ({ ...prev, [linkPickerEventId]: dealId }));
+    if (!match) return;
+    const eventId = linkPickerEventId;
     setLinkPickerEventId(null);
     setLinkPickerQuery('');
-    if (match) toast.success(`Linked to ${match.name}`);
+    await persistLink(eventId, match);
   };
+
+  const handleUnlinkDeal = useCallback(
+    async (eventId: string) => {
+      const existing = persistedLinks[eventId];
+      if (!existing) {
+        // Fall back to clearing in-memory override.
+        setDealLinkOverrides(prev => {
+          const next = { ...prev };
+          delete next[eventId];
+          return next;
+        });
+        return;
+      }
+      const deal = deals.find(d => d.id === existing.dealId);
+      setLinkBusyEventId(eventId);
+      try {
+        const { error } = await supabase
+          .from('meeting_deal_links')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+        setPersistedLinks(prev => {
+          const next = { ...prev };
+          delete next[eventId];
+          return next;
+        });
+        let undone = false;
+        toast.success(`Unlinked from ${deal?.name || 'deal'}`, {
+          duration: 5000,
+          action: {
+            label: 'Undo',
+            onClick: async () => {
+              if (undone || !deal) return;
+              undone = true;
+              await persistLink(eventId, deal);
+            },
+          },
+        });
+      } catch (e: any) {
+        toast.error(e?.message || 'Could not unlink');
+      } finally {
+        setLinkBusyEventId(null);
+      }
+    },
+    [persistedLinks, deals, persistLink],
+  );
 
   // ── Render ─────────────────────────────────────────────────
   // Keep selection valid as the filter set changes — clear if the
