@@ -209,12 +209,17 @@ export const ExportModal = memo(function ExportModal({
         ];
         body.push(headerRow);
       } else {
-        const rawVals = weeks.map(([, v]) => (v[row.key] as number) || 0);
-        const cells = [row.label, ...rawVals.map((n) => fmtAbbrev(n))];
+        // Display-sign matches the in-app table: disbursement rows render as
+        // negatives so fmtAbbrev wraps them in parens and the color helper
+        // paints them red. Position rows (NET CHANGE, etc.) keep raw sign.
+        const displayVals = weeks.map(([, v]) =>
+          toDisplayValue((v[row.key] as number) || 0, row.section)
+        );
+        const cells = [row.label, ...displayVals.map((n) => fmtAbbrev(n))];
         body.push(cells);
         const bodyIdx = body.length - 1;
         const colMap: Record<number, number> = {};
-        rawVals.forEach((n, i) => { colMap[i + 1] = n; });
+        displayVals.forEach((n, i) => { colMap[i + 1] = n; });
         cellValues[bodyIdx] = colMap;
         if (row.bold) rowStyles[body.length - 1] = { fontStyle: 'bold', fillColor: [241, 245, 249] };
       }
