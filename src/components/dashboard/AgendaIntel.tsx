@@ -188,6 +188,7 @@ function AgendaListItem({
   isInternalOnly,
   active,
   onClick,
+  claapCount,
 }: {
   event: CalendarEvent;
   deal: DealRow | null;
@@ -195,6 +196,7 @@ function AgendaListItem({
   isInternalOnly: boolean;
   active: boolean;
   onClick: () => void;
+  claapCount?: number;
 }) {
   const start = parseISO(event.start);
   const end = parseISO(event.end);
@@ -247,6 +249,12 @@ function AgendaListItem({
             Internal
           </Badge>
         )}
+        {claapCount && claapCount > 0 ? (
+          <Badge variant="outline" className="text-[9px] font-normal border-primary/30 bg-primary/10 text-primary px-1.5 py-0">
+            <Video className="h-2.5 w-2.5 mr-0.5" />
+            Claap{claapCount > 1 ? ` ×${claapCount}` : ''}
+          </Badge>
+        ) : null}
       </div>
     </button>
   );
@@ -1157,6 +1165,7 @@ export function AgendaIntel() {
                       isInternalOnly={isInternalOnly}
                       active={selectedId === event.id}
                       onClick={() => setSelectedId(event.id)}
+                      claapCount={claapCountsByEvent[event.id] || 0}
                     />
                   ))}
                 </div>
