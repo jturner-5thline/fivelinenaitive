@@ -426,6 +426,60 @@ export function CopilotToggleButton() {
             wrapper as the Ask bar so it inherits identical horizontal
             bounds (no independent width math). */}
         <AICopilotPanel />
+        {(() => {
+          const collapsed =
+            !hovered &&
+            !focused &&
+            !value &&
+            (!isOpen || isMinimized) &&
+            !demoMode;
+          if (!collapsed) return null;
+          return (
+            <button
+              type="button"
+              role="button"
+              aria-label="Ask naitive AI"
+              title="Ask naitive AI (⌘K)"
+              onClick={() => {
+                setHovered(true);
+                requestAnimationFrame(() => inputRef.current?.focus());
+              }}
+              onFocus={() => setHovered(true)}
+              className={cn(
+                'group pointer-events-auto flex items-center justify-center',
+                'h-8 w-16 rounded-full cursor-pointer',
+                'transition-[transform,box-shadow,opacity] duration-200 ease-out',
+                'motion-reduce:transition-none',
+                'hover:scale-[1.04] focus-visible:scale-[1.04]',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-white/30',
+                'animate-in fade-in duration-150 motion-reduce:animate-none',
+              )}
+              style={{
+                background: 'rgba(14, 16, 24, 0.6)',
+                backdropFilter: 'blur(18px) saturate(1.4)',
+                WebkitBackdropFilter: 'blur(18px) saturate(1.4)',
+                border: '1px solid rgba(255, 255, 255, 0.18)',
+                boxShadow:
+                  '0 8px 24px rgba(0, 0, 0, 0.45), 0 2px 6px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              <img
+                src={naitiveBrandIcon}
+                alt=""
+                aria-hidden="true"
+                className="h-6 w-6"
+              />
+              {(!isOpen || isMinimized) && unreadCount > 0 && (
+                <span
+                  aria-hidden="true"
+                  className="absolute -top-1 -right-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold leading-none text-primary-foreground shadow"
+                >
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
+            </button>
+          );
+        })()}
         {showDropdown && (
           <div
             id="naitive-unified-suggestions"
