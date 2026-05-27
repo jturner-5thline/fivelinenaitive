@@ -564,6 +564,5 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
         </DialogContent>
       </Dialog>
     </>
-      </>
   );
 }
