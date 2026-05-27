@@ -1,0 +1,1 @@
+ALTER TABLE public.company_features ADD COLUMN IF NOT EXISTS gamma_enabled boolean;

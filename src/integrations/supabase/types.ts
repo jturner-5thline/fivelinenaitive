@@ -3408,6 +3408,7 @@ export type Database = {
           company_id: string
           created_at: string
           deal_memo_enabled: boolean
+          gamma_enabled: boolean | null
           id: string
           key_metrics_flex_enabled: boolean | null
           sample_deal_on_signup: boolean
@@ -3421,6 +3422,7 @@ export type Database = {
           company_id: string
           created_at?: string
           deal_memo_enabled?: boolean
+          gamma_enabled?: boolean | null
           id?: string
           key_metrics_flex_enabled?: boolean | null
           sample_deal_on_signup?: boolean
@@ -3434,6 +3436,7 @@ export type Database = {
           company_id?: string
           created_at?: string
           deal_memo_enabled?: boolean
+          gamma_enabled?: boolean | null
           id?: string
           key_metrics_flex_enabled?: boolean | null
           sample_deal_on_signup?: boolean
