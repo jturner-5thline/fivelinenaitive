@@ -7,6 +7,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import * as TabsPrimitive from '@radix-ui/react-tabs';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AgendaIntel } from './AgendaIntel';
+import { MoffittDealRundown } from './MoffittDealRundown';
+import { MOFFITT_USER_ID } from '@/constants/moffittBriefing';
 import { EndOfDayTab } from './EndOfDayTab';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -1962,7 +1964,14 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                     slideDirection === 'right' && 'animate-slide-in-from-left',
                   )}
                 >
-                  {activeTab === 'agenda' && <div className="h-[70vh] min-h-[500px]"><AgendaIntel /></div>}
+                  {activeTab === 'agenda' && (
+                    <div className="h-[70vh] min-h-[500px] flex flex-col min-h-0">
+                      {targetUserId === MOFFITT_USER_ID && (
+                        <MoffittDealRundown enabled={open} />
+                      )}
+                      <div className="flex-1 min-h-0"><AgendaIntel /></div>
+                    </div>
+                  )}
                   {activeTab === 'catchup' && <CatchUpTab enabled={open} onNavigate={handleNavigate} />}
                   {activeTab === 'email' && (
                     <EmailTab
