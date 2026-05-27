@@ -18,3 +18,19 @@ export function canSeeNikiBriefing(email: string | null | undefined): boolean {
     email.toLowerCase(),
   );
 }
+
+// Additional 5th Line users who see the "Daily Rundown" header icon and
+// whose rundown content mirrors Niki's shared workspace feed exactly
+// (same scoped deals / agenda / intel). They do NOT get a duplicate
+// "Niki's Daily Rundown" icon — their primary Daily Rundown IS Niki's.
+export const NIKI_BRIEFING_MIRROR_EMAILS = [
+  'ppina@5thline.co',
+  'ffustinoni@5thline.co',
+] as const;
+
+export function isNikiBriefingMirror(email: string | null | undefined): boolean {
+  if (!email) return false;
+  return (NIKI_BRIEFING_MIRROR_EMAILS as readonly string[]).includes(
+    email.toLowerCase(),
+  );
+}

@@ -55,6 +55,7 @@ import {
   NIKI_USER_ID,
   NIKI_ASSIGNEE_NAME,
   NIKI_EMAIL,
+  isNikiBriefingMirror,
 } from '@/constants/nikiBriefing';
 import {
   canSeeMoffittBriefing,
@@ -123,13 +124,16 @@ export function DealsHeader() {
   const [isMoffittBriefingOpen, setIsMoffittBriefingOpen] = useState(false);
   const isJTurner = user?.email === 'jturner@5thline.co';
   const canSeeNiki = canSeeNikiBriefing(user?.email);
+  // Users (e.g. ppina, ffustinoni) whose own "Daily Rundown" header item
+  // mirrors Niki's shared workspace feed. They get the icon + same content
+  // as Niki, but no separate "Niki's Daily Rundown" item.
+  const isNikiMirror = isNikiBriefingMirror(user?.email);
   const canSeeMoffitt = canSeeMoffittBriefing(user?.email);
   const isNikiViewingHerself = user?.email?.toLowerCase() === NIKI_EMAIL;
   const isMoffittViewingHimself = user?.email?.toLowerCase() === MOFFITT_EMAIL;
   const briefingUserEmails = ['jturner@5thline.co', 'nheikali@5thline.co'];
-  const canSeeBriefingHeaderItems = briefingUserEmails.includes(
-    user?.email?.toLowerCase() ?? ''
-  );
+  const canSeeBriefingHeaderItems =
+    briefingUserEmails.includes(user?.email?.toLowerCase() ?? '') || isNikiMirror;
 
   // Listen for the Daily Rundown chat notification (see
   // useDailyRundownNotification). Clicking the chat message dispatches
@@ -151,7 +155,12 @@ export function DealsHeader() {
   // per-variant incompleteness is determined by each variant's own
   // scopedDeals list (self vs. Niki).
   const dismissedRundownDealIds = useDailyDismissedIds('rundown-deal:daily_briefing');
-  const { data: selfRundownData } = usePipelineData(canSeeBriefingHeaderItems);
+  // Mirror users see Niki's scoped deals in their "Daily Rundown" badge
+  // count, identical to what the modal will render below.
+  const { data: selfRundownData } = usePipelineData(
+    canSeeBriefingHeaderItems,
+    isNikiMirror ? NIKI_ASSIGNEE_NAME : undefined,
+  );
   const { data: nikiRundownData } = usePipelineData(canSeeNiki, NIKI_ASSIGNEE_NAME);
   const hasIncompleteRundown = (deals: { id: string }[] | undefined) =>
     !!(deals && deals.length > 0 && deals.some(d => !dismissedRundownDealIds.has(d.id)));
@@ -478,7 +487,20 @@ export function DealsHeader() {
       <Suspense fallback={isMailOpen ? <OverlayLoadingShell kind="mail" onClose={() => setIsMailOpen(false)} /> : null}>
         <InboxDialog open={isMailOpen} onOpenChange={setIsMailOpen} />
       </Suspense>
-      {canSeeBriefingHeaderItems && <DailyBriefingModal open={isBriefingOpen} onOpenChange={setIsBriefingOpen} />}
+      {canSeeBriefingHeaderItems && (
+        <DailyBriefingModal
+          open={isBriefingOpen}
+          onOpenChange={setIsBriefingOpen}
+          {...(isNikiMirror
+            ? {
+                title: "Daily Rundown",
+                targetUserId: NIKI_USER_ID,
+                targetAssigneeName: NIKI_ASSIGNEE_NAME,
+                excludeTabs: ['financial'] as const as any,
+              }
+            : {})}
+        />
+      )}
       {canSeeNiki && (
         <DailyBriefingModal
           open={isNikiBriefingOpen}

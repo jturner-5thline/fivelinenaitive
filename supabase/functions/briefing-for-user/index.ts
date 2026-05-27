@@ -19,6 +19,8 @@ const corsHeaders = {
 const NIKI_BRIEFING_ALLOWED_EMAILS = new Set<string>([
   'jturner@5thline.co',
   'nheikali@5thline.co',
+  'ppina@5thline.co',
+  'ffustinoni@5thline.co',
 ]);
 const NIKI_USER_ID = 'a757f375-7e93-4fc5-a49e-e371abb42fac';
 

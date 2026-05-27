@@ -24,6 +24,8 @@ export const DAILY_RUNDOWN_REFRESH_HOUR_ET = 7;
 const BRIEFING_ELIGIBLE_EMAILS = new Set([
   'jturner@5thline.co',
   'nheikali@5thline.co',
+  'ppina@5thline.co',
+  'ffustinoni@5thline.co',
 ]);
 
 /** Today's YYYY-MM-DD in the America/New_York business timezone. */
