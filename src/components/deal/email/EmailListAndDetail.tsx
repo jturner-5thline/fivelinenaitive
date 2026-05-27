@@ -8,6 +8,7 @@ import { AiAssistInlinePanel } from './AiAssistInlinePanel';
 import { AiAssistSidebar } from './AiAssistSidebar';
 import { YourReplyComposer } from './YourReplyComposer';
 import { LinkToDealPopover } from './LinkToDealPopover';
+import { LinkedDealPreviewPopover } from './LinkedDealPreviewPopover';
 import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { Button } from '@/components/ui/button';
 import { useAssistEnabled } from '@/hooks/useAssistEnabled';
@@ -1991,6 +1992,15 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
+  // Floating "you just linked this deal" preview card. Opens deterministically
+  // when a user picks a deal in LinkToDealPopover so the toolbar's Linked
+  // state isn't mistaken for a stuck spinner. Lives as a sibling of the
+  // picker — not nested — so the picker's outside-click handler can't race
+  // the preview's mount.
+  const [linkPreviewDealId, setLinkPreviewDealId] = useState<string | null>(null);
+  const [linkPreviewOpen, setLinkPreviewOpen] = useState(false);
+  const linkPreviewAnchorRef = useRef<HTMLSpanElement | null>(null);
+
   // Pre-send link-to-deal prompt removed — replies send immediately and
   // inherit any pre-resolved deal link silently. Manual linking remains
   // available via the "Link Deal" toolbar action.
@@ -2955,6 +2965,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             )}
 
 
+            <span ref={linkPreviewAnchorRef} className="inline-flex">
             <LinkToDealPopover
               trigger={
                 <button
@@ -2979,6 +2990,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 setLinkedDealId(id);
                 setLinkedDealName(name);
                 onToggleLink(thread.latestEmail);
+
+                // Open the floating preview deterministically BEFORE the
+                // picker closes — preview lives as a sibling so the picker's
+                // unmount cannot race the preview state.
+                setLinkPreviewDealId(id);
+                setLinkPreviewOpen(true);
 
                 // Persist a deal_emails row per real Gmail message in the
                 // thread (skip mocks). Idempotent via the (deal_id, gmail_message_id)
@@ -3009,6 +3026,8 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 setLinkedDealId(undefined);
                 setLinkedDealName(undefined);
                 onToggleLink(thread.latestEmail);
+                setLinkPreviewOpen(false);
+                setLinkPreviewDealId(null);
 
                 if (prevId) {
                   try {
@@ -3028,6 +3047,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 }
               }}
             />
+            <LinkedDealPreviewPopover
+              anchorRef={linkPreviewAnchorRef}
+              open={linkPreviewOpen}
+              dealId={linkPreviewDealId}
+              onOpenChange={(o) => {
+                setLinkPreviewOpen(o);
+                if (!o) setLinkPreviewDealId(null);
+              }}
+            />
+            </span>
 
             {onToggleExpand && (
               <>
