@@ -58,53 +58,72 @@ interface ExportModalProps {
   weeksPast?: number;
   /** Current viewport: weeks after the current week visible in the table. */
   weeksFuture?: number;
+  /** Custom receipt rows configured for this company — mirrors the live table. */
+  customReceiptRows?: string[];
+  /** Custom disbursement rows configured for this company — mirrors the live table. */
+  customDisbursementRows?: string[];
   onClose: () => void;
   onArchive: (entry: { title: string; flags: ExportFlag[]; notes: string; weekCount: number; dateRange: string }) => void;
 }
 
 // Mirror of the on-screen Weekly Report row layout. Headers are non-data
 // section breaks; line-item rows look up `key` on each week's row object.
+// `section` mirrors the in-app WEEKLY_ROW_ORDER classification so disbursement
+// rows can be sign-flipped + red-colored to match the live table.
+type RowSection = 'position' | 'receipts' | 'disbursements';
 type ExportRow =
-  | { type: 'header'; label: string }
-  | { type: 'line'; key: string; label: string; bold?: boolean };
+  | { type: 'header'; label: string; section: RowSection }
+  | { type: 'line'; key: string; label: string; section: RowSection; bold?: boolean };
 
-const EXPORT_ROWS: ExportRow[] = [
-  { type: 'line', key: 'BEGINNING CASH', label: 'BEGINNING CASH', bold: true },
-  { type: 'line', key: 'ENDING CASH', label: 'ENDING CASH', bold: true },
-  { type: 'line', key: 'NET CHANGE', label: 'NET CHANGE', bold: true },
-  { type: 'line', key: "Add'l Liquidity (Delayed Draw)", label: "Add'l Liquidity (Delayed Draw)" },
-  { type: 'line', key: 'TOTAL CASH ON HAND', label: 'TOTAL CASH ON HAND', bold: true },
-  { type: 'header', label: '( + ) CASH RECEIPTS' },
-  { type: 'line', key: 'Retainers', label: '  Retainers' },
-  { type: 'line', key: 'Milestones', label: '  Milestones' },
-  { type: 'line', key: 'Closing Fees', label: '  Closing Fees' },
-  { type: 'line', key: 'Referral Fees', label: '  Referral Fees' },
-  { type: 'line', key: 'FinServ Revenue', label: 'FinServ Revenue' },
-  { type: 'line', key: 'Technology Revenue', label: 'Technology Revenue' },
-  { type: 'line', key: 'Loan Proceeds', label: 'Loan Proceeds' },
-  { type: 'line', key: 'Other Receipts', label: 'Other Receipts' },
-  { type: 'line', key: 'TOTAL RECEIPTS', label: 'TOTAL RECEIPTS', bold: true },
-  { type: 'header', label: '( – ) CASH DISBURSEMENTS' },
-  { type: 'line', key: 'Advertising & Marketing', label: 'Advertising & Marketing' },
-  { type: 'line', key: 'Insurance', label: 'Insurance' },
-  { type: 'line', key: 'Payroll - Salaries', label: 'Payroll - Salaries' },
-  { type: 'line', key: 'Payroll - Taxes & Benefits', label: 'Payroll - Taxes & Benefits' },
-  { type: 'line', key: 'Contractors & Consultants', label: 'Contractors & Consultants' },
-  { type: 'line', key: 'Rent & Occupancy', label: 'Rent & Occupancy' },
-  { type: 'line', key: 'Software & Technology', label: 'Software & Technology' },
-  { type: 'line', key: 'Legal & Professional', label: 'Legal & Professional' },
-  { type: 'line', key: 'Travel & Entertainment', label: 'Travel & Entertainment' },
-  { type: 'line', key: 'Office & Admin', label: 'Office & Admin' },
-  { type: 'line', key: 'Loan Payments', label: 'Loan Payments' },
-  { type: 'line', key: 'Other Disbursements', label: 'Other Disbursements' },
-  { type: 'line', key: 'TOTAL DISBURSEMENTS', label: 'TOTAL DISBURSEMENTS', bold: true },
+const BASE_EXPORT_ROWS: ExportRow[] = [
+  { type: 'line', key: 'BEGINNING CASH', label: 'BEGINNING CASH', section: 'position', bold: true },
+  { type: 'line', key: 'ENDING CASH', label: 'ENDING CASH', section: 'position', bold: true },
+  { type: 'line', key: 'NET CHANGE', label: 'NET CHANGE', section: 'position', bold: true },
+  { type: 'line', key: "Add'l Liquidity (Delayed Draw)", label: "Add'l Liquidity (Delayed Draw)", section: 'position' },
+  { type: 'line', key: 'TOTAL CASH ON HAND', label: 'TOTAL CASH ON HAND', section: 'position', bold: true },
+  { type: 'header', label: '( + ) CASH RECEIPTS', section: 'receipts' },
+  { type: 'line', key: 'Retainers', label: '  Retainers', section: 'receipts' },
+  { type: 'line', key: 'Milestones', label: '  Milestones', section: 'receipts' },
+  { type: 'line', key: 'Closing Fees', label: '  Closing Fees', section: 'receipts' },
+  { type: 'line', key: 'Referral Fees', label: '  Referral Fees', section: 'receipts' },
+  { type: 'line', key: 'FinServ Revenue', label: 'FinServ Revenue', section: 'receipts' },
+  { type: 'line', key: 'Technology Revenue', label: 'Technology Revenue', section: 'receipts' },
+  { type: 'line', key: 'Loan Proceeds', label: 'Loan Proceeds', section: 'receipts' },
+  { type: 'line', key: 'Other Receipts', label: 'Other Receipts', section: 'receipts' },
+  { type: 'line', key: 'TOTAL RECEIPTS', label: 'TOTAL RECEIPTS', section: 'receipts', bold: true },
+  { type: 'header', label: '( – ) CASH DISBURSEMENTS', section: 'disbursements' },
+  { type: 'line', key: 'Advertising & Marketing', label: 'Advertising & Marketing', section: 'disbursements' },
+  { type: 'line', key: 'Insurance', label: 'Insurance', section: 'disbursements' },
+  { type: 'line', key: 'Payroll - Salaries', label: 'Payroll - Salaries', section: 'disbursements' },
+  { type: 'line', key: 'Payroll - Taxes & Benefits', label: 'Payroll - Taxes & Benefits', section: 'disbursements' },
+  { type: 'line', key: 'Contractors & Consultants', label: 'Contractors & Consultants', section: 'disbursements' },
+  { type: 'line', key: 'Rent & Occupancy', label: 'Rent & Occupancy', section: 'disbursements' },
+  { type: 'line', key: 'Software & Technology', label: 'Software & Technology', section: 'disbursements' },
+  { type: 'line', key: 'Legal & Professional', label: 'Legal & Professional', section: 'disbursements' },
+  { type: 'line', key: 'Travel & Entertainment', label: 'Travel & Entertainment', section: 'disbursements' },
+  { type: 'line', key: 'Office & Admin', label: 'Office & Admin', section: 'disbursements' },
+  { type: 'line', key: 'Loan Payments', label: 'Loan Payments', section: 'disbursements' },
+  { type: 'line', key: 'Other Disbursements', label: 'Other Disbursements', section: 'disbursements' },
+  { type: 'line', key: 'TOTAL DISBURSEMENTS', label: 'TOTAL DISBURSEMENTS', section: 'disbursements', bold: true },
 ];
+
+/**
+ * Mirror WeeklyReportTab's display-sign rule: raw disbursement values are
+ * stored as positive magnitudes; the live table negates them so they render
+ * red with parentheses. Position rows (NET CHANGE, etc.) keep their raw sign.
+ */
+function toDisplayValue(raw: number, section: RowSection): number {
+  if (section === 'disbursements' && raw > 0) return -raw;
+  return raw;
+}
 
 export const ExportModal = memo(function ExportModal({
   open,
   weeklyData,
   weeksPast = 4,
   weeksFuture = 12,
+  customReceiptRows = [],
+  customDisbursementRows = [],
   onClose,
   onArchive,
 }: ExportModalProps) {
@@ -112,6 +131,27 @@ export const ExportModal = memo(function ExportModal({
   const [flags, setFlags] = useState<ExportFlag[]>([]);
   const [notes, setNotes] = useState('');
   const [customFlag, setCustomFlag] = useState('');
+
+  // Build the effective row order, injecting custom rows just before each
+  // section's TOTAL — matches WeeklyReportTab's effectiveRowOrder so the PDF
+  // includes any company-specific lines (e.g. Ramp, M&T).
+  const EXPORT_ROWS = useMemo<ExportRow[]>(() => {
+    const out: ExportRow[] = [];
+    for (const row of BASE_EXPORT_ROWS) {
+      if (row.type === 'line' && row.key === 'TOTAL RECEIPTS') {
+        for (const name of customReceiptRows) {
+          out.push({ type: 'line', key: name, label: name, section: 'receipts' });
+        }
+      }
+      if (row.type === 'line' && row.key === 'TOTAL DISBURSEMENTS') {
+        for (const name of customDisbursementRows) {
+          out.push({ type: 'line', key: name, label: name, section: 'disbursements' });
+        }
+      }
+      out.push(row);
+    }
+    return out;
+  }, [customReceiptRows, customDisbursementRows]);
 
   // Compute the viewport slice the user is actually looking at — same logic
   // as WeeklyReportTab so the PDF matches the on-screen Weeks Past/Future.
@@ -169,12 +209,17 @@ export const ExportModal = memo(function ExportModal({
         ];
         body.push(headerRow);
       } else {
-        const rawVals = weeks.map(([, v]) => (v[row.key] as number) || 0);
-        const cells = [row.label, ...rawVals.map((n) => fmtAbbrev(n))];
+        // Display-sign matches the in-app table: disbursement rows render as
+        // negatives so fmtAbbrev wraps them in parens and the color helper
+        // paints them red. Position rows (NET CHANGE, etc.) keep raw sign.
+        const displayVals = weeks.map(([, v]) =>
+          toDisplayValue((v[row.key] as number) || 0, row.section)
+        );
+        const cells = [row.label, ...displayVals.map((n) => fmtAbbrev(n))];
         body.push(cells);
         const bodyIdx = body.length - 1;
         const colMap: Record<number, number> = {};
-        rawVals.forEach((n, i) => { colMap[i + 1] = n; });
+        displayVals.forEach((n, i) => { colMap[i + 1] = n; });
         cellValues[bodyIdx] = colMap;
         if (row.bold) rowStyles[body.length - 1] = { fontStyle: 'bold', fillColor: [241, 245, 249] };
       }
@@ -342,11 +387,17 @@ export const ExportModal = memo(function ExportModal({
               </tr>
             </thead>
             <tbody>
-              {['BEGINNING CASH', 'TOTAL RECEIPTS', 'TOTAL DISBURSEMENTS', 'NET CHANGE', 'ENDING CASH'].map(key => (
+              {([
+                { key: 'BEGINNING CASH', section: 'position' as RowSection },
+                { key: 'TOTAL RECEIPTS', section: 'receipts' as RowSection },
+                { key: 'TOTAL DISBURSEMENTS', section: 'disbursements' as RowSection },
+                { key: 'NET CHANGE', section: 'position' as RowSection },
+                { key: 'ENDING CASH', section: 'position' as RowSection },
+              ]).map(({ key, section }) => (
                 <tr key={key}>
                   <td style={{ padding: 3, border: '1px solid #cbd5e1', fontWeight: 600, color: '#334155' }}>{key}</td>
                   {weeks.slice(0, 8).map(([wk, v]) => {
-                    const val = (v[key] as number) || 0;
+                    const val = toDisplayValue((v[key] as number) || 0, section);
                     return (
                       <td key={wk} style={{
                         padding: 3, border: '1px solid #cbd5e1', textAlign: 'center',
