@@ -5051,34 +5051,32 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       };
     }
     case "create_task": {
-      // ── Server-side safety guardrails (orchestration layer) ──
-      // These run AFTER explicit user approval but BEFORE persistence so a
-      // compromised/buggy client cannot bypass low-confidence or duplicate
-      // rules. Pair with the UI duplicate-review card and the LLM's
-      // pre-call gating prompt.
-      const conf = (params as any).confidence || {};
-      const dupStatus = (params as any).duplicate_status || "none";
-      const forceCreate = !!(params as any).force_create;
-      const linkedEntityProvided = !!(params.deal_id || params.contact_id);
-      if (linkedEntityProvided && typeof conf.deal === "number" && conf.deal < 0.7 && !forceCreate) {
-        return {
-          success: false,
-          error: "Linked entity confidence is too low to create this task automatically. Confirm the deal or contact and try again.",
-          actionType: "create_task",
-        };
+      // ── Server-side guardrail: validate against real tasks schema ──
+      // The tasks table has NO priority column writable from the AI (CHECK
+      // constraint allows only NULL or 'urgent'), NO calendar field, and
+      // due_date is date-only. Strip / coerce anything else.
+      const ALLOWED_PARAMS = new Set([
+        "title", "description", "deal_id", "assignee_user_id", "assignee_name",
+        "due_date", "task_type", "deal_name", "collaborator_ids", "tz",
+        // legacy-passthrough (ignored here but tolerated):
+        "audit_id", "force_create",
+      ]);
+      for (const k of Object.keys(params || {})) {
+        if (!ALLOWED_PARAMS.has(k)) {
+          console.warn(`[create_task] stripping unknown param: ${k}`);
+          delete (params as any)[k];
+        }
       }
-      if (dupStatus === "high" && !forceCreate) {
-        return {
-          success: false,
-          error: "A strong duplicate of this task already exists. Re-open the existing task or confirm 'Create anyway' to proceed.",
-          actionType: "create_task",
-        };
+      if (!params.title || typeof params.title !== "string" || !params.title.trim()) {
+        return { success: false, error: "Title is required.", actionType: "create_task" };
       }
 
       // Normalise due_date — accept YYYY-MM-DD, ISO timestamps, or relative words.
       let dueDate: string | null = null;
       const rawDue = params.due_date ? String(params.due_date).trim() : "";
       if (rawDue) {
+        // Truncate any time component the model may have sent.
+        const dateOnly = rawDue.split("T")[0];
         const lower = rawDue.toLowerCase();
         const tz = (params as any).tz || "America/New_York";
         // Today in user's timezone as YYYY-MM-DD parts
@@ -5099,8 +5097,8 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
           if (delta === 0 || force7) delta = delta === 0 ? 7 : delta;
           return addDays(delta);
         };
-        if (/^\d{4}-\d{2}-\d{2}/.test(rawDue)) {
-          dueDate = rawDue.slice(0, 10);
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateOnly)) {
+          dueDate = dateOnly.slice(0, 10);
         } else if (lower === "today" || lower === "this afternoon" || lower === "tonight" || lower === "later today" || lower === "eod") {
           dueDate = fmt(today);
         } else if (lower === "tomorrow" || lower === "tmrw") {
@@ -5154,43 +5152,11 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         companyId = cm?.company_id || null;
       }
 
-      // Build due_at (timestamptz) from due_date + due_time in user's tz.
-      // Default time of day = 09:00 local when a date is set without a time.
-      const userTz = (params as any).tz || "America/New_York";
-      let dueAt: string | null = null;
-      if (dueDate) {
-        const rawTime = typeof (params as any).due_time === "string" ? (params as any).due_time.trim() : "";
-        const timeStr = /^\d{1,2}:\d{2}$/.test(rawTime)
-          ? rawTime.padStart(5, "0")
-          : "09:00";
-        try {
-          // Walltime in user's tz → UTC ISO. Compute the tz offset for that
-          // specific instant so DST is handled correctly.
-          const wall = new Date(`${dueDate}T${timeStr}:00Z`);
-          const tzParts = new Intl.DateTimeFormat("en-US", {
-            timeZone: userTz,
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
-          }).formatToParts(wall).reduce<Record<string, string>>((acc, p) => { acc[p.type] = p.value; return acc; }, {});
-          const tzAsUtc = Date.UTC(
-            +tzParts.year, +tzParts.month - 1, +tzParts.day,
-            +tzParts.hour % 24, +tzParts.minute, +tzParts.second,
-          );
-          const offsetMs = tzAsUtc - wall.getTime();
-          dueAt = new Date(wall.getTime() - offsetMs).toISOString();
-        } catch {
-          dueAt = null;
-        }
-      }
-
       const insertRow: Record<string, unknown> = {
         title: params.title,
         description: params.description || null,
         deal_id: params.deal_id || null,
-        contact_id: params.contact_id || null,
-        priority: params.priority || "medium",
         due_date: dueDate,
-        due_at: dueAt,
         status: "not_started",
         task_type: params.task_type || "task",
         assigned_to: assignee,
@@ -5211,58 +5177,30 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       }
       if (!newTask) return { success: false, error: `Failed to create task "${params.title}".` };
 
-      // Optional: also create a Google Calendar event via Nylas v3 unified sync.
-      let calendarEventId: string | null = null;
-      let calendarError: string | null = null;
-      if ((params as any).add_to_calendar && dueAt) {
+      // Insert collaborators (best-effort; non-fatal).
+      const collabIds = Array.isArray((params as any).collaborator_ids)
+        ? ((params as any).collaborator_ids as unknown[]).filter((x): x is string => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x))
+        : [];
+      if (collabIds.length > 0) {
         try {
-          const startMs = new Date(dueAt).getTime();
-          const endIso = new Date(startMs + 30 * 60 * 1000).toISOString(); // 30-min default
-          const calResp = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/calendar-events`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: authHeader,
-              apikey: Deno.env.get("SUPABASE_ANON_KEY") || "",
-            },
-            body: JSON.stringify({
-              action: "create",
-              calendar_id: "primary",
-              timezone: userTz,
-              event_data: {
-                summary: params.title,
-                description: params.description || undefined,
-                start: dueAt,
-                end: endIso,
-              },
-            }),
-          });
-          const calData = await calResp.json().catch(() => ({}));
-          if (calResp.ok && calData?.event?.id) {
-            calendarEventId = calData.event.id;
-            await supabase.from("tasks").update({ nylas_event_id: calendarEventId }).eq("id", newTask.id);
-          } else {
-            calendarError = calData?.error || `Calendar event create failed (${calResp.status})`;
-            console.error("[create_task] calendar error:", calendarError);
-          }
-        } catch (e: any) {
-          calendarError = e?.message || "Calendar event create threw";
-          console.error("[create_task] calendar exception:", calendarError);
+          await supabase.from("task_collaborators").insert(
+            collabIds.map((uid) => ({ task_id: newTask.id, user_id: uid }))
+          );
+        } catch (e) {
+          console.warn("[create_task] collaborator insert failed (non-fatal):", (e as Error).message);
         }
       }
 
       const who = params.assignee_name && assignee !== userId ? ` for ${params.assignee_name}` : "";
       return {
         success: true,
-        message: `Task "${params.title}" created${who}${calendarEventId ? " · added to calendar" : ""}${calendarError ? ` (calendar: ${calendarError})` : ""}`,
+        message: `Task "${params.title}" created${who}`,
         actionType: "create_task",
         params: {
           task_id: newTask.id,
           deal_id: params.deal_id,
           assigned_to: newTask.assigned_to,
-          due_at: dueAt,
-          calendar_event_id: calendarEventId,
-          calendar_error: calendarError,
+          due_date: dueDate,
         },
       };
     }
