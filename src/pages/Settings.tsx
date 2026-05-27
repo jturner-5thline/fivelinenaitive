@@ -331,49 +331,6 @@ const buildGroups = (ctx: { pendingJoinCount: number }): GroupDef[] => [
       },
     ],
   },
-  {
-    id: 'integrations',
-    label: 'Integrations',
-    icon: Plug,
-    sections: [
-      {
-        id: 'field-layout',
-        label: 'CRM Field Layout',
-        description: 'Configure how contact and company fields are displayed.',
-        keywords: ['field', 'layout', 'hubspot', 'crm', 'contacts', 'companies'],
-        href: '/field-layout-editor',
-      },
-      {
-        id: 'contact-types',
-        label: 'Contact Types',
-        description: 'Dropdown options for contact classification.',
-        keywords: ['contact', 'types', 'banker', 'client', 'prospect'],
-        render: ({ isAdmin }) => <ContactTypesSettings isAdmin={isAdmin} />,
-      },
-      {
-        id: 'zapier',
-        label: 'Zapier',
-        description: 'Manage Zapier webhooks and event triggers.',
-        keywords: ['zapier', 'webhook', 'integration', 'zap'],
-        href: '/integrations?tab=zapier',
-      },
-      {
-        id: 'partner-rules',
-        label: 'Partner Rules',
-        description: 'Tier definitions and partner channel criteria.',
-        keywords: ['partner', 'tiers', 'rules', 'channels', 'criteria'],
-        visible: (g) => g.isAdmin || g.canEditPartnerRules,
-        render: () => <PartnerRulesSettings />,
-      },
-      {
-        id: 'kpi-card-settings',
-        label: 'KPI Cards',
-        description: 'Format, trend, and comparison for KPI summary cards.',
-        keywords: ['kpi', 'metrics', 'dashboard', 'format', 'trend'],
-        render: ({ isAdmin }) => <KPICardSettings isAdmin={isAdmin} />,
-      },
-    ],
-  },
 ];
 
 const LAST_PATH_KEY = 'naitive:settings:lastPath';
@@ -432,10 +389,10 @@ export default function Settings() {
       lenders: 'funding-sources',
       automation: 'workspace',
       email: 'communications',
-      metrics: 'integrations',
-      crm: 'integrations',
+      metrics: 'workspace',
+      crm: 'workspace',
       ai: 'workspace',
-      'sales-bd': 'integrations',
+      'sales-bd': 'workspace',
     };
     let target = legacyTab ? legacyMap[legacyTab] : undefined;
     if (!target) {
