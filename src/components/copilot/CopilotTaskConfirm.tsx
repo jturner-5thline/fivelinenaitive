@@ -561,6 +561,13 @@ export function CopilotTaskConfirm({ action }: Props) {
         </div>
       )}
 
+      {submitError && (
+        <div style={{ marginTop: 8, padding: '8px 10px', borderRadius: 6, background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.30)', fontSize: 12, color: 'hsl(var(--destructive))', display: 'flex', alignItems: 'flex-start', gap: 6 }}>
+          <AlertTriangle size={12} style={{ marginTop: 2, flexShrink: 0 }} />
+          <span><strong>Couldn't create task:</strong> {submitError}</span>
+        </div>
+      )}
+
       {needsDisambiguation && (
         <div
           style={{
