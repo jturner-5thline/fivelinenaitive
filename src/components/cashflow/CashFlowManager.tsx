@@ -644,9 +644,30 @@ export function CashFlowManager() {
   const [cashInDialogOpen, setCashInDialogOpen] = useState(false);
   const [cellCommentCount, setCellCommentCount] = useState(0);
   // Lifted from WeeklyReportTab so headline KPIs can scope to (current week → +weeksFuture).
-  const [weeksFuture, setWeeksFuture] = useState<number>(12);
+  const [weeksFuture, setWeeksFuture] = useState<number>(8);
   // Lifted so the PDF export can scope to the same (weeksPast .. weeksFuture) viewport.
-  const [weeksPast, setWeeksPast] = useState<number>(4);
+  const [weeksPast, setWeeksPast] = useState<number>(1);
+  // Hydrate from global system_settings on mount. User edits after hydration are
+  // session-only and never write back here — the global defaults are admin-managed.
+  const didHydrateWeeksRef = useRef(false);
+  useEffect(() => {
+    if (didHydrateWeeksRef.current) return;
+    didHydrateWeeksRef.current = true;
+    (async () => {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('key,value')
+        .in('key', ['cashflow.default_weeks_past', 'cashflow.default_weeks_future']);
+      if (error || !data) return;
+      for (const row of data) {
+        const raw = (row as any).value;
+        const n = typeof raw === 'number' ? raw : Number(raw);
+        if (!Number.isFinite(n)) continue;
+        if ((row as any).key === 'cashflow.default_weeks_past') setWeeksPast(n);
+        if ((row as any).key === 'cashflow.default_weeks_future') setWeeksFuture(n);
+      }
+    })();
+  }, []);
 
   // Entity (account) and Category filters for Configure-driven KPIs/charts/grid
   const [filterEntities, setFilterEntities] = useState<string[]>([]);
