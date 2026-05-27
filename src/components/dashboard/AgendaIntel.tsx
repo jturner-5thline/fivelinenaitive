@@ -1188,6 +1188,99 @@ export function AgendaIntel() {
 
 export default AgendaIntel;
 
+// ── Deal link picker dialog ─────────────────────────────────
+function DealLinkPicker({
+  open,
+  query,
+  onQueryChange,
+  onClose,
+  deals,
+  onPick,
+  busy,
+}: {
+  open: boolean;
+  query: string;
+  onQueryChange: (v: string) => void;
+  onClose: () => void;
+  deals: DealRow[];
+  onPick: (dealId: string) => void;
+  busy: boolean;
+}) {
+  const q = query.trim().toLowerCase();
+  const ranked = useMemo(() => {
+    const filtered = deals.filter(d => {
+      if (!q) return true;
+      const hay = [d.name, d.owner || '', d.stage || ''].join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+    filtered.sort((a, b) => {
+      const ra = CATEGORY_RANK[a.category || 'other'];
+      const rb = CATEGORY_RANK[b.category || 'other'];
+      if (ra !== rb) return ra - rb;
+      const ta = a.updated_at ? Date.parse(a.updated_at) : 0;
+      const tb = b.updated_at ? Date.parse(b.updated_at) : 0;
+      return tb - ta;
+    });
+    return q ? filtered : filtered.slice(0, 50);
+  }, [deals, q]);
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent
+        className="sm:max-w-[520px] p-0 border"
+        style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        <DialogHeader className="px-4 pt-4 pb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <DialogTitle className="text-sm font-semibold text-white">Link a deal to this meeting</DialogTitle>
+        </DialogHeader>
+        <div className="p-3 space-y-2">
+          <input
+            autoFocus
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            placeholder="Search by deal, company, or owner..."
+            className="w-full h-9 px-3 rounded-md bg-white/[0.04] border border-white/10 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/50"
+          />
+          <div className="max-h-[360px] overflow-y-auto rounded-md border border-white/5">
+            {deals.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-white/60">
+                <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" /> Loading deals…
+              </div>
+            ) : ranked.length === 0 ? (
+              <div className="px-3 py-6 text-center text-xs text-white/60">No matching deals.</div>
+            ) : (
+              ranked.map(d => {
+                const cat = d.category || 'other';
+                const badge = CATEGORY_BADGE[cat];
+                return (
+                  <button
+                    key={d.id}
+                    type="button"
+                    disabled={busy}
+                    onClick={() => onPick(d.id)}
+                    className="w-full text-left px-3 py-2 flex items-center gap-2 hover:bg-white/[0.04] transition-colors border-b border-white/[0.03] last:border-0 disabled:opacity-60"
+                  >
+                    <Briefcase className="h-3.5 w-3.5 text-white/50 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm text-white truncate">{highlightMatch(d.name, q)}</div>
+                      {d.owner && (
+                        <div className="text-[10px] text-white/50 truncate">{highlightMatch(d.owner, q)}</div>
+                      )}
+                    </div>
+                    <Badge variant="outline" className={cn('text-[10px] font-normal px-1.5 py-0 shrink-0', badge.cls)}>
+                      {badge.label}
+                    </Badge>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Follow-up email dialog ──────────────────────────────────
 // Compact compose modal anchored to a selected meeting. Pre-fills recipients
 // from the meeting attendees and a sensible subject, but everything remains
