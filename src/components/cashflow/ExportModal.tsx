@@ -159,6 +159,9 @@ export const ExportModal = memo(function ExportModal({
     const headers = ['Line Item', ...weeks.map(([dateKey]) => formatWeekStartLabel(dateKey))];
     const body: any[] = [];
     const rowStyles: Record<number, any> = {};
+    // Parallel grid of raw numeric values keyed by [bodyRowIndex][columnIndex].
+    // Column 0 is the label (no value); columns 1..N correspond to week cells.
+    const cellValues: Record<number, Record<number, number>> = {};
     EXPORT_ROWS.forEach((row, idx) => {
       if (row.type === 'header') {
         const headerRow = [
@@ -166,8 +169,13 @@ export const ExportModal = memo(function ExportModal({
         ];
         body.push(headerRow);
       } else {
-        const cells = [row.label, ...weeks.map(([, v]) => fmtAbbrev((v[row.key] as number) || 0))];
+        const rawVals = weeks.map(([, v]) => (v[row.key] as number) || 0);
+        const cells = [row.label, ...rawVals.map((n) => fmtAbbrev(n))];
         body.push(cells);
+        const bodyIdx = body.length - 1;
+        const colMap: Record<number, number> = {};
+        rawVals.forEach((n, i) => { colMap[i + 1] = n; });
+        cellValues[bodyIdx] = colMap;
         if (row.bold) rowStyles[body.length - 1] = { fontStyle: 'bold', fillColor: [241, 245, 249] };
       }
     });
@@ -183,9 +191,14 @@ export const ExportModal = memo(function ExportModal({
         if (styles && data.section === 'body') {
           Object.assign(data.cell.styles, styles);
         }
-        // Right-align numeric value cells
+        // Right-align numeric value cells and apply pos/neg coloring that
+        // mirrors the in-app cf-val-pos / cf-val-neg classes.
         if (data.section === 'body' && data.column.index > 0) {
           data.cell.styles.halign = 'right';
+          const val = cellValues[data.row.index]?.[data.column.index];
+          if (typeof val === 'number' && val !== 0) {
+            data.cell.styles.textColor = hexToRgb(cellTextColor(val));
+          }
         }
       },
       theme: 'grid',
