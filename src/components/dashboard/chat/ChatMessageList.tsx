@@ -317,10 +317,10 @@ export function ChatMessageList({ messages, isLoading, onCreateTask, onFollowUp,
                 </Avatar>
               )}
 
-              <div className="flex flex-col gap-1 max-w-[85%]">
+              <div className="flex flex-col gap-1 max-w-[85%] min-w-0">
                 {/* Message bubble */}
                 <div className={cn(
-                  'rounded-xl px-3.5 py-2.5 text-sm relative transition-all duration-200',
+                  'rounded-xl px-3.5 py-2.5 text-sm relative transition-all duration-200 min-w-0 max-w-full break-words [overflow-wrap:anywhere] [word-break:break-word] whitespace-pre-wrap',
                   isUser
                     ? 'bg-[linear-gradient(135deg,hsl(var(--primary))_0%,hsl(var(--primary)/0.85)_100%)] text-primary-foreground shadow-[0_2px_8px_hsl(var(--primary)/0.3)]'
                     : 'border border-[hsl(263,40%,30%,0.4)] bg-[linear-gradient(135deg,hsl(260,20%,10%,0.5)_0%,hsl(263,18%,8%,0.6)_100%)] backdrop-blur-md shadow-[inset_0_1px_1px_hsl(263,40%,40%,0.08),0_2px_8px_hsl(0,0%,0%,0.2)]',

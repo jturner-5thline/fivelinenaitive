@@ -67,7 +67,12 @@ export function useNaitiveTaskParse(text: string, context: ParseContext = {}, de
           setDraft(null);
         } else {
           const j = await resp.json();
-          setDraft(j.draft as TaskDraft);
+          const d = j.draft as TaskDraft;
+          // Honor explicit "no priority / leave blank / clear priority" intent.
+          if (/\b(no|without|clear|blank|leave\s+blank|remove)\s+priority\b|priority\s+(should\s+be\s+)?(blank|none|null|clear|removed)/i.test(trimmed)) {
+            d.priority = null;
+          }
+          setDraft(d);
           setError(null);
         }
       } catch (e) {
