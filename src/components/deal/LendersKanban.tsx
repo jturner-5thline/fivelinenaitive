@@ -292,7 +292,7 @@ function DraggableLenderTile({
 
 // Droppable Kanban Column with larger drop target
 function DroppableColumn({
-  group,
+  column,
   dealId,
   dealName,
   dealCompany,
@@ -311,7 +311,7 @@ function DroppableColumn({
   dealId?: string;
   dealName?: string;
   dealCompany?: string;
-  group: { id: StageGroup; label: string; color: string };
+  column: { id: string; label: string; color: string };
   lenders: DealLender[];
   configuredStages: { id: string; label: string; group: StageGroup }[];
   isSaving?: (id: string) => boolean;
@@ -325,14 +325,14 @@ function DroppableColumn({
   onFollowUpSent?: () => void;
 }) {
   const { setNodeRef, isOver } = useDroppable({
-    id: group.id,
+    id: column.id,
   });
 
   return (
     <div className="flex flex-col min-w-0 overflow-hidden">
       <div className="flex items-center gap-2 mb-3 px-1">
-        <div className={cn("w-3 h-3 rounded-full shrink-0", group.color)} />
-        <h3 className="font-medium text-sm truncate">{group.label}</h3>
+        <div className={cn("w-3 h-3 rounded-full shrink-0", column.color)} />
+        <h3 className="font-medium text-sm truncate">{column.label}</h3>
         <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full shrink-0">
           {lenders.length}
         </span>
