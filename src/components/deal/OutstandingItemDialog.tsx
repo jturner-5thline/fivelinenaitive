@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { SearchableRequesterList } from '@/components/deal/SearchableRequesterList';
 import { format, isPast, isToday } from 'date-fns';
 import { Calendar, User, Send, Trash2, Clock, Pencil, Check, X, ChevronDown, ChevronLeft, ChevronRight, AlertTriangle, ArrowUp, ArrowUpRight, UserPlus } from 'lucide-react';
@@ -78,6 +78,7 @@ export function OutstandingItemDialog({
   const [textValue, setTextValue] = useState('');
   const [editingRequester, setEditingRequester] = useState(false);
   const [requesterValue, setRequesterValue] = useState<string[]>([]);
+  const dialogContentRef = useRef<HTMLDivElement>(null);
   const { comments, isLoading, addComment, deleteComment } = useOutstandingItemComments(item?.id || null);
   const { user } = useAuth();
 
@@ -182,7 +183,7 @@ export function OutstandingItemDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
-      <DialogContent className="max-w-xl max-h-[85vh] flex flex-col">
+      <DialogContent ref={dialogContentRef} className="max-w-xl max-h-[85vh] flex flex-col">
         {/* Navigation arrows */}
         {items.length > 1 && (
           <>
@@ -276,7 +277,7 @@ export function OutstandingItemDialog({
                       <ChevronDown className="h-3 w-3 shrink-0 opacity-50" />
                     </Button>
                   </PopoverTrigger>
-                  <PopoverContent className="w-[220px] p-0 bg-popover" align="start">
+                  <PopoverContent container={dialogContentRef.current} className="pointer-events-auto z-[100] w-[220px] p-0 bg-popover" align="start">
                     <SearchableRequesterList
                       options={requestedByOptions}
                       selected={requesterValue}

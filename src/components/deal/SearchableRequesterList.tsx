@@ -38,17 +38,18 @@ export function SearchableRequesterList({ options, selected, onToggle }: Searcha
           />
         </div>
       </div>
-      <div className="max-h-[250px] overflow-auto p-1">
+      <div className="pointer-events-auto relative z-[100] max-h-[250px] overflow-auto p-1">
         {filtered.length === 0 ? (
           <div className="px-2 py-3 text-xs text-muted-foreground text-center">No matches</div>
         ) : (
           filtered.map((option) => {
             const isSelected = selected.includes(option);
             return (
-              <div
+              <button
+                type="button"
                 key={option}
                 className={cn(
-                  'flex cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
+                  'pointer-events-auto relative z-[100] flex w-full cursor-pointer items-center gap-2 rounded-sm px-2 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground transition-colors',
                   isSelected && 'bg-accent/50'
                 )}
                 onClick={() => onToggle(option)}
@@ -60,7 +61,7 @@ export function SearchableRequesterList({ options, selected, onToggle }: Searcha
                 />
                 <span className="flex-1 truncate">{option}</span>
                 {isSelected && <Check className="h-4 w-4 text-primary shrink-0" />}
-              </div>
+              </button>
             );
           })
         )}
