@@ -1,5 +1,4 @@
-import { useState, useCallback, useRef } from "react";
-import { Check } from "lucide-react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { cn } from "@/lib/utils";
 
 interface TaskCompletionCheckboxProps {
@@ -7,19 +6,38 @@ interface TaskCompletionCheckboxProps {
   onChange: (checked: boolean) => void;
   disabled?: boolean;
   className?: string;
+  taskTitle?: string;
 }
 
+/**
+ * Hover-preview checkbox for task rows.
+ * - Unchecked: hover/focus telegraphs the completed state (fills interior
+ *   ~55% + ghost checkmark ~70% + scale 1.08) over 150ms ease-out.
+ * - Checked: hover/focus previews un-completion (fill drops 100% -> 40%).
+ * - Click: snap to 100% + 1.15 pop pulse over 250ms ease-out-back.
+ * - Honors prefers-reduced-motion (instant bg swap, no transform).
+ */
 export function TaskCompletionCheckbox({
   checked,
   onChange,
   disabled = false,
   className,
+  taskTitle,
 }: TaskCompletionCheckboxProps) {
   const [isAnimating, setIsAnimating] = useState(false);
-  const [isHovering, setIsHovering] = useState(false);
-  // Debounce rapid clicks on adjacent rows (~300ms) so a stray scroll-click
-  // on the wrong task doesn't accidentally mark it complete.
+  const [isPreview, setIsPreview] = useState(false); // hover OR focus-visible
+  const [reducedMotion, setReducedMotion] = useState(false);
+  // Debounce rapid clicks on adjacent rows (~300ms)
   const lastClickRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.matchMedia) return;
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const update = () => setReducedMotion(mq.matches);
+    update();
+    mq.addEventListener?.("change", update);
+    return () => mq.removeEventListener?.("change", update);
+  }, []);
 
   const handleClick = useCallback(() => {
     if (disabled) return;
@@ -28,8 +46,7 @@ export function TaskCompletionCheckbox({
     lastClickRef.current = now;
     setIsAnimating(true);
     onChange(!checked);
-    // Allow animation to finish
-    setTimeout(() => setIsAnimating(false), 400);
+    setTimeout(() => setIsAnimating(false), 280);
   }, [checked, disabled, onChange]);
 
   const handleKeyDown = useCallback(
@@ -42,70 +59,104 @@ export function TaskCompletionCheckbox({
     [handleClick]
   );
 
+  const ariaLabel = taskTitle
+    ? checked
+      ? `Mark '${taskTitle}' incomplete`
+      : `Mark '${taskTitle}' complete`
+    : checked
+      ? "Mark as incomplete"
+      : "Mark as complete";
+
+  // Easing tokens
+  const easeOut = "cubic-bezier(0.16, 1, 0.3, 1)";
+  const easeOutBack = "cubic-bezier(0.34, 1.56, 0.64, 1)";
+
+  // Compute target visual state
+  const showPreviewFill = !checked && isPreview && !isAnimating;
+  const showPreviewUncheck = checked && isPreview && !isAnimating;
+
+  // Background opacity for circle interior
+  let fillOpacity = 0;
+  if (checked) fillOpacity = showPreviewUncheck ? 0.4 : 1;
+  else if (showPreviewFill) fillOpacity = 0.55;
+
+  // Checkmark glyph opacity
+  let glyphOpacity = 0;
+  if (checked) glyphOpacity = showPreviewUncheck ? 0.5 : 1;
+  else if (showPreviewFill) glyphOpacity = 0.7;
+
+  // Scale
+  let scale = 1;
+  if (!reducedMotion) {
+    if (isAnimating) scale = 1.15;
+    else if (isPreview) scale = 1.08;
+  }
+
+  // Transition timings
+  const transitionDuration = reducedMotion
+    ? "0ms"
+    : isAnimating
+      ? "250ms"
+      : isPreview
+        ? "150ms"
+        : "120ms";
+  const transitionEase = isAnimating ? easeOutBack : easeOut;
+
   return (
     <button
       role="checkbox"
       aria-checked={checked}
-      aria-label={checked ? "Mark as incomplete" : "Mark as complete"}
+      aria-label={ariaLabel}
       tabIndex={0}
       disabled={disabled}
       onClick={handleClick}
-      onMouseEnter={() => setIsHovering(true)}
-      onMouseLeave={() => setIsHovering(false)}
+      onMouseEnter={() => setIsPreview(true)}
+      onMouseLeave={() => setIsPreview(false)}
+      onFocus={(e) => {
+        // only show preview for keyboard focus
+        if (e.target.matches(":focus-visible")) setIsPreview(true);
+      }}
+      onBlur={() => setIsPreview(false)}
       onKeyDown={handleKeyDown}
       className={cn(
-        // Large hit area, compact visual
-        "relative flex items-center justify-center w-8 h-8 -m-1 rounded-lg",
+        "group relative flex items-center justify-center w-8 h-8 -m-1 rounded-lg cursor-pointer",
         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
-        "transition-colors duration-150",
-        !checked && "hover:bg-primary/10",
-        checked && "hover:bg-muted/50",
         disabled && "cursor-not-allowed opacity-50",
         className
       )}
     >
       <span
+        aria-hidden="true"
         className={cn(
-          "relative flex items-center justify-center w-[18px] h-[18px] rounded-full border-2 transition-all duration-200 ease-out",
-          // Unchecked
-          !checked && "border-muted-foreground/50 bg-transparent",
-          !checked && isHovering && "border-primary/80 bg-primary/15",
-          // Checked
-          checked && "border-primary bg-primary",
-          // Pop animation on complete
-          isAnimating && checked && "animate-task-complete-pop",
-          // Ring flash
-          isAnimating && checked && "shadow-[0_0_0_4px_hsl(var(--primary)/0.2)]"
+          "relative flex items-center justify-center w-[18px] h-[18px] rounded-full border-2",
+          checked || showPreviewFill
+            ? "border-primary"
+            : "border-muted-foreground/50"
         )}
+        style={{
+          backgroundColor: `hsl(var(--primary) / ${fillOpacity})`,
+          transform: `scale(${scale})`,
+          transition: `background-color ${transitionDuration} ${transitionEase}, transform ${transitionDuration} ${transitionEase}, border-color ${transitionDuration} ${transitionEase}, box-shadow ${transitionDuration} ${transitionEase}`,
+          boxShadow:
+            isAnimating && !checked
+              ? "0 0 0 4px hsl(var(--primary) / 0.2)"
+              : "none",
+        }}
       >
-        {/* Check SVG with draw-in animation */}
         <svg
           viewBox="0 0 12 12"
-          className={cn(
-            "w-3 h-3 transition-all duration-200",
-            checked
-              ? "opacity-100 scale-100"
-              : isHovering
-                ? "opacity-60 scale-90"
-                : "opacity-0 scale-50"
-          )}
+          className="w-3 h-3"
+          style={{
+            opacity: glyphOpacity,
+            transition: `opacity ${transitionDuration} ${transitionEase}`,
+          }}
           fill="none"
           stroke="hsl(var(--primary-foreground))"
           strokeWidth="2.5"
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          <path
-            d="M2.5 6.5L5 9L9.5 3.5"
-            className={cn(
-              checked && isAnimating && "animate-task-check-draw"
-            )}
-            style={{
-              strokeDasharray: 12,
-              strokeDashoffset: checked || isHovering ? 0 : 12,
-              transition: "stroke-dashoffset 250ms ease-out 50ms",
-            }}
-          />
+          <path d="M2.5 6.5L5 9L9.5 3.5" />
         </svg>
       </span>
     </button>
