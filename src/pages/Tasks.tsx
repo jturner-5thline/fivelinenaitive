@@ -783,7 +783,7 @@ export default function Tasks() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [filtered, focusedTaskIndex, selectedTaskId, handleCompleteWithUndo, handleDeleteWithUndo, handleToggleSelect, handleToggleStar, handleSelectAll]);
+  }, [filtered, focusedTaskIndex, selectedTaskId, handleCompleteWithUndo, handleDeleteWithUndo, handleToggleSelect, handleToggleStar, handleSelectAll, undoStack]);
 
   const handleSaveView = () => {
     if (!newViewName.trim()) return;
