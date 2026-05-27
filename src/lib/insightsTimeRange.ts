@@ -222,7 +222,7 @@ export function buildBuckets(start: string, end: string, granularity: Granularit
         start_date: ymd(boundedStart),
         end_date: ymd(boundedEnd),
         key: `${qStart.getFullYear()}-Q${q}`,
-        label: `Q${q} ${String(qStart.getFullYear()).slice(2)}`,
+        label: `Q${q} ${qStart.getFullYear()}`,
       });
       cursor.setMonth(cursor.getMonth() + 3);
     }
