@@ -513,21 +513,7 @@ export function CreateDealDialog({ trigger, open: controlledOpen, onOpenChange, 
                     </SelectTrigger>
                     <SelectContent side="bottom" align="start">
                       <SelectItem value="__none__">None</SelectItem>
-                      {[
-                        'Email Campaign',
-                        'LinkedIn Campaign',
-                        'Inbound',
-                        'Paid',
-                        'Outsourced Sales Group',
-                        'Internal',
-                        'Event',
-                        'Channel Partner',
-                        'Referral - Bank',
-                        'Referral - Lender',
-                        'Referral - Service Provider',
-                        'Referral - Client',
-                        'Referral - Personal Connection',
-                      ].map((option) => (
+                      {DEAL_SOURCED_VIA_OPTIONS.map((option) => (
                         <SelectItem key={option} value={option}>{option}</SelectItem>
                       ))}
                     </SelectContent>
