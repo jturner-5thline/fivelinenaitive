@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { useQuickBooksInvoices, useQuickBooksCustomers, useQuickBooksPayments } from '@/hooks/useQuickBooks';
 import { useQuickBooksExpanded } from '@/hooks/useQuickBooksExpanded';
-import { format, subMonths, startOfMonth } from 'date-fns';
+import { format, subMonths } from 'date-fns';
 import { resolveQboClientLabel } from '@/lib/qboClientName';
 
 export interface QuickBooksMetricsPeriod {
