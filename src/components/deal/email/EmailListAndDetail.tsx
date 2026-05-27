@@ -8,6 +8,7 @@ import { AiAssistInlinePanel } from './AiAssistInlinePanel';
 import { AiAssistSidebar } from './AiAssistSidebar';
 import { YourReplyComposer } from './YourReplyComposer';
 import { LinkToDealPopover } from './LinkToDealPopover';
+import { LinkedDealPreviewPopover } from './LinkedDealPreviewPopover';
 import { ThreadSummaryCard } from './ThreadSummaryCard';
 import { Button } from '@/components/ui/button';
 import { useAssistEnabled } from '@/hooks/useAssistEnabled';
