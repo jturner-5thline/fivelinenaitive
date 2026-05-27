@@ -392,7 +392,16 @@ function ControllerDashboardInner() {
                   cursor="pointer"
                   aria-label="Click a client bar to open drilldown"
                   onClick={(d: any) => openClientDrill(d?.name, 'FinServ Revenue by Client', FINSERV_REALM_ID, Number(d?.revenue) || 0)}
-                />
+                >
+                  {showDataLabels && finservRevenue.data && (
+                    <LabelList
+                      dataKey="revenue"
+                      position="top"
+                      formatter={makeLabelFormatter(finservRevenue.data.map(d => d.revenue))}
+                      style={dataLabelStyle}
+                    />
+                  )}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -430,7 +439,16 @@ function ControllerDashboardInner() {
                   cursor="pointer"
                   aria-label="Click a client bar to open drilldown"
                   onClick={(d: any) => openClientDrill(d?.name, 'Debt Revenue by Client', DEBT_REALM_ID, Number(d?.revenue) || 0)}
-                />
+                >
+                  {showDataLabels && debtRevenue.data && (
+                    <LabelList
+                      dataKey="revenue"
+                      position="top"
+                      formatter={makeLabelFormatter(debtRevenue.data.map(d => d.revenue))}
+                      style={dataLabelStyle}
+                    />
+                  )}
+                </Bar>
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -543,7 +561,12 @@ function ControllerDashboardInner() {
             P&amp;L, A/R, payments, and customer-level reporting across connected QuickBooks entities.
           </p>
         </div>
-        <QuickBooksFinancialDashboard period={period} periodBadge={periodBadge} />
+        <QuickBooksFinancialDashboard
+          period={period}
+          periodBadge={periodBadge}
+          granularity={range.granularity}
+          showDataLabels={showDataLabels}
+        />
       </div>
     </div>
   );
