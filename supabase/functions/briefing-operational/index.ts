@@ -63,6 +63,8 @@ function setCache(key: string, data: unknown) {
 const DELEGATE_ACCESS: Record<string, Set<string>> = {
   'jturner@5thline.co': new Set(['Niki Heikali']),
   'nheikali@5thline.co': new Set(['Niki Heikali']),
+  'ppina@5thline.co': new Set(['Niki Heikali']),
+  'ffustinoni@5thline.co': new Set(['Niki Heikali']),
 };
 
 function isAllowedAssigneeDelegate(callerEmail: string | undefined, assigneeName: string): boolean {
