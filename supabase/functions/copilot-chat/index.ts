@@ -5232,14 +5232,28 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (params.stage) updateFields.stage = params.stage;
       if (params.tracking_status) updateFields.tracking_status = params.tracking_status;
       if (params.pass_reason) updateFields.pass_reason = params.pass_reason;
+      if (typeof params.notes === "string") updateFields.notes = params.notes;
+      if (typeof params.notes_append === "string" && params.notes_append.trim()) {
+        const prior = (params.current_notes || "").toString();
+        const stamp = new Date().toISOString().slice(0, 10);
+        const line = `[${stamp}] ${params.notes_append.trim()}`;
+        updateFields.notes = prior ? `${prior}\n${line}` : line;
+      }
+      if (Object.keys(updateFields).length === 0) {
+        return { success: false, error: "No fields provided to update.", actionType: "update_lender_status" };
+      }
+      console.log("[copilot-chat] update_lender_status execute lender_id=%s fields=%j", params.lender_id, Object.keys(updateFields));
       const { error } = await supabase.from("deal_lenders").update(updateFields).eq("id", params.lender_id);
-      if (error) return { success: false, error: error.message };
+      if (error) {
+        console.error("[copilot-chat] update_lender_status failed:", error);
+        return { success: false, error: error.message, actionType: "update_lender_status" };
+      }
       const { data: verified } = await supabase.from("deal_lenders").select("stage, tracking_status").eq("id", params.lender_id).single();
       if (!verified) return { success: false, error: `Failed to update lender "${params.lender_name}".` };
       if (params.deal_id) {
         await supabase.from("activity_logs").insert({
           deal_id: params.deal_id, activity_type: "lender_status_change",
-          description: `Lender "${params.lender_name}" updated${params.stage ? ` stage to "${params.stage}"` : ''}${params.tracking_status ? ` status to "${params.tracking_status}"` : ''}${params.pass_reason ? ` (reason: ${params.pass_reason})` : ''}`,
+          description: `Lender "${params.lender_name}" updated${params.stage ? ` stage to "${params.stage}"` : ''}${params.tracking_status ? ` status to "${params.tracking_status}"` : ''}${params.pass_reason ? ` (reason: ${params.pass_reason})` : ''}${updateFields.notes !== undefined ? ` (notes updated)` : ''}`,
           user_id: userId,
         });
       }
