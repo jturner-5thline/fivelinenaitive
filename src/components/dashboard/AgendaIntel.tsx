@@ -63,6 +63,9 @@ import { useGmail } from '@/hooks/useGmail';
 import { useAuth } from '@/contexts/AuthContext';
 import { isActiveDeal } from '@/lib/deals';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
+import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
+import { useQuery } from '@tanstack/react-query';
+import { useCompany } from '@/hooks/useCompany';
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
@@ -264,6 +267,8 @@ function MeetingCard({
   onRegenerate,
   onCreateTask,
   onEmail,
+  onLinkClaap,
+  linkedClaapCount,
 }: {
   event: CalendarEvent;
   dealMatch: DealRow | null;
@@ -279,6 +284,8 @@ function MeetingCard({
   onRegenerate: () => void;
   onCreateTask: () => void;
   onEmail: () => void;
+  onLinkClaap: () => void;
+  linkedClaapCount: number;
 }) {
   const navigate = useNavigate();
   const start = parseISO(event.start);
@@ -568,6 +575,20 @@ function MeetingCard({
             disabled={(event.attendees || []).filter(a => !a.self).length === 0}
           >
             <Mail className="h-3 w-3 mr-1 text-white" /> Send follow-up
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn(
+              'h-7 px-2 text-xs text-white hover:text-white',
+              linkedClaapCount > 0 && 'text-primary hover:text-primary',
+            )}
+            onClick={onLinkClaap}
+          >
+            <Video className="h-3 w-3 mr-1" />
+            {linkedClaapCount > 0
+              ? `Claap${linkedClaapCount > 1 ? ` (${linkedClaapCount})` : ''} linked`
+              : 'Link Claap'}
           </Button>
         </div>
       )}
