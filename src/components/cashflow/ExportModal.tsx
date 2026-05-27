@@ -1,5 +1,5 @@
 import { useState, memo, useCallback, useMemo } from 'react';
-import type { WeeklyData, ExportFlag } from './types';
+import type { WeeklyData, WeeklyEntry, ExportFlag } from './types';
 import { fmtAbbrev } from './formatters';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -8,7 +8,7 @@ import autoTable from 'jspdf-autotable';
  * Format a YYYY-MM-DD week-start date as "MMM D" in en-US, parsed in UTC
  * so dates don't drift across timezones (matches Insights bucketing fix).
  */
-function formatWeekStartLabel(dateKey: string): string {
+export function formatWeekStartLabel(dateKey: string): string {
   const [y, m, d] = dateKey.slice(0, 10).split('-').map(Number);
   if (!y || !m || !d) return dateKey;
   const dt = new Date(Date.UTC(y, m - 1, d));
@@ -24,18 +24,18 @@ function formatWeekStartLabel(dateKey: string): string {
  * cashflow.css so the PDF and on-screen table stay in sync. Returns a hex
  * for the table preview and an RGB triple for jsPDF.
  */
-const CF_POSITIVE_HEX = '#16a34a';
-const CF_NEGATIVE_HEX = '#dc2626';
-const CF_NEUTRAL_HEX = '#334155';
-const CF_MUTED_HEX = '#94a3b8';
+export const CF_POSITIVE_HEX = '#16a34a';
+export const CF_NEGATIVE_HEX = '#dc2626';
+export const CF_NEUTRAL_HEX = '#334155';
+export const CF_MUTED_HEX = '#94a3b8';
 
-function cellTextColor(val: number, opts?: { muted?: boolean }): string {
+export function cellTextColor(val: number, opts?: { muted?: boolean }): string {
   if (val > 0) return CF_POSITIVE_HEX;
   if (val < 0) return CF_NEGATIVE_HEX;
   return opts?.muted ? CF_MUTED_HEX : CF_NEUTRAL_HEX;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
+export function hexToRgb(hex: string): [number, number, number] {
   const h = hex.replace('#', '');
   return [
     parseInt(h.slice(0, 2), 16),
@@ -70,12 +70,12 @@ interface ExportModalProps {
 // section breaks; line-item rows look up `key` on each week's row object.
 // `section` mirrors the in-app WEEKLY_ROW_ORDER classification so disbursement
 // rows can be sign-flipped + red-colored to match the live table.
-type RowSection = 'position' | 'receipts' | 'disbursements';
-type ExportRow =
+export type RowSection = 'position' | 'receipts' | 'disbursements';
+export type ExportRow =
   | { type: 'header'; label: string; section: RowSection }
   | { type: 'line'; key: string; label: string; section: RowSection; bold?: boolean };
 
-const BASE_EXPORT_ROWS: ExportRow[] = [
+export const BASE_EXPORT_ROWS: ExportRow[] = [
   { type: 'line', key: 'BEGINNING CASH', label: 'BEGINNING CASH', section: 'position', bold: true },
   { type: 'line', key: 'ENDING CASH', label: 'ENDING CASH', section: 'position', bold: true },
   { type: 'line', key: 'NET CHANGE', label: 'NET CHANGE', section: 'position', bold: true },
@@ -112,9 +112,171 @@ const BASE_EXPORT_ROWS: ExportRow[] = [
  * stored as positive magnitudes; the live table negates them so they render
  * red with parentheses. Position rows (NET CHANGE, etc.) keep their raw sign.
  */
-function toDisplayValue(raw: number, section: RowSection): number {
+export function toDisplayValue(raw: number, section: RowSection): number {
   if (section === 'disbursements' && raw > 0) return -raw;
   return raw;
+}
+
+/** Build the effective row list (base + custom rows inserted before TOTALs). */
+export function buildExportRows(
+  customReceiptRows: string[] = [],
+  customDisbursementRows: string[] = [],
+): ExportRow[] {
+  const out: ExportRow[] = [];
+  for (const row of BASE_EXPORT_ROWS) {
+    if (row.type === 'line' && row.key === 'TOTAL RECEIPTS') {
+      for (const name of customReceiptRows) {
+        out.push({ type: 'line', key: name, label: name, section: 'receipts' });
+      }
+    }
+    if (row.type === 'line' && row.key === 'TOTAL DISBURSEMENTS') {
+      for (const name of customDisbursementRows) {
+        out.push({ type: 'line', key: name, label: name, section: 'disbursements' });
+      }
+    }
+    out.push(row);
+  }
+  return out;
+}
+
+/** Compute the visible-week slice mirroring WeeklyReportTab logic. */
+export function computeVisibleWeeks(
+  weeklyData: WeeklyData,
+  weeksPast: number,
+  weeksFuture: number,
+): [string, WeeklyEntry][] {
+  const sorted = Object.entries(weeklyData || {}).sort(([a], [b]) => a.localeCompare(b));
+  if (sorted.length === 0) return sorted;
+  const today = new Date().toISOString().split('T')[0];
+  let currentIdx = sorted.findIndex(([dateKey, entry]) => {
+    const we = typeof entry.week_ending === 'string' ? entry.week_ending : dateKey;
+    return we >= today;
+  });
+  if (currentIdx < 0) currentIdx = sorted.length - 1;
+  const startIdx = Math.max(0, currentIdx - Math.max(0, weeksPast));
+  const endIdx = Math.min(sorted.length, currentIdx + 1 + Math.max(0, weeksFuture));
+  return sorted.slice(startIdx, endIdx);
+}
+
+export interface RenderCashFlowReportParams {
+  title: string;
+  flags: ExportFlag[];
+  notes: string;
+  weeks: [string, WeeklyEntry][];
+  weeksPast: number;
+  weeksFuture: number;
+  exportRows: ExportRow[];
+  /** If provided, the title/header block is skipped and table starts at this Y. */
+  startY?: number;
+  /** Whether to draw the title/generated-stamp/flags header (default true). */
+  drawHeader?: boolean;
+  /** Whether to draw the footer + page number (default true). */
+  drawFooter?: boolean;
+}
+
+/**
+ * Shared renderer that writes the title, flag chips, weekly table, notes and
+ * footer onto an existing jsPDF document. Reused by ExportModal (table-only
+ * PDF) and by exportSupersetPdf (superset PDF with prefixed KPIs/charts).
+ */
+export function renderCashFlowReport(doc: jsPDF, params: RenderCashFlowReportParams): void {
+  const {
+    title, flags, notes, weeks, weeksPast, weeksFuture, exportRows,
+    startY, drawHeader = true, drawFooter = true,
+  } = params;
+  const dateRange = weeks.length > 0
+    ? `${new Date(weeks[0][0]).toLocaleDateString()} — ${new Date(weeks[weeks.length - 1][1].week_ending).toLocaleDateString()}`
+    : '';
+
+  let tableStartY = startY ?? 70;
+  if (drawHeader) {
+    doc.setFontSize(16);
+    doc.setTextColor(30, 41, 59);
+    doc.text(title, 40, 40);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Generated: ${new Date().toLocaleString()} | ${dateRange} | ${weeks.length} weeks (Past ${weeksPast} / Future ${weeksFuture})`,
+      40,
+      58,
+    );
+    if (flags.length > 0) {
+      let x = 40;
+      flags.forEach(flag => {
+        doc.setFillColor(flag.color);
+        doc.circle(x + 4, 76, 4, 'F');
+        doc.setTextColor(30, 41, 59);
+        doc.text(flag.label, x + 12, 79);
+        x += doc.getTextWidth(flag.label) + 24;
+      });
+      tableStartY = 95;
+    }
+  }
+
+  const headers = ['Line Item', ...weeks.map(([dateKey]) => formatWeekStartLabel(dateKey))];
+  const body: any[] = [];
+  const rowStyles: Record<number, any> = {};
+  const cellValues: Record<number, Record<number, number>> = {};
+  exportRows.forEach((row) => {
+    if (row.type === 'header') {
+      body.push([
+        { content: row.label, colSpan: weeks.length + 1, styles: { fontStyle: 'bold', fillColor: [226, 232, 240], textColor: [15, 23, 42] } },
+      ]);
+    } else {
+      const displayVals = weeks.map(([, v]) =>
+        toDisplayValue((v[row.key] as number) || 0, row.section)
+      );
+      const cells = [row.label, ...displayVals.map((n) => fmtAbbrev(n))];
+      body.push(cells);
+      const bodyIdx = body.length - 1;
+      const colMap: Record<number, number> = {};
+      displayVals.forEach((n, i) => { colMap[i + 1] = n; });
+      cellValues[bodyIdx] = colMap;
+      if (row.bold) rowStyles[body.length - 1] = { fontStyle: 'bold', fillColor: [241, 245, 249] };
+    }
+  });
+  autoTable(doc, {
+    startY: tableStartY,
+    head: [headers],
+    body,
+    styles: { fontSize: 7, cellPadding: 2.5, textColor: [51, 65, 85] },
+    headStyles: { fillColor: [232, 237, 243], textColor: [30, 41, 59], fontStyle: 'bold' },
+    columnStyles: { 0: { cellWidth: 130, halign: 'left' } },
+    didParseCell: (data) => {
+      const styles = rowStyles[data.row.index];
+      if (styles && data.section === 'body') {
+        Object.assign(data.cell.styles, styles);
+      }
+      if (data.section === 'body' && data.column.index > 0) {
+        data.cell.styles.halign = 'right';
+        const val = cellValues[data.row.index]?.[data.column.index];
+        if (typeof val === 'number' && val !== 0) {
+          data.cell.styles.textColor = hexToRgb(cellTextColor(val));
+        }
+      }
+    },
+    theme: 'grid',
+  });
+  if (notes.trim()) {
+    const finalY = (doc as any).lastAutoTable?.finalY || 200;
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text('Notes:', 40, finalY + 25);
+    doc.setFontSize(9);
+    doc.setTextColor(100, 116, 139);
+    const noteLines = doc.splitTextToSize(notes, 700);
+    doc.text(noteLines, 40, finalY + 40);
+  }
+  if (drawFooter) {
+    const totalPages = (doc as any).internal.getNumberOfPages?.() ?? 1;
+    for (let p = 1; p <= totalPages; p++) {
+      doc.setPage(p);
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text('Confidential — 5th Line Capital Advisors, LLC', 40, doc.internal.pageSize.getHeight() - 20);
+      doc.text(`Page ${p}`, doc.internal.pageSize.getWidth() - 60, doc.internal.pageSize.getHeight() - 20);
+    }
+  }
 }
 
 export const ExportModal = memo(function ExportModal({

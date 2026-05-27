@@ -13,6 +13,7 @@ import { CashFlowHeader } from './CashFlowHeader';
 import { DailySourceTab } from './DailySourceTab';
 import { WeeklyReportTab, WEEKLY_ROW_ORDER } from './WeeklyReportTab';
 import { ExportModal } from './ExportModal';
+import { generateSupersetCashFlowPdf } from './exportSupersetPdf';
 import { ActivityLogDialog } from './ActivityLogDialog';
 import { AddCashInModal } from './AddCashInModal';
 import { ScheduledCashFlowsModal } from './ScheduledCashFlowsModal';
@@ -1447,6 +1448,58 @@ export function CashFlowManager() {
   const handleCloseExport = useCallback(() => setExportOpen(false), []);
   const handleOpenActivityLog = useCallback(() => setActivityLogOpen(true), []);
   const handleCloseActivityLog = useCallback(() => setActivityLogOpen(false), []);
+
+  // Listen for the top-right "Export" button (rendered by DashboardModule into
+  // `#finance-header-actions`). When it fires, build the SUPERSET PDF — same
+  // weekly cash-flow table as the in-table Export PDF, plus a prepended KPI
+  // summary row, active-filters line, and the two cash-flow charts rendered
+  // light-mode at print DPI. The in-table Export PDF is unchanged.
+  useEffect(() => {
+    const onSupersetExport = () => {
+      try {
+        const visibleWeekKeys = Object.keys(filteredWeekly || {})
+          .sort()
+          .slice(0); // full sorted set; computeVisibleWeeks does the windowing
+        const cashInNext8W =
+          computeCashInTotal(rawSidebar, sidebarDbItems) + scheduledCashInNext8Weeks;
+        generateSupersetCashFlowPdf({
+          title: '5th Line Capital — Weekly Cash Flow Report',
+          weeklyData: filteredWeekly,
+          weeksPast,
+          weeksFuture,
+          customReceiptRows: customRows.receipts,
+          customDisbursementRows: customRows.disbursements,
+          kpis: {
+            cashIn,
+            cashOut,
+            netChange,
+            kpiRangeLabel,
+            peakCash,
+            lowCash,
+          },
+          filters: {
+            years: filterYears,
+            quarters: filterQuarters,
+            entities: filterEntities,
+            categories: filterCategories,
+            cashInNext8WLabel: fmtShort(cashInNext8W),
+          },
+          visibleWeekKeys,
+        }).catch((err) => console.error('Superset cash-flow PDF failed', err));
+      } catch (err) {
+        console.error('Superset cash-flow PDF failed', err);
+      }
+    };
+    window.addEventListener('cashflow:superset-export', onSupersetExport as EventListener);
+    return () =>
+      window.removeEventListener('cashflow:superset-export', onSupersetExport as EventListener);
+  }, [
+    filteredWeekly, weeksPast, weeksFuture,
+    customRows.receipts, customRows.disbursements,
+    cashIn, cashOut, netChange, kpiRangeLabel, peakCash, lowCash,
+    filterYears, filterQuarters, filterEntities, filterCategories,
+    rawSidebar, sidebarDbItems, scheduledCashInNext8Weeks,
+  ]);
 
   // Keyboard: Escape closes dialogs, Ctrl+Z for undo
   useEffect(() => {

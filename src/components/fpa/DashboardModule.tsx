@@ -176,7 +176,19 @@ export function DashboardModule({ headerExtras }: DashboardModuleProps = {}) {
           </Button>
         )}
         {e.exportButton && (
-          <Button variant="outline" size="sm" className="h-8 gap-1 text-xs">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 gap-1 text-xs"
+            onClick={() => {
+              // On the Cash Flow tab, this becomes the SUPERSET export (KPI
+              // row + filters line + two charts + weekly cash-flow table).
+              // CashFlowManager listens for this event and produces the PDF.
+              if (activeTab === 'cashflow') {
+                window.dispatchEvent(new CustomEvent('cashflow:superset-export'));
+              }
+            }}
+          >
             <Download className="h-3.5 w-3.5" /> Export
           </Button>
         )}
