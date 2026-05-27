@@ -536,6 +536,10 @@ export function AgendaIntel() {
   const [dealLinkOverrides, setDealLinkOverrides] = useState<Record<string, string>>({});
   const [linkPickerEventId, setLinkPickerEventId] = useState<string | null>(null);
   const [linkPickerQuery, setLinkPickerQuery] = useState('');
+  const [persistedLinks, setPersistedLinks] = useState<Record<string, { id: string; dealId: string }>>({});
+  const [orgCompanyId, setOrgCompanyId] = useState<string | null>(null);
+  const [crmCompanies, setCrmCompanies] = useState<Array<{ id: string; name: string; domains: string[] }>>([]);
+  const [linkBusyEventId, setLinkBusyEventId] = useState<string | null>(null);
   const [prepCache, setPrepCache] = useState<Record<string, PrepCacheEntry>>(() =>
     loadPrepCache(),
   );
@@ -577,11 +581,83 @@ export function AgendaIntel() {
     (async () => {
       const { data } = await supabase
         .from('deals')
-        .select('id, company, stage')
-        .limit(500);
-      if (data) setDeals(data.map(d => ({ id: d.id, name: d.company, stage: d.stage })));
+        .select('id, company, stage, status, deal_owner, manager, crm_company_id, company_id, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(1000);
+      if (data) {
+        setDeals(
+          data.map(d => {
+            const cat = classifyDeal({ stage: d.stage, status: d.status });
+            return {
+              id: d.id,
+              name: d.company,
+              stage: d.stage,
+              status: d.status,
+              owner: d.deal_owner || d.manager,
+              crm_company_id: d.crm_company_id,
+              company_id: d.company_id,
+              updated_at: d.updated_at,
+              category: cat,
+            };
+          }),
+        );
+      }
     })();
   }, []);
+
+  // Resolve current user's primary org_company_id (for meeting_deal_links scoping)
+  useEffect(() => {
+    if (!user) return;
+    (async () => {
+      const { data } = await supabase
+        .from('company_members')
+        .select('company_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .maybeSingle();
+      setOrgCompanyId(data?.company_id ?? null);
+    })();
+  }, [user]);
+
+  // Fetch CRM company domains (for attendee-domain suggestions)
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('crm_companies')
+        .select('id, name, domain, additional_domains')
+        .limit(2000);
+      if (data) {
+        setCrmCompanies(
+          data.map((c: any) => ({
+            id: c.id,
+            name: c.name,
+            domains: [c.domain, ...(c.additional_domains || [])]
+              .filter(Boolean)
+              .map((d: string) => d.toLowerCase()),
+          })),
+        );
+      }
+    })();
+  }, []);
+
+  // Load persisted meeting→deal links once we know the org
+  useEffect(() => {
+    if (!orgCompanyId) return;
+    (async () => {
+      const { data } = await supabase
+        .from('meeting_deal_links')
+        .select('id, meeting_external_id, deal_id')
+        .eq('org_company_id', orgCompanyId)
+        .is('deleted_at', null);
+      if (data) {
+        const map: Record<string, { id: string; dealId: string }> = {};
+        for (const r of data as any[]) {
+          map[r.meeting_external_id] = { id: r.id, dealId: r.deal_id };
+        }
+        setPersistedLinks(map);
+      }
+    })();
+  }, [orgCompanyId]);
 
   // Fetch events whenever range changes
   const rangeDays = range === 'today' ? 0 : range === '3d' ? 3 : 7;
@@ -606,6 +682,11 @@ export function AgendaIntel() {
   // Match deals to events
   const matchDeal = useCallback(
     (event: CalendarEvent): DealRow | null => {
+      const persisted = persistedLinks[event.id]?.dealId;
+      if (persisted) {
+        const d = deals.find(x => x.id === persisted);
+        if (d) return d;
+      }
       const override = dealLinkOverrides[event.id];
       if (override) {
         const d = deals.find(x => x.id === override);
@@ -621,8 +702,34 @@ export function AgendaIntel() {
       }
       return null;
     },
-    [deals, dealLinkOverrides],
+    [deals, dealLinkOverrides, persistedLinks],
   );
+
+  // Attendee-domain → suggested active deals
+  const suggestionsByEvent = useMemo(() => {
+    const out: Record<string, DealRow[]> = {};
+    if (!crmCompanies.length || !deals.length) return out;
+    for (const ev of events) {
+      const externals = (ev.attendees || []).filter(
+        a => a.email && !isInternalAttendee(a.email) && !a.self,
+      );
+      const domains = new Set(
+        externals.map(a => extractEmailDomain(a.email)).filter((d): d is string => !!d),
+      );
+      if (!domains.size) continue;
+      const matchedCompanyIds = new Set<string>();
+      for (const c of crmCompanies) {
+        if (c.domains.some(d => domains.has(d))) matchedCompanyIds.add(c.id);
+      }
+      if (!matchedCompanyIds.size) continue;
+      const matchedDeals = deals
+        .filter(d => d.crm_company_id && matchedCompanyIds.has(d.crm_company_id))
+        .filter(d => d.category === 'active' || d.category === 'prospect')
+        .sort((a, b) => (CATEGORY_RANK[a.category!] - CATEGORY_RANK[b.category!]));
+      if (matchedDeals.length) out[ev.id] = matchedDeals.slice(0, 3);
+    }
+    return out;
+  }, [events, crmCompanies, deals]);
 
   // Classify events
   const classified = useMemo(() => {
