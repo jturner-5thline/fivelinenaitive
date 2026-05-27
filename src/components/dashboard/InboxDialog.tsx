@@ -14,6 +14,54 @@ import { cn } from '@/lib/utils';
 import { useInboxCacheStore } from '@/stores/inboxCacheStore';
 import { RefreshCw } from 'lucide-react';
 
+function InboxRefreshStatus({
+  isRefreshing,
+  lastRefreshAt,
+  error,
+  onRetry,
+}: {
+  isRefreshing: boolean;
+  lastRefreshAt: number | null;
+  error: boolean;
+  onRetry: () => void;
+}) {
+  const [, force] = useState(0);
+  // Tick once per 30s so the relative timestamp stays fresh while open.
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  if (error) {
+    return (
+      <div className="px-4 py-1 text-[11px] text-destructive flex items-center gap-2">
+        Couldn't refresh —
+        <button
+          type="button"
+          onClick={onRetry}
+          className="underline underline-offset-2 hover:text-destructive/80"
+        >
+          retry
+        </button>
+      </div>
+    );
+  }
+  let label = '';
+  if (isRefreshing) label = 'Refreshing…';
+  else if (lastRefreshAt) {
+    const secs = Math.max(0, Math.round((Date.now() - lastRefreshAt) / 1000));
+    if (secs < 10) label = 'Updated just now';
+    else if (secs < 60) label = `Updated ${secs}s ago`;
+    else label = `Updated ${Math.round(secs / 60)}m ago`;
+  }
+  if (!label) return null;
+  return (
+    <div className="px-4 py-1 text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
+      {isRefreshing && <RefreshCw className="h-3 w-3 animate-spin" />}
+      <span>{label}</span>
+    </div>
+  );
+}
+
 interface InboxDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
