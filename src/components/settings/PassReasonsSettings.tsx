@@ -254,8 +254,8 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
   };
 
   return (
-    
-      <Card>
+      <>
+        <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0">
           
             <button className="flex items-center gap-2 text-left flex-1">
@@ -373,6 +373,7 @@ export function PassReasonsSettings({ isAdmin = true }: PassReasonsSettingsProps
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </>
     
   );
 }

@@ -420,7 +420,8 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
 
   if (isLoading) {
     return (
-      <Card>
+      <>
+        <Card>
         <CardHeader>
           <div className="flex items-center gap-3">
             <GitBranch className="h-5 w-5 text-primary" />
@@ -563,5 +564,6 @@ export function DealStagesSettings({ isAdmin = true }: DealStagesSettingsProps) 
         </DialogContent>
       </Dialog>
     </>
+      </>
   );
 }
