@@ -387,11 +387,17 @@ export const ExportModal = memo(function ExportModal({
               </tr>
             </thead>
             <tbody>
-              {['BEGINNING CASH', 'TOTAL RECEIPTS', 'TOTAL DISBURSEMENTS', 'NET CHANGE', 'ENDING CASH'].map(key => (
+              {([
+                { key: 'BEGINNING CASH', section: 'position' as RowSection },
+                { key: 'TOTAL RECEIPTS', section: 'receipts' as RowSection },
+                { key: 'TOTAL DISBURSEMENTS', section: 'disbursements' as RowSection },
+                { key: 'NET CHANGE', section: 'position' as RowSection },
+                { key: 'ENDING CASH', section: 'position' as RowSection },
+              ]).map(({ key, section }) => (
                 <tr key={key}>
                   <td style={{ padding: 3, border: '1px solid #cbd5e1', fontWeight: 600, color: '#334155' }}>{key}</td>
                   {weeks.slice(0, 8).map(([wk, v]) => {
-                    const val = (v[key] as number) || 0;
+                    const val = toDisplayValue((v[key] as number) || 0, section);
                     return (
                       <td key={wk} style={{
                         padding: 3, border: '1px solid #cbd5e1', textAlign: 'center',
