@@ -414,7 +414,7 @@ export function CopilotToggleButton() {
         className="pointer-events-auto flex flex-col items-center gap-2"
         data-copilot-root=""
         style={{
-          width: `min(${barWidth}px, calc(100% - 32px))`,
+          width: collapsed ? 'auto' : `min(${barWidth}px, calc(100% - 32px))`,
           transform: centerOffset ? `translateX(${centerOffset}px)` : undefined,
         }}
         onMouseEnter={() => {
