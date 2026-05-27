@@ -737,7 +737,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_lender_status",
-      description: "Update a deal lender's stage or tracking status. HIGH RISK — returns a confirmation card.",
+      description: "Update a deal lender's stage, tracking status, pass reason, and/or free-text notes. Use this when the user asks to 'update notes on <lender>', 'add a note to <lender>', or 'change <lender>'s status'. HIGH RISK — returns a confirmation card.",
       parameters: {
         type: "object",
         properties: {
@@ -747,6 +747,8 @@ const tools = [
           stage: { type: "string", description: "New lender stage" },
           tracking_status: { type: "string", description: "New tracking status (active, on-hold, on-deck, passed)" },
           pass_reason: { type: "string", description: "Reason for passing (when marking as passed)" },
+          notes: { type: "string", description: "Replace the lender's free-text notes on this deal. Use when the user asks to update/set notes." },
+          notes_append: { type: "string", description: "Append a line to the lender's existing notes (preserves prior notes). Use for 'add a note that…'." },
         },
         required: ["deal_id", "lender_id", "lender_name"],
       },
