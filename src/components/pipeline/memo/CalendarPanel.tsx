@@ -82,9 +82,6 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formTitle, setFormTitle] = useState('');
   const [formDate, setFormDate] = useState<string>('');
-  const [formTime, setFormTime] = useState<string>('');
-  const [formNotes, setFormNotes] = useState<string>('');
-  const [formType, setFormType] = useState<DealCalendarItemType>('meeting');
   const titleRef = useRef<HTMLInputElement>(null);
 
   // Build map: date key -> items (weekend items rolled to Friday)
@@ -159,9 +156,6 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     setEditingId(null);
     setFormTitle('');
     setFormDate(dateKey || selectedKey);
-    setFormTime('');
-    setFormNotes('');
-    setFormType('meeting');
     setFormOpen(true);
     setTimeout(() => titleRef.current?.focus(), 30);
   };
@@ -171,9 +165,6 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     setEditingId(item.raw.id);
     setFormTitle(item.raw.title);
     setFormDate(item.raw.date);
-    setFormTime(item.raw.time ? item.raw.time.slice(0, 5) : '');
-    setFormNotes(item.raw.notes || '');
-    setFormType(item.raw.type);
     setFormOpen(true);
     setTimeout(() => titleRef.current?.focus(), 30);
   };
@@ -184,9 +175,9 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
     const payload = {
       title: formTitle.trim(),
       date: formDate,
-      time: formTime ? `${formTime}:00` : null,
-      notes: formNotes.trim() || null,
-      type: formType,
+      time: null,
+      notes: null,
+      type: 'note' as DealCalendarItemType,
     };
     if (editingId) await updateItem({ id: editingId, updates: payload });
     else await addItem(payload);
