@@ -289,8 +289,15 @@ export default function Tasks() {
   const teamMembers = useTeamMembers();
   const { labels, createLabel } = useTaskLabels();
 
+  // Per-user persistence namespace for filter / view preferences.
+  // Falls back to a shared key before auth resolves; useLocalStorageState
+  // re-hydrates when the key flips so the user's saved prefs load in.
+  const { user: _authUserForPrefs } = useAuth();
+  const _prefsNs = _authUserForPrefs?.id ? `tasks:${_authUserForPrefs.id}` : 'tasks:anon';
+  const undoStack = useUndoStack();
+
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('list');
+  const [viewMode, setViewMode] = useLocalStorageState<ViewMode>(`${_prefsNs}:viewMode`, 'list');
 
   // Auto-open task from ?task= query parameter (e.g. from email deep link)
   useEffect(() => {
@@ -314,9 +321,9 @@ export default function Tasks() {
   // Default to incomplete — completed tasks would otherwise dominate the
   // view and trigger the misleading "Xd overdue" badge on done rows.
   // Subtask 5 of Asana 1215035328425908.
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>('incomplete');
-  const [sortBy, setSortBy] = useState<SortBy>('due_date');
-  const [groupBy, setGroupBy] = useState<GroupBy>('status');
+  const [filterStatus, setFilterStatus] = useLocalStorageState<FilterStatus>(`${_prefsNs}:filterStatus`, 'incomplete');
+  const [sortBy, setSortBy] = useLocalStorageState<SortBy>(`${_prefsNs}:sortBy`, 'due_date');
+  const [groupBy, setGroupBy] = useLocalStorageState<GroupBy>(`${_prefsNs}:groupBy`, 'status');
   const [isCreating, setIsCreating] = useState(false);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
@@ -325,11 +332,11 @@ export default function Tasks() {
   const newTaskRef = useRef<HTMLInputElement>(null);
   const [focusedTaskIndex, setFocusedTaskIndex] = useState<number>(-1);
   const [filterDealIds, setFilterDealIds] = useState<Set<string>>(new Set());
-  const [urgentOnly, setUrgentOnly] = useState(false);
-  const [showAllDeals, setShowAllDeals] = useState(false);
+  const [urgentOnly, setUrgentOnly] = useLocalStorageState<boolean>(`${_prefsNs}:urgentOnly`, false);
+  const [showAllDeals, setShowAllDeals] = useLocalStorageState<boolean>(`${_prefsNs}:showAllDeals`, false);
   const [filterLabelIds, setFilterLabelIds] = useState<Set<string>>(new Set());
-  const [filterDueDate, setFilterDueDate] = useState<FilterDueDate>('all');
-  const [filterRecurring, setFilterRecurring] = useState<FilterRecurring>('all');
+  const [filterDueDate, setFilterDueDate] = useLocalStorageState<FilterDueDate>(`${_prefsNs}:filterDueDate`, 'all');
+  const [filterRecurring, setFilterRecurring] = useLocalStorageState<FilterRecurring>(`${_prefsNs}:filterRecurring`, 'all');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [openInlineFilter, setOpenInlineFilter] = useState<'dueDate' | 'sortBy' | 'groupBy' | 'recurring' | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
