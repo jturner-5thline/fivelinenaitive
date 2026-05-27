@@ -476,7 +476,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                   <X className="h-3 w-3" />
                 </button>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center justify-between gap-1">
                 <input
                   type="date"
                   value={formDate}
@@ -484,31 +484,6 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                   required
                   className="bg-transparent text-[10px] px-1.5 py-1 rounded border border-white/10 focus:outline-none focus:border-primary/60 text-foreground"
                 />
-                <input
-                  type="time"
-                  value={formTime}
-                  onChange={(e) => setFormTime(e.target.value)}
-                  className="bg-transparent text-[10px] px-1.5 py-1 rounded border border-white/10 focus:outline-none focus:border-primary/60 text-foreground"
-                />
-                <select
-                  value={formType}
-                  onChange={(e) => setFormType(e.target.value as DealCalendarItemType)}
-                  className="bg-card text-[10px] px-1.5 py-1 rounded border border-white/10 focus:outline-none focus:border-primary/60 text-foreground"
-                >
-                  <option value="meeting">Meeting</option>
-                  <option value="deadline">Deadline</option>
-                  <option value="reminder">Reminder</option>
-                  <option value="note">Note</option>
-                </select>
-              </div>
-              <textarea
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-                placeholder="Notes (optional)"
-                rows={2}
-                className="w-full bg-transparent text-[11px] px-1.5 py-1 rounded border border-white/10 focus:outline-none focus:border-primary/60 text-foreground placeholder:text-muted-foreground/60 resize-none"
-              />
-              <div className="flex justify-end">
                 <button
                   type="submit"
                   className="inline-flex items-center gap-1 h-6 px-2 rounded text-[10px] font-medium bg-primary/80 hover:bg-primary text-primary-foreground"
