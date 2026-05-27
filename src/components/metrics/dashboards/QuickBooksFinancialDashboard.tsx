@@ -257,8 +257,7 @@ export function QuickBooksFinancialDashboard({
           <CardContent>
             <div style={{ height: 280 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={metrics.monthlyRevenue}>
-                </ComposedChart>
+                <ComposedChart data={effectiveMonthlyRevenue}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="month" tick={{ fontSize: 10 }} />
                   <YAxis tickFormatter={formatCurrency} tick={{ fontSize: 10 }} />
