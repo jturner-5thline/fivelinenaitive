@@ -63,6 +63,9 @@ import { useGmail } from '@/hooks/useGmail';
 import { useAuth } from '@/contexts/AuthContext';
 import { isActiveDeal } from '@/lib/deals';
 import { extractEmailDomain } from '@/lib/extractEmailDomain';
+import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
+import { useQuery } from '@tanstack/react-query';
+import { useCompany } from '@/hooks/useCompany';
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
@@ -185,6 +188,7 @@ function AgendaListItem({
   isInternalOnly,
   active,
   onClick,
+  claapCount,
 }: {
   event: CalendarEvent;
   deal: DealRow | null;
@@ -192,6 +196,7 @@ function AgendaListItem({
   isInternalOnly: boolean;
   active: boolean;
   onClick: () => void;
+  claapCount?: number;
 }) {
   const start = parseISO(event.start);
   const end = parseISO(event.end);
@@ -244,6 +249,12 @@ function AgendaListItem({
             Internal
           </Badge>
         )}
+        {claapCount && claapCount > 0 ? (
+          <Badge variant="outline" className="text-[9px] font-normal border-primary/30 bg-primary/10 text-primary px-1.5 py-0">
+            <Video className="h-2.5 w-2.5 mr-0.5" />
+            Claap{claapCount > 1 ? ` ×${claapCount}` : ''}
+          </Badge>
+        ) : null}
       </div>
     </button>
   );
@@ -264,6 +275,8 @@ function MeetingCard({
   onRegenerate,
   onCreateTask,
   onEmail,
+  onLinkClaap,
+  linkedClaapCount,
 }: {
   event: CalendarEvent;
   dealMatch: DealRow | null;
@@ -279,6 +292,8 @@ function MeetingCard({
   onRegenerate: () => void;
   onCreateTask: () => void;
   onEmail: () => void;
+  onLinkClaap: () => void;
+  linkedClaapCount: number;
 }) {
   const navigate = useNavigate();
   const start = parseISO(event.start);
@@ -569,6 +584,20 @@ function MeetingCard({
           >
             <Mail className="h-3 w-3 mr-1 text-white" /> Send follow-up
           </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            className={cn(
+              'h-7 px-2 text-xs text-white hover:text-white',
+              linkedClaapCount > 0 && 'text-primary hover:text-primary',
+            )}
+            onClick={onLinkClaap}
+          >
+            <Video className="h-3 w-3 mr-1" />
+            {linkedClaapCount > 0
+              ? `Claap${linkedClaapCount > 1 ? ` (${linkedClaapCount})` : ''} linked`
+              : 'Link Claap'}
+          </Button>
         </div>
       )}
     </div>
@@ -603,7 +632,34 @@ export function AgendaIntel() {
   // Quick-action modals anchored to the selected meeting.
   const [taskDialogEvent, setTaskDialogEvent] = useState<CalendarEvent | null>(null);
   const [emailDialogEvent, setEmailDialogEvent] = useState<CalendarEvent | null>(null);
+  const [claapLinkerEvent, setClaapLinkerEvent] = useState<CalendarEvent | null>(null);
   const { user } = useAuth();
+  const { company } = useCompany();
+
+  // Fetch counts of linked Claap recordings for the currently visible events
+  // so the MeetingCard action button can show "Claap linked" when present.
+  const visibleEventIdsForClaap = useMemo(
+    () => events.map(e => e.id),
+    [events],
+  );
+  const { data: claapCountsByEvent = {} } = useQuery<Record<string, number>>({
+    queryKey: ['agenda-event-claap-counts', company?.id, visibleEventIdsForClaap.join(',')],
+    enabled: !!company?.id && visibleEventIdsForClaap.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data, error } = await (supabase
+        .from('event_claap_recordings') as any)
+        .select('event_id')
+        .eq('org_company_id', company!.id)
+        .in('event_id', visibleEventIdsForClaap);
+      if (error) return {};
+      const counts: Record<string, number> = {};
+      for (const row of (data || []) as Array<{ event_id: string }>) {
+        counts[row.event_id] = (counts[row.event_id] || 0) + 1;
+      }
+      return counts;
+    },
+  });
   const teamMembers = useTeamMembers();
   const { createTask } = useMyTasks();
   const signature = useUserEmailSignature();
@@ -1109,6 +1165,7 @@ export function AgendaIntel() {
                       isInternalOnly={isInternalOnly}
                       active={selectedId === event.id}
                       onClick={() => setSelectedId(event.id)}
+                      claapCount={claapCountsByEvent[event.id] || 0}
                     />
                   ))}
                 </div>
@@ -1161,6 +1218,8 @@ export function AgendaIntel() {
                 }
                 setEmailDialogEvent(selectedRecord.event);
               }}
+              onLinkClaap={() => setClaapLinkerEvent(selectedRecord.event)}
+              linkedClaapCount={claapCountsByEvent[selectedRecord.event.id] || 0}
             />
           </ScrollArea>
         </>
@@ -1231,6 +1290,19 @@ export function AgendaIntel() {
         defaults={emailDefaults}
         signature={signature}
         sendEmail={sendEmail}
+      />
+      <EventClaapLinker
+        open={!!claapLinkerEvent}
+        onOpenChange={(o) => { if (!o) setClaapLinkerEvent(null); }}
+        eventId={claapLinkerEvent?.id || ''}
+        eventTitle={claapLinkerEvent?.summary || ''}
+        attendeeEmails={
+          claapLinkerEvent
+            ? (claapLinkerEvent.attendees || [])
+                .map(a => a.email)
+                .filter((e): e is string => !!e)
+            : []
+        }
       />
     </div>
   );
