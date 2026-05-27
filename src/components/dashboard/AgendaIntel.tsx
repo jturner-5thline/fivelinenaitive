@@ -27,11 +27,19 @@ import {
   X,
   Pencil,
   Sparkle,
+  Link as LinkIcon,
+  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import {
   CommandDialog,
   CommandEmpty,
@@ -222,7 +230,8 @@ function AgendaListItem({
             variant="outline"
             className="text-[9px] font-normal border-primary/30 bg-primary/10 text-primary px-1.5 py-0"
           >
-            <Briefcase className="h-2.5 w-2.5 mr-0.5" />{deal.name}
+            <LinkIcon className="h-2.5 w-2.5 mr-0.5" />
+            <span className="truncate max-w-[140px]">{deal.name}</span>
           </Badge>
         )}
         {isPersonal && (
@@ -362,44 +371,85 @@ function MeetingCard({
       {!isPersonal && (
         <div className="space-y-1.5">
           {dealMatch ? (
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <div className="inline-flex items-center gap-1 rounded-md bg-primary/15 text-primary text-xs font-medium pl-2 pr-1 py-1">
-                <button
-                  type="button"
-                  onClick={() => window.open(`/deals?deal=${dealMatch.id}`, '_blank', 'noopener,noreferrer')}
-                  className="inline-flex items-center gap-1.5 hover:underline"
-                >
-                  <Briefcase className="h-3 w-3" />
-                  <span className="truncate max-w-[200px]">{dealMatch.name}</span>
-                  {dealMatch.category && (
-                    <Badge
-                      variant="outline"
-                      className={cn('text-[9px] font-normal px-1.5 py-0 ml-1', CATEGORY_BADGE[dealMatch.category].cls)}
-                    >
-                      {CATEGORY_BADGE[dealMatch.category].label}
-                    </Badge>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  onClick={onUnlinkDeal}
-                  disabled={linkBusy}
-                  aria-label="Unlink deal"
-                  className="h-5 w-5 inline-flex items-center justify-center rounded hover:bg-primary/20 transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </div>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-xs text-white/80 hover:text-white"
-                onClick={onLinkDeal}
-                disabled={linkBusy}
+            <TooltipProvider delayDuration={250}>
+              <div
+                key={dealMatch.id}
+                role="button"
+                tabIndex={0}
+                onClick={() =>
+                  window.open(`/deals?deal=${dealMatch.id}`, '_blank', 'noopener,noreferrer')
+                }
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    window.open(`/deals?deal=${dealMatch.id}`, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                className={cn(
+                  'flex items-center gap-2 rounded-md border border-primary/25 bg-primary/[0.12] px-2.5 py-1.5 cursor-pointer hover:bg-primary/[0.18] transition-colors group',
+                  'motion-safe:animate-in motion-safe:fade-in-50 motion-safe:zoom-in-95 motion-safe:duration-300',
+                )}
+                title={`Open ${dealMatch.name} in a new tab`}
               >
-                <Pencil className="h-3 w-3 mr-1" /> Change
-              </Button>
-            </div>
+                <span className="relative inline-flex items-center justify-center h-4 w-4 shrink-0">
+                  <LinkIcon className="h-3.5 w-3.5 text-primary" />
+                  <Check className="absolute -right-0.5 -bottom-0.5 h-2.5 w-2.5 text-primary bg-background rounded-full" strokeWidth={3} />
+                </span>
+                <span className="text-[11px] font-medium uppercase tracking-wide text-primary/80 shrink-0">
+                  Linked:
+                </span>
+                <span className="text-xs font-semibold text-white truncate min-w-0">
+                  {dealMatch.name}
+                </span>
+                {dealMatch.category && (
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[9px] font-normal px-1.5 py-0 shrink-0',
+                      CATEGORY_BADGE[dealMatch.category].cls,
+                    )}
+                  >
+                    {CATEGORY_BADGE[dealMatch.category].label}
+                  </Badge>
+                )}
+                <div className="ml-auto flex items-center gap-0.5 shrink-0">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onLinkDeal();
+                        }}
+                        disabled={linkBusy}
+                        aria-label="Change deal"
+                        className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-primary/25 text-white/80 hover:text-white transition-colors disabled:opacity-50"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Change deal</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onUnlinkDeal();
+                        }}
+                        disabled={linkBusy}
+                        aria-label="Unlink deal"
+                        className="h-6 w-6 inline-flex items-center justify-center rounded hover:bg-destructive/25 text-white/80 hover:text-white transition-colors disabled:opacity-50"
+                      >
+                        {linkBusy ? <Loader2 className="h-3 w-3 animate-spin" /> : <X className="h-3 w-3" />}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">Unlink deal</TooltipContent>
+                  </Tooltip>
+                </div>
+              </div>
+            </TooltipProvider>
           ) : (
             <div className="flex items-center gap-2 text-xs text-white/70 flex-wrap">
               <span>No linked deal</span>
