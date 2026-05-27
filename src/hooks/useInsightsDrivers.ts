@@ -39,7 +39,6 @@ export function useInsightsDrivers(): {
     const monthsBack = Math.max(0, Math.min(11, differenceInCalendarMonths(now, anchor)));
     const curMonthStart = startOfMonth(subMonths(now, monthsBack));
     const prevMonthStart = startOfMonth(subMonths(now, monthsBack + 1));
-    const nextMonthStart = startOfMonth(subMonths(now, monthsBack - 1));
 
     // Compare on YYYY-MM string prefix to avoid timezone drift on
     // UTC-midnight QBO dates (e.g. "2026-05-01" landing in April locally).
