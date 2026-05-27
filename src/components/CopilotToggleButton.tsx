@@ -408,6 +408,19 @@ export function CopilotToggleButton() {
           width: `min(${barWidth}px, calc(100% - 32px))`,
           transform: centerOffset ? `translateX(${centerOffset}px)` : undefined,
         }}
+        onMouseEnter={() => {
+          if (collapseTimerRef.current) {
+            window.clearTimeout(collapseTimerRef.current);
+            collapseTimerRef.current = null;
+          }
+          setHovered(true);
+        }}
+        onMouseLeave={() => {
+          if (collapseTimerRef.current) window.clearTimeout(collapseTimerRef.current);
+          collapseTimerRef.current = window.setTimeout(() => {
+            setHovered(false);
+          }, 250);
+        }}
       >
         {/* AI transcript panel — rendered inside the same width-defining
             wrapper as the Ask bar so it inherits identical horizontal
