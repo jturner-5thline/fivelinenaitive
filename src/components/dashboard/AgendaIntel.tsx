@@ -528,6 +528,7 @@ function MeetingCard({
 // ── Main component ────────────────────────────────────────────
 export function AgendaIntel() {
   const { listEvents, status } = useGoogleCalendar();
+  const navigate = useNavigate();
   const [range, setRange] = useState<RangeKey>('today');
   const [audience, setAudience] = useState<AudienceKey>('all');
   const [events, setEvents] = useState<CalendarEvent[]>([]);
@@ -1092,6 +1093,10 @@ export function AgendaIntel() {
               isPersonal={selectedRecord.isPersonal}
               isInternalOnly={selectedRecord.isInternalOnly}
               onLinkDeal={() => handleLinkDeal(selectedRecord.event.id)}
+              onUnlinkDeal={() => handleUnlinkDeal(selectedRecord.event.id)}
+              onPickSuggested={(deal) => persistLink(selectedRecord.event.id, deal)}
+              suggestions={suggestionsByEvent[selectedRecord.event.id] || []}
+              linkBusy={linkBusyEventId === selectedRecord.event.id}
               prep={prepCache[selectedRecord.event.id] || null}
               prepLoading={!!prepLoading[selectedRecord.event.id]}
               onRegenerate={() => handleRegenerate(selectedRecord.event.id)}
@@ -1138,39 +1143,15 @@ export function AgendaIntel() {
           </>
         )}
       </div>
-      <CommandDialog
+      <DealLinkPicker
         open={!!linkPickerEventId}
-        onOpenChange={(open) => {
-          if (!open) {
-            setLinkPickerEventId(null);
-            setLinkPickerQuery('');
-          }
-        }}
-      >
-        <CommandInput
-          placeholder="Search deals to link..."
-          value={linkPickerQuery}
-          onValueChange={setLinkPickerQuery}
-        />
-        <CommandList>
-          <CommandEmpty>
-            {deals.length === 0 ? 'No deals available.' : 'No matching deals.'}
-          </CommandEmpty>
-          <CommandGroup heading="Deals">
-            {deals.map(d => (
-              <CommandItem
-                key={d.id}
-                value={`${d.name} ${d.stage}`}
-                onSelect={() => handlePickDeal(d.id)}
-              >
-                <Briefcase className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-                <span className="flex-1 truncate">{d.name}</span>
-                <span className="text-xs text-muted-foreground ml-2">{d.stage}</span>
-              </CommandItem>
-            ))}
-          </CommandGroup>
-        </CommandList>
-      </CommandDialog>
+        query={linkPickerQuery}
+        onQueryChange={setLinkPickerQuery}
+        onClose={() => { setLinkPickerEventId(null); setLinkPickerQuery(''); }}
+        deals={deals}
+        onPick={(id) => handlePickDeal(id)}
+        busy={!!linkBusyEventId}
+      />
       <QuickCreateTaskDialog
         open={!!taskDialogEvent}
         onClose={() => setTaskDialogEvent(null)}
