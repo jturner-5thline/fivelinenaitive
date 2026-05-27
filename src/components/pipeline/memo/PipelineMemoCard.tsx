@@ -9,6 +9,7 @@ import { ActivityPanel } from './ActivityPanel';
 import { TasksMilestonesBand } from './TasksMilestonesBand';
 import { NextBestActionRow } from './NextBestActionRow';
 import { LendersPanel } from './LendersPanel';
+import { CalendarPanel } from './CalendarPanel';
 
 interface PipelineMemoCardProps {
   deal: Deal;
@@ -85,6 +86,7 @@ function PipelineMemoCardImpl({
             isLoading={!!isDigestLoading}
             emails={rawDigest?.emails || []}
           />
+          <CalendarPanel deal={deal} tasks={tasks} onOpenDeal={handleOpen} />
         </div>
         <div className="min-w-0 min-h-0 overflow-y-auto">
           <LendersPanel deal={deal} />
