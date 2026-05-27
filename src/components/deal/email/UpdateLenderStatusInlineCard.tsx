@@ -134,6 +134,12 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
   const handleConfirm = async () => {
     if (!lender) return;
     setSaving(true);
+    // Hard 20s timeout so a hung updateLender() can't leave the Confirm
+    // button spinning forever (Niki bug, Asana #1215178140447221).
+    const timeoutId = setTimeout(() => {
+      setSaving(false);
+      toast.error("Couldn't update lender status — retry?");
+    }, 20_000);
     try {
       const trimmedNote = note.trim();
       const selectedStage = stageOptions.find((s) => s.id === stage);
@@ -153,10 +159,12 @@ export function UpdateLenderStatusInlineCard({ dealId, preselectLenderName, onCl
           : `[${stamp}] ${trimmedNote}`;
       }
       await updateLender(lender.id, updates);
+      clearTimeout(timeoutId);
       setDone(true);
       toast.success(`${lender.name} → ${selectedStage?.label || stage}`);
       setTimeout(onClose, 900);
     } catch (err: any) {
+      clearTimeout(timeoutId);
       console.error('[UpdateLenderStage] failed', err);
       toast.error(err?.message || 'Failed to update lender');
     } finally {

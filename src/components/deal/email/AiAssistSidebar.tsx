@@ -320,6 +320,8 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   const {
     analysis: workflowAnalysis,
     loading: workflowLoading,
+    error: workflowError,
+    run: rerunWorkflow,
     committing: workflowCommitting,
     isDismissed: workflowDismissed,
     dismiss: dismissWorkflow,
@@ -966,7 +968,18 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
             {dealName
               || (workflowAnalysis?.likely_deal?.name
                 ? `Likely: ${workflowAnalysis.likely_deal.name}`
-                : 'Analyzing thread…')}
+                : workflowError && !workflowLoading
+                  ? (
+                    <button
+                      type="button"
+                      onClick={() => rerunWorkflow()}
+                      className="underline decoration-dotted hover:text-foreground"
+                      title={workflowError}
+                    >
+                      Couldn’t analyze — retry
+                    </button>
+                  )
+                  : 'Analyzing thread…')}
           </div>
         </div>
         <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>

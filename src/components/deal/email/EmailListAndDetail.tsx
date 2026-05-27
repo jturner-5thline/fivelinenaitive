@@ -1506,6 +1506,15 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   const trimmedResolvedText = resolvedText.trim();
   const hasRenderableBody = !!resolvedHtml || trimmedResolvedText.length > 0;
   const gmailThreadTarget = email.provider_thread_id || email.threadId || threadId;
+  // Gmail truncates very large outbound messages (>102KB) and appends a
+  // "[Message clipped]" / "...This message has been truncated" tail. Nylas
+  // returns the truncated payload as-is. Surface a clear link to view the
+  // full message in Gmail (Niki bug, Asana #1215178140447221).
+  const truncationProbe = (resolvedHtml || resolvedText).toLowerCase();
+  const looksTruncated = /\[message clipped\]|message has been truncated|view entire message/.test(truncationProbe);
+  const gmailOpenUrl = email.id
+    ? `https://mail.google.com/mail/u/0/#all/${encodeURIComponent(email.id)}`
+    : null;
 
   // For plain-text bodies, split off the quoted reply chain so we can show/hide it.
   const { main: textMain, quoted: textQuoted } = resolvedHtml
@@ -1692,6 +1701,19 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
               )}
             </EmailPaneErrorBoundary>
           </EmailSelectionActionMenu>
+          {looksTruncated && gmailOpenUrl && (
+            <div className="mt-3 flex items-center justify-between gap-3 rounded border border-[hsl(var(--email-border))] bg-[hsl(var(--foreground)/0.03)] px-3 py-2 text-[11px] text-[hsl(var(--email-text-secondary))]">
+              <span>This message was clipped by Gmail (over 102KB). The full body isn’t available here.</span>
+              <a
+                href={gmailOpenUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="shrink-0 rounded border border-[hsl(var(--email-border))] bg-background px-2 py-1 font-medium hover:bg-[hsl(var(--foreground)/0.04)]"
+              >
+                View full message in Gmail
+              </a>
+            </div>
+          )}
 
           {/* Quoted text (only meaningful for plain text bodies) */}
           {!resolvedHtml && hasRenderableBody && textQuoted && (

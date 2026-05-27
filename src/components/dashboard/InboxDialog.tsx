@@ -393,6 +393,68 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, status.connected, hydrateFromCache, mergeUniqueById, autoPaginate]);
 
+  // ─── Auto-refresh on reopen / focus / interval ───────────────────
+  // Bug fix (Niki, Asana #1215178140447221): the popup only auto-refreshed
+  // on first open. Subsequent opens required a manual refresh click.
+  // Now we silently re-fetch page 1 of inbox + sent on every open
+  // transition false→true, on tab focus / visibility change, and every
+  // 60s while open — debounced to at most once per 10s so we don't
+  // hammer the provider. Scroll position and the currently-open thread
+  // are preserved because we merge in-place rather than reset state.
+  const lastSilentRefreshRef = useRef(0);
+  const SILENT_REFRESH_MIN_GAP_MS = 10_000;
+  const SILENT_REFRESH_INTERVAL_MS = 60_000;
+  const silentRefresh = useCallback(async () => {
+    if (!status.connected) return;
+    const now = Date.now();
+    if (now - lastSilentRefreshRef.current < SILENT_REFRESH_MIN_GAP_MS) return;
+    lastSilentRefreshRef.current = now;
+    try {
+      const [inbox, sent] = await Promise.all([
+        fetchPage({ labelIds: ['INBOX'] }),
+        fetchPage({ labelIds: ['SENT'] }),
+      ]);
+      if (!isMountedRef.current) return;
+      if (inbox.messages.length) {
+        setInboxMessages((prev) => {
+          const next = mergeUniqueById(inbox.messages, prev);
+          useInboxCacheStore.setState({ inboxMessages: next });
+          return next;
+        });
+      }
+      if (sent.messages.length) {
+        setSentMessages((prev) => {
+          const next = mergeUniqueById(sent.messages, prev);
+          useInboxCacheStore.setState({ sentMessages: next });
+          return next;
+        });
+      }
+    } catch {
+      /* swallow — next tick will retry */
+    }
+  }, [status.connected, mergeUniqueById]);
+
+  useEffect(() => {
+    if (!open || !status.connected) return;
+    // Fire on open (skip the very first cold-open which the main effect
+    // above already handles via fetchPage + autoPaginate).
+    if (hasLoadedRef.current) void silentRefresh();
+    const onFocus = () => { void silentRefresh(); };
+    const onVisible = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        void silentRefresh();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    const interval = setInterval(() => { void silentRefresh(); }, SILENT_REFRESH_INTERVAL_MS);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+      clearInterval(interval);
+    };
+  }, [open, status.connected, silentRefresh]);
+
   // On close we tear down the in-flight fetch flags but DELIBERATELY keep
   // local state intact AND keep `hasLoadedRef.current = true` so reopening
   // the popup does NOT trigger a fresh page-1 Gmail fetch. The shared
