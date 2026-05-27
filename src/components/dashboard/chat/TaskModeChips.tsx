@@ -14,7 +14,7 @@ interface Props {
   loading?: boolean;
 }
 
-const PRIORITY_LABEL: Record<string, string> = { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' };
+const PRIORITY_LABEL: Record<string, string> = { low: 'Low', normal: 'Normal', medium: 'Normal', high: 'High', urgent: 'Urgent' };
 const TYPE_LABEL: Record<string, string> = {
   follow_up: 'Follow-up', call: 'Call', email: 'Email', review: 'Review',
   send_doc: 'Send doc', meeting: 'Meeting', general: 'Task',
@@ -217,6 +217,13 @@ export function TaskModeChips({ draft, onChange, loading }: Props) {
             </span>
           </PopoverTrigger>
           <PopoverContent className="w-32 p-1" align="start">
+            <button
+              key="none"
+              className="w-full text-left text-xs px-2 py-1.5 rounded hover:bg-primary/10 text-muted-foreground"
+              onClick={() => onChange({ ...draft, priority: null })}
+            >
+              None (clear)
+            </button>
             {(['low','normal','high','urgent'] as const).map((p) => (
               <button
                 key={p}
