@@ -12,6 +12,55 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { cn } from '@/lib/utils';
 import { useInboxCacheStore } from '@/stores/inboxCacheStore';
+import { RefreshCw } from 'lucide-react';
+
+function InboxRefreshStatus({
+  isRefreshing,
+  lastRefreshAt,
+  error,
+  onRetry,
+}: {
+  isRefreshing: boolean;
+  lastRefreshAt: number | null;
+  error: boolean;
+  onRetry: () => void;
+}) {
+  const [, force] = useState(0);
+  // Tick once per 30s so the relative timestamp stays fresh while open.
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+  if (error) {
+    return (
+      <div className="px-4 py-1 text-[11px] text-destructive flex items-center gap-2">
+        Couldn't refresh —
+        <button
+          type="button"
+          onClick={onRetry}
+          className="underline underline-offset-2 hover:text-destructive/80"
+        >
+          retry
+        </button>
+      </div>
+    );
+  }
+  let label = '';
+  if (isRefreshing) label = 'Refreshing…';
+  else if (lastRefreshAt) {
+    const secs = Math.max(0, Math.round((Date.now() - lastRefreshAt) / 1000));
+    if (secs < 10) label = 'Updated just now';
+    else if (secs < 60) label = `Updated ${secs}s ago`;
+    else label = `Updated ${Math.round(secs / 60)}m ago`;
+  }
+  if (!label) return null;
+  return (
+    <div className="px-4 py-1 text-[11px] text-muted-foreground/70 flex items-center gap-1.5">
+      {isRefreshing && <RefreshCw className="h-3 w-3 animate-spin" />}
+      <span>{label}</span>
+    </div>
+  );
+}
 
 interface InboxDialogProps {
   open: boolean;
@@ -404,41 +453,72 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const lastSilentRefreshRef = useRef(0);
   const SILENT_REFRESH_MIN_GAP_MS = 10_000;
   const SILENT_REFRESH_INTERVAL_MS = 60_000;
-  const silentRefresh = useCallback(async () => {
+  // Tracks the in-flight refresh so we can render a top loading bar
+  // without blanking the cached list. Separate from `isInitialLoading`
+  // (cold-open spinner) so warm opens stay instant.
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastRefreshAt, setLastRefreshAt] = useState<number | null>(null);
+  const [refreshError, setRefreshError] = useState(false);
+  const refreshInFlightRef = useRef(false);
+
+  // Core refresh routine. `force=true` bypasses the 10s debounce gap so
+  // every popup open transition triggers a fresh fetch even if the user
+  // toggles rapidly. The in-flight ref still prevents truly concurrent
+  // fetches (e.g. open + focus firing in the same tick).
+  const runRefresh = useCallback(async (opts: { force?: boolean } = {}) => {
     if (!status.connected) return;
+    if (refreshInFlightRef.current) return;
     const now = Date.now();
-    if (now - lastSilentRefreshRef.current < SILENT_REFRESH_MIN_GAP_MS) return;
+    if (!opts.force && now - lastSilentRefreshRef.current < SILENT_REFRESH_MIN_GAP_MS) return;
+    refreshInFlightRef.current = true;
     lastSilentRefreshRef.current = now;
+    setIsRefreshing(true);
     try {
       const [inbox, sent] = await Promise.all([
         fetchPage({ labelIds: ['INBOX'] }),
         fetchPage({ labelIds: ['SENT'] }),
       ]);
       if (!isMountedRef.current) return;
-      if (inbox.messages.length) {
-        setInboxMessages((prev) => {
-          const next = mergeUniqueById(inbox.messages, prev);
-          useInboxCacheStore.setState({ inboxMessages: next });
-          return next;
-        });
-      }
-      if (sent.messages.length) {
-        setSentMessages((prev) => {
-          const next = mergeUniqueById(sent.messages, prev);
-          useInboxCacheStore.setState({ sentMessages: next });
-          return next;
-        });
-      }
+      // Prepend new messages above the cached list; mergeUniqueById
+      // preserves the already-loaded tail so scroll position and the
+      // currently-open thread stay put.
+      setInboxMessages((prev) => {
+        const next = mergeUniqueById(inbox.messages, prev);
+        useInboxCacheStore.setState({ inboxMessages: next });
+        return next;
+      });
+      setSentMessages((prev) => {
+        const next = mergeUniqueById(sent.messages, prev);
+        useInboxCacheStore.setState({ sentMessages: next });
+        return next;
+      });
+      setRefreshError(false);
+      setLastRefreshAt(Date.now());
     } catch {
-      /* swallow — next tick will retry */
+      if (isMountedRef.current) setRefreshError(true);
+    } finally {
+      refreshInFlightRef.current = false;
+      if (isMountedRef.current) setIsRefreshing(false);
     }
   }, [status.connected, mergeUniqueById]);
 
+  const silentRefresh = useCallback(() => runRefresh({ force: false }), [runRefresh]);
+  const forceRefresh = useCallback(() => runRefresh({ force: true }), [runRefresh]);
+
+  // Fire a forced refresh on every open transition false→true, independent
+  // of cache state or the silent-refresh debounce. This is the contract:
+  // popup opens => fresh fetch, every single time.
+  const prevOpenRef = useRef(false);
+  useEffect(() => {
+    const wasOpen = prevOpenRef.current;
+    prevOpenRef.current = open;
+    if (!open || wasOpen) return;
+    if (!status.connected) return;
+    void forceRefresh();
+  }, [open, status.connected, forceRefresh]);
+
   useEffect(() => {
     if (!open || !status.connected) return;
-    // Fire on open (skip the very first cold-open which the main effect
-    // above already handles via fetchPage + autoPaginate).
-    if (hasLoadedRef.current) void silentRefresh();
     const onFocus = () => { void silentRefresh(); };
     const onVisible = () => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
@@ -765,6 +845,21 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         }}
       >
         <DialogTitle className="sr-only">Email</DialogTitle>
+        {/* Thin top loading bar shown while a background refresh is in
+            flight. Sits above the list so the cached content stays
+            visible behind it. Respects prefers-reduced-motion via plain
+            opacity transitions. */}
+        {isRefreshing && (
+          <div className="absolute left-0 right-0 top-0 z-50 h-0.5 overflow-hidden pointer-events-none">
+            <div className="h-full w-1/3 bg-gradient-to-r from-transparent via-primary to-transparent animate-[shimmer_1.2s_ease-in-out_infinite]" />
+          </div>
+        )}
+        <InboxRefreshStatus
+          isRefreshing={isRefreshing}
+          lastRefreshAt={lastRefreshAt}
+          error={refreshError}
+          onRetry={forceRefresh}
+        />
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Error boundary so a single bad message / thread / attachment
               cannot crash the entire inbox popup. Reset key tied to
