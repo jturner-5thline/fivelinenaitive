@@ -2071,29 +2071,43 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           dealName = d?.company || null;
         } catch { /* non-fatal */ }
       }
+      // Resolve display name for the assignee when one was provided.
+      let assigneeName: string | null = null;
+      if (args.assignee_id) {
+        try {
+          const { data: p } = await supabase.from("profiles").select("display_name, email").eq("user_id", args.assignee_id).maybeSingle();
+          assigneeName = p?.display_name || p?.email || null;
+        } catch { /* non-fatal */ }
+      }
+      // Strip any fields the LLM may have hallucinated outside the schema (priority, calendar, time, etc.)
+      const ALLOWED = new Set(["title", "description", "assignee_id", "due_date", "deal_id", "type", "collaborator_ids"]);
+      for (const k of Object.keys(args)) {
+        if (!ALLOWED.has(k)) {
+          console.warn(`[create_task] dropping unsupported field from tool args: ${k}`);
+        }
+      }
+      // Force due_date to date-only if the model snuck a time in.
+      let safeDue: string | null = null;
+      if (typeof args.due_date === "string" && args.due_date.trim()) {
+        safeDue = args.due_date.slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDue)) safeDue = null;
+      }
       return {
         action: "confirm",
         action_type: "create_task",
-        description: `Create task${args.assignee_name ? ` for ${args.assignee_name}` : ""}: "${args.title}"${args.due_date ? ` (due: ${args.due_date}${args.due_time ? ` ${args.due_time}` : ""})` : ""}${args.priority ? ` [${args.priority}]` : ""}`,
+        description: `Create task${assigneeName ? ` for ${assigneeName}` : ""}: "${args.title}"${safeDue ? ` (due: ${safeDue})` : ""}`,
         params: {
           title: args.title,
           description: args.description,
           deal_id: args.deal_id,
           deal_name: dealName,
-          contact_id: args.contact_id,
-          assignee_user_id: args.assignee_user_id,
-          assignee_name: args.assignee_name,
-          priority: args.priority || "medium",
-          due_date: args.due_date,
-          due_time: typeof args.due_time === "string" ? args.due_time : null,
-          task_type: args.task_type || "task",
-          rationale: typeof args.rationale === "string" ? args.rationale : null,
-          duplicate_status: ["none", "low", "possible", "high"].includes(args.duplicate_status) ? args.duplicate_status : "none",
-          duplicate_match: args.duplicate_status && args.duplicate_status !== "none" && typeof args.duplicate_match === "object" && args.duplicate_match ? args.duplicate_match : null,
-          duplicate_candidates: Array.isArray(args.duplicate_candidates) ? args.duplicate_candidates.slice(0, 10) : [],
-          inferred: Array.isArray(args.inferred) ? args.inferred : [],
-          intent: args.intent || (args.assignee_user_id ? "delegated_task" : (args.deal_id ? "deal_task" : "personal_task")),
-          confidence: typeof args.confidence === "object" && args.confidence ? args.confidence : {},
+          assignee_user_id: args.assignee_id || null,
+          assignee_name: assigneeName,
+          due_date: safeDue,
+          task_type: args.type || "task",
+          collaborator_ids: Array.isArray(args.collaborator_ids)
+            ? args.collaborator_ids.filter((x: unknown) => typeof x === "string")
+            : [],
         },
       };
     }
