@@ -341,37 +341,34 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
   return (
     <div className="border rounded-lg bg-card">
       <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-        <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className="w-full flex items-center justify-between p-3 h-auto"
-          >
-            <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between p-2 pl-3 gap-2">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="flex items-center gap-2 text-sm font-medium hover:text-foreground/80 transition-colors"
+            >
               <Filter className="h-4 w-4" />
-              <span className="font-medium">Filters</span>
+              <span>Filters</span>
               {activeFilterCount > 0 && (
-                <Badge variant="secondary" className="ml-1">
-                  {activeFilterCount} active
+                <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">
+                  {activeFilterCount}
                 </Badge>
               )}
-            </div>
-            {isOpen ? (
-              <ChevronUp className="h-4 w-4" />
-            ) : (
-              <ChevronDown className="h-4 w-4" />
-            )}
-          </Button>
-        </CollapsibleTrigger>
-
-        <CollapsibleContent>
-          <div className="p-4 pt-0 space-y-4">
-            {/* Filter Mode Toggle */}
-            <Tabs value={filterMode} onValueChange={handleModeChange} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 h-9">
-                <TabsTrigger value="simple" className="text-xs">Simple</TabsTrigger>
-                <TabsTrigger value="advanced" className="text-xs">Advanced</TabsTrigger>
+              {isOpen ? <ChevronUp className="h-4 w-4 opacity-60" /> : <ChevronDown className="h-4 w-4 opacity-60" />}
+            </button>
+          </CollapsibleTrigger>
+          {isOpen && (
+            <Tabs value={filterMode} onValueChange={handleModeChange}>
+              <TabsList className="h-7">
+                <TabsTrigger value="simple" className="text-[11px] px-2.5 h-6">Simple</TabsTrigger>
+                <TabsTrigger value="advanced" className="text-[11px] px-2.5 h-6">Advanced</TabsTrigger>
               </TabsList>
             </Tabs>
+          )}
+        </div>
+
+        <CollapsibleContent>
+          <div className="px-3 pb-3 space-y-3">
 
             {/* Active Filters Summary */}
             {activeFilterCount > 0 && (
@@ -428,27 +425,11 @@ export function LenderFiltersPanel({ filters, onFiltersChange, lenders }: Lender
                 lenders={lenders}
               />
             ) : (
-              <>
-                {/* Search by Name (only for advanced mode) */}
-                <div className="space-y-1.5">
-                  <div className="relative max-w-md">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <DebouncedInput
-                      type="text"
-                      placeholder="Search by lender name or contact..."
-                      value={filters.searchQuery}
-                      onChange={handleSearchChange}
-                      className="h-9 pl-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-                      debounceMs={300}
-                    />
-                  </div>
-                </div>
-                <AdvancedFilterBuilder
-                  conditions={filters.advancedConditions || []}
-                  onConditionsChange={handleConditionsChange}
-                  lenders={lenders}
-                />
-              </>
+              <AdvancedFilterBuilder
+                conditions={filters.advancedConditions || []}
+                onConditionsChange={handleConditionsChange}
+                lenders={lenders}
+              />
             )}
           </div>
         </CollapsibleContent>
