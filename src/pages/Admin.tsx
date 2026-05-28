@@ -101,8 +101,6 @@ import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOve
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
-import { BlogManagementPanel } from "@/components/admin/BlogManagementPanel";
-import { SignalStackApp } from "@/components/admin/signalstack/SignalStackApp";
 
 // ─── New IA ───────────────────────────────────────────────────────
 type SectionId = "people" | "access" | "communications" | "platform" | "observability";
