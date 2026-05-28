@@ -3995,7 +3995,8 @@ export default function DealDetail() {
                           // computed below; isolated block to keep variable scoped
                           }
                           return (
-                            <div key={id} className="space-y-6">
+                            <div key={id} className="h-full flex flex-col gap-4">
+                              <div className="shrink-0">
                               <OutstandingItems
                                 items={outstandingItems}
                                 lenderNames={deal.lenders?.filter(l => {
@@ -4049,8 +4050,11 @@ export default function DealDetail() {
                                 }}
                                 phaseControls={checklistPhaseControls}
                               />
-                              <Card className="overflow-hidden">
-                                <CalendarPanel deal={deal} />
+                              </div>
+                              <Card className="overflow-hidden flex-1 flex flex-col min-h-[280px]">
+                                <div className="flex-1 flex flex-col">
+                                  <CalendarPanel deal={deal} />
+                                </div>
                               </Card>
                             </div>
                           );
