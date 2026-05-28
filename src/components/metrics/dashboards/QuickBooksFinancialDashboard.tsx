@@ -19,7 +19,7 @@ import {
 import type { Granularity } from '@/lib/insightsTimeRange';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
-import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
+import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Percent, ChevronRight, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 const COLORS = [
@@ -112,6 +112,7 @@ export function QuickBooksFinancialDashboard({
     columns: DrilldownColumn[];
     rows: Array<Record<string, unknown>>;
     defaultSort?: { key: string; dir: 'asc' | 'desc' };
+    body?: React.ReactNode;
   } | null>(null);
 
   const showDrill = (
@@ -127,15 +128,16 @@ export function QuickBooksFinancialDashboard({
     rows,
   });
 
-  // Build invoice-level A/R drilldown (Customer, Invoice #, Amount, Invoice Date,
-  // Due Date, Days Overdue). Sortable by all columns; defaults to Days Overdue desc.
+  // A/R drilldown source data: every open invoice across all connected QBO
+  // entities the viewer can see. We aggregate client-side into a customer-level
+  // summary table with expandable invoice-level detail.
   const { data: arInvoiceRows } = useQuery({
     queryKey: ['qb-ar-open-invoices'],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quickbooks_invoices')
-        .select('customer_name, doc_number, balance, total_amt, txn_date, due_date')
+        .select('customer_name, doc_number, balance, total_amt, txn_date, due_date, realm_id')
         .gt('balance', 0)
         .order('due_date', { ascending: true })
         .limit(5000);
@@ -145,43 +147,15 @@ export function QuickBooksFinancialDashboard({
   });
 
   const showArDrill = () => {
-    const today = new Date();
-    const rows = (arInvoiceRows ?? []).map((inv: any) => {
-      const due = inv.due_date ? new Date(inv.due_date) : null;
-      const daysOverdue = due
-        ? Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86_400_000))
-        : 0;
-      return {
-        customer: inv.customer_name ?? '—',
-        invoice: inv.doc_number ?? '—',
-        amount: Number(inv.balance) || 0,
-        txn_date: inv.txn_date ?? null,
-        due_date: inv.due_date ?? null,
-        days_overdue: daysOverdue,
-      };
-    });
     setDrill({
       context: {
         sourceId: 'qb:Accounts Receivable',
         sourceLabel: 'Accounts Receivable',
-        selection: `${rows.length} open invoices · ${formatCurrency(metrics?.totalAR ?? 0)} outstanding`,
+        selection: `${(arInvoiceRows ?? []).length} open invoices · ${formatCurrency(metrics?.totalAR ?? 0)} outstanding`,
       },
-      columns: [
-        { key: 'customer', label: 'Customer', sortable: true },
-        { key: 'invoice', label: 'Invoice #', sortable: true },
-        { key: 'amount', label: 'Amount', align: 'right', sortable: true,
-          render: (r: any) => formatCurrency(r.amount) },
-        { key: 'txn_date', label: 'Invoice Date', sortable: true,
-          render: (r: any) => r.txn_date ?? '—' },
-        { key: 'due_date', label: 'Due Date', sortable: true,
-          render: (r: any) => r.due_date ?? '—' },
-        { key: 'days_overdue', label: 'Days Overdue', align: 'right', sortable: true,
-          render: (r: any) => r.days_overdue > 0
-            ? <span style={{ color: r.days_overdue > 60 ? '#f87171' : '#fbbf24' }}>{r.days_overdue}</span>
-            : <span style={{ opacity: 0.5 }}>—</span> },
-      ],
-      rows,
-      defaultSort: { key: 'days_overdue', dir: 'desc' },
+      columns: [],
+      rows: [],
+      body: <ArDrilldownBody invoices={arInvoiceRows ?? []} />,
     });
   };
 
@@ -442,6 +416,7 @@ export function QuickBooksFinancialDashboard({
       context={drill?.context ?? null}
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
+      body={drill?.body}
       defaultSort={drill?.defaultSort}
       emptyHint="No detail records available."
     />
