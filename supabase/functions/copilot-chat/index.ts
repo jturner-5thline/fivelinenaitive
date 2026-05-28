@@ -5512,6 +5512,13 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       return { success: true, message: `${params.milestone_title} marked as ${params.completed ? 'complete' : 'incomplete'}`, actionType: "update_milestone", params: { deal_id: params.deal_id } };
     }
     case "update_lender_status": {
+      const { data: lenderBefore } = await supabase
+        .from("deal_lenders")
+        .select("id, stage, tracking_status, pass_reason, notes")
+        .eq("id", params.lender_id)
+        .maybeSingle();
+      if (!lenderBefore) return { success: false, error: `Lender "${params.lender_name}" was not found.`, actionType: "update_lender_status" };
+
       const updateFields: any = {};
       if (params.stage) updateFields.stage = params.stage;
       if (params.tracking_status) updateFields.tracking_status = params.tracking_status;
@@ -5526,14 +5533,16 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (Object.keys(updateFields).length === 0) {
         return { success: false, error: "No fields provided to update.", actionType: "update_lender_status" };
       }
-      console.log("[copilot-chat] update_lender_status execute lender_id=%s fields=%j", params.lender_id, Object.keys(updateFields));
-      const { error } = await supabase.from("deal_lenders").update(updateFields).eq("id", params.lender_id);
-      if (error) {
-        console.error("[copilot-chat] update_lender_status failed:", error);
-        return { success: false, error: error.message, actionType: "update_lender_status" };
+      let verified: Record<string, unknown>;
+      try {
+        verified = await verifiedDealLenderUpdate(supabase, params.lender_id, updateFields);
+      } catch (e) {
+        if (e instanceof LenderWriteNotPersistedError) {
+          return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches, actionType: "update_lender_status" };
+        }
+        console.error("[copilot-chat] update_lender_status failed:", e);
+        return { success: false, error: (e as Error).message, actionType: "update_lender_status" };
       }
-      const { data: verified } = await supabase.from("deal_lenders").select("stage, tracking_status").eq("id", params.lender_id).single();
-      if (!verified) return { success: false, error: `Failed to update lender "${params.lender_name}".` };
       if (params.deal_id) {
         await supabase.from("activity_logs").insert({
           deal_id: params.deal_id, activity_type: "lender_status_change",
@@ -5541,7 +5550,32 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
           user_id: userId,
         });
       }
-      return { success: true, message: `Updated ${params.lender_name}`, actionType: "update_lender_status", params: { deal_id: params.deal_id } };
+      const before = compactRecord({
+        stage: (lenderBefore as any)?.stage ?? null,
+        tracking_status: (lenderBefore as any)?.tracking_status ?? null,
+        pass_reason: (lenderBefore as any)?.pass_reason ?? null,
+        notes: (lenderBefore as any)?.notes ?? null,
+      }) || {};
+      const after = compactRecord({
+        stage: (verified as any)?.stage ?? null,
+        tracking_status: (verified as any)?.tracking_status ?? null,
+        pass_reason: (verified as any)?.pass_reason ?? null,
+        notes: (verified as any)?.notes ?? null,
+      }) || {};
+      return {
+        success: true,
+        message: `Updated ${params.lender_name}`,
+        actionType: "update_lender_status",
+        params: { deal_id: params.deal_id, lender_id: params.lender_id, lender_name: params.lender_name },
+        audit: {
+          deal_id: params.deal_id,
+          lender_id: params.lender_id,
+          before,
+          after,
+          fields: Object.keys(updateFields),
+          timestamp: new Date().toISOString(),
+        },
+      };
     }
     case "delete_outstanding_item": {
       const { error } = await supabase.from("outstanding_items").delete().eq("id", params.item_id);
