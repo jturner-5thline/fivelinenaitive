@@ -55,7 +55,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare,
+  Shield, Users, Building2, Mail, ClipboardList, MessageSquare,
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout,
   PanelLeftOpen, PanelLeftClose,
   Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
@@ -67,12 +67,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
 import { usePendingApprovals } from "@/hooks/useUserApproval";
 import { AdminStatsCards } from "@/components/admin/AdminStatsCards";
-import { UsersTable } from "@/components/admin/UsersTable";
-import { CompaniesTable } from "@/components/admin/CompaniesTable";
-import { WaitlistTable } from "@/components/admin/WaitlistTable";
-import { InvitationsTable } from "@/components/admin/InvitationsTable";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
-import { ExternalDataTab } from "@/components/admin/ExternalDataTab";
 import { FeedbackTable } from "@/components/admin/FeedbackTable";
 import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
 import { AnnouncementsPanel } from "@/components/admin/AnnouncementsPanel";
@@ -89,8 +84,6 @@ import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecomm
 import { UXAnalyticsPanel } from "@/components/admin/UXAnalyticsPanel";
 import { AITrainingPanel } from "@/components/admin/AITrainingPanel";
 import { AIActionAuditPanel } from "@/components/admin/AIActionAuditPanel";
-import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
-import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
