@@ -13,6 +13,7 @@ import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { cn } from '@/lib/utils';
 import { useInboxCacheStore } from '@/stores/inboxCacheStore';
 import { RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 function InboxRefreshStatus({
   isRefreshing,
@@ -139,8 +140,9 @@ async function fetchPage(args: {
   labelIds: string[];
   pageToken?: string | null;
   maxResults?: number;
+  forceRefresh?: boolean;
 }): Promise<{ messages: any[]; nextPageToken: string | null; rateLimited: boolean }> {
-  const { labelIds, pageToken, maxResults = PAGE_SIZE } = args;
+  const { labelIds, pageToken, maxResults = PAGE_SIZE, forceRefresh = false } = args;
   try {
     const { data, error } = await supabase.functions.invoke('gmail-messages', {
       body: {
@@ -148,6 +150,15 @@ async function fetchPage(args: {
         max_results: maxResults,
         label_ids: labelIds,
         page_token: pageToken || undefined,
+        // When the caller is a user-initiated refresh, ask the edge
+        // function to bypass any HTTP/intermediary cache by appending a
+        // cachebuster to the upstream Nylas URL. The provider itself is
+        // already authoritative, but this guarantees no CDN/proxy layer
+        // returns a previously-cached response on rapid retries.
+        force_refresh: forceRefresh || undefined,
+        // Cache-bust this very invoke so the browser / SW never serves
+        // a memoized response for the manual refresh call itself.
+        _cb: forceRefresh ? Date.now() : undefined,
       },
     });
     if (error) {
