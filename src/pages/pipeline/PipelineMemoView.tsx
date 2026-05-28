@@ -6,7 +6,7 @@ import { PipelineMemoCard } from '@/components/pipeline/memo/PipelineMemoCard';
 import { usePipelineDigests } from '@/hooks/usePipelineDigests';
 import { usePipelineDealTasks } from '@/hooks/usePipelineDealTasks';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
-import { Check, Inbox, ChevronLeft } from 'lucide-react';
+import { Check, Inbox, ChevronLeft, ChevronDown } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,7 +16,100 @@ import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
 import { useAdminRole } from '@/hooks/useAdminRole';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { ChevronDown } from 'lucide-react';
+
+// ── Compact admin filter chip (multi-select popover) ───────────
+// Hoisted above PipelineMemoView so React Fast Refresh / module
+// evaluation order can never miss the binding.
+function FilterChip({
+  label,
+  options,
+  selected,
+  onChange,
+  formatLabel,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  formatLabel?: (v: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const fmt = formatLabel ?? ((v: string) => v);
+  const toggle = (v: string) => {
+    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+  };
+  const active = selected.length > 0;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'inline-flex items-center gap-1 h-6 px-2 rounded-full border text-[10px] font-medium transition-colors',
+            active
+              ? 'border-white/30 bg-white/[0.08] text-white'
+              : 'border-white/10 bg-white/[0.02] text-white/70 hover:bg-white/[0.05] hover:text-white',
+          )}
+        >
+          <span>{label}</span>
+          {active && (
+            <span className="inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full bg-white/15 text-white text-[9px]">
+              {selected.length}
+            </span>
+          )}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[220px] p-1 max-h-[280px] overflow-y-auto bg-popover border-white/10"
+      >
+        {options.length === 0 ? (
+          <div className="px-2 py-3 text-[11px] text-muted-foreground text-center">
+            No options
+          </div>
+        ) : (
+          options.map((opt) => {
+            const isSel = selected.includes(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => toggle(opt)}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[11px] transition-colors',
+                  isSel ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/[0.06]',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex h-3.5 w-3.5 items-center justify-center rounded-sm border shrink-0',
+                    isSel ? 'bg-primary border-primary text-primary-foreground' : 'border-white/30',
+                  )}
+                >
+                  {isSel && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                </span>
+                <span className="flex-1 truncate">{fmt(opt)}</span>
+              </button>
+            );
+          })
+        )}
+        {selected.length > 0 && (
+          <div className="mt-1 pt-1 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="w-full text-center text-[10px] uppercase tracking-wider text-white/60 hover:text-white py-1.5 rounded hover:bg-white/[0.06]"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -472,97 +565,5 @@ function DealTile({
         <Check className="h-3 w-3" strokeWidth={2.5} />
       </span>
     </div>
-  );
-}
-
-// ── Compact admin filter chip (multi-select popover) ───────────
-function FilterChip({
-  label,
-  options,
-  selected,
-  onChange,
-  formatLabel,
-}: {
-  label: string;
-  options: string[];
-  selected: string[];
-  onChange: (next: string[]) => void;
-  formatLabel?: (v: string) => string;
-}) {
-  const [open, setOpen] = useState(false);
-  const fmt = formatLabel ?? ((v: string) => v);
-  const toggle = (v: string) => {
-    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
-  };
-  const active = selected.length > 0;
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          className={cn(
-            'inline-flex items-center gap-1 h-6 px-2 rounded-full border text-[10px] font-medium transition-colors',
-            active
-              ? 'border-white/30 bg-white/[0.08] text-white'
-              : 'border-white/10 bg-white/[0.02] text-white/70 hover:bg-white/[0.05] hover:text-white',
-          )}
-        >
-          <span>{label}</span>
-          {active && (
-            <span className="inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full bg-white/15 text-white text-[9px]">
-              {selected.length}
-            </span>
-          )}
-          <ChevronDown className="h-3 w-3 opacity-60" />
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="start"
-        sideOffset={4}
-        className="w-[220px] p-1 max-h-[280px] overflow-y-auto bg-popover border-white/10"
-      >
-        {options.length === 0 ? (
-          <div className="px-2 py-3 text-[11px] text-muted-foreground text-center">
-            No options
-          </div>
-        ) : (
-          options.map((opt) => {
-            const isSel = selected.includes(opt);
-            return (
-              <button
-                key={opt}
-                type="button"
-                onClick={() => toggle(opt)}
-                className={cn(
-                  'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[11px] transition-colors',
-                  isSel ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/[0.06]',
-                )}
-              >
-                <span
-                  className={cn(
-                    'flex h-3.5 w-3.5 items-center justify-center rounded-sm border shrink-0',
-                    isSel ? 'bg-primary border-primary text-primary-foreground' : 'border-white/30',
-                  )}
-                >
-                  {isSel && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
-                </span>
-                <span className="flex-1 truncate">{fmt(opt)}</span>
-              </button>
-            );
-          })
-        )}
-        {selected.length > 0 && (
-          <div className="mt-1 pt-1 border-t border-white/10">
-            <button
-              type="button"
-              onClick={() => onChange([])}
-              className="w-full text-center text-[10px] uppercase tracking-wider text-white/60 hover:text-white py-1.5 rounded hover:bg-white/[0.06]"
-            >
-              Clear
-            </button>
-          </div>
-        )}
-      </PopoverContent>
-    </Popover>
   );
 }
