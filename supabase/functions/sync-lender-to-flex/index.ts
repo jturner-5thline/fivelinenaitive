@@ -236,7 +236,30 @@ serve(async (req) => {
            { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
          );
        }
-      
+
+       // FLEx returns 400 "Missing lender identifiers" when it can't match the
+       // payload to a known lender. Surface this as a graceful skip instead of 502.
+       if (
+         flexResponse.status === 400 &&
+         typeof flexError?.error === "string" &&
+         flexError.error.toLowerCase().includes("missing lender identifiers")
+       ) {
+         return new Response(
+           JSON.stringify({
+             success: false,
+             skipped: true,
+             code: "MISSING_IDENTIFIERS",
+             error: "Lender is missing identifiers required by FLEx",
+             message:
+               "FLEx couldn't identify this lender from the data we sent. Make sure the lender has an email address (or is already linked in FLEx) and try again.",
+             lender_email: l.email,
+             lender_name: l.name,
+             lender_id: l.id,
+           }),
+           { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+         );
+       }
+
       return new Response(
         JSON.stringify({ 
           error: "Failed to sync lender to FLEx", 
