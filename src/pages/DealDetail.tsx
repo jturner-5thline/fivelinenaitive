@@ -4049,6 +4049,9 @@ export default function DealDetail() {
                                 }}
                                 phaseControls={checklistPhaseControls}
                               />
+                              <Card className="overflow-hidden">
+                                <CalendarPanel deal={deal} />
+                              </Card>
                             </div>
                           );
                         default:
