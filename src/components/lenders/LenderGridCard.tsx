@@ -218,14 +218,7 @@ export const LenderGridCard = memo(function LenderGridCard({
             {lender.lender_type}
           </Badge>
         )}
-        
-        {/* Lender type badge */}
-        {tileDisplaySettings.showLenderType && lender.lender_type && (
-          <Badge variant="outline" className="text-xs mt-1.5">
-            {lender.lender_type}
-          </Badge>
-        )}
-        
+
         {/* Deal range - prominent display */}
         {tileDisplaySettings.showDealRange && dealSizeRange && (
           <p className="text-sm font-medium text-primary mt-2">
