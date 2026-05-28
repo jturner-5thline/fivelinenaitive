@@ -84,6 +84,13 @@ interface MessageRequest {
   }>;
   /** When set, include In-Reply-To/References threading via Nylas reply_to_message_id. */
   reply_to_message_id?: string;
+  /**
+   * Manual / user-initiated refresh. When true, the upstream Nylas URL
+   * receives a per-request cachebuster so no intermediary (CDN, SW,
+   * Cloudflare) can serve a stale list response. Has no effect on the
+   * provider's own freshness — Nylas is already authoritative.
+   */
+  force_refresh?: boolean;
 }
 
 // Normalize Nylas attachment objects to a consistent shape.
@@ -468,6 +475,11 @@ serve(async (req: Request): Promise<Response> => {
         });
         if (page_token) params.set("page_token", page_token);
         if (query) params.set("search_query_native", query);
+        // Cachebuster for manual refresh — only on the first page so
+        // pagination tokens stay deterministic.
+        if ((requestData as any).force_refresh && !page_token) {
+          params.set("_cb", String(Date.now()));
+        }
 
         // Folder/label filter:
         //   • If caller supplied an explicit label_ids[0], honor it.
