@@ -1303,6 +1303,14 @@ export function AgendaIntel() {
             : []
         }
       />
+      <MeetingNoteDialog
+        open={!!noteDialogEvent}
+        onClose={() => setNoteDialogEvent(null)}
+        event={noteDialogEvent}
+        dealId={noteDialogEvent ? (matchDeal(noteDialogEvent)?.id ?? null) : null}
+        dealName={noteDialogEvent ? (matchDeal(noteDialogEvent)?.name ?? null) : null}
+        orgCompanyId={orgCompanyId}
+      />
     </div>
   );
 }
