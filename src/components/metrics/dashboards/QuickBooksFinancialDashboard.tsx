@@ -19,7 +19,7 @@ import {
 import type { Granularity } from '@/lib/insightsTimeRange';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
-import { DollarSign, Users, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
+import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 const COLORS = [
