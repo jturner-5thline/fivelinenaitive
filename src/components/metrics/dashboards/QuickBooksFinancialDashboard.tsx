@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -19,7 +19,7 @@ import {
 import type { Granularity } from '@/lib/insightsTimeRange';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
-import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
+import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Percent, ChevronRight, ChevronDown, ArrowUp, ArrowDown } from 'lucide-react';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 const COLORS = [
@@ -112,6 +112,7 @@ export function QuickBooksFinancialDashboard({
     columns: DrilldownColumn[];
     rows: Array<Record<string, unknown>>;
     defaultSort?: { key: string; dir: 'asc' | 'desc' };
+    body?: React.ReactNode;
   } | null>(null);
 
   const showDrill = (
@@ -127,15 +128,16 @@ export function QuickBooksFinancialDashboard({
     rows,
   });
 
-  // Build invoice-level A/R drilldown (Customer, Invoice #, Amount, Invoice Date,
-  // Due Date, Days Overdue). Sortable by all columns; defaults to Days Overdue desc.
+  // A/R drilldown source data: every open invoice across all connected QBO
+  // entities the viewer can see. We aggregate client-side into a customer-level
+  // summary table with expandable invoice-level detail.
   const { data: arInvoiceRows } = useQuery({
     queryKey: ['qb-ar-open-invoices'],
     staleTime: 5 * 60_000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('quickbooks_invoices')
-        .select('customer_name, doc_number, balance, total_amt, txn_date, due_date')
+        .select('customer_name, doc_number, balance, total_amt, txn_date, due_date, realm_id')
         .gt('balance', 0)
         .order('due_date', { ascending: true })
         .limit(5000);
@@ -145,43 +147,15 @@ export function QuickBooksFinancialDashboard({
   });
 
   const showArDrill = () => {
-    const today = new Date();
-    const rows = (arInvoiceRows ?? []).map((inv: any) => {
-      const due = inv.due_date ? new Date(inv.due_date) : null;
-      const daysOverdue = due
-        ? Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86_400_000))
-        : 0;
-      return {
-        customer: inv.customer_name ?? '—',
-        invoice: inv.doc_number ?? '—',
-        amount: Number(inv.balance) || 0,
-        txn_date: inv.txn_date ?? null,
-        due_date: inv.due_date ?? null,
-        days_overdue: daysOverdue,
-      };
-    });
     setDrill({
       context: {
         sourceId: 'qb:Accounts Receivable',
         sourceLabel: 'Accounts Receivable',
-        selection: `${rows.length} open invoices · ${formatCurrency(metrics?.totalAR ?? 0)} outstanding`,
+        selection: `${(arInvoiceRows ?? []).length} open invoices · ${formatCurrency(metrics?.totalAR ?? 0)} outstanding`,
       },
-      columns: [
-        { key: 'customer', label: 'Customer', sortable: true },
-        { key: 'invoice', label: 'Invoice #', sortable: true },
-        { key: 'amount', label: 'Amount', align: 'right', sortable: true,
-          render: (r: any) => formatCurrency(r.amount) },
-        { key: 'txn_date', label: 'Invoice Date', sortable: true,
-          render: (r: any) => r.txn_date ?? '—' },
-        { key: 'due_date', label: 'Due Date', sortable: true,
-          render: (r: any) => r.due_date ?? '—' },
-        { key: 'days_overdue', label: 'Days Overdue', align: 'right', sortable: true,
-          render: (r: any) => r.days_overdue > 0
-            ? <span style={{ color: r.days_overdue > 60 ? '#f87171' : '#fbbf24' }}>{r.days_overdue}</span>
-            : <span style={{ opacity: 0.5 }}>—</span> },
-      ],
-      rows,
-      defaultSort: { key: 'days_overdue', dir: 'desc' },
+      columns: [],
+      rows: [],
+      body: <ArDrilldownBody invoices={arInvoiceRows ?? []} />,
     });
   };
 
@@ -442,9 +416,257 @@ export function QuickBooksFinancialDashboard({
       context={drill?.context ?? null}
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
+      body={drill?.body}
       defaultSort={drill?.defaultSort}
       emptyHint="No detail records available."
     />
     </>
+  );
+}
+
+/* ─── A/R drilldown: customer-level summary with expandable invoices ─── */
+
+interface ArInvoice {
+  customer_name: string | null;
+  doc_number: string | null;
+  balance: number | null;
+  total_amt: number | null;
+  txn_date: string | null;
+  due_date: string | null;
+  realm_id: string | null;
+}
+
+interface ArCustomerRow {
+  customer: string;
+  balance: number;
+  invoiceCount: number;
+  oldestDays: number;
+  buckets: { current: number; '1-30': number; '31-60': number; '61-90': number; '90+': number };
+  invoices: Array<{
+    invoice: string;
+    txn_date: string | null;
+    due_date: string | null;
+    balance: number;
+    daysOutstanding: number;
+    daysOverdue: number;
+  }>;
+}
+
+function aggregateAr(invoices: ArInvoice[]): ArCustomerRow[] {
+  const today = new Date();
+  const todayMs = today.getTime();
+  const byCustomer = new Map<string, ArCustomerRow>();
+  for (const inv of invoices) {
+    const customer = inv.customer_name?.trim() || 'Unknown';
+    const balance = Number(inv.balance) || 0;
+    if (balance <= 0) continue;
+    const txnMs = inv.txn_date ? new Date(inv.txn_date).getTime() : null;
+    const dueMs = inv.due_date ? new Date(inv.due_date).getTime() : null;
+    const daysOutstanding = txnMs ? Math.max(0, Math.floor((todayMs - txnMs) / 86_400_000)) : 0;
+    const daysOverdue = dueMs ? Math.max(0, Math.floor((todayMs - dueMs) / 86_400_000)) : 0;
+    let entry = byCustomer.get(customer);
+    if (!entry) {
+      entry = {
+        customer,
+        balance: 0,
+        invoiceCount: 0,
+        oldestDays: 0,
+        buckets: { current: 0, '1-30': 0, '31-60': 0, '61-90': 0, '90+': 0 },
+        invoices: [],
+      };
+      byCustomer.set(customer, entry);
+    }
+    entry.balance += balance;
+    entry.invoiceCount += 1;
+    entry.oldestDays = Math.max(entry.oldestDays, daysOutstanding);
+    if (daysOverdue <= 0) entry.buckets.current += balance;
+    else if (daysOverdue <= 30) entry.buckets['1-30'] += balance;
+    else if (daysOverdue <= 60) entry.buckets['31-60'] += balance;
+    else if (daysOverdue <= 90) entry.buckets['61-90'] += balance;
+    else entry.buckets['90+'] += balance;
+    entry.invoices.push({
+      invoice: inv.doc_number ?? '—',
+      txn_date: inv.txn_date,
+      due_date: inv.due_date,
+      balance,
+      daysOutstanding,
+      daysOverdue,
+    });
+  }
+  return Array.from(byCustomer.values()).map(c => ({
+    ...c,
+    invoices: c.invoices.sort((a, b) => b.daysOverdue - a.daysOverdue),
+  }));
+}
+
+type ArSortKey = 'customer' | 'balance' | 'invoiceCount' | 'oldestDays';
+
+function ArDrilldownBody({ invoices }: { invoices: ArInvoice[] }) {
+  const customers = useMemo(() => aggregateAr(invoices), [invoices]);
+  const [sortKey, setSortKey] = useState<ArSortKey>('balance');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+
+  const sorted = useMemo(() => {
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...customers].sort((a, b) => {
+      const av = a[sortKey]; const bv = b[sortKey];
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }, [customers, sortKey, sortDir]);
+
+  const toggle = (c: string) =>
+    setExpanded(prev => {
+      const next = new Set(prev);
+      if (next.has(c)) next.delete(c); else next.add(c);
+      return next;
+    });
+
+  const setSort = (k: ArSortKey) => {
+    if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(k); setSortDir(k === 'customer' ? 'asc' : 'desc'); }
+  };
+
+  const headerStyle: React.CSSProperties = {
+    padding: '10px 14px', fontSize: 9, fontWeight: 700, letterSpacing: '.08em',
+    textTransform: 'uppercase', color: 'rgba(160,200,255,0.55)',
+    borderBottom: '1px solid rgba(120,170,255,0.2)', textAlign: 'left',
+    position: 'sticky', top: 0, background: 'rgba(10,18,36,0.97)',
+    userSelect: 'none',
+  };
+  const sortBtn = (label: string, k: ArSortKey, align: 'left' | 'right' = 'left') => (
+    <span
+      onClick={() => setSort(k)}
+      style={{
+        display: 'inline-flex', alignItems: 'center', gap: 4,
+        cursor: 'pointer', justifyContent: align === 'right' ? 'flex-end' : 'flex-start',
+        width: '100%',
+      }}
+    >
+      {label}
+      {sortKey === k && (sortDir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+    </span>
+  );
+
+  if (!customers.length) {
+    return (
+      <div style={{ padding: 32, textAlign: 'center', color: 'rgba(180,200,230,0.65)', fontSize: 13 }}>
+        No outstanding invoices.
+      </div>
+    );
+  }
+
+  return (
+    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+      <thead>
+        <tr>
+          <th style={{ ...headerStyle, width: 28 }} />
+          <th style={headerStyle}>{sortBtn('Customer', 'customer')}</th>
+          <th style={{ ...headerStyle, textAlign: 'right' }}>{sortBtn('Outstanding', 'balance', 'right')}</th>
+          <th style={{ ...headerStyle, textAlign: 'right' }}>{sortBtn('Invoices', 'invoiceCount', 'right')}</th>
+          <th style={{ ...headerStyle, textAlign: 'right' }}>{sortBtn('Oldest (days)', 'oldestDays', 'right')}</th>
+          <th style={headerStyle}>Aging</th>
+        </tr>
+      </thead>
+      <tbody>
+        {sorted.map((c) => {
+          const isOpen = expanded.has(c.customer);
+          return (
+            <React.Fragment key={c.customer}>
+              <tr
+                onClick={() => toggle(c.customer)}
+                style={{
+                  borderBottom: '1px solid rgba(120,170,255,0.08)',
+                  cursor: 'pointer',
+                }}
+              >
+                <td style={{ padding: '10px 8px', color: 'rgba(180,200,230,0.7)' }}>
+                  {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </td>
+                <td style={{ padding: '10px 14px', color: '#dde8f8', fontWeight: 500 }}>{c.customer}</td>
+                <td style={{ padding: '10px 14px', textAlign: 'right', tabularNums: 'tabular-nums' } as React.CSSProperties}>
+                  {formatCurrency(c.balance)}
+                </td>
+                <td style={{ padding: '10px 14px', textAlign: 'right', color: 'rgba(200,225,245,0.85)' }}>
+                  {c.invoiceCount}
+                </td>
+                <td style={{ padding: '10px 14px', textAlign: 'right' }}>
+                  <span style={{
+                    color: c.oldestDays > 90 ? '#f87171' : c.oldestDays > 30 ? '#fbbf24' : 'rgba(200,225,245,0.75)',
+                    fontWeight: 500,
+                  }}>
+                    {c.oldestDays > 0 ? `${c.oldestDays}d` : '—'}
+                  </span>
+                </td>
+                <td style={{ padding: '10px 14px' }}>
+                  <AgingMiniBar buckets={c.buckets} total={c.balance} />
+                </td>
+              </tr>
+              {isOpen && (
+                <tr style={{ background: 'rgba(80,140,255,0.04)' }}>
+                  <td colSpan={6} style={{ padding: '8px 14px 16px 42px' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                      <thead>
+                        <tr>
+                          <th style={{ ...headerStyle, position: 'static', padding: '6px 10px' }}>Invoice #</th>
+                          <th style={{ ...headerStyle, position: 'static', padding: '6px 10px' }}>Invoice Date</th>
+                          <th style={{ ...headerStyle, position: 'static', padding: '6px 10px' }}>Due Date</th>
+                          <th style={{ ...headerStyle, position: 'static', padding: '6px 10px', textAlign: 'right' }}>Balance</th>
+                          <th style={{ ...headerStyle, position: 'static', padding: '6px 10px', textAlign: 'right' }}>Days Outstanding</th>
+                          <th style={{ ...headerStyle, position: 'static', padding: '6px 10px', textAlign: 'right' }}>Days Overdue</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {c.invoices.map((inv, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid rgba(120,170,255,0.06)' }}>
+                            <td style={{ padding: '6px 10px', color: 'rgba(200,225,245,0.85)' }}>{inv.invoice}</td>
+                            <td style={{ padding: '6px 10px', color: 'rgba(180,200,230,0.75)' }}>{inv.txn_date ?? '—'}</td>
+                            <td style={{ padding: '6px 10px', color: 'rgba(180,200,230,0.75)' }}>{inv.due_date ?? '—'}</td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', color: '#dde8f8' }}>{formatCurrency(inv.balance)}</td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right', color: 'rgba(200,225,245,0.75)' }}>{inv.daysOutstanding}d</td>
+                            <td style={{ padding: '6px 10px', textAlign: 'right' }}>
+                              {inv.daysOverdue > 0 ? (
+                                <span style={{ color: inv.daysOverdue > 60 ? '#f87171' : '#fbbf24', fontWeight: 500 }}>
+                                  {inv.daysOverdue}d
+                                </span>
+                              ) : <span style={{ opacity: 0.5 }}>—</span>}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </td>
+                </tr>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+function AgingMiniBar({ buckets, total }: { buckets: ArCustomerRow['buckets']; total: number }) {
+  const segs: Array<{ key: string; value: number; color: string; label: string }> = [
+    { key: 'current', value: buckets.current,  color: '#34d399', label: 'Current' },
+    { key: '1-30',    value: buckets['1-30'],  color: '#fbbf24', label: '1–30' },
+    { key: '31-60',   value: buckets['31-60'], color: '#fb923c', label: '31–60' },
+    { key: '61-90',   value: buckets['61-90'], color: '#f87171', label: '61–90' },
+    { key: '90+',     value: buckets['90+'],   color: '#dc2626', label: '90+' },
+  ];
+  if (total <= 0) return <span style={{ opacity: 0.5 }}>—</span>;
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 160 }}>
+      <div style={{ display: 'flex', height: 6, width: 120, borderRadius: 3, overflow: 'hidden', background: 'rgba(120,170,255,0.1)' }}>
+        {segs.map(s => s.value > 0 && (
+          <div
+            key={s.key}
+            title={`${s.label}: ${formatCurrency(s.value)}`}
+            style={{ width: `${(s.value / total) * 100}%`, background: s.color }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
