@@ -6044,6 +6044,93 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         atomic: true,
       };
     }
+    case "create_deal": {
+      // Persist a new deal proposed via the AI Copilot. The propose-time
+      // handler (tool dispatcher above) has already resolved pipeline / stage
+      // / owner ids, but we re-validate everything here because the params
+      // come back from the client and must not be trusted blindly.
+      const companyName = String(params?.company_name || "").trim();
+      const pipelineId = params?.pipeline_id || null;
+      const stageId = params?.stage_id || null;
+      if (!companyName) {
+        return { success: false, error: "Missing required field: company_name", actionType: "create_deal" };
+      }
+      if (!pipelineId) {
+        return { success: false, error: "Missing required field: pipeline_id", actionType: "create_deal" };
+      }
+
+      // Re-read the pipeline to get a trustworthy company_id + stages list.
+      const { data: pipeline, error: pipeErr } = await supabase
+        .from("deal_pipelines")
+        .select("id, name, stages, company_id")
+        .eq("id", pipelineId)
+        .maybeSingle();
+      if (pipeErr || !pipeline) {
+        return { success: false, error: `Pipeline ${pipelineId} not found`, actionType: "create_deal" };
+      }
+      const stages: any[] = Array.isArray((pipeline as any).stages) ? (pipeline as any).stages : [];
+
+      // Validate / fall back the stage.
+      let safeStageId = stageId;
+      let safeStageLabel = params?.stage_label || null;
+      const stageMatch = stages.find((s: any) => s?.id === safeStageId);
+      if (!stageMatch && stages.length > 0) {
+        safeStageId = stages[0]?.id || null;
+        safeStageLabel = stages[0]?.label || stages[0]?.name || null;
+      } else if (stageMatch) {
+        safeStageLabel = stageMatch.label || stageMatch.name || safeStageLabel;
+      }
+
+      const dealClass = String((pipeline as any).name || "").toLowerCase().includes("naitive") ? "naitive" : null;
+      const ownerName: string | null = params?.deal_owner_name || null;
+
+      const insertPayload: Record<string, unknown> = {
+        company: companyName,
+        pipeline_id: pipelineId,
+        company_id: (pipeline as any).company_id || null,
+        stage: safeStageId,
+        user_id: userId,
+        value: typeof params?.deal_value === "number" ? params.deal_value : 0,
+        status: null,
+      };
+      if (dealClass) insertPayload.deal_class = dealClass;
+      if (ownerName) { insertPayload.owned_by = ownerName; insertPayload.manager = ownerName; }
+      if (params?.contact_name) insertPayload.contact = params.contact_name;
+      if (params?.contact_email) insertPayload.contact_email = params.contact_email;
+      if (params?.contact_title) insertPayload.contact_title = params.contact_title;
+      if (params?.icp_category) insertPayload.icp_category = params.icp_category;
+      if (params?.source) insertPayload.sourced_via = params.source;
+      if (params?.notes) insertPayload.next_step = params.notes;
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("deals")
+        .insert(insertPayload)
+        .select("id, company")
+        .single();
+      if (insErr) {
+        console.error("[create_deal] insert failed", insErr, insertPayload);
+        return {
+          success: false,
+          error: insErr.message || "Failed to create deal",
+          error_code: insErr.code || null,
+          actionType: "create_deal",
+        };
+      }
+
+      await supabase.from("activity_logs").insert({
+        deal_id: inserted!.id,
+        activity_type: "deal_created",
+        description: `Deal "${inserted!.company}" created via AI Copilot${safeStageLabel ? ` at "${safeStageLabel}"` : ""}`,
+        user_id: userId,
+      });
+
+      return {
+        success: true,
+        message: `Created deal "${inserted!.company}"${safeStageLabel ? ` at ${safeStageLabel}` : ""}`,
+        actionType: "create_deal",
+        params: { deal_id: inserted!.id, pipeline_id: pipelineId, stage_id: safeStageId },
+      };
+    }
     default:
       return { success: false, error: `Unknown action: ${actionType}` };
   }
