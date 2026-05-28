@@ -6,13 +6,50 @@ import { cn } from '@/lib/utils';
 interface CollapsibleSearchProps {
   value: string;
   onChange: (value: string) => void;
+  /** Debounce window before onChange fires. Defaults to 350ms. */
+  debounceMs?: number;
 }
 
-export function CollapsibleSearch({ value, onChange }: CollapsibleSearchProps) {
+export function CollapsibleSearch({ value, onChange, debounceMs = 350 }: CollapsibleSearchProps) {
   const [expanded, setExpanded] = useState(false);
+  // Local draft so typing is never erased by parent re-renders / refetches.
+  const [localValue, setLocalValue] = useState(value);
+  const isFocusedRef = useRef(false);
+  const hasPendingRef = useRef(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const isActive = expanded || value.length > 0;
+  const isActive = expanded || localValue.length > 0;
+
+  // Mirror parent value ONLY when we're not actively typing.
+  useEffect(() => {
+    if (!isFocusedRef.current && !hasPendingRef.current) {
+      setLocalValue(value);
+    }
+  }, [value]);
+
+  const scheduleCommit = (next: string) => {
+    hasPendingRef.current = true;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      hasPendingRef.current = false;
+      onChange(next);
+    }, debounceMs);
+  };
+
+  const commitNow = (next: string) => {
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    hasPendingRef.current = false;
+    if (next !== value) onChange(next);
+  };
+
+  useEffect(() => () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  }, []);
 
   useEffect(() => {
     if (expanded && inputRef.current) {
@@ -21,13 +58,16 @@ export function CollapsibleSearch({ value, onChange }: CollapsibleSearchProps) {
   }, [expanded]);
 
   const handleBlur = () => {
-    if (value.length === 0) {
+    isFocusedRef.current = false;
+    commitNow(localValue);
+    if (localValue.length === 0) {
       setExpanded(false);
     }
   };
 
   const handleClear = () => {
-    onChange('');
+    setLocalValue('');
+    commitNow('');
     setExpanded(false);
   };
 
@@ -56,15 +96,28 @@ export function CollapsibleSearch({ value, onChange }: CollapsibleSearchProps) {
       <input
         ref={inputRef}
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onFocus={() => setExpanded(true)}
+        value={localValue}
+        onChange={(e) => {
+          const next = e.target.value;
+          setLocalValue(next);
+          scheduleCommit(next);
+        }}
+        onFocus={() => {
+          isFocusedRef.current = true;
+          setExpanded(true);
+        }}
         onBlur={handleBlur}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            commitNow(localValue);
+          }
+        }}
         placeholder="Search..."
         aria-label="Search deals"
         className="h-full w-full bg-transparent pl-8 pr-7 outline-none text-sm placeholder:text-muted-foreground"
       />
-      {value.length > 0 && (
+      {localValue.length > 0 && (
         <button
           onClick={(e) => {
             e.stopPropagation();
