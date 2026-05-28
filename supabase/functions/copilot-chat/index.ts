@@ -3243,7 +3243,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── HIGH RISK: Confirm lender status update ──
     case "update_lender_status": {
-      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status, notes").eq("id", args.lender_id).single();
+      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status, pass_reason, notes").eq("id", args.lender_id).single();
       if (!lender) return { error: "Lender not found" };
       const parts = [];
       if (args.stage) parts.push(`stage to "${args.stage}"`);
@@ -3261,6 +3261,9 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           pass_reason: args.pass_reason, deal_id: args.deal_id,
           notes: typeof args.notes === "string" ? args.notes : undefined,
           notes_append: typeof args.notes_append === "string" ? args.notes_append : undefined,
+          current_stage: (lender as any)?.stage || null,
+          current_tracking_status: (lender as any)?.tracking_status || null,
+          current_pass_reason: (lender as any)?.pass_reason || null,
           current_notes: (lender as any)?.notes || null,
         },
       };
