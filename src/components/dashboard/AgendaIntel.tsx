@@ -1317,6 +1317,103 @@ export function AgendaIntel() {
 
 export default AgendaIntel;
 
+// ── Meeting note dialog ────────────────────────────────────
+// Lightweight composer that writes to wf_meeting_notes, scoped to the
+// selected calendar event (and to the linked deal when one exists).
+function MeetingNoteDialog({
+  open,
+  onClose,
+  event,
+  dealId,
+  dealName,
+  orgCompanyId,
+}: {
+  open: boolean;
+  onClose: () => void;
+  event: CalendarEvent | null;
+  dealId: string | null;
+  dealName: string | null;
+  orgCompanyId: string | null;
+}) {
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) setNote('');
+  }, [open, event?.id]);
+
+  const handleSave = async () => {
+    const trimmed = note.trim();
+    if (!trimmed) { toast.error('Note cannot be empty'); return; }
+    if (!event) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('wf_meeting_notes').insert({
+        notes: trimmed,
+        calendar_event_id: event.id,
+        deal_id: dealId,
+        org_company_id: orgCompanyId,
+        type: 'other',
+      });
+      if (error) throw error;
+      toast.success(dealName ? `Note saved to ${dealName}` : 'Note saved');
+      onClose();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save note';
+      toast.error(msg);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !saving) onClose(); }}>
+      <DialogContent
+        className="sm:max-w-[520px] p-0 border"
+        style={{ backgroundColor: '#12151b', borderColor: 'rgba(255,255,255,0.06)' }}
+      >
+        <DialogHeader className="px-5 pt-5 pb-3 border-b" style={{ borderColor: 'rgba(255,255,255,0.05)' }}>
+          <DialogTitle className="text-[15px] font-semibold tracking-tight text-white">
+            Add note{event?.summary ? ` · ${event.summary}` : ''}
+          </DialogTitle>
+        </DialogHeader>
+        <div className="p-4 space-y-3">
+          {dealName && (
+            <div className="text-[11px] text-white/60">
+              Linked deal: <span className="text-white/85">{dealName}</span>
+            </div>
+          )}
+          <textarea
+            autoFocus
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+                e.preventDefault();
+                handleSave();
+              }
+            }}
+            placeholder="Write a note about this meeting..."
+            className="w-full min-h-[140px] resize-y rounded-md bg-white/[0.04] border border-white/10 px-3 py-2 text-sm text-white placeholder:text-white/40 outline-none focus:border-primary/50"
+          />
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-[10px] text-white/40">⌘/Ctrl + Enter to save</span>
+            <div className="flex items-center gap-2">
+              <Button size="sm" variant="ghost" onClick={onClose} disabled={saving}>
+                Cancel
+              </Button>
+              <Button size="sm" onClick={handleSave} disabled={saving || !note.trim()}>
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : null}
+                Save note
+              </Button>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Deal link picker dialog ─────────────────────────────────
 function DealLinkPicker({
   open,
