@@ -497,7 +497,7 @@ const Admin = () => {
             <CardContent><CompanyFeaturesPanel /></CardContent>
           </Card>
         );
-      case "notifications-admin":
+      case "notifications":
         return (
           <Card>
             <CardHeader>
@@ -512,7 +512,7 @@ const Admin = () => {
             <CardContent><NotificationRulesPanel /></CardContent>
           </Card>
         );
-      case "notification-audit":
+      case "delivery-audit":
         return <NotificationAuditPanel />;
       case "permissions":
         return (
@@ -697,7 +697,7 @@ const Admin = () => {
         );
       case "qb-mapping":
         return <QbCashflowMappingPanel />;
-      case "client-viewer":
+      case "client-lookup":
         return <ClientAccountViewer />;
       case "usage-overview":
         return <UsageAnalyticsPanel />;
