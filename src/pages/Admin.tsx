@@ -1,34 +1,34 @@
 /**
- * /admin — REFACTORED IA (Phase 1 of 4)
+ * /admin — REFACTORED IA (Phases 1–4 complete)
  * ----------------------------------------------------------------
  * Top-level sections collapsed from 8 → 5. Sub-pages live in a
  * vertical LEFT RAIL inside each section (no second-row strip).
  *
- * Phase 1 scope (this commit):
- *   - New 5-tab top nav (People / Access / Communications / Platform / Observability)
- *   - Left-rail sub-nav per section
- *   - Universal page header (breadcrumb + CTA outside card)
- *   - Real tab counts (rendered only when > 0)
- *   - Auto-collapse of global left icon rail + expand toggle
- *   - URL: ?section=<id>&page=<id>; legacy ?section=…&tab=… redirected
- *   - All existing panels keep working; data hooks untouched
- *
- * Phase 2 (next): universal <EventTable /> + right-side detail drawer
- * Phase 3: relocate SignalStack → /signal, Blog → /studio + banners
- * Phase 4: merge Users + External, Companies + External Deals/Lenders,
- *          collapse 4 access-request views into one pipeline
+ * Phase 1: 5-tab top nav + left rail + universal header + real counts +
+ *          auto-collapse global rail + ?section=/?page= URL with legacy
+ *          ?tab= redirects.
+ * Phase 2: universal EventDrawer wired across User Activity, Delivery
+ *          Audit, Audit Log, Error Logs and Users/Companies tables.
+ * Phase 3: SignalStack relocated to /signal, Blog relocated to /studio,
+ *          with in-place "moved" banners + URL forwarders.
+ * Phase 4: People IA collapsed — Users + External merged into one
+ *          directory (PeopleDirectoryPanel); Companies + External
+ *          Entities merged (CompaniesDirectoryPanel); Pending Approvals,
+ *          Join Requests, Invitations and Waitlist collapsed into a
+ *          single Access Requests pipeline (AccessRequestsPanel).
  *
  * Legacy → new map (URL):
  *   ?section=users                        → ?section=people&page=<tab>
- *     - pending-approvals/join-requests/users/companies/demo-metrics/
- *       activity/external/invitations    → people/<same>
+ *     - users/companies/demo-metrics/activity → people/<same>
+ *     - external                               → people/users (merged)
+ *     - pending-approvals/join-requests/
+ *       invitations/waitlist                   → people/access-requests
  *   ?section=access&tab=pages             → access/pages
  *   ?section=access&tab=permissions       → access/permissions
  *   ?section=access&tab=company-features  → access/company-features
  *   ?section=access&tab=notifications-admin   → communications/notifications
  *   ?section=access&tab=notification-audit    → communications/delivery-audit
  *   ?section=access&tab=announcements     → communications/announcements
- *   ?section=access&tab=waitlist          → people/waitlist
  *   ?section=data-security&tab=data       → platform/data
  *   ?section=data-security&tab=security   → platform/security
  *   ?section=data-security&tab=integrations → platform/integrations
@@ -38,11 +38,11 @@
  *   ?section=settings&tab=reports         → platform/reports
  *   ?section=settings&tab=errors          → observability/errors
  *   ?section=settings&tab=audit           → observability/audit
- *   ?section=product-enhancement&tab=signalstack → observability/signalstack (Phase 3 → /signal)
+ *   ?section=product-enhancement&tab=signalstack → /signal
  *   ?section=support&tab=client-viewer    → people/client-lookup
  *   ?section=usage-analytics&tab=usage-overview → observability/usage-overview
  *   ?section=usage-analytics&tab=pilot-kpis     → observability/pilot-kpis
- *   ?section=blog&tab=blog-all|new|media  → communications/blog-<all|new|media> (Phase 3 → /studio)
+ *   ?section=blog&tab=blog-all|new|media  → /studio?tab=all|new|media
  */
 import { useState, useEffect, useMemo } from "react";
 import { Navigate, useSearchParams, useNavigate } from "react-router-dom";
@@ -55,7 +55,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import {
-  Shield, Users, Building2, ListTodo, Mail, ClipboardList, Cloud, MessageSquare,
+  Shield, Users, Building2, Mail, ClipboardList, MessageSquare,
   Settings, Megaphone, Lock, Webhook, AlertCircle, Database, Layout,
   PanelLeftOpen, PanelLeftClose,
   Cog, Lightbulb, UserCheck, Bell, MonitorPlay, ToggleRight, Brain, Wallet, FileText,
@@ -67,12 +67,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { useSystemStats } from "@/hooks/useAdminData";
 import { usePendingApprovals } from "@/hooks/useUserApproval";
 import { AdminStatsCards } from "@/components/admin/AdminStatsCards";
-import { UsersTable } from "@/components/admin/UsersTable";
-import { CompaniesTable } from "@/components/admin/CompaniesTable";
-import { WaitlistTable } from "@/components/admin/WaitlistTable";
-import { InvitationsTable } from "@/components/admin/InvitationsTable";
 import { AuditLogTable } from "@/components/admin/AuditLogTable";
-import { ExternalDataTab } from "@/components/admin/ExternalDataTab";
 import { FeedbackTable } from "@/components/admin/FeedbackTable";
 import { SystemSettingsPanel } from "@/components/admin/SystemSettingsPanel";
 import { AnnouncementsPanel } from "@/components/admin/AnnouncementsPanel";
@@ -89,8 +84,6 @@ import { UXRecommendationsPanel } from "@/components/admin/ux-analytics/UXRecomm
 import { UXAnalyticsPanel } from "@/components/admin/UXAnalyticsPanel";
 import { AITrainingPanel } from "@/components/admin/AITrainingPanel";
 import { AIActionAuditPanel } from "@/components/admin/AIActionAuditPanel";
-import { PendingApprovalsPanel } from "@/components/admin/PendingApprovalsPanel";
-import { CompanyJoinRequestsPanel } from "@/components/admin/CompanyJoinRequestsPanel";
 import { ClientAccountViewer } from "@/components/admin/ClientAccountViewer";
 import { CompanyFeaturesPanel } from "@/components/admin/CompanyFeaturesPanel";
 import { AIRulesPanel } from "@/components/admin/AIRulesPanel";
@@ -101,6 +94,9 @@ import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOve
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
+import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
+import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
+import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPanel";
 
 // ─── New IA ───────────────────────────────────────────────────────
 type SectionId = "people" | "access" | "communications" | "platform" | "observability";
@@ -126,14 +122,10 @@ const SECTIONS: SectionDef[] = [
     label: "People",
     icon: UsersRound,
     pages: [
-      { id: "users", label: "All Users", icon: Users, description: "Every registered user across all companies.", cta: { label: "Create Demo Access", action: "demo" } },
-      { id: "companies", label: "Companies", icon: Building2, description: "Registered companies and their members." },
-      { id: "pending-approvals", label: "Pending Approvals", icon: UserCheck, countKey: "pendingApprovals", description: "Users awaiting admin approval before first sign-in.", group: "Access Requests" },
-      { id: "join-requests", label: "Join Requests", icon: Building2, countKey: "joinRequests", description: "Existing users requesting to join a workspace.", group: "Access Requests" },
-      { id: "invitations", label: "Invitations", icon: Mail, description: "Outstanding company invitations.", group: "Access Requests" },
-      { id: "waitlist", label: "Waitlist", icon: ListTodo, countKey: "waitlist", description: "External signups waiting on capacity.", group: "Access Requests" },
+      { id: "users", label: "All Users", icon: Users, description: "Local accounts + synced external profiles in one directory.", cta: { label: "Create Demo Access", action: "demo" } },
+      { id: "companies", label: "Companies", icon: Building2, description: "Registered companies and synced external entities." },
+      { id: "access-requests", label: "Access Requests", icon: UserCheck, countKey: "accessRequests", description: "Approvals, join requests, invitations and waitlist — one queue." },
       { id: "activity", label: "Activity", icon: Activity, description: "Recent user sessions and actions." },
-      { id: "external", label: "External", icon: Cloud, description: "External deals, lenders and partner data." },
       { id: "demo-metrics", label: "Demo Metrics", icon: BarChart3, description: "Engagement snapshot for every demo / pilot workspace." },
       { id: "client-lookup", label: "Client Lookup", icon: Search, description: "Open any company's workspace as if you were a member." },
     ],
@@ -202,14 +194,14 @@ const LEGACY_SECTION_PAGE: Record<string, { section: SectionId; page?: string }>
 };
 const LEGACY_TAB_TO_PAGE: Record<string, { section: SectionId; page: string }> = {
   // From users
-  "pending-approvals":     { section: "people", page: "pending-approvals" },
-  "join-requests":         { section: "people", page: "join-requests" },
+  "pending-approvals":     { section: "people", page: "access-requests" },
+  "join-requests":         { section: "people", page: "access-requests" },
   "users":                 { section: "people", page: "users" },
   "companies":             { section: "people", page: "companies" },
   "demo-metrics":          { section: "people", page: "demo-metrics" },
   "activity":              { section: "people", page: "activity" },
-  "external":              { section: "people", page: "external" },
-  "invitations":           { section: "people", page: "invitations" },
+  "external":              { section: "people", page: "users" },
+  "invitations":           { section: "people", page: "access-requests" },
   // From access
   "pages":                 { section: "access", page: "pages" },
   "permissions":           { section: "access", page: "permissions" },
@@ -217,7 +209,7 @@ const LEGACY_TAB_TO_PAGE: Record<string, { section: SectionId; page: string }> =
   "notifications-admin":   { section: "communications", page: "notifications" },
   "notification-audit":    { section: "communications", page: "delivery-audit" },
   "announcements":         { section: "communications", page: "announcements" },
-  "waitlist":              { section: "people", page: "waitlist" },
+  "waitlist":              { section: "people", page: "access-requests" },
   // From data-security
   "data":                  { section: "platform", page: "data" },
   "security":              { section: "platform", page: "security" },
@@ -328,6 +320,10 @@ const Admin = () => {
     if (rawTab && LEGACY_TAB_TO_PAGE[rawTab]) {
       return LEGACY_TAB_TO_PAGE[rawTab];
     }
+    // Legacy ?page= IDs from the pre-Phase-4 IA (now merged into Access Requests / Directory).
+    if (rawPage && LEGACY_TAB_TO_PAGE[rawPage]) {
+      return LEGACY_TAB_TO_PAGE[rawPage];
+    }
     if (rawSection && LEGACY_SECTION_PAGE[rawSection]) {
       const remap = LEGACY_SECTION_PAGE[rawSection];
       const sec = SECTIONS.find(s => s.id === remap.section)!;
@@ -403,38 +399,12 @@ const Admin = () => {
 
   const renderSubPageContent = (subPageId: string) => {
     switch (subPageId) {
-      case "pending-approvals":
-        return <PendingApprovalsPanel />;
-      case "join-requests":
-        return <CompanyJoinRequestsPanel />;
+      case "access-requests":
+        return <AccessRequestsPanel />;
       case "users":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                All Users
-              </CardTitle>
-              <CardDescription>View and manage all registered users and their roles</CardDescription>
-            </CardHeader>
-            <CardContent><UsersTable /></CardContent>
-          </Card>
-        );
+        return <PeopleDirectoryPanel />;
       case "companies":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                All Companies
-              </CardTitle>
-              <CardDescription>View all registered companies and their members</CardDescription>
-            </CardHeader>
-            <CardContent><CompaniesTable /></CardContent>
-          </Card>
-        );
-      case "external":
-        return <ExternalDataTab />;
+        return <CompaniesDirectoryPanel />;
       case "activity":
         return <UserActivityPanel />;
       case "demo-metrics":
@@ -451,19 +421,6 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><DemoMetricsPanel /></CardContent>
-          </Card>
-        );
-      case "invitations":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                All Invitations
-              </CardTitle>
-              <CardDescription>View all company invitations</CardDescription>
-            </CardHeader>
-            <CardContent><InvitationsTable /></CardContent>
           </Card>
         );
       case "feedback":
@@ -556,19 +513,6 @@ const Admin = () => {
               <CardDescription>Create and manage system announcements</CardDescription>
             </CardHeader>
             <CardContent><AnnouncementsPanel /></CardContent>
-          </Card>
-        );
-      case "waitlist":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ListTodo className="h-5 w-5" />
-                Waitlist
-              </CardTitle>
-              <CardDescription>Manage users waiting to join</CardDescription>
-            </CardHeader>
-            <CardContent><WaitlistTable /></CardContent>
           </Card>
         );
       case "data":
