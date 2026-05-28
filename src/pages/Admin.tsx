@@ -1,34 +1,34 @@
 /**
- * /admin — REFACTORED IA (Phase 1 of 4)
+ * /admin — REFACTORED IA (Phases 1–4 complete)
  * ----------------------------------------------------------------
  * Top-level sections collapsed from 8 → 5. Sub-pages live in a
  * vertical LEFT RAIL inside each section (no second-row strip).
  *
- * Phase 1 scope (this commit):
- *   - New 5-tab top nav (People / Access / Communications / Platform / Observability)
- *   - Left-rail sub-nav per section
- *   - Universal page header (breadcrumb + CTA outside card)
- *   - Real tab counts (rendered only when > 0)
- *   - Auto-collapse of global left icon rail + expand toggle
- *   - URL: ?section=<id>&page=<id>; legacy ?section=…&tab=… redirected
- *   - All existing panels keep working; data hooks untouched
- *
- * Phase 2 (next): universal <EventTable /> + right-side detail drawer
- * Phase 3: relocate SignalStack → /signal, Blog → /studio + banners
- * Phase 4: merge Users + External, Companies + External Deals/Lenders,
- *          collapse 4 access-request views into one pipeline
+ * Phase 1: 5-tab top nav + left rail + universal header + real counts +
+ *          auto-collapse global rail + ?section=/?page= URL with legacy
+ *          ?tab= redirects.
+ * Phase 2: universal EventDrawer wired across User Activity, Delivery
+ *          Audit, Audit Log, Error Logs and Users/Companies tables.
+ * Phase 3: SignalStack relocated to /signal, Blog relocated to /studio,
+ *          with in-place "moved" banners + URL forwarders.
+ * Phase 4: People IA collapsed — Users + External merged into one
+ *          directory (PeopleDirectoryPanel); Companies + External
+ *          Entities merged (CompaniesDirectoryPanel); Pending Approvals,
+ *          Join Requests, Invitations and Waitlist collapsed into a
+ *          single Access Requests pipeline (AccessRequestsPanel).
  *
  * Legacy → new map (URL):
  *   ?section=users                        → ?section=people&page=<tab>
- *     - pending-approvals/join-requests/users/companies/demo-metrics/
- *       activity/external/invitations    → people/<same>
+ *     - users/companies/demo-metrics/activity → people/<same>
+ *     - external                               → people/users (merged)
+ *     - pending-approvals/join-requests/
+ *       invitations/waitlist                   → people/access-requests
  *   ?section=access&tab=pages             → access/pages
  *   ?section=access&tab=permissions       → access/permissions
  *   ?section=access&tab=company-features  → access/company-features
  *   ?section=access&tab=notifications-admin   → communications/notifications
  *   ?section=access&tab=notification-audit    → communications/delivery-audit
  *   ?section=access&tab=announcements     → communications/announcements
- *   ?section=access&tab=waitlist          → people/waitlist
  *   ?section=data-security&tab=data       → platform/data
  *   ?section=data-security&tab=security   → platform/security
  *   ?section=data-security&tab=integrations → platform/integrations
@@ -38,11 +38,11 @@
  *   ?section=settings&tab=reports         → platform/reports
  *   ?section=settings&tab=errors          → observability/errors
  *   ?section=settings&tab=audit           → observability/audit
- *   ?section=product-enhancement&tab=signalstack → observability/signalstack (Phase 3 → /signal)
+ *   ?section=product-enhancement&tab=signalstack → /signal
  *   ?section=support&tab=client-viewer    → people/client-lookup
  *   ?section=usage-analytics&tab=usage-overview → observability/usage-overview
  *   ?section=usage-analytics&tab=pilot-kpis     → observability/pilot-kpis
- *   ?section=blog&tab=blog-all|new|media  → communications/blog-<all|new|media> (Phase 3 → /studio)
+ *   ?section=blog&tab=blog-all|new|media  → /studio?tab=all|new|media
  */
 import { useState, useEffect, useMemo } from "react";
 import { Navigate, useSearchParams, useNavigate } from "react-router-dom";
