@@ -133,6 +133,8 @@ const Notifications = lazy(lazyRetry(() => import("./pages/Notifications")));
 const Help = lazy(lazyRetry(() => import("./pages/Help")));
 const MigrationTool = lazy(lazyRetry(() => import("./pages/MigrationTool")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
+const Signal = lazy(lazyRetry(() => import("./pages/Signal")));
+const Studio = lazy(lazyRetry(() => import("./pages/Studio")));
 const Integrations = lazy(lazyRetry(() => import("./pages/Integrations")));
 const NewsFeed = lazy(lazyRetry(() => import("./pages/NewsFeed")));
 
