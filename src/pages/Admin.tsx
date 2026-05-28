@@ -864,6 +864,25 @@ const Admin = () => {
 
           {/* Page content */}
           <main className="min-w-0">
+            {(activeSection.id === "observability" || activeSection.id === "communications") && (
+              <div className="mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground flex items-center justify-between gap-2">
+                <span>
+                  {activeSection.id === "observability"
+                    ? "SignalStack moved to its own workspace."
+                    : "Blog moved to Studio."}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() =>
+                    navigate(activeSection.id === "observability" ? "/signal" : "/studio?tab=all")
+                  }
+                >
+                  Open {activeSection.id === "observability" ? "/signal" : "/studio"}
+                </Button>
+              </div>
+            )}
             {/* Thin strip: icon + title + description (replaces the giant "N of 8" hero) */}
             <div className="flex items-center gap-3 mb-3 px-1">
               <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
