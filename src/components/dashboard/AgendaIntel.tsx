@@ -630,6 +630,7 @@ export function AgendaIntel() {
   const [taskDialogEvent, setTaskDialogEvent] = useState<CalendarEvent | null>(null);
   const [emailDialogEvent, setEmailDialogEvent] = useState<CalendarEvent | null>(null);
   const [claapLinkerEvent, setClaapLinkerEvent] = useState<CalendarEvent | null>(null);
+  const [noteDialogEvent, setNoteDialogEvent] = useState<CalendarEvent | null>(null);
   const { user } = useAuth();
   const { company } = useCompany();
 
