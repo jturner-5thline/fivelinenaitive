@@ -566,20 +566,37 @@ export default function Lenders() {
       });
     }
     // We already fetch lenders ordered by name asc, so avoid expensive sorts when possible.
-    if (sortOption === 'name-asc') return filteredLenders;
-    if (sortOption === 'name-desc') return [...filteredLenders].reverse();
+    let base: typeof filteredLenders;
+    if (sortOption === 'name-asc') base = filteredLenders;
+    else if (sortOption === 'name-desc') base = [...filteredLenders].reverse();
+    else {
+      base = [...filteredLenders].sort((a, b) => {
+        switch (sortOption) {
+          case 'deals-desc':
+            return (activeDealCounts[b.name] || 0) - (activeDealCounts[a.name] || 0);
+          case 'deals-asc':
+            return (activeDealCounts[a.name] || 0) - (activeDealCounts[b.name] || 0);
+          default:
+            return 0;
+        }
+      });
+    }
 
-    return [...filteredLenders].sort((a, b) => {
-      switch (sortOption) {
-        case 'deals-desc':
-          return (activeDealCounts[b.name] || 0) - (activeDealCounts[a.name] || 0);
-        case 'deals-asc':
-          return (activeDealCounts[a.name] || 0) - (activeDealCounts[b.name] || 0);
-        default:
-          return 0;
-      }
-    });
-  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex]);
+    // Search ranking: when a query is active, surface name-matches first,
+    // then everything else. Within each bucket we preserve the order chosen
+    // by `sortOption` above so "Most Active Deals" / Z-A still apply.
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    if (!q) return base;
+
+    const rank = (l: typeof base[number]) => {
+      const name = (l.name || '').toLowerCase();
+      if (name === q) return 0;             // exact
+      if (name.startsWith(q)) return 1;     // prefix
+      if (name.includes(q)) return 2;       // substring of name
+      return 3;                              // matched elsewhere (email, notes, etc.)
+    };
+    return [...base].sort((a, b) => rank(a) - rank(b));
+  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, debouncedSearchQuery]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
