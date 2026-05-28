@@ -2422,6 +2422,102 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         },
       };
     }
+    case "create_deal": {
+      // Build a Confirm card for a new-deal proposal. We resolve pipeline /
+      // stage / owner up front so the user sees real names and the executor
+      // gets valid UUIDs (the LLM is allowed to pass either ids or names).
+      const companyName = String(args.company_name || "").trim();
+      if (!companyName) {
+        return { error: "company_name is required to create a deal." };
+      }
+
+      // 1) Resolve pipeline by id or by name.
+      let pipelineId: string | null = args.pipeline_id || null;
+      let pipelineName: string | null = null;
+      let pipelineStages: any[] = [];
+      let pipelineCompanyId: string | null = null;
+      if (pipelineId) {
+        const { data: p } = await supabase
+          .from("deal_pipelines")
+          .select("id, name, stages, company_id")
+          .eq("id", pipelineId)
+          .maybeSingle();
+        if (p) { pipelineName = p.name; pipelineStages = Array.isArray(p.stages) ? p.stages : []; pipelineCompanyId = (p as any).company_id || null; }
+      } else if (args.pipeline_name) {
+        const { data: p } = await supabase
+          .from("deal_pipelines")
+          .select("id, name, stages, company_id")
+          .ilike("name", `%${String(args.pipeline_name).trim()}%`)
+          .limit(1)
+          .maybeSingle();
+        if (p) { pipelineId = p.id; pipelineName = p.name; pipelineStages = Array.isArray(p.stages) ? p.stages : []; pipelineCompanyId = (p as any).company_id || null; }
+      }
+      if (!pipelineId) {
+        return { error: `Could not find a pipeline matching "${args.pipeline_name || args.pipeline_id || ''}".` };
+      }
+
+      // 2) Resolve stage by id or name; fall back to the pipeline's first stage.
+      let stageId: string | null = null;
+      let stageLabel: string | null = null;
+      if (args.stage_id) {
+        const match = pipelineStages.find((s: any) => s?.id === args.stage_id);
+        if (match) { stageId = match.id; stageLabel = match.label || match.name || null; }
+      }
+      if (!stageId && args.stage_name) {
+        const want = String(args.stage_name).trim().toLowerCase();
+        const match = pipelineStages.find((s: any) => String(s?.label || s?.name || "").toLowerCase().includes(want));
+        if (match) { stageId = match.id; stageLabel = match.label || match.name || null; }
+      }
+      if (!stageId && pipelineStages.length > 0) {
+        const first = pipelineStages[0];
+        stageId = first?.id || null;
+        stageLabel = first?.label || first?.name || null;
+      }
+
+      // 3) Resolve owner (UUID preferred; fall back to display-name string the
+      // deals.owned_by column accepts).
+      let ownerId: string | null = args.deal_owner_id || null;
+      let ownerName: string | null = args.deal_owner_name || null;
+      if (ownerId) {
+        const { data: pr } = await supabase
+          .from("profiles")
+          .select("display_name, email")
+          .eq("user_id", ownerId)
+          .maybeSingle();
+        if (pr) ownerName = pr.display_name || pr.email || ownerName;
+      } else if (ownerName) {
+        const { data: pr } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, email")
+          .ilike("display_name", `%${ownerName}%`)
+          .limit(1)
+          .maybeSingle();
+        if (pr?.user_id) ownerId = pr.user_id;
+      }
+
+      return {
+        action: "confirm",
+        action_type: "create_deal",
+        description: `Create deal "${companyName}" in ${pipelineName || "pipeline"}${stageLabel ? ` at ${stageLabel}` : ""}${ownerName ? ` (owner: ${ownerName})` : ""}`,
+        params: {
+          company_name: companyName,
+          pipeline_id: pipelineId,
+          pipeline_name: pipelineName,
+          pipeline_company_id: pipelineCompanyId,
+          stage_id: stageId,
+          stage_label: stageLabel,
+          deal_owner_id: ownerId,
+          deal_owner_name: ownerName,
+          contact_name: args.contact_name || null,
+          contact_email: args.contact_email || null,
+          contact_title: args.contact_title || null,
+          icp_category: args.icp_category || null,
+          source: args.source || null,
+          deal_value: typeof args.deal_value === "number" ? args.deal_value : null,
+          notes: args.notes || null,
+        },
+      };
+    }
     case "get_tasks": {
       const limit = Math.min(Math.max(args.limit ?? 50, 1), 200);
       const scope = args.scope || "assigned_to_me";
