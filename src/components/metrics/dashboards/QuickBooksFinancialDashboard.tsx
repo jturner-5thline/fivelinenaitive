@@ -111,6 +111,7 @@ export function QuickBooksFinancialDashboard({
     context: DrilldownContext;
     columns: DrilldownColumn[];
     rows: Array<Record<string, unknown>>;
+    defaultSort?: { key: string; dir: 'asc' | 'desc' };
   } | null>(null);
 
   const showDrill = (
@@ -125,6 +126,64 @@ export function QuickBooksFinancialDashboard({
     ],
     rows,
   });
+
+  // Build invoice-level A/R drilldown (Customer, Invoice #, Amount, Invoice Date,
+  // Due Date, Days Overdue). Sortable by all columns; defaults to Days Overdue desc.
+  const { data: arInvoiceRows } = useQuery({
+    queryKey: ['qb-ar-open-invoices'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('customer_name, doc_number, balance, total_amt, txn_date, due_date')
+        .gt('balance', 0)
+        .order('due_date', { ascending: true })
+        .limit(5000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const showArDrill = () => {
+    const today = new Date();
+    const rows = (arInvoiceRows ?? []).map((inv: any) => {
+      const due = inv.due_date ? new Date(inv.due_date) : null;
+      const daysOverdue = due
+        ? Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86_400_000))
+        : 0;
+      return {
+        customer: inv.customer_name ?? '—',
+        invoice: inv.doc_number ?? '—',
+        amount: Number(inv.balance) || 0,
+        txn_date: inv.txn_date ?? null,
+        due_date: inv.due_date ?? null,
+        days_overdue: daysOverdue,
+      };
+    });
+    setDrill({
+      context: {
+        sourceId: 'qb:Accounts Receivable',
+        sourceLabel: 'Accounts Receivable',
+        selection: `${rows.length} open invoices · ${formatCurrency(metrics?.totalAR ?? 0)} outstanding`,
+      },
+      columns: [
+        { key: 'customer', label: 'Customer', sortable: true },
+        { key: 'invoice', label: 'Invoice #', sortable: true },
+        { key: 'amount', label: 'Amount', align: 'right', sortable: true,
+          render: (r: any) => formatCurrency(r.amount) },
+        { key: 'txn_date', label: 'Invoice Date', sortable: true,
+          render: (r: any) => r.txn_date ?? '—' },
+        { key: 'due_date', label: 'Due Date', sortable: true,
+          render: (r: any) => r.due_date ?? '—' },
+        { key: 'days_overdue', label: 'Days Overdue', align: 'right', sortable: true,
+          render: (r: any) => r.days_overdue > 0
+            ? <span style={{ color: r.days_overdue > 60 ? '#f87171' : '#fbbf24' }}>{r.days_overdue}</span>
+            : <span style={{ opacity: 0.5 }}>—</span> },
+      ],
+      rows,
+      defaultSort: { key: 'days_overdue', dir: 'desc' },
+    });
+  };
 
   if (!status?.connected) {
     return (
@@ -195,9 +254,8 @@ export function QuickBooksFinancialDashboard({
 
   const statCards = [
     { title: 'Total Revenue', value: formatCurrency(effectiveTotalRevenue), icon: DollarSign, color: 'hsl(var(--primary))', subtitle: revenueSource === 'pl' ? 'QBO P&L Total Income' : undefined, onClick: () => showDrill('Total Revenue', revenueSource === 'pl' ? 'QBO P&L Total Income' : 'Sum of invoices', [{ metric: 'Total Revenue', value: formatCurrency(effectiveTotalRevenue) }, { metric: 'Source', value: revenueSource === 'pl' ? 'P&L · Total Income' : 'Invoices · total_amt' }]) },
-    { title: 'Accounts Receivable', value: formatCurrency(metrics.totalAR), icon: FileText, color: 'hsl(var(--chart-2))', onClick: () => showDrill('Accounts Receivable', 'Outstanding', [{ metric: 'Outstanding A/R', value: formatCurrency(metrics.totalAR) }]) },
+    { title: 'Accounts Receivable', value: formatCurrency(metrics.totalAR), icon: FileText, color: 'hsl(var(--chart-2))', onClick: showArDrill },
     { title: 'Payments Received', value: formatCurrency(metrics.totalPayments), icon: CreditCard, color: 'hsl(var(--success, 142 71% 45%))', onClick: () => showDrill('Payments Received', 'All-time', [{ metric: 'Payments Received', value: formatCurrency(metrics.totalPayments) }]) },
-    { title: 'Active Customers', value: `${metrics.activeCustomers}`, icon: Users, color: 'hsl(var(--chart-4))', onClick: () => showDrill('Active Customers', 'Currently active', [{ metric: 'Active Customers', value: `${metrics.activeCustomers}` }]) },
     { title: 'Collection Rate', value: `${effectiveCollectionRate.toFixed(1)}%`, icon: Percent, color: 'hsl(var(--chart-3))', onClick: () => showDrill('Collection Rate', 'Payments / Revenue', [
       { metric: 'Payments', value: formatCurrency(metrics.totalPayments) },
       { metric: 'Revenue', value: formatCurrency(effectiveTotalRevenue) },
