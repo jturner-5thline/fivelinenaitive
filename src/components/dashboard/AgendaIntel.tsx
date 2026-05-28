@@ -1216,6 +1216,7 @@ export function AgendaIntel() {
                 setEmailDialogEvent(selectedRecord.event);
               }}
               onLinkClaap={() => setClaapLinkerEvent(selectedRecord.event)}
+              onAddNote={() => setNoteDialogEvent(selectedRecord.event)}
               linkedClaapCount={claapCountsByEvent[selectedRecord.event.id] || 0}
             />
           </ScrollArea>
