@@ -276,6 +276,7 @@ function MeetingCard({
   onCreateTask,
   onEmail,
   onLinkClaap,
+  onAddNote,
   linkedClaapCount,
 }: {
   event: CalendarEvent;
