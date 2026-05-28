@@ -566,20 +566,37 @@ export default function Lenders() {
       });
     }
     // We already fetch lenders ordered by name asc, so avoid expensive sorts when possible.
-    if (sortOption === 'name-asc') return filteredLenders;
-    if (sortOption === 'name-desc') return [...filteredLenders].reverse();
+    let base: typeof filteredLenders;
+    if (sortOption === 'name-asc') base = filteredLenders;
+    else if (sortOption === 'name-desc') base = [...filteredLenders].reverse();
+    else {
+      base = [...filteredLenders].sort((a, b) => {
+        switch (sortOption) {
+          case 'deals-desc':
+            return (activeDealCounts[b.name] || 0) - (activeDealCounts[a.name] || 0);
+          case 'deals-asc':
+            return (activeDealCounts[a.name] || 0) - (activeDealCounts[b.name] || 0);
+          default:
+            return 0;
+        }
+      });
+    }
 
-    return [...filteredLenders].sort((a, b) => {
-      switch (sortOption) {
-        case 'deals-desc':
-          return (activeDealCounts[b.name] || 0) - (activeDealCounts[a.name] || 0);
-        case 'deals-asc':
-          return (activeDealCounts[a.name] || 0) - (activeDealCounts[b.name] || 0);
-        default:
-          return 0;
-      }
-    });
-  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex]);
+    // Search ranking: when a query is active, surface name-matches first,
+    // then everything else. Within each bucket we preserve the order chosen
+    // by `sortOption` above so "Most Active Deals" / Z-A still apply.
+    const q = debouncedSearchQuery.trim().toLowerCase();
+    if (!q) return base;
+
+    const rank = (l: typeof base[number]) => {
+      const name = (l.name || '').toLowerCase();
+      if (name === q) return 0;             // exact
+      if (name.startsWith(q)) return 1;     // prefix
+      if (name.includes(q)) return 2;       // substring of name
+      return 3;                              // matched elsewhere (email, notes, etc.)
+    };
+    return [...base].sort((a, b) => rank(a) - rank(b));
+  }, [filteredLenders, sortOption, activeDealCounts, showDuplicatesOnly, duplicateIndex, debouncedSearchQuery]);
 
   // Memoize callbacks to prevent unnecessary re-renders
   const handleQuickUploadStable = useCallback((lenderName: string, category: 'nda' | 'marketing_materials') => {
@@ -1304,18 +1321,31 @@ export default function Lenders() {
                           placeholder="Search name, contacts, email, geo, type, loan types, industries, notes, pass reasons, deals…"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="lg-input h-10 pl-9 pr-9"
+                          className="lg-input h-10 pl-9 pr-24"
                         />
-                        {searchQuery && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                            onClick={() => setSearchQuery('')}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          {searchQuery && searchQuery !== debouncedSearchQuery && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Searching" />
+                          )}
+                          {debouncedSearchQuery && (
+                            <span
+                              className="hidden sm:inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums"
+                              title={`${sortedLenders.length.toLocaleString()} of ${masterLenders.length.toLocaleString()} lenders match`}
+                            >
+                              {sortedLenders.length.toLocaleString()} / {masterLenders.length.toLocaleString()}
+                            </span>
+                          )}
+                          {searchQuery && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setSearchQuery('')}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="max-w-xs">

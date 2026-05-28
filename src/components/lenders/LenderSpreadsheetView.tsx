@@ -27,11 +27,11 @@ interface SortState {
 
 // Column definitions matching the Excel screenshot
 const COLUMNS = [
-  { key: 'name', label: 'Name', width: 180, sortable: true },
-  { key: 'active', label: 'Active', width: 70, sortable: true },
-  { key: 'tier', label: 'Tier', width: 60, sortable: true },
-  { key: 'email', label: 'E-mail', width: 200, sortable: true },
-  { key: 'lender_type', label: 'Funding Source Type', width: 120, sortable: true },
+  { key: 'name', label: 'Name', width: 200, sortable: true },
+  { key: 'active', label: 'Active', width: 90, sortable: true },
+  { key: 'tier', label: 'Tier', width: 80, sortable: true },
+  { key: 'email', label: 'E-mail', width: 220, sortable: true },
+  { key: 'lender_type', label: 'Funding Source', width: 170, sortable: true },
   { key: 'loan_types', label: 'Loan Type', width: 150, sortable: true },
   { key: 'sub_debt', label: 'Sub Debt', width: 80, sortable: true },
   { key: 'cash_burn', label: 'Cash Burn', width: 90, sortable: true },
@@ -306,7 +306,7 @@ export function LenderSpreadsheetView({
             {COLUMNS.map((col) => (
               <div
                 key={col.key}
-                className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground border-r border-white/5 bg-white/[0.04] flex items-center transition-colors ${
+                className={`flex-shrink-0 px-3 py-2.5 text-[11px] font-medium tracking-normal text-muted-foreground border-r border-white/5 bg-white/[0.04] flex items-center transition-colors ${
                   CURRENCY_COLUMNS.has(col.key) ? 'justify-center' : ''
                 } ${
                   col.sortable ? 'cursor-pointer hover:text-foreground hover:bg-white/[0.06] select-none' : ''
