@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, ExternalLink, Inbox } from 'lucide-react';
 
 export interface DrilldownColumn<T = any> {
@@ -64,7 +65,9 @@ export function InsightsDrilldownDrawer<T = any>({
 
   if (!open || !context) return null;
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
       onClick={onClose}
       role="dialog"
@@ -80,7 +83,7 @@ export function InsightsDrilldownDrawer<T = any>({
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          position: 'relative', width: 880, maxWidth: '100%',
+          position: 'relative', width: 980, maxWidth: '100%',
           maxHeight: 'calc(100vh - 48px)',
           background: PANEL_BG, border: `1px solid ${BORDER}`, borderRadius: 12,
           boxShadow: '0 24px 80px -12px rgba(0,0,0,0.6)',
@@ -197,7 +200,8 @@ export function InsightsDrilldownDrawer<T = any>({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
