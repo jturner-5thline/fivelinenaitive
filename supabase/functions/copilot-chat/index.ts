@@ -743,6 +743,34 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "create_deal",
+      description: "Create a new deal in a pipeline. Returns a confirmation card the user must approve before the deal is written. Always pass either pipeline_id (UUID) or pipeline_name (e.g. 'naitive') so the handler can resolve it. Stage can be supplied as stage_id (UUID) or stage_name (label like 'Qualification Call Scheduled'); if omitted, the pipeline's first stage is used. Assignee (deal_owner) may be a user UUID (preferred — resolve via search_team_members first) or a display name like 'Paz'.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          company_name: { type: "string", description: "Required. Borrower / company name for the deal." },
+          pipeline_id: { type: "string", description: "Pipeline UUID. Either this or pipeline_name is required." },
+          pipeline_name: { type: "string", description: "Pipeline name (e.g. 'naitive', 'In Development'). Used to resolve pipeline_id." },
+          stage_id: { type: "string", description: "Stage UUID inside the target pipeline." },
+          stage_name: { type: "string", description: "Stage label (e.g. 'Qualification Call Scheduled'). Resolved against the target pipeline." },
+          deal_owner_id: { type: "string", description: "Owner user UUID. Resolve display names via search_team_members first when possible." },
+          deal_owner_name: { type: "string", description: "Owner display name fallback (e.g. 'Paz')." },
+          contact_name: { type: "string" },
+          contact_email: { type: "string" },
+          contact_title: { type: "string" },
+          icp_category: { type: "string" },
+          source: { type: "string", description: "How the deal was sourced (e.g. 'LinkedIn Outreach', 'Referral')." },
+          deal_value: { type: "number", description: "Estimated deal value in USD." },
+          notes: { type: "string", description: "Optional free-text notes; stored on the deal's notes/next_step field." },
+        },
+        required: ["company_name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_tasks",
       description: "Get tasks for the current user (or a teammate) with rich filters. Returns task title, status, priority, due/start date, deal context, assignee, starred, and task type. Use for 'what's on my plate', 'overdue tasks', 'tasks for <deal>', 'tasks I delegated', 'tasks assigned to <person>', 'starred tasks', 'recently completed'.",
       parameters: {
