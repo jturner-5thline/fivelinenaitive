@@ -221,13 +221,11 @@ export function QuickBooksFinancialDashboard({
   // Effective revenue figures — P&L-sourced when revenueSource === 'pl'.
   const effectiveTotalRevenue =
     revenueSource === 'pl' ? plSeries.totalIncome : metrics.totalRevenue;
-  const effectiveMonthlyRevenue =
-    revenueSource === 'pl'
-      ? metrics.monthlyRevenue.map((m, i) => ({
-          ...m,
-          revenue: plSeries.buckets[i]?.value ?? m.revenue,
-        }))
-      : metrics.monthlyRevenue;
+  // Trend buckets: always source from invoice sums so partial-month / missing
+  // P&L reports don't artificially zero out recent months. Invoice sums are
+  // accurate per-month and aggregate across every connected QBO entity that
+  // the user has access to.
+  const effectiveMonthlyRevenue = metrics.monthlyRevenue;
 
   // Re-bucket Top Customers using the enriched resolver so "Other / Individuals"
   // replaces personal-name leakage on the chart.
