@@ -20,6 +20,15 @@ export interface DealCalendarItem {
 }
 
 const qk = (dealId: string) => ['deal-calendar-items', dealId];
+const ck = (dealId: string) => ['deal-calendar-item-creators', dealId];
+
+export interface DealCalendarCreator {
+  user_id: string;
+  display_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  avatar_url: string | null;
+}
 
 export function useDealCalendarItems(dealId: string | undefined) {
   const { user } = useAuth();
@@ -37,6 +46,24 @@ export function useDealCalendarItems(dealId: string | undefined) {
         .order('date', { ascending: true });
       if (error) throw error;
       return (data || []) as DealCalendarItem[];
+    },
+  });
+
+  // Fetch creator profiles for the items so the UI can show "added by" chips.
+  const creatorIds = Array.from(new Set((query.data || []).map((i) => i.created_by).filter(Boolean)));
+  const creatorsQuery = useQuery({
+    queryKey: [...ck(dealId || 'none'), creatorIds.sort().join(',')],
+    enabled: !!dealId && creatorIds.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<Record<string, DealCalendarCreator>> => {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('user_id, display_name, first_name, last_name, avatar_url')
+        .in('user_id', creatorIds);
+      if (error) throw error;
+      const map: Record<string, DealCalendarCreator> = {};
+      for (const p of (data || []) as DealCalendarCreator[]) map[p.user_id] = p;
+      return map;
     },
   });
 
@@ -99,6 +126,7 @@ export function useDealCalendarItems(dealId: string | undefined) {
 
   return {
     items: query.data || [],
+    creators: creatorsQuery.data || {},
     isLoading: query.isLoading,
     addItem: addItem.mutateAsync,
     updateItem: updateItem.mutateAsync,
