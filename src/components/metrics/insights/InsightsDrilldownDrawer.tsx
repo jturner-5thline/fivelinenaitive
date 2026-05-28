@@ -1,6 +1,6 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ExternalLink, Inbox } from 'lucide-react';
+import { X, ExternalLink, Inbox, ArrowUp, ArrowDown } from 'lucide-react';
 
 export interface DrilldownColumn<T = any> {
   key: string;
@@ -8,6 +8,10 @@ export interface DrilldownColumn<T = any> {
   width?: number | string;
   align?: 'left' | 'right' | 'center';
   render?: (row: T) => React.ReactNode;
+  /** Enable click-to-sort on this column header. */
+  sortable?: boolean;
+  /** Optional accessor to derive the comparable value (defaults to row[key]). */
+  sortAccessor?: (row: T) => number | string | null | undefined;
 }
 
 export interface DrilldownContext {
@@ -39,6 +43,8 @@ interface Props<T = any> {
   body?: React.ReactNode;
   /** Optional loading flag — when true, shows a spinner instead of the table/body. */
   loading?: boolean;
+  /** Optional default sort applied on open. */
+  defaultSort?: { key: string; dir: 'asc' | 'desc' };
 }
 
 const PANEL_BG = 'rgba(10,18,36,0.97)';
@@ -49,8 +55,34 @@ const BORDER = 'rgba(120,170,255,0.2)';
  * Renders a contextual table of records that explain a clicked KPI / chart point.
  */
 export function InsightsDrilldownDrawer<T = any>({
-  open, onClose, context, columns, rows, emptyHint, rowHref, summary, body, loading,
+  open, onClose, context, columns, rows, emptyHint, rowHref, summary, body, loading, defaultSort,
 }: Props<T>) {
+  const [sortKey, setSortKey] = useState<string | null>(defaultSort?.key ?? null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(defaultSort?.dir ?? 'desc');
+
+  useEffect(() => {
+    if (open) {
+      setSortKey(defaultSort?.key ?? null);
+      setSortDir(defaultSort?.dir ?? 'desc');
+    }
+  }, [open, defaultSort?.key, defaultSort?.dir]);
+
+  const sortedRows = useMemo(() => {
+    if (!sortKey) return rows;
+    const col = columns.find(c => c.key === sortKey);
+    if (!col) return rows;
+    const accessor = col.sortAccessor ?? ((r: any) => r[sortKey]);
+    const dirMul = sortDir === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const av = accessor(a as any); const bv = accessor(b as any);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dirMul;
+      return String(av).localeCompare(String(bv)) * dirMul;
+    });
+  }, [rows, sortKey, sortDir, columns]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -166,14 +198,27 @@ export function InsightsDrilldownDrawer<T = any>({
                         borderBottom: `1px solid ${BORDER}`,
                         position: 'sticky', top: 0, background: PANEL_BG,
                         width: c.width,
+                        cursor: c.sortable ? 'pointer' : undefined,
+                        userSelect: 'none',
                       }}
-                    >{c.label}</th>
+                      onClick={c.sortable ? () => {
+                        if (sortKey === c.key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                        else { setSortKey(c.key); setSortDir('desc'); }
+                      } : undefined}
+                    >
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                        {c.label}
+                        {c.sortable && sortKey === c.key && (
+                          sortDir === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />
+                        )}
+                      </span>
+                    </th>
                   ))}
                   {rowHref && <th style={{ width: 32, borderBottom: `1px solid ${BORDER}` }} />}
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row, i) => {
+                {sortedRows.map((row, i) => {
                   const href = rowHref?.(row) || null;
                   return (
                     <tr key={i} style={{ borderBottom: '1px solid rgba(120,170,255,0.08)' }}>
