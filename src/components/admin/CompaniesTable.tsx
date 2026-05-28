@@ -236,7 +236,11 @@ export const CompaniesTable = () => {
               </TableRow>
             ) : (
               filteredCompanies?.map((company) => (
-                <TableRow key={company.id} className={company.suspended_at || company.archived_at ? "opacity-60" : ""}>
+                <TableRow
+                  key={company.id}
+                  className={`cursor-pointer hover:bg-muted/40 transition-colors ${company.suspended_at || company.archived_at ? "opacity-60" : ""}`}
+                  onClick={() => handleViewCompany(company)}
+                >
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
@@ -323,14 +327,17 @@ export const CompaniesTable = () => {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleViewCompany(company)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewCompany(company);
+                        }}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
                       {isDemoLike(company.account_type) && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
@@ -372,7 +379,10 @@ export const CompaniesTable = () => {
                         variant="ghost"
                         size="sm"
                         className="text-destructive hover:text-destructive"
-                        onClick={() => setDeleteTarget(company)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteTarget(company);
+                        }}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>

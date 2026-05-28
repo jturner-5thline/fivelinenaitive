@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Bell, Mail, MessageSquare, Smartphone, Zap, Search } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { EventDrawer, eventRowClass } from './event-table/EventDrawer';
 
 interface AuditRow {
   id: string;
@@ -45,6 +46,7 @@ export function NotificationAuditPanel() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [channelFilter, setChannelFilter] = useState<string>('all');
+  const [selected, setSelected] = useState<AuditRow | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['notification-audit', statusFilter, channelFilter],
@@ -172,7 +174,7 @@ export function NotificationAuditPanel() {
               </TableHeader>
               <TableBody>
                 {filtered.map((r) => (
-                  <TableRow key={r.id}>
+                  <TableRow key={r.id} className={eventRowClass} onClick={() => setSelected(r)}>
                     <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
                       {formatDistanceToNow(new Date(r.created_at), { addSuffix: true })}
                     </TableCell>
@@ -203,6 +205,39 @@ export function NotificationAuditPanel() {
             </Table>
           </div>
         )}
+
+        <EventDrawer
+          open={!!selected}
+          onOpenChange={(o) => !o && setSelected(null)}
+          icon={selected ? CHANNEL_ICON[selected.channel] ?? <Bell className="h-4 w-4" /> : <Bell className="h-4 w-4" />}
+          title={selected?.title || selected?.trigger_key || 'Notification'}
+          subtitle={selected ? `Trigger: ${selected.trigger_key}` : undefined}
+          timestamp={selected?.created_at}
+          badges={
+            selected
+              ? [
+                  { label: selected.status, variant: STATUS_VARIANT[selected.status] ?? 'outline' },
+                  { label: selected.channel, variant: 'outline' },
+                ]
+              : []
+          }
+          fields={
+            selected
+              ? [
+                  { label: 'Recipient', value: recipientName(selected) },
+                  { label: 'Recipient ID', value: selected.recipient_user_id, mono: true },
+                  { label: 'Deal', value: selected.deal?.name || '—' },
+                  { label: 'Deal ID', value: selected.deal_id ?? '—', mono: true },
+                  { label: 'Channel', value: selected.channel },
+                  { label: 'Trigger', value: selected.trigger_key, mono: true },
+                  ...(selected.error_message
+                    ? [{ label: 'Error', value: <span className="text-destructive">{selected.error_message}</span> }]
+                    : []),
+                ]
+              : []
+          }
+          raw={selected}
+        />
       </CardContent>
     </Card>
   );

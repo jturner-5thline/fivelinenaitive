@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX, Globe, Home, Ban, UserCheck } from "lucide-react";
 import { useConsolidatedUsers, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole, useDeleteUser, useToggleUserSuspension } from "@/hooks/useAdminData";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { EventDrawer } from "./event-table/EventDrawer";
 
 export const UsersTable = () => {
   const [search, setSearch] = useState("");
@@ -28,6 +29,7 @@ export const UsersTable = () => {
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [userToSuspend, setUserToSuspend] = useState<{ id: string; name: string; isSuspended: boolean } | null>(null);
   const [suspendReason, setSuspendReason] = useState("");
+  const [detailUser, setDetailUser] = useState<any | null>(null);
   
   const { data: users, isLoading: usersLoading } = useConsolidatedUsers();
   const { data: roles, isLoading: rolesLoading } = useUserRoles();
@@ -310,10 +312,15 @@ export const UsersTable = () => {
                 const isExternal = user.source === 'external';
                 
                 return (
-                  <TableRow key={user.id} className={`${isExternal ? "bg-muted/30" : ""} ${user.suspended_at ? "opacity-60" : ""}`}>
+                  <TableRow
+                    key={user.id}
+                    className={`cursor-pointer hover:bg-muted/40 transition-colors ${isExternal ? "bg-muted/30" : ""} ${user.suspended_at ? "opacity-60" : ""}`}
+                    onClick={() => setDetailUser({ ...user, _roles: userRoles })}
+                  >
                     <TableCell>
                       {!isExternal ? (
-                        <Checkbox 
+                        <Checkbox
+                          onClick={(e) => e.stopPropagation()}
                           checked={selectedUserIds.has(user.user_id)}
                           onCheckedChange={() => handleToggleUser(user.user_id, isExternal)}
                         />
@@ -388,7 +395,10 @@ export const UsersTable = () => {
                               {role.role === "admin" ? <ShieldCheck className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
                               {role.role}
                               <button
-                                onClick={() => removeRole.mutate(role.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeRole.mutate(role.id);
+                                }}
                                 className="ml-1 hover:text-destructive-foreground"
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -403,7 +413,7 @@ export const UsersTable = () => {
                     </TableCell>
                     <TableCell>
                       {!isExternal ? (
-                        <div className="flex items-center gap-1">
+                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button 
@@ -458,7 +468,7 @@ export const UsersTable = () => {
                           >
                             <UserX className="h-4 w-4" />
                           </Button>
-                        </div>
+                       </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">Read-only</span>
                       )}
@@ -551,6 +561,59 @@ export const UsersTable = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <EventDrawer
+        open={!!detailUser}
+        onOpenChange={(o) => !o && setDetailUser(null)}
+        icon={<Users className="h-4 w-4" />}
+        title={detailUser?.display_name || detailUser?.email || "User"}
+        subtitle={detailUser?.email}
+        timestamp={detailUser?.created_at}
+        badges={
+          detailUser
+            ? [
+                {
+                  label: detailUser.source === "external" ? "FLEx" : "Local",
+                  variant: "outline",
+                },
+                ...(detailUser.suspended_at
+                  ? [{ label: "Suspended", variant: "destructive" as const }]
+                  : []),
+                ...((detailUser._roles ?? []).map((r: any) => ({
+                  label: r.role,
+                  variant: r.role === "admin" ? ("destructive" as const) : ("secondary" as const),
+                }))),
+              ]
+            : []
+        }
+        fields={
+          detailUser
+            ? [
+                { label: "Name", value: detailUser.display_name || "—" },
+                {
+                  label: "Full name",
+                  value:
+                    [detailUser.first_name, detailUser.last_name].filter(Boolean).join(" ") ||
+                    "—",
+                },
+                { label: "Email", value: detailUser.email || "—" },
+                { label: "User ID", value: detailUser.user_id, mono: true },
+                { label: "Source", value: detailUser.source === "external" ? "FLEx" : "Local" },
+                {
+                  label: "Roles",
+                  value:
+                    (detailUser._roles ?? []).length === 0
+                      ? "No roles"
+                      : (detailUser._roles ?? []).map((r: any) => r.role).join(", "),
+                },
+                {
+                  label: "Joined",
+                  value: format(new Date(detailUser.created_at), "PPP"),
+                },
+              ]
+            : []
+        }
+      />
     </TooltipProvider>
   );
 };

@@ -12,17 +12,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, RefreshCw, AlertCircle, Search, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useErrorLogs, useResolveErrorLog, ErrorLog } from "@/hooks/useAdminConfig";
+import { EventDrawer, eventRowClass } from "./event-table/EventDrawer";
 
 export const ErrorLogsPanel = () => {
   const { data: logs, isLoading, refetch } = useErrorLogs();
@@ -172,57 +166,68 @@ export const ErrorLogsPanel = () => {
         </div>
       </div>
 
-      <Dialog open={!!selectedLog} onOpenChange={(open) => !open && setSelectedLog(null)}>
-        <DialogContent className="max-w-3xl max-h-[80vh]">
-          <DialogHeader>
-            <DialogTitle>Error Details</DialogTitle>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Type:</span>{" "}
-                  <Badge variant="destructive">{selectedLog?.error_type}</Badge>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Time:</span>{" "}
-                  <span className="font-medium">
-                    {selectedLog && format(new Date(selectedLog.created_at), "MMM d, yyyy HH:mm:ss")}
-                  </span>
-                </div>
-                {selectedLog?.page_url && (
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">Page:</span>{" "}
-                    <span className="font-mono text-xs">{selectedLog.page_url}</span>
-                  </div>
-                )}
-              </div>
-              <div className="space-y-1">
-                <span className="text-sm text-muted-foreground">Error Message:</span>
-                <p className="text-sm bg-destructive/10 text-destructive p-3 rounded font-mono">
-                  {selectedLog?.error_message}
-                </p>
-              </div>
-              {selectedLog?.stack_trace && (
-                <div className="space-y-1">
-                  <span className="text-sm text-muted-foreground">Stack Trace:</span>
-                  <pre className="text-xs font-mono bg-muted p-3 rounded overflow-x-auto whitespace-pre-wrap">
-                    {selectedLog.stack_trace}
-                  </pre>
-                </div>
-              )}
-              {selectedLog?.metadata && (
-                <div className="space-y-1">
-                  <span className="text-sm text-muted-foreground">Metadata:</span>
-                  <pre className="text-xs font-mono bg-muted p-3 rounded overflow-x-auto">
-                    {JSON.stringify(selectedLog.metadata, null, 2)}
-                  </pre>
-                </div>
-              )}
+      <EventDrawer
+        open={!!selectedLog}
+        onOpenChange={(open) => !open && setSelectedLog(null)}
+        icon={<AlertCircle className="h-4 w-4" />}
+        title={selectedLog?.error_type ?? "Error"}
+        subtitle={selectedLog?.error_message}
+        timestamp={selectedLog?.created_at}
+        badges={
+          selectedLog
+            ? [
+                { label: selectedLog.error_type, variant: "destructive" },
+                {
+                  label: (selectedLog.status ?? "open") === "resolved" ? "Resolved" : "Open",
+                  variant:
+                    (selectedLog.status ?? "open") === "resolved" ? "secondary" : "destructive",
+                },
+              ]
+            : []
+        }
+        fields={
+          selectedLog
+            ? [
+                { label: "Feature", value: selectedLog.feature || "—" },
+                { label: "User ID", value: selectedLog.user_id || "—", mono: true },
+                { label: "Page", value: selectedLog.page_url || "—", mono: true },
+              ]
+            : []
+        }
+      >
+        {selectedLog && (
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                Error message
+              </p>
+              <p className="text-sm bg-destructive/10 text-destructive p-3 rounded font-mono whitespace-pre-wrap break-words">
+                {selectedLog.error_message}
+              </p>
             </div>
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
+            {selectedLog.stack_trace && (
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Stack trace
+                </p>
+                <pre className="text-[11px] font-mono bg-muted p-3 rounded overflow-x-auto whitespace-pre-wrap break-words">
+                  {selectedLog.stack_trace}
+                </pre>
+              </div>
+            )}
+            {selectedLog.metadata && (
+              <div className="space-y-1">
+                <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                  Metadata
+                </p>
+                <pre className="text-[11px] font-mono bg-muted p-3 rounded overflow-x-auto">
+                  {JSON.stringify(selectedLog.metadata, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        )}
+      </EventDrawer>
 
       <Table>
         <TableHeader>
@@ -245,7 +250,11 @@ export const ErrorLogsPanel = () => {
             </TableRow>
           ) : (
             filteredLogs?.map((log) => (
-              <TableRow key={log.id}>
+              <TableRow
+                key={log.id}
+                className={eventRowClass}
+                onClick={() => setSelectedLog(log)}
+              >
                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">
                   {format(new Date(log.created_at), "MMM d, HH:mm")}
                 </TableCell>
@@ -268,7 +277,14 @@ export const ErrorLogsPanel = () => {
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => setSelectedLog(log)}>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedLog(log);
+                      }}
+                    >
                       <Eye className="h-4 w-4" />
                     </Button>
                     {(log.status ?? "open") !== "resolved" && (
@@ -276,7 +292,10 @@ export const ErrorLogsPanel = () => {
                         variant="outline"
                         size="sm"
                         disabled={resolveError.isPending}
-                        onClick={() => handleResolve(log.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleResolve(log.id);
+                        }}
                       >
                         <CheckCircle2 className="h-3 w-3 mr-1" />
                         Resolve
