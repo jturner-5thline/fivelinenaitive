@@ -1304,18 +1304,31 @@ export default function Lenders() {
                           placeholder="Search name, contacts, email, geo, type, loan types, industries, notes, pass reasons, deals…"
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
-                          className="lg-input h-10 pl-9 pr-9"
+                          className="lg-input h-10 pl-9 pr-24"
                         />
-                        {searchQuery && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                            onClick={() => setSearchQuery('')}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                          {searchQuery && searchQuery !== debouncedSearchQuery && (
+                            <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" aria-label="Searching" />
+                          )}
+                          {debouncedSearchQuery && (
+                            <span
+                              className="hidden sm:inline-flex items-center rounded-md border border-border/60 bg-muted/40 px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground tabular-nums"
+                              title={`${sortedLenders.length.toLocaleString()} of ${masterLenders.length.toLocaleString()} lenders match`}
+                            >
+                              {sortedLenders.length.toLocaleString()} / {masterLenders.length.toLocaleString()}
+                            </span>
+                          )}
+                          {searchQuery && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7"
+                              onClick={() => setSearchQuery('')}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="bottom" className="max-w-xs">
