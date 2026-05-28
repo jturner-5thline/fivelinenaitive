@@ -13,6 +13,7 @@ import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
 import { cn } from '@/lib/utils';
 import { useInboxCacheStore } from '@/stores/inboxCacheStore';
 import { RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
 
 function InboxRefreshStatus({
   isRefreshing,
@@ -139,8 +140,9 @@ async function fetchPage(args: {
   labelIds: string[];
   pageToken?: string | null;
   maxResults?: number;
+  forceRefresh?: boolean;
 }): Promise<{ messages: any[]; nextPageToken: string | null; rateLimited: boolean }> {
-  const { labelIds, pageToken, maxResults = PAGE_SIZE } = args;
+  const { labelIds, pageToken, maxResults = PAGE_SIZE, forceRefresh = false } = args;
   try {
     const { data, error } = await supabase.functions.invoke('gmail-messages', {
       body: {
@@ -148,6 +150,15 @@ async function fetchPage(args: {
         max_results: maxResults,
         label_ids: labelIds,
         page_token: pageToken || undefined,
+        // When the caller is a user-initiated refresh, ask the edge
+        // function to bypass any HTTP/intermediary cache by appending a
+        // cachebuster to the upstream Nylas URL. The provider itself is
+        // already authoritative, but this guarantees no CDN/proxy layer
+        // returns a previously-cached response on rapid retries.
+        force_refresh: forceRefresh || undefined,
+        // Cache-bust this very invoke so the browser / SW never serves
+        // a memoized response for the manual refresh call itself.
+        _cb: forceRefresh ? Date.now() : undefined,
       },
     });
     if (error) {
@@ -465,7 +476,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // every popup open transition triggers a fresh fetch even if the user
   // toggles rapidly. The in-flight ref still prevents truly concurrent
   // fetches (e.g. open + focus firing in the same tick).
-  const runRefresh = useCallback(async (opts: { force?: boolean } = {}) => {
+  const runRefresh = useCallback(async (opts: { force?: boolean; manual?: boolean } = {}) => {
     if (!status.connected) return;
     if (refreshInFlightRef.current) return;
     const now = Date.now();
@@ -473,10 +484,21 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     refreshInFlightRef.current = true;
     lastSilentRefreshRef.current = now;
     setIsRefreshing(true);
+    // Soft 5s timeout: if the refresh hasn't returned in 5s, surface a
+    // non-blocking toast so the user knows we're still working on it
+    // instead of staring at a silently-spinning button.
+    let slowToastId: string | number | undefined;
+    if (opts.manual) {
+      slowToastId = setTimeout(() => {
+        slowToastId = toast.loading('Still fetching latest emails…', {
+          duration: 8000,
+        });
+      }, 5000) as unknown as number;
+    }
     try {
       const [inbox, sent] = await Promise.all([
-        fetchPage({ labelIds: ['INBOX'] }),
-        fetchPage({ labelIds: ['SENT'] }),
+        fetchPage({ labelIds: ['INBOX'], forceRefresh: !!opts.manual }),
+        fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
       ]);
       if (!isMountedRef.current) return;
       // Prepend new messages above the cached list; mergeUniqueById
@@ -494,13 +516,32 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       });
       setRefreshError(false);
       setLastRefreshAt(Date.now());
+      if (opts.manual) {
+        const newCount = inbox.messages.filter(
+          (m: any) => !inboxMessages.some((p) => (p.id || p.gmail_message_id) === (m.id || m.gmail_message_id))
+        ).length;
+        if (newCount > 0) {
+          toast.success(`${newCount} new ${newCount === 1 ? 'email' : 'emails'}`);
+        }
+      }
     } catch {
       if (isMountedRef.current) setRefreshError(true);
+      if (opts.manual) {
+        toast.error('Couldn\u2019t refresh inbox', {
+          action: { label: 'Retry', onClick: () => void runRefresh({ force: true, manual: true }) },
+        });
+      }
     } finally {
+      if (slowToastId !== undefined) {
+        // If it was still a timeout handle, cancel it. If it was a toast
+        // id (number/string), dismiss it.
+        try { clearTimeout(slowToastId as number); } catch { /* noop */ }
+        try { toast.dismiss(slowToastId); } catch { /* noop */ }
+      }
       refreshInFlightRef.current = false;
       if (isMountedRef.current) setIsRefreshing(false);
     }
-  }, [status.connected, mergeUniqueById]);
+  }, [status.connected, mergeUniqueById, inboxMessages]);
 
   const silentRefresh = useCallback(() => runRefresh({ force: false }), [runRefresh]);
   const forceRefresh = useCallback(() => runRefresh({ force: true }), [runRefresh]);
@@ -764,32 +805,19 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     if (!open) systemFoldersLoadedRef.current = false;
   }, [open]);
 
-  // Refresh: reset state and re-fetch from page 1 (then auto-paginate again)
+  // Manual refresh: stale-while-revalidate. We DO NOT clear the existing
+  // list — the cached messages stay visible so the user keeps their
+  // scroll position and any open thread, while we pull the latest page
+  // from upstream (cache-busted) and merge new messages in at the top.
+  // The runRefresh path handles the in-flight indicator, error toast,
+  // and slow-fetch toast.
   const handleRefresh = useCallback(async () => {
     if (!status.connected) return;
-    isPaginatingRef.current = false;
-    setIsAutoPaginating(false);
-    setInboxMessages([]);
-    setSentMessages([]);
-    setDraftsMessages([]);
-    setJunkMessages([]);
-    setTrashMessages([]);
-    setInboxNextToken(null);
-    setSentNextToken(null);
-    setHasMoreInbox(true);
-    setHasMoreSent(true);
-    setHasMoreCache(true);
-    setIsInitialLoading(true);
-
-    const firstInbox = await fetchPage({ labelIds: ['INBOX'] });
-    if (!isMountedRef.current) return;
-    setInboxMessages(prev => mergeUniqueById(prev, firstInbox.messages));
-    setInboxNextToken(firstInbox.nextPageToken);
-    setHasMoreInbox(!!firstInbox.nextPageToken);
-    setIsInitialLoading(false);
-    autoPaginate(firstInbox.nextPageToken);
+    await runRefresh({ force: true, manual: true });
+    // Also refresh the auxiliary folders silently — cheap and keeps
+    // Drafts / Junk / Trash in sync without a full reset.
     void refreshSystemFolders();
-  }, [status.connected, mergeUniqueById, autoPaginate]);
+  }, [status.connected, runRefresh, refreshSystemFolders]);
 
   // IMPORTANT: call every hook on every render BEFORE any conditional return,
   // otherwise the hook order changes when `status.connected` flips and React
