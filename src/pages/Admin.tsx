@@ -327,6 +327,10 @@ const Admin = () => {
     if (rawTab && LEGACY_TAB_TO_PAGE[rawTab]) {
       return LEGACY_TAB_TO_PAGE[rawTab];
     }
+    // Legacy ?page= IDs from the pre-Phase-4 IA (now merged into Access Requests / Directory).
+    if (rawPage && LEGACY_TAB_TO_PAGE[rawPage]) {
+      return LEGACY_TAB_TO_PAGE[rawPage];
+    }
     if (rawSection && LEGACY_SECTION_PAGE[rawSection]) {
       const remap = LEGACY_SECTION_PAGE[rawSection];
       const sec = SECTIONS.find(s => s.id === remap.section)!;
