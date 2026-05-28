@@ -101,6 +101,9 @@ import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOve
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
+import { AccessRequestsPanel } from "@/components/admin/AccessRequestsPanel";
+import { PeopleDirectoryPanel } from "@/components/admin/PeopleDirectoryPanel";
+import { CompaniesDirectoryPanel } from "@/components/admin/CompaniesDirectoryPanel";
 
 // ─── New IA ───────────────────────────────────────────────────────
 type SectionId = "people" | "access" | "communications" | "platform" | "observability";
@@ -126,14 +129,10 @@ const SECTIONS: SectionDef[] = [
     label: "People",
     icon: UsersRound,
     pages: [
-      { id: "users", label: "All Users", icon: Users, description: "Every registered user across all companies.", cta: { label: "Create Demo Access", action: "demo" } },
-      { id: "companies", label: "Companies", icon: Building2, description: "Registered companies and their members." },
-      { id: "pending-approvals", label: "Pending Approvals", icon: UserCheck, countKey: "pendingApprovals", description: "Users awaiting admin approval before first sign-in.", group: "Access Requests" },
-      { id: "join-requests", label: "Join Requests", icon: Building2, countKey: "joinRequests", description: "Existing users requesting to join a workspace.", group: "Access Requests" },
-      { id: "invitations", label: "Invitations", icon: Mail, description: "Outstanding company invitations.", group: "Access Requests" },
-      { id: "waitlist", label: "Waitlist", icon: ListTodo, countKey: "waitlist", description: "External signups waiting on capacity.", group: "Access Requests" },
+      { id: "users", label: "All Users", icon: Users, description: "Local accounts + synced external profiles in one directory.", cta: { label: "Create Demo Access", action: "demo" } },
+      { id: "companies", label: "Companies", icon: Building2, description: "Registered companies and synced external entities." },
+      { id: "access-requests", label: "Access Requests", icon: UserCheck, countKey: "accessRequests", description: "Approvals, join requests, invitations and waitlist — one queue." },
       { id: "activity", label: "Activity", icon: Activity, description: "Recent user sessions and actions." },
-      { id: "external", label: "External", icon: Cloud, description: "External deals, lenders and partner data." },
       { id: "demo-metrics", label: "Demo Metrics", icon: BarChart3, description: "Engagement snapshot for every demo / pilot workspace." },
       { id: "client-lookup", label: "Client Lookup", icon: Search, description: "Open any company's workspace as if you were a member." },
     ],
@@ -202,14 +201,14 @@ const LEGACY_SECTION_PAGE: Record<string, { section: SectionId; page?: string }>
 };
 const LEGACY_TAB_TO_PAGE: Record<string, { section: SectionId; page: string }> = {
   // From users
-  "pending-approvals":     { section: "people", page: "pending-approvals" },
-  "join-requests":         { section: "people", page: "join-requests" },
+  "pending-approvals":     { section: "people", page: "access-requests" },
+  "join-requests":         { section: "people", page: "access-requests" },
   "users":                 { section: "people", page: "users" },
   "companies":             { section: "people", page: "companies" },
   "demo-metrics":          { section: "people", page: "demo-metrics" },
   "activity":              { section: "people", page: "activity" },
-  "external":              { section: "people", page: "external" },
-  "invitations":           { section: "people", page: "invitations" },
+  "external":              { section: "people", page: "users" },
+  "invitations":           { section: "people", page: "access-requests" },
   // From access
   "pages":                 { section: "access", page: "pages" },
   "permissions":           { section: "access", page: "permissions" },
@@ -217,7 +216,7 @@ const LEGACY_TAB_TO_PAGE: Record<string, { section: SectionId; page: string }> =
   "notifications-admin":   { section: "communications", page: "notifications" },
   "notification-audit":    { section: "communications", page: "delivery-audit" },
   "announcements":         { section: "communications", page: "announcements" },
-  "waitlist":              { section: "people", page: "waitlist" },
+  "waitlist":              { section: "people", page: "access-requests" },
   // From data-security
   "data":                  { section: "platform", page: "data" },
   "security":              { section: "platform", page: "security" },
@@ -403,38 +402,12 @@ const Admin = () => {
 
   const renderSubPageContent = (subPageId: string) => {
     switch (subPageId) {
-      case "pending-approvals":
-        return <PendingApprovalsPanel />;
-      case "join-requests":
-        return <CompanyJoinRequestsPanel />;
+      case "access-requests":
+        return <AccessRequestsPanel />;
       case "users":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                All Users
-              </CardTitle>
-              <CardDescription>View and manage all registered users and their roles</CardDescription>
-            </CardHeader>
-            <CardContent><UsersTable /></CardContent>
-          </Card>
-        );
+        return <PeopleDirectoryPanel />;
       case "companies":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Building2 className="h-5 w-5" />
-                All Companies
-              </CardTitle>
-              <CardDescription>View all registered companies and their members</CardDescription>
-            </CardHeader>
-            <CardContent><CompaniesTable /></CardContent>
-          </Card>
-        );
-      case "external":
-        return <ExternalDataTab />;
+        return <CompaniesDirectoryPanel />;
       case "activity":
         return <UserActivityPanel />;
       case "demo-metrics":
@@ -451,19 +424,6 @@ const Admin = () => {
               </CardDescription>
             </CardHeader>
             <CardContent><DemoMetricsPanel /></CardContent>
-          </Card>
-        );
-      case "invitations":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Mail className="h-5 w-5" />
-                All Invitations
-              </CardTitle>
-              <CardDescription>View all company invitations</CardDescription>
-            </CardHeader>
-            <CardContent><InvitationsTable /></CardContent>
           </Card>
         );
       case "feedback":
@@ -556,19 +516,6 @@ const Admin = () => {
               <CardDescription>Create and manage system announcements</CardDescription>
             </CardHeader>
             <CardContent><AnnouncementsPanel /></CardContent>
-          </Card>
-        );
-      case "waitlist":
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <ListTodo className="h-5 w-5" />
-                Waitlist
-              </CardTitle>
-              <CardDescription>Manage users waiting to join</CardDescription>
-            </CardHeader>
-            <CardContent><WaitlistTable /></CardContent>
           </Card>
         );
       case "data":
