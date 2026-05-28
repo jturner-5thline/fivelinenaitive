@@ -61,10 +61,11 @@ function setCache(key: string, data: unknown) {
 // Callers in NIKI_BRIEFING_ALLOWED_EMAILS may request the Niki Heikali
 // assignee filter — including Niki herself for her own briefing.
 const DELEGATE_ACCESS: Record<string, Set<string>> = {
-  'jturner@5thline.co': new Set(['Niki Heikali']),
+  'jturner@5thline.co': new Set(['Niki Heikali', 'John Moffitt']),
   'nheikali@5thline.co': new Set(['Niki Heikali']),
   'ppina@5thline.co': new Set(['Niki Heikali']),
   'ffustinoni@5thline.co': new Set(['Niki Heikali']),
+  'jmoffitt@5thline.co': new Set(['John Moffitt']),
 };
 
 function isAllowedAssigneeDelegate(callerEmail: string | undefined, assigneeName: string): boolean {
