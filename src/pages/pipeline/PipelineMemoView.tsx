@@ -14,6 +14,9 @@ import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronDown } from 'lucide-react';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -146,7 +149,47 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   // Soft attention glow: ≥2 business days since the last status / stage change.
   const { data: freshness } = useDealFreshness(dealIds);
 
-  const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
+  // ── Admin-only filter bar (manager / type / status) ──
+  const { isAdmin } = useAdminRole();
+  const [managerFilter, setManagerFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const filterOptions = useMemo(() => {
+    const managers = new Set<string>();
+    const types = new Set<string>();
+    const statuses = new Set<string>();
+    for (const d of deals as any[]) {
+      if (d?.manager && String(d.manager).trim()) managers.add(String(d.manager).trim());
+      if (d?.engagementType && String(d.engagementType).trim()) types.add(String(d.engagementType).trim());
+      if (d?.status && String(d.status).trim()) statuses.add(String(d.status).trim());
+    }
+    const s = (a: string, b: string) => a.localeCompare(b);
+    return {
+      managers: Array.from(managers).sort(s),
+      types: Array.from(types).sort(s),
+      statuses: Array.from(statuses).sort(s),
+    };
+  }, [deals]);
+
+  const hasAnyFilter = isAdmin && (managerFilter.length + typeFilter.length + statusFilter.length) > 0;
+  const clearAllFilters = () => {
+    setManagerFilter([]);
+    setTypeFilter([]);
+    setStatusFilter([]);
+  };
+
+  const filteredSorted = useMemo(() => {
+    if (!isAdmin || !hasAnyFilter) return sorted;
+    return sorted.filter((d: any) => {
+      if (managerFilter.length && !managerFilter.includes(String(d.manager ?? '').trim())) return false;
+      if (typeFilter.length && !typeFilter.includes(String(d.engagementType ?? '').trim())) return false;
+      if (statusFilter.length && !statusFilter.includes(String(d.status ?? '').trim())) return false;
+      return true;
+    });
+  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter]);
+
+  const visible = useMemo(() => filteredSorted.filter((d) => !isDismissed(d.id)), [filteredSorted, isDismissed]);
 
   // Master/detail selection — mirrors the Agenda and End of Day tabs.
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -177,14 +220,58 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     return (
       <div className="rounded-xl py-12 px-4 text-center">
         <p className="text-muted-foreground text-sm italic">
-          {sorted.length === 0 ? emptyMessage : 'All deals dismissed for today. They’ll return after the 5 AM ET reset.'}
+          {filteredSorted.length === 0
+            ? (hasAnyFilter ? 'No deals match the selected filters.' : emptyMessage)
+            : 'All deals dismissed for today. They’ll return after the 5 AM ET reset.'}
         </p>
+        {hasAnyFilter && filteredSorted.length === 0 && (
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="mt-3 text-xs text-white/80 hover:text-white underline"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
     );
   }
 
   const masterPane = (
     <div className="popup-shell-surface flex flex-col h-full min-h-0 min-w-0 rounded-xl overflow-hidden">
+      {isAdmin && (
+        <div className="shrink-0 px-3 pt-2 pb-1.5 border-b border-white/5 flex flex-wrap items-center gap-1.5">
+          <FilterChip
+            label="Manager"
+            options={filterOptions.managers}
+            selected={managerFilter}
+            onChange={setManagerFilter}
+          />
+          <FilterChip
+            label="Type"
+            options={filterOptions.types}
+            selected={typeFilter}
+            onChange={setTypeFilter}
+            formatLabel={titleCase}
+          />
+          <FilterChip
+            label="Status"
+            options={filterOptions.statuses}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+            formatLabel={titleCase}
+          />
+          {hasAnyFilter && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="ml-auto text-[10px] uppercase tracking-wider text-white/60 hover:text-white px-1.5 py-1 rounded hover:bg-white/10 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
       <ScrollArea className="flex-1 min-h-0 px-3 py-2">
         <div className="space-y-1.5 pb-2 pr-0.5">
           {visible.map((deal) => (
