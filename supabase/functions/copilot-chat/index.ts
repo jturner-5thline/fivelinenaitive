@@ -93,6 +93,287 @@ async function updateAuditOutcome(auditId: string | null | undefined, patch: {
   }
 }
 
+function compactRecord(input: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
+  const entries = Object.entries(input || {}).filter(([, value]) => value !== undefined);
+  return entries.length ? Object.fromEntries(entries) : null;
+}
+
+function formatAuditValue(value: unknown): string {
+  if (value === null || value === undefined) return "(empty)";
+  if (typeof value === "string") return `"${value}"`;
+  return JSON.stringify(value);
+}
+
+type LenderFieldMismatch = {
+  field: string;
+  expected: unknown;
+  actual: unknown;
+};
+
+class LenderWriteNotPersistedError extends Error {
+  public readonly code = "WRITE_NOT_PERSISTED" as const;
+
+  constructor(
+    public readonly lenderId: string,
+    public readonly mismatches: LenderFieldMismatch[],
+  ) {
+    super(
+      `Lender ${lenderId} did not persist ${mismatches.length} field(s): ` +
+        mismatches
+          .map((m) => `${m.field} expected ${JSON.stringify(m.expected)} got ${JSON.stringify(m.actual)}`)
+          .join("; "),
+    );
+    this.name = "LenderWriteNotPersistedError";
+  }
+
+  toUserMessage(): string {
+    if (this.mismatches.length === 1) {
+      const mismatch = this.mismatches[0];
+      if (mismatch.field === "__row__") {
+        return "I tried to update this lender, but the database returned no matching row. The lender id may be wrong or your access rules blocked the write.";
+      }
+      return `I tried to set lender ${mismatch.field} to ${formatAuditValue(mismatch.expected)} but the database still has ${formatAuditValue(mismatch.actual)}.`;
+    }
+    return `I tried to update ${this.mismatches.length} lender fields but the database did not accept them: ${this.mismatches.map((m) => `${m.field} (tried ${formatAuditValue(m.expected)}, still ${formatAuditValue(m.actual)})`).join("; ")}.`;
+  }
+}
+
+const LENDER_AUTO_SKIP = new Set<string>(["updated_at"]);
+const LENDER_STRICT_FIELDS = new Set<string>(["stage", "tracking_status", "pass_reason"]);
+
+function normalizeLenderValue(field: string, value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (LENDER_STRICT_FIELDS.has(field)) return value;
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number") return value;
+  if (Array.isArray(value)) return JSON.stringify(value);
+  if (typeof value === "object") return JSON.stringify(value);
+  return value;
+}
+
+function lenderValuesMatch(field: string, expected: unknown, actual: unknown): boolean {
+  const left = normalizeLenderValue(field, expected);
+  const right = normalizeLenderValue(field, actual);
+  if (left === right) return true;
+  if ((left === null || left === "") && (right === null || right === "")) return true;
+  return false;
+}
+
+async function verifiedDealLenderUpdate(client: any, lenderId: string, patch: Record<string, unknown>) {
+  const writtenCols = Object.keys(patch);
+  const verifyCols = writtenCols.filter((column) => !LENDER_AUTO_SKIP.has(column));
+  const selectCols = Array.from(new Set(["id", ...writtenCols]));
+  const { data, error } = await client
+    .from("deal_lenders")
+    .update(patch)
+    .eq("id", lenderId)
+    .select(selectCols.join(","))
+    .maybeSingle();
+
+  if (error) {
+    throw new LenderWriteNotPersistedError(lenderId, [
+      { field: "__row__", expected: "updated row", actual: error.message },
+    ]);
+  }
+  if (!data) {
+    throw new LenderWriteNotPersistedError(lenderId, [
+      { field: "__row__", expected: "updated row", actual: null },
+    ]);
+  }
+
+  const row = data as Record<string, unknown>;
+  const mismatches: LenderFieldMismatch[] = [];
+  for (const field of verifyCols) {
+    if (!lenderValuesMatch(field, patch[field], row[field])) {
+      mismatches.push({ field, expected: patch[field] ?? null, actual: row[field] ?? null });
+    }
+  }
+
+  const strictCols = verifyCols.filter((column) => LENDER_STRICT_FIELDS.has(column));
+  if (strictCols.length > 0) {
+    const { data: reread } = await client
+      .from("deal_lenders")
+      .select(strictCols.join(","))
+      .eq("id", lenderId)
+      .single();
+    const strictRow = (reread || {}) as Record<string, unknown>;
+    for (const field of strictCols) {
+      const nextMismatch = {
+        field,
+        expected: patch[field] ?? null,
+        actual: strictRow[field] ?? null,
+      };
+      const existingIndex = mismatches.findIndex((m) => m.field === field);
+      if (!lenderValuesMatch(field, patch[field], strictRow[field])) {
+        if (existingIndex >= 0) mismatches[existingIndex] = nextMismatch;
+        else mismatches.push(nextMismatch);
+      } else if (existingIndex >= 0) {
+        mismatches.splice(existingIndex, 1);
+      }
+    }
+  }
+
+  if (mismatches.length > 0) {
+    throw new LenderWriteNotPersistedError(lenderId, mismatches);
+  }
+
+  return row;
+}
+
+function deriveConfirmAuditPayload(actionType: string, params: any, result?: any) {
+  if (result?.audit) {
+    const oldValue = compactRecord(result.audit.before || null);
+    const newValue = compactRecord(result.audit.after || null);
+    const fields = Array.isArray(result.audit.fields)
+      ? result.audit.fields.filter((field: unknown) => typeof field === "string" && field.length > 0)
+      : Object.keys(newValue || {});
+    return {
+      dealId: result.audit.deal_id ?? params?.deal_id ?? null,
+      dealName: params?.deal_name ?? null,
+      lenderId: params?.lender_id ?? null,
+      fieldChanged: fields.length ? fields.join(", ") : null,
+      oldValue,
+      newValue,
+    };
+  }
+
+  switch (actionType) {
+    case "update_deal_stage": {
+      const oldValue = compactRecord({ stage: params?.current_stage });
+      const newValue = compactRecord({ stage: params?.new_stage });
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    case "update_deal_status": {
+      const oldValue = compactRecord({ status: params?.current_status });
+      const newValue = compactRecord({ status: params?.new_status });
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    case "move_deal_pipeline": {
+      const oldValue = compactRecord({ pipeline_id: params?.current_pipeline_id, stage: params?.current_stage });
+      const newValue = compactRecord({ pipeline_id: params?.new_pipeline_id, stage: params?.new_stage });
+      return {
+        dealId: params?.deal_id ?? params?.dealId ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    case "update_lender_status": {
+      const oldValue = compactRecord({
+        stage: params?.current_stage,
+        tracking_status: params?.current_tracking_status,
+        pass_reason: params?.current_pass_reason,
+        notes: params?.current_notes,
+      });
+      const newValue = compactRecord({
+        stage: params?.stage,
+        tracking_status: params?.tracking_status,
+        pass_reason: params?.pass_reason,
+        notes: typeof params?.notes === "string" ? params.notes : params?.notes_append,
+      });
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: params?.lender_id ?? null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    default:
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: params?.lender_id ?? null,
+        fieldChanged: null,
+        oldValue: null,
+        newValue: compactRecord(params || null),
+      };
+  }
+}
+
+async function recordConfirmAudit(input: {
+  auditId?: string | null;
+  userId: string;
+  companyId?: string | null;
+  actionType: string;
+  params: any;
+  result: any;
+}): Promise<string | null> {
+  try {
+    const admin = adminClient();
+    const payload = deriveConfirmAuditPayload(input.actionType, input.params, input.result);
+    const patch = {
+      resolved_deal_id: payload.dealId,
+      resolved_deal_name: payload.dealName,
+      target_lender_id: payload.lenderId,
+      field_changed: payload.fieldChanged,
+      old_value: payload.oldValue,
+      new_value: payload.newValue,
+      success: !!input.result?.success,
+      outcome: input.result?.success ? "confirmed" : "error",
+      outcome_detail: input.result?.message || null,
+      error_message: input.result?.success ? null : (input.result?.error || "unknown error"),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.auditId) {
+      const { error } = await admin.from("ai_action_audit").update(patch).eq("id", input.auditId);
+      if (error) {
+        console.warn("[ai_audit] recordConfirmAudit update failed:", error.message);
+        return input.auditId;
+      }
+      return input.auditId;
+    }
+
+    const { data, error } = await admin
+      .from("ai_action_audit")
+      .insert({
+        user_id: input.userId,
+        company_id: input.companyId || null,
+        action_type: input.actionType,
+        resolved_deal_id: payload.dealId,
+        resolved_deal_name: payload.dealName,
+        target_lender_id: payload.lenderId,
+        field_changed: payload.fieldChanged,
+        old_value: payload.oldValue,
+        new_value: payload.newValue,
+        success: !!input.result?.success,
+        extracted_fields: payload.newValue || {},
+        outcome: input.result?.success ? "confirmed" : "error",
+        outcome_detail: input.result?.message || null,
+        error_message: input.result?.success ? null : (input.result?.error || "unknown error"),
+        source: "copilot",
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.warn("[ai_audit] recordConfirmAudit insert failed:", error.message);
+      return null;
+    }
+    return (data as any)?.id || null;
+  } catch (e) {
+    console.warn("[ai_audit] recordConfirmAudit exception:", e);
+    return null;
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
