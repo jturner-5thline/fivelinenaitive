@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { useAuditLogs } from "@/hooks/useAdminData";
+import { EventDrawer, eventRowClass } from "./event-table/EventDrawer";
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100];
 
@@ -51,6 +52,7 @@ export const AuditLogTable = () => {
   const [endDate, setEndDate] = useState<Date | undefined>(undefined);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [selected, setSelected] = useState<any | null>(null);
 
   const filteredLogs = useMemo(() => {
     if (!logs) return [];
@@ -340,7 +342,7 @@ export const AuditLogTable = () => {
                 const Icon = config.icon;
 
                 return (
-                  <TableRow key={log.id}>
+                  <TableRow key={log.id} className={eventRowClass} onClick={() => setSelected(log)}>
                     <TableCell>
                       <Badge variant={config.variant} className="flex items-center gap-1.5 w-fit">
                         <Icon className="h-3 w-3" />
@@ -389,6 +391,44 @@ export const AuditLogTable = () => {
           </TableBody>
         </Table>
       </div>
+
+      <EventDrawer
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+        icon={<Shield className="h-4 w-4" />}
+        title={
+          selected
+            ? (actionConfig[selected.action_type]?.label ??
+              selected.action_type.replace(/_/g, " "))
+            : "Audit entry"
+        }
+        subtitle={selected?.target_name ? `Target: ${selected.target_name}` : undefined}
+        timestamp={selected?.created_at}
+        badges={
+          selected
+            ? [
+                {
+                  label: actionConfig[selected.action_type]?.label ?? selected.action_type,
+                  variant: actionConfig[selected.action_type]?.variant ?? "secondary",
+                },
+                { label: selected.target_type, variant: "outline" },
+              ]
+            : []
+        }
+        fields={
+          selected
+            ? [
+                { label: "Admin", value: selected.admin_name || selected.admin_email || "—" },
+                { label: "Admin email", value: selected.admin_email || "—" },
+                { label: "Target", value: selected.target_name || "—" },
+                { label: "Target type", value: selected.target_type || "—" },
+                { label: "Target ID", value: selected.target_id ?? "—", mono: true },
+              ]
+            : []
+        }
+        raw={selected?.details}
+        rawLabel="Action details"
+      />
 
       {/* Pagination controls */}
       {totalPages > 1 && (
