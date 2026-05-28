@@ -395,7 +395,10 @@ export const UsersTable = () => {
                               {role.role === "admin" ? <ShieldCheck className="h-3 w-3" /> : <Shield className="h-3 w-3" />}
                               {role.role}
                               <button
-                                onClick={() => removeRole.mutate(role.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  removeRole.mutate(role.id);
+                                }}
                                 className="ml-1 hover:text-destructive-foreground"
                               >
                                 <Trash2 className="h-3 w-3" />
@@ -410,7 +413,7 @@ export const UsersTable = () => {
                     </TableCell>
                     <TableCell>
                       {!isExternal ? (
-                        <div className="flex items-center gap-1">
+                       <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <Dialog>
                             <DialogTrigger asChild>
                               <Button 
@@ -465,7 +468,7 @@ export const UsersTable = () => {
                           >
                             <UserX className="h-4 w-4" />
                           </Button>
-                        </div>
+                       </div>
                       ) : (
                         <span className="text-xs text-muted-foreground">Read-only</span>
                       )}
@@ -558,6 +561,59 @@ export const UsersTable = () => {
           </DialogContent>
         </Dialog>
       </div>
+
+      <EventDrawer
+        open={!!detailUser}
+        onOpenChange={(o) => !o && setDetailUser(null)}
+        icon={<Users className="h-4 w-4" />}
+        title={detailUser?.display_name || detailUser?.email || "User"}
+        subtitle={detailUser?.email}
+        timestamp={detailUser?.created_at}
+        badges={
+          detailUser
+            ? [
+                {
+                  label: detailUser.source === "external" ? "FLEx" : "Local",
+                  variant: "outline",
+                },
+                ...(detailUser.suspended_at
+                  ? [{ label: "Suspended", variant: "destructive" as const }]
+                  : []),
+                ...((detailUser._roles ?? []).map((r: any) => ({
+                  label: r.role,
+                  variant: r.role === "admin" ? ("destructive" as const) : ("secondary" as const),
+                }))),
+              ]
+            : []
+        }
+        fields={
+          detailUser
+            ? [
+                { label: "Name", value: detailUser.display_name || "—" },
+                {
+                  label: "Full name",
+                  value:
+                    [detailUser.first_name, detailUser.last_name].filter(Boolean).join(" ") ||
+                    "—",
+                },
+                { label: "Email", value: detailUser.email || "—" },
+                { label: "User ID", value: detailUser.user_id, mono: true },
+                { label: "Source", value: detailUser.source === "external" ? "FLEx" : "Local" },
+                {
+                  label: "Roles",
+                  value:
+                    (detailUser._roles ?? []).length === 0
+                      ? "No roles"
+                      : (detailUser._roles ?? []).map((r: any) => r.role).join(", "),
+                },
+                {
+                  label: "Joined",
+                  value: format(new Date(detailUser.created_at), "PPP"),
+                },
+              ]
+            : []
+        }
+      />
     </TooltipProvider>
   );
 };
