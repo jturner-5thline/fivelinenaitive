@@ -387,6 +387,8 @@ const App = () => (
                             <Route path="/notifications" element={<Notifications />} />
                             <Route path="/help" element={<Help />} />
                             <Route path="/admin" element={<Admin />} />
+                            <Route path="/signal" element={<Signal />} />
+                            <Route path="/studio" element={<Studio />} />
                             <Route path="/integrations/hubspot/health" element={<HubspotSyncHealth />} />
                             <Route path="/wf" element={<WfHub />} />
                             <Route path="/wf-deals/:id" element={<WfDealDetail />} />
