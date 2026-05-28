@@ -293,6 +293,7 @@ function MeetingCard({
   onCreateTask: () => void;
   onEmail: () => void;
   onLinkClaap: () => void;
+  onAddNote: () => void;
   linkedClaapCount: number;
 }) {
   const navigate = useNavigate();
@@ -304,10 +305,6 @@ function MeetingCard({
     (event.location && /^https?:\/\//.test(event.location) ? event.location : null);
   const externalAttendees = (event.attendees || []).filter(a => !isInternalAttendee(a.email) && !a.self);
 
-  const handleAddNote = () => {
-    if (!dealMatch) return;
-    window.open(`/deals?deal=${dealMatch.id}&action=add-note`, '_blank', 'noopener,noreferrer');
-  };
   const handleCreateTask = () => onCreateTask();
   const handleEmail = () => onEmail();
 
