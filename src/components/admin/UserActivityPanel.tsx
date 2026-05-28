@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Activity, Search } from "lucide-react";
+import { EventDrawer, eventRowClass } from "./event-table/EventDrawer";
 
 interface ActivityRow {
   id: string;
@@ -39,6 +40,7 @@ const eventBadgeClass = (type: string) => {
 export const UserActivityPanel = () => {
   const [search, setSearch] = useState("");
   const [eventType, setEventType] = useState<string>("all");
+  const [selected, setSelected] = useState<ActivityRow | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-user-activity", eventType],
@@ -163,7 +165,11 @@ export const UserActivityPanel = () => {
                     row.event_data?.route ||
                     "";
                   return (
-                    <TableRow key={row.id}>
+                    <TableRow
+                      key={row.id}
+                      className={eventRowClass}
+                      onClick={() => setSelected(row)}
+                    >
                       <TableCell>
                         <div className="flex flex-col">
                           <span className="font-medium text-sm">
@@ -192,6 +198,46 @@ export const UserActivityPanel = () => {
             </TableBody>
           </Table>
         </div>
+
+        <EventDrawer
+          open={!!selected}
+          onOpenChange={(o) => !o && setSelected(null)}
+          icon={<Activity className="h-4 w-4" />}
+          title={selected?.event_type?.replace(/_/g, " ") ?? "Event"}
+          subtitle={selected?.display_name || selected?.email || selected?.user_id}
+          timestamp={selected?.created_at}
+          badges={
+            selected
+              ? [
+                  {
+                    label: selected.event_type.replace(/_/g, " "),
+                    className: eventBadgeClass(selected.event_type),
+                  },
+                ]
+              : []
+          }
+          fields={
+            selected
+              ? [
+                  { label: "User", value: selected.display_name || selected.email || "—" },
+                  { label: "Email", value: selected.email || "—" },
+                  { label: "User ID", value: selected.user_id, mono: true },
+                  { label: "Company ID", value: selected.company_id ?? "—", mono: true },
+                  {
+                    label: "Path",
+                    value:
+                      selected.event_data?.path ||
+                      selected.event_data?.url ||
+                      selected.event_data?.route ||
+                      "—",
+                    mono: true,
+                  },
+                ]
+              : []
+          }
+          raw={selected?.event_data}
+          rawLabel="Event data"
+        />
       </CardContent>
     </Card>
   );
