@@ -14,6 +14,9 @@ import { usePipelineStageConfig } from '@/hooks/usePipelineStageConfig';
 import { cn } from '@/lib/utils';
 import { EditableDealStatusTag } from '@/components/deal/EditableDealStatusTag';
 import { useDealFreshness } from '@/hooks/useDealFreshness';
+import { useAdminRole } from '@/hooks/useAdminRole';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronDown } from 'lucide-react';
 
 interface PipelineMemoViewProps {
   deals: Deal[];
@@ -146,7 +149,47 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   // Soft attention glow: ≥2 business days since the last status / stage change.
   const { data: freshness } = useDealFreshness(dealIds);
 
-  const visible = useMemo(() => sorted.filter((d) => !isDismissed(d.id)), [sorted, isDismissed]);
+  // ── Admin-only filter bar (manager / type / status) ──
+  const { isAdmin } = useAdminRole();
+  const [managerFilter, setManagerFilter] = useState<string[]>([]);
+  const [typeFilter, setTypeFilter] = useState<string[]>([]);
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
+
+  const filterOptions = useMemo(() => {
+    const managers = new Set<string>();
+    const types = new Set<string>();
+    const statuses = new Set<string>();
+    for (const d of deals as any[]) {
+      if (d?.manager && String(d.manager).trim()) managers.add(String(d.manager).trim());
+      if (d?.engagementType && String(d.engagementType).trim()) types.add(String(d.engagementType).trim());
+      if (d?.status && String(d.status).trim()) statuses.add(String(d.status).trim());
+    }
+    const s = (a: string, b: string) => a.localeCompare(b);
+    return {
+      managers: Array.from(managers).sort(s),
+      types: Array.from(types).sort(s),
+      statuses: Array.from(statuses).sort(s),
+    };
+  }, [deals]);
+
+  const hasAnyFilter = isAdmin && (managerFilter.length + typeFilter.length + statusFilter.length) > 0;
+  const clearAllFilters = () => {
+    setManagerFilter([]);
+    setTypeFilter([]);
+    setStatusFilter([]);
+  };
+
+  const filteredSorted = useMemo(() => {
+    if (!isAdmin || !hasAnyFilter) return sorted;
+    return sorted.filter((d: any) => {
+      if (managerFilter.length && !managerFilter.includes(String(d.manager ?? '').trim())) return false;
+      if (typeFilter.length && !typeFilter.includes(String(d.engagementType ?? '').trim())) return false;
+      if (statusFilter.length && !statusFilter.includes(String(d.status ?? '').trim())) return false;
+      return true;
+    });
+  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter]);
+
+  const visible = useMemo(() => filteredSorted.filter((d) => !isDismissed(d.id)), [filteredSorted, isDismissed]);
 
   // Master/detail selection — mirrors the Agenda and End of Day tabs.
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -177,14 +220,58 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     return (
       <div className="rounded-xl py-12 px-4 text-center">
         <p className="text-muted-foreground text-sm italic">
-          {sorted.length === 0 ? emptyMessage : 'All deals dismissed for today. They’ll return after the 5 AM ET reset.'}
+          {filteredSorted.length === 0
+            ? (hasAnyFilter ? 'No deals match the selected filters.' : emptyMessage)
+            : 'All deals dismissed for today. They’ll return after the 5 AM ET reset.'}
         </p>
+        {hasAnyFilter && filteredSorted.length === 0 && (
+          <button
+            type="button"
+            onClick={clearAllFilters}
+            className="mt-3 text-xs text-white/80 hover:text-white underline"
+          >
+            Clear filters
+          </button>
+        )}
       </div>
     );
   }
 
   const masterPane = (
     <div className="popup-shell-surface flex flex-col h-full min-h-0 min-w-0 rounded-xl overflow-hidden">
+      {isAdmin && (
+        <div className="shrink-0 px-3 pt-2 pb-1.5 border-b border-white/5 flex flex-wrap items-center gap-1.5">
+          <FilterChip
+            label="Manager"
+            options={filterOptions.managers}
+            selected={managerFilter}
+            onChange={setManagerFilter}
+          />
+          <FilterChip
+            label="Type"
+            options={filterOptions.types}
+            selected={typeFilter}
+            onChange={setTypeFilter}
+            formatLabel={titleCase}
+          />
+          <FilterChip
+            label="Status"
+            options={filterOptions.statuses}
+            selected={statusFilter}
+            onChange={setStatusFilter}
+            formatLabel={titleCase}
+          />
+          {hasAnyFilter && (
+            <button
+              type="button"
+              onClick={clearAllFilters}
+              className="ml-auto text-[10px] uppercase tracking-wider text-white/60 hover:text-white px-1.5 py-1 rounded hover:bg-white/10 transition-colors"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      )}
       <ScrollArea className="flex-1 min-h-0 px-3 py-2">
         <div className="space-y-1.5 pb-2 pr-0.5">
           {visible.map((deal) => (
@@ -385,5 +472,97 @@ function DealTile({
         <Check className="h-3 w-3" strokeWidth={2.5} />
       </span>
     </div>
+  );
+}
+
+// ── Compact admin filter chip (multi-select popover) ───────────
+function FilterChip({
+  label,
+  options,
+  selected,
+  onChange,
+  formatLabel,
+}: {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+  formatLabel?: (v: string) => string;
+}) {
+  const [open, setOpen] = useState(false);
+  const fmt = formatLabel ?? ((v: string) => v);
+  const toggle = (v: string) => {
+    onChange(selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v]);
+  };
+  const active = selected.length > 0;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className={cn(
+            'inline-flex items-center gap-1 h-6 px-2 rounded-full border text-[10px] font-medium transition-colors',
+            active
+              ? 'border-white/30 bg-white/[0.08] text-white'
+              : 'border-white/10 bg-white/[0.02] text-white/70 hover:bg-white/[0.05] hover:text-white',
+          )}
+        >
+          <span>{label}</span>
+          {active && (
+            <span className="inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full bg-white/15 text-white text-[9px]">
+              {selected.length}
+            </span>
+          )}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[220px] p-1 max-h-[280px] overflow-y-auto bg-popover border-white/10"
+      >
+        {options.length === 0 ? (
+          <div className="px-2 py-3 text-[11px] text-muted-foreground text-center">
+            No options
+          </div>
+        ) : (
+          options.map((opt) => {
+            const isSel = selected.includes(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => toggle(opt)}
+                className={cn(
+                  'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[11px] transition-colors',
+                  isSel ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/[0.06]',
+                )}
+              >
+                <span
+                  className={cn(
+                    'flex h-3.5 w-3.5 items-center justify-center rounded-sm border shrink-0',
+                    isSel ? 'bg-primary border-primary text-primary-foreground' : 'border-white/30',
+                  )}
+                >
+                  {isSel && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+                </span>
+                <span className="flex-1 truncate">{fmt(opt)}</span>
+              </button>
+            );
+          })
+        )}
+        {selected.length > 0 && (
+          <div className="mt-1 pt-1 border-t border-white/10">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="w-full text-center text-[10px] uppercase tracking-wider text-white/60 hover:text-white py-1.5 rounded hover:bg-white/[0.06]"
+            >
+              Clear
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
