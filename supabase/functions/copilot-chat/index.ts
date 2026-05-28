@@ -6263,6 +6263,13 @@ serve(async (req) => {
     // ── Handle confirm action ──
     if (body.confirmAction) {
       const auditId: string | null = body.confirmAction.params?.audit_id || null;
+      const { data: memberData } = await supabaseUser.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
+      console.log("[copilot-chat] confirm action received", JSON.stringify({
+        action_type: body.confirmAction.action_type,
+        user_id: userId,
+        deal_id: body.confirmAction.params?.deal_id || null,
+        lender_id: body.confirmAction.params?.lender_id || null,
+      }));
       const result = await executeConfirmAction(
         supabaseUser,
         body.confirmAction.action_type,
@@ -6270,15 +6277,23 @@ serve(async (req) => {
         userId,
         req.headers.get("Authorization") || "",
       );
-      if (body.confirmAction.action_type === "create_task") {
+      const confirmAuditId = await recordConfirmAudit({
+        auditId,
+        userId,
+        companyId: memberData?.company_id || null,
+        actionType: body.confirmAction.action_type,
+        params: body.confirmAction.params,
+        result,
+      });
+      if (body.confirmAction.action_type === "create_task" && confirmAuditId) {
         if (result?.success) {
-          await updateAuditOutcome(auditId, {
+          await updateAuditOutcome(confirmAuditId, {
             outcome: "confirmed",
             outcomeDetail: result?.message || null,
             createdTaskId: result?.params?.task_id || null,
           });
         } else {
-          await updateAuditOutcome(auditId, {
+          await updateAuditOutcome(confirmAuditId, {
             outcome: "error",
             errorMessage: result?.error || "unknown error",
           });
