@@ -714,55 +714,51 @@ const Admin = () => {
     }
   };
 
-  const ActiveIcon = activeSection.icon;
-  // Guard: make sure the persisted subpage id actually belongs to the
-  // currently-active section. Without this, a stale id from a previous
-  // session/URL could fall through to `default: null` (or worse, collide
-  // with another section's case — e.g. Access carrying the Users
-  // section's "users" id, which would render the Users table).
-  const persistedSubPageId = activeSubPage[activeCategory];
-  const currentSubPageId =
-    activeSection.subPages.some((sp) => sp.id === persistedSubPageId)
-      ? persistedSubPageId
-      : activeSection.subPages[0]?.id;
+  const SectionIcon = activeSection.icon;
+  const PageIcon = activePage.icon;
 
-  // Sections that intentionally render a "Coming soon" placeholder
-  // instead of their sub-page content. Kept in the top-level tab bar so
-  // navigation stays consistent.
-  const COMING_SOON_SECTIONS: TabCategory[] = [
-    "data-security",
-  ];
-  const isComingSoon = COMING_SOON_SECTIONS.includes(activeCategory);
+  // Resolve count for badges (only rendered when > 0).
+  const countFor = (key?: PageDef["countKey"]) => (key ? counts[key] : 0) ?? 0;
+
+  // Section-level count = sum of its pages' counts.
+  const sectionCount = (s: SectionDef) =>
+    s.pages.reduce((acc, p) => acc + countFor(p.countKey), 0);
+
+  // Group pages within a section (preserves declared order).
+  const groupedPages = useMemo(() => {
+    const groups: { name: string | null; pages: PageDef[] }[] = [];
+    activeSection.pages.forEach((p) => {
+      const key = p.group ?? null;
+      const last = groups[groups.length - 1];
+      if (last && last.name === key) last.pages.push(p);
+      else groups.push({ name: key, pages: [p] });
+    });
+    return groups;
+  }, [activeSection]);
+
+  const handleCta = () => {
+    // Phase 1: only the demo modal is wired. Other CTAs are no-ops
+    // placeholders that Phase 2-4 will hook up to the right flows.
+    if (activePage.cta?.action === "demo") setDemoModalOpen(true);
+  };
 
   return (
     <div className="bg-background">
-      <div className="container mx-auto py-6 px-4 space-y-6">
-        {/* Header */}
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-primary/10">
-            <Shield className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-            <p className="text-sm text-muted-foreground">
-              Manage users, companies, and system settings
-            </p>
-          </div>
-        </div>
-
-        {/* Stats Cards */}
+      <div className="container mx-auto py-5 px-4 space-y-4">
+        {/* Stats overview (kept — already a thin row, not the hero card) */}
         <AdminStatsCards stats={stats ?? null} isLoading={statsLoading} />
 
-        {/* Section picker rail */}
+        {/* Top tabs: 5 sections, icon + label, real counts only */}
         <ScrollArea className="w-full">
-          <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-lg w-max">
-            {SECTIONS.map((s, i) => {
+          <div className="flex items-center gap-1 p-1 bg-muted/40 rounded-lg w-max">
+            {SECTIONS.map((s) => {
               const Icon = s.icon;
-              const isActive = s.id === activeCategory;
+              const isActive = s.id === resolved.section;
+              const c = sectionCount(s);
               return (
                 <button
                   key={s.id}
-                  onClick={() => setActiveCategory(s.id)}
+                  onClick={() => setNav(s.id, s.pages[0].id)}
                   className={cn(
                     "flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all whitespace-nowrap",
                     isActive
@@ -772,7 +768,11 @@ const Admin = () => {
                 >
                   <Icon className="h-3.5 w-3.5" />
                   {s.label}
-                  <span className="text-[10px] text-muted-foreground/70 font-normal">{i + 1}</span>
+                  {c > 0 && (
+                    <Badge variant="secondary" className="h-4 px-1.5 text-[10px] leading-none">
+                      {c}
+                    </Badge>
+                  )}
                 </button>
               );
             })}
@@ -780,97 +780,102 @@ const Admin = () => {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
 
-        {/* Carousel panel */}
-        <div
-          className="relative rounded-2xl border border-border bg-card shadow-lg overflow-hidden"
-          style={{ height: "min(88vh, 1100px)" }}
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-        >
-          {/* Sticky panel header */}
-          <div className="sticky top-0 z-20 flex items-center justify-between gap-3 px-5 py-3 border-b border-border bg-card/95 backdrop-blur">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <ActiveIcon className="h-4 w-4" />
+        {/* Universal page header: breadcrumb + CTA (outside the page card). */}
+        <div className="flex items-start justify-between gap-3 pt-1">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground min-w-0">
+            <button
+              onClick={() => setSidebarOpen(sidebarState !== "expanded")}
+              className="inline-flex items-center justify-center h-6 w-6 rounded hover:bg-muted/60 text-muted-foreground"
+              aria-label="Toggle global navigation rail"
+              title="Toggle global navigation"
+            >
+              {sidebarState === "expanded" ? <PanelLeftClose className="h-3.5 w-3.5" /> : <PanelLeftOpen className="h-3.5 w-3.5" />}
+            </button>
+            <Shield className="h-3.5 w-3.5" />
+            <span>Admin</span>
+            <ChevronRight className="h-3 w-3 opacity-60" />
+            <span>{activeSection.label}</span>
+            <ChevronRight className="h-3 w-3 opacity-60" />
+            <span className="text-foreground font-medium truncate">{activePage.label}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            {activePage.cta && (
+              <Button size="sm" className="h-8" onClick={handleCta}>
+                <Plus className="h-3.5 w-3.5 mr-1" />
+                {activePage.cta.label}
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Body: left rail + page content */}
+        <div className="grid grid-cols-1 md:grid-cols-[220px_1fr] gap-4">
+          {/* Left rail — section pages */}
+          <aside className="rounded-xl border border-border bg-card p-2 h-fit md:sticky md:top-4">
+            <div className="px-2 py-1.5 flex items-center gap-2 text-[11px] uppercase tracking-wide text-muted-foreground">
+              <SectionIcon className="h-3.5 w-3.5" />
+              {activeSection.label}
+            </div>
+            <nav className="mt-1 space-y-0.5">
+              {groupedPages.map((g, gi) => (
+                <div key={`${g.name ?? "main"}-${gi}`} className="space-y-0.5">
+                  {g.name && (
+                    <div className="mt-2 px-2 pt-1 text-[10px] uppercase tracking-wider text-muted-foreground/70">
+                      {g.name}
+                    </div>
+                  )}
+                  {g.pages.map((p) => {
+                    const Icon = p.icon;
+                    const isActive = p.id === resolved.page;
+                    const c = countFor(p.countKey);
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => setNav(activeSection.id, p.id)}
+                        className={cn(
+                          "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs font-medium text-left transition-colors",
+                          isActive
+                            ? "bg-primary/10 text-primary"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                        )}
+                      >
+                        <Icon className="h-3.5 w-3.5 shrink-0" />
+                        <span className="flex-1 truncate">{p.label}</span>
+                        {c > 0 && (
+                          <Badge variant="secondary" className="h-4 px-1.5 text-[10px] leading-none">
+                            {c}
+                          </Badge>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              ))}
+            </nav>
+          </aside>
+
+          {/* Page content */}
+          <main className="min-w-0">
+            {/* Thin strip: icon + title + description (replaces the giant "N of 8" hero) */}
+            <div className="flex items-center gap-3 mb-3 px-1">
+              <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <PageIcon className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <div className="text-base font-semibold leading-tight truncate">{activeSection.label}</div>
-                <div className="text-[11px] text-muted-foreground">
-                  {activeSection.label} · {activeIndex + 1} of {SECTIONS.length}
-                </div>
+                <div className="text-sm font-semibold leading-tight truncate">{activePage.label}</div>
+                {activePage.description && (
+                  <div className="text-[11px] text-muted-foreground truncate">{activePage.description}</div>
+                )}
               </div>
             </div>
-            <div className="flex items-center gap-1">
-              {activeCategory === "users" && (
-                <Button
-                  size="sm"
-                  className="h-8 mr-1"
-                  onClick={() => setDemoModalOpen(true)}
-                >
-                  <Plus className="h-3.5 w-3.5 mr-1" />
-                  Create Demo Access
-                </Button>
-              )}
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goPrev} aria-label="Previous section">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8" onClick={goNext} aria-label="Next section">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
 
-          {/* Sticky sub-tabs */}
-          <div className="sticky top-[57px] z-10 border-b border-border bg-card/95 backdrop-blur">
-            <ScrollArea className="w-full">
-              <div className="flex items-center gap-1 px-3 py-2 w-max">
-                {activeSection.subPages.map((sp) => {
-                  const Icon = sp.icon;
-                  const isActive = currentSubPageId === sp.id;
-                  return (
-                    <button
-                      key={sp.id}
-                      onClick={() => handleSubPageChange(activeCategory, sp.id)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-medium transition-colors whitespace-nowrap",
-                        isActive
-                          ? "bg-primary/10 text-primary"
-                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                      )}
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {sp.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <ScrollBar orientation="horizontal" />
-            </ScrollArea>
-          </div>
-
-          {/* Scrollable panel body with slide transition */}
-          <div className="absolute inset-0 top-[105px] overflow-hidden">
             <div
-              key={`${activeCategory}:${currentSubPageId}`}
-              className="h-full overflow-y-auto px-5 py-5 animate-in fade-in slide-in-from-right-2 duration-200"
+              key={`${resolved.section}:${resolved.page}`}
+              className="animate-in fade-in slide-in-from-bottom-1 duration-150"
             >
-              {isComingSoon ? (
-                <div className="flex items-center justify-center min-h-[400px]">
-                  <Card className="max-w-md w-full">
-                    <CardHeader className="text-center">
-                      <div className="mx-auto h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mb-3">
-                        <ActiveIcon className="h-5 w-5" />
-                      </div>
-                      <CardTitle>{activeSection.label}</CardTitle>
-                      <CardDescription>This section is coming soon.</CardDescription>
-                    </CardHeader>
-                  </Card>
-                </div>
-              ) : (
-                renderSubPageContent(currentSubPageId)
-              )}
+              {renderSubPageContent(resolved.page)}
             </div>
-          </div>
+          </main>
         </div>
       </div>
       <CreateDemoAccessModal open={demoModalOpen} onOpenChange={setDemoModalOpen} />
