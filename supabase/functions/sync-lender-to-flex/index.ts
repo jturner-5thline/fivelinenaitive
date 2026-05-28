@@ -124,6 +124,27 @@ serve(async (req) => {
 
     const l = lender as MasterLender;
 
+    // Precheck: FLEx requires either an email or an existing flex_lender_id to
+    // identify the lender on its side. Without one of these the receiver returns
+    // 400 "Missing lender identifiers". Treat this as a graceful skip so the
+    // client doesn't surface a runtime/502 error.
+    if (!l.email && !l.flex_lender_id) {
+      console.warn(`Skipping sync for "${l.name}" — no email or flex_lender_id`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          skipped: true,
+          code: "MISSING_IDENTIFIERS",
+          error: "Lender is missing identifiers required by FLEx",
+          message:
+            "This lender has no email address on file and isn't linked to a FLEx account yet, so FLEx can't identify it. Add a contact email (or link the lender in FLEx) and try again.",
+          lender_name: l.name,
+          lender_id: l.id,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Transform lender for Flex format
     const flexLender = {
       id: l.id,
