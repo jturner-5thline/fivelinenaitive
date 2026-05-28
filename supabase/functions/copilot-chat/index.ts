@@ -93,6 +93,287 @@ async function updateAuditOutcome(auditId: string | null | undefined, patch: {
   }
 }
 
+function compactRecord(input: Record<string, unknown> | null | undefined): Record<string, unknown> | null {
+  const entries = Object.entries(input || {}).filter(([, value]) => value !== undefined);
+  return entries.length ? Object.fromEntries(entries) : null;
+}
+
+function formatAuditValue(value: unknown): string {
+  if (value === null || value === undefined) return "(empty)";
+  if (typeof value === "string") return `"${value}"`;
+  return JSON.stringify(value);
+}
+
+type LenderFieldMismatch = {
+  field: string;
+  expected: unknown;
+  actual: unknown;
+};
+
+class LenderWriteNotPersistedError extends Error {
+  public readonly code = "WRITE_NOT_PERSISTED" as const;
+
+  constructor(
+    public readonly lenderId: string,
+    public readonly mismatches: LenderFieldMismatch[],
+  ) {
+    super(
+      `Lender ${lenderId} did not persist ${mismatches.length} field(s): ` +
+        mismatches
+          .map((m) => `${m.field} expected ${JSON.stringify(m.expected)} got ${JSON.stringify(m.actual)}`)
+          .join("; "),
+    );
+    this.name = "LenderWriteNotPersistedError";
+  }
+
+  toUserMessage(): string {
+    if (this.mismatches.length === 1) {
+      const mismatch = this.mismatches[0];
+      if (mismatch.field === "__row__") {
+        return "I tried to update this lender, but the database returned no matching row. The lender id may be wrong or your access rules blocked the write.";
+      }
+      return `I tried to set lender ${mismatch.field} to ${formatAuditValue(mismatch.expected)} but the database still has ${formatAuditValue(mismatch.actual)}.`;
+    }
+    return `I tried to update ${this.mismatches.length} lender fields but the database did not accept them: ${this.mismatches.map((m) => `${m.field} (tried ${formatAuditValue(m.expected)}, still ${formatAuditValue(m.actual)})`).join("; ")}.`;
+  }
+}
+
+const LENDER_AUTO_SKIP = new Set<string>(["updated_at"]);
+const LENDER_STRICT_FIELDS = new Set<string>(["stage", "tracking_status", "pass_reason"]);
+
+function normalizeLenderValue(field: string, value: unknown): unknown {
+  if (value === null || value === undefined) return null;
+  if (LENDER_STRICT_FIELDS.has(field)) return value;
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number") return value;
+  if (Array.isArray(value)) return JSON.stringify(value);
+  if (typeof value === "object") return JSON.stringify(value);
+  return value;
+}
+
+function lenderValuesMatch(field: string, expected: unknown, actual: unknown): boolean {
+  const left = normalizeLenderValue(field, expected);
+  const right = normalizeLenderValue(field, actual);
+  if (left === right) return true;
+  if ((left === null || left === "") && (right === null || right === "")) return true;
+  return false;
+}
+
+async function verifiedDealLenderUpdate(client: any, lenderId: string, patch: Record<string, unknown>) {
+  const writtenCols = Object.keys(patch);
+  const verifyCols = writtenCols.filter((column) => !LENDER_AUTO_SKIP.has(column));
+  const selectCols = Array.from(new Set(["id", ...writtenCols]));
+  const { data, error } = await client
+    .from("deal_lenders")
+    .update(patch)
+    .eq("id", lenderId)
+    .select(selectCols.join(","))
+    .maybeSingle();
+
+  if (error) {
+    throw new LenderWriteNotPersistedError(lenderId, [
+      { field: "__row__", expected: "updated row", actual: error.message },
+    ]);
+  }
+  if (!data) {
+    throw new LenderWriteNotPersistedError(lenderId, [
+      { field: "__row__", expected: "updated row", actual: null },
+    ]);
+  }
+
+  const row = data as Record<string, unknown>;
+  const mismatches: LenderFieldMismatch[] = [];
+  for (const field of verifyCols) {
+    if (!lenderValuesMatch(field, patch[field], row[field])) {
+      mismatches.push({ field, expected: patch[field] ?? null, actual: row[field] ?? null });
+    }
+  }
+
+  const strictCols = verifyCols.filter((column) => LENDER_STRICT_FIELDS.has(column));
+  if (strictCols.length > 0) {
+    const { data: reread } = await client
+      .from("deal_lenders")
+      .select(strictCols.join(","))
+      .eq("id", lenderId)
+      .single();
+    const strictRow = (reread || {}) as Record<string, unknown>;
+    for (const field of strictCols) {
+      const nextMismatch = {
+        field,
+        expected: patch[field] ?? null,
+        actual: strictRow[field] ?? null,
+      };
+      const existingIndex = mismatches.findIndex((m) => m.field === field);
+      if (!lenderValuesMatch(field, patch[field], strictRow[field])) {
+        if (existingIndex >= 0) mismatches[existingIndex] = nextMismatch;
+        else mismatches.push(nextMismatch);
+      } else if (existingIndex >= 0) {
+        mismatches.splice(existingIndex, 1);
+      }
+    }
+  }
+
+  if (mismatches.length > 0) {
+    throw new LenderWriteNotPersistedError(lenderId, mismatches);
+  }
+
+  return row;
+}
+
+function deriveConfirmAuditPayload(actionType: string, params: any, result?: any) {
+  if (result?.audit) {
+    const oldValue = compactRecord(result.audit.before || null);
+    const newValue = compactRecord(result.audit.after || null);
+    const fields = Array.isArray(result.audit.fields)
+      ? result.audit.fields.filter((field: unknown) => typeof field === "string" && field.length > 0)
+      : Object.keys(newValue || {});
+    return {
+      dealId: result.audit.deal_id ?? params?.deal_id ?? null,
+      dealName: params?.deal_name ?? null,
+      lenderId: params?.lender_id ?? null,
+      fieldChanged: fields.length ? fields.join(", ") : null,
+      oldValue,
+      newValue,
+    };
+  }
+
+  switch (actionType) {
+    case "update_deal_stage": {
+      const oldValue = compactRecord({ stage: params?.current_stage });
+      const newValue = compactRecord({ stage: params?.new_stage });
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    case "update_deal_status": {
+      const oldValue = compactRecord({ status: params?.current_status });
+      const newValue = compactRecord({ status: params?.new_status });
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    case "move_deal_pipeline": {
+      const oldValue = compactRecord({ pipeline_id: params?.current_pipeline_id, stage: params?.current_stage });
+      const newValue = compactRecord({ pipeline_id: params?.new_pipeline_id, stage: params?.new_stage });
+      return {
+        dealId: params?.deal_id ?? params?.dealId ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    case "update_lender_status": {
+      const oldValue = compactRecord({
+        stage: params?.current_stage,
+        tracking_status: params?.current_tracking_status,
+        pass_reason: params?.current_pass_reason,
+        notes: params?.current_notes,
+      });
+      const newValue = compactRecord({
+        stage: params?.stage,
+        tracking_status: params?.tracking_status,
+        pass_reason: params?.pass_reason,
+        notes: typeof params?.notes === "string" ? params.notes : params?.notes_append,
+      });
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: params?.lender_id ?? null,
+        fieldChanged: newValue ? Object.keys(newValue).join(", ") : null,
+        oldValue,
+        newValue,
+      };
+    }
+    default:
+      return {
+        dealId: params?.deal_id ?? null,
+        dealName: params?.deal_name ?? null,
+        lenderId: params?.lender_id ?? null,
+        fieldChanged: null,
+        oldValue: null,
+        newValue: compactRecord(params || null),
+      };
+  }
+}
+
+async function recordConfirmAudit(input: {
+  auditId?: string | null;
+  userId: string;
+  companyId?: string | null;
+  actionType: string;
+  params: any;
+  result: any;
+}): Promise<string | null> {
+  try {
+    const admin = adminClient();
+    const payload = deriveConfirmAuditPayload(input.actionType, input.params, input.result);
+    const patch = {
+      resolved_deal_id: payload.dealId,
+      resolved_deal_name: payload.dealName,
+      target_lender_id: payload.lenderId,
+      field_changed: payload.fieldChanged,
+      old_value: payload.oldValue,
+      new_value: payload.newValue,
+      success: !!input.result?.success,
+      outcome: input.result?.success ? "confirmed" : "error",
+      outcome_detail: input.result?.message || null,
+      error_message: input.result?.success ? null : (input.result?.error || "unknown error"),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (input.auditId) {
+      const { error } = await admin.from("ai_action_audit").update(patch).eq("id", input.auditId);
+      if (error) {
+        console.warn("[ai_audit] recordConfirmAudit update failed:", error.message);
+        return input.auditId;
+      }
+      return input.auditId;
+    }
+
+    const { data, error } = await admin
+      .from("ai_action_audit")
+      .insert({
+        user_id: input.userId,
+        company_id: input.companyId || null,
+        action_type: input.actionType,
+        resolved_deal_id: payload.dealId,
+        resolved_deal_name: payload.dealName,
+        target_lender_id: payload.lenderId,
+        field_changed: payload.fieldChanged,
+        old_value: payload.oldValue,
+        new_value: payload.newValue,
+        success: !!input.result?.success,
+        extracted_fields: payload.newValue || {},
+        outcome: input.result?.success ? "confirmed" : "error",
+        outcome_detail: input.result?.message || null,
+        error_message: input.result?.success ? null : (input.result?.error || "unknown error"),
+        source: "copilot",
+      })
+      .select("id")
+      .single();
+    if (error) {
+      console.warn("[ai_audit] recordConfirmAudit insert failed:", error.message);
+      return null;
+    }
+    return (data as any)?.id || null;
+  } catch (e) {
+    console.warn("[ai_audit] recordConfirmAudit exception:", e);
+    return null;
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -2962,7 +3243,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── HIGH RISK: Confirm lender status update ──
     case "update_lender_status": {
-      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status, notes").eq("id", args.lender_id).single();
+      const { data: lender } = await supabase.from("deal_lenders").select("id, name, stage, tracking_status, pass_reason, notes").eq("id", args.lender_id).single();
       if (!lender) return { error: "Lender not found" };
       const parts = [];
       if (args.stage) parts.push(`stage to "${args.stage}"`);
@@ -2980,6 +3261,9 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           pass_reason: args.pass_reason, deal_id: args.deal_id,
           notes: typeof args.notes === "string" ? args.notes : undefined,
           notes_append: typeof args.notes_append === "string" ? args.notes_append : undefined,
+          current_stage: (lender as any)?.stage || null,
+          current_tracking_status: (lender as any)?.tracking_status || null,
+          current_pass_reason: (lender as any)?.pass_reason || null,
           current_notes: (lender as any)?.notes || null,
         },
       };
@@ -5228,6 +5512,13 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       return { success: true, message: `${params.milestone_title} marked as ${params.completed ? 'complete' : 'incomplete'}`, actionType: "update_milestone", params: { deal_id: params.deal_id } };
     }
     case "update_lender_status": {
+      const { data: lenderBefore } = await supabase
+        .from("deal_lenders")
+        .select("id, stage, tracking_status, pass_reason, notes")
+        .eq("id", params.lender_id)
+        .maybeSingle();
+      if (!lenderBefore) return { success: false, error: `Lender "${params.lender_name}" was not found.`, actionType: "update_lender_status" };
+
       const updateFields: any = {};
       if (params.stage) updateFields.stage = params.stage;
       if (params.tracking_status) updateFields.tracking_status = params.tracking_status;
@@ -5242,14 +5533,16 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       if (Object.keys(updateFields).length === 0) {
         return { success: false, error: "No fields provided to update.", actionType: "update_lender_status" };
       }
-      console.log("[copilot-chat] update_lender_status execute lender_id=%s fields=%j", params.lender_id, Object.keys(updateFields));
-      const { error } = await supabase.from("deal_lenders").update(updateFields).eq("id", params.lender_id);
-      if (error) {
-        console.error("[copilot-chat] update_lender_status failed:", error);
-        return { success: false, error: error.message, actionType: "update_lender_status" };
+      let verified: Record<string, unknown>;
+      try {
+        verified = await verifiedDealLenderUpdate(supabase, params.lender_id, updateFields);
+      } catch (e) {
+        if (e instanceof LenderWriteNotPersistedError) {
+          return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches, actionType: "update_lender_status" };
+        }
+        console.error("[copilot-chat] update_lender_status failed:", e);
+        return { success: false, error: (e as Error).message, actionType: "update_lender_status" };
       }
-      const { data: verified } = await supabase.from("deal_lenders").select("stage, tracking_status").eq("id", params.lender_id).single();
-      if (!verified) return { success: false, error: `Failed to update lender "${params.lender_name}".` };
       if (params.deal_id) {
         await supabase.from("activity_logs").insert({
           deal_id: params.deal_id, activity_type: "lender_status_change",
@@ -5257,7 +5550,32 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
           user_id: userId,
         });
       }
-      return { success: true, message: `Updated ${params.lender_name}`, actionType: "update_lender_status", params: { deal_id: params.deal_id } };
+      const before = compactRecord({
+        stage: (lenderBefore as any)?.stage ?? null,
+        tracking_status: (lenderBefore as any)?.tracking_status ?? null,
+        pass_reason: (lenderBefore as any)?.pass_reason ?? null,
+        notes: (lenderBefore as any)?.notes ?? null,
+      }) || {};
+      const after = compactRecord({
+        stage: (verified as any)?.stage ?? null,
+        tracking_status: (verified as any)?.tracking_status ?? null,
+        pass_reason: (verified as any)?.pass_reason ?? null,
+        notes: (verified as any)?.notes ?? null,
+      }) || {};
+      return {
+        success: true,
+        message: `Updated ${params.lender_name}`,
+        actionType: "update_lender_status",
+        params: { deal_id: params.deal_id, lender_id: params.lender_id, lender_name: params.lender_name },
+        audit: {
+          deal_id: params.deal_id,
+          lender_id: params.lender_id,
+          before,
+          after,
+          fields: Object.keys(updateFields),
+          timestamp: new Date().toISOString(),
+        },
+      };
     }
     case "delete_outstanding_item": {
       const { error } = await supabase.from("outstanding_items").delete().eq("id", params.item_id);
@@ -5945,6 +6263,13 @@ serve(async (req) => {
     // ── Handle confirm action ──
     if (body.confirmAction) {
       const auditId: string | null = body.confirmAction.params?.audit_id || null;
+      const { data: memberData } = await supabaseUser.from("company_members").select("company_id").eq("user_id", userId).limit(1).single();
+      console.log("[copilot-chat] confirm action received", JSON.stringify({
+        action_type: body.confirmAction.action_type,
+        user_id: userId,
+        deal_id: body.confirmAction.params?.deal_id || null,
+        lender_id: body.confirmAction.params?.lender_id || null,
+      }));
       const result = await executeConfirmAction(
         supabaseUser,
         body.confirmAction.action_type,
@@ -5952,15 +6277,23 @@ serve(async (req) => {
         userId,
         req.headers.get("Authorization") || "",
       );
-      if (body.confirmAction.action_type === "create_task") {
+      const confirmAuditId = await recordConfirmAudit({
+        auditId,
+        userId,
+        companyId: memberData?.company_id || null,
+        actionType: body.confirmAction.action_type,
+        params: body.confirmAction.params,
+        result,
+      });
+      if (body.confirmAction.action_type === "create_task" && confirmAuditId) {
         if (result?.success) {
-          await updateAuditOutcome(auditId, {
+          await updateAuditOutcome(confirmAuditId, {
             outcome: "confirmed",
             outcomeDetail: result?.message || null,
             createdTaskId: result?.params?.task_id || null,
           });
         } else {
-          await updateAuditOutcome(auditId, {
+          await updateAuditOutcome(confirmAuditId, {
             outcome: "error",
             errorMessage: result?.error || "unknown error",
           });

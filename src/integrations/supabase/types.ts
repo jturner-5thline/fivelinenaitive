@@ -1062,9 +1062,12 @@ export type Database = {
           duplicate_status: string | null
           error_message: string | null
           extracted_fields: Json | null
+          field_changed: string | null
           id: string
           inferred_fields: Json
           intent: string | null
+          new_value: Json | null
+          old_value: Json | null
           outcome: string
           outcome_detail: string | null
           page_context: Json | null
@@ -1075,6 +1078,8 @@ export type Database = {
           resolved_deal_id: string | null
           resolved_deal_name: string | null
           source: string | null
+          success: boolean | null
+          target_lender_id: string | null
           updated_at: string
           user_id: string
         }
@@ -1091,9 +1096,12 @@ export type Database = {
           duplicate_status?: string | null
           error_message?: string | null
           extracted_fields?: Json | null
+          field_changed?: string | null
           id?: string
           inferred_fields?: Json
           intent?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
           outcome?: string
           outcome_detail?: string | null
           page_context?: Json | null
@@ -1104,6 +1112,8 @@ export type Database = {
           resolved_deal_id?: string | null
           resolved_deal_name?: string | null
           source?: string | null
+          success?: boolean | null
+          target_lender_id?: string | null
           updated_at?: string
           user_id: string
         }
@@ -1120,9 +1130,12 @@ export type Database = {
           duplicate_status?: string | null
           error_message?: string | null
           extracted_fields?: Json | null
+          field_changed?: string | null
           id?: string
           inferred_fields?: Json
           intent?: string | null
+          new_value?: Json | null
+          old_value?: Json | null
           outcome?: string
           outcome_detail?: string | null
           page_context?: Json | null
@@ -1133,6 +1146,8 @@ export type Database = {
           resolved_deal_id?: string | null
           resolved_deal_name?: string | null
           source?: string | null
+          success?: boolean | null
+          target_lender_id?: string | null
           updated_at?: string
           user_id?: string
         }
