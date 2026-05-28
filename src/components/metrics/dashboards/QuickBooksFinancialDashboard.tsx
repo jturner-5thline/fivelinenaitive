@@ -19,7 +19,7 @@ import {
 import type { Granularity } from '@/lib/insightsTimeRange';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
 import { PieGlassDefs, pieGlassFill, GlassActiveShape } from '@/components/metrics/charts/LiquidGlassPie';
-import { DollarSign, Users, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
+import { DollarSign, FileText, AlertTriangle, TrendingUp, CreditCard, Percent } from 'lucide-react';
 import { InsightsDrilldownDrawer, type DrilldownContext, type DrilldownColumn } from '@/components/metrics/insights/InsightsDrilldownDrawer';
 
 const COLORS = [
@@ -111,6 +111,7 @@ export function QuickBooksFinancialDashboard({
     context: DrilldownContext;
     columns: DrilldownColumn[];
     rows: Array<Record<string, unknown>>;
+    defaultSort?: { key: string; dir: 'asc' | 'desc' };
   } | null>(null);
 
   const showDrill = (
@@ -125,6 +126,64 @@ export function QuickBooksFinancialDashboard({
     ],
     rows,
   });
+
+  // Build invoice-level A/R drilldown (Customer, Invoice #, Amount, Invoice Date,
+  // Due Date, Days Overdue). Sortable by all columns; defaults to Days Overdue desc.
+  const { data: arInvoiceRows } = useQuery({
+    queryKey: ['qb-ar-open-invoices'],
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('quickbooks_invoices')
+        .select('customer_name, doc_number, balance, total_amt, txn_date, due_date')
+        .gt('balance', 0)
+        .order('due_date', { ascending: true })
+        .limit(5000);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const showArDrill = () => {
+    const today = new Date();
+    const rows = (arInvoiceRows ?? []).map((inv: any) => {
+      const due = inv.due_date ? new Date(inv.due_date) : null;
+      const daysOverdue = due
+        ? Math.max(0, Math.floor((today.getTime() - due.getTime()) / 86_400_000))
+        : 0;
+      return {
+        customer: inv.customer_name ?? '—',
+        invoice: inv.doc_number ?? '—',
+        amount: Number(inv.balance) || 0,
+        txn_date: inv.txn_date ?? null,
+        due_date: inv.due_date ?? null,
+        days_overdue: daysOverdue,
+      };
+    });
+    setDrill({
+      context: {
+        sourceId: 'qb:Accounts Receivable',
+        sourceLabel: 'Accounts Receivable',
+        selection: `${rows.length} open invoices · ${formatCurrency(metrics?.totalAR ?? 0)} outstanding`,
+      },
+      columns: [
+        { key: 'customer', label: 'Customer', sortable: true },
+        { key: 'invoice', label: 'Invoice #', sortable: true },
+        { key: 'amount', label: 'Amount', align: 'right', sortable: true,
+          render: (r: any) => formatCurrency(r.amount) },
+        { key: 'txn_date', label: 'Invoice Date', sortable: true,
+          render: (r: any) => r.txn_date ?? '—' },
+        { key: 'due_date', label: 'Due Date', sortable: true,
+          render: (r: any) => r.due_date ?? '—' },
+        { key: 'days_overdue', label: 'Days Overdue', align: 'right', sortable: true,
+          render: (r: any) => r.days_overdue > 0
+            ? <span style={{ color: r.days_overdue > 60 ? '#f87171' : '#fbbf24' }}>{r.days_overdue}</span>
+            : <span style={{ opacity: 0.5 }}>—</span> },
+      ],
+      rows,
+      defaultSort: { key: 'days_overdue', dir: 'desc' },
+    });
+  };
 
   if (!status?.connected) {
     return (
@@ -162,13 +221,11 @@ export function QuickBooksFinancialDashboard({
   // Effective revenue figures — P&L-sourced when revenueSource === 'pl'.
   const effectiveTotalRevenue =
     revenueSource === 'pl' ? plSeries.totalIncome : metrics.totalRevenue;
-  const effectiveMonthlyRevenue =
-    revenueSource === 'pl'
-      ? metrics.monthlyRevenue.map((m, i) => ({
-          ...m,
-          revenue: plSeries.buckets[i]?.value ?? m.revenue,
-        }))
-      : metrics.monthlyRevenue;
+  // Trend buckets: always source from invoice sums so partial-month / missing
+  // P&L reports don't artificially zero out recent months. Invoice sums are
+  // accurate per-month and aggregate across every connected QBO entity that
+  // the user has access to.
+  const effectiveMonthlyRevenue = metrics.monthlyRevenue;
 
   // Re-bucket Top Customers using the enriched resolver so "Other / Individuals"
   // replaces personal-name leakage on the chart.
@@ -195,9 +252,8 @@ export function QuickBooksFinancialDashboard({
 
   const statCards = [
     { title: 'Total Revenue', value: formatCurrency(effectiveTotalRevenue), icon: DollarSign, color: 'hsl(var(--primary))', subtitle: revenueSource === 'pl' ? 'QBO P&L Total Income' : undefined, onClick: () => showDrill('Total Revenue', revenueSource === 'pl' ? 'QBO P&L Total Income' : 'Sum of invoices', [{ metric: 'Total Revenue', value: formatCurrency(effectiveTotalRevenue) }, { metric: 'Source', value: revenueSource === 'pl' ? 'P&L · Total Income' : 'Invoices · total_amt' }]) },
-    { title: 'Accounts Receivable', value: formatCurrency(metrics.totalAR), icon: FileText, color: 'hsl(var(--chart-2))', onClick: () => showDrill('Accounts Receivable', 'Outstanding', [{ metric: 'Outstanding A/R', value: formatCurrency(metrics.totalAR) }]) },
+    { title: 'Accounts Receivable', value: formatCurrency(metrics.totalAR), icon: FileText, color: 'hsl(var(--chart-2))', onClick: showArDrill },
     { title: 'Payments Received', value: formatCurrency(metrics.totalPayments), icon: CreditCard, color: 'hsl(var(--success, 142 71% 45%))', onClick: () => showDrill('Payments Received', 'All-time', [{ metric: 'Payments Received', value: formatCurrency(metrics.totalPayments) }]) },
-    { title: 'Active Customers', value: `${metrics.activeCustomers}`, icon: Users, color: 'hsl(var(--chart-4))', onClick: () => showDrill('Active Customers', 'Currently active', [{ metric: 'Active Customers', value: `${metrics.activeCustomers}` }]) },
     { title: 'Collection Rate', value: `${effectiveCollectionRate.toFixed(1)}%`, icon: Percent, color: 'hsl(var(--chart-3))', onClick: () => showDrill('Collection Rate', 'Payments / Revenue', [
       { metric: 'Payments', value: formatCurrency(metrics.totalPayments) },
       { metric: 'Revenue', value: formatCurrency(effectiveTotalRevenue) },
@@ -225,7 +281,7 @@ export function QuickBooksFinancialDashboard({
           )}
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {statCards.map((card) => (
           <Card key={card.title} onClick={card.onClick} className="cursor-pointer hover:border-primary/40 transition-colors">
             <CardContent className="pt-6">
@@ -252,7 +308,6 @@ export function QuickBooksFinancialDashboard({
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">Revenue & Payments Trend</CardTitle>
-            <CardDescription>Rolling 12 months from QuickBooks</CardDescription>
           </CardHeader>
           <CardContent>
             <div style={{ height: 280 }}>
@@ -387,6 +442,7 @@ export function QuickBooksFinancialDashboard({
       context={drill?.context ?? null}
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
+      defaultSort={drill?.defaultSort}
       emptyHint="No detail records available."
     />
     </>
