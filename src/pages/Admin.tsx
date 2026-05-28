@@ -288,6 +288,7 @@ const Admin = () => {
   const { data: stats, isLoading: statsLoading } = useSystemStats();
   const counts = useAdminCounts();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [demoModalOpen, setDemoModalOpen] = useState(false);
   const { state: sidebarState, setOpen: setSidebarOpen } = useSidebar();
 
@@ -295,6 +296,27 @@ const Admin = () => {
   const rawSection = searchParams.get("section") || "";
   const rawPage    = searchParams.get("page")    || "";
   const rawTab     = searchParams.get("tab")     || "";
+
+  // Phase 3 relocations — SignalStack now lives at /signal, Blog at /studio.
+  // Any legacy link that still points into /admin for those surfaces is
+  // forwarded to the new top-level route.
+  useEffect(() => {
+    if (rawPage === "signalstack" || rawTab === "signalstack" || rawSection === "product-enhancement") {
+      navigate("/signal", { replace: true });
+      return;
+    }
+    if (rawPage === "blog-all" || rawTab === "blog-all" || rawSection === "blog") {
+      navigate("/studio?tab=all", { replace: true });
+      return;
+    }
+    if (rawPage === "blog-new" || rawTab === "blog-new") {
+      navigate("/studio?tab=new", { replace: true });
+      return;
+    }
+    if (rawPage === "blog-media" || rawTab === "blog-media") {
+      navigate("/studio?tab=media", { replace: true });
+    }
+  }, [rawSection, rawPage, rawTab, navigate]);
 
   const resolved = useMemo(() => {
     // Modern: ?section=&page=
