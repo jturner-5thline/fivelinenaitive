@@ -8,6 +8,7 @@ import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { useDealCalendarItems, type DealCalendarItem, type DealCalendarItemType } from '@/hooks/useDealCalendarItems';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 interface CalendarPanelProps {
@@ -71,7 +72,7 @@ function defaultWindowStart(now: Date = new Date()): Date {
 
 export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelProps) {
   const { milestones } = useDealMilestones(deal.id);
-  const { items: customItems, addItem, updateItem, deleteItem } = useDealCalendarItems(deal.id);
+  const { items: customItems, creators, addItem, updateItem, deleteItem } = useDealCalendarItems(deal.id);
 
   // Visible window = 2 work weeks starting at `windowStart` (a Monday).
   const [windowStart, setWindowStart] = useState<Date>(() => defaultWindowStart());
