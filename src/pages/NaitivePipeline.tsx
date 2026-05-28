@@ -588,6 +588,24 @@ export default function NaitivePipeline() {
                     History
                   </Button>
                 </Link>
+                {pipelineId && (
+                  <CreateNaitiveDealDialog
+                    pipelineId={pipelineId}
+                    stages={stages}
+                    defaultStage={stages[0]?.id}
+                    onCreated={refetch}
+                    trigger={
+                      <Button
+                        size="sm"
+                        className="gap-1.5"
+                        aria-label="Create new naitive deal"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        New Deal
+                      </Button>
+                    }
+                  />
+                )}
                 <Button
                   variant="gradient"
                   size="sm"
