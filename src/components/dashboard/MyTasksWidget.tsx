@@ -1,7 +1,8 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { format, isToday, isBefore, addDays, startOfDay, isPast } from 'date-fns';
-import { CheckCircle2, Circle, ListTodo, ChevronDown, ChevronUp, CalendarDays, AlertTriangle, Plus, Users } from 'lucide-react';
+import { CheckCircle2, ListTodo, ChevronDown, ChevronUp, CalendarDays, AlertTriangle, Plus, Users } from 'lucide-react';
+import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TaskCompletionCheckbox } from '@/components/tasks/TaskCompletionCheckbox';
+import { useUndoStack } from '@/hooks/useUndoStack';
 // Canonical task data source — same hook the /tasks page uses. The widget
 // MUST stay aligned with it so dashboard counts and rows always match the
 // Tasks page after refresh, navigation, and live updates.
@@ -42,29 +46,97 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
   // assignee + collaborator semantics as the Tasks page.
   const ownerFilter: TaskOwnerFilter = effectiveScope === 'mine' ? 'mine' : 'all';
   const { tasks: allTasks, isLoading, updateTask } = useMyTasks(ownerFilter);
-  const [completingIds, setCompletingIds] = useState<Set<string>>(new Set());
+  // Optimistically-completed task ids. These rows stay visible (faded +
+  // strikethrough) for 1.5s before being filtered out so the user gets
+  // confirmation of the action and the click target doesn't shift.
+  const [optimisticDoneIds, setOptimisticDoneIds] = useState<Set<string>>(new Set());
+  // Once the 1.5s grace expires we hide the row from the open list.
+  const [hiddenIds, setHiddenIds] = useState<Set<string>>(new Set());
+  // Per-row disable window (500ms) to swallow rapid double-clicks.
+  const recentClickRef = useRef<Map<string, number>>(new Map());
+  const { push: pushUndo, pop: popUndo, canUndo } = useUndoStack(10);
 
-  const handleComplete = async (e: React.MouseEvent | React.KeyboardEvent, taskId: string) => {
-    e.stopPropagation();
-    e.preventDefault();
-    if (completingIds.has(taskId)) return;
-    setCompletingIds(prev => new Set(prev).add(taskId));
-    try {
-      await updateTask.mutateAsync({ id: taskId, status: 'complete' });
-    } catch {
-      // hook surfaces toast on error; nothing else to do
-    } finally {
-      setCompletingIds(prev => {
-        const next = new Set(prev);
-        next.delete(taskId);
-        return next;
+  const restoreTask = useCallback(
+    async (task: Task) => {
+      setOptimisticDoneIds(prev => { const n = new Set(prev); n.delete(task.id); return n; });
+      setHiddenIds(prev => { const n = new Set(prev); n.delete(task.id); return n; });
+      try {
+        await updateTask.mutateAsync({ id: task.id, status: task.status || 'not_started' });
+        toast.success('Undone');
+      } catch {
+        toast.error('Could not undo — try again');
+      }
+    },
+    [updateTask],
+  );
+
+  const handleComplete = useCallback(
+    (task: Task) => {
+      // 500ms per-row debounce
+      const now = Date.now();
+      const last = recentClickRef.current.get(task.id) ?? 0;
+      if (now - last < 500) return;
+      recentClickRef.current.set(task.id, now);
+      if (optimisticDoneIds.has(task.id)) return;
+
+      // Snapshot the prior status so undo can restore it precisely.
+      const priorStatus = task.status || 'not_started';
+
+      // Optimistic UI: mark done immediately.
+      setOptimisticDoneIds(prev => new Set(prev).add(task.id));
+
+      // Hide from the list after 1.5s so the row stays put briefly.
+      window.setTimeout(() => {
+        setHiddenIds(prev => new Set(prev).add(task.id));
+      }, 1500);
+
+      // Fire the mutation; revert on failure.
+      updateTask.mutate(
+        { id: task.id, status: 'complete' },
+        {
+          onError: () => {
+            setOptimisticDoneIds(prev => { const n = new Set(prev); n.delete(task.id); return n; });
+            setHiddenIds(prev => { const n = new Set(prev); n.delete(task.id); return n; });
+            toast.error('Could not update task — try again');
+          },
+        },
+      );
+
+      // Push to the undo stack and show toast with Undo action (8s).
+      pushUndo({
+        label: task.title,
+        undo: () => restoreTask({ ...task, status: priorStatus }),
       });
-    }
-  };
+      toast(`Task "${task.title}" marked complete`, {
+        duration: 8000,
+        action: {
+          label: 'Undo',
+          onClick: () => restoreTask({ ...task, status: priorStatus }),
+        },
+      });
+    },
+    [optimisticDoneIds, pushUndo, restoreTask, updateTask],
+  );
+
+  // Cmd/Ctrl+Z — undo the most recent completion from this widget.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== 'z' || e.shiftKey) return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      const action = popUndo();
+      if (!action) return;
+      e.preventDefault();
+      Promise.resolve(action.undo()).catch(() => {});
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [popUndo]);
 
   // Treat tasks as "completed" using the EXACT same rule as the Tasks page
   // (status === 'complete'). `completed_at` is also a positive signal.
-  const isComplete = (t: Task) => t.status === 'complete' || !!t.completed_at;
+  const isComplete = (t: Task) =>
+    t.status === 'complete' || !!t.completed_at || hiddenIds.has(t.id);
 
   // Date helpers mirror /pages/Tasks.tsx so a task that the Tasks page treats
   // as Today/Overdue/Upcoming is bucketed identically here.
@@ -263,7 +335,7 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                         <Badge variant="outline" className="text-[10px] h-4">{items.length}</Badge>
                       </h5>
                       <div className="space-y-1">
-                        {items.map(task => {
+                         {items.map(task => {
                           const dStart = parseDue(task.due_date);
                           const dEnd = parseDueEnd(task.due_date);
                           const isOverdue = !!dEnd && !!dStart && isPast(dEnd) && !isToday(dStart);
@@ -271,38 +343,40 @@ export function MyTasksWidget({ variant = 'expanded', defaultOpen = true }: MyTa
                           // Route to the canonical Task detail in /tasks (matches
                           // the Tasks page query param contract used elsewhere).
                           const onOpen = () => navigate(`/tasks?task=${task.id}`);
-                          const isCompleting = completingIds.has(task.id);
+                          const optimisticDone = optimisticDoneIds.has(task.id);
                           return (
                             <div
                               key={task.id}
                               className={cn(
-                                "w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-colors",
+                                "w-full flex items-center gap-2 p-2.5 rounded-lg hover:bg-muted/50 transition-all duration-300",
                                 isOverdue && "border-l-2 border-destructive",
-                                isCompleting && "opacity-60"
+                                optimisticDone && "opacity-50"
                               )}
                             >
-                              <button
-                                type="button"
-                                role="checkbox"
-                                aria-checked={false}
-                                aria-label={`Mark "${task.title}" complete`}
-                                disabled={isCompleting}
-                                onClick={(e) => handleComplete(e, task.id)}
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter' || e.key === ' ') {
-                                    handleComplete(e, task.id);
-                                  }
-                                }}
-                                className="shrink-0 h-7 w-7 -m-1.5 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 active:scale-95 transition-all disabled:cursor-not-allowed"
-                              >
-                                <Circle className="h-4 w-4" />
-                              </button>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="shrink-0 inline-flex">
+                                    <TaskCompletionCheckbox
+                                      checked={optimisticDone}
+                                      disabled={optimisticDone}
+                                      taskTitle={task.title}
+                                      onChange={() => handleComplete(task)}
+                                    />
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="top" className="text-xs">
+                                  {optimisticDone ? 'Mark incomplete' : 'Mark complete'}
+                                </TooltipContent>
+                              </Tooltip>
                               <button
                                 type="button"
                                 onClick={onOpen}
                                 className="flex-1 min-w-0 text-left"
                               >
-                                <p className="text-sm text-foreground truncate">{task.title}</p>
+                                <p className={cn(
+                                  "text-sm text-foreground truncate transition-all",
+                                  optimisticDone && "line-through text-muted-foreground"
+                                )}>{task.title}</p>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   {dealLabel && (
                                     <span className="text-xs text-primary font-medium truncate max-w-[120px]">{dealLabel}</span>
