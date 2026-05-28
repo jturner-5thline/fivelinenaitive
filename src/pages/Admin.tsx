@@ -157,9 +157,6 @@ const SECTIONS: SectionDef[] = [
       { id: "delivery-audit", label: "Delivery Audit", icon: ClipboardList, description: "Every notification sent, queued, or failed." },
       { id: "announcements", label: "Announcements", icon: Megaphone, description: "System-wide announcements." },
       { id: "emails", label: "Email Templates", icon: Mail, description: "Customize transactional email templates." },
-      { id: "blog-all", label: "Blog · All Posts", icon: Newspaper, description: "Studio (moves to /studio in v2).", group: "Studio (legacy)" },
-      { id: "blog-new", label: "Blog · New Post", icon: Plus, description: "Compose a new blog post.", group: "Studio (legacy)" },
-      { id: "blog-media", label: "Blog · Media Library", icon: ImageIcon, description: "Uploaded blog media.", group: "Studio (legacy)" },
     ],
   },
   {
@@ -188,7 +185,6 @@ const SECTIONS: SectionDef[] = [
       { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList, description: "Review every AI-driven action.", group: "AI" },
       { id: "ai-training", label: "AI Training", icon: Brain, description: "Prompts, model config and AI performance.", group: "AI" },
       { id: "ux-analytics", label: "UX Analytics", icon: BarChart3, description: "Funnel and friction analytics.", group: "Insights" },
-      { id: "signalstack", label: "SignalStack", icon: Lightbulb, description: "Product enhancement signals (moves to /signal in v2).", group: "Insights" },
     ],
   },
 ];
@@ -661,8 +657,6 @@ const Admin = () => {
         );
       case "ux-analytics":
         return <UXAnalyticsPanel />;
-      case "signalstack":
-        return <SignalStackApp />;
       case "ai-training":
         return (
           <Card>
@@ -701,12 +695,6 @@ const Admin = () => {
         return <UsageAnalyticsPanel />;
       case "pilot-kpis":
         return <PilotKpiOverview />;
-      case "blog-all":
-        return <BlogManagementPanel subTab="all" />;
-      case "blog-new":
-        return <BlogManagementPanel subTab="new" />;
-      case "blog-media":
-        return <BlogManagementPanel subTab="media" />;
       default:
         return null;
     }
