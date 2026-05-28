@@ -283,7 +283,7 @@ export function QuickBooksFinancialDashboard({
           )}
         </div>
       )}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {statCards.map((card) => (
           <Card key={card.title} onClick={card.onClick} className="cursor-pointer hover:border-primary/40 transition-colors">
             <CardContent className="pt-6">
@@ -310,7 +310,6 @@ export function QuickBooksFinancialDashboard({
         <Card className="glass-module">
           <CardHeader className="pb-2">
             <CardTitle className="text-base font-medium">Revenue & Payments Trend</CardTitle>
-            <CardDescription>Rolling 12 months from QuickBooks</CardDescription>
           </CardHeader>
           <CardContent>
             <div style={{ height: 280 }}>
@@ -445,6 +444,7 @@ export function QuickBooksFinancialDashboard({
       context={drill?.context ?? null}
       columns={drill?.columns ?? []}
       rows={drill?.rows ?? []}
+      defaultSort={drill?.defaultSort}
       emptyHint="No detail records available."
     />
     </>
