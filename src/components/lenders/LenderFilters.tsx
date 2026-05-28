@@ -158,115 +158,99 @@ function SimpleFilters({
     [lenders]
   );
 
+  const labelCls = "text-[11px] font-normal text-muted-foreground/80";
   return (
-    <div className="space-y-4">
-      {/* Row 1: Search, Min Deal, Max Deal, Revenue, Sponsorship */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Search Name</Label>
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Lender or contact..."
-              value={filters.searchQuery}
-              onChange={(e) => onFiltersChange({ ...filters, searchQuery: e.target.value })}
-              className="h-9 pl-8 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
-            />
-          </div>
-        </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Min Deal Size ($)</Label>
+    <div className="space-y-3">
+      {/* Compact responsive grid: 2 cols on narrow, 3 on md, 5 on xl */}
+      <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-3 gap-y-3">
+        <div className="space-y-1">
+          <Label className={labelCls}>Min Deal Size ($)</Label>
           <Input
             type="number"
             placeholder="e.g. 1000000"
             value={filters.minDealSize}
             onChange={(e) => onFiltersChange({ ...filters, minDealSize: e.target.value })}
-            className="h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Max Deal Size ($)</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Max Deal Size ($)</Label>
           <Input
             type="number"
             placeholder="e.g. 50000000"
             value={filters.maxDealSize}
             onChange={(e) => onFiltersChange({ ...filters, maxDealSize: e.target.value })}
-            className="h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Your Revenue ($)</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Your Revenue ($)</Label>
           <Input
             type="number"
             placeholder="e.g. 5000000"
             value={filters.minRevenue}
             onChange={(e) => onFiltersChange({ ...filters, minRevenue: e.target.value })}
-            className="h-9 transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
+            className="h-8 text-xs transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Sponsorship</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Sponsorship</Label>
           <MultiSelectFilter
             label="Any"
             options={sponsorshipOptions}
             selected={filters.sponsorship ? [filters.sponsorship] : []}
             onChange={(selected) => onFiltersChange({ ...filters, sponsorship: selected[0] || '' })}
-            className="w-full h-9"
+            className="w-full h-8 text-xs"
           />
         </div>
-      </div>
-
-      {/* Row 2: Loan Type, Cash Burn, Industry, Geography, Tier */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Loan Type</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Loan Type</Label>
           <MultiSelectFilter
             label="Any"
             options={loanTypeOptions}
             selected={filters.loanTypes}
             onChange={(selected) => onFiltersChange({ ...filters, loanTypes: selected })}
-            className="w-full h-9"
+            className="w-full h-8 text-xs"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Cash Burn OK</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Cash Burn OK</Label>
           <MultiSelectFilter
             label="Any"
             options={cashBurnOptions}
             selected={filters.cashBurn ? [filters.cashBurn] : []}
             onChange={(selected) => onFiltersChange({ ...filters, cashBurn: selected[0] || '' })}
-            className="w-full h-9"
+            className="w-full h-8 text-xs"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Industry</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Industry</Label>
           <MultiSelectFilter
             label="Any"
             options={industryOptions}
             selected={filters.industries}
             onChange={(selected) => onFiltersChange({ ...filters, industries: selected })}
-            className="w-full h-9"
+            className="w-full h-8 text-xs"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Geography</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Geography</Label>
           <MultiSelectFilter
             label="Any"
             options={geoOptions}
             selected={filters.geographies}
             onChange={(selected) => onFiltersChange({ ...filters, geographies: selected })}
-            className="w-full h-9"
+            className="w-full h-8 text-xs"
           />
         </div>
-        <div className="space-y-1.5">
-          <Label className="text-xs font-medium text-muted-foreground">Tier</Label>
+        <div className="space-y-1">
+          <Label className={labelCls}>Tier</Label>
           <MultiSelectFilter
             label="Any"
             options={tierOptions}
             selected={filters.tiers}
             onChange={(selected) => onFiltersChange({ ...filters, tiers: selected })}
-            className="w-full h-9"
+            className="w-full h-8 text-xs"
           />
         </div>
       </div>
