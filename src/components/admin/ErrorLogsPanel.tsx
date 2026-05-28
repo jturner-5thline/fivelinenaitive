@@ -13,7 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Eye, RefreshCw, AlertCircle, Search, Download, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useErrorLogs, useResolveErrorLog, ErrorLog } from "@/hooks/useAdminConfig";
@@ -228,10 +227,6 @@ export const ErrorLogsPanel = () => {
             )}
           </div>
         )}
-        {selectedLog && (selectedLog.status ?? "open") !== "resolved" ? (
-          // footer slot rendered via prop below
-          null
-        ) : null}
       </EventDrawer>
 
       <Table>
