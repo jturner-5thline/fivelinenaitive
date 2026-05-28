@@ -743,6 +743,34 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "create_deal",
+      description: "Create a new deal in a pipeline. Returns a confirmation card the user must approve before the deal is written. Always pass either pipeline_id (UUID) or pipeline_name (e.g. 'naitive') so the handler can resolve it. Stage can be supplied as stage_id (UUID) or stage_name (label like 'Qualification Call Scheduled'); if omitted, the pipeline's first stage is used. Assignee (deal_owner) may be a user UUID (preferred — resolve via search_team_members first) or a display name like 'Paz'.",
+      parameters: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          company_name: { type: "string", description: "Required. Borrower / company name for the deal." },
+          pipeline_id: { type: "string", description: "Pipeline UUID. Either this or pipeline_name is required." },
+          pipeline_name: { type: "string", description: "Pipeline name (e.g. 'naitive', 'In Development'). Used to resolve pipeline_id." },
+          stage_id: { type: "string", description: "Stage UUID inside the target pipeline." },
+          stage_name: { type: "string", description: "Stage label (e.g. 'Qualification Call Scheduled'). Resolved against the target pipeline." },
+          deal_owner_id: { type: "string", description: "Owner user UUID. Resolve display names via search_team_members first when possible." },
+          deal_owner_name: { type: "string", description: "Owner display name fallback (e.g. 'Paz')." },
+          contact_name: { type: "string" },
+          contact_email: { type: "string" },
+          contact_title: { type: "string" },
+          icp_category: { type: "string" },
+          source: { type: "string", description: "How the deal was sourced (e.g. 'LinkedIn Outreach', 'Referral')." },
+          deal_value: { type: "number", description: "Estimated deal value in USD." },
+          notes: { type: "string", description: "Optional free-text notes; stored on the deal's notes/next_step field." },
+        },
+        required: ["company_name"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "get_tasks",
       description: "Get tasks for the current user (or a teammate) with rich filters. Returns task title, status, priority, due/start date, deal context, assignee, starred, and task type. Use for 'what's on my plate', 'overdue tasks', 'tasks for <deal>', 'tasks I delegated', 'tasks assigned to <person>', 'starred tasks', 'recently completed'.",
       parameters: {
@@ -2391,6 +2419,102 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           collaborator_ids: Array.isArray(args.collaborator_ids)
             ? args.collaborator_ids.filter((x: unknown) => typeof x === "string")
             : [],
+        },
+      };
+    }
+    case "create_deal": {
+      // Build a Confirm card for a new-deal proposal. We resolve pipeline /
+      // stage / owner up front so the user sees real names and the executor
+      // gets valid UUIDs (the LLM is allowed to pass either ids or names).
+      const companyName = String(args.company_name || "").trim();
+      if (!companyName) {
+        return { error: "company_name is required to create a deal." };
+      }
+
+      // 1) Resolve pipeline by id or by name.
+      let pipelineId: string | null = args.pipeline_id || null;
+      let pipelineName: string | null = null;
+      let pipelineStages: any[] = [];
+      let pipelineCompanyId: string | null = null;
+      if (pipelineId) {
+        const { data: p } = await supabase
+          .from("deal_pipelines")
+          .select("id, name, stages, company_id")
+          .eq("id", pipelineId)
+          .maybeSingle();
+        if (p) { pipelineName = p.name; pipelineStages = Array.isArray(p.stages) ? p.stages : []; pipelineCompanyId = (p as any).company_id || null; }
+      } else if (args.pipeline_name) {
+        const { data: p } = await supabase
+          .from("deal_pipelines")
+          .select("id, name, stages, company_id")
+          .ilike("name", `%${String(args.pipeline_name).trim()}%`)
+          .limit(1)
+          .maybeSingle();
+        if (p) { pipelineId = p.id; pipelineName = p.name; pipelineStages = Array.isArray(p.stages) ? p.stages : []; pipelineCompanyId = (p as any).company_id || null; }
+      }
+      if (!pipelineId) {
+        return { error: `Could not find a pipeline matching "${args.pipeline_name || args.pipeline_id || ''}".` };
+      }
+
+      // 2) Resolve stage by id or name; fall back to the pipeline's first stage.
+      let stageId: string | null = null;
+      let stageLabel: string | null = null;
+      if (args.stage_id) {
+        const match = pipelineStages.find((s: any) => s?.id === args.stage_id);
+        if (match) { stageId = match.id; stageLabel = match.label || match.name || null; }
+      }
+      if (!stageId && args.stage_name) {
+        const want = String(args.stage_name).trim().toLowerCase();
+        const match = pipelineStages.find((s: any) => String(s?.label || s?.name || "").toLowerCase().includes(want));
+        if (match) { stageId = match.id; stageLabel = match.label || match.name || null; }
+      }
+      if (!stageId && pipelineStages.length > 0) {
+        const first = pipelineStages[0];
+        stageId = first?.id || null;
+        stageLabel = first?.label || first?.name || null;
+      }
+
+      // 3) Resolve owner (UUID preferred; fall back to display-name string the
+      // deals.owned_by column accepts).
+      let ownerId: string | null = args.deal_owner_id || null;
+      let ownerName: string | null = args.deal_owner_name || null;
+      if (ownerId) {
+        const { data: pr } = await supabase
+          .from("profiles")
+          .select("display_name, email")
+          .eq("user_id", ownerId)
+          .maybeSingle();
+        if (pr) ownerName = pr.display_name || pr.email || ownerName;
+      } else if (ownerName) {
+        const { data: pr } = await supabase
+          .from("profiles")
+          .select("user_id, display_name, email")
+          .ilike("display_name", `%${ownerName}%`)
+          .limit(1)
+          .maybeSingle();
+        if (pr?.user_id) ownerId = pr.user_id;
+      }
+
+      return {
+        action: "confirm",
+        action_type: "create_deal",
+        description: `Create deal "${companyName}" in ${pipelineName || "pipeline"}${stageLabel ? ` at ${stageLabel}` : ""}${ownerName ? ` (owner: ${ownerName})` : ""}`,
+        params: {
+          company_name: companyName,
+          pipeline_id: pipelineId,
+          pipeline_name: pipelineName,
+          pipeline_company_id: pipelineCompanyId,
+          stage_id: stageId,
+          stage_label: stageLabel,
+          deal_owner_id: ownerId,
+          deal_owner_name: ownerName,
+          contact_name: args.contact_name || null,
+          contact_email: args.contact_email || null,
+          contact_title: args.contact_title || null,
+          icp_category: args.icp_category || null,
+          source: args.source || null,
+          deal_value: typeof args.deal_value === "number" ? args.deal_value : null,
+          notes: args.notes || null,
         },
       };
     }
@@ -5918,6 +6042,93 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
         requested_count: rawEntities.length,
         inserted_count: inserted.length,
         atomic: true,
+      };
+    }
+    case "create_deal": {
+      // Persist a new deal proposed via the AI Copilot. The propose-time
+      // handler (tool dispatcher above) has already resolved pipeline / stage
+      // / owner ids, but we re-validate everything here because the params
+      // come back from the client and must not be trusted blindly.
+      const companyName = String(params?.company_name || "").trim();
+      const pipelineId = params?.pipeline_id || null;
+      const stageId = params?.stage_id || null;
+      if (!companyName) {
+        return { success: false, error: "Missing required field: company_name", actionType: "create_deal" };
+      }
+      if (!pipelineId) {
+        return { success: false, error: "Missing required field: pipeline_id", actionType: "create_deal" };
+      }
+
+      // Re-read the pipeline to get a trustworthy company_id + stages list.
+      const { data: pipeline, error: pipeErr } = await supabase
+        .from("deal_pipelines")
+        .select("id, name, stages, company_id")
+        .eq("id", pipelineId)
+        .maybeSingle();
+      if (pipeErr || !pipeline) {
+        return { success: false, error: `Pipeline ${pipelineId} not found`, actionType: "create_deal" };
+      }
+      const stages: any[] = Array.isArray((pipeline as any).stages) ? (pipeline as any).stages : [];
+
+      // Validate / fall back the stage.
+      let safeStageId = stageId;
+      let safeStageLabel = params?.stage_label || null;
+      const stageMatch = stages.find((s: any) => s?.id === safeStageId);
+      if (!stageMatch && stages.length > 0) {
+        safeStageId = stages[0]?.id || null;
+        safeStageLabel = stages[0]?.label || stages[0]?.name || null;
+      } else if (stageMatch) {
+        safeStageLabel = stageMatch.label || stageMatch.name || safeStageLabel;
+      }
+
+      const dealClass = String((pipeline as any).name || "").toLowerCase().includes("naitive") ? "naitive" : null;
+      const ownerName: string | null = params?.deal_owner_name || null;
+
+      const insertPayload: Record<string, unknown> = {
+        company: companyName,
+        pipeline_id: pipelineId,
+        company_id: (pipeline as any).company_id || null,
+        stage: safeStageId,
+        user_id: userId,
+        value: typeof params?.deal_value === "number" ? params.deal_value : 0,
+        status: null,
+      };
+      if (dealClass) insertPayload.deal_class = dealClass;
+      if (ownerName) { insertPayload.owned_by = ownerName; insertPayload.manager = ownerName; }
+      if (params?.contact_name) insertPayload.contact = params.contact_name;
+      if (params?.contact_email) insertPayload.contact_email = params.contact_email;
+      if (params?.contact_title) insertPayload.contact_title = params.contact_title;
+      if (params?.icp_category) insertPayload.icp_category = params.icp_category;
+      if (params?.source) insertPayload.sourced_via = params.source;
+      if (params?.notes) insertPayload.next_step = params.notes;
+
+      const { data: inserted, error: insErr } = await supabase
+        .from("deals")
+        .insert(insertPayload)
+        .select("id, company")
+        .single();
+      if (insErr) {
+        console.error("[create_deal] insert failed", insErr, insertPayload);
+        return {
+          success: false,
+          error: insErr.message || "Failed to create deal",
+          error_code: insErr.code || null,
+          actionType: "create_deal",
+        };
+      }
+
+      await supabase.from("activity_logs").insert({
+        deal_id: inserted!.id,
+        activity_type: "deal_created",
+        description: `Deal "${inserted!.company}" created via AI Copilot${safeStageLabel ? ` at "${safeStageLabel}"` : ""}`,
+        user_id: userId,
+      });
+
+      return {
+        success: true,
+        message: `Created deal "${inserted!.company}"${safeStageLabel ? ` at ${safeStageLabel}` : ""}`,
+        actionType: "create_deal",
+        params: { deal_id: inserted!.id, pipeline_id: pipelineId, stage_id: safeStageId },
       };
     }
     default:
