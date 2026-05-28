@@ -559,8 +559,7 @@ function MeetingCard({
             size="sm"
             variant="ghost"
             className="h-7 px-2 text-xs text-white hover:text-white"
-            onClick={handleAddNote}
-            disabled={!dealMatch}
+            onClick={onAddNote}
           >
             <StickyNote className="h-3 w-3 mr-1 text-white" /> Add note
           </Button>
