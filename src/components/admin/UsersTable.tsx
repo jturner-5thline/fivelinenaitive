@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX, Globe, Home, Ban, UserCheck } from "lucide-react";
 import { useConsolidatedUsers, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole, useDeleteUser, useToggleUserSuspension } from "@/hooks/useAdminData";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { EventDrawer } from "./event-table/EventDrawer";
 
 export const UsersTable = () => {
   const [search, setSearch] = useState("");
@@ -28,6 +29,7 @@ export const UsersTable = () => {
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [userToSuspend, setUserToSuspend] = useState<{ id: string; name: string; isSuspended: boolean } | null>(null);
   const [suspendReason, setSuspendReason] = useState("");
+  const [detailUser, setDetailUser] = useState<any | null>(null);
   
   const { data: users, isLoading: usersLoading } = useConsolidatedUsers();
   const { data: roles, isLoading: rolesLoading } = useUserRoles();
@@ -310,10 +312,15 @@ export const UsersTable = () => {
                 const isExternal = user.source === 'external';
                 
                 return (
-                  <TableRow key={user.id} className={`${isExternal ? "bg-muted/30" : ""} ${user.suspended_at ? "opacity-60" : ""}`}>
+                  <TableRow
+                    key={user.id}
+                    className={`cursor-pointer hover:bg-muted/40 transition-colors ${isExternal ? "bg-muted/30" : ""} ${user.suspended_at ? "opacity-60" : ""}`}
+                    onClick={() => setDetailUser({ ...user, _roles: userRoles })}
+                  >
                     <TableCell>
                       {!isExternal ? (
-                        <Checkbox 
+                        <Checkbox
+                          onClick={(e) => e.stopPropagation()}
                           checked={selectedUserIds.has(user.user_id)}
                           onCheckedChange={() => handleToggleUser(user.user_id, isExternal)}
                         />
