@@ -8,6 +8,7 @@ import type { DealTaskItem } from '@/hooks/usePipelineDealTasks';
 import { useDealMilestones } from '@/hooks/useDealMilestones';
 import { useDealCalendarItems, type DealCalendarItem, type DealCalendarItemType } from '@/hooks/useDealCalendarItems';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 
 interface CalendarPanelProps {
@@ -71,7 +72,7 @@ function defaultWindowStart(now: Date = new Date()): Date {
 
 export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelProps) {
   const { milestones } = useDealMilestones(deal.id);
-  const { items: customItems, addItem, updateItem, deleteItem } = useDealCalendarItems(deal.id);
+  const { items: customItems, creators, addItem, updateItem, deleteItem } = useDealCalendarItems(deal.id);
 
   // Visible window = 2 work weeks starting at `windowStart` (a Monday).
   const [windowStart, setWindowStart] = useState<Date>(() => defaultWindowStart());
@@ -420,6 +421,29 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
                       <span className="text-[9px] text-muted-foreground/70 ml-1">({it.weekendTag})</span>
                     )}
                   </button>
+                  {it.raw?.created_by && (() => {
+                    const c = creators[it.raw.created_by];
+                    const name = c?.display_name
+                      || [c?.first_name, c?.last_name].filter(Boolean).join(' ')
+                      || 'Teammate';
+                    const initials = (
+                      (c?.first_name?.[0] || c?.display_name?.[0] || 'T') +
+                      (c?.last_name?.[0] || '')
+                    ).toUpperCase();
+                    return (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Avatar className="h-4 w-4 mt-0.5 shrink-0 border border-white/10">
+                            {c?.avatar_url && <AvatarImage src={c.avatar_url} alt={name} />}
+                            <AvatarFallback className="text-[8px] font-medium bg-white/10 text-foreground/80">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent side="left">Added by {name}</TooltipContent>
+                      </Tooltip>
+                    );
+                  })()}
                   {it.editable ? (
                     <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
