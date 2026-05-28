@@ -315,6 +315,7 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
 
   const invalidateRelatedQueries = (actionType: string, params: Record<string, any>) => {
     const dealId = params.deal_id;
+    const lenderName = params.lender_name;
 
     // Always invalidate deals list
     queryClient.invalidateQueries({ queryKey: ['deals'] });
@@ -361,6 +362,13 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       case 'update_lender_status':
         if (dealId) {
           queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+          queryClient.invalidateQueries({ queryKey: ['lenders', dealId] });
+          queryClient.invalidateQueries({ queryKey: ['lender_notes', dealId] });
+        }
+        if (lenderName) {
+          queryClient.invalidateQueries({ queryKey: ['lender-notes', lenderName] });
+          queryClient.invalidateQueries({ queryKey: ['lender-note-count', lenderName] });
+          queryClient.invalidateQueries({ queryKey: ['lender-has-flags', lenderName] });
         }
         window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
         break;
@@ -375,6 +383,8 @@ export const CopilotActionConfirm = forwardRef<CopilotActionConfirmHandle, Props
       case 'update_deal_fields':
         if (dealId) {
           queryClient.invalidateQueries({ queryKey: ['deal', dealId] });
+          queryClient.invalidateQueries({ queryKey: ['lenders', dealId] });
+          queryClient.invalidateQueries({ queryKey: ['lender_notes', dealId] });
         }
         window.dispatchEvent(new CustomEvent('copilot-action-completed', { detail: { actionType, params } }));
         break;
