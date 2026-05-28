@@ -112,16 +112,27 @@ function SimpleFilters({
     []
   );
 
-  const loanTypeOptions = useMemo(() => 
-    Array.from(new Set(lenders.flatMap(l => l.loan_types || []).filter(Boolean)))
-      .sort()
+  const dedupeByLowercase = (values: (string | null | undefined)[]) => {
+    const seen = new Map<string, string>();
+    for (const raw of values) {
+      if (!raw) continue;
+      const key = raw.trim().toLowerCase();
+      if (!key) continue;
+      // Keep the most "title-cased"/longest variant for display
+      const existing = seen.get(key);
+      if (!existing || raw.length > existing.length) seen.set(key, raw.trim());
+    }
+    return Array.from(seen.values()).sort((a, b) => a.localeCompare(b));
+  };
+
+  const loanTypeOptions = useMemo(() =>
+    dedupeByLowercase(lenders.flatMap(l => l.loan_types || []))
       .map(v => ({ value: v, label: v })),
     [lenders]
   );
 
-  const industryOptions = useMemo(() => 
-    Array.from(new Set(lenders.flatMap(l => l.industries || []).filter(Boolean)))
-      .sort()
+  const industryOptions = useMemo(() =>
+    dedupeByLowercase(lenders.flatMap(l => l.industries || []))
       .map(v => ({ value: v, label: v })),
     [lenders]
   );
