@@ -48,8 +48,9 @@ export function MultiSelectFilter({
         <Button
           variant="outline"
           className={cn(
-            'justify-between gap-2 font-normal transition-colors duration-200 hover:border-[hsl(292,46%,72%)]/60 hover:border-[1.5px]',
-            selected.length > 0 && 'border-primary/50 bg-primary/5',
+            'justify-between gap-2 font-normal transition-colors duration-200',
+            'text-foreground/85 hover:text-foreground border-border/70 bg-card/40 hover:bg-card/70 hover:border-border',
+            selected.length > 0 && 'text-foreground border-primary/40 bg-primary/10',
             className
           )}
         >
@@ -58,7 +59,7 @@ export function MultiSelectFilter({
         </Button>
       </PopoverTrigger>
       <PopoverContent 
-        className="w-[220px] p-0 bg-popover flex flex-col max-h-[min(360px,60vh)]" 
+        className="w-[220px] p-0 bg-popover text-popover-foreground border-border flex flex-col max-h-[min(360px,60vh)]"
         align="start"
         side="bottom"
         sideOffset={4}
