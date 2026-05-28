@@ -45,7 +45,7 @@
  *   ?section=blog&tab=blog-all|new|media  → communications/blog-<all|new|media> (Phase 3 → /studio)
  */
 import { useState, useEffect, useMemo } from "react";
-import { Navigate, useSearchParams } from "react-router-dom";
+import { Navigate, useSearchParams, useNavigate } from "react-router-dom";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
@@ -101,8 +101,6 @@ import { PilotKpiOverview } from "@/components/admin/usage-analytics/PilotKpiOve
 import { CreateDemoAccessModal } from "@/components/admin/CreateDemoAccessModal";
 import { UserActivityPanel } from "@/components/admin/UserActivityPanel";
 import { DemoMetricsPanel } from "@/components/admin/DemoMetricsPanel";
-import { BlogManagementPanel } from "@/components/admin/BlogManagementPanel";
-import { SignalStackApp } from "@/components/admin/signalstack/SignalStackApp";
 
 // ─── New IA ───────────────────────────────────────────────────────
 type SectionId = "people" | "access" | "communications" | "platform" | "observability";
@@ -159,9 +157,6 @@ const SECTIONS: SectionDef[] = [
       { id: "delivery-audit", label: "Delivery Audit", icon: ClipboardList, description: "Every notification sent, queued, or failed." },
       { id: "announcements", label: "Announcements", icon: Megaphone, description: "System-wide announcements." },
       { id: "emails", label: "Email Templates", icon: Mail, description: "Customize transactional email templates." },
-      { id: "blog-all", label: "Blog · All Posts", icon: Newspaper, description: "Studio (moves to /studio in v2).", group: "Studio (legacy)" },
-      { id: "blog-new", label: "Blog · New Post", icon: Plus, description: "Compose a new blog post.", group: "Studio (legacy)" },
-      { id: "blog-media", label: "Blog · Media Library", icon: ImageIcon, description: "Uploaded blog media.", group: "Studio (legacy)" },
     ],
   },
   {
@@ -190,7 +185,6 @@ const SECTIONS: SectionDef[] = [
       { id: "ai-audit", label: "AI Action Audit", icon: ClipboardList, description: "Review every AI-driven action.", group: "AI" },
       { id: "ai-training", label: "AI Training", icon: Brain, description: "Prompts, model config and AI performance.", group: "AI" },
       { id: "ux-analytics", label: "UX Analytics", icon: BarChart3, description: "Funnel and friction analytics.", group: "Insights" },
-      { id: "signalstack", label: "SignalStack", icon: Lightbulb, description: "Product enhancement signals (moves to /signal in v2).", group: "Insights" },
     ],
   },
 ];
@@ -294,6 +288,7 @@ const Admin = () => {
   const { data: stats, isLoading: statsLoading } = useSystemStats();
   const counts = useAdminCounts();
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [demoModalOpen, setDemoModalOpen] = useState(false);
   const { state: sidebarState, setOpen: setSidebarOpen } = useSidebar();
 
@@ -301,6 +296,27 @@ const Admin = () => {
   const rawSection = searchParams.get("section") || "";
   const rawPage    = searchParams.get("page")    || "";
   const rawTab     = searchParams.get("tab")     || "";
+
+  // Phase 3 relocations — SignalStack now lives at /signal, Blog at /studio.
+  // Any legacy link that still points into /admin for those surfaces is
+  // forwarded to the new top-level route.
+  useEffect(() => {
+    if (rawPage === "signalstack" || rawTab === "signalstack" || rawSection === "product-enhancement") {
+      navigate("/signal", { replace: true });
+      return;
+    }
+    if (rawPage === "blog-all" || rawTab === "blog-all" || rawSection === "blog") {
+      navigate("/studio?tab=all", { replace: true });
+      return;
+    }
+    if (rawPage === "blog-new" || rawTab === "blog-new") {
+      navigate("/studio?tab=new", { replace: true });
+      return;
+    }
+    if (rawPage === "blog-media" || rawTab === "blog-media") {
+      navigate("/studio?tab=media", { replace: true });
+    }
+  }, [rawSection, rawPage, rawTab, navigate]);
 
   const resolved = useMemo(() => {
     // Modern: ?section=&page=
@@ -663,8 +679,6 @@ const Admin = () => {
         );
       case "ux-analytics":
         return <UXAnalyticsPanel />;
-      case "signalstack":
-        return <SignalStackApp />;
       case "ai-training":
         return (
           <Card>
@@ -703,12 +717,6 @@ const Admin = () => {
         return <UsageAnalyticsPanel />;
       case "pilot-kpis":
         return <PilotKpiOverview />;
-      case "blog-all":
-        return <BlogManagementPanel subTab="all" />;
-      case "blog-new":
-        return <BlogManagementPanel subTab="new" />;
-      case "blog-media":
-        return <BlogManagementPanel subTab="media" />;
       default:
         return null;
     }
@@ -856,6 +864,25 @@ const Admin = () => {
 
           {/* Page content */}
           <main className="min-w-0">
+            {(activeSection.id === "observability" || activeSection.id === "communications") && (
+              <div className="mb-3 rounded-lg border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground flex items-center justify-between gap-2">
+                <span>
+                  {activeSection.id === "observability"
+                    ? "SignalStack moved to its own workspace."
+                    : "Blog moved to Studio."}
+                </span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-[11px]"
+                  onClick={() =>
+                    navigate(activeSection.id === "observability" ? "/signal" : "/studio?tab=all")
+                  }
+                >
+                  Open {activeSection.id === "observability" ? "/signal" : "/studio"}
+                </Button>
+              </div>
+            )}
             {/* Thin strip: icon + title + description (replaces the giant "N of 8" hero) */}
             <div className="flex items-center gap-3 mb-3 px-1">
               <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
