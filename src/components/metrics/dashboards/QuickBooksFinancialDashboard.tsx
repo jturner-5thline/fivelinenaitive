@@ -379,50 +379,6 @@ export function QuickBooksFinancialDashboard({
           </CardContent>
         </Card>
 
-        {/* Invoice Status & Payment Methods */}
-        <Card className="glass-module">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-medium">Invoice Status Breakdown</CardTitle>
-            <CardDescription>Distribution by status</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div style={{ height: 280 }}>
-              {metrics.invoiceStatusBreakdown.length > 0 ? (
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <PieGlassDefs colors={COLORS} />
-                    <Pie
-                      data={metrics.invoiceStatusBreakdown}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={60}
-                      outerRadius={100}
-                      paddingAngle={2}
-                      dataKey="value"
-                      nameKey="status"
-                      label={({ status, count }) => `${status} (${count})`}
-                      labelLine={{ stroke: "hsl(var(--muted-foreground))", strokeWidth: 1 }}
-                      activeShape={GlassActiveShape}
-                      onClick={(d: any) => showDrill('Invoice Status Breakdown', d?.status, [
-                        { metric: 'Status', value: String(d?.status ?? '') },
-                        { metric: 'Count', value: `${d?.count ?? 0}` },
-                        { metric: 'Value', value: formatCurrency(Number(d?.value) || 0) },
-                      ])}
-                      cursor="pointer"
-                    >
-                      {metrics.invoiceStatusBreakdown.map((_, index) => (
-                        <Cell key={index} fill={pieGlassFill(index)} stroke={COLORS[index % COLORS.length]} strokeWidth={0.25} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => [formatCurrency(v), "Value"]} contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: "8px" }} />
-                  </PieChart>
-                </ResponsiveContainer>
-              ) : (
-                <div className="flex items-center justify-center h-full text-muted-foreground">No invoice data</div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
     <InsightsDrilldownDrawer
