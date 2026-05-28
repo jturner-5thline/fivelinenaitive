@@ -805,32 +805,19 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     if (!open) systemFoldersLoadedRef.current = false;
   }, [open]);
 
-  // Refresh: reset state and re-fetch from page 1 (then auto-paginate again)
+  // Manual refresh: stale-while-revalidate. We DO NOT clear the existing
+  // list — the cached messages stay visible so the user keeps their
+  // scroll position and any open thread, while we pull the latest page
+  // from upstream (cache-busted) and merge new messages in at the top.
+  // The runRefresh path handles the in-flight indicator, error toast,
+  // and slow-fetch toast.
   const handleRefresh = useCallback(async () => {
     if (!status.connected) return;
-    isPaginatingRef.current = false;
-    setIsAutoPaginating(false);
-    setInboxMessages([]);
-    setSentMessages([]);
-    setDraftsMessages([]);
-    setJunkMessages([]);
-    setTrashMessages([]);
-    setInboxNextToken(null);
-    setSentNextToken(null);
-    setHasMoreInbox(true);
-    setHasMoreSent(true);
-    setHasMoreCache(true);
-    setIsInitialLoading(true);
-
-    const firstInbox = await fetchPage({ labelIds: ['INBOX'] });
-    if (!isMountedRef.current) return;
-    setInboxMessages(prev => mergeUniqueById(prev, firstInbox.messages));
-    setInboxNextToken(firstInbox.nextPageToken);
-    setHasMoreInbox(!!firstInbox.nextPageToken);
-    setIsInitialLoading(false);
-    autoPaginate(firstInbox.nextPageToken);
+    await runRefresh({ force: true, manual: true });
+    // Also refresh the auxiliary folders silently — cheap and keeps
+    // Drafts / Junk / Trash in sync without a full reset.
     void refreshSystemFolders();
-  }, [status.connected, mergeUniqueById, autoPaginate]);
+  }, [status.connected, runRefresh, refreshSystemFolders]);
 
   // IMPORTANT: call every hook on every render BEFORE any conditional return,
   // otherwise the hook order changes when `status.connected` flips and React
