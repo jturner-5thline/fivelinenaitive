@@ -308,20 +308,20 @@ export function PipelineSpecificFields({ deal, onUpdate }: PipelineSpecificField
        * unified section instead of two stacked groups. Other pipelines
        * with their own schemas still get the same continuous layout.
        */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 pt-3">
-        <div className="space-y-3 min-w-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-2 pt-2">
+        <div className="space-y-2 min-w-0">
           {leftFields.map((f) => (
             <FieldRow key={f.key} field={f} />
           ))}
         </div>
-        <div className="space-y-3 min-w-0">
+        <div className="space-y-2 min-w-0">
           {rightFields.map((f) => (
             <FieldRow key={f.key} field={f} />
           ))}
         </div>
       </div>
       {fullFields.length > 0 && (
-        <div className="space-y-3 pt-1">
+        <div className="space-y-2 pt-1">
           {fullFields.map((f) => (
             <FullFieldRow key={f.key} field={f} />
           ))}
