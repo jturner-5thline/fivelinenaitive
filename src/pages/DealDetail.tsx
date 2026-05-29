@@ -49,7 +49,7 @@ import { NaitiveDatePicker } from '@/components/ui/naitive-date-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { DebouncedTextarea } from '@/components/ui/debounced-textarea';
 import { DebouncedInput } from '@/components/ui/debounced-input';
-import { PipelineSpecificFields } from '@/components/deal/PipelineSpecificFields';
+import { PipelineSpecificFields, PipelineFieldRow, PipelineFullFieldRow } from '@/components/deal/PipelineSpecificFields';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -3978,27 +3978,56 @@ export default function DealDetail() {
                               </CardHeader>
                               <CardContent className="space-y-4">
                                 {isDealInfoFieldVisible('narrative') && renderDealInfoField('narrative')}
-                                
-                                {(leftFields.length > 0 || rightFields.length > 0) && (
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div className="space-y-3 min-w-0">
-                                      {leftFields.map(fId => renderDealInfoField(fId))}
-                                    </div>
-                                    <div className="space-y-3 min-w-0">
-                                      {rightFields.map(fId => renderDealInfoField(fId))}
-                                    </div>
-                                  </div>
-                                )}
-                                
-                                {isDealInfoFieldVisible('hoursAndFees') && renderDealInfoField('hoursAndFees')}
 
-                                {/* Pipeline-specific fields (e.g. FinServ Details).
-                                    Driven by src/config/pipelineFieldSchemas.ts so the
-                                    create-deal form and detail view stay in sync. */}
-                                <PipelineSpecificFields
-                                  deal={deal}
-                                  onUpdate={(field, value) => updateDeal(field as any, value)}
-                                />
+                                {isFinServDeal ? (
+                                  // FinServ-only: render shared + pipeline fields
+                                  // in a single dense 2-column grid so rows pack
+                                  // tightly with no orphan gaps between shared
+                                  // fields and the FinServ-specific block.
+                                  <>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
+                                      {renderDealInfoField('dealOwner')}
+                                      <PipelineFieldRow deal={deal} fieldKey="opportunityType" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      {renderDealInfoField('companyUrl')}
+                                      <PipelineFieldRow deal={deal} fieldKey="feeType" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      {renderDealInfoField('businessModel')}
+                                      {renderDealInfoField('sourcedVia')}
+                                      {renderDealInfoField('clientContact')}
+                                      {renderDealInfoField('referralSource')}
+                                      <PipelineFieldRow deal={deal} fieldKey="mrr" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow deal={deal} fieldKey="oneTimeRevenue" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow deal={deal} fieldKey="contractStartDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow deal={deal} fieldKey="projectedCloseDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow deal={deal} fieldKey="contractEndDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <PipelineFieldRow deal={deal} fieldKey="onHold" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                    </div>
+                                    <PipelineFullFieldRow deal={deal} fieldKey="servicesOffered" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                  </>
+                                ) : (
+                                  <>
+                                    {(leftFields.length > 0 || rightFields.length > 0) && (
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-3 min-w-0">
+                                          {leftFields.map(fId => renderDealInfoField(fId))}
+                                        </div>
+                                        <div className="space-y-3 min-w-0">
+                                          {rightFields.map(fId => renderDealInfoField(fId))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {isDealInfoFieldVisible('hoursAndFees') && renderDealInfoField('hoursAndFees')}
+
+                                    {/* Pipeline-specific fields. Driven by
+                                        src/config/pipelineFieldSchemas.ts so the
+                                        create-deal form and detail view stay in
+                                        sync. */}
+                                    <PipelineSpecificFields
+                                      deal={deal}
+                                      onUpdate={(field, value) => updateDeal(field as any, value)}
+                                    />
+                                  </>
+                                )}
                               </CardContent>
                             </Card>
                           );

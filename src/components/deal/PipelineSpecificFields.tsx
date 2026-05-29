@@ -16,6 +16,7 @@ import {
 import { useDebouncedFieldValue, flushOnEnterOrTab } from '@/hooks/useDebouncedFieldValue';
 import {
   getPipelineSchema,
+  PIPELINE_FIELD_SCHEMAS,
   type PipelineFieldDef,
 } from '@/config/pipelineFieldSchemas';
 import type { Deal } from '@/types/deal';
@@ -23,6 +24,190 @@ import type { Deal } from '@/types/deal';
 interface PipelineSpecificFieldsProps {
   deal: Deal;
   onUpdate: (field: keyof Deal, value: any) => void;
+}
+
+/**
+ * Shared field renderer used both by the default schema-driven layout
+ * (PipelineSpecificFields) and by callers that want to interleave
+ * pipeline-specific fields with shared Deal Information fields in a
+ * single custom grid (currently the FinServ deal page).
+ */
+function renderPipelineFieldInput(
+  field: PipelineFieldDef,
+  deal: Deal,
+  onUpdate: (field: keyof Deal, value: any) => void,
+) {
+  const value: any = (deal as any)[field.key];
+
+  switch (field.type) {
+    case 'text':
+    case 'email':
+      return (
+        <DebouncedTextField
+          type={field.type === 'email' ? 'email' : 'text'}
+          remoteValue={value || ''}
+          onCommit={(next) => onUpdate(field.key as keyof Deal, next)}
+          placeholder={field.placeholder}
+        />
+      );
+    case 'currency':
+      return (
+        <DebouncedCurrencyField
+          remoteValue={value as number | null | undefined}
+          onCommit={(next) => onUpdate(field.key as keyof Deal, next)}
+          placeholder={field.placeholder}
+        />
+      );
+    case 'date': {
+      const date = parseISODate(value);
+      return (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              className={cn(
+                'w-full h-8 px-3 justify-start font-normal text-sm',
+                !date && 'text-muted-foreground',
+              )}
+            >
+              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+              {date ? format(date, 'MMM d, yyyy') : 'Select date'}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={date}
+              onSelect={(d) =>
+                onUpdate(field.key as keyof Deal, d ? format(d, 'yyyy-MM-dd') : null)
+              }
+              initialFocus
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+      );
+    }
+    case 'select':
+      return (
+        <Select
+          value={value || ''}
+          onValueChange={(v) => onUpdate(field.key as keyof Deal, v)}
+        >
+          <SelectTrigger className="w-full h-8 text-sm">
+            <SelectValue placeholder="Select..." />
+          </SelectTrigger>
+          <SelectContent>
+            {(field.options || []).map((opt) => (
+              <SelectItem key={opt} value={opt}>
+                {opt}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      );
+    case 'multi-select': {
+      const selected: string[] = Array.isArray(value) ? value : [];
+      return (
+        <div className="flex flex-wrap gap-1.5">
+          {(field.options || []).map((opt) => {
+            const checked = selected.includes(opt);
+            return (
+              <button
+                key={opt}
+                type="button"
+                onClick={() => {
+                  const next = checked
+                    ? selected.filter((s) => s !== opt)
+                    : [...selected, opt];
+                  onUpdate(field.key as keyof Deal, next);
+                }}
+                className={cn(
+                  'h-7 px-2.5 rounded-full text-xs font-medium border transition-colors',
+                  checked
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-foreground border-input hover:bg-muted',
+                )}
+              >
+                {opt}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
+    case 'switch':
+      return (
+        <Switch
+          checked={Boolean(value)}
+          onCheckedChange={(v) => onUpdate(field.key as keyof Deal, v)}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+function lookupPipelineField(dealClass: string | undefined | null, fieldKey: string): PipelineFieldDef | null {
+  if (!dealClass) return null;
+  const schema = PIPELINE_FIELD_SCHEMAS[dealClass];
+  return schema?.fields.find((f) => f.key === fieldKey) ?? null;
+}
+
+/**
+ * Renders a single pipeline-specific field as a labeled inline row
+ * (label + input on one line). Use this when interleaving pipeline
+ * fields with shared Deal Information fields in a custom grid.
+ * Label width is aligned with the shared Deal Information rows (6.5rem).
+ */
+export function PipelineFieldRow({
+  deal,
+  fieldKey,
+  onUpdate,
+}: {
+  deal: Deal;
+  fieldKey: string;
+  onUpdate: (field: keyof Deal, value: any) => void;
+}) {
+  const field = lookupPipelineField(deal.dealClass, fieldKey);
+  if (!field) return null;
+  return (
+    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
+      <span className="text-muted-foreground text-sm">{field.label}</span>
+      <div className="min-w-0">{renderPipelineFieldInput(field, deal, onUpdate)}</div>
+    </div>
+  );
+}
+
+/**
+ * Renders a single pipeline-specific field as a stacked full-width row
+ * (label above input). Used for wide controls like multi-select chips.
+ */
+export function PipelineFullFieldRow({
+  deal,
+  fieldKey,
+  onUpdate,
+}: {
+  deal: Deal;
+  fieldKey: string;
+  onUpdate: (field: keyof Deal, value: any) => void;
+}) {
+  const field = lookupPipelineField(deal.dealClass, fieldKey);
+  if (!field) return null;
+  if (field.type === 'switch') {
+    return (
+      <div className="flex items-center justify-between gap-3 min-w-0">
+        <span className="text-muted-foreground text-sm">{field.label}</span>
+        {renderPipelineFieldInput(field, deal, onUpdate)}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-1.5 min-w-0">
+      <span className="text-sm text-muted-foreground">{field.label}</span>
+      {renderPipelineFieldInput(field, deal, onUpdate)}
+    </div>
+  );
 }
 
 const parseISODate = (value?: string | null): Date | undefined => {
