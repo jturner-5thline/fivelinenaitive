@@ -3943,7 +3943,15 @@ export default function DealDetail() {
 
                           // Separate fields into full-width, left-column, and right-column based on config order
                           const orderedMainFields = dealInfoFieldOrder.filter(
-                            fId => fId !== 'narrative' && fId !== 'hoursAndFees' && isDealInfoFieldVisible(fId)
+                            fId => fId !== 'narrative' && fId !== 'hoursAndFees' && isDealInfoFieldVisible(fId) && !(
+                              isFinServDeal && (
+                                fId === 'dealManager' ||
+                                fId === 'type' ||
+                                fId === 'engagement' ||
+                                fId === 'exclusivity' ||
+                                fId === 'analyst'
+                              )
+                            )
                           );
                           const leftFields = orderedMainFields.filter(fId => {
                             const def = DEAL_INFO_FIELD_DEFINITIONS.find(d => d.id === fId);
