@@ -125,19 +125,23 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
       const idx = cadence === 'monthly' ? m : Math.floor(m / 3);
       buckets[idx].push(l);
     }
-    if (year === PERF_OVERRIDE_YEAR && cadence === 'quarterly') {
-      // Pad bucket lengths to the manual baseline so .length reports the right
-      // actual count without polluting the drill-down list with synthetic rows.
-      // We use a sparse pattern: set .length directly.
-      for (let qIdx = 0; qIdx < 4; qIdx++) {
-        const baseline = PERF_OVERRIDE_QUARTERLY_BASELINE[qIdx + 1] ?? 0;
-        if (buckets[qIdx].length < baseline) {
-          buckets[qIdx].length = baseline;
-        }
-      }
-    }
     return buckets;
   }, [lenders, year, cadence]);
+
+  // Authoritative per-period actual *counts* for the chart and YTD tiles.
+  // Decoupled from the lender list so the temporary 2026-quarterly baseline
+  // (Q1 = 2) can be applied without faking lender rows in the drill-down.
+  const actualCountsByPeriod = useMemo(() => {
+    const periods = cadence === 'monthly' ? 12 : 4;
+    const counts = actualsByPeriod.map((b) => b.length);
+    if (year === PERF_OVERRIDE_YEAR && cadence === 'quarterly') {
+      for (let qIdx = 0; qIdx < periods; qIdx++) {
+        const baseline = PERF_OVERRIDE_QUARTERLY_BASELINE[qIdx + 1] ?? 0;
+        if ((counts[qIdx] ?? 0) < baseline) counts[qIdx] = baseline;
+      }
+    }
+    return counts;
+  }, [actualsByPeriod, year, cadence]);
 
   const planByPeriod = useMemo(() => {
     const src = cadence === 'monthly' ? monthlyPlan : quarterlyPlan;
