@@ -9,6 +9,12 @@ const LOST_STAGES = ['fs-not-a-fit', 'fs-dropped-client', 'fs-client-churned', '
 const TERMINAL_STAGES = [...WON_STAGES, ...LOST_STAGES];
 const INACTIVE_STAGES = ['fs-unresponsive', 'fs-on-hold', ...TERMINAL_STAGES];
 
+// Stages explicitly excluded from ALL FinServ Dashboard aggregate widgets and
+// the Pipeline Stats & Conversion table per product requirement. They may
+// still appear on the board view's per-stage columns, but they must not
+// influence any pipeline-summary metric here.
+const EXCLUDED_FROM_AGGREGATES = ['fs-client-churned', 'fs-client-lost'];
+
 // Stage weights for weighted pipeline value
 const STAGE_WEIGHTS: Record<string, number> = {
   'fs-unresponsive': 0,
@@ -62,8 +68,19 @@ export interface FinServInsight {
 const ACTIVE_CLIENT_STAGE = 'fs-active-client';
 
 export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topClientsLimit: number = 3) {
-  const activeDeals = useMemo(() => deals.filter(d => !INACTIVE_STAGES.includes(d.stage)), [deals]);
-  const wonDeals = useMemo(() => deals.filter(d => WON_STAGES.includes(d.stage)), [deals]);
+  // Aggregate-eligible deal set: drops Churned/Lost from every summary
+  // calculation. Use this everywhere except the per-stage board columns.
+  const aggregateDeals = useMemo(
+    () => deals.filter(d => !EXCLUDED_FROM_AGGREGATES.includes(d.stage)),
+    [deals],
+  );
+  const activeDeals = useMemo(
+    () => aggregateDeals.filter(d => !INACTIVE_STAGES.includes(d.stage)),
+    [aggregateDeals],
+  );
+  const wonDeals = useMemo(() => aggregateDeals.filter(d => WON_STAGES.includes(d.stage)), [aggregateDeals]);
+  // Win-rate denominator still uses Lost-class stages (including Churned/Lost)
+  // because that is the canonical win-rate formula: won / (won + lost).
   const lostDeals = useMemo(() => deals.filter(d => LOST_STAGES.includes(d.stage)), [deals]);
 
   const kpis = useMemo<FinServKPIs>(() => {
@@ -75,7 +92,7 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
       return sum + (d.value || 0) * w;
     }, 0);
 
-    const addedLast30 = deals.filter(d => isAfter(new Date(d.createdAt), thirtyDaysAgo)).length;
+    const addedLast30 = aggregateDeals.filter(d => isAfter(new Date(d.createdAt), thirtyDaysAgo)).length;
     const totalClosed = wonDeals.length + lostDeals.length;
     const winRate = totalClosed > 0 ? Math.round((wonDeals.length / totalClosed) * 100) : 0;
 
@@ -83,7 +100,7 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
     const avgDays = daysArr.length > 0 ? Math.round(daysArr.reduce((a, b) => a + b, 0) / daysArr.length) : 0;
 
     return {
-      totalDeals: deals.length,
+      totalDeals: aggregateDeals.length,
       activeDeals: activeDeals.length,
       weightedValue,
       addedLast30,
@@ -91,22 +108,26 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
       lostCount: lostDeals.length,
       winRate,
       avgDaysInStage: avgDays,
-      atRiskCount: deals.filter(d => d.status === 'at-risk').length,
+      atRiskCount: aggregateDeals.filter(d => d.status === 'at-risk').length,
       stalledCount: activeDeals.filter(d => differenceInDays(new Date(), new Date(d.updatedAt)) >= 14).length,
     };
-  }, [deals, activeDeals, wonDeals, lostDeals]);
+  }, [aggregateDeals, activeDeals, wonDeals, lostDeals]);
 
   const stageMetrics = useMemo<FinServStageMetric[]>(() => {
     const now = new Date();
-    const stageOrder = stages.map(s => s.id);
+    // Drop Churned/Lost rows entirely from the Pipeline Stats & Conversion
+    // table so their counts/values don't pollute conversion math between
+    // earlier stages.
+    const visibleStages = stages.filter(s => !EXCLUDED_FROM_AGGREGATES.includes(s.id));
+    const stageOrder = visibleStages.map(s => s.id);
 
-    return stages.map((s, idx) => {
-      const stageDeals = deals.filter(d => d.stage === s.id);
+    return visibleStages.map((s, idx) => {
+      const stageDeals = aggregateDeals.filter(d => d.stage === s.id);
       const days = stageDeals.map(d => differenceInDays(now, new Date(d.updatedAt)));
       const avgDays = days.length > 0 ? Math.round(days.reduce((a, b) => a + b, 0) / days.length) : 0;
 
       // Conversion = % of deals that moved past this stage
-      const pastThisStage = deals.filter(d => {
+      const pastThisStage = aggregateDeals.filter(d => {
         const dIdx = stageOrder.indexOf(d.stage);
         return dIdx > idx;
       }).length;
@@ -122,7 +143,7 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
         conversionRate,
       };
     });
-  }, [deals, stages]);
+  }, [aggregateDeals, stages]);
 
   // Top Active Clients: only deals currently in the "Active Client" stage.
   // Closed Won, Closed Lost, On Hold, Unresponsive, Churned, etc. are
@@ -187,7 +208,7 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
 
     // Top client concentration
     if (topClients.length > 0) {
-      const totalValue = deals.reduce((s, d) => s + (d.value || 0), 0);
+      const totalValue = aggregateDeals.reduce((s, d) => s + (d.value || 0), 0);
       const topValue = topClients.reduce((s, c) => s + c.totalValue, 0);
       if (totalValue > 0) {
         const pct = Math.round((topValue / totalValue) * 100);
@@ -222,7 +243,7 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
     }
 
     return result;
-  }, [stageMetrics, topClients, activeDeals, deals]);
+  }, [stageMetrics, topClients, activeDeals, aggregateDeals]);
 
   return { kpis, stageMetrics, topClients, insights };
 }
