@@ -31,7 +31,8 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { Target, Pencil, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Target, Pencil, TrendingUp, TrendingDown, Minus, ExternalLink, Plus, UserCog, AtSign } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { useAcquisitionPlan } from '@/components/lenders/FundingSourcePlanModal';
 import type { MasterLender } from '@/hooks/useMasterLenders';
 
@@ -66,6 +67,19 @@ interface QualifiedActualRow {
   lender_ids: string[] | null;
 }
 
+interface QualifiedDetailRow {
+  period: number;
+  lender_id: string;
+  lender_name: string | null;
+  relationship_owners: string | null;
+  trigger_kind: string;
+  trigger_at: string;
+  deal_id: string | null;
+  deal_company: string | null;
+  deal_submitted_at: string | null;
+  delta_seconds: number | null;
+}
+
 interface Props {
   tenantId: string;
   /** All lenders visible to the user; used to compute actuals by created_at. */
@@ -78,7 +92,13 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<number>(currentYear);
   const [cadenceOverride, setCadenceOverride] = useState<Cadence | null>(null);
-  const [drillPeriod, setDrillPeriod] = useState<{ label: string; lenders: MasterLender[] } | null>(null);
+  const [drill, setDrill] = useState<
+    | { kind: 'period'; period: number; label: string }
+    | { kind: 'ytd'; label: string }
+    | null
+  >(null);
+  const [drillRows, setDrillRows] = useState<QualifiedDetailRow[]>([]);
+  const [drillLoading, setDrillLoading] = useState(false);
 
   const { data: monthlyPlan, isLoading: loadingMonthly } = useAcquisitionPlan(tenantId, year, 'monthly');
   const { data: quarterlyPlan, isLoading: loadingQuarterly } = useAcquisitionPlan(tenantId, year, 'quarterly');
@@ -197,12 +217,57 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
 
   const isLoading = loadingMonthly || loadingQuarterly || loadingActuals;
 
-  const handleBarClick = (data: { period?: string; idx?: number }) => {
-    if (data?.idx == null) return;
-    const periodLenders = actualsByPeriod[data.idx] ?? [];
-    const yLabel = data.period ?? '';
-    setDrillPeriod({ label: `${yLabel} ${year}`, lenders: periodLenders });
+  const periodLabel = (idx: number) =>
+    cadence === 'monthly' ? MONTH_LABELS[idx] : `Q${idx + 1}`;
+
+  const openPeriodDrill = (idx: number) => {
+    setDrill({
+      kind: 'period',
+      period: idx + 1,
+      label: `${periodLabel(idx)} ${year} — Qualified Funding Sources`,
+    });
   };
+  const openYtdDrill = () => {
+    setDrill({ kind: 'ytd', label: `YTD ${year} — Qualified Funding Sources` });
+  };
+
+  const handleBarClick = (data: { idx?: number }) => {
+    if (data?.idx == null) return;
+    openPeriodDrill(data.idx);
+  };
+
+  // Fetch qualified detail rows when the drill sheet opens.
+  useEffect(() => {
+    if (!drill) { setDrillRows([]); return; }
+    let cancelled = false;
+    setDrillLoading(true);
+    (async () => {
+      const args: Record<string, unknown> = {
+        p_tenant_id: tenantId,
+        p_year: year,
+        p_cadence: cadence,
+      };
+      if (drill.kind === 'period') args.p_period = drill.period;
+      const { data, error } = await supabase.rpc(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'get_funding_source_qualified_actuals_detail' as any,
+        args,
+      );
+      if (cancelled) return;
+      if (error) {
+        console.error('[Performance] qualified detail RPC failed', error);
+        setDrillRows([]);
+      } else {
+        let rows = (data ?? []) as QualifiedDetailRow[];
+        if (drill.kind === 'ytd') {
+          rows = rows.filter((r) => r.period <= ytdMaxIdx + 1);
+        }
+        setDrillRows(rows);
+      }
+      setDrillLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [drill, tenantId, year, cadence, ytdMaxIdx]);
 
   const VarianceIcon = variance > 0 ? TrendingUp : variance < 0 ? TrendingDown : Minus;
   const varianceColor =
@@ -272,12 +337,18 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
             {/* YTD summary stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <StatTile label="YTD Plan" value={ytdPlan} />
-              <StatTile label="YTD Actual" value={ytdActual} valueClass="text-emerald-300" />
+              <StatTile
+                label="YTD Actual"
+                value={ytdActual}
+                valueClass="text-emerald-300"
+                onClick={ytdActual > 0 ? openYtdDrill : undefined}
+              />
               <StatTile
                 label="Variance"
                 value={`${variance > 0 ? '+' : ''}${variance}`}
                 valueClass={varianceColor}
                 icon={<VarianceIcon className="h-3 w-3" />}
+                onClick={ytdActual > 0 ? openYtdDrill : undefined}
               />
               <StatTile
                 label="Attainment"
@@ -291,6 +362,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                     ? 'text-amber-300'
                     : 'text-rose-400'
                 }
+                onClick={ytdActual > 0 ? openYtdDrill : undefined}
               />
             </div>
 
@@ -374,41 +446,76 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
         )}
       </div>
 
-      <Sheet open={!!drillPeriod} onOpenChange={(o) => { if (!o) setDrillPeriod(null); }}>
-        <SheetContent side="right" className="w-[560px] sm:max-w-[640px] z-[1500] bg-slate-950 text-slate-100 border-slate-700/60 overflow-y-auto">
+      <Sheet open={!!drill} onOpenChange={(o) => { if (!o) setDrill(null); }}>
+        <SheetContent side="right" className="w-[640px] sm:max-w-[760px] z-[1500] bg-slate-950 text-slate-100 border-slate-700/60 overflow-y-auto">
           <SheetHeader>
-            <SheetTitle className="text-slate-100">
-              Funding Sources — {drillPeriod?.label}
-            </SheetTitle>
+            <SheetTitle className="text-slate-100">{drill?.label}</SheetTitle>
             <SheetDescription className="text-slate-400 text-[12px]">
-              {drillPeriod?.lenders.length ?? 0} new funding source{(drillPeriod?.lenders.length ?? 0) === 1 ? '' : 's'} added in this period.
+              {drillLoading
+                ? 'Loading qualified funding sources…'
+                : `${drillRows.length} qualified funding source${drillRows.length === 1 ? '' : 's'} — added or had contact info modified, then submitted a deal from Naitive within 72 hours.`}
             </SheetDescription>
           </SheetHeader>
           <div className="mt-3">
-            {!drillPeriod || drillPeriod.lenders.length === 0 ? (
-              <div className="p-6 text-center text-[12px] text-slate-500">No funding sources added</div>
+            {drillLoading ? (
+              <div className="p-6 text-center text-[12px] text-slate-500">Loading…</div>
+            ) : drillRows.length === 0 ? (
+              <div className="p-8 text-center text-[12px] text-slate-500">
+                No qualified funding sources for this period.
+              </div>
             ) : (
-              <table className="w-full text-[12px]">
-                <thead className="text-left text-slate-400 border-b border-slate-700/40">
-                  <tr>
-                    <th className="py-1.5">Name</th>
-                    <th className="text-right">Added</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {drillPeriod.lenders
-                    .slice()
-                    .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
-                    .map((l) => (
-                      <tr key={l.id} className="border-t border-slate-700/40">
-                        <td className="py-1.5 text-slate-100 truncate max-w-[360px]">{l.name || '—'}</td>
-                        <td className="text-right text-slate-400 tabular-nums">
-                          {l.created_at ? new Date(l.created_at).toLocaleDateString() : '—'}
+              <div className="overflow-x-auto">
+                <table className="w-full text-[12px]">
+                  <thead className="text-left text-slate-400 border-b border-slate-700/40">
+                    <tr>
+                      <th className="py-1.5 pr-2">Funding source</th>
+                      <th className="py-1.5 pr-2">Trigger</th>
+                      <th className="py-1.5 pr-2">Trigger at</th>
+                      <th className="py-1.5 pr-2">Submitted deal</th>
+                      <th className="py-1.5 pr-2">Submitted at</th>
+                      <th className="py-1.5 pr-2 text-right">Within</th>
+                      <th className="py-1.5">Owner</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {drillRows.map((r) => (
+                      <tr key={`${r.lender_id}-${r.period}`} className="border-t border-slate-700/40 align-top">
+                        <td className="py-1.5 pr-2 text-slate-100 truncate max-w-[200px]">
+                          {r.lender_name || '—'}
+                        </td>
+                        <td className="py-1.5 pr-2">
+                          <TriggerBadge kind={r.trigger_kind} />
+                        </td>
+                        <td className="py-1.5 pr-2 text-slate-300 tabular-nums whitespace-nowrap">
+                          {formatDateTime(r.trigger_at)}
+                        </td>
+                        <td className="py-1.5 pr-2 text-slate-100 truncate max-w-[180px]">
+                          {r.deal_id ? (
+                            <Link
+                              to={`/deals/${r.deal_id}`}
+                              className="inline-flex items-center gap-1 text-sky-300 hover:text-sky-200"
+                            >
+                              <span className="truncate">{r.deal_company || 'View deal'}</span>
+                              <ExternalLink className="h-3 w-3 shrink-0" />
+                            </Link>
+                          ) : (
+                            <span className="text-slate-500">—</span>
+                          )}
+                        </td>
+                        <td className="py-1.5 pr-2 text-slate-300 tabular-nums whitespace-nowrap">
+                          {formatDateTime(r.deal_submitted_at)}
+                        </td>
+                        <td className="py-1.5 pr-2 text-right text-slate-300 tabular-nums whitespace-nowrap">
+                          {formatDelta(r.delta_seconds)}
+                        </td>
+                        <td className="py-1.5 text-slate-400 truncate max-w-[140px]">
+                          {r.relationship_owners || '—'}
                         </td>
                       </tr>
                     ))}
-                </tbody>
-              </table>
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </SheetContent>
@@ -417,24 +524,70 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
   );
 }
 
+function TriggerBadge({ kind }: { kind: string }) {
+  const map: Record<string, { label: string; cls: string; Icon: React.ComponentType<{ className?: string }> }> = {
+    created: { label: 'Added', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30', Icon: Plus },
+    contact_name: { label: 'Contact name', cls: 'bg-sky-500/15 text-sky-300 border-sky-500/30', Icon: UserCog },
+    contact_email: { label: 'Contact email', cls: 'bg-violet-500/15 text-violet-300 border-violet-500/30', Icon: AtSign },
+    name: { label: 'Name', cls: 'bg-amber-500/15 text-amber-300 border-amber-500/30', Icon: UserCog },
+  };
+  const m = map[kind] ?? { label: kind, cls: 'bg-slate-500/15 text-slate-300 border-slate-500/30', Icon: UserCog };
+  const Icon = m.Icon;
+  return (
+    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] ${m.cls}`}>
+      <Icon className="h-3 w-3" /> {m.label}
+    </span>
+  );
+}
+
+function formatDateTime(iso: string | null) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+}
+
+function formatDelta(seconds: number | null) {
+  if (seconds == null) return '—';
+  const h = Math.floor(seconds / 3600);
+  if (h < 1) return `${Math.max(0, Math.round(seconds / 60))}m`;
+  if (h < 72) {
+    const m = Math.round((seconds % 3600) / 60);
+    return m === 0 ? `${h}h` : `${h}h ${m}m`;
+  }
+  return `${h}h`;
+}
+
 function StatTile({
   label,
   value,
   valueClass,
   icon,
+  onClick,
 }: {
   label: string;
   value: number | string;
   valueClass?: string;
   icon?: React.ReactNode;
+  onClick?: () => void;
 }) {
+  const clickable = typeof onClick === 'function';
   return (
-    <div className="rounded-md border border-slate-700/40 bg-slate-900/40 px-2.5 py-2">
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={!clickable}
+      className={`text-left rounded-md border border-slate-700/40 bg-slate-900/40 px-2.5 py-2 w-full transition-colors ${
+        clickable
+          ? 'hover:bg-slate-800/60 hover:border-sky-500/40 cursor-pointer'
+          : 'cursor-default'
+      }`}
+    >
       <div className="text-[10px] uppercase tracking-wider text-slate-400">{label}</div>
       <div className={`mt-0.5 text-[18px] font-semibold tabular-nums flex items-center gap-1 ${valueClass ?? 'text-slate-100'}`}>
         {icon}
         {value}
       </div>
-    </div>
+    </button>
   );
 }
