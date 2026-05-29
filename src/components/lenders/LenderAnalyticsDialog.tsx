@@ -20,6 +20,7 @@ import {
   FundingSourcePlanModal,
   useAcquisitionPlan,
 } from '@/components/lenders/FundingSourcePlanModal';
+import { FundingSourcePerformanceCard } from '@/components/lenders/FundingSourcePerformanceCard';
 import { cn } from '@/lib/utils';
 import { formatUSD } from '@/lib/formatters/currency';
 import {
