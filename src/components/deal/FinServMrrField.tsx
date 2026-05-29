@@ -96,7 +96,7 @@ function ComponentRow({
   const rowTotal = (Number(rateDraft) || 0) * (Number(hoursDraft) || 0);
 
   return (
-    <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_minmax(4.5rem,auto)_auto] items-center gap-1.5">
+    <div className="grid grid-cols-[minmax(0,1fr)_6rem_5rem_minmax(5rem,auto)_2rem] items-center gap-2">
       <Input
         value={labelDraft}
         placeholder="Label (optional)"
