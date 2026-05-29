@@ -337,12 +337,18 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
             {/* YTD summary stats */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <StatTile label="YTD Plan" value={ytdPlan} />
-              <StatTile label="YTD Actual" value={ytdActual} valueClass="text-emerald-300" />
+              <StatTile
+                label="YTD Actual"
+                value={ytdActual}
+                valueClass="text-emerald-300"
+                onClick={ytdActual > 0 ? openYtdDrill : undefined}
+              />
               <StatTile
                 label="Variance"
                 value={`${variance > 0 ? '+' : ''}${variance}`}
                 valueClass={varianceColor}
                 icon={<VarianceIcon className="h-3 w-3" />}
+                onClick={ytdActual > 0 ? openYtdDrill : undefined}
               />
               <StatTile
                 label="Attainment"
@@ -356,6 +362,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
                     ? 'text-amber-300'
                     : 'text-rose-400'
                 }
+                onClick={ytdActual > 0 ? openYtdDrill : undefined}
               />
             </div>
 
