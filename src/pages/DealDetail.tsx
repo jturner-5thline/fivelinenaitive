@@ -839,6 +839,7 @@ export default function DealDetail() {
           servicesOffered: Array.isArray((dbDeal as any).services_offered) ? (dbDeal as any).services_offered : undefined,
           feeType: (dbDeal as any).fee_type || undefined,
           mrr: (dbDeal as any).mrr ?? null,
+          mrrMode: ((dbDeal as any).mrr_mode === 'calculated' ? 'calculated' : 'manual') as 'manual' | 'calculated',
           oneTimeRevenue: (dbDeal as any).one_time_revenue ?? null,
           projectedCloseDate: (dbDeal as any).projected_close_date || null,
           contractStartDate: (dbDeal as any).contract_start_date || null,
