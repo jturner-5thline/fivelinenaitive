@@ -76,6 +76,8 @@ import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from '@/components/deals/CreateTaskForMentionDialog';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { CalendarPanel } from '@/components/pipeline/memo/CalendarPanel';
+import { FinServProjectsCard } from '@/components/deal/FinServProjectsCard';
+import { useFinservProjects } from '@/hooks/useFinservProjects';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
@@ -1330,6 +1332,21 @@ export default function DealDetail() {
   
   // Outstanding items persistence
   const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems } = useOutstandingItems(id);
+
+  // FinServ Projects — only loaded for FinServ deals. The DB trigger keeps
+  // deals.one_time_revenue = SUM(projects.value); we mirror that locally
+  // so the Deal Information card reflects edits immediately without refetch.
+  const {
+    projects: finservProjects,
+    total: finservProjectsTotal,
+    loading: finservProjectsLoading,
+    addProject: addFinservProject,
+    updateProject: updateFinservProject,
+    deleteProject: deleteFinservProject,
+  } = useFinservProjects(
+    isFinServDeal ? id : undefined,
+    (total) => setDeal((prev) => (prev ? { ...prev, oneTimeRevenue: total } : prev)),
+  );
 
   // Phase-aware checklist controls (Add Phase 2/3 + retroactive archive banner)
   const checklistPhaseControls = useChecklistPhaseControls(
