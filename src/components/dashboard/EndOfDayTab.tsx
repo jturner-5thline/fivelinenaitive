@@ -43,6 +43,10 @@ import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 import { MeetingClaapInlineAction } from '@/components/dashboard/MeetingClaapInlineAction';
+import { MeetingDealInlineAction } from '@/components/dashboard/MeetingDealInlineAction';
+import { MeetingFollowupInlineAction } from '@/components/dashboard/MeetingFollowupInlineAction';
+import { MeetingTasksInlineAction } from '@/components/dashboard/MeetingTasksInlineAction';
+import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 
 // ─────────────────────────────────────────────────────────────
