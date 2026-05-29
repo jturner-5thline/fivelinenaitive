@@ -19,6 +19,7 @@ import { Deal, DealStatus } from '@/types/deal';
 import { DealCard } from './DealCard';
 import { useDealStages } from '@/contexts/DealStagesContext';
 import { usePipelineContext } from '@/contexts/PipelineContext';
+import { usePreferences } from '@/contexts/PreferencesContext';
 import { useFlexEngagementScores } from '@/hooks/useFlexEngagementScores';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -119,6 +120,11 @@ function DroppableStageColumnImpl({
   const { setNodeRef } = useDroppable({
     id: stageId,
   });
+  const { formatCurrencyValue } = usePreferences();
+  const stageTotal = deals.reduce(
+    (sum, d) => sum + (d.dealClass === 'finserv' ? (d.mrr ?? 0) : (d.value ?? 0)),
+    0,
+  );
 
   return (
     <div
@@ -130,16 +136,21 @@ function DroppableStageColumnImpl({
     >
       {/* Stage Header */}
       <div className="p-3 border-b bg-muted/50 rounded-lg">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span
             className={cn(
               "h-2.5 w-2.5 rounded-full flex-shrink-0",
               stageColor
             )}
           />
-          <h3 className="font-medium text-sm truncate">{stageLabel}</h3>
-          <span className="ml-auto text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded">
-            {deals.length}
+          <h3 className="font-medium text-sm truncate min-w-0">{stageLabel}</h3>
+          <span className="ml-auto flex items-center gap-1 shrink-0">
+            <span className="text-xs font-medium tabular-nums text-foreground/80 whitespace-nowrap">
+              {formatCurrencyValue(stageTotal)}
+            </span>
+            <span className="text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded">
+              {deals.length}
+            </span>
           </span>
         </div>
       </div>
