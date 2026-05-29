@@ -217,12 +217,57 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
 
   const isLoading = loadingMonthly || loadingQuarterly || loadingActuals;
 
-  const handleBarClick = (data: { period?: string; idx?: number }) => {
-    if (data?.idx == null) return;
-    const periodLenders = actualsByPeriod[data.idx] ?? [];
-    const yLabel = data.period ?? '';
-    setDrillPeriod({ label: `${yLabel} ${year}`, lenders: periodLenders });
+  const periodLabel = (idx: number) =>
+    cadence === 'monthly' ? MONTH_LABELS[idx] : `Q${idx + 1}`;
+
+  const openPeriodDrill = (idx: number) => {
+    setDrill({
+      kind: 'period',
+      period: idx + 1,
+      label: `${periodLabel(idx)} ${year} — Qualified Funding Sources`,
+    });
   };
+  const openYtdDrill = () => {
+    setDrill({ kind: 'ytd', label: `YTD ${year} — Qualified Funding Sources` });
+  };
+
+  const handleBarClick = (data: { idx?: number }) => {
+    if (data?.idx == null) return;
+    openPeriodDrill(data.idx);
+  };
+
+  // Fetch qualified detail rows when the drill sheet opens.
+  useEffect(() => {
+    if (!drill) { setDrillRows([]); return; }
+    let cancelled = false;
+    setDrillLoading(true);
+    (async () => {
+      const args: Record<string, unknown> = {
+        p_tenant_id: tenantId,
+        p_year: year,
+        p_cadence: cadence,
+      };
+      if (drill.kind === 'period') args.p_period = drill.period;
+      const { data, error } = await supabase.rpc(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'get_funding_source_qualified_actuals_detail' as any,
+        args,
+      );
+      if (cancelled) return;
+      if (error) {
+        console.error('[Performance] qualified detail RPC failed', error);
+        setDrillRows([]);
+      } else {
+        let rows = (data ?? []) as QualifiedDetailRow[];
+        if (drill.kind === 'ytd') {
+          rows = rows.filter((r) => r.period <= ytdMaxIdx + 1);
+        }
+        setDrillRows(rows);
+      }
+      setDrillLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [drill, tenantId, year, cadence, ytdMaxIdx]);
 
   const VarianceIcon = variance > 0 ? TrendingUp : variance < 0 ? TrendingDown : Minus;
   const varianceColor =
