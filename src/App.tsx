@@ -370,6 +370,7 @@ const App = () => (
                             <Route path="/naitive-pipeline/reports/:id" element={<NaitivePipelineReportView />} />
                             <Route path="/finserv" element={<FinServ />} />
                             <Route path="/email-intelligence" element={<EmailIntelligencePage />} />
+                            <Route path="/claap/review" element={<ClaapMappingReview />} />
                             <Route path="/operations" element={<Operations />} />
                             <Route path="/debug/recognition" element={<DebugRecognition />} />
                             <Route path="/settings" element={<Settings />} />
