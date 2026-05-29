@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useClaapMapping, type ClaapCandidate, type ClaapEntityType, type ClaapLinkRole } from '@/hooks/useClaapMapping';
-import { Check, X, Sparkles, Link2 } from 'lucide-react';
+import { Check, X, Sparkles, Link2, RefreshCw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -37,7 +37,7 @@ function bandClass(score: number) {
  * Shows scored candidates per entity type with reasons, plus inline accept/reject.
  */
 export function ClaapMappingPanel({ recordingId, className }: Props) {
-  const { candidates, links, isLoading, accept, reject, markUnrelated } = useClaapMapping(recordingId);
+  const { candidates, links, isLoading, accept, reject, markUnrelated, rescore } = useClaapMapping(recordingId);
 
   const grouped = useMemo(() => {
     const m = new Map<ClaapEntityType, ClaapCandidate[]>();
@@ -66,17 +66,23 @@ export function ClaapMappingPanel({ recordingId, className }: Props) {
           <Sparkles className="h-4 w-4 text-primary" />
           <h3 className="text-sm font-semibold">Mapping</h3>
         </div>
-        {highConfidencePending.length > 0 && (
-          <Button
-            size="sm"
-            onClick={() => highConfidencePending.forEach(c => {
-              const role = SECTIONS.find(s => s.type === c.entity_type)?.role;
-              if (role) accept.mutate({ candidateId: c.id, linkRole: role });
-            })}
-          >
-            Accept {highConfidencePending.length} high-confidence
+        <div className="flex items-center gap-2">
+          {highConfidencePending.length > 0 && (
+            <Button
+              size="sm"
+              onClick={() => highConfidencePending.forEach(c => {
+                const role = SECTIONS.find(s => s.type === c.entity_type)?.role;
+                if (role) accept.mutate({ candidateId: c.id, linkRole: role });
+              })}
+            >
+              Accept {highConfidencePending.length} high-confidence
+            </Button>
+          )}
+          <Button size="sm" variant="outline" onClick={() => rescore.mutate()} disabled={rescore.isPending}>
+            <RefreshCw className={cn('h-3 w-3 mr-1', rescore.isPending && 'animate-spin')} />
+            Rescore now
           </Button>
-        )}
+        </div>
       </div>
 
       {isLoading ? (
