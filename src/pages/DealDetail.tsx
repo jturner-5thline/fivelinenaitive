@@ -78,6 +78,7 @@ import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { CalendarPanel } from '@/components/pipeline/memo/CalendarPanel';
 import { FinServProjectsCard } from '@/components/deal/FinServProjectsCard';
 import { useFinservProjects } from '@/hooks/useFinservProjects';
+import { FinServMrrField } from '@/components/deal/FinServMrrField';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
@@ -839,6 +840,7 @@ export default function DealDetail() {
           servicesOffered: Array.isArray((dbDeal as any).services_offered) ? (dbDeal as any).services_offered : undefined,
           feeType: (dbDeal as any).fee_type || undefined,
           mrr: (dbDeal as any).mrr ?? null,
+          mrrMode: ((dbDeal as any).mrr_mode === 'calculated' ? 'calculated' : 'manual') as 'manual' | 'calculated',
           oneTimeRevenue: (dbDeal as any).one_time_revenue ?? null,
           projectedCloseDate: (dbDeal as any).projected_close_date || null,
           contractStartDate: (dbDeal as any).contract_start_date || null,
@@ -4011,7 +4013,23 @@ export default function DealDetail() {
                                       {renderDealInfoField('sourcedVia')}
                                       {renderDealInfoField('clientContact')}
                                       {renderDealInfoField('referralSource')}
-                                      <PipelineFieldRow deal={deal} fieldKey="mrr" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-start gap-2 min-w-0">
+                                        <span className="text-muted-foreground text-sm break-words pt-1">MRR</span>
+                                        <FinServMrrField
+                                          dealId={deal.id}
+                                          mrr={deal.mrr}
+                                          mode={deal.mrrMode ?? 'manual'}
+                                          onMrrCommit={(v) => updateDeal('mrr', v)}
+                                          onModeChange={(m) => updateDeal('mrrMode' as any, m)}
+                                          onCalculatedTotal={(t) =>
+                                            setDeal((prev) =>
+                                              prev && (prev.mrrMode ?? 'manual') === 'calculated'
+                                                ? { ...prev, mrr: t }
+                                                : prev,
+                                            )
+                                          }
+                                        />
+                                      </div>
                                       <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
                                         <span className="text-muted-foreground text-sm break-words">One-Time Revenue</span>
                                         <div

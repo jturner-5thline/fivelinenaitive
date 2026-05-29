@@ -9628,6 +9628,7 @@ export type Database = {
           migrated_from_personal: boolean
           milestone_fee: number | null
           mrr: number | null
+          mrr_mode: string
           narrative: string | null
           next_follow_up_at: string | null
           next_step: string | null
@@ -9711,6 +9712,7 @@ export type Database = {
           migrated_from_personal?: boolean
           milestone_fee?: number | null
           mrr?: number | null
+          mrr_mode?: string
           narrative?: string | null
           next_follow_up_at?: string | null
           next_step?: string | null
@@ -9794,6 +9796,7 @@ export type Database = {
           migrated_from_personal?: boolean
           milestone_fee?: number | null
           mrr?: number | null
+          mrr_mode?: string
           narrative?: string | null
           next_follow_up_at?: string | null
           next_step?: string | null
@@ -12344,6 +12347,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "finserv_deal_projects_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      finserv_mrr_components: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          estimated_hours: number
+          hourly_rate: number
+          id: string
+          label: string | null
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          estimated_hours?: number
+          hourly_rate?: number
+          id?: string
+          label?: string | null
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          estimated_hours?: number
+          hourly_rate?: number
+          id?: string
+          label?: string | null
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finserv_mrr_components_deal_id_fkey"
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
