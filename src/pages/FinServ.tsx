@@ -305,7 +305,10 @@ export default function FinServ() {
                   <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : (
-                <FinServDashboard deals={deals} stages={stages} />
+                <FinServDashboard
+                  deals={ownerFilter === 'all' ? deals : deals.filter(d => (d.dealOwner || '') === ownerFilter)}
+                  stages={stages}
+                />
               )}
             </TabsContent>
 
