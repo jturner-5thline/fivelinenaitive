@@ -247,10 +247,21 @@ export function EventClaapLinker({
       try {
         setRanking(true);
         const { data, error } = await supabase.functions.invoke('claap-rank-recordings-for-meeting', {
-          body: { action: 'rank', event_id: eventId, recordings },
+          body: {
+            action: 'rank',
+            event_id: eventId,
+            recordings,
+            meeting_context: {
+              title: eventTitle || null,
+              attendees: (attendeeEmails || []).map((e) => ({ email: e })),
+            },
+          },
         });
         if (cancelled) return;
-        if (error) throw error;
+        if (error) {
+          console.warn('claap rank failed', error);
+          return;
+        }
         const map: Record<string, RankedEntry> = {};
         for (const r of (data?.ranked || []) as any[]) {
           map[r.external_id] = { score: r.score || 0, reasons: r.reasons || [] };
