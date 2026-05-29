@@ -58,7 +58,11 @@ export function useDeals(options?: UseDealsOptions) {
   const { deals, updateDealStatus: updateStatus, isLoading } = useDealsContext();
   const { preferences } = usePreferences();
   const { stages } = useDealStages();
-  const [filters, setFilters] = useState<DealFilters>(options?.initialFilters ?? DEFAULT_DEAL_FILTERS);
+  const [filters, setFilters] = useState<DealFilters>(
+    options?.initialFilters
+      ? { ...DEFAULT_DEAL_FILTERS, ...options.initialFilters }
+      : DEFAULT_DEAL_FILTERS
+  );
   const [sortField, setSortField] = useState<SortField>(options?.initialSortField ?? 'updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>(options?.initialSortDirection ?? 'desc');
   const aiRules = useAiDealFilterStore((s) => s.rules);
