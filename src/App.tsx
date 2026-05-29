@@ -196,6 +196,7 @@ const NaitivePipelineReports = lazy(lazyRetry(() => import("./pages/NaitivePipel
 const NaitivePipelineReportView = lazy(lazyRetry(() => import("./pages/NaitivePipelineReportView")));
 const EmailIntelligencePage = lazy(lazyRetry(() => import("./pages/EmailIntelligencePage")));
 const FinServ = lazy(lazyRetry(() => import("./pages/FinServ")));
+const ClaapMappingReview = lazy(lazyRetry(() => import("./pages/ClaapMappingReview")));
 
 
 /**
