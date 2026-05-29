@@ -92,7 +92,13 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
   const currentYear = new Date().getFullYear();
   const [year, setYear] = useState<number>(currentYear);
   const [cadenceOverride, setCadenceOverride] = useState<Cadence | null>(null);
-  const [drillPeriod, setDrillPeriod] = useState<{ label: string; lenders: MasterLender[] } | null>(null);
+  const [drill, setDrill] = useState<
+    | { kind: 'period'; period: number; label: string }
+    | { kind: 'ytd'; label: string }
+    | null
+  >(null);
+  const [drillRows, setDrillRows] = useState<QualifiedDetailRow[]>([]);
+  const [drillLoading, setDrillLoading] = useState(false);
 
   const { data: monthlyPlan, isLoading: loadingMonthly } = useAcquisitionPlan(tenantId, year, 'monthly');
   const { data: quarterlyPlan, isLoading: loadingQuarterly } = useAcquisitionPlan(tenantId, year, 'quarterly');
