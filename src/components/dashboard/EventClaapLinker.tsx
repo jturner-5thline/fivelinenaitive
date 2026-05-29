@@ -95,6 +95,9 @@ export function EventClaapLinker({
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [entitySearch, setEntitySearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [rankedMap, setRankedMap] = useState<Record<string, RankedEntry>>({});
+  const [ranking, setRanking] = useState(false);
+  const [autoPreselected, setAutoPreselected] = useState(false);
 
   const externalDomains = useMemo(() => {
     const set = new Set<string>();
