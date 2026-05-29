@@ -36,6 +36,8 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+interface RankedEntry { score: number; reasons: Array<{ code: string; label: string; weight: number }>; }
+
 export interface EventClaapLinkerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
