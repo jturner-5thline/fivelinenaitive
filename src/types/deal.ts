@@ -108,6 +108,8 @@ export interface Deal {
   preSigningHours?: number;
   postSigningHours?: number;
   referredBy?: Referrer;
+  /** FK to public.contacts(id) — preferred over the legacy referredBy text. */
+  referralSourceContactId?: string | null;
   contact: string;
   createdAt: string;
   updatedAt: string;

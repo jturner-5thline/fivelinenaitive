@@ -73,6 +73,7 @@ import { InlineEditField } from '@/components/ui/inline-edit-field';
 import { RichTextInlineEdit } from '@/components/ui/rich-text-inline-edit';
 import { MentionTextarea } from '@/components/ui/mention-textarea';
 import { ReferralSourceInput } from '@/components/ui/referral-source-input';
+import { ReferralSourceContactInput } from '@/components/ui/referral-source-contact-input';
 import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from '@/components/deals/CreateTaskForMentionDialog';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { CalendarPanel } from '@/components/pipeline/memo/CalendarPanel';
@@ -3802,9 +3803,13 @@ export default function DealDetail() {
                                 return (
                                   <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                     <span className="text-muted-foreground text-sm">Referral Source</span>
-                                    <ReferralSourceInput
-                                      value={deal.referredBy || null}
-                                      onChange={(referrer) => updateDeal('referredBy', referrer)}
+                                    <ReferralSourceContactInput
+                                      value={
+                                        deal.referralSourceContactId
+                                          ? { id: deal.referralSourceContactId, name: deal.referredBy?.name }
+                                          : null
+                                      }
+                                      onChange={(c) => updateDeal('referralSourceContactId' as any, (c?.id ?? null) as any)}
                                       className="[&_input]:h-8 [&_input]:text-sm"
                                     />
                                   </div>

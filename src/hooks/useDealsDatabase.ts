@@ -326,6 +326,7 @@ export function useDealsDatabase() {
       isFlagged: dbDeal.is_flagged || false,
       flagNotes: dbDeal.flag_notes || undefined,
       referredBy: toReferrer(dbDeal.referred_by),
+      referralSourceContactId: (dbDeal as any).referral_source_contact_id || null,
       lender: dealLenders[0]?.name || '',
       value: Number(dbDeal.value),
       totalFee: Number(dbDeal.total_fee || 0),
@@ -776,6 +777,9 @@ export function useDealsDatabase() {
       if (updates.flagNotes !== undefined) dbUpdates.flag_notes = updates.flagNotes;
       if (Object.prototype.hasOwnProperty.call(updates, 'referredBy')) {
         dbUpdates.referred_by = updates.referredBy?.name ?? null;
+      }
+      if (Object.prototype.hasOwnProperty.call(updates, 'referralSourceContactId')) {
+        dbUpdates.referral_source_contact_id = (updates as any).referralSourceContactId ?? null;
       }
       if (updates.dealTypes !== undefined) {
         dbUpdates.deal_type = updates.dealTypes.length > 0 ? JSON.stringify(updates.dealTypes) : null;
