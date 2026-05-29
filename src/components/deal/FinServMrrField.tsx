@@ -2,6 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useFinservMrrComponents } from '@/hooks/useFinservMrrComponents';
 import { useDebouncedFieldValue, flushOnEnterOrTab } from '@/hooks/useDebouncedFieldValue';
 
@@ -175,47 +182,44 @@ export function FinServMrrField({
   const isCalc = mode === 'calculated';
 
   return (
-    <div className="space-y-1.5 min-w-0 w-full">
-      <div className="flex items-center gap-2 min-w-0">
-        {/* Mode toggle pill */}
-        <div className="inline-flex rounded-md border border-input bg-background overflow-hidden shrink-0">
-          <button
-            type="button"
-            className={`px-2 h-7 text-[11px] font-medium transition-colors ${
-              !isCalc ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-            }`}
-            onClick={() => onModeChange('manual')}
-          >
-            Manual
-          </button>
-          <button
-            type="button"
-            className={`px-2 h-7 text-[11px] font-medium transition-colors ${
-              isCalc ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:bg-muted'
-            }`}
-            onClick={() => onModeChange('calculated')}
-          >
-            Hourly
-          </button>
-        </div>
-        {isCalc ? (
-          <div
-            className="flex-1 min-w-0 h-8 px-2 text-sm rounded-md border border-input bg-muted/40 flex items-center justify-between"
-            title="Calculated from hourly-rate rows"
-          >
-            <span className="tabular-nums">{fmtUSD(total)}</span>
-            <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">calculated</span>
-          </div>
-        ) : (
-          <div className="flex-1 min-w-0">
+    <div className="space-y-2 min-w-0 w-full">
+      {/* Top row: label + mode select + value, aligned to the Deal Info grid */}
+      <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
+        <span className="text-muted-foreground text-sm break-words">MRR</span>
+        <div className="grid grid-cols-[7rem_minmax(0,1fr)] items-center gap-2 min-w-0">
+          <Select value={mode} onValueChange={(v) => onModeChange(v as 'manual' | 'calculated')}>
+            <SelectTrigger className="h-8 text-sm">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="manual">Manual</SelectItem>
+              <SelectItem value="calculated">Hourly</SelectItem>
+            </SelectContent>
+          </Select>
+          {isCalc ? (
+            <div
+              className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
+              title="Calculated from hourly-rate rows"
+            >
+              <span className="tabular-nums">{fmtUSD(total)}</span>
+              <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">calculated</span>
+            </div>
+          ) : (
             <ManualMrrInput value={mrr} onCommit={onMrrCommit} />
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {isCalc && (
-        <div className="rounded-md border border-border bg-muted/20 p-2 space-y-1.5">
-          <div className="grid grid-cols-[minmax(0,1fr)_5.5rem_4.5rem_minmax(4.5rem,auto)_auto] gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground px-1">
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2 w-full min-w-0">
+          <div className="flex items-center justify-between gap-2 pb-1 border-b border-border/60">
+            <span className="text-xs font-medium text-foreground">Hourly breakdown</span>
+            <span className="text-xs text-muted-foreground">
+              Calculated MRR:{' '}
+              <span className="font-semibold text-foreground tabular-nums">{fmtUSD(total)}</span>
+            </span>
+          </div>
+          <div className="grid grid-cols-[minmax(0,1fr)_6rem_5rem_minmax(5rem,auto)_2rem] gap-2 text-[10px] uppercase tracking-wide text-muted-foreground px-1">
             <span>Label</span>
             <span className="text-right">Rate /hr</span>
             <span className="text-right">Hours</span>
@@ -235,7 +239,7 @@ export function FinServMrrField({
             />
           ))}
           {components.length === 0 && (
-            <p className="text-[11px] text-muted-foreground text-center py-1">
+            <p className="text-xs text-muted-foreground text-center py-2">
               No rows yet — add one to start building MRR.
             </p>
           )}
@@ -243,7 +247,7 @@ export function FinServMrrField({
             type="button"
             variant="ghost"
             size="sm"
-            className="w-full h-7 text-xs"
+            className="w-full h-8 text-xs"
             onClick={() => addComponent({ hourlyRate: 0, estimatedHours: 0 })}
           >
             <Plus className="h-3.5 w-3.5 mr-1" /> Add row
