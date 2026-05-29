@@ -1515,7 +1515,7 @@ export default function DealDetail() {
         title: "Deal deleted",
         description: `${deal.company} has been permanently deleted.`,
       });
-      navigate('/deals');
+      navigate(isFinServDeal ? '/finserv' : isNaitiveDeal ? '/naitive-pipeline' : '/deals');
     } catch (error) {
       toast({
         title: "Error",
