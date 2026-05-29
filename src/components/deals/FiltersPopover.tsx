@@ -30,13 +30,14 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 
 
-export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'lender' | 'referredBy' | 'sourcedVia';
+export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'dealOwner' | 'lender' | 'referredBy' | 'sourcedVia';
 
 export const FILTER_LABELS: Record<FilterKey, string> = {
   stage: 'Stage',
   status: 'Status',
   engagementType: 'Engagement',
   manager: 'Manager',
+  dealOwner: 'Deal Owner',
   lender: 'Lender',
   referredBy: 'Referred By',
   sourcedVia: 'Sourced via',
