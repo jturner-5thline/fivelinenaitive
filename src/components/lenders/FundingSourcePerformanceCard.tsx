@@ -104,13 +104,37 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
   const actualsByPeriod = useMemo(() => {
     const periods = cadence === 'monthly' ? 12 : 4;
     const buckets: MasterLender[][] = Array.from({ length: periods }, () => []);
+    // Apply the temporary 2026-quarterly override (qualified-lender baseline)
+    // only when viewing the 2026 quarterly Performance view.
+    const useOverride = year === PERF_OVERRIDE_YEAR && cadence === 'quarterly';
+    const cutoffMs = useOverride ? new Date(PERF_OVERRIDE_CUTOFF_ISO).getTime() : 0;
     for (const l of lenders) {
       const t = l.created_at ? new Date(l.created_at) : null;
       if (!t || isNaN(t.getTime())) continue;
       if (t.getFullYear() !== year) continue;
+      // Under the override: only count lenders created at/after the cutoff,
+      // and never bucket them into Q1 (Q1 is fixed by the baseline below).
+      if (useOverride) {
+        if (t.getTime() < cutoffMs) continue;
+        const qIdx = Math.floor(t.getMonth() / 3);
+        if (qIdx === 0) continue;
+        buckets[qIdx].push(l);
+        continue;
+      }
       const m = t.getMonth(); // 0..11
       const idx = cadence === 'monthly' ? m : Math.floor(m / 3);
       buckets[idx].push(l);
+    }
+    if (year === PERF_OVERRIDE_YEAR && cadence === 'quarterly') {
+      // Pad bucket lengths to the manual baseline so .length reports the right
+      // actual count without polluting the drill-down list with synthetic rows.
+      // We use a sparse pattern: set .length directly.
+      for (let qIdx = 0; qIdx < 4; qIdx++) {
+        const baseline = PERF_OVERRIDE_QUARTERLY_BASELINE[qIdx + 1] ?? 0;
+        if (buckets[qIdx].length < baseline) {
+          buckets[qIdx].length = baseline;
+        }
+      }
     }
     return buckets;
   }, [lenders, year, cadence]);
