@@ -62,6 +62,7 @@ import {
   DialogContent,
 } from '@/components/ui/dialog';
 import { DashboardPage } from '@/components/layout/DashboardPage';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 const CARD_INTERACTIVE_SELECTOR = [
   '[data-milestone-toggle]',
