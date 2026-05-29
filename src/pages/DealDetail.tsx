@@ -3562,6 +3562,14 @@ export default function DealDetail() {
                           }
                           const renderDealInfoField = (fieldId: DealInfoFieldId) => {
                             if (!isDealInfoFieldVisible(fieldId)) return null;
+                            // Hide select fields for FinServ deals (pipeline-specific suppression).
+                            if (isFinServDeal && (
+                              fieldId === 'dealManager' ||
+                              fieldId === 'type' ||
+                              fieldId === 'engagement' ||
+                              fieldId === 'exclusivity' ||
+                              fieldId === 'analyst'
+                            )) return null;
                             switch (fieldId) {
                               case 'narrative':
                                 return (
