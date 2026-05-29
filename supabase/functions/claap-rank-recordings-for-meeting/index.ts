@@ -129,6 +129,8 @@ Deno.serve(async (req) => {
     const confidence = Number(body?.confidence ?? 0);
     const reasons = Array.isArray(body?.reasons) ? body.reasons : [];
     if (!rec?.id) return json({ error: 'recording required' }, 400);
+    // entity_id must be a uuid (calendar_events.id). If we only have a provider string, skip the link.
+    const entityId = typeof evt.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(evt.id) ? evt.id : null;
 
     // Upsert canonical claap_recordings row
     const startedAt = rec?.meeting?.startingAt || rec?.createdAt || null;
@@ -150,16 +152,18 @@ Deno.serve(async (req) => {
       .single();
     if (upErr || !canonical) return json({ error: upErr?.message || 'upsert failed' }, 500);
 
-    const { error: linkErr } = await admin.from('claap_recording_links').upsert({
-      recording_id: canonical.id,
-      entity_type: 'meeting',
-      entity_id: event_id,
-      link_role: 'primary_meeting',
-      source: 'manual',
-      confidence: isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : null,
-      created_by: userId,
-    }, { onConflict: 'recording_id,link_role,entity_id', ignoreDuplicates: true });
-    if (linkErr) return json({ error: linkErr.message }, 500);
+    if (entityId) {
+      const { error: linkErr } = await admin.from('claap_recording_links').upsert({
+        recording_id: canonical.id,
+        entity_type: 'meeting',
+        entity_id: entityId,
+        link_role: 'primary_meeting',
+        source: 'manual',
+        confidence: isFinite(confidence) ? Math.max(0, Math.min(1, confidence)) : null,
+        created_by: userId,
+      }, { onConflict: 'recording_id,link_role,entity_id', ignoreDuplicates: true });
+      if (linkErr) return json({ error: linkErr.message }, 500);
+    }
 
     return json({ ok: true, recording_id: canonical.id, reasons });
   } catch (e) {
