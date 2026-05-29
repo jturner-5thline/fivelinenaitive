@@ -810,6 +810,7 @@ export function useDealsDatabase() {
       if ((updates as any).servicesOffered !== undefined) (dbUpdates as any).services_offered = (updates as any).servicesOffered ?? [];
       if ((updates as any).feeType !== undefined) (dbUpdates as any).fee_type = (updates as any).feeType || null;
       if ((updates as any).mrr !== undefined) (dbUpdates as any).mrr = (updates as any).mrr;
+      if ((updates as any).mrrMode !== undefined) (dbUpdates as any).mrr_mode = (updates as any).mrrMode;
       if ((updates as any).oneTimeRevenue !== undefined) (dbUpdates as any).one_time_revenue = (updates as any).oneTimeRevenue;
       if ((updates as any).projectedCloseDate !== undefined) (dbUpdates as any).projected_close_date = (updates as any).projectedCloseDate;
       if ((updates as any).contractStartDate !== undefined) (dbUpdates as any).contract_start_date = (updates as any).contractStartDate;
