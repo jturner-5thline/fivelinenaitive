@@ -3298,6 +3298,47 @@ export type Database = {
           },
         ]
       }
+      claap_scoring_runs: {
+        Row: {
+          auto_links_written: number
+          candidates_written: number
+          error: string | null
+          finished_at: string | null
+          id: string
+          recording_id: string | null
+          run_type: string
+          started_at: string
+        }
+        Insert: {
+          auto_links_written?: number
+          candidates_written?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          recording_id?: string | null
+          run_type: string
+          started_at?: string
+        }
+        Update: {
+          auto_links_written?: number
+          candidates_written?: number
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          recording_id?: string | null
+          run_type?: string
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_scoring_runs_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claap_skipped_calls: {
         Row: {
           claap_id: string
@@ -3444,6 +3485,39 @@ export type Database = {
           payload?: Json | null
           resolved?: boolean | null
           retry_count?: number | null
+        }
+        Relationships: []
+      }
+      claap_webhook_log: {
+        Row: {
+          error: string | null
+          external_id: string | null
+          id: string
+          ok: boolean
+          org_company_id: string | null
+          payload: Json | null
+          received_at: string
+          status_code: number | null
+        }
+        Insert: {
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          ok: boolean
+          org_company_id?: string | null
+          payload?: Json | null
+          received_at?: string
+          status_code?: number | null
+        }
+        Update: {
+          error?: string | null
+          external_id?: string | null
+          id?: string
+          ok?: boolean
+          org_company_id?: string | null
+          payload?: Json | null
+          received_at?: string
+          status_code?: number | null
         }
         Relationships: []
       }
@@ -25095,6 +25169,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claap_assert_tenant_isolation: { Args: never; Returns: Json }
       claap_mark_unrelated: {
         Args: { p_entity_type: string; p_recording_id: string }
         Returns: undefined
@@ -25103,6 +25178,12 @@ export type Database = {
         Args: { p_candidate_id: string; p_reason?: string }
         Returns: undefined
       }
+      claap_request_rescore: {
+        Args: { p_recording_id: string }
+        Returns: boolean
+      }
+      claap_run_smoke_test: { Args: never; Returns: Json }
+      claap_seed_demo: { Args: { p_tenant_id: string }; Returns: Json }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       create_task_inapp_notification: {
         Args: {
