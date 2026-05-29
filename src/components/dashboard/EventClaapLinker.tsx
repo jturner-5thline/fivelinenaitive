@@ -681,6 +681,39 @@ export function EventClaapLinker({
                     Link to
                   </p>
                   <p className="text-xs text-white truncate">{selectedRecording.title || 'Untitled recording'}</p>
+                  {(() => {
+                    const entry = rankedMap[selectedRecording.id];
+                    if (!entry || !entry.score) return null;
+                    const pct = Math.round(entry.score * 100);
+                    const auto = entry.score >= 0.90;
+                    const review = !auto && entry.score >= 0.65;
+                    if (!auto && !review) return null;
+                    return (
+                      <div className="mt-2 space-y-1.5">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'h-5 px-1.5 text-[10px] gap-1',
+                            auto && 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10',
+                            review && 'border-amber-500/40 text-amber-300 bg-amber-500/10',
+                          )}
+                        >
+                          <Sparkles className="h-2.5 w-2.5" />
+                          {auto ? `Auto-matched (${pct}%)` : `Suggested (${pct}%)`}
+                        </Badge>
+                        {entry.reasons.length > 0 && (
+                          <ul className="text-[10px] text-muted-foreground/80 space-y-0.5 pl-1">
+                            {entry.reasons.slice(0, 4).map((r, i) => (
+                              <li key={i} className="flex items-center gap-1">
+                                <Check className="h-2.5 w-2.5 text-emerald-400/70 shrink-0" />
+                                <span className="truncate">{r.label}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="relative mt-2">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
