@@ -2956,6 +2956,22 @@ export default function DealDetail() {
                 </TooltipTrigger>
                 <TooltipContent>Archive deal</TooltipContent>
               </Tooltip>
+              {isFinServDeal && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setIsPermanentDeleteOpen(true)}
+                      aria-label="Delete deal"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete deal permanently</TooltipContent>
+                </Tooltip>
+              )}
               {viewModified && (
                 <Button
                   variant="outline"
