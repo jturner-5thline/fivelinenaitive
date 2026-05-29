@@ -133,6 +133,8 @@ export interface Deal {
   servicesOffered?: string[];
   feeType?: string;
   mrr?: number | null;
+  /** FinServ MRR entry mode: 'manual' total vs 'calculated' from hourly-rate rows. */
+  mrrMode?: 'manual' | 'calculated';
   oneTimeRevenue?: number | null;
   projectedCloseDate?: string | null;
   contractStartDate?: string | null;
