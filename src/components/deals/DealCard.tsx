@@ -409,12 +409,26 @@ function DealCardImpl({ deal, onStatusChange, onMarkReviewed, onToggleFlag, flex
 
           {/* ── ROW 2: Size (own row) | Stage pill (wraps below if no room) ── */}
           <div className="flex items-center justify-between gap-2 flex-wrap min-w-0">
-            <span
-              className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
-              style={{ color: '#f1f6fc' }}
-            >
-              {formatCurrencyValue(deal.value)}
-            </span>
+            {deal.dealClass === 'finserv' ? (
+              <span className="flex items-baseline gap-1.5 min-w-0 flex-wrap">
+                <span
+                  className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
+                  style={{ color: '#f1f6fc' }}
+                >
+                  {formatCurrencyValue(deal.mrr ?? 0)}
+                </span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide px-1.5 py-0.5 rounded bg-primary/15 text-primary border border-primary/30">
+                  MRR
+                </span>
+              </span>
+            ) : (
+              <span
+                className="text-xl font-bold tracking-tight tabular-nums whitespace-nowrap"
+                style={{ color: '#f1f6fc' }}
+              >
+                {formatCurrencyValue(deal.value)}
+              </span>
+            )}
             {!hideStatus && !compact && (
               <div className="shrink-0 max-w-full min-w-0">
                 <InlineStageDropdown
