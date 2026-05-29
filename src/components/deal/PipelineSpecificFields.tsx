@@ -198,6 +198,167 @@ const parseISODate = (value?: string | null): Date | undefined => {
   return isValid(d) ? d : undefined;
 };
 
+const TYPED_DATE_FORMATS = [
+  'MM/dd/yyyy',
+  'M/d/yyyy',
+  'M/d/yy',
+  'yyyy-MM-dd',
+  'yyyy/MM/dd',
+  'MMddyyyy',
+];
+
+const parseTypedDate = (s: string): Date | null => {
+  const trimmed = s.trim();
+  if (!trimmed) return null;
+  for (const f of TYPED_DATE_FORMATS) {
+    const d = parse(trimmed, f, new Date());
+    if (isValid(d)) return d;
+  }
+  return null;
+};
+
+/**
+ * Date input that supports BOTH manual typing (MM/DD/YYYY or YYYY-MM-DD)
+ * AND a calendar popup. Typing auto-inserts slashes for MM/DD/YYYY,
+ * keeps the calendar in sync, and commits on Enter / Tab / blur / pick.
+ */
+function DateFieldWithInput({
+  value,
+  onCommit,
+}: {
+  value: any;
+  onCommit: (iso: string | null) => void;
+}) {
+  const externalDate = parseISODate(value);
+  const [open, setOpen] = useState(false);
+  const [text, setText] = useState(externalDate ? format(externalDate, 'MM/dd/yyyy') : '');
+  const [error, setError] = useState(false);
+  const lastValueRef = useRef(value);
+
+  useEffect(() => {
+    if (value !== lastValueRef.current) {
+      lastValueRef.current = value;
+      const d = parseISODate(value);
+      setText(d ? format(d, 'MM/dd/yyyy') : '');
+      setError(false);
+    }
+  }, [value]);
+
+  const handleChange = (raw: string) => {
+    let next = raw;
+    // Auto-insert slashes when user types digits only (MM/DD/YYYY), but
+    // leave ISO-style yyyy-... alone so YYYY-MM-DD typing still works.
+    if (!/[-]/.test(raw) && /^[\d/]*$/.test(raw)) {
+      const digits = raw.replace(/\D/g, '').slice(0, 8);
+      if (digits.length >= 5) {
+        next = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+      } else if (digits.length >= 3) {
+        next = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+      } else {
+        next = digits;
+      }
+    }
+    setText(next);
+    if (!next.trim()) {
+      setError(false);
+      return;
+    }
+    setError(!parseTypedDate(next));
+  };
+
+  const commit = (): boolean => {
+    if (!text.trim()) {
+      if (value) onCommit(null);
+      setError(false);
+      return true;
+    }
+    const d = parseTypedDate(text);
+    if (d) {
+      const iso = format(d, 'yyyy-MM-dd');
+      lastValueRef.current = iso;
+      onCommit(iso);
+      setText(format(d, 'MM/dd/yyyy'));
+      setError(false);
+      return true;
+    }
+    setError(true);
+    return false;
+  };
+
+  const previewDate = parseTypedDate(text) || externalDate;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <div className="relative">
+        <Input
+          value={text}
+          onChange={(e) => handleChange(e.target.value)}
+          onFocus={() => setOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              if (commit()) setOpen(false);
+            } else if (e.key === 'Tab') {
+              commit();
+              setOpen(false);
+            } else if (e.key === 'Escape') {
+              setOpen(false);
+            }
+          }}
+          onBlur={() => commit()}
+          placeholder="MM/DD/YYYY"
+          aria-invalid={error}
+          className={cn(
+            'h-8 pr-8 text-sm',
+            error && 'border-destructive focus-visible:ring-destructive',
+          )}
+        />
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            tabIndex={-1}
+            aria-label="Open calendar"
+            className="absolute right-0 top-0 h-8 w-8 text-muted-foreground hover:text-foreground"
+            onClick={() => setOpen((o) => !o)}
+          >
+            <CalendarIcon className="h-3.5 w-3.5" />
+          </Button>
+        </PopoverTrigger>
+      </div>
+      <PopoverContent
+        className="w-auto p-0"
+        align="start"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <Calendar
+          mode="single"
+          selected={previewDate}
+          defaultMonth={previewDate}
+          onSelect={(d) => {
+            if (d) {
+              const iso = format(d, 'yyyy-MM-dd');
+              lastValueRef.current = iso;
+              onCommit(iso);
+              setText(format(d, 'MM/dd/yyyy'));
+              setError(false);
+            } else {
+              lastValueRef.current = null;
+              onCommit(null);
+              setText('');
+              setError(false);
+            }
+            setOpen(false);
+          }}
+          initialFocus
+          className="pointer-events-auto"
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 const formatCurrencyInput = (n: number | null | undefined): string => {
   if (n === null || n === undefined || Number.isNaN(n)) return '';
   return Math.round(n).toLocaleString();
