@@ -3,32 +3,31 @@ import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { differenceInDays, subDays, isAfter } from 'date-fns';
 
-// Terminal stages
-const WON_STAGES = ['fs-active-client'];
-const LOST_STAGES = ['fs-not-a-fit', 'fs-dropped-client', 'fs-client-churned', 'fs-client-lost'];
+// Terminal stages — these IDs match the canonical FINSERV_STAGES in
+// useFinServPipelineData (the "Active Client" stage is persisted as
+// `fs-closed-won`; churned/lost are `fs-churned` / `fs-closed-lost`).
+const WON_STAGES = ['fs-closed-won'];
+const LOST_STAGES = ['fs-churned', 'fs-closed-lost'];
 const TERMINAL_STAGES = [...WON_STAGES, ...LOST_STAGES];
-const INACTIVE_STAGES = ['fs-unresponsive', 'fs-on-hold', ...TERMINAL_STAGES];
+const INACTIVE_STAGES = [...TERMINAL_STAGES];
 
 // Stages explicitly excluded from ALL FinServ Dashboard aggregate widgets and
 // the Pipeline Stats & Conversion table per product requirement. They may
 // still appear on the board view's per-stage columns, but they must not
 // influence any pipeline-summary metric here.
-const EXCLUDED_FROM_AGGREGATES = ['fs-client-churned', 'fs-client-lost'];
+const EXCLUDED_FROM_AGGREGATES = ['fs-churned', 'fs-closed-lost'];
 
 // Stage weights for weighted pipeline value
 const STAGE_WEIGHTS: Record<string, number> = {
-  'fs-unresponsive': 0,
-  'fs-on-hold': 0.05,
-  'fs-indication-of-interest': 0.1,
-  'fs-not-a-fit': 0,
-  'fs-dropped-client': 0,
-  'fs-evaluation': 0.25,
-  'fs-proposal-dev': 0.4,
+  'fs-qualification': 0.1,
+  'fs-discovery': 0.2,
+  'fs-qualified': 0.35,
+  'fs-scoping': 0.5,
   'fs-proposal-sent': 0.6,
-  'fs-agreement-pending': 0.8,
-  'fs-active-client': 1.0,
-  'fs-client-churned': 0,
-  'fs-client-lost': 0,
+  'fs-negotiation': 0.8,
+  'fs-closed-won': 1.0,
+  'fs-churned': 0,
+  'fs-closed-lost': 0,
 };
 
 export interface FinServKPIs {
@@ -54,9 +53,9 @@ export interface FinServStageMetric {
 }
 
 export interface FinServTopClient {
+  dealId: string;
   name: string;
-  dealCount: number;
-  totalValue: number;
+  mrr: number;
 }
 
 export interface FinServInsight {
@@ -65,7 +64,7 @@ export interface FinServInsight {
   message: string;
 }
 
-const ACTIVE_CLIENT_STAGE = 'fs-active-client';
+const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
 
 export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topClientsLimit: number = 3) {
   // Aggregate-eligible deal set: drops Churned/Lost from every summary
@@ -145,24 +144,18 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
     });
   }, [aggregateDeals, stages]);
 
-  // Top Active Clients: only deals currently in the "Active Client" stage.
-  // Closed Won, Closed Lost, On Hold, Unresponsive, Churned, etc. are
-  // intentionally excluded so this reflects live revenue relationships only.
+  // Top Active Clients: list deals currently in the "Active Client" stage
+  // (`fs-closed-won`), sorted by MRR descending. One row per deal so the user
+  // can click straight through to the deal detail page.
   const topClients = useMemo<FinServTopClient[]>(() => {
-    const clientMap = new Map<string, { count: number; value: number }>();
-    deals
+    return deals
       .filter(d => d.stage === ACTIVE_CLIENT_STAGE)
-      .forEach(d => {
-        const name = d.company || d.name;
-        if (!name) return;
-        const existing = clientMap.get(name) || { count: 0, value: 0 };
-        existing.count++;
-        existing.value += d.value || 0;
-        clientMap.set(name, existing);
-      });
-    return Array.from(clientMap.entries())
-      .map(([name, data]) => ({ name, dealCount: data.count, totalValue: data.value }))
-      .sort((a, b) => b.totalValue - a.totalValue || b.dealCount - a.dealCount)
+      .map(d => ({
+        dealId: d.id,
+        name: d.company || d.name || 'Untitled',
+        mrr: Number(d.mrr ?? 0),
+      }))
+      .sort((a, b) => b.mrr - a.mrr || a.name.localeCompare(b.name))
       .slice(0, Math.max(1, topClientsLimit));
   }, [deals, topClientsLimit]);
 
@@ -209,7 +202,7 @@ export function useFinServMetrics(deals: Deal[], stages: DealStageOption[], topC
     // Top client concentration
     if (topClients.length > 0) {
       const totalValue = aggregateDeals.reduce((s, d) => s + (d.value || 0), 0);
-      const topValue = topClients.reduce((s, c) => s + c.totalValue, 0);
+      const topValue = topClients.reduce((s, c) => s + c.mrr, 0);
       if (totalValue > 0) {
         const pct = Math.round((topValue / totalValue) * 100);
         if (pct >= 50) {

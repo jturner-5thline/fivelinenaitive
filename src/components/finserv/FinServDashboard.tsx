@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils';
 import { Deal } from '@/types/deal';
 import { DealStageOption } from '@/contexts/DealStagesContext';
 import { useFinServMetrics, FinServInsight } from '@/hooks/useFinServMetrics';
+import { useNavigate } from 'react-router-dom';
 
 function KpiCard({ label, value, icon: Icon, color, subtext }: {
   label: string; value: string | number; icon: React.ElementType; color: string; subtext?: string;
@@ -30,6 +31,14 @@ function formatValue(v: number) {
   return `$${v.toLocaleString()}`;
 }
 
+/** Compact currency for MRR rows — "$5.00K", "$1.50K", "$1.25MM". */
+function formatMrr(v: number) {
+  if (!v) return '$0';
+  const abs = Math.abs(v);
+  if (abs >= 1_000_000) return `$${(v / 1_000_000).toFixed(2)}MM`;
+  return `$${(v / 1_000).toFixed(2)}K`;
+}
+
 const insightIcon: Record<FinServInsight['type'], { icon: React.ElementType; color: string }> = {
   bottleneck: { icon: AlertTriangle, color: 'text-yellow-500' },
   strength: { icon: TrendingUp, color: 'text-green-500' },
@@ -38,7 +47,8 @@ const insightIcon: Record<FinServInsight['type'], { icon: React.ElementType; col
 };
 
 export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: DealStageOption[] }) {
-  const { kpis, stageMetrics, topClients, insights } = useFinServMetrics(deals, stages);
+  const { kpis, stageMetrics, topClients, insights } = useFinServMetrics(deals, stages, 5);
+  const navigate = useNavigate();
 
   return (
     <div className="space-y-6">
@@ -124,19 +134,17 @@ export function FinServDashboard({ deals, stages }: { deals: Deal[]; stages: Dea
               {topClients.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No deals in the Active Client stage yet.</p>
               ) : topClients.map((c, i) => (
-                <div key={c.name} className="flex items-center gap-3">
+                <button
+                  type="button"
+                  key={c.dealId}
+                  onClick={() => navigate(`/finserv?deal=${c.dealId}`)}
+                  className="w-full flex items-center gap-3 px-2 py-1.5 -mx-2 rounded-md text-left hover:bg-muted/40 transition-colors"
+                >
                   <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}.</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{c.name}</p>
-                    <p className="text-[10px] text-muted-foreground">{c.dealCount} deal{c.dealCount !== 1 ? 's' : ''} · {formatValue(c.totalValue)}</p>
-                  </div>
-                </div>
+                  <p className="text-sm font-medium truncate flex-1 min-w-0">{c.name}</p>
+                  <span className="text-sm font-semibold tabular-nums text-foreground">{formatMrr(c.mrr)}</span>
+                </button>
               ))}
-              {topClients.length > 0 && topClients.length < 3 && (
-                <p className="text-[10px] text-muted-foreground italic pt-1">
-                  Showing all active clients. Add more Active Client deals to expand this list.
-                </p>
-              )}
             </CardContent>
           </Card>
         </div>
