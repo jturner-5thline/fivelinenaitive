@@ -78,6 +78,11 @@ export function MeetingClaapInlineAction(props: Props) {
     if (!eventId || !recordings || recordings.length === 0) return;
     if (existing) return; // skip — already linked
     let cancelled = false;
+    let timedOut = false;
+    const timeoutId = setTimeout(() => {
+      timedOut = true;
+      setRanking(false);
+    }, 4000);
     (async () => {
       try {
         setRanking(true);
@@ -96,7 +101,7 @@ export function MeetingClaapInlineAction(props: Props) {
           'claap-rank-recordings-for-meeting',
           { body: { action: 'rank', event_id: eventId, recordings, meeting_context } },
         );
-        if (cancelled) return;
+        if (cancelled || timedOut) return;
         if (error) {
           console.warn('claap inline rank error', error);
           return;
@@ -109,10 +114,13 @@ export function MeetingClaapInlineAction(props: Props) {
       } catch (err) {
         console.warn('claap inline rank threw', err);
       } finally {
-        if (!cancelled) setRanking(false);
+        if (!cancelled) {
+          clearTimeout(timeoutId);
+          setRanking(false);
+        }
       }
     })();
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [eventId, eventTitle, eventStart, eventEnd, organizerEmail, attendees, recordings, existing]);
 
   const band: 'linked' | 'auto' | 'review' | 'none' = useMemo(() => {
