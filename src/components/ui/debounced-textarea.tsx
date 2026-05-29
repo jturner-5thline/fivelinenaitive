@@ -2,6 +2,7 @@ import * as React from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useDebouncedFieldValue, flushOnEnterOrTab } from '@/hooks/useDebouncedFieldValue';
 
 interface DebouncedTextareaProps extends Omit<React.ComponentProps<typeof Textarea>, 'onChange'> {
   value: string;
@@ -23,74 +24,43 @@ export function DebouncedTextarea({
   className,
   ...props
 }: DebouncedTextareaProps) {
-  const [localValue, setLocalValue] = React.useState(value);
   const [saveState, setSaveState] = React.useState<'idle' | 'pending' | 'saving' | 'saved'>('idle');
-  const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   const successTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
-  const isInternalUpdate = React.useRef(false);
 
-  // Sync local value when external value changes (but not from our own updates)
-  React.useEffect(() => {
-    if (!isInternalUpdate.current) {
-      setLocalValue(value);
-    }
-    isInternalUpdate.current = false;
-  }, [value]);
-
-  const triggerSave = React.useCallback((newValue: string) => {
+  const handleCommit = React.useCallback((next: string) => {
     setSaveState('saving');
-    onValueChange(newValue);
-    
-    // Show success state briefly
-    if (successTimeoutRef.current) {
-      clearTimeout(successTimeoutRef.current);
-    }
+    onValueChange(next);
+    if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
     successTimeoutRef.current = setTimeout(() => {
       setSaveState('saved');
-      successTimeoutRef.current = setTimeout(() => {
-        setSaveState('idle');
-      }, 1500);
+      successTimeoutRef.current = setTimeout(() => setSaveState('idle'), 1500);
     }, 300);
   }, [onValueChange]);
 
-  const handleChange = React.useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value;
-    setLocalValue(newValue);
-    isInternalUpdate.current = true;
+  const {
+    value: localValue,
+    setValue: setLocalValue,
+    flush,
+    onFocus: onFocusDraft,
+    onBlur: onBlurDraft,
+  } = useDebouncedFieldValue<string>(value ?? '', {
+    commit: handleCommit,
+    debounceMs,
+  });
+
+  const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalValue(e.target.value);
     setSaveState('pending');
+  };
 
-    // Clear existing timeout
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-    }
-
-    // Set new debounced save
-    timeoutRef.current = setTimeout(() => {
-      triggerSave(newValue);
-    }, debounceMs);
-  }, [triggerSave, debounceMs]);
-
-  // Save immediately on blur
-  const handleBlur = React.useCallback((e: React.FocusEvent<HTMLTextAreaElement>) => {
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
-    if (localValue !== value) {
-      triggerSave(localValue);
-    }
+  const handleBlur = (e: React.FocusEvent<HTMLTextAreaElement>) => {
+    onBlurDraft();
     props.onBlur?.(e);
-  }, [localValue, value, triggerSave, props.onBlur]);
+  };
 
-  // Cleanup timeouts on unmount
   React.useEffect(() => {
     return () => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (successTimeoutRef.current) {
-        clearTimeout(successTimeoutRef.current);
-      }
+      if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
     };
   }, []);
 
@@ -100,7 +70,9 @@ export function DebouncedTextarea({
         {...props}
         value={localValue}
         onChange={handleChange}
+        onFocus={(e) => { onFocusDraft(); props.onFocus?.(e); }}
         onBlur={handleBlur}
+        onKeyDown={(e) => { flushOnEnterOrTab(flush)(e); props.onKeyDown?.(e); }}
         className={cn(className)}
       />
       {showSaveIndicator && saveState !== 'idle' && (
