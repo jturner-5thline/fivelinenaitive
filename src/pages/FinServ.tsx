@@ -82,14 +82,26 @@ function StageColumn({
   activeDealId: string | null; isOver: boolean; fullscreen?: boolean;
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
+  const { formatCurrencyValue } = usePreferences();
+  const stageTotal = deals.reduce(
+    (sum, d) => sum + (d.dealClass === 'finserv' ? (d.mrr ?? 0) : (d.value ?? 0)),
+    0,
+  );
 
   return (
     <div ref={setNodeRef} className={cn("flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border transition-colors", isOver && "ring-2 ring-primary bg-primary/5")}>
       <div className="p-3 border-b bg-muted/50 rounded-lg">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 min-w-0">
           <span className={cn("h-2.5 w-2.5 rounded-full flex-shrink-0", stage.color)} />
-          <h3 className="font-medium text-sm truncate">{stage.label}</h3>
-          <span className="ml-auto text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded">{deals.length}</span>
+          <h3 className="font-medium text-sm truncate min-w-0">{stage.label}</h3>
+          <span className="ml-auto flex items-center gap-1 shrink-0">
+            <span className="text-xs font-medium tabular-nums text-foreground/80 whitespace-nowrap">
+              {formatCurrencyValue(stageTotal)}
+            </span>
+            <span className="text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded">
+              {deals.length}
+            </span>
+          </span>
         </div>
       </div>
       <ScrollArea className={cn("min-h-[400px] [&>[data-radix-scroll-area-viewport]]:!overflow-x-hidden", fullscreen ? "h-[calc(92vh-120px)]" : "h-[calc(100vh-380px)]")}>
