@@ -999,5 +999,32 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
         onMerge={handleMerge}
       />
     </Collapsible>
+    <AlertDialog open={confirmDismissAllOpen} onOpenChange={setConfirmDismissAllOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Dismiss all current FLEx sync requests?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This clears the current sync request queue ({pendingRequests.length} pending — including New, Likely Match, and Conflict Review) so you can start fresh.
+            <br /><br />
+            This does <strong>not</strong> change permissions, access, sync settings, or existing lender records. Already-completed items are left untouched.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDismissingAll}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => { e.preventDefault(); handleDismissAll(); }}
+            disabled={isDismissingAll}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDismissingAll ? (
+              <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Dismissing…</>
+            ) : (
+              <>Dismiss {pendingRequests.length} request{pendingRequests.length === 1 ? '' : 's'}</>
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
