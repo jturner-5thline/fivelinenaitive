@@ -2594,6 +2594,54 @@ export type Database = {
           },
         ]
       }
+      claap_mapping_reviews: {
+        Row: {
+          candidate_id: string | null
+          created_at: string
+          feedback: Json | null
+          id: string
+          override_reason: string | null
+          recording_id: string
+          resolution: string
+          reviewer_id: string | null
+        }
+        Insert: {
+          candidate_id?: string | null
+          created_at?: string
+          feedback?: Json | null
+          id?: string
+          override_reason?: string | null
+          recording_id: string
+          resolution: string
+          reviewer_id?: string | null
+        }
+        Update: {
+          candidate_id?: string | null
+          created_at?: string
+          feedback?: Json | null
+          id?: string
+          override_reason?: string | null
+          recording_id?: string
+          resolution?: string
+          reviewer_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_mapping_reviews_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recording_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_mapping_reviews_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claap_match_audit: {
         Row: {
           action: string
@@ -2983,6 +3031,166 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_recording_candidates: {
+        Row: {
+          created_at: string
+          entity_id: string
+          entity_type: string
+          evidence: Json
+          id: string
+          rank: number
+          reasons: Json
+          recording_id: string
+          run_type: string
+          score: number
+        }
+        Insert: {
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          evidence?: Json
+          id?: string
+          rank?: number
+          reasons?: Json
+          recording_id: string
+          run_type: string
+          score: number
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          evidence?: Json
+          id?: string
+          rank?: number
+          reasons?: Json
+          recording_id?: string
+          run_type?: string
+          score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_recording_candidates_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_recording_links: {
+        Row: {
+          candidate_id: string | null
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          link_role: string
+          recording_id: string
+          source: string
+        }
+        Insert: {
+          candidate_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          link_role: string
+          recording_id: string
+          source?: string
+        }
+        Update: {
+          candidate_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          link_role?: string
+          recording_id?: string
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_recording_links_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recording_candidates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_recording_links_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_recordings: {
+        Row: {
+          created_at: string
+          ended_at: string | null
+          external_id: string
+          id: string
+          last_scored_at: string | null
+          org_company_id: string | null
+          organizer_email: string | null
+          participants: Json
+          source_payload: Json | null
+          started_at: string | null
+          status: string
+          title: string | null
+          transcript_available: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ended_at?: string | null
+          external_id: string
+          id?: string
+          last_scored_at?: string | null
+          org_company_id?: string | null
+          organizer_email?: string | null
+          participants?: Json
+          source_payload?: Json | null
+          started_at?: string | null
+          status?: string
+          title?: string | null
+          transcript_available?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ended_at?: string | null
+          external_id?: string
+          id?: string
+          last_scored_at?: string | null
+          org_company_id?: string | null
+          organizer_email?: string | null
+          participants?: Json
+          source_payload?: Json | null
+          started_at?: string | null
+          status?: string
+          title?: string | null
+          transcript_available?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_recordings_org_company_id_fkey"
+            columns: ["org_company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
             referencedColumns: ["id"]
           },
         ]
@@ -24865,6 +25073,35 @@ export type Database = {
       can_view_company_insights: {
         Args: { _company_id: string }
         Returns: boolean
+      }
+      claap_accept_suggestion: {
+        Args: { p_candidate_id: string; p_link_role: string }
+        Returns: {
+          candidate_id: string | null
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          link_role: string
+          recording_id: string
+          source: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "claap_recording_links"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      claap_mark_unrelated: {
+        Args: { p_entity_type: string; p_recording_id: string }
+        Returns: undefined
+      }
+      claap_reject_suggestion: {
+        Args: { p_candidate_id: string; p_reason?: string }
+        Returns: undefined
       }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
       create_task_inapp_notification: {
