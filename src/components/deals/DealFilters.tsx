@@ -71,6 +71,7 @@ export function DealFilters({
     filters.status.length > 0,
     filters.engagementType.length > 0,
     filters.manager.length > 0,
+    filters.dealOwner.length > 0,
     filters.lender.length > 0,
     filters.referredBy.length > 0,
     filters.sourcedVia.length > 0,
@@ -86,6 +87,7 @@ export function DealFilters({
       status: [],
       engagementType: [],
       manager: [],
+      dealOwner: [],
       lender: [],
       referredBy: [],
       sourcedVia: [],
@@ -126,6 +128,10 @@ export function DealFilters({
       chips.push({ type: 'manager', value, label: value });
     });
 
+    filters.dealOwner.forEach((value) => {
+      chips.push({ type: 'dealOwner', value, label: value });
+    });
+
     filters.lender.forEach((value) => {
       chips.push({ type: 'lender', value, label: value });
     });
@@ -152,6 +158,8 @@ export function DealFilters({
         return (values: string[]) => onFilterChange({ engagementType: values as EngagementType[] });
       case 'manager':
         return (values: string[]) => onFilterChange({ manager: values });
+      case 'dealOwner':
+        return (values: string[]) => onFilterChange({ dealOwner: values });
       case 'lender':
         return (values: string[]) => onFilterChange({ lender: values });
       case 'referredBy':
