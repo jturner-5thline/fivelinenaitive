@@ -1,5 +1,15 @@
 import { useState } from 'react';
-import { Bell, Check, X, GitMerge, ChevronDown, ChevronRight, AlertTriangle, UserPlus, RefreshCw, CheckCheck, Loader2, Search, Layers } from 'lucide-react';
+import { Bell, Check, X, GitMerge, ChevronDown, ChevronRight, AlertTriangle, UserPlus, RefreshCw, CheckCheck, Loader2, Search, Layers, Trash2 } from 'lucide-react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -317,6 +327,42 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [isRematching, setIsRematching] = useState(false);
+  const [confirmDismissAllOpen, setConfirmDismissAllOpen] = useState(false);
+  const [isDismissingAll, setIsDismissingAll] = useState(false);
+
+  // Bulk dismiss the entire pending queue. Queue cleanup only — does not touch
+  // permissions, lenders, or sync settings. Marks pending rows as 'rejected'
+  // with a clear processing note so they're filtered out of the active queue.
+  const handleDismissAll = async () => {
+    setIsDismissingAll(true);
+    try {
+      const { data, error } = await supabase
+        .from('lender_sync_requests')
+        .update({
+          status: 'rejected',
+          processed_at: new Date().toISOString(),
+          processing_notes: 'Queue cleanup — bulk dismissed (no permission or access changes)',
+        })
+        .eq('status', 'pending')
+        .select('id');
+      if (error) throw error;
+      const count = data?.length ?? 0;
+      toast({
+        title: 'Sync request queue cleared',
+        description: `Dismissed ${count} pending request${count === 1 ? '' : 's'}. No permissions, access, or lender records were changed.`,
+      });
+      setConfirmDismissAllOpen(false);
+      await refetch();
+    } catch (err) {
+      toast({
+        title: 'Failed to dismiss queue',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDismissingAll(false);
+    }
+  };
 
   const handleRerunMatching = async (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -605,6 +651,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   // Always show when rendered - parent controls visibility
 
   return (
+    <>
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <Card className="border-amber-500/30 bg-amber-500/5">
         <CollapsibleTrigger asChild>
@@ -663,6 +710,23 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {isRematching ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Layers className="h-3 w-3 mr-1" />}
                     Re-match
                   </Button>
+                  {pendingRequests.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); setConfirmDismissAllOpen(true); }}
+                      disabled={isDismissingAll}
+                      title="Dismiss all current pending sync requests (queue cleanup only — does not change any permissions)"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      {isDismissingAll ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3 mr-1" />
+                      )}
+                      Dismiss queue
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
@@ -936,5 +1000,32 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
         onMerge={handleMerge}
       />
     </Collapsible>
+    <AlertDialog open={confirmDismissAllOpen} onOpenChange={setConfirmDismissAllOpen}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Dismiss all current FLEx sync requests?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This clears the current sync request queue ({pendingRequests.length} pending — including New, Likely Match, and Conflict Review) so you can start fresh.
+            <br /><br />
+            This does <strong>not</strong> change permissions, access, sync settings, or existing lender records. Already-completed items are left untouched.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={isDismissingAll}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={(e) => { e.preventDefault(); handleDismissAll(); }}
+            disabled={isDismissingAll}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            {isDismissingAll ? (
+              <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Dismissing…</>
+            ) : (
+              <>Dismiss {pendingRequests.length} request{pendingRequests.length === 1 ? '' : 's'}</>
+            )}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
