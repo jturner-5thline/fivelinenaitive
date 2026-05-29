@@ -1340,14 +1340,15 @@ function EventDetailPane({
                 onEmailSent('Sent calendar invite (Schedule next)');
               }}
             />
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 justify-start gap-2 text-xs col-span-2 border-primary/30 bg-primary/[0.06] hover:bg-primary/[0.12] text-white"
-              onClick={() => setClaapLinkerOpen(true)}
-            >
-              <Video className="h-3.5 w-3.5 text-primary" /> Link Claap Recording
-            </Button>
+            <MeetingClaapInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              eventStart={event.start}
+              eventEnd={event.end}
+              organizerEmail={(event as any).organizer_email || null}
+              attendees={(event.attendees || []) as any}
+              onOpenPicker={() => setClaapLinkerOpen(true)}
+            />
           </div>
 
           {/* Add note */}
