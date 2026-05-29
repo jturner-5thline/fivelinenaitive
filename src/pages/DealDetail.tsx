@@ -49,7 +49,7 @@ import { NaitiveDatePicker } from '@/components/ui/naitive-date-picker';
 import { Textarea } from '@/components/ui/textarea';
 import { DebouncedTextarea } from '@/components/ui/debounced-textarea';
 import { DebouncedInput } from '@/components/ui/debounced-input';
-import { PipelineSpecificFields } from '@/components/deal/PipelineSpecificFields';
+import { PipelineSpecificFields, PipelineFieldRow, PipelineFullFieldRow } from '@/components/deal/PipelineSpecificFields';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { useAuth } from '@/contexts/AuthContext';
