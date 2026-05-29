@@ -178,6 +178,7 @@ function StageColumn({
 }) {
   const { setNodeRef } = useDroppable({ id: stage.id });
   const description = getStageDescription(stage);
+  const { formatCurrencyValue } = usePreferences();
 
   return (
     <div ref={setNodeRef} className={cn("flex-shrink-0 w-[300px] bg-muted/30 rounded-lg border transition-colors", isOver && "ring-2 ring-primary bg-primary/5")}>
