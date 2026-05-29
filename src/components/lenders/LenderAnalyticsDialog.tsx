@@ -1064,6 +1064,13 @@ export function LenderAnalyticsDialog({
           </SheetContent>
         </Sheet>
       </DialogContent>
+      {isFifthLine && (
+        <FundingSourcePlanModal
+          open={planOpen}
+          onOpenChange={setPlanOpen}
+          tenantId={FIFTH_LINE_COMPANY_ID}
+        />
+      )}
     </Dialog>
   );
 }
