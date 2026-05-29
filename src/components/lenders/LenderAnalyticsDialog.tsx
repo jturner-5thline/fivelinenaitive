@@ -629,6 +629,14 @@ export function LenderAnalyticsDialog({
             </div>
           )}
 
+          {isFifthLine && (
+            <FundingSourcePerformanceCard
+              tenantId={FIFTH_LINE_COMPANY_ID}
+              lenders={lenders}
+              onOpenPlan={() => setPlanOpen(true)}
+            />
+          )}
+
           {isEmpty && (
             <div className="rounded-lg border p-10 text-center text-[13px] text-slate-400" style={PANEL_STYLE}>
               No lender analytics available for current filters
