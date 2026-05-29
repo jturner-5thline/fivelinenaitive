@@ -177,10 +177,11 @@ function useActivityLog(userId: string) {
 
 // ─── inline composer ─────────────────────────────────────────
 function InlineComposer({
-  to, defaultSubject, recipientLabel, onClose, onSent,
+  to, defaultSubject, defaultBody, recipientLabel, onClose, onSent,
 }: {
   to: string[];
   defaultSubject: string;
+  defaultBody?: string;
   recipientLabel: string;
   onClose: () => void;
   onSent?: () => void;
@@ -189,7 +190,7 @@ function InlineComposer({
   const { sendEmail } = useGmail();
   const [recipients, setRecipients] = useState<ComposerRecipients>({ to, cc: [], bcc: [] });
   const [subject, setSubject] = useState(defaultSubject);
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState(defaultBody || '');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
 
