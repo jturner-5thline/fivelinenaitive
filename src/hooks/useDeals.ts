@@ -193,6 +193,19 @@ export function useDeals(options?: UseDealsOptions) {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
+  // Wrap setFilters so legacy/saved views missing newer keys (e.g. dealOwner)
+  // get backfilled with defaults instead of producing undefined arrays.
+  const safeSetFilters: typeof setFilters = (next) => {
+    if (typeof next === 'function') {
+      setFilters((prev) => ({
+        ...DEFAULT_DEAL_FILTERS,
+        ...(next as (p: DealFilters) => DealFilters)(prev),
+      }));
+    } else {
+      setFilters({ ...DEFAULT_DEAL_FILTERS, ...next });
+    }
+  };
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -225,7 +238,7 @@ export function useDeals(options?: UseDealsOptions) {
     updateDealStatus,
     updateFilters,
     toggleSort,
-    setFilters,
+    setFilters: safeSetFilters,
     setSortField,
     setSortDirection,
   };
