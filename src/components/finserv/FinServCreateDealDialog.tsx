@@ -52,6 +52,7 @@ const SERVICES = [
 ] as const;
 const FEE_TYPES = ['Fixed Fee', 'Variable Billing', 'Hybrid (Fixed + Variable)'] as const;
 const DEAL_STAGES: { id: string; label: string }[] = [
+  { id: 'fs-in-development', label: 'In Development' },
   { id: 'fs-qualification', label: 'Qualification' },
   { id: 'fs-discovery', label: 'Discovery (first substantive conversation)' },
   { id: 'fs-qualified', label: 'Qualified (confirmed fit, moving toward scope)' },
