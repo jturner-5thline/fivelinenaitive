@@ -530,7 +530,12 @@ export interface ConsolidatedUser {
   avatar_url: string | null;
   created_at: string;
   onboarding_completed: boolean;
-  source: 'local' | 'external';
+  /**
+   * - 'local': Real Naitive account in this tenant (row in public.profiles + auth.users)
+   * - 'external': Real Naitive user invited via Access Requests / cross-tenant collaborator
+   * - 'flex': Profile imported from FLEx (read-only reference, NO Naitive login access)
+   */
+  source: 'local' | 'external' | 'flex';
   source_project_id?: string;
   external_id?: string;
   suspended_at?: string | null;
@@ -566,7 +571,10 @@ export const useConsolidatedUsers = () => {
     }
   }
 
-  // Add external profiles (exclude duplicates based on email)
+  // Add FLEx-imported profiles (exclude duplicates based on email).
+  // These are read-only reference rows imported from FLEx — they have NO
+  // Naitive auth account and cannot log in. They are surfaced under the
+  // dedicated "FLEx" tab, never mixed into Local / External Naitive users.
   if (externalProfiles.data) {
     const localEmails = new Set(consolidatedUsers.map(u => u.email?.toLowerCase()).filter(Boolean));
     
@@ -586,7 +594,7 @@ export const useConsolidatedUsers = () => {
         avatar_url: p.avatar_url,
         created_at: p.external_created_at || p.synced_at,
         onboarding_completed: p.onboarding_completed ?? false,
-        source: 'external',
+        source: 'flex',
         source_project_id: p.source_project_id,
         external_id: p.external_id,
       });
