@@ -53,6 +53,24 @@ const MONTH_LABELS = [
 const PLAN_COLOR = 'hsl(210 90% 60%)';
 const ACTUAL_COLOR = 'hsl(142 71% 45%)';
 
+// ─── TEMPORARY OVERRIDE ────────────────────────────────────────────────────
+// The live actuals source (lenders.created_at) is over-counting because it
+// reflects every directory row, not actual newly *qualified* lenders. Until a
+// canonical "qualified lender" flag exists, hardcode a manual baseline for
+// 5th Line's 2026 quarterly Performance view:
+//   • Q1 2026  = 2 qualified lenders (fixed)
+//   • Q2 2026+ = start from 0, then count only lenders created at/after the
+//                override cutoff timestamp below.
+// TODO: Replace with a proper "qualified lender" data source.
+const PERF_OVERRIDE_YEAR = 2026;
+const PERF_OVERRIDE_CUTOFF_ISO = '2026-05-29T00:00:00Z';
+const PERF_OVERRIDE_QUARTERLY_BASELINE: Record<number, number> = {
+  1: 2, // Q1 2026 — manually fixed
+  2: 0,
+  3: 0,
+  4: 0,
+};
+
 interface Props {
   tenantId: string;
   /** All lenders visible to the user; used to compute actuals by created_at. */
@@ -86,16 +104,44 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
   const actualsByPeriod = useMemo(() => {
     const periods = cadence === 'monthly' ? 12 : 4;
     const buckets: MasterLender[][] = Array.from({ length: periods }, () => []);
+    // Apply the temporary 2026-quarterly override (qualified-lender baseline)
+    // only when viewing the 2026 quarterly Performance view.
+    const useOverride = year === PERF_OVERRIDE_YEAR && cadence === 'quarterly';
+    const cutoffMs = useOverride ? new Date(PERF_OVERRIDE_CUTOFF_ISO).getTime() : 0;
     for (const l of lenders) {
       const t = l.created_at ? new Date(l.created_at) : null;
       if (!t || isNaN(t.getTime())) continue;
       if (t.getFullYear() !== year) continue;
+      // Under the override: only count lenders created at/after the cutoff,
+      // and never bucket them into Q1 (Q1 is fixed by the baseline below).
+      if (useOverride) {
+        if (t.getTime() < cutoffMs) continue;
+        const qIdx = Math.floor(t.getMonth() / 3);
+        if (qIdx === 0) continue;
+        buckets[qIdx].push(l);
+        continue;
+      }
       const m = t.getMonth(); // 0..11
       const idx = cadence === 'monthly' ? m : Math.floor(m / 3);
       buckets[idx].push(l);
     }
     return buckets;
   }, [lenders, year, cadence]);
+
+  // Authoritative per-period actual *counts* for the chart and YTD tiles.
+  // Decoupled from the lender list so the temporary 2026-quarterly baseline
+  // (Q1 = 2) can be applied without faking lender rows in the drill-down.
+  const actualCountsByPeriod = useMemo(() => {
+    const periods = cadence === 'monthly' ? 12 : 4;
+    const counts = actualsByPeriod.map((b) => b.length);
+    if (year === PERF_OVERRIDE_YEAR && cadence === 'quarterly') {
+      for (let qIdx = 0; qIdx < periods; qIdx++) {
+        const baseline = PERF_OVERRIDE_QUARTERLY_BASELINE[qIdx + 1] ?? 0;
+        if ((counts[qIdx] ?? 0) < baseline) counts[qIdx] = baseline;
+      }
+    }
+    return counts;
+  }, [actualsByPeriod, year, cadence]);
 
   const planByPeriod = useMemo(() => {
     const src = cadence === 'monthly' ? monthlyPlan : quarterlyPlan;
@@ -119,7 +165,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
     return Array.from({ length: periods }, (_, i) => {
       const label = cadence === 'monthly' ? MONTH_LABELS[i] : `Q${i + 1}`;
       const plan = planByPeriod[i] ?? 0;
-      const actual = actualsByPeriod[i]?.length ?? 0;
+      const actual = actualCountsByPeriod[i] ?? 0;
       return {
         period: label,
         idx: i,
@@ -128,15 +174,15 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
         variance: actual - plan,
       };
     });
-  }, [cadence, planByPeriod, actualsByPeriod]);
+  }, [cadence, planByPeriod, actualCountsByPeriod]);
 
   const ytdPlan = useMemo(
     () => planByPeriod.slice(0, ytdMaxIdx + 1).reduce((s, n) => s + n, 0),
     [planByPeriod, ytdMaxIdx],
   );
   const ytdActual = useMemo(
-    () => actualsByPeriod.slice(0, ytdMaxIdx + 1).reduce((s, b) => s + b.length, 0),
-    [actualsByPeriod, ytdMaxIdx],
+    () => actualCountsByPeriod.slice(0, ytdMaxIdx + 1).reduce((s, n) => s + n, 0),
+    [actualCountsByPeriod, ytdMaxIdx],
   );
   const variance = ytdActual - ytdPlan;
   const attainment = ytdPlan > 0 ? (ytdActual / ytdPlan) * 100 : null;
