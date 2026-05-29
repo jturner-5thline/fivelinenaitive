@@ -76,6 +76,8 @@ import { ReferralSourceInput } from '@/components/ui/referral-source-input';
 import { CreateTaskForMentionDialog, extractMentionsFromHtml, MentionedUser } from '@/components/deals/CreateTaskForMentionDialog';
 import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { CalendarPanel } from '@/components/pipeline/memo/CalendarPanel';
+import { FinServProjectsCard } from '@/components/deal/FinServProjectsCard';
+import { useFinservProjects } from '@/hooks/useFinservProjects';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
@@ -1330,6 +1332,21 @@ export default function DealDetail() {
   
   // Outstanding items persistence
   const { items: outstandingItems, addItem: addOutstandingItemDb, updateItem: updateOutstandingItemDb, deleteItem: deleteOutstandingItemDb, bulkAddItems: bulkAddOutstandingItemsDb, reorderItems: reorderOutstandingItemsDb, refreshItems: refreshOutstandingItems } = useOutstandingItems(id);
+
+  // FinServ Projects — only loaded for FinServ deals. The DB trigger keeps
+  // deals.one_time_revenue = SUM(projects.value); we mirror that locally
+  // so the Deal Information card reflects edits immediately without refetch.
+  const {
+    projects: finservProjects,
+    total: finservProjectsTotal,
+    loading: finservProjectsLoading,
+    addProject: addFinservProject,
+    updateProject: updateFinservProject,
+    deleteProject: deleteFinservProject,
+  } = useFinservProjects(
+    isFinServDeal ? id : undefined,
+    (total) => setDeal((prev) => (prev ? { ...prev, oneTimeRevenue: total } : prev)),
+  );
 
   // Phase-aware checklist controls (Add Phase 2/3 + retroactive archive banner)
   const checklistPhaseControls = useChecklistPhaseControls(
@@ -3995,7 +4012,18 @@ export default function DealDetail() {
                                       {renderDealInfoField('clientContact')}
                                       {renderDealInfoField('referralSource')}
                                       <PipelineFieldRow deal={deal} fieldKey="mrr" onUpdate={(f, v) => updateDeal(f as any, v)} />
-                                      <PipelineFieldRow deal={deal} fieldKey="oneTimeRevenue" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
+                                        <span className="text-muted-foreground text-sm break-words">One-Time Revenue</span>
+                                        <div
+                                          className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
+                                          title="Calculated from Projects"
+                                        >
+                                          <span className="tabular-nums">
+                                            {(deal.oneTimeRevenue ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+                                          </span>
+                                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">from projects</span>
+                                        </div>
+                                      </div>
                                       <PipelineFieldRow deal={deal} fieldKey="contractStartDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow deal={deal} fieldKey="projectedCloseDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow deal={deal} fieldKey="contractEndDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
@@ -4096,6 +4124,18 @@ export default function DealDetail() {
                                 phaseControls={checklistPhaseControls}
                               />
                               </div>
+                              {isFinServDeal && (
+                                <div className="shrink-0">
+                                  <FinServProjectsCard
+                                    projects={finservProjects}
+                                    total={finservProjectsTotal}
+                                    loading={finservProjectsLoading}
+                                    onAdd={addFinservProject}
+                                    onUpdate={updateFinservProject}
+                                    onDelete={deleteFinservProject}
+                                  />
+                                </div>
+                              )}
                               <Card className="overflow-hidden flex-1 flex flex-col min-h-[280px]">
                                 <div className="flex-1 flex flex-col">
                                   <CalendarPanel deal={deal} />
