@@ -80,9 +80,11 @@ export const PIPELINE_FIELD_SCHEMAS: Record<string, PipelineSchema> = {
   finserv: {
     sectionLabel: 'FinServ Details',
     fields: [
-      { key: 'contactEmail', label: 'Contact Email', type: 'email', placeholder: 'name@company.com', column: 'left' },
-      { key: 'leadSource', label: 'Lead Source', type: 'select', options: FINSERV_LEAD_SOURCES, column: 'left' },
-      { key: 'referralSource', label: 'Referral Source (Person)', type: 'text', placeholder: 'Who referred this opportunity', column: 'left' },
+      // Contact Email, Lead Source, and Referral Source (Person) have been
+      // migrated into the shared Deal Information fields (Client Contact,
+      // Sourced Via, Referral Source) and are intentionally hidden here for
+      // FinServ deals. The underlying columns remain populated for legacy
+      // data integrity.
       { key: 'opportunityType', label: 'Opportunity Type', type: 'select', options: FINSERV_OPPORTUNITY_TYPES, column: 'left' },
       { key: 'feeType', label: 'Fee Type', type: 'select', options: FINSERV_FEE_TYPES, column: 'right' },
       { key: 'mrr', label: 'MRR', type: 'currency', placeholder: '0', column: 'right' },
