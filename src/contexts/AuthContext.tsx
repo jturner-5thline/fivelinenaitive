@@ -173,17 +173,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             const createdAt = new Date(session.user.created_at);
             const now = new Date();
             const isNewUser = (now.getTime() - createdAt.getTime()) < 60000; // 1 minute
-            
+
             if (isNewUser && !sessionStorage.getItem('naitive_approval_requested')) {
               sessionStorage.setItem('naitive_approval_requested', 'true');
-              // Request approval notification (fire and forget)
-              supabase.functions.invoke('notify-admin-approval', {
-                body: {
-                  user_id: session.user.id,
-                  user_email: userEmail,
-                  user_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
-                },
-              }).catch(console.error);
+              // Demo/pilot users provisioned via "Create Demo Access" are
+              // pre-approved (profiles.approved_at is set by the edge
+              // function) — skip the admin notification for them so they
+              // don't appear in the Access Requests queue.
+              setTimeout(async () => {
+                try {
+                  const { data: prof } = await supabase
+                    .from('profiles')
+                    .select('approved_at')
+                    .eq('user_id', session.user.id)
+                    .maybeSingle();
+                  if (prof?.approved_at) return;
+                  await supabase.functions.invoke('notify-admin-approval', {
+                    body: {
+                      user_id: session.user.id,
+                      user_email: userEmail,
+                      user_name:
+                        session.user.user_metadata?.full_name ||
+                        session.user.user_metadata?.name,
+                    },
+                  });
+                } catch (err) {
+                  console.error('notify-admin-approval failed', err);
+                }
+              }, 0);
             }
           }
         }
