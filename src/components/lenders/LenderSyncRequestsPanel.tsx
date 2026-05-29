@@ -651,6 +651,7 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   // Always show when rendered - parent controls visibility
 
   return (
+    <>
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <Card className="border-amber-500/30 bg-amber-500/5">
         <CollapsibleTrigger asChild>
