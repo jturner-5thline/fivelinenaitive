@@ -610,7 +610,9 @@ export function LenderAnalyticsDialog({
               label="New Funding Sources"
               value={newLenders.current.length}
               hint={
-                newLenders.delta == null
+                isFifthLine && planTarget != null && planTarget > 0
+                  ? `Plan: ${planTarget} / Actual: ${newLenders.current.length}`
+                  : newLenders.delta == null
                   ? 'All time'
                   : `${newLenders.delta >= 0 ? '↑' : '↓'} ${Math.abs(newLenders.delta)} vs prior ${DATE_LABEL[dateRange].toLowerCase()}`
               }
