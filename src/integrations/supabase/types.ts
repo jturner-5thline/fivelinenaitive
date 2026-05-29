@@ -24921,6 +24921,14 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_funding_source_qualified_actuals: {
+        Args: { p_cadence?: string; p_tenant_id: string; p_year: number }
+        Returns: {
+          lender_ids: string[]
+          period: number
+          qualified_count: number
+        }[]
+      }
       get_lender_deal_stats: {
         Args: { _company_id: string; _limit?: number }
         Returns: {
