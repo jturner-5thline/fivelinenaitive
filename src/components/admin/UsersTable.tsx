@@ -578,70 +578,10 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
         </Dialog>
       </div>
 
-      <EventDrawer
+      <UserDetailSheet
+        user={detailUser}
         open={!!detailUser}
         onOpenChange={(o) => !o && setDetailUser(null)}
-        icon={<Users className="h-4 w-4" />}
-        title={detailUser?.display_name || detailUser?.email || "User"}
-        subtitle={detailUser?.email}
-        timestamp={detailUser?.created_at}
-        badges={
-          detailUser
-            ? [
-                {
-                  label:
-                    detailUser.source === 'flex'
-                      ? 'FLEx'
-                      : detailUser.source === 'external'
-                        ? 'External'
-                        : 'Local',
-                  variant: "outline",
-                },
-                ...(detailUser.suspended_at
-                  ? [{ label: "Suspended", variant: "destructive" as const }]
-                  : []),
-                ...((detailUser._roles ?? []).map((r: any) => ({
-                  label: r.role,
-                  variant: r.role === "admin" ? ("destructive" as const) : ("secondary" as const),
-                }))),
-              ]
-            : []
-        }
-        fields={
-          detailUser
-            ? [
-                { label: "Name", value: detailUser.display_name || "—" },
-                {
-                  label: "Full name",
-                  value:
-                    [detailUser.first_name, detailUser.last_name].filter(Boolean).join(" ") ||
-                    "—",
-                },
-                { label: "Email", value: detailUser.email || "—" },
-                { label: "User ID", value: detailUser.user_id, mono: true },
-                {
-                  label: 'Source',
-                  value:
-                    detailUser.source === 'flex'
-                      ? 'FLEx (read-only, no Naitive login)'
-                      : detailUser.source === 'external'
-                        ? 'External Naitive collaborator'
-                        : 'Local Naitive account',
-                },
-                {
-                  label: "Roles",
-                  value:
-                    (detailUser._roles ?? []).length === 0
-                      ? "No roles"
-                      : (detailUser._roles ?? []).map((r: any) => r.role).join(", "),
-                },
-                {
-                  label: "Joined",
-                  value: format(new Date(detailUser.created_at), "PPP"),
-                },
-              ]
-            : []
-        }
       />
     </TooltipProvider>
   );
