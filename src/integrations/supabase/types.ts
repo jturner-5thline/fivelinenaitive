@@ -8099,6 +8099,7 @@ export type Database = {
           id: string
           last_contact_at: string | null
           last_status_change_at: string | null
+          master_lender_id: string | null
           name: string
           notes: string | null
           on_deck_at: string | null
@@ -8125,6 +8126,7 @@ export type Database = {
           id?: string
           last_contact_at?: string | null
           last_status_change_at?: string | null
+          master_lender_id?: string | null
           name: string
           notes?: string | null
           on_deck_at?: string | null
@@ -8151,6 +8153,7 @@ export type Database = {
           id?: string
           last_contact_at?: string | null
           last_status_change_at?: string | null
+          master_lender_id?: string | null
           name?: string
           notes?: string | null
           on_deck_at?: string | null
@@ -8174,6 +8177,13 @@ export type Database = {
             columns: ["deal_id"]
             isOneToOne: false
             referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_lenders_master_lender_id_fkey"
+            columns: ["master_lender_id"]
+            isOneToOne: false
+            referencedRelation: "master_lenders"
             referencedColumns: ["id"]
           },
         ]
