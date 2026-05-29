@@ -1476,6 +1476,7 @@ export default function DealDetail() {
   } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(deleteAction);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPermanentDeleteOpen, setIsPermanentDeleteOpen] = useState(false);
   const [isPushingDataRoom, setIsPushingDataRoom] = useState(false);
   
   // Failed saves tracking for retry functionality
@@ -1515,7 +1516,7 @@ export default function DealDetail() {
         title: "Deal deleted",
         description: `${deal.company} has been permanently deleted.`,
       });
-      navigate('/deals');
+      navigate(isFinServDeal ? '/finserv' : isNaitiveDeal ? '/naitive-pipeline' : '/deals');
     } catch (error) {
       toast({
         title: "Error",
@@ -2836,6 +2837,41 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* FinServ permanent delete confirmation */}
+      <AlertDialog open={isPermanentDeleteOpen} onOpenChange={setIsPermanentDeleteOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Permanently delete this deal?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to permanently delete{' '}
+                <strong className="text-foreground">{deal.company}</strong>. This will
+                also remove its projects, outstanding items, and any other
+                related records.
+              </p>
+              <p className="text-destructive font-medium">
+                This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                await handleDeleteDeal();
+                setIsPermanentDeleteOpen(false);
+              }}
+              disabled={isDeleting}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting ? 'Deleting…' : 'Delete deal'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* 5th Line only — Status/Stage On Hold mirror confirmation */}
       <AlertDialog open={!!pendingMirror} onOpenChange={(open) => { if (!open) setPendingMirror(null); }}>
         <AlertDialogContent className="max-w-md">
@@ -2955,6 +2991,22 @@ export default function DealDetail() {
                 </TooltipTrigger>
                 <TooltipContent>Archive deal</TooltipContent>
               </Tooltip>
+              {isFinServDeal && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => setIsPermanentDeleteOpen(true)}
+                      aria-label="Delete deal"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete deal permanently</TooltipContent>
+                </Tooltip>
+              )}
               {viewModified && (
                 <Button
                   variant="outline"
@@ -4153,11 +4205,14 @@ export default function DealDetail() {
                                   />
                                 </div>
                               )}
-                              <Card className="overflow-hidden flex-1 flex flex-col min-h-[280px]">
-                                <div className="flex-1 flex flex-col">
-                                  <CalendarPanel deal={deal} />
-                                </div>
-                              </Card>
+                              {/* Calendar panel is hidden on FinServ deal detail by request */}
+                              {!isFinServDeal && (
+                                <Card className="overflow-hidden flex-1 flex flex-col min-h-[280px]">
+                                  <div className="flex-1 flex flex-col">
+                                    <CalendarPanel deal={deal} />
+                                  </div>
+                                </Card>
+                              )}
                             </div>
                           );
                         default:
