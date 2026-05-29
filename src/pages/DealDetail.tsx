@@ -2837,6 +2837,41 @@ export default function DealDetail() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* FinServ permanent delete confirmation */}
+      <AlertDialog open={isPermanentDeleteOpen} onOpenChange={setIsPermanentDeleteOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Permanently delete this deal?</AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                You are about to permanently delete{' '}
+                <strong className="text-foreground">{deal.company}</strong>. This will
+                also remove its projects, outstanding items, and any other
+                related records.
+              </p>
+              <p className="text-destructive font-medium">
+                This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={async () => {
+                await handleDeleteDeal();
+                setIsPermanentDeleteOpen(false);
+              }}
+              disabled={isDeleting}
+              className="gap-2"
+            >
+              <Trash2 className="h-4 w-4" />
+              {isDeleting ? 'Deleting…' : 'Delete deal'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* 5th Line only — Status/Stage On Hold mirror confirmation */}
       <AlertDialog open={!!pendingMirror} onOpenChange={(open) => { if (!open) setPendingMirror(null); }}>
         <AlertDialogContent className="max-w-md">
