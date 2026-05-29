@@ -4013,8 +4013,7 @@ export default function DealDetail() {
                                       {renderDealInfoField('sourcedVia')}
                                       {renderDealInfoField('clientContact')}
                                       {renderDealInfoField('referralSource')}
-                                      <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-start gap-2 min-w-0">
-                                        <span className="text-muted-foreground text-sm break-words pt-1">MRR</span>
+                                      <div className={`min-w-0 ${(deal.mrrMode ?? 'manual') === 'calculated' ? 'md:col-span-2' : ''}`}>
                                         <FinServMrrField
                                           dealId={deal.id}
                                           mrr={deal.mrr}
