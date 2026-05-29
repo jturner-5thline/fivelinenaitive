@@ -779,18 +779,7 @@ export function useDealsDatabase() {
         dbUpdates.referred_by = updates.referredBy?.name ?? null;
       }
       if (Object.prototype.hasOwnProperty.call(updates, 'referralSourceContactId')) {
-        const raw = (updates as any).referralSourceContactId;
-        // Accept either a plain UUID string/null or a { id, name } object
-        // (the deal-detail combobox returns the object so we can mirror the
-        // name into the legacy referred_by text fallback).
-        if (raw && typeof raw === 'object') {
-          dbUpdates.referral_source_contact_id = raw.id ?? null;
-          if (raw.name) dbUpdates.referred_by = raw.name;
-          if (raw.id === null) dbUpdates.referred_by = null;
-        } else {
-          dbUpdates.referral_source_contact_id = raw ?? null;
-          if (raw === null) dbUpdates.referred_by = null;
-        }
+        dbUpdates.referral_source_contact_id = (updates as any).referralSourceContactId ?? null;
       }
       if (updates.dealTypes !== undefined) {
         dbUpdates.deal_type = updates.dealTypes.length > 0 ? JSON.stringify(updates.dealTypes) : null;
