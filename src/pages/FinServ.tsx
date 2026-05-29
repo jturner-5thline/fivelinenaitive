@@ -41,6 +41,7 @@ import {
 } from '@dnd-kit/core';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { DashboardPage } from '@/components/layout/DashboardPage';
+import { usePreferences } from '@/contexts/PreferencesContext';
 
 function DraggableCard({ deal, onStatusChange, isDragging }: {
   deal: Deal; onStatusChange: (id: string, s: DealStatus) => void; isDragging?: boolean;
