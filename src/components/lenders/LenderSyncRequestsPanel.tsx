@@ -327,6 +327,42 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkProcessing, setIsBulkProcessing] = useState(false);
   const [isRematching, setIsRematching] = useState(false);
+  const [confirmDismissAllOpen, setConfirmDismissAllOpen] = useState(false);
+  const [isDismissingAll, setIsDismissingAll] = useState(false);
+
+  // Bulk dismiss the entire pending queue. Queue cleanup only — does not touch
+  // permissions, lenders, or sync settings. Marks pending rows as 'rejected'
+  // with a clear processing note so they're filtered out of the active queue.
+  const handleDismissAll = async () => {
+    setIsDismissingAll(true);
+    try {
+      const { data, error } = await supabase
+        .from('lender_sync_requests')
+        .update({
+          status: 'rejected',
+          processed_at: new Date().toISOString(),
+          processing_notes: 'Queue cleanup — bulk dismissed (no permission or access changes)',
+        })
+        .eq('status', 'pending')
+        .select('id');
+      if (error) throw error;
+      const count = data?.length ?? 0;
+      toast({
+        title: 'Sync request queue cleared',
+        description: `Dismissed ${count} pending request${count === 1 ? '' : 's'}. No permissions, access, or lender records were changed.`,
+      });
+      setConfirmDismissAllOpen(false);
+      await refetch();
+    } catch (err) {
+      toast({
+        title: 'Failed to dismiss queue',
+        description: (err as Error).message,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDismissingAll(false);
+    }
+  };
 
   const handleRerunMatching = async (e: React.MouseEvent) => {
     e.stopPropagation();
