@@ -11,6 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import {
+  FINSERV_OPPORTUNITY_TYPES,
+  FINSERV_FEE_TYPES,
+  FINSERV_SERVICES,
+} from '@/config/pipelineFieldSchemas';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -50,6 +56,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { pipelines } = usePipelineContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const globalStageConfig = getStageConfig();
+
+  const isFinServ = deal.dealClass === 'finserv';
 
   // Use pipeline-specific stages if deal belongs to a pipeline
   const dealPipeline = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId) : null;
@@ -111,6 +119,22 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
     preSigningHours: deal.preSigningHours || 0,
     postSigningHours: deal.postSigningHours || 0,
+    // FinServ-specific
+    narrative: deal.narrative || '',
+    companyUrl: deal.companyUrl || '',
+    businessModel: deal.businessModel || '',
+    sourcedVia: deal.sourcedVia || '',
+    referralSource: deal.referralSource || '',
+    contactEmail: deal.contactEmail || '',
+    opportunityType: deal.opportunityType || '',
+    feeType: deal.feeType || '',
+    mrr: deal.mrr ?? null,
+    oneTimeRevenue: deal.oneTimeRevenue ?? null,
+    contractStartDate: deal.contractStartDate || '',
+    projectedCloseDate: deal.projectedCloseDate || '',
+    contractEndDate: deal.contractEndDate || '',
+    servicesOffered: deal.servicesOffered || [],
+    onHold: !!deal.onHold,
   });
 
   const handleAddStatusNote = async () => {
@@ -141,6 +165,21 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
         preSigningHours: deal.preSigningHours || 0,
         postSigningHours: deal.postSigningHours || 0,
+        narrative: deal.narrative || '',
+        companyUrl: deal.companyUrl || '',
+        businessModel: deal.businessModel || '',
+        sourcedVia: deal.sourcedVia || '',
+        referralSource: deal.referralSource || '',
+        contactEmail: deal.contactEmail || '',
+        opportunityType: deal.opportunityType || '',
+        feeType: deal.feeType || '',
+        mrr: deal.mrr ?? null,
+        oneTimeRevenue: deal.oneTimeRevenue ?? null,
+        contractStartDate: deal.contractStartDate || '',
+        projectedCloseDate: deal.projectedCloseDate || '',
+        contractEndDate: deal.contractEndDate || '',
+        servicesOffered: deal.servicesOffered || [],
+        onHold: !!deal.onHold,
       });
     }
   }, [deal, isOpen]);
@@ -148,19 +187,40 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Build update object, handling referredBy as string for DB
-      const updates: Partial<Deal> = {
-        company: formData.company,
-        value: formData.value,
-        status: formData.status as DealStatus,
-        stage: formData.stage as DealStage,
-        engagementType: formData.engagementType as EngagementType,
-        exclusivity: formData.exclusivity as ExclusivityType || undefined,
-        manager: formData.manager || undefined,
-        dealOwner: formData.dealOwner || undefined,
-        preSigningHours: formData.preSigningHours,
-        postSigningHours: formData.postSigningHours,
-      };
+      const updates: Partial<Deal> = isFinServ
+        ? {
+            company: formData.company,
+            status: formData.status as DealStatus,
+            stage: formData.stage as DealStage,
+            dealOwner: formData.dealOwner || undefined,
+            narrative: formData.narrative || undefined,
+            companyUrl: formData.companyUrl || undefined,
+            businessModel: formData.businessModel || undefined,
+            sourcedVia: formData.sourcedVia || undefined,
+            referralSource: formData.referralSource || undefined,
+            contactEmail: formData.contactEmail || undefined,
+            opportunityType: formData.opportunityType || undefined,
+            feeType: formData.feeType || undefined,
+            mrr: formData.mrr,
+            oneTimeRevenue: formData.oneTimeRevenue,
+            contractStartDate: formData.contractStartDate || null,
+            projectedCloseDate: formData.projectedCloseDate || null,
+            contractEndDate: formData.contractEndDate || null,
+            servicesOffered: formData.servicesOffered,
+            onHold: formData.onHold,
+          }
+        : {
+            company: formData.company,
+            value: formData.value,
+            status: formData.status as DealStatus,
+            stage: formData.stage as DealStage,
+            engagementType: formData.engagementType as EngagementType,
+            exclusivity: (formData.exclusivity as ExclusivityType) || undefined,
+            manager: formData.manager || undefined,
+            dealOwner: formData.dealOwner || undefined,
+            preSigningHours: formData.preSigningHours,
+            postSigningHours: formData.postSigningHours,
+          };
       
       // Update deal without modifying referredBy (handled separately if needed)
       await updateDeal(deal.id, updates);
