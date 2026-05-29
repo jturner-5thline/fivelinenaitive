@@ -8,10 +8,18 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { CalendarRange, TrendingUp, Download, Search } from 'lucide-react';
+import { CalendarRange, TrendingUp, Download, Search, Target } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 import type { MasterLender } from '@/hooks/useMasterLenders';
+import {
+  useNaitivePipelineAccess,
+  FIFTH_LINE_COMPANY_ID,
+} from '@/hooks/useNaitivePipelineAccess';
+import {
+  FundingSourcePlanModal,
+  useAcquisitionPlan,
+} from '@/components/lenders/FundingSourcePlanModal';
 import { cn } from '@/lib/utils';
 import { formatUSD } from '@/lib/formatters/currency';
 import {
@@ -202,6 +210,23 @@ export function LenderAnalyticsDialog({
   const [stageConfigs, setStageConfigs] = useState<StageConfigRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planOpen, setPlanOpen] = useState(false);
+
+  // 5th Line tenant-only gating (tenant id, not email)
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  // Always load both cadences so we can show whichever matches the user's view.
+  const { data: monthlyPlan } = useAcquisitionPlan(
+    isFifthLine ? FIFTH_LINE_COMPANY_ID : null,
+    currentYear,
+    'monthly',
+  );
+  const { data: quarterlyPlan } = useAcquisitionPlan(
+    isFifthLine ? FIFTH_LINE_COMPANY_ID : null,
+    currentYear,
+    'quarterly',
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -459,6 +484,32 @@ export function LenderAnalyticsDialog({
 
   const visibleFundingSources = showAllVolume ? sortedFundingSources : sortedFundingSources.slice(0, 15);
 
+  // ─── 5th Line acquisition plan vs actual ───────────────────────────────
+  // Sum plan targets for months in the current date-range window (current
+  // year only). Prefer monthly granularity; fall back to quarterly if no
+  // monthly targets have been set.
+  const planTarget = useMemo(() => {
+    if (!isFifthLine) return null;
+    const start = rangeStart(dateRange) ?? new Date(currentYear, 0, 1);
+    const startD = new Date(
+      Math.max(start.getTime(), new Date(currentYear, 0, 1).getTime()),
+    );
+    const endD = now;
+    const startMonth = startD.getMonth() + 1; // 1..12
+    const endMonth = endD.getMonth() + 1;
+    const monthlySum = (monthlyPlan ?? [])
+      .filter((p) => p.period >= startMonth && p.period <= endMonth)
+      .reduce((s, p) => s + (Number(p.target_count) || 0), 0);
+    if (monthlySum > 0) return monthlySum;
+    const startQ = Math.ceil(startMonth / 3);
+    const endQ = Math.ceil(endMonth / 3);
+    const quarterlySum = (quarterlyPlan ?? [])
+      .filter((p) => p.period >= startQ && p.period <= endQ)
+      .reduce((s, p) => s + (Number(p.target_count) || 0), 0);
+    return quarterlySum;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFifthLine, dateRange, monthlyPlan, quarterlyPlan, currentYear]);
+
   // Widget 3: Most Common Pass Reasons
   const passReasonsAgg = useMemo(() => {
     const passed = rows.filter(r => r.terminal.passed);
@@ -525,6 +576,17 @@ export function LenderAnalyticsDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {isFifthLine && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-[12px] gap-1.5 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70"
+                  onClick={() => setPlanOpen(true)}
+                  title="Set acquisition targets for new qualified lenders"
+                >
+                  <Target className="h-3.5 w-3.5" /> Plan
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70" disabled title="Export coming soon">
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
@@ -548,7 +610,9 @@ export function LenderAnalyticsDialog({
               label="New Funding Sources"
               value={newLenders.current.length}
               hint={
-                newLenders.delta == null
+                isFifthLine && planTarget != null && planTarget > 0
+                  ? `Plan: ${planTarget} / Actual: ${newLenders.current.length}`
+                  : newLenders.delta == null
                   ? 'All time'
                   : `${newLenders.delta >= 0 ? '↑' : '↓'} ${Math.abs(newLenders.delta)} vs prior ${DATE_LABEL[dateRange].toLowerCase()}`
               }
@@ -1000,6 +1064,13 @@ export function LenderAnalyticsDialog({
           </SheetContent>
         </Sheet>
       </DialogContent>
+      {isFifthLine && (
+        <FundingSourcePlanModal
+          open={planOpen}
+          onOpenChange={setPlanOpen}
+          tenantId={FIFTH_LINE_COMPANY_ID}
+        />
+      )}
     </Dialog>
   );
 }

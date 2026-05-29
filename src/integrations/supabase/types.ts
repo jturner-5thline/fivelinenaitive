@@ -12902,6 +12902,42 @@ export type Database = {
           },
         ]
       }
+      funding_source_acquisition_plans: {
+        Row: {
+          cadence: string
+          created_at: string
+          id: string
+          period: number
+          target_count: number
+          tenant_id: string
+          updated_at: string
+          updated_by: string | null
+          year: number
+        }
+        Insert: {
+          cadence: string
+          created_at?: string
+          id?: string
+          period: number
+          target_count?: number
+          tenant_id: string
+          updated_at?: string
+          updated_by?: string | null
+          year: number
+        }
+        Update: {
+          cadence?: string
+          created_at?: string
+          id?: string
+          period?: number
+          target_count?: number
+          tenant_id?: string
+          updated_at?: string
+          updated_by?: string | null
+          year?: number
+        }
+        Relationships: []
+      }
       gamma_analytics: {
         Row: {
           created_at: string
