@@ -13,7 +13,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { useDebouncedFieldValue, flushOnEnterOrTab } from '@/hooks/useDebouncedFieldValue';
 import {
   getPipelineSchema,
@@ -303,9 +302,13 @@ export function PipelineSpecificFields({ deal, onUpdate }: PipelineSpecificField
 
   return (
     <div className="space-y-3">
-      <Separator className="my-4" />
-      <h4 className="text-sm font-medium">{schema.sectionLabel}</h4>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3">
+      {/*
+       * Rendered as a continuation of the Deal Information card — no
+       * separator or section header — so FinServ deals show one cohesive
+       * unified section instead of two stacked groups. Other pipelines
+       * with their own schemas still get the same continuous layout.
+       */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 pt-3">
         <div className="space-y-3 min-w-0">
           {leftFields.map((f) => (
             <FieldRow key={f.key} field={f} />
