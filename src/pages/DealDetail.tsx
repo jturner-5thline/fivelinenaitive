@@ -2866,7 +2866,7 @@ export default function DealDetail() {
               className="gap-2"
             >
               <Trash2 className="h-4 w-4" />
-              {isDeleting ? 'Deleting…' : 'Delete deal'}
+              {isDeleting ? 'Deleting…' : 'Delete Deal'}
             </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
