@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Plus, Loader2 } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 
 interface LenderSearchInputProps {
   lenderNames: string[];
@@ -92,14 +92,15 @@ export function LenderSearchInput({
     if (e.key === 'Enter' && searchQuery.trim()) {
       if (filteredLenderNames.length > 0 && !filteredLenderNames[0].isExisting) {
         handleAddLender(filteredLenderNames[0].name);
-      } else if (!isLenderAlreadyAdded(searchQuery.trim())) {
-        handleAddLender(searchQuery.trim());
       }
+      // Free-text creation is intentionally disabled: a funding source must
+      // exist in the tenant's Funding Sources database before it can be
+      // attached to a deal. Users add new sources from the Funding Sources page.
     }
     if (e.key === 'Escape') {
       setIsOpen(false);
     }
-  }, [searchQuery, filteredLenderNames, handleAddLender, isLenderAlreadyAdded]);
+  }, [searchQuery, filteredLenderNames, handleAddLender]);
 
   const isDuplicateQuery = useMemo(() => {
     return searchQuery.trim() && isLenderAlreadyAdded(searchQuery.trim());
@@ -173,7 +174,16 @@ export function LenderSearchInput({
                 Searching lenders…
               </span>
             ) : (
-              'No funding sources found'
+              <div className="space-y-1.5">
+                <div className="font-medium text-foreground">No funding source found</div>
+                <div className="text-xs flex items-start gap-1.5 justify-center">
+                  <Info className="h-3 w-3 mt-0.5 shrink-0" />
+                  <span>
+                    Add it in the <span className="text-foreground">Funding Sources</span> page first,
+                    then attach it here.
+                  </span>
+                </div>
+              </div>
             )}
           </div>
         )}
@@ -194,17 +204,6 @@ export function LenderSearchInput({
             )}
           </button>
         ))}
-        {searchQuery.trim() && !isDuplicateQuery && (
-          <button
-            className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer flex items-center gap-2 border-t border-border bg-muted/50"
-            onClick={() => handleAddLender(searchQuery.trim())}
-          >
-            <Plus className="h-4 w-4 text-primary" />
-            <span>
-              Add <span className="font-medium text-primary">"{searchQuery.trim()}"</span> as new lender
-            </span>
-          </button>
-        )}
         {isDuplicateQuery && (
           <div className="w-full px-3 py-2 text-sm text-muted-foreground border-t border-border bg-muted/50 italic">
             "{searchQuery.trim()}" is already added to this deal

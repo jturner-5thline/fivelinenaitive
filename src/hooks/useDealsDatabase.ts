@@ -1231,11 +1231,65 @@ export function useDealsDatabase() {
   // Add lender to deal
   const addLenderToDeal = useCallback(async (dealId: string, lenderData: Partial<DealLender>): Promise<DealLender | null> => {
     try {
+      // Resolve master_lender_id (funding source FK) before inserting.
+      // Every deal_lender MUST link to a row in the deal's tenant master_lenders table.
+      // A DB trigger enforces this; we do the resolution here so all callsites — even
+      // legacy ones that only pass a free-text name — end up with a real, tenant-scoped
+      // funding source instead of an orphan string.
+      let masterLenderId: string | null = (lenderData as any).masterLenderId ?? null;
+      const rawName = (lenderData.name || '').trim();
+
+      if (!masterLenderId) {
+        // Get the deal's tenant.
+        const { data: dealRow, error: dealErr } = await supabase
+          .from('deals')
+          .select('company_id, user_id')
+          .eq('id', dealId)
+          .single();
+        if (dealErr || !dealRow) throw dealErr || new Error('Deal not found');
+
+        if (!dealRow.company_id) {
+          throw new Error('Cannot attach funding source: deal has no tenant (company_id is null)');
+        }
+
+        const lookupName = rawName || 'New Funding Source';
+
+        // Look up an existing funding source in the SAME tenant by case-insensitive name.
+        const { data: existing } = await supabase
+          .from('master_lenders')
+          .select('id, name')
+          .eq('company_id', dealRow.company_id)
+          .ilike('name', lookupName)
+          .limit(1)
+          .maybeSingle();
+
+        if (existing?.id) {
+          masterLenderId = existing.id;
+        } else {
+          // Auto-create in the tenant's Funding Sources database, then attach.
+          // Keeps data integrity (no orphans, no cross-tenant references) while
+          // never silently dropping the name the caller supplied.
+          const { data: created, error: createErr } = await supabase
+            .from('master_lenders')
+            .insert({
+              user_id: dealRow.user_id,
+              company_id: dealRow.company_id,
+              name: lookupName,
+              lender_type: 'Auto-created',
+            })
+            .select('id')
+            .single();
+          if (createErr || !created) throw createErr || new Error('Failed to create funding source');
+          masterLenderId = created.id;
+        }
+      }
+
       const { data, error } = await supabase
         .from('deal_lenders')
         .insert({
           deal_id: dealId,
-          name: lenderData.name || 'New Lender',
+          name: rawName || 'New Funding Source',
+          master_lender_id: masterLenderId,
           stage: lenderData.stage || 'reviewing-drl',
           substage: lenderData.substage || null,
           notes: lenderData.notes || null,
