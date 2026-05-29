@@ -1,4 +1,5 @@
 import { format, parse, isValid } from 'date-fns';
+import { useEffect, useRef, useState } from 'react';
 import { CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -59,33 +60,11 @@ function renderPipelineFieldInput(
         />
       );
     case 'date': {
-      const date = parseISODate(value);
       return (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              className={cn(
-                'w-full h-8 px-3 justify-start font-normal text-sm',
-                !date && 'text-muted-foreground',
-              )}
-            >
-              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-              {date ? format(date, 'MMM d, yyyy') : 'Select date'}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="single"
-              selected={date}
-              onSelect={(d) =>
-                onUpdate(field.key as keyof Deal, d ? format(d, 'yyyy-MM-dd') : null)
-              }
-              initialFocus
-              className="pointer-events-auto"
-            />
-          </PopoverContent>
-        </Popover>
+        <DateFieldWithInput
+          value={value}
+          onCommit={(iso) => onUpdate(field.key as keyof Deal, iso)}
+        />
       );
     }
     case 'select':
@@ -364,33 +343,11 @@ export function PipelineSpecificFields({ deal, onUpdate }: PipelineSpecificField
       }
 
       case 'date': {
-        const date = parseISODate(value);
         return (
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                className={cn(
-                  'w-full h-8 px-3 justify-start font-normal text-sm',
-                  !date && 'text-muted-foreground'
-                )}
-              >
-                <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                {date ? format(date, 'MMM d, yyyy') : 'Select date'}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="single"
-                selected={date}
-                onSelect={(d) =>
-                  onUpdate(field.key as keyof Deal, d ? format(d, 'yyyy-MM-dd') : null)
-                }
-                initialFocus
-                className="pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+          <DateFieldWithInput
+            value={value}
+            onCommit={(iso) => onUpdate(field.key as keyof Deal, iso)}
+          />
         );
       }
 
