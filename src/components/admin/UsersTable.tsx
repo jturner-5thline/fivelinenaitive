@@ -329,30 +329,30 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
             <TableBody>
               {filteredUsers?.map((user) => {
                 const userRoles = getUserRoles(user.user_id);
-                const isExternal = user.source === 'external';
+                const isFlexRow = user.source === 'flex';
                 
                 return (
                   <TableRow
                     key={user.id}
-                    className={`cursor-pointer hover:bg-muted/40 transition-colors ${isExternal ? "bg-muted/30" : ""} ${user.suspended_at ? "opacity-60" : ""}`}
+                    className={`cursor-pointer hover:bg-muted/40 transition-colors ${isFlexRow ? "bg-muted/30" : ""} ${user.suspended_at ? "opacity-60" : ""}`}
                     onClick={() => setDetailUser({ ...user, _roles: userRoles })}
                   >
                     <TableCell>
-                      {!isExternal ? (
+                      {!isFlexRow ? (
                         <Checkbox
                           onClick={(e) => e.stopPropagation()}
                           checked={selectedUserIds.has(user.user_id)}
-                          onCheckedChange={() => handleToggleUser(user.user_id, isExternal)}
+                          onCheckedChange={() => handleToggleUser(user.user_id, isFlexRow)}
                         />
                       ) : (
                         <Tooltip>
                         <TooltipTrigger asChild>
                             <div className="w-4 h-4 flex items-center justify-center">
-                              <Globe className="h-3 w-3 text-muted-foreground" />
+                              <Cloud className="h-3 w-3 text-muted-foreground" />
                             </div>
                           </TooltipTrigger>
                           <TooltipContent>
-                            <p>FLEx users are read-only</p>
+                            <p>FLEx profiles are read-only (no Naitive login)</p>
                           </TooltipContent>
                         </Tooltip>
                       )}
@@ -383,25 +383,17 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
                     <TableCell className="text-muted-foreground">{user.email}</TableCell>
                     <TableCell>
                       <Badge 
-                        variant={isExternal ? "outline" : "secondary"}
+                        variant={isFlexRow ? "outline" : "secondary"}
                         className="flex items-center gap-1 w-fit"
                       >
-                        {isExternal ? (
-                          <>
-                            <Globe className="h-3 w-3" />
-                            FLEx
-                          </>
-                        ) : (
-                          <>
-                            <Home className="h-3 w-3" />
-                            Local
-                          </>
-                        )}
+                        {user.source === 'flex' && (<><Cloud className="h-3 w-3" />FLEx</>)}
+                        {user.source === 'local' && (<><Home className="h-3 w-3" />Local</>)}
+                        {user.source === 'external' && (<><Globe className="h-3 w-3" />External</>)}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {isExternal ? (
+                        {isFlexRow ? (
                           <span className="text-xs text-muted-foreground">—</span>
                         ) : userRoles.length === 0 ? (
                           <span className="text-xs text-muted-foreground">No roles</span>
@@ -432,7 +424,7 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
                       {format(new Date(user.created_at), "MMM d, yyyy")}
                     </TableCell>
                     <TableCell>
-                      {!isExternal ? (
+                      {!isFlexRow ? (
                        <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
                           <Dialog>
                             <DialogTrigger asChild>
@@ -484,7 +476,7 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
                             variant="ghost" 
                             size="sm"
                             className="text-destructive hover:text-destructive hover:bg-destructive/10"
-                            onClick={() => openDeleteDialog(user.user_id, user.display_name || user.email || "User", isExternal)}
+                            onClick={() => openDeleteDialog(user.user_id, user.display_name || user.email || "User", isFlexRow)}
                           >
                             <UserX className="h-4 w-4" />
                           </Button>
@@ -499,7 +491,11 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
               {filteredUsers?.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    No users found
+                    {scope === 'external'
+                      ? 'No external Naitive collaborators yet. Invite users via Access Requests to populate this tab.'
+                      : scope === 'flex'
+                        ? 'No FLEx-imported profiles found.'
+                        : 'No users found'}
                   </TableCell>
                 </TableRow>
               )}
@@ -514,7 +510,7 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
               <DialogTitle>Delete User</DialogTitle>
             <DialogDescription>
                 {userToDelete?.isExternal ? (
-                  <>FLEx users cannot be deleted from this project. Manage them in FLEx.</>
+                  <>FLEx-imported profiles cannot be deleted from Naitive. Manage them in FLEx.</>
                 ) : (
                   <>Are you sure you want to delete <strong>{userToDelete?.name}</strong>? This action cannot be undone and will permanently remove all their data.</>
                 )}
@@ -593,7 +589,12 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
           detailUser
             ? [
                 {
-                  label: detailUser.source === "external" ? "FLEx" : "Local",
+                  label:
+                    detailUser.source === 'flex'
+                      ? 'FLEx'
+                      : detailUser.source === 'external'
+                        ? 'External'
+                        : 'Local',
                   variant: "outline",
                 },
                 ...(detailUser.suspended_at
@@ -618,7 +619,15 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
                 },
                 { label: "Email", value: detailUser.email || "—" },
                 { label: "User ID", value: detailUser.user_id, mono: true },
-                { label: "Source", value: detailUser.source === "external" ? "FLEx" : "Local" },
+                {
+                  label: 'Source',
+                  value:
+                    detailUser.source === 'flex'
+                      ? 'FLEx (read-only, no Naitive login)'
+                      : detailUser.source === 'external'
+                        ? 'External Naitive collaborator'
+                        : 'Local Naitive account',
+                },
                 {
                   label: "Roles",
                   value:
