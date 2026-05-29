@@ -164,7 +164,7 @@ const handler = async (req: Request): Promise<Response> => {
         const nowIso = new Date().toISOString();
         const { data: existingProfile } = await admin
           .from("profiles")
-          .select("id, user_id, approved_at, source")
+          .select("id, user_id, approved_at")
           .eq("user_id", userId)
           .maybeSingle();
 
@@ -178,9 +178,6 @@ const handler = async (req: Request): Promise<Response> => {
             approved_at: nowIso,
             approved_by: caller.id,
             approval_requested_at: nowIso,
-            // Mark provenance so this profile is never mistaken for a
-            // FLEx-imported reference profile (FLEx users have no login).
-            source: "demo-access",
           });
         } else {
           await admin
@@ -189,11 +186,6 @@ const handler = async (req: Request): Promise<Response> => {
               is_active: true,
               approved_at: existingProfile.approved_at ?? nowIso,
               approved_by: caller.id,
-              // Never let a previously-imported FLEx profile silently keep
-              // its source — demo provisioning supersedes it.
-              ...(existingProfile.source === "FLEx"
-                ? { source: "demo-access" }
-                : {}),
             })
             .eq("user_id", userId);
         }
