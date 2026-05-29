@@ -4124,6 +4124,18 @@ export default function DealDetail() {
                                 phaseControls={checklistPhaseControls}
                               />
                               </div>
+                              {isFinServDeal && (
+                                <div className="shrink-0">
+                                  <FinServProjectsCard
+                                    projects={finservProjects}
+                                    total={finservProjectsTotal}
+                                    loading={finservProjectsLoading}
+                                    onAdd={addFinservProject}
+                                    onUpdate={updateFinservProject}
+                                    onDelete={deleteFinservProject}
+                                  />
+                                </div>
+                              )}
                               <Card className="overflow-hidden flex-1 flex flex-col min-h-[280px]">
                                 <div className="flex-1 flex flex-col">
                                   <CalendarPanel deal={deal} />
