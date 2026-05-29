@@ -1210,8 +1210,9 @@ function EventDetailPane({
               <InlineComposer
                 to={allEmails}
                 defaultSubject={`${eventTitle} Follow Up`}
+                defaultBody={composerPrefillBody}
                 recipientLabel={`${allEmails.length} attendees`}
-                onClose={() => setComposerForAll(false)}
+                onClose={() => { setComposerForAll(false); setComposerPrefillBody(undefined); }}
                 onSent={() => onEmailSent(`Sent follow-up to ${allEmails.length} attendees`)}
               />
             </div>
