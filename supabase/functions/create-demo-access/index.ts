@@ -156,10 +156,15 @@ const handler = async (req: Request): Promise<Response> => {
           userId = created.user.id;
         }
 
-        // 2b. Upsert profile row
+        // 2b. Upsert profile row — ALWAYS force-approve on the demo path so
+        //     the user bypasses the Access Request approval gate and can log
+        //     in immediately. This also covers the common case where the
+        //     auth.users → profile trigger already inserted a row with
+        //     approved_at = NULL.
+        const nowIso = new Date().toISOString();
         const { data: existingProfile } = await admin
           .from("profiles")
-          .select("id, user_id")
+          .select("id, user_id, approved_at, source")
           .eq("user_id", userId)
           .maybeSingle();
 
@@ -170,10 +175,27 @@ const handler = async (req: Request): Promise<Response> => {
             full_name: name,
             email,
             is_active: true,
-            approved_at: new Date().toISOString(),
+            approved_at: nowIso,
+            approved_by: caller.id,
+            approval_requested_at: nowIso,
+            // Mark provenance so this profile is never mistaken for a
+            // FLEx-imported reference profile (FLEx users have no login).
+            source: "demo-access",
           });
         } else {
-          await admin.from("profiles").update({ is_active: true }).eq("user_id", userId);
+          await admin
+            .from("profiles")
+            .update({
+              is_active: true,
+              approved_at: existingProfile.approved_at ?? nowIso,
+              approved_by: caller.id,
+              // Never let a previously-imported FLEx profile silently keep
+              // its source — demo provisioning supersedes it.
+              ...(existingProfile.source === "FLEx"
+                ? { source: "demo-access" }
+                : {}),
+            })
+            .eq("user_id", userId);
         }
 
         // 2c. Add to company_members (idempotent on unique key)
