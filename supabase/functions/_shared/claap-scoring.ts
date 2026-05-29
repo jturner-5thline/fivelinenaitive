@@ -89,10 +89,12 @@ function participantNames(p: any[]): string[] {
 export function normalizeTitle(s: string | null | undefined): string {
   if (!s) return '';
   let out = String(s).toLowerCase();
+  // NFKC normalize
+  try { out = out.normalize('NFKC'); } catch { /* ignore */ }
   // common separators / joiners → space
   out = out.replace(/[|<>/\\\-_:,;.!?()\[\]{}"'`~@#$%^*+=]/g, ' ');
-  // strip joiner words
-  out = out.replace(/\b(vs|and|&|x|w\/|with)\b/g, ' ');
+  // strip joiner words and common org/meeting words
+  out = out.replace(/\b(vs|and|&|x|w\/|with|meeting|call|sync|review|5th|line)\b/g, ' ');
   out = out.replace(/\s+/g, ' ').trim();
   return out;
 }
@@ -135,16 +137,15 @@ export function scoreMeetings(rec: RecordingInput, meetings: any[]): Candidate[]
     let score = 0;
     let temporalAnchor = false;
 
-    // Time-window overlap (additive, capped at 0.20)
+    // Time-window overlap (binary at >= 50%, +0.20)
     const meEff = isFinite(me) ? me : ms;
     const endEff = isFinite(end) ? end : start;
     const overlap = Math.max(0, Math.min(endEff, meEff) - Math.max(start, ms));
-    const union = Math.max(endEff, meEff) - Math.min(start, ms);
-    const ratio = union > 0 ? overlap / union : 0;
-    if (ratio > 0.1) {
-      const w = clamp(ratio) * 0.20;
-      score += w;
-      reasons.push({ code: 'time_overlap', label: `Time overlap ${(ratio * 100) | 0}%`, weight: w });
+    const minDur = Math.max(1, Math.min(endEff - start, meEff - ms));
+    const ratio = minDur > 0 ? overlap / minDur : 0;
+    if (ratio >= 0.5) {
+      score += 0.20;
+      reasons.push({ code: 'time_overlap', label: `Time overlap ${(ratio * 100) | 0}%`, weight: 0.20 });
       temporalAnchor = true;
     } else if (Math.abs(ms - start) < 15 * 60_000) {
       score += 0.15;
@@ -164,14 +165,18 @@ export function scoreMeetings(rec: RecordingInput, meetings: any[]): Candidate[]
     const mToks = titleTokens(m.title || '');
     let titleHit = false;
     if (recTitleNorm && mTitleNorm && recTitleNorm === mTitleNorm) {
-      score += 0.55;
-      reasons.push({ code: 'title_exact', label: 'Exact title match', weight: 0.55 });
+      score += 0.60;
+      reasons.push({ code: 'title_exact', label: 'Exact title match', weight: 0.60 });
       titleHit = true;
     } else {
       const j = jaccard(recTitleToks, mToks);
       if (j >= 0.7) {
-        score += 0.35;
-        reasons.push({ code: 'title_tokens', label: `Title tokens match (${Math.round(j * 100)}%)`, weight: 0.35 });
+        score += 0.40;
+        reasons.push({ code: 'title_tokens', label: `Title tokens match (${Math.round(j * 100)}%)`, weight: 0.40 });
+        titleHit = true;
+      } else if (j >= 0.5) {
+        score += 0.25;
+        reasons.push({ code: 'title_tokens_partial', label: `Title tokens partial (${Math.round(j * 100)}%)`, weight: 0.25 });
         titleHit = true;
       } else if (rec.title && m.title) {
         const d = dice(rec.title, m.title);
@@ -201,10 +206,10 @@ export function scoreMeetings(rec: RecordingInput, meetings: any[]): Candidate[]
       if (ovr >= 0.5) {
         score += 0.20;
         reasons.push({ code: 'attendee_overlap', label: `${matched} of ${att.length} attendees matched (emails)`, weight: 0.20 });
-      } else if (ovr > 0) {
-        const w = clamp(ovr) * 0.20;
-        score += w;
-        reasons.push({ code: 'attendee_overlap_partial', label: `${matched} of ${att.length} attendees matched`, weight: w });
+      } else if (matched >= 1) {
+        // Shared-attendee floor: at least one shared email participant
+        score += 0.15;
+        reasons.push({ code: 'attendee_overlap_floor', label: `${matched} shared attendee${matched === 1 ? '' : 's'}`, weight: 0.15 });
       }
     } else if (recNames.size) {
       // Attendee NAME overlap fallback (when emails are missing on the meeting side)
