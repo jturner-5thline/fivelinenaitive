@@ -30,13 +30,14 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { DEAL_SOURCED_VIA_OPTIONS } from '@/constants/dealSourcedVia';
 
 
-export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'lender' | 'referredBy' | 'sourcedVia';
+export type FilterKey = 'stage' | 'status' | 'engagementType' | 'manager' | 'dealOwner' | 'lender' | 'referredBy' | 'sourcedVia';
 
 export const FILTER_LABELS: Record<FilterKey, string> = {
   stage: 'Stage',
   status: 'Status',
   engagementType: 'Engagement',
   manager: 'Manager',
+  dealOwner: 'Deal Owner',
   lender: 'Lender',
   referredBy: 'Referred By',
   sourcedVia: 'Sourced via',
@@ -89,6 +90,20 @@ export function FiltersPopover({
     }));
   }, [deals]);
 
+  // Get unique deal owners from actual deals data
+  const dealOwnerOptions = useMemo(() => {
+    const owners = new Set<string>();
+    deals.forEach(deal => {
+      if (deal.dealOwner && deal.dealOwner.trim()) {
+        owners.add(deal.dealOwner);
+      }
+    });
+    return Array.from(owners).sort().map(owner => ({
+      value: owner,
+      label: owner,
+    }));
+  }, [deals]);
+
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
     label: lender,
@@ -110,6 +125,7 @@ export function FiltersPopover({
       status: [],
       engagementType: [],
       manager: [],
+      dealOwner: [],
       lender: [],
       referredBy: [],
       sourcedVia: [],
@@ -139,6 +155,11 @@ export function FiltersPopover({
       key: 'manager', 
       options: managerOptions, 
       onChange: (manager) => onFilterChange({ manager }) 
+    },
+    {
+      key: 'dealOwner',
+      options: dealOwnerOptions,
+      onChange: (dealOwner) => onFilterChange({ dealOwner }),
     },
     { 
       key: 'lender', 
@@ -288,6 +309,19 @@ export function useFilterConfigs() {
     }));
   }, [deals]);
 
+  const dealOwnerOptions = useMemo(() => {
+    const owners = new Set<string>();
+    deals.forEach(deal => {
+      if (deal.dealOwner && deal.dealOwner.trim()) {
+        owners.add(deal.dealOwner);
+      }
+    });
+    return Array.from(owners).sort().map(owner => ({
+      value: owner,
+      label: owner,
+    }));
+  }, [deals]);
+
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
     label: lender,
@@ -308,6 +342,7 @@ export function useFilterConfigs() {
     status: statusOptions,
     engagementType: engagementTypeOptions,
     manager: managerOptions,
+    dealOwner: dealOwnerOptions,
     lender: lenderOptions,
     referredBy: referredByOptions,
     sourcedVia: sourcedViaOptions,

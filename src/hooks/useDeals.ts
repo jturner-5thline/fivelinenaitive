@@ -18,6 +18,7 @@ export interface DealFilters {
   dealType: string[];
   manager: string[];
   lender: string[];
+  dealOwner: string[];
   referredBy: string[];
   sourcedVia: string[];
   staleOnly: boolean;
@@ -37,6 +38,7 @@ export const DEFAULT_DEAL_FILTERS: DealFilters = {
   dealType: [],
   manager: [],
   lender: [],
+  dealOwner: [],
   referredBy: [],
   sourcedVia: [],
   staleOnly: false,
@@ -56,7 +58,11 @@ export function useDeals(options?: UseDealsOptions) {
   const { deals, updateDealStatus: updateStatus, isLoading } = useDealsContext();
   const { preferences } = usePreferences();
   const { stages } = useDealStages();
-  const [filters, setFilters] = useState<DealFilters>(options?.initialFilters ?? DEFAULT_DEAL_FILTERS);
+  const [filters, setFilters] = useState<DealFilters>(
+    options?.initialFilters
+      ? { ...DEFAULT_DEAL_FILTERS, ...options.initialFilters }
+      : DEFAULT_DEAL_FILTERS
+  );
   const [sortField, setSortField] = useState<SortField>(options?.initialSortField ?? 'updatedAt');
   const [sortDirection, setSortDirection] = useState<SortDirection>(options?.initialSortDirection ?? 'desc');
   const aiRules = useAiDealFilterStore((s) => s.rules);
@@ -100,6 +106,10 @@ export function useDeals(options?: UseDealsOptions) {
 
     if (filters.lender.length > 0) {
       result = result.filter((deal) => filters.lender.includes(deal.lender));
+    }
+
+    if (filters.dealOwner.length > 0) {
+      result = result.filter((deal) => deal.dealOwner && filters.dealOwner.includes(deal.dealOwner));
     }
 
     if (filters.referredBy.length > 0) {
@@ -183,6 +193,19 @@ export function useDeals(options?: UseDealsOptions) {
     setFilters((prev) => ({ ...prev, ...newFilters }));
   };
 
+  // Wrap setFilters so legacy/saved views missing newer keys (e.g. dealOwner)
+  // get backfilled with defaults instead of producing undefined arrays.
+  const safeSetFilters: typeof setFilters = (next) => {
+    if (typeof next === 'function') {
+      setFilters((prev) => ({
+        ...DEFAULT_DEAL_FILTERS,
+        ...(next as (p: DealFilters) => DealFilters)(prev),
+      }));
+    } else {
+      setFilters({ ...DEFAULT_DEAL_FILTERS, ...next });
+    }
+  };
+
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -215,7 +238,7 @@ export function useDeals(options?: UseDealsOptions) {
     updateDealStatus,
     updateFilters,
     toggleSort,
-    setFilters,
+    setFilters: safeSetFilters,
     setSortField,
     setSortDirection,
   };
