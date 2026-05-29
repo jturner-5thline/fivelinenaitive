@@ -113,7 +113,13 @@ export function scoreMeetings(rec: RecordingInput, meetings: any[]): Candidate[]
       reasons.push({ code: 'organizer_match', label: 'Organizer email matched', weight: 0.20 });
     }
 
-    const att = (m.attendees || []).map((x: string) => x.toLowerCase());
+    const att = (m.attendees || [])
+      .map((x: any) => {
+        if (typeof x === 'string') return x.toLowerCase();
+        if (x && typeof x === 'object') return String(x.email || x.address || '').toLowerCase();
+        return '';
+      })
+      .filter((e: string) => !!e);
     if (att.length && recEmails.size) {
       const matched = att.filter((e: string) => recEmails.has(e)).length;
       const ovr = matched / Math.max(att.length, recEmails.size);
