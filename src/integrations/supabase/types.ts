@@ -12301,6 +12301,56 @@ export type Database = {
           },
         ]
       }
+      finserv_deal_projects: {
+        Row: {
+          completion_date: string | null
+          created_at: string
+          created_by: string | null
+          deal_id: string
+          description: string | null
+          id: string
+          name: string
+          position: number
+          start_date: string | null
+          updated_at: string
+          value: number
+        }
+        Insert: {
+          completion_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id: string
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          start_date?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Update: {
+          completion_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          deal_id?: string
+          description?: string | null
+          id?: string
+          name?: string
+          position?: number
+          start_date?: string | null
+          updated_at?: string
+          value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "finserv_deal_projects_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flex_auto_removal_audit: {
         Row: {
           company_id: string | null
