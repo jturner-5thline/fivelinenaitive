@@ -90,6 +90,20 @@ export function FiltersPopover({
     }));
   }, [deals]);
 
+  // Get unique deal owners from actual deals data
+  const dealOwnerOptions = useMemo(() => {
+    const owners = new Set<string>();
+    deals.forEach(deal => {
+      if (deal.dealOwner && deal.dealOwner.trim()) {
+        owners.add(deal.dealOwner);
+      }
+    });
+    return Array.from(owners).sort().map(owner => ({
+      value: owner,
+      label: owner,
+    }));
+  }, [deals]);
+
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
     label: lender,
@@ -111,6 +125,7 @@ export function FiltersPopover({
       status: [],
       engagementType: [],
       manager: [],
+      dealOwner: [],
       lender: [],
       referredBy: [],
       sourcedVia: [],
@@ -140,6 +155,11 @@ export function FiltersPopover({
       key: 'manager', 
       options: managerOptions, 
       onChange: (manager) => onFilterChange({ manager }) 
+    },
+    {
+      key: 'dealOwner',
+      options: dealOwnerOptions,
+      onChange: (dealOwner) => onFilterChange({ dealOwner }),
     },
     { 
       key: 'lender', 
