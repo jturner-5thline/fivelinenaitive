@@ -275,6 +275,25 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
             </SelectContent>
           </Select>
 
+          {!isFlex && (
+            <Select value={signinFilter} onValueChange={(v) => setSigninFilter(v as typeof signinFilter)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Sign-in activity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sign-in activity</SelectItem>
+                <SelectItem value="never">Never signed in</SelectItem>
+                <SelectItem value="stale10">No sign-in in 10+ business days</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
+          {!isFlex && signinFilter !== "all" && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {filteredUsers?.length ?? 0} match{(filteredUsers?.length ?? 0) === 1 ? "" : "es"}
+            </span>
+          )}
+
           {selectedUserIds.size > 0 && (
             <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
               <DialogTrigger asChild>
