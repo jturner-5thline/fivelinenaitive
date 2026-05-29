@@ -10,12 +10,12 @@ import { toast } from '@/hooks/use-toast';
 
 export interface ReferralSourceContact {
   id: string;
-  name: string;
+  name?: string | null;
 }
 
 interface Props {
   value?: ReferralSourceContact | null;
-  onChange: (contact: ReferralSourceContact | null) => void;
+  onChange: (contact: { id: string; name: string } | null) => void;
   className?: string;
 }
 
@@ -44,13 +44,39 @@ export function ReferralSourceContactInput({ value, onChange, className }: Props
   const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [highlight, setHighlight] = useState(0);
+  const [resolvedName, setResolvedName] = useState<string | null>(value?.name || null);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Resolve a contact name when only an id was provided.
+  useEffect(() => {
+    let cancelled = false;
+    if (!value?.id) {
+      setResolvedName(null);
+      return;
+    }
+    if (value.name) {
+      setResolvedName(value.name);
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from('contacts')
+        .select('id, first_name, last_name, full_name, email')
+        .eq('id', value.id)
+        .maybeSingle();
+      if (cancelled) return;
+      setResolvedName(data ? formatName(data as ContactRow) : null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [value?.id, value?.name]);
+
   // Keep local input in sync with external value when not editing
   useEffect(() => {
-    if (!isEditing && !isOpen) setInputValue(value?.name || '');
-  }, [value, isEditing, isOpen]);
+    if (!isEditing && !isOpen) setInputValue(resolvedName || '');
+  }, [resolvedName, isEditing, isOpen]);
 
   // Search contacts (debounced)
   useEffect(() => {
@@ -102,12 +128,12 @@ export function ReferralSourceContactInput({ value, onChange, className }: Props
       ) {
         setIsOpen(false);
         setIsEditing(false);
-        setInputValue(value?.name || '');
+        setInputValue(resolvedName || '');
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [value]);
+  }, [resolvedName]);
 
   const trimmed = inputValue.trim();
   const hasExactMatch = results.some(
@@ -187,7 +213,7 @@ export function ReferralSourceContactInput({ value, onChange, className }: Props
     } else if (e.key === 'Escape') {
       setIsOpen(false);
       setIsEditing(false);
-      setInputValue(value?.name || '');
+      setInputValue(resolvedName || '');
     }
   };
 
