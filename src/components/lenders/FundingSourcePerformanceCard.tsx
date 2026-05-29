@@ -1,4 +1,5 @@
-import { useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { supabase } from '@/integrations/supabase/client';
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -53,23 +54,17 @@ const MONTH_LABELS = [
 const PLAN_COLOR = 'hsl(210 90% 60%)';
 const ACTUAL_COLOR = 'hsl(142 71% 45%)';
 
-// ─── TEMPORARY OVERRIDE ────────────────────────────────────────────────────
-// The live actuals source (lenders.created_at) is over-counting because it
-// reflects every directory row, not actual newly *qualified* lenders. Until a
-// canonical "qualified lender" flag exists, hardcode a manual baseline for
-// 5th Line's 2026 quarterly Performance view:
-//   • Q1 2026  = 2 qualified lenders (fixed)
-//   • Q2 2026+ = start from 0, then count only lenders created at/after the
-//                override cutoff timestamp below.
-// TODO: Replace with a proper "qualified lender" data source.
-const PERF_OVERRIDE_YEAR = 2026;
-const PERF_OVERRIDE_CUTOFF_ISO = '2026-05-29T00:00:00Z';
-const PERF_OVERRIDE_QUARTERLY_BASELINE: Record<number, number> = {
-  1: 2, // Q1 2026 — manually fixed
-  2: 0,
-  3: 0,
-  4: 0,
-};
+// ─── QUALIFIED FUNDING SOURCE ACTUALS ─────────────────────────────────────
+// A funding source counts as "qualified" when it was added OR its contact
+// name/email was modified, AND a deal was submitted to it within 72 hours of
+// that trigger event. Counted at most once per reporting period.
+// Data is computed server-side via the `get_funding_source_qualified_actuals`
+// RPC, which scans master_lenders + lender_audit_logs + deal_lenders.
+interface QualifiedActualRow {
+  period: number;
+  qualified_count: number;
+  lender_ids: string[] | null;
+}
 
 interface Props {
   tenantId: string;
@@ -100,48 +95,61 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
     : 'monthly';
   const cadence: Cadence = cadenceOverride ?? detectedCadence;
 
-  // Bucket lenders by period for the selected year.
+  // Fetch qualified-source actuals from the server.
+  const [qualifiedRows, setQualifiedRows] = useState<QualifiedActualRow[]>([]);
+  const [loadingActuals, setLoadingActuals] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    setLoadingActuals(true);
+    (async () => {
+      const { data, error } = await supabase.rpc(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        'get_funding_source_qualified_actuals' as any,
+        { p_tenant_id: tenantId, p_year: year, p_cadence: cadence },
+      );
+      if (cancelled) return;
+      if (error) {
+        console.error('[Performance] qualified actuals RPC failed', error);
+        setQualifiedRows([]);
+      } else {
+        setQualifiedRows((data ?? []) as QualifiedActualRow[]);
+      }
+      setLoadingActuals(false);
+    })();
+    return () => { cancelled = true; };
+  }, [tenantId, year, cadence]);
+
+  // Per-period qualified counts + lender id lists for drill-down.
+  const lenderById = useMemo(() => {
+    const m = new Map<string, MasterLender>();
+    for (const l of lenders) m.set(l.id, l);
+    return m;
+  }, [lenders]);
+
+  const actualCountsByPeriod = useMemo(() => {
+    const periods = cadence === 'monthly' ? 12 : 4;
+    const counts = Array.from({ length: periods }, () => 0);
+    for (const r of qualifiedRows) {
+      const idx = r.period - 1;
+      if (idx >= 0 && idx < periods) counts[idx] = r.qualified_count;
+    }
+    return counts;
+  }, [qualifiedRows, cadence]);
+
   const actualsByPeriod = useMemo(() => {
     const periods = cadence === 'monthly' ? 12 : 4;
     const buckets: MasterLender[][] = Array.from({ length: periods }, () => []);
-    // Apply the temporary 2026-quarterly override (qualified-lender baseline)
-    // only when viewing the 2026 quarterly Performance view.
-    const useOverride = year === PERF_OVERRIDE_YEAR && cadence === 'quarterly';
-    const cutoffMs = useOverride ? new Date(PERF_OVERRIDE_CUTOFF_ISO).getTime() : 0;
-    for (const l of lenders) {
-      const t = l.created_at ? new Date(l.created_at) : null;
-      if (!t || isNaN(t.getTime())) continue;
-      if (t.getFullYear() !== year) continue;
-      // Under the override: only count lenders created at/after the cutoff,
-      // and never bucket them into Q1 (Q1 is fixed by the baseline below).
-      if (useOverride) {
-        if (t.getTime() < cutoffMs) continue;
-        const qIdx = Math.floor(t.getMonth() / 3);
-        if (qIdx === 0) continue;
-        buckets[qIdx].push(l);
-        continue;
+    for (const r of qualifiedRows) {
+      const idx = r.period - 1;
+      if (idx < 0 || idx >= periods) continue;
+      const ids = r.lender_ids ?? [];
+      for (const id of ids) {
+        const l = lenderById.get(id);
+        if (l) buckets[idx].push(l);
       }
-      const m = t.getMonth(); // 0..11
-      const idx = cadence === 'monthly' ? m : Math.floor(m / 3);
-      buckets[idx].push(l);
     }
     return buckets;
-  }, [lenders, year, cadence]);
-
-  // Authoritative per-period actual *counts* for the chart and YTD tiles.
-  // Decoupled from the lender list so the temporary 2026-quarterly baseline
-  // (Q1 = 2) can be applied without faking lender rows in the drill-down.
-  const actualCountsByPeriod = useMemo(() => {
-    const periods = cadence === 'monthly' ? 12 : 4;
-    const counts = actualsByPeriod.map((b) => b.length);
-    if (year === PERF_OVERRIDE_YEAR && cadence === 'quarterly') {
-      for (let qIdx = 0; qIdx < periods; qIdx++) {
-        const baseline = PERF_OVERRIDE_QUARTERLY_BASELINE[qIdx + 1] ?? 0;
-        if ((counts[qIdx] ?? 0) < baseline) counts[qIdx] = baseline;
-      }
-    }
-    return counts;
-  }, [actualsByPeriod, year, cadence]);
+  }, [qualifiedRows, lenderById, cadence]);
 
   const planByPeriod = useMemo(() => {
     const src = cadence === 'monthly' ? monthlyPlan : quarterlyPlan;
@@ -187,7 +195,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
   const variance = ytdActual - ytdPlan;
   const attainment = ytdPlan > 0 ? (ytdActual / ytdPlan) * 100 : null;
 
-  const isLoading = loadingMonthly || loadingQuarterly;
+  const isLoading = loadingMonthly || loadingQuarterly || loadingActuals;
 
   const handleBarClick = (data: { period?: string; idx?: number }) => {
     if (data?.idx == null) return;
