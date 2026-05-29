@@ -1064,7 +1064,7 @@ function EventDetailPane({
   onLinkDeal: (deal: { id: string; name: string }) => void;
   onNoteAdded: (text: string) => void;
   onEmailSent: (label: string) => void;
-  onCreateTask: () => void;
+  onCreateTask: (initialTitle?: string) => void;
 }) {
   const attendees = event.attendees || [];
   const externals = attendees.filter(a => !a.self);
@@ -1073,6 +1073,7 @@ function EventDetailPane({
   const isCarry = ageDays > 0;
 
   const [composerForAll, setComposerForAll] = useState(false);
+  const [composerPrefillBody, setComposerPrefillBody] = useState<string | undefined>(undefined);
   const [composerForOne, setComposerForOne] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [dealQuery, setDealQuery] = useState('');
