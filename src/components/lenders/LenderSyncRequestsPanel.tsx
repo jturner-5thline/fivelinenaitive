@@ -709,6 +709,23 @@ export function LenderSyncRequestsPanel({ onLenderApproved }: LenderSyncRequests
                     {isRematching ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Layers className="h-3 w-3 mr-1" />}
                     Re-match
                   </Button>
+                  {pendingRequests.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => { e.stopPropagation(); setConfirmDismissAllOpen(true); }}
+                      disabled={isDismissingAll}
+                      title="Dismiss all current pending sync requests (queue cleanup only — does not change any permissions)"
+                      className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    >
+                      {isDismissingAll ? (
+                        <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3 w-3 mr-1" />
+                      )}
+                      Dismiss queue
+                    </Button>
+                  )}
                   <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); refetch(); }}>
                     <RefreshCw className="h-4 w-4" />
                   </Button>
