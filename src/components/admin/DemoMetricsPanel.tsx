@@ -1,107 +1,88 @@
-import { useQuery } from "@tanstack/react-query";
-import { formatDistanceToNow, differenceInDays } from "date-fns";
-import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useMemo, useState } from "react";
+import { formatDistanceToNow, differenceInDays, format } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
-import { BarChart3, Users, Sparkles, LogIn, Briefcase, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { BarChart3, Search, Users, Sparkles, LogIn, Briefcase, Clock, ArrowUpDown, Calendar, TrendingUp } from "lucide-react";
+import { useDemoAccounts, type DemoAccountRow } from "@/hooks/useDemoAccountMetrics";
+import { DemoAccountDetailSheet } from "./DemoAccountDetailSheet";
 
-interface CompanyRow {
-  id: string;
-  name: string;
-  account_type: string | null;
-  trial_ends_at: string | null;
-  subscription_status: string | null;
-  created_at: string;
-}
+type SortKey = 'name' | 'created_at' | 'last_event_at' | 'sign_ins' | 'distinct_active_users' | 'deals' | 'trial_ends_at' | 'status';
 
-interface AggRow {
-  company_id: string | null;
-  user_id: string;
-  event_type: string;
-  created_at: string;
-}
-
-const isDemoLike = (t?: string | null) =>
-  !!t && ["demo", "pilot", "trial", "partner"].includes(t.toLowerCase());
+const STATUS_BADGE: Record<DemoAccountRow['status'], string> = {
+  active: "bg-emerald-500/20 text-emerald-300 border-emerald-500/30",
+  expired: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+  revoked: "bg-red-500/20 text-red-400 border-red-500/30",
+  converted: "bg-blue-500/20 text-blue-300 border-blue-500/30",
+};
 
 export const DemoMetricsPanel = () => {
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-demo-metrics"],
-    queryFn: async () => {
-      // 1. Fetch demo / pilot companies.
-      const { data: companies, error: cErr } = await supabase
-        .from("companies")
-        .select("id, name, account_type, trial_ends_at, subscription_status, created_at")
-        .order("created_at", { ascending: false });
-      if (cErr) throw cErr;
+  const { data: accounts, isLoading } = useDemoAccounts();
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sortKey, setSortKey] = useState<SortKey>('last_event_at');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [selected, setSelected] = useState<DemoAccountRow | null>(null);
 
-      const demos = (companies ?? []).filter((c: any) => isDemoLike(c.account_type)) as CompanyRow[];
-      if (demos.length === 0) return { rows: [] as Array<CompanyRow & {
-        sessions: number; signIns: number; aiQueries: number; deals: number;
-        lastEvent: string | null; pageViews: number;
-      }> };
+  const filtered = useMemo(() => {
+    let rows = accounts ?? [];
+    if (search) {
+      const q = search.toLowerCase();
+      rows = rows.filter(r => r.name.toLowerCase().includes(q));
+    }
+    if (typeFilter !== 'all') rows = rows.filter(r => (r.account_type || '').toLowerCase() === typeFilter);
+    if (statusFilter !== 'all') rows = rows.filter(r => r.status === statusFilter);
+    const dir = sortDir === 'asc' ? 1 : -1;
+    return [...rows].sort((a, b) => {
+      const av = (a as any)[sortKey];
+      const bv = (b as any)[sortKey];
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      if (typeof av === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv)) * dir;
+    });
+  }, [accounts, search, typeFilter, statusFilter, sortKey, sortDir]);
 
-      const ids = demos.map((d) => d.id);
+  // KPIs
+  const kpis = useMemo(() => {
+    const rows = accounts ?? [];
+    const total = rows.length;
+    const active7d = rows.filter(r => r.active_last_7d).length;
+    const totalSignIns = rows.reduce((s, r) => s + r.sign_ins, 0);
+    const avgSignIns = total ? Math.round(totalSignIns / total) : 0;
+    const converted = rows.filter(r => r.status === 'converted').length;
+    const conversionRate = total ? Math.round((converted / total) * 100) : 0;
+    // Time-to-first-login = first event - created_at, in hours, avg across accounts that have any event.
+    const ttfls = rows
+      .filter(r => r.last_event_at)
+      .map(r => Math.max(0, (new Date(r.last_event_at!).getTime() - new Date(r.created_at).getTime()) / 36e5));
+    const avgTtfl = ttfls.length ? Math.round(ttfls.reduce((s, v) => s + v, 0) / ttfls.length) : null;
+    return { total, active7d, avgSignIns, conversionRate, avgTtfl };
+  }, [accounts]);
 
-      // 2. Pull last 5000 activity events scoped to these companies.
-      const { data: events } = await supabase
-        .from("user_activity_log")
-        .select("company_id, user_id, event_type, event_data, created_at")
-        .in("company_id", ids)
-        .order("created_at", { ascending: false })
-        .limit(5000);
-
-      // 3. Count deals per company (single grouped fetch).
-      const { data: deals } = await supabase
-        .from("deals")
-        .select("id, company_id")
-        .in("company_id", ids);
-
-      const dealsByCompany = new Map<string, number>();
-      (deals ?? []).forEach((d: any) => {
-        dealsByCompany.set(d.company_id, (dealsByCompany.get(d.company_id) ?? 0) + 1);
-      });
-
-      const rows = demos.map((c) => {
-        const own = (events ?? []).filter((e: any) => e.company_id === c.id) as AggRow[];
-        const signIns = own.filter((e) => e.event_type === "sign_in").length;
-        const pageViews = own.filter((e) => e.event_type === "page_view").length;
-        const aiQueries = own.filter(
-          (e) => e.event_type === "feature_used" &&
-                 ((e as any).event_data?.feature === "ai_query"),
-        ).length;
-        const sessions = new Set(
-          own
-            .filter((e) => e.event_type === "sign_in")
-            .map((e) => `${e.user_id}-${e.created_at.slice(0, 10)}`),
-        ).size;
-        return {
-          ...c,
-          sessions,
-          signIns,
-          aiQueries,
-          pageViews,
-          deals: dealsByCompany.get(c.id) ?? 0,
-          lastEvent: own[0]?.created_at ?? null,
-        };
-      });
-
-      return { rows };
-    },
-    staleTime: 60_000,
-  });
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(k); setSortDir('desc'); }
+  };
 
   if (isLoading) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {Array.from({ length: 6 }).map((_, i) => <Skeleton key={i} className="h-44" />)}
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+          {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-20" />)}
+        </div>
+        <Skeleton className="h-64" />
       </div>
     );
   }
 
-  const rows = data?.rows ?? [];
-
+  const rows = accounts ?? [];
   if (rows.length === 0) {
     return (
       <Card>
@@ -114,66 +95,124 @@ export const DemoMetricsPanel = () => {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-      {rows.map((c) => {
-        const trialDays = c.trial_ends_at
-          ? differenceInDays(new Date(c.trial_ends_at), new Date())
-          : null;
-        const trialTone =
-          trialDays === null ? "bg-white/10 text-white/60 border-white/20"
-          : trialDays < 0    ? "bg-red-500/20 text-red-400 border-red-500/30"
-          : trialDays <= 7   ? "bg-amber-500/20 text-amber-300 border-amber-500/30"
-                             : "bg-emerald-500/20 text-emerald-300 border-emerald-500/30";
-        const trialLabel =
-          trialDays === null ? "No trial set"
-          : trialDays < 0    ? `Expired ${Math.abs(trialDays)}d ago`
-                             : `${trialDays}d remaining`;
+    <div className="space-y-4">
+      {/* KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+        <Kpi icon={Briefcase} label="Demo accounts" value={kpis.total} />
+        <Kpi icon={Users} label="Active 7d" value={kpis.active7d} hint={`of ${kpis.total}`} />
+        <Kpi icon={LogIn} label="Avg sign-ins" value={kpis.avgSignIns} />
+        <Kpi icon={Clock} label="Avg time-to-first-activity" value={kpis.avgTtfl == null ? '—' : `${kpis.avgTtfl}h`} />
+        <Kpi icon={TrendingUp} label="Conversion to pilot" value={`${kpis.conversionRate}%`} />
+      </div>
 
-        return (
-          <Card key={c.id} className="overflow-hidden">
-            <CardHeader className="pb-3">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <CardTitle className="text-base truncate">{c.name}</CardTitle>
-                  <CardDescription className="text-xs">
-                    {c.account_type ?? "Demo"} ·{" "}
-                    {c.subscription_status === "revoked"
-                      ? <span className="text-red-400">revoked</span>
-                      : (c.subscription_status ?? "trialing")}
-                  </CardDescription>
-                </div>
-                <Badge variant="outline" className={trialTone}>{trialLabel}</Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
-                <Stat icon={LogIn}     label="Sign-ins"   value={c.signIns} />
-                <Stat icon={Users}     label="Sessions"   value={c.sessions} />
-                <Stat icon={Sparkles}  label="AI queries" value={c.aiQueries} />
-                <Stat icon={Briefcase} label="Deals"      value={c.deals} />
-              </div>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground border-t pt-2">
-                <Clock className="h-3 w-3" />
-                <span>
-                  {c.lastEvent
-                    ? `Last activity ${formatDistanceToNow(new Date(c.lastEvent), { addSuffix: true })}`
-                    : "No activity recorded yet"}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-        );
-      })}
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input placeholder="Search accounts..." value={search} onChange={e => setSearch(e.target.value)} className="pl-8" />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All plans</SelectItem>
+            <SelectItem value="demo">Demo</SelectItem>
+            <SelectItem value="pilot">Pilot</SelectItem>
+            <SelectItem value="trial">Trial</SelectItem>
+            <SelectItem value="partner">Partner</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All statuses</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
+            <SelectItem value="revoked">Revoked</SelectItem>
+            <SelectItem value="converted">Converted</SelectItem>
+          </SelectContent>
+        </Select>
+        <div className="text-xs text-muted-foreground ml-auto">{filtered.length} of {rows.length} shown</div>
+      </div>
+
+      {/* Table */}
+      <div className="rounded-md border overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <Sortable label="Account" k="name" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <TableHead>Plan</TableHead>
+              <Sortable label="Status" k="status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <Sortable label="Created" k="created_at" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <Sortable label="Trial" k="trial_ends_at" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+              <Sortable label="Users" k="distinct_active_users" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="text-right" />
+              <Sortable label="Sign-ins" k="sign_ins" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="text-right" />
+              <Sortable label="Deals" k="deals" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} className="text-right" />
+              <Sortable label="Last active" k="last_event_at" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.map(r => {
+              const trialDays = r.trial_ends_at ? differenceInDays(new Date(r.trial_ends_at), new Date()) : null;
+              return (
+                <TableRow key={r.id} className="cursor-pointer hover:bg-muted/40" onClick={() => setSelected(r)}>
+                  <TableCell className="font-medium">{r.name}</TableCell>
+                  <TableCell><Badge variant="secondary" className="text-[10px]">{r.account_type || 'Demo'}</Badge></TableCell>
+                  <TableCell><Badge variant="outline" className={STATUS_BADGE[r.status]}>{r.status}</Badge></TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{format(new Date(r.created_at), 'MMM d, yyyy')}</TableCell>
+                  <TableCell className="text-xs whitespace-nowrap">
+                    {trialDays == null ? <span className="text-muted-foreground">—</span>
+                      : trialDays < 0 ? <span className="text-red-400">Expired {Math.abs(trialDays)}d</span>
+                      : <span className={trialDays <= 7 ? 'text-amber-300' : 'text-muted-foreground'}>{trialDays}d left</span>}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">{r.distinct_active_users}</TableCell>
+                  <TableCell className="text-right tabular-nums">{r.sign_ins}</TableCell>
+                  <TableCell className="text-right tabular-nums">{r.deals}</TableCell>
+                  <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                    {r.last_event_at ? formatDistanceToNow(new Date(r.last_event_at), { addSuffix: true }) : 'Never'}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {filtered.length === 0 && (
+              <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-6">No accounts match filters</TableCell></TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+        <Calendar className="h-3 w-3" />
+        Engagement tracking is enabled only for demo, pilot, trial and partner tenants. Production tenants are not logged at this level of detail.
+      </p>
+
+      <DemoAccountDetailSheet
+        account={selected}
+        open={!!selected}
+        onOpenChange={(o) => !o && setSelected(null)}
+      />
     </div>
   );
 };
 
-const Stat = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
-  <div className="rounded-lg border bg-card/50 p-3">
-    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-      <Icon className="h-3 w-3" />
-      {label}
+const Kpi = ({ icon: Icon, label, value, hint }: { icon: any; label: string; value: number | string; hint?: string }) => (
+  <div className="rounded-lg border bg-card/40 p-3">
+    <div className="flex items-center gap-1.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+      <Icon className="h-3 w-3" />{label}
     </div>
-    <div className="text-xl font-semibold tabular-nums mt-1">{value.toLocaleString()}</div>
+    <div className="text-xl font-semibold tabular-nums mt-1">{typeof value === 'number' ? value.toLocaleString() : value}</div>
+    {hint && <div className="text-[10px] text-muted-foreground mt-0.5">{hint}</div>}
   </div>
+);
+
+const Sortable = ({ label, k, sortKey, sortDir, onSort, className }: {
+  label: string; k: SortKey; sortKey: SortKey; sortDir: 'asc' | 'desc';
+  onSort: (k: SortKey) => void; className?: string;
+}) => (
+  <TableHead className={className}>
+    <Button variant="ghost" size="sm" className="-ml-2 h-auto py-1 font-medium" onClick={() => onSort(k)}>
+      {label}
+      <ArrowUpDown className={`ml-1 h-3 w-3 ${sortKey === k ? 'opacity-100' : 'opacity-30'}`} />
+      {sortKey === k && <span className="ml-0.5 text-[9px]">{sortDir === 'asc' ? '↑' : '↓'}</span>}
+    </Button>
+  </TableHead>
 );
