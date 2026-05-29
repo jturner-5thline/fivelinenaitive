@@ -210,6 +210,23 @@ export function LenderAnalyticsDialog({
   const [stageConfigs, setStageConfigs] = useState<StageConfigRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planOpen, setPlanOpen] = useState(false);
+
+  // 5th Line tenant-only gating (tenant id, not email)
+  const { hasAccess: isFifthLine } = useNaitivePipelineAccess();
+  const now = new Date();
+  const currentYear = now.getFullYear();
+  // Always load both cadences so we can show whichever matches the user's view.
+  const { data: monthlyPlan } = useAcquisitionPlan(
+    isFifthLine ? FIFTH_LINE_COMPANY_ID : null,
+    currentYear,
+    'monthly',
+  );
+  const { data: quarterlyPlan } = useAcquisitionPlan(
+    isFifthLine ? FIFTH_LINE_COMPANY_ID : null,
+    currentYear,
+    'quarterly',
+  );
 
   useEffect(() => {
     if (!open) return;
