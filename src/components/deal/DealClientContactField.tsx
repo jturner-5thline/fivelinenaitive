@@ -25,9 +25,9 @@ export function DealClientContactField({
   const resolved = resolveDealClientContact(deal, linkedContact);
 
   return (
-    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
-      <span className="text-muted-foreground text-sm">Client Contact</span>
-      <div className="min-w-0 flex items-center gap-2">
+    <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
+      <span className="text-muted-foreground text-sm break-words">Client Contact</span>
+      <div className="min-w-0 w-full flex flex-wrap items-center gap-2">
         <TooltipProvider>
           <Tooltip>
             <Popover open={contactPopoverOpen} onOpenChange={onContactPopoverOpenChange}>

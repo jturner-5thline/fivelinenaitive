@@ -172,9 +172,9 @@ export function PipelineFieldRow({
   const field = lookupPipelineField(deal.dealClass, fieldKey);
   if (!field) return null;
   return (
-    <div className="grid grid-cols-[6.5rem_1fr] items-center gap-2 min-w-0">
-      <span className="text-muted-foreground text-sm">{field.label}</span>
-      <div className="min-w-0">{renderPipelineFieldInput(field, deal, onUpdate)}</div>
+    <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
+      <span className="text-muted-foreground text-sm break-words">{field.label}</span>
+      <div className="min-w-0 w-full">{renderPipelineFieldInput(field, deal, onUpdate)}</div>
     </div>
   );
 }
@@ -196,7 +196,7 @@ export function PipelineFullFieldRow({
   if (!field) return null;
   if (field.type === 'switch') {
     return (
-      <div className="flex items-center justify-between gap-3 min-w-0">
+      <div className="flex flex-wrap items-center justify-between gap-3 min-w-0">
         <span className="text-muted-foreground text-sm">{field.label}</span>
         {renderPipelineFieldInput(field, deal, onUpdate)}
       </div>
@@ -462,9 +462,9 @@ export function PipelineSpecificFields({ deal, onUpdate }: PipelineSpecificField
   const fullFields = schema.fields.filter((f) => f.column === 'full');
 
   const FieldRow = ({ field }: { field: PipelineFieldDef }) => (
-    <div className="grid grid-cols-[8.5rem_1fr] items-center gap-2 min-w-0">
-      <span className="text-muted-foreground text-sm">{field.label}</span>
-      <div className="min-w-0">{renderField(field)}</div>
+    <div className="grid grid-cols-[minmax(6rem,8.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
+      <span className="text-muted-foreground text-sm break-words">{field.label}</span>
+      <div className="min-w-0 w-full">{renderField(field)}</div>
     </div>
   );
 
