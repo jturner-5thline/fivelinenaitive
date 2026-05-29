@@ -608,6 +608,8 @@ export function EventClaapLinker({
                       catch { return ''; }
                     })();
                     const participants = (r.meeting?.participants || []).slice(0, 3).map(p => p.name || p.email).filter(Boolean);
+                    const score = (r as any)._score as number;
+                    const band: 'auto' | 'review' | 'hold' = score >= 0.90 ? 'auto' : score >= 0.65 ? 'review' : 'hold';
                     return (
                       <li key={r.id}>
                         <button
@@ -629,6 +631,19 @@ export function EventClaapLinker({
                                 {(r as any)._alreadyLinked && (
                                   <Badge variant="outline" className="h-4 px-1.5 text-[9px] border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                                     Linked
+                                  </Badge>
+                                )}
+                                {score > 0 && (
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      'h-4 px-1.5 text-[9px]',
+                                      band === 'auto' && 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10',
+                                      band === 'review' && 'border-amber-500/40 text-amber-300 bg-amber-500/10',
+                                      band === 'hold' && 'border-white/15 text-muted-foreground bg-white/[0.04]',
+                                    )}
+                                  >
+                                    {Math.round(score * 100)}%
                                   </Badge>
                                 )}
                               </div>
