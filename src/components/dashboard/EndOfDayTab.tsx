@@ -42,6 +42,7 @@ import { useGmail } from '@/hooks/useGmail';
 import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
+import { MeetingClaapInlineAction } from '@/components/dashboard/MeetingClaapInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 
 // ─────────────────────────────────────────────────────────────
@@ -1339,14 +1340,20 @@ function EventDetailPane({
                 onEmailSent('Sent calendar invite (Schedule next)');
               }}
             />
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 justify-start gap-2 text-xs col-span-2 border-primary/30 bg-primary/[0.06] hover:bg-primary/[0.12] text-white"
-              onClick={() => setClaapLinkerOpen(true)}
-            >
-              <Video className="h-3.5 w-3.5 text-primary" /> Link Claap Recording
-            </Button>
+            <MeetingClaapInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              eventStart={event.start}
+              eventEnd={event.end}
+              organizerEmail={event.organizer?.email || null}
+              attendees={(event.attendees || []).map(a => ({
+                email: a.email,
+                displayName: a.display_name,
+                self: a.self,
+                responseStatus: a.response_status,
+              }))}
+              onOpenPicker={() => setClaapLinkerOpen(true)}
+            />
           </div>
 
           {/* Add note */}
