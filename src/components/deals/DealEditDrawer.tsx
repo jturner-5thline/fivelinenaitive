@@ -11,6 +11,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
+import {
+  FINSERV_OPPORTUNITY_TYPES,
+  FINSERV_FEE_TYPES,
+  FINSERV_SERVICES,
+} from '@/config/pipelineFieldSchemas';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { usePreferences } from '@/contexts/PreferencesContext';
 import { useDealTypes } from '@/contexts/DealTypesContext';
@@ -50,6 +56,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const { pipelines } = usePipelineContext();
   const { getStageConfigForDeal } = usePipelineStageConfig();
   const globalStageConfig = getStageConfig();
+
+  const isFinServ = deal.dealClass === 'finserv';
 
   // Use pipeline-specific stages if deal belongs to a pipeline
   const dealPipeline = deal.pipelineId ? pipelines.find(p => p.id === deal.pipelineId) : null;
@@ -111,6 +119,22 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
     referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
     preSigningHours: deal.preSigningHours || 0,
     postSigningHours: deal.postSigningHours || 0,
+    // FinServ-specific
+    narrative: deal.narrative || '',
+    companyUrl: deal.companyUrl || '',
+    businessModel: deal.businessModel || '',
+    sourcedVia: deal.sourcedVia || '',
+    referralSource: deal.referralSource || '',
+    contactEmail: deal.contactEmail || '',
+    opportunityType: deal.opportunityType || '',
+    feeType: deal.feeType || '',
+    mrr: deal.mrr ?? null,
+    oneTimeRevenue: deal.oneTimeRevenue ?? null,
+    contractStartDate: deal.contractStartDate || '',
+    projectedCloseDate: deal.projectedCloseDate || '',
+    contractEndDate: deal.contractEndDate || '',
+    servicesOffered: deal.servicesOffered || [],
+    onHold: !!deal.onHold,
   });
 
   const handleAddStatusNote = async () => {
@@ -141,6 +165,21 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
         referredBy: typeof deal.referredBy === 'string' ? deal.referredBy : deal.referredBy?.name || '',
         preSigningHours: deal.preSigningHours || 0,
         postSigningHours: deal.postSigningHours || 0,
+        narrative: deal.narrative || '',
+        companyUrl: deal.companyUrl || '',
+        businessModel: deal.businessModel || '',
+        sourcedVia: deal.sourcedVia || '',
+        referralSource: deal.referralSource || '',
+        contactEmail: deal.contactEmail || '',
+        opportunityType: deal.opportunityType || '',
+        feeType: deal.feeType || '',
+        mrr: deal.mrr ?? null,
+        oneTimeRevenue: deal.oneTimeRevenue ?? null,
+        contractStartDate: deal.contractStartDate || '',
+        projectedCloseDate: deal.projectedCloseDate || '',
+        contractEndDate: deal.contractEndDate || '',
+        servicesOffered: deal.servicesOffered || [],
+        onHold: !!deal.onHold,
       });
     }
   }, [deal, isOpen]);
@@ -148,19 +187,40 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Build update object, handling referredBy as string for DB
-      const updates: Partial<Deal> = {
-        company: formData.company,
-        value: formData.value,
-        status: formData.status as DealStatus,
-        stage: formData.stage as DealStage,
-        engagementType: formData.engagementType as EngagementType,
-        exclusivity: formData.exclusivity as ExclusivityType || undefined,
-        manager: formData.manager || undefined,
-        dealOwner: formData.dealOwner || undefined,
-        preSigningHours: formData.preSigningHours,
-        postSigningHours: formData.postSigningHours,
-      };
+      const updates: Partial<Deal> = isFinServ
+        ? {
+            company: formData.company,
+            status: formData.status as DealStatus,
+            stage: formData.stage as DealStage,
+            dealOwner: formData.dealOwner || undefined,
+            narrative: formData.narrative || undefined,
+            companyUrl: formData.companyUrl || undefined,
+            businessModel: formData.businessModel || undefined,
+            sourcedVia: formData.sourcedVia || undefined,
+            referralSource: formData.referralSource || undefined,
+            contactEmail: formData.contactEmail || undefined,
+            opportunityType: formData.opportunityType || undefined,
+            feeType: formData.feeType || undefined,
+            mrr: formData.mrr,
+            oneTimeRevenue: formData.oneTimeRevenue,
+            contractStartDate: formData.contractStartDate || null,
+            projectedCloseDate: formData.projectedCloseDate || null,
+            contractEndDate: formData.contractEndDate || null,
+            servicesOffered: formData.servicesOffered,
+            onHold: formData.onHold,
+          }
+        : {
+            company: formData.company,
+            value: formData.value,
+            status: formData.status as DealStatus,
+            stage: formData.stage as DealStage,
+            engagementType: formData.engagementType as EngagementType,
+            exclusivity: (formData.exclusivity as ExclusivityType) || undefined,
+            manager: formData.manager || undefined,
+            dealOwner: formData.dealOwner || undefined,
+            preSigningHours: formData.preSigningHours,
+            postSigningHours: formData.postSigningHours,
+          };
       
       // Update deal without modifying referredBy (handled separately if needed)
       await updateDeal(deal.id, updates);
@@ -275,16 +335,18 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
               />
             </div>
 
-            {/* Value */}
-            <div className="space-y-2">
-              <Label htmlFor="value">Deal Value ({preferences.currency})</Label>
-              <Input
-                id="value"
-                type="number"
-                value={formData.value}
-                onChange={(e) => setFormData({ ...formData, value: Number(e.target.value) })}
-              />
-            </div>
+            {/* Value (hidden for FinServ — MRR / One-Time Revenue below) */}
+            {!isFinServ && (
+              <div className="space-y-2">
+                <Label htmlFor="value">Deal Value ({preferences.currency})</Label>
+                <Input
+                  id="value"
+                  type="number"
+                  value={formData.value}
+                  onChange={(e) => setFormData({ ...formData, value: Number(e.target.value) })}
+                />
+              </div>
+            )}
 
             {/* Status */}
             <div className="space-y-2">
@@ -374,7 +436,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
               </Select>
             </div>
 
-            {/* Engagement Type */}
+            {/* Engagement Type (hidden for FinServ) */}
+            {!isFinServ && (
             <div className="space-y-2">
               <Label>Engagement Type</Label>
               <Select
@@ -393,8 +456,10 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 </SelectContent>
               </Select>
             </div>
+            )}
 
-            {/* Exclusivity */}
+            {/* Exclusivity (hidden for FinServ) */}
+            {!isFinServ && (
             <div className="space-y-2">
               <Label>Exclusivity</Label>
               <Select
@@ -414,8 +479,10 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 </SelectContent>
               </Select>
             </div>
+            )}
 
-            {/* Manager */}
+            {/* Manager (hidden for FinServ) */}
+            {!isFinServ && (
             <div className="space-y-2">
               <Label htmlFor="manager">Manager</Label>
               <Input
@@ -425,6 +492,7 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 placeholder="Assign a manager"
               />
             </div>
+            )}
 
             {/* Deal Owner */}
             <div className="space-y-2">
@@ -437,7 +505,8 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
               />
             </div>
 
-            {/* Hours Section */}
+            {/* Hours Section (hidden for FinServ) */}
+            {!isFinServ && (
             <div className="space-y-2">
               <Label>Hours</Label>
               <div className="grid grid-cols-2 gap-3">
@@ -465,6 +534,186 @@ export function DealEditDrawer({ deal, isOpen, onClose, onStatusChange }: DealEd
                 </div>
               </div>
             </div>
+            )}
+
+            {/* FinServ-specific fields */}
+            {isFinServ && (
+              <>
+                <div className="space-y-2">
+                  <Label htmlFor="narrative">Narrative</Label>
+                  <Textarea
+                    id="narrative"
+                    rows={3}
+                    value={formData.narrative}
+                    onChange={(e) => setFormData({ ...formData, narrative: e.target.value })}
+                    placeholder="Brief deal narrative..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="companyUrl">Company URL</Label>
+                  <Input
+                    id="companyUrl"
+                    value={formData.companyUrl}
+                    onChange={(e) => setFormData({ ...formData, companyUrl: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="businessModel">Business Model</Label>
+                  <Input
+                    id="businessModel"
+                    value={formData.businessModel}
+                    onChange={(e) => setFormData({ ...formData, businessModel: e.target.value })}
+                    placeholder="Industry / business model"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contactEmail">Client Contact</Label>
+                  <Input
+                    id="contactEmail"
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={(e) => setFormData({ ...formData, contactEmail: e.target.value })}
+                    placeholder="client@company.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="referralSource">Referral Source</Label>
+                  <Input
+                    id="referralSource"
+                    value={formData.referralSource}
+                    onChange={(e) => setFormData({ ...formData, referralSource: e.target.value })}
+                    placeholder="Who referred this deal"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sourcedVia">Sourced Via</Label>
+                  <Input
+                    id="sourcedVia"
+                    value={formData.sourcedVia}
+                    onChange={(e) => setFormData({ ...formData, sourcedVia: e.target.value })}
+                    placeholder="Channel / source"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Opportunity Type</Label>
+                  <Select
+                    value={formData.opportunityType || 'none'}
+                    onValueChange={(v) => setFormData({ ...formData, opportunityType: v === 'none' ? '' : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {FINSERV_OPPORTUNITY_TYPES.map((o) => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Fee Type</Label>
+                  <Select
+                    value={formData.feeType || 'none'}
+                    onValueChange={(v) => setFormData({ ...formData, feeType: v === 'none' ? '' : v })}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Select fee type" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">—</SelectItem>
+                      {FINSERV_FEE_TYPES.map((o) => (
+                        <SelectItem key={o} value={o}>{o}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="mrr" className="text-xs text-muted-foreground">MRR</Label>
+                    <Input
+                      id="mrr"
+                      type="number"
+                      min="0"
+                      value={formData.mrr ?? ''}
+                      onChange={(e) => setFormData({ ...formData, mrr: e.target.value === '' ? null : Number(e.target.value) })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="oneTimeRevenue" className="text-xs text-muted-foreground">One-Time Revenue</Label>
+                    <Input
+                      id="oneTimeRevenue"
+                      type="number"
+                      min="0"
+                      value={formData.oneTimeRevenue ?? ''}
+                      onChange={(e) => setFormData({ ...formData, oneTimeRevenue: e.target.value === '' ? null : Number(e.target.value) })}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label htmlFor="contractStartDate" className="text-xs text-muted-foreground">Contract Start</Label>
+                    <Input
+                      id="contractStartDate"
+                      type="date"
+                      value={formData.contractStartDate?.slice(0, 10) || ''}
+                      onChange={(e) => setFormData({ ...formData, contractStartDate: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor="projectedCloseDate" className="text-xs text-muted-foreground">Projected Close</Label>
+                    <Input
+                      id="projectedCloseDate"
+                      type="date"
+                      value={formData.projectedCloseDate?.slice(0, 10) || ''}
+                      onChange={(e) => setFormData({ ...formData, projectedCloseDate: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="contractEndDate" className="text-xs text-muted-foreground">Contract End</Label>
+                  <Input
+                    id="contractEndDate"
+                    type="date"
+                    value={formData.contractEndDate?.slice(0, 10) || ''}
+                    onChange={(e) => setFormData({ ...formData, contractEndDate: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Services Offered</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {FINSERV_SERVICES.map((svc) => {
+                      const active = (formData.servicesOffered as string[]).includes(svc);
+                      return (
+                        <button
+                          key={svc}
+                          type="button"
+                          onClick={() => setFormData({
+                            ...formData,
+                            servicesOffered: active
+                              ? (formData.servicesOffered as string[]).filter((s) => s !== svc)
+                              : [...(formData.servicesOffered as string[]), svc],
+                          })}
+                          className={cn(
+                            'text-xs px-2 py-1 rounded-md border transition-colors',
+                            active
+                              ? 'bg-primary/15 border-primary/40 text-primary'
+                              : 'border-border text-muted-foreground hover:text-foreground'
+                          )}
+                        >
+                          {svc}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Label htmlFor="onHold">On Hold</Label>
+                  <Switch
+                    id="onHold"
+                    checked={formData.onHold}
+                    onCheckedChange={(v) => setFormData({ ...formData, onHold: !!v })}
+                  />
+                </div>
+              </>
+            )}
 
             {/* Referred By - Display only since it's a complex object */}
             {deal.referredBy && (
