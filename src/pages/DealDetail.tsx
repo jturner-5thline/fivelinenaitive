@@ -4012,7 +4012,18 @@ export default function DealDetail() {
                                       {renderDealInfoField('clientContact')}
                                       {renderDealInfoField('referralSource')}
                                       <PipelineFieldRow deal={deal} fieldKey="mrr" onUpdate={(f, v) => updateDeal(f as any, v)} />
-                                      <PipelineFieldRow deal={deal} fieldKey="oneTimeRevenue" onUpdate={(f, v) => updateDeal(f as any, v)} />
+                                      <div className="grid grid-cols-[minmax(5rem,6.5rem)_minmax(0,1fr)] items-center gap-2 min-w-0">
+                                        <span className="text-muted-foreground text-sm break-words">One-Time Revenue</span>
+                                        <div
+                                          className="min-w-0 w-full h-8 px-2 text-sm rounded-md border border-input bg-muted/40 text-foreground flex items-center justify-between"
+                                          title="Calculated from Projects"
+                                        >
+                                          <span className="tabular-nums">
+                                            {(deal.oneTimeRevenue ?? 0).toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })}
+                                          </span>
+                                          <span className="text-[10px] uppercase tracking-wide text-muted-foreground ml-2">from projects</span>
+                                        </div>
+                                      </div>
                                       <PipelineFieldRow deal={deal} fieldKey="contractStartDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow deal={deal} fieldKey="projectedCloseDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
                                       <PipelineFieldRow deal={deal} fieldKey="contractEndDate" onUpdate={(f, v) => updateDeal(f as any, v)} />
