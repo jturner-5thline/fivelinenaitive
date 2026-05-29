@@ -20,6 +20,7 @@ import {
   FundingSourcePlanModal,
   useAcquisitionPlan,
 } from '@/components/lenders/FundingSourcePlanModal';
+import { FundingSourcePerformanceCard } from '@/components/lenders/FundingSourcePerformanceCard';
 import { cn } from '@/lib/utils';
 import { formatUSD } from '@/lib/formatters/currency';
 import {
@@ -626,6 +627,14 @@ export function LenderAnalyticsDialog({
             <div className="rounded-lg border border-red-500/30 bg-red-950/40 p-3 text-[12px] text-red-300">
               Failed to load analytics: {error}
             </div>
+          )}
+
+          {isFifthLine && (
+            <FundingSourcePerformanceCard
+              tenantId={FIFTH_LINE_COMPANY_ID}
+              lenders={lenders}
+              onOpenPlan={() => setPlanOpen(true)}
+            />
           )}
 
           {isEmpty && (
