@@ -1476,6 +1476,7 @@ export default function DealDetail() {
   } | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(deleteAction);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isPermanentDeleteOpen, setIsPermanentDeleteOpen] = useState(false);
   const [isPushingDataRoom, setIsPushingDataRoom] = useState(false);
   
   // Failed saves tracking for retry functionality
