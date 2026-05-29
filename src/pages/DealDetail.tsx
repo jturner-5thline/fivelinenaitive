@@ -3809,7 +3809,7 @@ export default function DealDetail() {
                                           ? { id: deal.referralSourceContactId, name: deal.referredBy?.name }
                                           : null
                                       }
-                                      onChange={(c) => updateDeal('referralSourceContactId' as any, c as any)}
+                                      onChange={(c) => updateDeal('referralSourceContactId' as any, (c?.id ?? null) as any)}
                                       className="[&_input]:h-8 [&_input]:text-sm"
                                     />
                                   </div>
