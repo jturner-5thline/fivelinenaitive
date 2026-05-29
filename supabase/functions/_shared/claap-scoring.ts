@@ -78,39 +78,114 @@ function participantEmails(p: any[]): string[] {
     .filter(Boolean);
 }
 
+function participantNames(p: any[]): string[] {
+  return (Array.isArray(p) ? p : [])
+    .map((x: any) => normalizeName(x?.name || x?.displayName || ''))
+    .filter(Boolean);
+}
+
+// Aggressive title normalization: lowercase, strip punctuation/separators,
+// strip common joiner words, collapse whitespace.
+export function normalizeTitle(s: string | null | undefined): string {
+  if (!s) return '';
+  let out = String(s).toLowerCase();
+  // common separators / joiners → space
+  out = out.replace(/[|<>/\\\-_:,;.!?()\[\]{}"'`~@#$%^*+=]/g, ' ');
+  // strip joiner words
+  out = out.replace(/\b(vs|and|&|x|w\/|with)\b/g, ' ');
+  out = out.replace(/\s+/g, ' ').trim();
+  return out;
+}
+
+function titleTokens(s: string): string[] {
+  return normalizeTitle(s).split(' ').filter(t => t.length >= 2);
+}
+
+function jaccard(a: string[], b: string[]): number {
+  if (!a.length || !b.length) return 0;
+  const A = new Set(a), B = new Set(b);
+  let inter = 0;
+  for (const x of A) if (B.has(x)) inter++;
+  const union = A.size + B.size - inter;
+  return union > 0 ? inter / union : 0;
+}
+
+export function normalizeName(s: string | null | undefined): string {
+  if (!s) return '';
+  return String(s).toLowerCase().replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
 // ---------- Meeting scoring ----------
 
 export function scoreMeetings(rec: RecordingInput, meetings: any[]): Candidate[] {
   const start = ts(rec.started_at), end = ts(rec.ended_at);
   const recDur = end - start;
   const recEmails = new Set(participantEmails(rec.participants));
+  const recNames = new Set(participantNames(rec.participants));
   const recOrg = (rec.organizer_email || '').toLowerCase();
+  const recTitleNorm = normalizeTitle(rec.title);
+  const recTitleToks = titleTokens(rec.title || '');
   const out: Candidate[] = [];
 
   for (const m of meetings) {
     const ms = ts(m.start_time), me = ts(m.end_time);
-    if (!isFinite(ms) || !isFinite(me) || !isFinite(start)) continue;
+    // Allow missing end times; require at least a start on both sides.
+    if (!isFinite(ms) || !isFinite(start)) continue;
     const reasons: Reason[] = [];
     let score = 0;
+    let temporalAnchor = false;
 
-    // Time overlap (Jaccard on time spans)
-    const overlap = Math.max(0, Math.min(end || ms, me) - Math.max(start, ms));
-    const union = Math.max(end || me, me) - Math.min(start, ms);
+    // Time-window overlap (additive, capped at 0.20)
+    const meEff = isFinite(me) ? me : ms;
+    const endEff = isFinite(end) ? end : start;
+    const overlap = Math.max(0, Math.min(endEff, meEff) - Math.max(start, ms));
+    const union = Math.max(endEff, meEff) - Math.min(start, ms);
     const ratio = union > 0 ? overlap / union : 0;
     if (ratio > 0.1) {
-      const w = clamp(ratio) * 0.45;
+      const w = clamp(ratio) * 0.20;
       score += w;
       reasons.push({ code: 'time_overlap', label: `Time overlap ${(ratio * 100) | 0}%`, weight: w });
+      temporalAnchor = true;
     } else if (Math.abs(ms - start) < 15 * 60_000) {
       score += 0.15;
       reasons.push({ code: 'time_near', label: 'Starts within 15 minutes', weight: 0.15 });
+      temporalAnchor = true;
+    }
+
+    // Same calendar date (start within ± 24h)
+    if (Math.abs(ms - start) <= 24 * 60 * 60_000) {
+      score += 0.15;
+      reasons.push({ code: 'same_day', label: 'Same calendar day', weight: 0.15 });
+      temporalAnchor = true;
+    }
+
+    // Title scoring (exact normalized OR token Jaccard)
+    const mTitleNorm = normalizeTitle(m.title);
+    const mToks = titleTokens(m.title || '');
+    let titleHit = false;
+    if (recTitleNorm && mTitleNorm && recTitleNorm === mTitleNorm) {
+      score += 0.55;
+      reasons.push({ code: 'title_exact', label: 'Exact title match', weight: 0.55 });
+      titleHit = true;
     } else {
-      continue; // require some temporal anchor
+      const j = jaccard(recTitleToks, mToks);
+      if (j >= 0.7) {
+        score += 0.35;
+        reasons.push({ code: 'title_tokens', label: `Title tokens match (${Math.round(j * 100)}%)`, weight: 0.35 });
+        titleHit = true;
+      } else if (rec.title && m.title) {
+        const d = dice(rec.title, m.title);
+        if (d > 0.4) {
+          const w = d * 0.10;
+          score += w;
+          reasons.push({ code: 'title_similar', label: `Title similarity ${(d * 100) | 0}%`, weight: w });
+        }
+      }
     }
 
     if (recOrg && (m.organizer_email || '').toLowerCase() === recOrg) {
-      score += 0.20;
-      reasons.push({ code: 'organizer_match', label: 'Organizer email matched', weight: 0.20 });
+      score += 0.15;
+      reasons.push({ code: 'organizer_match', label: 'Organizer email matched', weight: 0.15 });
     }
 
     const att = (m.attendees || [])
@@ -123,21 +198,32 @@ export function scoreMeetings(rec: RecordingInput, meetings: any[]): Candidate[]
     if (att.length && recEmails.size) {
       const matched = att.filter((e: string) => recEmails.has(e)).length;
       const ovr = matched / Math.max(att.length, recEmails.size);
-      if (ovr > 0) {
+      if (ovr >= 0.5) {
+        score += 0.20;
+        reasons.push({ code: 'attendee_overlap', label: `${matched} of ${att.length} attendees matched (emails)`, weight: 0.20 });
+      } else if (ovr > 0) {
         const w = clamp(ovr) * 0.20;
         score += w;
-        reasons.push({ code: 'attendee_overlap', label: `${matched} of ${att.length} attendees matched`, weight: w });
+        reasons.push({ code: 'attendee_overlap_partial', label: `${matched} of ${att.length} attendees matched`, weight: w });
+      }
+    } else if (recNames.size) {
+      // Attendee NAME overlap fallback (when emails are missing on the meeting side)
+      const attNames = (m.attendees || [])
+        .map((x: any) => normalizeName(typeof x === 'string' ? '' : (x?.displayName || x?.name || '')))
+        .filter(Boolean);
+      if (attNames.length) {
+        let nameMatched = 0;
+        for (const n of attNames) if (recNames.has(n)) nameMatched++;
+        const ovr = nameMatched / Math.max(attNames.length, recNames.size);
+        if (ovr >= 0.5) {
+          score += 0.15;
+          reasons.push({ code: 'attendee_name_overlap', label: `${nameMatched} of ${attNames.length} attendee names matched`, weight: 0.15 });
+        }
       }
     }
 
-    if (rec.title && m.title) {
-      const d = dice(rec.title, m.title);
-      if (d > 0.4) {
-        const w = d * 0.10;
-        score += w;
-        reasons.push({ code: 'title_similar', label: `Title similarity ${(d * 100) | 0}%`, weight: w });
-      }
-    }
+    // Require either a temporal anchor OR a strong title hit to keep this candidate.
+    if (!temporalAnchor && !titleHit) continue;
 
     out.push({
       entity_type: 'meeting', entity_id: m.id, score: clamp(score),
