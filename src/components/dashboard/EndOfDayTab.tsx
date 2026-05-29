@@ -42,6 +42,7 @@ import { useGmail } from '@/hooks/useGmail';
 import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
+import { MeetingClaapInlineAction } from '@/components/dashboard/MeetingClaapInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 
 // ─────────────────────────────────────────────────────────────
