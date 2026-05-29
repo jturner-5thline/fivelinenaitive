@@ -10,12 +10,24 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Skeleton } from "@/components/ui/skeleton";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX, Globe, Home, Ban, UserCheck } from "lucide-react";
+import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX, Globe, Home, Ban, UserCheck, Cloud } from "lucide-react";
 import { useConsolidatedUsers, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole, useDeleteUser, useToggleUserSuspension } from "@/hooks/useAdminData";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { EventDrawer } from "./event-table/EventDrawer";
 
-export const UsersTable = () => {
+type UsersTableScope = 'local' | 'external' | 'flex';
+
+interface UsersTableProps {
+  /**
+   * Which user population this table renders.
+   * - 'local': Naitive accounts in this tenant
+   * - 'external': Invited external Naitive collaborators
+   * - 'flex': FLEx-imported read-only profiles (no Naitive login)
+   */
+  scope?: UsersTableScope;
+}
+
+export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
   const [search, setSearch] = useState("");
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedRole, setSelectedRole] = useState<"admin" | "moderator" | "user">("user");
@@ -24,7 +36,6 @@ export const UsersTable = () => {
   const [bulkDialogOpen, setBulkDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; isExternal: boolean } | null>(null);
-  const [sourceFilter, setSourceFilter] = useState<"all" | "local" | "external">("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended">("all");
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [userToSuspend, setUserToSuspend] = useState<{ id: string; name: string; isSuspended: boolean } | null>(null);
@@ -45,25 +56,30 @@ export const UsersTable = () => {
     return roles?.filter((r) => r.user_id === userId) || [];
   };
 
-  const filteredUsers = users?.filter((u) => {
+  const isFlex = scope === 'flex';
+  // CRITICAL: hard tab-scoping so FLEx profiles can NEVER leak into Local /
+  // External views. Source filter only affects rows that already match scope.
+  const scopedUsers = users?.filter((u) => u.source === scope);
+
+  const filteredUsers = scopedUsers?.filter((u) => {
     const matchesSearch = 
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
       u.display_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.first_name?.toLowerCase().includes(search.toLowerCase()) ||
       u.last_name?.toLowerCase().includes(search.toLowerCase());
-    
-    const matchesSource = sourceFilter === "all" || u.source === sourceFilter;
-    
+
     const matchesStatus = 
       statusFilter === "all" || 
       (statusFilter === "suspended" && u.suspended_at) ||
       (statusFilter === "active" && !u.suspended_at);
-    
-    return matchesSearch && matchesSource && matchesStatus;
+
+    return matchesSearch && matchesStatus;
   });
 
   const localUsersCount = users?.filter(u => u.source === 'local').length || 0;
   const externalUsersCount = users?.filter(u => u.source === 'external').length || 0;
+  const flexUsersCount = users?.filter(u => u.source === 'flex').length || 0;
+  const naitiveTotal = localUsersCount + externalUsersCount;
 
   const handleAddRole = () => {
     if (selectedUserId && selectedRole) {
@@ -72,8 +88,8 @@ export const UsersTable = () => {
     }
   };
 
-  const handleToggleUser = (userId: string, isExternal: boolean) => {
-    if (isExternal) return; // Can't select external users for bulk actions
+  const handleToggleUser = (userId: string, isFlexRow: boolean) => {
+    if (isFlexRow) return; // Can't select FLEx (read-only) users for bulk actions
     const newSet = new Set(selectedUserIds);
     if (newSet.has(userId)) {
       newSet.delete(userId);
@@ -84,13 +100,13 @@ export const UsersTable = () => {
   };
 
   const handleSelectAll = () => {
-    const localUsers = filteredUsers?.filter(u => u.source === 'local') || [];
-    const allSelected = localUsers.every(u => selectedUserIds.has(u.user_id));
-    
-    if (allSelected && localUsers.length > 0) {
+    const selectable = filteredUsers?.filter(u => u.source !== 'flex') || [];
+    const allSelected = selectable.every(u => selectedUserIds.has(u.user_id));
+
+    if (allSelected && selectable.length > 0) {
       setSelectedUserIds(new Set());
     } else {
-      setSelectedUserIds(new Set(localUsers.map(u => u.user_id)));
+      setSelectedUserIds(new Set(selectable.map(u => u.user_id)));
     }
   };
 
@@ -188,7 +204,9 @@ export const UsersTable = () => {
   return (
     <TooltipProvider>
       <div className="space-y-4">
-        {/* Stats summary */}
+        {/* Stats summary — Naitive users (Local + External) are tracked as one
+            total; FLEx-imported profiles are shown as a separate metric so
+            they're never miscounted as Naitive users. */}
         <div className="flex items-center gap-4 text-sm text-muted-foreground">
           <div className="flex items-center gap-1.5">
             <Home className="h-4 w-4" />
@@ -196,12 +214,25 @@ export const UsersTable = () => {
           </div>
           <div className="flex items-center gap-1.5">
             <Globe className="h-4 w-4" />
-            <span>{externalUsersCount} FLEx</span>
+            <span>{externalUsersCount} external</span>
           </div>
           <span className="text-foreground font-medium">
-            {(localUsersCount + externalUsersCount)} total users
+            {naitiveTotal} Naitive {naitiveTotal === 1 ? 'user' : 'users'}
           </span>
+          <span className="text-muted-foreground/70">·</span>
+          <div className="flex items-center gap-1.5">
+            <Cloud className="h-4 w-4" />
+            <span>{flexUsersCount} FLEx (reference)</span>
+          </div>
         </div>
+
+        {isFlex && (
+          <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs text-muted-foreground">
+            FLEx-imported profiles are read-only reference data. They do not
+            have Naitive login access and cannot be granted roles here — to
+            give a person Naitive access, invite them via Access Requests.
+          </div>
+        )}
 
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-sm">
@@ -214,17 +245,6 @@ export const UsersTable = () => {
             />
           </div>
           
-          <Select value={sourceFilter} onValueChange={(v) => setSourceFilter(v as typeof sourceFilter)}>
-            <SelectTrigger className="w-[140px]">
-              <SelectValue placeholder="Filter source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Sources</SelectItem>
-              <SelectItem value="local">Local Only</SelectItem>
-              <SelectItem value="external">FLEx Only</SelectItem>
-            </SelectContent>
-          </Select>
-
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
             <SelectTrigger className="w-[140px]">
               <SelectValue placeholder="Filter status" />
