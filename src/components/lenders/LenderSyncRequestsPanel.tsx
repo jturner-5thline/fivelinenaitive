@@ -135,7 +135,6 @@ function SyncRequestCard({ request, isSelected, onToggleSelect, onApprove, onRej
   const isPending = request.status === 'pending';
 
   return (
-    <>
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <div className={`border rounded-lg p-3 bg-card ${isSelected ? 'ring-2 ring-primary' : ''}`}>
         <div className="flex items-center justify-between">
