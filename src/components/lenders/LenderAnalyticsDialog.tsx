@@ -576,6 +576,17 @@ export function LenderAnalyticsDialog({
                   ))}
                 </SelectContent>
               </Select>
+              {isFifthLine && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-[12px] gap-1.5 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70"
+                  onClick={() => setPlanOpen(true)}
+                  title="Set acquisition targets for new qualified lenders"
+                >
+                  <Target className="h-3.5 w-3.5" /> Plan
+                </Button>
+              )}
               <Button variant="outline" size="sm" className="h-8 text-[12px] gap-1.5 bg-slate-900/60 border-slate-700/60 text-slate-200 hover:bg-slate-800/70" disabled title="Export coming soon">
                 <Download className="h-3.5 w-3.5" /> Export
               </Button>
