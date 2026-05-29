@@ -14,6 +14,8 @@ import { Search, Shield, ShieldCheck, Trash2, UserPlus, Users, UserX, Globe, Hom
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useConsolidatedUsers, useUserRoles, useAddUserRole, useRemoveUserRole, useBulkAddUserRole, useDeleteUser, useToggleUserSuspension } from "@/hooks/useAdminData";
 import { UserDetailSheet } from "./UserDetailSheet";
+import { useUserSignInActivity } from "@/hooks/useUserSignInActivity";
+import { businessDaysBetween } from "@/lib/businessDays";
 
 type UsersTableScope = 'local' | 'external' | 'flex';
 
@@ -37,6 +39,7 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<{ id: string; name: string; isExternal: boolean } | null>(null);
   const [statusFilter, setStatusFilter] = useState<"all" | "active" | "suspended">("all");
+  const [signinFilter, setSigninFilter] = useState<"all" | "never" | "stale10">("all");
   const [suspendDialogOpen, setSuspendDialogOpen] = useState(false);
   const [userToSuspend, setUserToSuspend] = useState<{ id: string; name: string; isSuspended: boolean } | null>(null);
   const [suspendReason, setSuspendReason] = useState("");
@@ -44,6 +47,7 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
   
   const { data: users, isLoading: usersLoading } = useConsolidatedUsers();
   const { data: roles, isLoading: rolesLoading } = useUserRoles();
+  const { data: signInMap } = useUserSignInActivity();
   const addRole = useAddUserRole();
   const removeRole = useRemoveUserRole();
   const bulkAddRole = useBulkAddUserRole();
@@ -61,6 +65,9 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
   // External views. Source filter only affects rows that already match scope.
   const scopedUsers = users?.filter((u) => u.source === scope);
 
+  // Sign-in filter is meaningless for FLEx reference profiles (no Naitive
+  // login), so it's only applied to Local / External tabs.
+  const now = new Date();
   const filteredUsers = scopedUsers?.filter((u) => {
     const matchesSearch = 
       u.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -73,7 +80,19 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
       (statusFilter === "suspended" && u.suspended_at) ||
       (statusFilter === "active" && !u.suspended_at);
 
-    return matchesSearch && matchesStatus;
+    let matchesSignin = true;
+    if (!isFlex && signinFilter !== "all") {
+      const last = signInMap?.get(u.user_id);
+      if (signinFilter === "never") {
+        matchesSignin = !last;
+      } else if (signinFilter === "stale10") {
+        // Distinct from "never" — only users who HAVE signed in but not
+        // within the last 10 business days.
+        matchesSignin = !!last && businessDaysBetween(new Date(last), now) > 10;
+      }
+    }
+
+    return matchesSearch && matchesStatus && matchesSignin;
   });
 
   const localUsersCount = users?.filter(u => u.source === 'local').length || 0;
@@ -255,6 +274,25 @@ export const UsersTable = ({ scope = 'local' }: UsersTableProps = {}) => {
               <SelectItem value="suspended">Suspended Only</SelectItem>
             </SelectContent>
           </Select>
+
+          {!isFlex && (
+            <Select value={signinFilter} onValueChange={(v) => setSigninFilter(v as typeof signinFilter)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Sign-in activity" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All sign-in activity</SelectItem>
+                <SelectItem value="never">Never signed in</SelectItem>
+                <SelectItem value="stale10">No sign-in in 10+ business days</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+
+          {!isFlex && signinFilter !== "all" && (
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {filteredUsers?.length ?? 0} match{(filteredUsers?.length ?? 0) === 1 ? "" : "es"}
+            </span>
+          )}
 
           {selectedUserIds.size > 0 && (
             <Dialog open={bulkDialogOpen} onOpenChange={setBulkDialogOpen}>
