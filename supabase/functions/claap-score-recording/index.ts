@@ -13,28 +13,52 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
     const auth = req.headers.get('Authorization') ?? '';
-    const userClient = createClient(SB_URL, ANON, { global: { headers: { Authorization: auth } } });
-    const { data: userRes } = await userClient.auth.getUser();
-    if (!userRes?.user) return json({ error: 'unauthorized' }, 401);
+    const isInternal = req.headers.get('x-internal-call') === '1'
+      && auth === `Bearer ${SERVICE}`;
 
     const body = await req.json().catch(() => ({}));
     const recording_id: string | undefined = body.recording_id;
-    const run_type: RunType = body.run_type === 'end_of_day' ? 'end_of_day' : 'post_call';
+    const rawRun = body.run_type;
+    const run_type: RunType = (rawRun === 'end_of_day' || rawRun === 'manual')
+      ? rawRun as RunType : 'post_call';
     if (!recording_id) return json({ error: 'recording_id required' }, 400);
 
     const admin = createClient(SB_URL, SERVICE);
+
+    if (!isInternal) {
+      const userClient = createClient(SB_URL, ANON, { global: { headers: { Authorization: auth } } });
+      const { data: userRes } = await userClient.auth.getUser();
+      if (!userRes?.user) return json({ error: 'unauthorized' }, 401);
+      const { data: rec0 } = await admin.from('claap_recordings')
+        .select('org_company_id').eq('id', recording_id).maybeSingle();
+      if (!rec0) return json({ error: 'recording not found' }, 404);
+      const { data: member } = await userClient
+        .from('company_members').select('company_id').eq('user_id', userRes.user.id)
+        .eq('company_id', rec0.org_company_id).maybeSingle();
+      if (!member) return json({ error: 'not authorized' }, 403);
+    }
+
     const { data: rec, error: recErr } = await admin
       .from('claap_recordings').select('*').eq('id', recording_id).maybeSingle();
     if (recErr || !rec) return json({ error: 'recording not found' }, 404);
 
-    // Tenant guard: caller must belong to recording's org.
-    const { data: member } = await userClient
-      .from('company_members').select('company_id').eq('user_id', userRes.user.id)
-      .eq('company_id', rec.org_company_id).maybeSingle();
-    if (!member) return json({ error: 'not authorized' }, 403);
-
-    const result = await scoreAndPersist(admin, rec, run_type);
-    return json(result);
+    const { data: runRow } = await admin.from('claap_scoring_runs').insert({
+      recording_id: rec.id, run_type,
+    }).select('id').single();
+    try {
+      const result = await scoreAndPersist(admin, rec, run_type);
+      await admin.from('claap_scoring_runs').update({
+        finished_at: new Date().toISOString(),
+        candidates_written: result.candidates,
+        auto_links_written: result.auto_linked,
+      }).eq('id', runRow!.id);
+      return json({ ...result, run_id: runRow!.id });
+    } catch (err) {
+      await admin.from('claap_scoring_runs').update({
+        finished_at: new Date().toISOString(), error: (err as Error).message,
+      }).eq('id', runRow!.id);
+      throw err;
+    }
   } catch (e) {
     console.error('claap-score-recording error', e);
     return json({ error: (e as Error).message }, 500);
