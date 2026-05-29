@@ -53,6 +53,24 @@ const MONTH_LABELS = [
 const PLAN_COLOR = 'hsl(210 90% 60%)';
 const ACTUAL_COLOR = 'hsl(142 71% 45%)';
 
+// ─── TEMPORARY OVERRIDE ────────────────────────────────────────────────────
+// The live actuals source (lenders.created_at) is over-counting because it
+// reflects every directory row, not actual newly *qualified* lenders. Until a
+// canonical "qualified lender" flag exists, hardcode a manual baseline for
+// 5th Line's 2026 quarterly Performance view:
+//   • Q1 2026  = 2 qualified lenders (fixed)
+//   • Q2 2026+ = start from 0, then count only lenders created at/after the
+//                override cutoff timestamp below.
+// TODO: Replace with a proper "qualified lender" data source.
+const PERF_OVERRIDE_YEAR = 2026;
+const PERF_OVERRIDE_CUTOFF_ISO = '2026-05-29T00:00:00Z';
+const PERF_OVERRIDE_QUARTERLY_BASELINE: Record<number, number> = {
+  1: 2, // Q1 2026 — manually fixed
+  2: 0,
+  3: 0,
+  4: 0,
+};
+
 interface Props {
   tenantId: string;
   /** All lenders visible to the user; used to compute actuals by created_at. */
