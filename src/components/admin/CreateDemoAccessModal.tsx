@@ -116,9 +116,17 @@ export function CreateDemoAccessModal({ open, onOpenChange }: Props) {
       const notSent = results.filter((r) => r.ok && !r.invited && sendWelcomeEmail);
       const userFailures = results.filter((r) => !r.ok);
 
+      const provisioned = results.filter((r) => r.ok).length;
+      const userLabel = provisioned === 1 ? "user can" : `${provisioned} users can`;
       if (sent > 0) {
         toast.success(
-          `Demo access created for ${companyName}. ${sent} invite${sent === 1 ? "" : "s"} sent.`,
+          `Demo access granted for ${companyName} — ${userLabel} log in directly; no admin approval required. ${sent} invite${sent === 1 ? "" : "s"} sent.`,
+          { duration: 7000 },
+        );
+      } else if (provisioned > 0) {
+        toast.success(
+          `Demo access granted for ${companyName} — ${userLabel} log in directly; no admin approval required.`,
+          { duration: 7000 },
         );
       } else {
         toast.success(`Demo access created for ${companyName}.`);
