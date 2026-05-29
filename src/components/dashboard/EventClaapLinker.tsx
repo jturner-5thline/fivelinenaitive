@@ -399,6 +399,22 @@ export function EventClaapLinker({
 
       await persistDealMirror(selectedRecording, dealIds);
 
+      // Also write the canonical primary_meeting link (best-effort, idempotent).
+      try {
+        const entry = rankedMap[selectedRecording.id];
+        await supabase.functions.invoke('claap-rank-recordings-for-meeting', {
+          body: {
+            action: 'confirm',
+            event_id: eventId,
+            recording: selectedRecording,
+            confidence: entry?.score ?? 0,
+            reasons: entry?.reasons ?? [],
+          },
+        });
+      } catch (e) {
+        console.warn('canonical claap link write failed', e);
+      }
+
       toast.success(editingLinkId ? 'Link updated' : 'Recording linked');
       setSelectedRecording(null);
       setEditingLinkId(null);
