@@ -484,6 +484,32 @@ export function LenderAnalyticsDialog({
 
   const visibleFundingSources = showAllVolume ? sortedFundingSources : sortedFundingSources.slice(0, 15);
 
+  // ─── 5th Line acquisition plan vs actual ───────────────────────────────
+  // Sum plan targets for months in the current date-range window (current
+  // year only). Prefer monthly granularity; fall back to quarterly if no
+  // monthly targets have been set.
+  const planTarget = useMemo(() => {
+    if (!isFifthLine) return null;
+    const start = rangeStart(dateRange) ?? new Date(currentYear, 0, 1);
+    const startD = new Date(
+      Math.max(start.getTime(), new Date(currentYear, 0, 1).getTime()),
+    );
+    const endD = now;
+    const startMonth = startD.getMonth() + 1; // 1..12
+    const endMonth = endD.getMonth() + 1;
+    const monthlySum = (monthlyPlan ?? [])
+      .filter((p) => p.period >= startMonth && p.period <= endMonth)
+      .reduce((s, p) => s + (Number(p.target_count) || 0), 0);
+    if (monthlySum > 0) return monthlySum;
+    const startQ = Math.ceil(startMonth / 3);
+    const endQ = Math.ceil(endMonth / 3);
+    const quarterlySum = (quarterlyPlan ?? [])
+      .filter((p) => p.period >= startQ && p.period <= endQ)
+      .reduce((s, p) => s + (Number(p.target_count) || 0), 0);
+    return quarterlySum;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFifthLine, dateRange, monthlyPlan, quarterlyPlan, currentYear]);
+
   // Widget 3: Most Common Pass Reasons
   const passReasonsAgg = useMemo(() => {
     const passed = rows.filter(r => r.terminal.passed);
