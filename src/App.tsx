@@ -196,6 +196,7 @@ const NaitivePipelineReports = lazy(lazyRetry(() => import("./pages/NaitivePipel
 const NaitivePipelineReportView = lazy(lazyRetry(() => import("./pages/NaitivePipelineReportView")));
 const EmailIntelligencePage = lazy(lazyRetry(() => import("./pages/EmailIntelligencePage")));
 const FinServ = lazy(lazyRetry(() => import("./pages/FinServ")));
+const ClaapMappingReview = lazy(lazyRetry(() => import("./pages/ClaapMappingReview")));
 
 
 /**
@@ -369,6 +370,7 @@ const App = () => (
                             <Route path="/naitive-pipeline/reports/:id" element={<NaitivePipelineReportView />} />
                             <Route path="/finserv" element={<FinServ />} />
                             <Route path="/email-intelligence" element={<EmailIntelligencePage />} />
+                            <Route path="/claap/review" element={<ClaapMappingReview />} />
                             <Route path="/operations" element={<Operations />} />
                             <Route path="/debug/recognition" element={<DebugRecognition />} />
                             <Route path="/settings" element={<Settings />} />

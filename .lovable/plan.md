@@ -1,65 +1,117 @@
-## Controller Dashboard — Scott follow-up
+# Claap Intelligent Mapping System
 
-Scope: `/insights` Controller Dashboard only. No other dashboards or pages touched.
+A scored entity-resolution engine that ranks Claap recordings against meetings, contacts, companies, and deals — running both at webhook-time and as an end-of-day reconciliation pass — with an inline Mapping panel and a global Review queue.
 
-### 1. Revenue overstatement — switch to P&L "Total Income"
+## 1. Database schema (new migration)
 
-Root cause (verified in the DB):
-- FinServ + Debt invoices sum to **$1.5M TTM** and **$612k YTD-2026**.
-- FinServ-only TTM income = **$394.5k**, which matches Scott's "verified YTD $394,989" baseline.
-- All Debt invoice line accounts ARE classified as Income in QBO, so the "filter non-revenue accounts" rule is a no-op for current data. The real driver is that Debt closing-fee invoices show in QBO P&L on **cash basis only when paid**, so accrual invoice-sum (the current calc) overstates recognized revenue.
+New tables (tenant-scoped via `org_company_id`, RLS via existing `has_org_company_access` pattern):
 
-Fix:
-- New hook `useQBTotalIncomeSeries(period, granularity)` (in `src/hooks/useQBTotalIncomeSeries.ts`) that:
-  - Reads stored `quickbooks_reports` rows of type `profit_and_loss` for the **3 active realms** (Debt, FinServ, Tech) intersecting the selected period.
-  - Parses each report via the existing `parseQBProfitAndLoss` and sums `totalIncome` per realm.
-  - Builds per-bucket revenue by selecting, for each bucket, the P&L report whose `period_start`/`period_end` matches the bucket; falls back to scaling the closest enclosing report by day-overlap when a bucket-precise report is not yet synced, and surfaces a small "Some buckets approximated — sync P&L for exact figures" hint.
-  - On mount, fires a background `invoke('quickbooks-sync', { syncType: 'profit_and_loss', start_date, end_date })` for each missing (realm, bucket) pair so the next refresh is exact. Throttled (max 1 per realm per minute) to avoid hammering QBO.
-- `useQuickBooksMetrics` gains a `revenueSource: 'invoices' | 'pl'` option. The Controller dashboard passes `'pl'`. Other consumers (Operations, FinServ board) keep the current `'invoices'` default — out of scope.
-- `monthlyRevenue[].revenue` and the top-level `totalRevenue` are sourced from the new hook when `revenueSource === 'pl'`; `payments` continues to come from `quickbooks_payments` (unchanged — Scott already accepts payments-received as the cash-in figure).
-- Acceptance: May-26 bar ≈ $32,200 once the May-only P&L sync completes; YTD-2026 total = ~$394k (FinServ + Debt + Tech P&L Total Income).
+- **`claap_recordings`** — canonical per-recording record
+  - `id`, `org_company_id`, `external_id` (unique per tenant), `title`, `started_at`, `ended_at`, `organizer_email`, `participants jsonb`, `transcript_available bool`, `source_payload jsonb`, `status` (`new` | `scored` | `linked` | `review` | `ignored`), `last_scored_at`, timestamps
+  - Backfilled from existing `deal_claap_recordings` + Claap webhook payloads
+- **`claap_recording_candidates`** — every scored candidate
+  - `id`, `recording_id` (FK), `entity_type` (`meeting`|`contact`|`company`|`deal`), `entity_id uuid`, `score numeric(4,3)`, `rank int`, `reasons jsonb` (array of `{code,label,weight}`), `evidence jsonb`, `run_type` (`post_call`|`end_of_day`), `created_at`
+  - Unique `(recording_id, entity_type, entity_id, run_type)`
+- **`claap_recording_links`** — confirmed links (auto or manual)
+  - `id`, `recording_id`, `entity_type`, `entity_id`, `link_role` (`primary_meeting`|`attendee_contact`|`primary_company`|`primary_deal`|`secondary_deal`), `confidence numeric`, `source` (`auto`|`manual`|`eod`), `created_by uuid`, `created_at`
+  - Unique `(recording_id, link_role, entity_id)` so multiple attendee_contacts allowed but one primary_*
+- **`claap_mapping_reviews`** — review log
+  - `id`, `recording_id`, `candidate_id nullable`, `reviewer_id`, `resolution` (`accepted`|`rejected`|`overridden`), `override_reason text`, `feedback jsonb`, `created_at`
 
-### 2. "Steven Adler" → company resolution + admin warning
+All four get explicit `GRANT`s for `authenticated` + `service_role` and tenant-scoped RLS policies (read/write only within the user's `org_company_id` via the existing helper). Indexes on `(org_company_id, status)`, `(recording_id, entity_type, rank)`, `(entity_type, entity_id)`.
 
-Update `src/lib/qboClientName.ts`:
-1. First-pass (new): given a QBO customer, look up `deals` rows joined via `qb_customer_id`/`qb_realm_id` (or by fuzzy customer-name match) and prefer `companies.name` of the linked company.
-2. Existing pass: `customer.company_name`.
-3. Existing pass: `customer.display_name`.
-4. NEW final fallback: when the resolved label looks like a personal name (two-word, both Title-cased, no Inc/LLC/Corp/Ltd/Co token), bucket under **"Other / Individuals"** instead of leaking the personal name.
+## 2. Scoring engine (edge function `claap-score-recording`)
 
-Person-name heuristic: `^\s*[A-Z][a-z]+(?:[- ][A-Z][a-z]+)?\s+[A-Z][a-z]+\s*$` and no company suffix tokens — kept conservative.
+Pure-TS module `_shared/claap-scoring.ts` consumed by both the post-call and EOD entry points. Inputs: `recording_id`, `run_type`. Loads recording, then per entity type:
 
-Wire-up:
-- `useRevenueByClient` (Controller) prefetches the CRM `companies` ↔ QBO customer mapping and passes it into a new `resolveQboClientLabelEnriched({ customerName, customer, dealCompanyName })` so the same logic applies to FinServ and Debt charts plus the embedded QuickBooks Financial top-customers list.
-- Add a small `QboUnlinkedCustomersWarning` card at the top of the Controller dashboard (collapsible) listing N customers that fell through to "Other / Individuals" with a deep link to `/contacts`, so the data hygiene is visible.
+**Meeting (0–1):**
+- Time overlap with `meetings.start_time/end_time` window (Jaccard-style) → up to 0.45
+- Organizer email exact match → +0.20
+- Participant email overlap ratio → up to 0.20
+- Title similarity (dice coefficient via existing `utils/stringSimilarity`) → up to 0.10
+- Same calendar source / external id → +0.05
 
-### 3. Quarterly / Yearly toggle — verify and complete
+**Contact (0–1):**
+- Exact email match on `contacts.email` → 0.95 floor
+- Normalized full name match (org-scoped) → 0.70
+- Fuzzy name + same domain as participant → 0.55
+- Boost +0.05 if contact participated in a meeting in last 14d
 
-Current state: the toggle is already wired through `useQuickBooksMetrics(period, granularity)` and `buildBuckets`, but I'll re-verify and fix any gaps:
-- Confirm `range.granularity` propagates to FinServ/Debt Revenue by Client → currently both ignore granularity (they aggregate the full period into a single bar per client). Acceptance language asks for re-bucketing, so I'll refactor both charts to a stacked layout when granularity ≠ "client-total": x-axis = bucket label, stacks = top-N clients, "Other" rollup. Keep the current single-bar mode when granularity is "off" (we'll keep the existing visualization as the default and add a small "Group by period" switch — defaults to off to preserve today's UX).
-- Persist toggle + group-by-period switch via the existing `loadPersistedRange('controller-dashboard')` plus a new `localStorage` key for the per-board "group by period" boolean.
-- KPI cards on the embedded `QuickBooksFinancialDashboard` already re-scope via `period`; verified — no code change needed beyond #1.
-- X-axis labels: `buildBuckets` already emits `Q1 26` / `2026`. Will widen to `Q1 2026` / `2026` for clarity.
+**Company (0–1):**
+- Derived from matched contacts' `company_id` (max child score, capped 0.85)
+- Organizer domain ↔ `companies.domain` exact → +0.20
+- Title/transcript mention of legal name → +0.10
+- Active deal on that company in last 30d → +0.05
 
-### Files
+**Deal (0–1):**
+- Inherited from matched meeting's `deal_id` → 0.90
+- Matched company + active (non-stale) deal → up to 0.70, with recency decay
+- Keyword overlap of title/transcript with deal `company`, `borrower`, lender names → up to 0.40
+- Penalty −0.20 for stale (`updated_at` > 60d) without meeting linkage
+- Email/domain evidence outranks transcript-only mentions (transcript-only capped at 0.74)
+
+**Inheritance:** when meeting score ≥ 0.65, seed contact/company/deal candidate lists from the meeting before global search; merge on max(score) + union of `reasons`.
+
+**Writes:** all candidates upserted to `claap_recording_candidates` (replacing same `run_type`); top candidate per `entity_type` with score ≥ 0.90 → upsert `claap_recording_links` with `source = run_type === 'end_of_day' ? 'eod' : 'auto'`; recording `status` set to `linked`, `review` (any 0.65–0.89), or `new`.
+
+Each `reasons` entry is `{code, label, weight}` (e.g. `{code:'time_overlap', label:'Time overlap 92%', weight:0.41}`) for plain-English rendering.
+
+## 3. Post-call trigger
+
+Existing Claap webhook handler (or `claap-recordings` ingestion path) calls the new edge function with `run_type='post_call'` after upserting the `claap_recordings` row. No behavior change for already-linked deal recordings — they short-circuit to inherited candidates.
+
+## 4. End-of-day reconciliation (`claap-eod-reconcile`)
+
+- Cron via `pg_cron` + `pg_net`, nightly per tenant
+- Selects recordings from last 48h where `status IN ('new','review')` OR top candidate < 0.90
+- Calls scoring engine with `run_type='end_of_day'`
+- Promotes to `claap_recording_links` (source `eod`) when new evidence pushes a candidate ≥ 0.90
+- Flags conflicts (two candidates same entity_type within 0.05 of each other, both ≥ 0.75) → `status='review'`
+
+## 5. RPCs
+
+- `claap_accept_suggestion(candidate_id uuid, link_role text)` — security definer, validates tenant, inserts into `claap_recording_links` with `source='manual'`, logs to `claap_mapping_reviews` with `resolution='accepted'`
+- `claap_reject_suggestion(candidate_id uuid, reason text)` — logs rejection, removes the candidate from suggestions (soft via `rank = -1`)
+- `claap_mark_unrelated(recording_id, entity_type)` — suppresses all candidates of that type
+- Helper `has_org_company_access(uuid)` reused from existing patterns
+
+## 6. UI
+
+**Mapping panel** (`src/components/claap/ClaapMappingPanel.tsx`) — embedded on the Claap recording detail page:
+- Four sections (Meeting / Contacts / Company / Deals)
+- Each row: entity name, confidence %, source badge (`Auto-linked` | `Suggested (post-call)` | `Suggested (EOD)` | `Manual`), bullet reasons
+- Actions per row: **Accept**, **Reject**, **Search manually** (opens existing `EntitySearchModal`), **Mark unrelated**
+- Sticky footer: **Accept all ≥ 90%**
+
+**Global review queue** (`src/pages/ClaapMappingReview.tsx`, route `/claap/review`):
+- Table of recordings with pending suggestions, filterable by entity_type, confidence band, run_type
+- Row expands to show same Mapping panel
+- Linked from existing Claap nav + sidebar badge (count of `status='review'`)
+
+**Hooks:** `useClaapMappingCandidates(recordingId)`, `useClaapReviewQueue(filters)`, `useAcceptClaapSuggestion()`, `useRejectClaapSuggestion()` — React Query, realtime subscribe to `claap_recording_candidates` and `_links`.
+
+## 7. Technical details
+
+- All scoring + writes happen server-side in edge functions; client only reads candidates and posts to RPCs.
+- `verify_jwt` defaults; functions call `supabase.auth.getUser()` and resolve `org_company_id` via existing membership helpers; 401 if missing.
+- Reuses `src/utils/stringSimilarity.ts`, `src/lib/extractEmailDomain.ts`, `src/lib/internalDomains.ts` for normalization.
+- Auditable: every link references the candidate row, every candidate keeps `reasons`+`evidence` JSON; `claap_mapping_reviews` records human resolutions.
+- Backwards compatible with existing `deal_claap_recordings` (kept as denormalized cache for the deal Data Room); a trigger mirrors `primary_deal` links into it.
+- Per the AI/human-in-the-loop memory rule, only ≥ 0.90 auto-links write; everything else requires explicit Accept.
+
+## 8. Files
 
 ```text
-src/hooks/useQBTotalIncomeSeries.ts            (new)
-src/hooks/useQuickBooksMetrics.ts              (revenueSource option)
-src/lib/qboClientName.ts                       (enriched resolver + "Other / Individuals")
-src/components/metrics/dashboards/ControllerDashboard.tsx
-  - revenueSource='pl'
-  - enriched client resolver in useRevenueByClient
-  - QboUnlinkedCustomersWarning card
-  - widen quarterly/yearly axis labels
-src/components/metrics/dashboards/QuickBooksFinancialDashboard.tsx
-  - accept revenueSource prop, plumb through
-src/lib/insightsTimeRange.ts                   (Q1 2026 / 2026 labels)
+supabase/migrations/<ts>_claap_mapping_system.sql
+supabase/functions/_shared/claap-scoring.ts
+supabase/functions/claap-score-recording/index.ts
+supabase/functions/claap-eod-reconcile/index.ts
+src/hooks/useClaapMapping.ts
+src/components/claap/ClaapMappingPanel.tsx
+src/components/claap/ClaapMappingRow.tsx
+src/pages/ClaapMappingReview.tsx          (+ route in App.tsx)
 ```
 
-No DB migrations. No edge-function edits. No changes outside `/insights`.
+Existing `useClaapSuggestions` / `claap-suggest-matches` stay in place during cutover; the new panel reads from `claap_recording_candidates` and gradually replaces it.
 
-### Verification
-
-- Manual: refresh `/insights`, screenshot Revenue & Payments Trend (May-26 ≈ $32.2k), Total Revenue KPI (~$394k YTD), Debt Revenue by Client (no "Steven Adler" bar, "Other / Individuals" present), toggle Quarterly → Q1 26..Q2 26 buckets visible, refresh page and confirm toggle persists.
-- Console log assertions added behind `VITE_DEBUG_CONTROLLER=true` so QA can audit the underlying P&L picks.
+Approve to scaffold the migration first, then the edge functions and UI in parallel.
