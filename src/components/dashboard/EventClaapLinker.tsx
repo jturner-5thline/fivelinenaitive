@@ -36,6 +36,8 @@ import { useDealsContext } from '@/contexts/DealsContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
+interface RankedEntry { score: number; reasons: Array<{ code: string; label: string; weight: number }>; }
+
 export interface EventClaapLinkerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -93,6 +95,9 @@ export function EventClaapLinker({
   const [selectedContactIds, setSelectedContactIds] = useState<Set<string>>(new Set());
   const [entitySearch, setEntitySearch] = useState('');
   const [saving, setSaving] = useState(false);
+  const [rankedMap, setRankedMap] = useState<Record<string, RankedEntry>>({});
+  const [ranking, setRanking] = useState(false);
+  const [autoPreselected, setAutoPreselected] = useState(false);
 
   const externalDomains = useMemo(() => {
     const set = new Set<string>();
@@ -229,8 +234,36 @@ export function EventClaapLinker({
       setSelectedCompanyIds(new Set());
       setSelectedContactIds(new Set());
       setEntitySearch('');
+      setRankedMap({});
+      setAutoPreselected(false);
     }
   }, [open]);
+
+  // Run scoring engine (run_type='manual') when picker opens, ranking recordings against this meeting.
+  useEffect(() => {
+    if (!open || !eventId || recordings.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setRanking(true);
+        const { data, error } = await supabase.functions.invoke('claap-rank-recordings-for-meeting', {
+          body: { action: 'rank', event_id: eventId, recordings },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        const map: Record<string, RankedEntry> = {};
+        for (const r of (data?.ranked || []) as any[]) {
+          map[r.external_id] = { score: r.score || 0, reasons: r.reasons || [] };
+        }
+        setRankedMap(map);
+      } catch (err) {
+        console.warn('claap rank failed', err);
+      } finally {
+        if (!cancelled) setRanking(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, eventId, recordings]);
 
   // When user picks a recording, prefill suggested targets
   useEffect(() => {
@@ -263,8 +296,34 @@ export function EventClaapLinker({
           );
         })
       : recordings;
-    return list.map(r => ({ ...r, _alreadyLinked: linkedRecordingIds.has(r.id) })).slice(0, 50);
-  }, [recordings, search, existingLinks]);
+    const scored = list.map(r => ({
+      ...r,
+      _alreadyLinked: linkedRecordingIds.has(r.id),
+      _score: rankedMap[r.id]?.score ?? 0,
+      _reasons: rankedMap[r.id]?.reasons ?? [],
+    }));
+    // Sort by score desc, then by createdAt desc
+    scored.sort((a, b) => {
+      const ds = (b._score || 0) - (a._score || 0);
+      if (Math.abs(ds) > 0.001) return ds;
+      const at = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const bt = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return bt - at;
+    });
+    return scored.slice(0, 50);
+  }, [recordings, search, existingLinks, rankedMap]);
+
+  // Auto-preselect top candidate when ranking lands (only once per open, only when user hasn't picked one).
+  useEffect(() => {
+    if (!open || autoPreselected || selectedRecording || editingLinkId) return;
+    if (Object.keys(rankedMap).length === 0) return;
+    // Skip if any recording is already linked to this event — leave the user in the current state.
+    if (existingLinks.length > 0) { setAutoPreselected(true); return; }
+    const top = filteredRecordings[0];
+    if (!top || !top._score || top._score < 0.65) { setAutoPreselected(true); return; }
+    setSelectedRecording(top);
+    setAutoPreselected(true);
+  }, [open, autoPreselected, selectedRecording, editingLinkId, rankedMap, filteredRecordings, existingLinks.length]);
 
   const beginEdit = (link: ExistingLink) => {
     setEditingLinkId(link.id);
@@ -339,6 +398,22 @@ export function EventClaapLinker({
       if (error) throw error;
 
       await persistDealMirror(selectedRecording, dealIds);
+
+      // Also write the canonical primary_meeting link (best-effort, idempotent).
+      try {
+        const entry = rankedMap[selectedRecording.id];
+        await supabase.functions.invoke('claap-rank-recordings-for-meeting', {
+          body: {
+            action: 'confirm',
+            event_id: eventId,
+            recording: selectedRecording,
+            confidence: entry?.score ?? 0,
+            reasons: entry?.reasons ?? [],
+          },
+        });
+      } catch (e) {
+        console.warn('canonical claap link write failed', e);
+      }
 
       toast.success(editingLinkId ? 'Link updated' : 'Recording linked');
       setSelectedRecording(null);
@@ -549,6 +624,8 @@ export function EventClaapLinker({
                       catch { return ''; }
                     })();
                     const participants = (r.meeting?.participants || []).slice(0, 3).map(p => p.name || p.email).filter(Boolean);
+                    const score = (r as any)._score as number;
+                    const band: 'auto' | 'review' | 'hold' = score >= 0.90 ? 'auto' : score >= 0.65 ? 'review' : 'hold';
                     return (
                       <li key={r.id}>
                         <button
@@ -570,6 +647,19 @@ export function EventClaapLinker({
                                 {(r as any)._alreadyLinked && (
                                   <Badge variant="outline" className="h-4 px-1.5 text-[9px] border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
                                     Linked
+                                  </Badge>
+                                )}
+                                {score > 0 && (
+                                  <Badge
+                                    variant="outline"
+                                    className={cn(
+                                      'h-4 px-1.5 text-[9px]',
+                                      band === 'auto' && 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10',
+                                      band === 'review' && 'border-amber-500/40 text-amber-300 bg-amber-500/10',
+                                      band === 'hold' && 'border-white/15 text-muted-foreground bg-white/[0.04]',
+                                    )}
+                                  >
+                                    {Math.round(score * 100)}%
                                   </Badge>
                                 )}
                               </div>
@@ -607,6 +697,39 @@ export function EventClaapLinker({
                     Link to
                   </p>
                   <p className="text-xs text-white truncate">{selectedRecording.title || 'Untitled recording'}</p>
+                  {(() => {
+                    const entry = rankedMap[selectedRecording.id];
+                    if (!entry || !entry.score) return null;
+                    const pct = Math.round(entry.score * 100);
+                    const auto = entry.score >= 0.90;
+                    const review = !auto && entry.score >= 0.65;
+                    if (!auto && !review) return null;
+                    return (
+                      <div className="mt-2 space-y-1.5">
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'h-5 px-1.5 text-[10px] gap-1',
+                            auto && 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10',
+                            review && 'border-amber-500/40 text-amber-300 bg-amber-500/10',
+                          )}
+                        >
+                          <Sparkles className="h-2.5 w-2.5" />
+                          {auto ? `Auto-matched (${pct}%)` : `Suggested (${pct}%)`}
+                        </Badge>
+                        {entry.reasons.length > 0 && (
+                          <ul className="text-[10px] text-muted-foreground/80 space-y-0.5 pl-1">
+                            {entry.reasons.slice(0, 4).map((r, i) => (
+                              <li key={i} className="flex items-center gap-1">
+                                <Check className="h-2.5 w-2.5 text-emerald-400/70 shrink-0" />
+                                <span className="truncate">{r.label}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    );
+                  })()}
                   <div className="relative mt-2">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
