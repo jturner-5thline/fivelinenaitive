@@ -78,6 +78,7 @@ import { OutstandingItems } from '@/components/deal/OutstandingItems';
 import { CalendarPanel } from '@/components/pipeline/memo/CalendarPanel';
 import { FinServProjectsCard } from '@/components/deal/FinServProjectsCard';
 import { useFinservProjects } from '@/hooks/useFinservProjects';
+import { FinServMrrField } from '@/components/deal/FinServMrrField';
 import { FlexInfoNotificationsPanel } from '@/components/deal/FlexInfoNotificationsPanel';
 import { useFlexInfoNotifications } from '@/hooks/useFlexInfoNotifications';
 import { useOutstandingItems, OutstandingItem } from '@/hooks/useOutstandingItems';
