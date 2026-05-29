@@ -8,6 +8,7 @@ import { warnIfFinServValueMismatch } from '@/lib/finservValue';
 const FINSERV_PIPELINE_NAME = 'FinServ Pipeline';
 
 export const FINSERV_STAGES: DealStageOption[] = [
+  { id: 'fs-in-development', label: 'In Development', color: 'bg-zinc-500' },
   { id: 'fs-qualification', label: 'Qualification', color: 'bg-slate-500' },
   { id: 'fs-discovery', label: 'Discovery', color: 'bg-blue-500' },
   { id: 'fs-qualified', label: 'Qualified', color: 'bg-indigo-500' },

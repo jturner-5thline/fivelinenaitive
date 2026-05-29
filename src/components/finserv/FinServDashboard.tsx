@@ -13,7 +13,7 @@ import { FinServDrillDownSheet, FinServDrillDownConfig } from './FinServDrillDow
 const ACTIVE_CLIENT_STAGE = 'fs-closed-won';
 const WON_STAGES = ['fs-closed-won'];
 const LOST_STAGES = ['fs-churned', 'fs-closed-lost'];
-const EXCLUDED_FROM_AGGREGATES = ['fs-churned', 'fs-closed-lost'];
+const EXCLUDED_FROM_AGGREGATES = ['fs-in-development', 'fs-churned', 'fs-closed-lost'];
 const TERMINAL_STAGES = [...WON_STAGES, ...LOST_STAGES];
 
 function KpiCard({ label, value, icon: Icon, color, subtext, onClick }: {

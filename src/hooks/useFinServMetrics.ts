@@ -15,10 +15,13 @@ const INACTIVE_STAGES = [...TERMINAL_STAGES];
 // the Pipeline Stats & Conversion table per product requirement. They may
 // still appear on the board view's per-stage columns, but they must not
 // influence any pipeline-summary metric here.
-const EXCLUDED_FROM_AGGREGATES = ['fs-churned', 'fs-closed-lost'];
+// "In Development" is a pre-pipeline staging bucket — treat it like Churned/Lost
+// for aggregate purposes (counts, weighted value, conversion, top clients, etc.).
+const EXCLUDED_FROM_AGGREGATES = ['fs-in-development', 'fs-churned', 'fs-closed-lost'];
 
 // Stage weights for weighted pipeline value
 const STAGE_WEIGHTS: Record<string, number> = {
+  'fs-in-development': 0,
   'fs-qualification': 0.1,
   'fs-discovery': 0.2,
   'fs-qualified': 0.35,
