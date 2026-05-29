@@ -3803,9 +3803,13 @@ export default function DealDetail() {
                                 return (
                                   <div key={fieldId} className="grid grid-cols-[6.5rem_1fr] items-center gap-2">
                                     <span className="text-muted-foreground text-sm">Referral Source</span>
-                                    <ReferralSourceInput
-                                      value={deal.referredBy || null}
-                                      onChange={(referrer) => updateDeal('referredBy', referrer)}
+                                    <ReferralSourceContactInput
+                                      value={
+                                        deal.referralSourceContactId
+                                          ? { id: deal.referralSourceContactId, name: deal.referredBy?.name }
+                                          : null
+                                      }
+                                      onChange={(c) => updateDeal('referralSourceContactId' as any, c as any)}
                                       className="[&_input]:h-8 [&_input]:text-sm"
                                     />
                                   </div>
