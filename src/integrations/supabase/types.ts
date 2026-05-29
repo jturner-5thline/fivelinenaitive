@@ -9660,6 +9660,7 @@ export type Database = {
           projected_close_date: string | null
           prospect_type: string | null
           referral_source: string | null
+          referral_source_contact_id: string | null
           referral_source_id: string | null
           referred_by: string | null
           retainer_fee: number | null
@@ -9744,6 +9745,7 @@ export type Database = {
           projected_close_date?: string | null
           prospect_type?: string | null
           referral_source?: string | null
+          referral_source_contact_id?: string | null
           referral_source_id?: string | null
           referred_by?: string | null
           retainer_fee?: number | null
@@ -9828,6 +9830,7 @@ export type Database = {
           projected_close_date?: string | null
           prospect_type?: string | null
           referral_source?: string | null
+          referral_source_contact_id?: string | null
           referral_source_id?: string | null
           referred_by?: string | null
           retainer_fee?: number | null
@@ -9870,6 +9873,13 @@ export type Database = {
             columns: ["pipeline_id"]
             isOneToOne: false
             referencedRelation: "deal_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_referral_source_contact_id_fkey"
+            columns: ["referral_source_contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
             referencedColumns: ["id"]
           },
           {
