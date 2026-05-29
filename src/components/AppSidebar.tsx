@@ -3,6 +3,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { useCompanyFeatures } from "@/hooks/useCompanyFeatures";
 import { useClaapRoutingTasks } from '@/hooks/useClaapMeetings';
 import { usePendingJoinRequestCount } from '@/hooks/usePendingJoinRequestCount';
+import { useUnresolvedFlexSyncCount } from '@/hooks/useUnresolvedFlexSyncCount';
 import { NaitiveIcon as Sparkles } from '@/components/NaitiveIcon';
 import { useTheme } from "next-themes";
 import naitiveIconLight from "@/assets/naitive-icon-light.png";
@@ -75,6 +76,7 @@ export function AppSidebar() {
   const canAccessInsights = useCanAccessInsights();
   const meetingTaskCount = routingTasks.length;
   const { data: pendingJoinCount = 0 } = usePendingJoinRequestCount();
+  const flexSyncUnresolvedCount = useUnresolvedFlexSyncCount();
   const currentPath = location.pathname;
   // Show expanded content if either actually expanded or hovering while collapsed
   const showExpanded = state === "expanded" || (state === "collapsed" && isHovering);
@@ -144,6 +146,11 @@ export function AppSidebar() {
                       className="hover:bg-sidebar-accent/50"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                       data-tour={`nav-${slug}`}
+                      title={
+                        item.url === "/lenders" && flexSyncUnresolvedCount > 0
+                          ? `${flexSyncUnresolvedCount} unresolved FLEx sync requests`
+                          : undefined
+                      }
                     >
                       <div className="relative">
                         <item.icon className="h-4 w-4" />
@@ -152,11 +159,27 @@ export function AppSidebar() {
                             {meetingTaskCount}
                           </span>
                         )}
+                        {item.url === "/lenders" && flexSyncUnresolvedCount > 0 && (
+                          <span
+                            className="absolute -top-1.5 -right-1.5 h-3.5 min-w-3.5 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center"
+                            aria-label={`${flexSyncUnresolvedCount} unresolved FLEx sync requests`}
+                          >
+                            {flexSyncUnresolvedCount > 99 ? '99+' : flexSyncUnresolvedCount}
+                          </span>
+                        )}
                       </div>
                       {showExpanded && (
                         <span className="flex items-center gap-1.5">
                           {item.title}
                           {item.featureKey && <BetaBadge featureKey={`page_${item.featureKey}`} />}
+                          {item.url === "/lenders" && flexSyncUnresolvedCount > 0 && (
+                            <span
+                              className="ml-1 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-destructive/15 text-destructive text-[10px] font-semibold leading-none border border-destructive/30"
+                              title={`${flexSyncUnresolvedCount} unresolved FLEx sync requests`}
+                            >
+                              {flexSyncUnresolvedCount > 999 ? '999+' : flexSyncUnresolvedCount}
+                            </span>
+                          )}
                         </span>
                       )}
                     </NavLink>
