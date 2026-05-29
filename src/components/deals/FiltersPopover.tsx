@@ -309,6 +309,19 @@ export function useFilterConfigs() {
     }));
   }, [deals]);
 
+  const dealOwnerOptions = useMemo(() => {
+    const owners = new Set<string>();
+    deals.forEach(deal => {
+      if (deal.dealOwner && deal.dealOwner.trim()) {
+        owners.add(deal.dealOwner);
+      }
+    });
+    return Array.from(owners).sort().map(owner => ({
+      value: owner,
+      label: owner,
+    }));
+  }, [deals]);
+
   const lenderOptions = LENDERS.map((lender) => ({
     value: lender,
     label: lender,
@@ -329,6 +342,7 @@ export function useFilterConfigs() {
     status: statusOptions,
     engagementType: engagementTypeOptions,
     manager: managerOptions,
+    dealOwner: dealOwnerOptions,
     lender: lenderOptions,
     referredBy: referredByOptions,
     sourcedVia: sourcedViaOptions,
