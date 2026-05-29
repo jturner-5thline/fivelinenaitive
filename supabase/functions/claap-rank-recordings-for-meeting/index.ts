@@ -32,23 +32,64 @@ Deno.serve(async (req) => {
     const event_id = body?.event_id as string | undefined;
     if (!event_id) return json({ error: 'event_id required' }, 400);
 
-    // Load the calendar event (tenant gate: must belong to a user in same org as caller).
-    const { data: evt, error: evtErr } = await admin
-      .from('calendar_events')
-      .select('id, user_id, title, start_time, end_time, organizer_email, attendees')
-      .eq('id', event_id)
-      .maybeSingle();
-    if (evtErr || !evt) return json({ error: 'event not found' }, 404);
-
-    // Resolve org for both caller and event owner; they must share a company.
+    // event_id may be either calendar_events.id (uuid) OR the provider's event_id string.
+    // Try uuid first; fall back to provider event_id scoped to caller's org members.
     const { data: myMem } = await admin
       .from('company_members').select('company_id').eq('user_id', userId);
-    const { data: ownerMem } = await admin
-      .from('company_members').select('company_id').eq('user_id', evt.user_id);
-    const myOrgs = new Set((myMem || []).map((r: any) => r.company_id));
-    const shared = (ownerMem || []).map((r: any) => r.company_id).find((c: string) => myOrgs.has(c));
-    if (!shared) return json({ error: 'forbidden' }, 403);
-    const org_company_id: string = shared;
+    const myOrgs = (myMem || []).map((r: any) => r.company_id);
+    if (myOrgs.length === 0) return json({ error: 'forbidden' }, 403);
+
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event_id);
+    let evt: any = null;
+    if (isUuid) {
+      const { data } = await admin
+        .from('calendar_events')
+        .select('id, user_id, title, start_time, end_time, organizer_email, attendees, event_id')
+        .eq('id', event_id)
+        .maybeSingle();
+      evt = data;
+    }
+    if (!evt) {
+      // Lookup by provider event_id among any user in caller's org(s).
+      const { data: orgUsers } = await admin
+        .from('company_members').select('user_id').in('company_id', myOrgs);
+      const userIds = Array.from(new Set((orgUsers || []).map((r: any) => r.user_id)));
+      if (userIds.length === 0) return json({ error: 'forbidden' }, 403);
+      const { data: rows } = await admin
+        .from('calendar_events')
+        .select('id, user_id, title, start_time, end_time, organizer_email, attendees, event_id')
+        .eq('event_id', event_id)
+        .in('user_id', userIds)
+        .limit(1);
+      evt = (rows || [])[0] || null;
+    }
+    if (!evt) {
+      // Fall back to body-provided meeting context — still allow scoring without DB row.
+      const ctx = body?.meeting_context;
+      if (!ctx) return json({ error: 'event not found' }, 404);
+      evt = {
+        id: event_id,
+        user_id: userId,
+        title: ctx.title || null,
+        start_time: ctx.start_time || null,
+        end_time: ctx.end_time || null,
+        organizer_email: ctx.organizer_email || null,
+        attendees: ctx.attendees || [],
+      };
+    }
+
+    // Tenancy: event owner must share an org with caller (when from DB).
+    let org_company_id: string;
+    if (evt.user_id && evt.user_id !== userId) {
+      const { data: ownerMem } = await admin
+        .from('company_members').select('company_id').eq('user_id', evt.user_id);
+      const myOrgSet = new Set(myOrgs);
+      const shared = (ownerMem || []).map((r: any) => r.company_id).find((c: string) => myOrgSet.has(c));
+      if (!shared) return json({ error: 'forbidden' }, 403);
+      org_company_id = shared;
+    } else {
+      org_company_id = myOrgs[0];
+    }
 
     if (action === 'rank') {
       const recordings = Array.isArray(body?.recordings) ? body.recordings : [];
