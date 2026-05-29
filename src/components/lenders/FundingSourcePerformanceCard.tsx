@@ -67,6 +67,19 @@ interface QualifiedActualRow {
   lender_ids: string[] | null;
 }
 
+interface QualifiedDetailRow {
+  period: number;
+  lender_id: string;
+  lender_name: string | null;
+  relationship_owners: string | null;
+  trigger_kind: string;
+  trigger_at: string;
+  deal_id: string | null;
+  deal_company: string | null;
+  deal_submitted_at: string | null;
+  delta_seconds: number | null;
+}
+
 interface Props {
   tenantId: string;
   /** All lenders visible to the user; used to compute actuals by created_at. */
