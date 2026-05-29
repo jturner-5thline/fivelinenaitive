@@ -1345,8 +1345,13 @@ function EventDetailPane({
               eventTitle={eventTitle}
               eventStart={event.start}
               eventEnd={event.end}
-              organizerEmail={(event as any).organizer_email || null}
-              attendees={(event.attendees || []) as any}
+              organizerEmail={event.organizer?.email || null}
+              attendees={(event.attendees || []).map(a => ({
+                email: a.email,
+                displayName: a.display_name,
+                self: a.self,
+                responseStatus: a.response_status,
+              }))}
               onOpenPicker={() => setClaapLinkerOpen(true)}
             />
           </div>
