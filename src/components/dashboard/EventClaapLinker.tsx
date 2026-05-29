@@ -234,8 +234,36 @@ export function EventClaapLinker({
       setSelectedCompanyIds(new Set());
       setSelectedContactIds(new Set());
       setEntitySearch('');
+      setRankedMap({});
+      setAutoPreselected(false);
     }
   }, [open]);
+
+  // Run scoring engine (run_type='manual') when picker opens, ranking recordings against this meeting.
+  useEffect(() => {
+    if (!open || !eventId || recordings.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        setRanking(true);
+        const { data, error } = await supabase.functions.invoke('claap-rank-recordings-for-meeting', {
+          body: { action: 'rank', event_id: eventId, recordings },
+        });
+        if (cancelled) return;
+        if (error) throw error;
+        const map: Record<string, RankedEntry> = {};
+        for (const r of (data?.ranked || []) as any[]) {
+          map[r.external_id] = { score: r.score || 0, reasons: r.reasons || [] };
+        }
+        setRankedMap(map);
+      } catch (err) {
+        console.warn('claap rank failed', err);
+      } finally {
+        if (!cancelled) setRanking(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [open, eventId, recordings]);
 
   // When user picks a recording, prefill suggested targets
   useEffect(() => {
@@ -268,8 +296,34 @@ export function EventClaapLinker({
           );
         })
       : recordings;
-    return list.map(r => ({ ...r, _alreadyLinked: linkedRecordingIds.has(r.id) })).slice(0, 50);
-  }, [recordings, search, existingLinks]);
+    const scored = list.map(r => ({
+      ...r,
+      _alreadyLinked: linkedRecordingIds.has(r.id),
+      _score: rankedMap[r.id]?.score ?? 0,
+      _reasons: rankedMap[r.id]?.reasons ?? [],
+    }));
+    // Sort by score desc, then by createdAt desc
+    scored.sort((a, b) => {
+      const ds = (b._score || 0) - (a._score || 0);
+      if (Math.abs(ds) > 0.001) return ds;
+      const at = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const bt = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return bt - at;
+    });
+    return scored.slice(0, 50);
+  }, [recordings, search, existingLinks, rankedMap]);
+
+  // Auto-preselect top candidate when ranking lands (only once per open, only when user hasn't picked one).
+  useEffect(() => {
+    if (!open || autoPreselected || selectedRecording || editingLinkId) return;
+    if (Object.keys(rankedMap).length === 0) return;
+    // Skip if any recording is already linked to this event — leave the user in the current state.
+    if (existingLinks.length > 0) { setAutoPreselected(true); return; }
+    const top = filteredRecordings[0];
+    if (!top || !top._score || top._score < 0.65) { setAutoPreselected(true); return; }
+    setSelectedRecording(top);
+    setAutoPreselected(true);
+  }, [open, autoPreselected, selectedRecording, editingLinkId, rankedMap, filteredRecordings, existingLinks.length]);
 
   const beginEdit = (link: ExistingLink) => {
     setEditingLinkId(link.id);
