@@ -85,15 +85,21 @@ export const PIPELINE_FIELD_SCHEMAS: Record<string, PipelineSchema> = {
       // Sourced Via, Referral Source) and are intentionally hidden here for
       // FinServ deals. The underlying columns remain populated for legacy
       // data integrity.
+      // Ordered so the 2-column grid reads as tight, balanced row pairs:
+      //   Row 1: Opportunity Type | Fee Type           (commercial)
+      //   Row 2: MRR              | One-Time Revenue   (commercial)
+      //   Row 3: Contract Start   | Projected Close    (dates)
+      //   Row 4: Contract End     | On Hold            (dates + compact status)
+      //   Row 5: Services Offered (full width)
       { key: 'opportunityType', label: 'Opportunity Type', type: 'select', options: FINSERV_OPPORTUNITY_TYPES, column: 'left' },
       { key: 'feeType', label: 'Fee Type', type: 'select', options: FINSERV_FEE_TYPES, column: 'right' },
-      { key: 'mrr', label: 'MRR', type: 'currency', placeholder: '0', column: 'right' },
+      { key: 'mrr', label: 'MRR', type: 'currency', placeholder: '0', column: 'left' },
       { key: 'oneTimeRevenue', label: 'One-Time Revenue', type: 'currency', placeholder: '0', column: 'right' },
-      { key: 'projectedCloseDate', label: 'Projected Close', type: 'date', column: 'right' },
       { key: 'contractStartDate', label: 'Contract Start', type: 'date', column: 'left' },
-      { key: 'contractEndDate', label: 'Contract End', type: 'date', column: 'right' },
+      { key: 'projectedCloseDate', label: 'Projected Close', type: 'date', column: 'right' },
+      { key: 'contractEndDate', label: 'Contract End', type: 'date', column: 'left' },
+      { key: 'onHold', label: 'On Hold', type: 'switch', column: 'right' },
       { key: 'servicesOffered', label: 'Services Offered', type: 'multi-select', options: FINSERV_SERVICES, column: 'full' },
-      { key: 'onHold', label: 'On Hold', type: 'switch', column: 'full' },
     ],
   },
   // naitive / standard pipelines currently have no extra fields beyond the
