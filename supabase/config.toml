@@ -183,6 +183,12 @@ verify_jwt = false
 [functions.claap-analyze-meeting]
 verify_jwt = false
 
+[functions.claap-webhook-ingest]
+verify_jwt = false
+
+[functions.claap-score-recording]
+verify_jwt = false
+
 [functions.copilot-chat]
 verify_jwt = false
 
