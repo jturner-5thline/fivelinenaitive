@@ -165,7 +165,7 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
     return Array.from({ length: periods }, (_, i) => {
       const label = cadence === 'monthly' ? MONTH_LABELS[i] : `Q${i + 1}`;
       const plan = planByPeriod[i] ?? 0;
-      const actual = actualsByPeriod[i]?.length ?? 0;
+      const actual = actualCountsByPeriod[i] ?? 0;
       return {
         period: label,
         idx: i,
@@ -174,15 +174,15 @@ export function FundingSourcePerformanceCard({ tenantId, lenders, onOpenPlan }: 
         variance: actual - plan,
       };
     });
-  }, [cadence, planByPeriod, actualsByPeriod]);
+  }, [cadence, planByPeriod, actualCountsByPeriod]);
 
   const ytdPlan = useMemo(
     () => planByPeriod.slice(0, ytdMaxIdx + 1).reduce((s, n) => s + n, 0),
     [planByPeriod, ytdMaxIdx],
   );
   const ytdActual = useMemo(
-    () => actualsByPeriod.slice(0, ytdMaxIdx + 1).reduce((s, b) => s + b.length, 0),
-    [actualsByPeriod, ytdMaxIdx],
+    () => actualCountsByPeriod.slice(0, ytdMaxIdx + 1).reduce((s, n) => s + n, 0),
+    [actualCountsByPeriod, ytdMaxIdx],
   );
   const variance = ytdActual - ytdPlan;
   const attainment = ytdPlan > 0 ? (ytdActual / ytdPlan) * 100 : null;
