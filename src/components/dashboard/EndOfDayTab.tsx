@@ -1084,12 +1084,17 @@ function EventDetailPane({
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
   const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'synthesized' | 'local'>('local');
   const { tokenPresent: claapTokenPresent } = useClaapTokenStatus();
-  const claapCtx = useMeetingClaapContext(event.id);
+  const eventTitle = (event.summary || '(No title)').trim();
+  const organizerEmail = event.organizer?.email || null;
+  const claapCtx = useMeetingClaapContext({
+    eventId: event.id,
+    eventTitle,
+    eventStart: event.start ?? null,
+    organizerEmail,
+  });
   const { fetching: claapCtxFetching, transcriptAvailable } = claapCtx;
   const [claapBackfilling, setClaapBackfilling] = useState(false);
   const [claapBackfillTried, setClaapBackfillTried] = useState<string | null>(null);
-  const eventTitle = (event.summary || '(No title)').trim();
-  const organizerEmail = event.organizer?.email || null;
 
   const regenerateClaapSummary = async () => {
     if (!claapCtx.recording?.meetingRowId) return;
