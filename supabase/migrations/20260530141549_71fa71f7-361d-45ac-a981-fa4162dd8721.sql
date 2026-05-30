@@ -1,0 +1,1 @@
+DROP TRIGGER IF EXISTS trg_mts_updated_at ON public.meeting_task_suggestions;
