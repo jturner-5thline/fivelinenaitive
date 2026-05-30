@@ -25232,6 +25232,7 @@ export type Database = {
       }
       claap_assert_prefill_examples: { Args: never; Returns: undefined }
       claap_assert_tenant_isolation: { Args: never; Returns: Json }
+      claap_link_orphan_recordings: { Args: never; Returns: Json }
       claap_mark_unrelated: {
         Args: { p_entity_type: string; p_recording_id: string }
         Returns: undefined
@@ -25316,7 +25317,12 @@ export type Database = {
         }[]
       }
       get_event_claap_prefill_context: {
-        Args: { p_event_id: string }
+        Args: {
+          p_event_id: string
+          p_event_start?: string
+          p_event_title?: string
+          p_organizer_email?: string
+        }
         Returns: Json
       }
       get_funding_source_qualified_actuals: {
