@@ -44,11 +44,10 @@ function parseCadence(text: string, from: Date = new Date()): Date | null {
 export function MeetingScheduleInlineAction({
   eventId, primaryAttendeeName, primaryAttendeeEmail, onOpenScheduler,
 }: Props) {
-  const { data: ctx, isLoading } = useMeetingClaapContext(eventId);
+  const ctx = useMeetingClaapContext(eventId);
 
   const suggestedDate = useMemo(() => {
-    if (!ctx) return null;
-    const corpus = [ctx.summary || '', ...ctx.nextSteps, ...ctx.keyDecisions].join('\n');
+    const corpus = [ctx.summary || '', ...ctx.actionItems, ...ctx.keyTakeaways].join('\n');
     if (!corpus.trim()) return null;
     return parseCadence(corpus);
   }, [ctx]);
@@ -59,7 +58,7 @@ export function MeetingScheduleInlineAction({
         size="sm" variant="outline"
         className="h-8 justify-start gap-2 text-xs"
         onClick={() => onOpenScheduler()}
-        disabled={isLoading && !ctx}
+        disabled={ctx.isLoading && ctx.source === 'none'}
       >
         <CalendarIcon className="h-3.5 w-3.5" /> Schedule next
       </Button>
