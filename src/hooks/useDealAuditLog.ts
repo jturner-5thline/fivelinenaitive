@@ -22,6 +22,7 @@ const PAGE_SIZE = 50;
 export function useDealAuditLog(dealId: string | undefined) {
   const { user } = useAuth();
   const [entries, setEntries] = useState<DealAuditEntry[]>([]);
+  const [unresolvedStageEntries, setUnresolvedStageEntries] = useState<DealAuditEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [page, setPage] = useState(0);
@@ -49,7 +50,7 @@ export function useDealAuditLog(dealId: string | undefined) {
         pageNum === 0
           ? supabase
               .from('deal_stage_history')
-              .select('id, deal_id, pipeline_id, from_stage, to_stage, changed_at, changed_by, source')
+              .select('id, deal_id, pipeline_id, from_stage, to_stage, to_stage_id, to_stage_label_raw, unresolved_stage_label, changed_at, changed_by, source')
               .eq('deal_id', dealId)
               .order('changed_at', { ascending: false })
           : Promise.resolve({ data: [] as any[], error: null }),
@@ -96,7 +97,11 @@ export function useDealAuditLog(dealId: string | undefined) {
 
       const stageRowsRaw: DealAuditEntry[] = ((stageRes?.data || []) as any[]).map((row) => {
         const fromLabel = labelFor(row.pipeline_id, row.from_stage);
-        const toLabel = labelFor(row.pipeline_id, row.to_stage);
+        // Prefer resolved stage id for label; fall back to raw to_stage text.
+        const resolvedToId = row.to_stage_id || null;
+        const toLabel = resolvedToId
+          ? labelFor(row.pipeline_id, resolvedToId)
+          : (row.to_stage_label_raw || row.to_stage || '');
         return {
           id: `stage-${row.id}`,
           deal_id: row.deal_id,
@@ -108,6 +113,9 @@ export function useDealAuditLog(dealId: string | undefined) {
           metadata: {
             from_stage: row.from_stage,
             to_stage: row.to_stage,
+            to_stage_id: resolvedToId,
+            to_stage_label_raw: row.to_stage_label_raw || null,
+            unresolved_stage_label: row.unresolved_stage_label || null,
             from_label: fromLabel,
             to_label: toLabel,
             pipeline_id: row.pipeline_id,
@@ -117,12 +125,20 @@ export function useDealAuditLog(dealId: string | undefined) {
         };
       });
 
+      // Split out unresolved backfill stage rows — they MUST NOT render in the
+      // default Activity feed (silence beats wrong data). They surface in a
+      // separate admin-only "Unresolved stage events" list.
+      const isUnresolvedBackfill = (row: DealAuditEntry) =>
+        row.metadata?.source === 'backfill' && !row.metadata?.to_stage_id;
+      const unresolvedStageRows = stageRowsRaw.filter(isUnresolvedBackfill);
+      const renderableStageRows = stageRowsRaw.filter((r) => !isUnresolvedBackfill(r));
+
       // Dedupe stage rows by (deal_id, to_stage, calendar date) — prefer
       // non-backfill (live) rows when both exist for the same day.
       const stageDedupeMap = new Map<string, DealAuditEntry>();
-      for (const row of stageRowsRaw) {
+      for (const row of renderableStageRows) {
         const day = (row.created_at || '').slice(0, 10);
-        const key = `${row.deal_id}::${row.metadata?.to_stage || ''}::${day}`;
+        const key = `${row.deal_id}::${row.metadata?.to_stage_id || row.metadata?.to_stage || ''}::${day}`;
         const existing = stageDedupeMap.get(key);
         if (!existing) { stageDedupeMap.set(key, row); continue; }
         const existingIsBackfill = existing.metadata?.source === 'backfill';
@@ -161,6 +177,7 @@ export function useDealAuditLog(dealId: string | undefined) {
         ));
       } else {
         setEntries(uniqueEntries);
+        setUnresolvedStageEntries(unresolvedStageRows);
       }
       // Stage history is only fetched on page 0; pagination is driven by audit + call streams.
       setHasMore(auditRows.length === PAGE_SIZE || callRows.length === PAGE_SIZE);
@@ -309,5 +326,5 @@ export function useDealAuditLog(dealId: string | undefined) {
     return () => { supabase.removeChannel(channel); };
   }, [dealId]);
 
-  return { entries, loading, hasMore, loadMore, logAuditAction, refetch: () => fetchEntries(0) };
+  return { entries, unresolvedStageEntries, loading, hasMore, loadMore, logAuditAction, refetch: () => fetchEntries(0) };
 }
