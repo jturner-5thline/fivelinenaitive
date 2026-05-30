@@ -9633,6 +9633,7 @@ export type Database = {
           from_stage: string | null
           id: string
           pipeline_id: string | null
+          source: string | null
           to_stage: string
         }
         Insert: {
@@ -9643,6 +9644,7 @@ export type Database = {
           from_stage?: string | null
           id?: string
           pipeline_id?: string | null
+          source?: string | null
           to_stage: string
         }
         Update: {
@@ -9653,6 +9655,7 @@ export type Database = {
           from_stage?: string | null
           id?: string
           pipeline_id?: string | null
+          source?: string | null
           to_stage?: string
         }
         Relationships: [
