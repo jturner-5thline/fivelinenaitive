@@ -1136,6 +1136,7 @@ function EventDetailPane({
         .filter(Boolean),
     )) as string[];
     const companyLabel = companyNames[0] || 'the client team';
+    const organizerEmail = event.organizer?.email || null;
     const summary = `Summary\n${eventTitle} was reviewed with ${attendeeNames.length ? attendeeNames.join(', ') : 'the meeting participants'}, with ${organizerEmail || 'the organizer'} coordinating next steps for ${companyLabel}. This note was synthesized from local meeting details because a Claap summary was not yet available.`;
     const actionItems = [
       `- Send a recap and confirm owners for the next ${companyLabel} follow-up.`,
