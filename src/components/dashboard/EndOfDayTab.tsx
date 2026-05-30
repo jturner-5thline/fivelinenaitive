@@ -1081,6 +1081,7 @@ function EventDetailPane({
   const [noteDirty, setNoteDirty] = useState(false);
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
+  const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'synthesized' | 'local'>('local');
   const claapCtx = useMeetingClaapContext(event.id);
   const { fetching: claapCtxFetching, transcriptAvailable } = claapCtx;
   const [claapBackfilling, setClaapBackfilling] = useState(false);
