@@ -9,7 +9,7 @@ import {
   Coins, ScrollText, Handshake, Banknote,
 } from 'lucide-react';
 import {
-  ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell,
+  ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
@@ -17,6 +17,7 @@ import { type QuarterOption } from '@/hooks/useQBQuarterlyRevenue';
 import {
   useConsolidatedDebtPipelineMetrics,
   type StageTrendBucket,
+  type StageSplitTrendBucket,
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
