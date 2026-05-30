@@ -50,7 +50,7 @@ export function useDealAuditLog(dealId: string | undefined) {
         pageNum === 0
           ? supabase
               .from('deal_stage_history')
-              .select('id, deal_id, pipeline_id, from_stage, to_stage, to_stage_id, to_stage_label_raw, unresolved_stage_label, changed_at, changed_by, source')
+              .select('id, deal_id, pipeline_id, from_stage, to_stage, to_stage_id, from_stage_id, to_stage_label_raw, from_stage_label_raw, unresolved_stage_label, changed_at, exited_at, changed_by, source, event_type')
               .eq('deal_id', dealId)
               .order('changed_at', { ascending: false })
           : Promise.resolve({ data: [] as any[], error: null }),
@@ -96,53 +96,75 @@ export function useDealAuditLog(dealId: string | undefined) {
       };
 
       const stageRowsRaw: DealAuditEntry[] = ((stageRes?.data || []) as any[]).map((row) => {
-        const fromLabel = labelFor(row.pipeline_id, row.from_stage);
-        // Prefer resolved stage id for label; fall back to raw to_stage text.
+        const isExit = row.event_type === 'stage_exit';
+        const fromLabel = labelFor(row.pipeline_id, row.from_stage_id || row.from_stage);
         const resolvedToId = row.to_stage_id || null;
+        const resolvedFromId = row.from_stage_id || null;
         const toLabel = resolvedToId
           ? labelFor(row.pipeline_id, resolvedToId)
           : (row.to_stage_label_raw || row.to_stage || '');
+        // For exits, the "anchor" stage label is the from-stage they left
+        const exitStageLabel = resolvedFromId
+          ? labelFor(row.pipeline_id, resolvedFromId)
+          : (row.from_stage_label_raw || row.from_stage || '');
+        const ts = isExit ? (row.exited_at || row.changed_at) : row.changed_at;
         return {
           id: `stage-${row.id}`,
           deal_id: row.deal_id,
           user_id: row.changed_by,
-          action_type: 'stage_changed',
+          action_type: isExit ? 'stage_exited' : 'stage_changed',
           entity_type: 'stage_change',
           entity_id: row.id,
-          entity_name: toLabel,
+          entity_name: isExit ? exitStageLabel : toLabel,
           metadata: {
+            event_type: row.event_type || (isExit ? 'stage_exit' : 'stage_enter'),
             from_stage: row.from_stage,
             to_stage: row.to_stage,
             to_stage_id: resolvedToId,
+            from_stage_id: resolvedFromId,
             to_stage_label_raw: row.to_stage_label_raw || null,
+            from_stage_label_raw: row.from_stage_label_raw || null,
             unresolved_stage_label: row.unresolved_stage_label || null,
             from_label: fromLabel,
             to_label: toLabel,
+            exit_stage_label: exitStageLabel,
             pipeline_id: row.pipeline_id,
             source: row.source || null,
           },
-          created_at: row.changed_at,
+          created_at: ts,
         };
       });
 
       // Split out unresolved backfill stage rows — they MUST NOT render in the
       // default Activity feed (silence beats wrong data). They surface in a
-      // separate admin-only "Unresolved stage events" list.
-      const isUnresolvedBackfill = (row: DealAuditEntry) =>
-        row.metadata?.source === 'backfill' && !row.metadata?.to_stage_id;
+      // separate admin-only "Unresolved stage events" list. Covers both
+      // backfilled entries (no to_stage_id) AND backfilled exits (no
+      // from_stage_id).
+      const isUnresolvedBackfill = (row: DealAuditEntry) => {
+        const src = row.metadata?.source;
+        if (src !== 'backfill' && src !== 'backfill_exit') return false;
+        const evt = row.metadata?.event_type;
+        return evt === 'stage_exit'
+          ? !row.metadata?.from_stage_id
+          : !row.metadata?.to_stage_id;
+      };
       const unresolvedStageRows = stageRowsRaw.filter(isUnresolvedBackfill);
       const renderableStageRows = stageRowsRaw.filter((r) => !isUnresolvedBackfill(r));
 
-      // Dedupe stage rows by (deal_id, to_stage, calendar date) — prefer
-      // non-backfill (live) rows when both exist for the same day.
+      // Dedupe stage rows by (deal_id, event_type, stage_id, calendar date)
+      // — prefer live rows over backfill duplicates on the same day.
       const stageDedupeMap = new Map<string, DealAuditEntry>();
       for (const row of renderableStageRows) {
         const day = (row.created_at || '').slice(0, 10);
-        const key = `${row.deal_id}::${row.metadata?.to_stage_id || row.metadata?.to_stage || ''}::${day}`;
+        const evt = row.metadata?.event_type || 'stage_enter';
+        const stageKey = evt === 'stage_exit'
+          ? (row.metadata?.from_stage_id || row.metadata?.from_stage || '')
+          : (row.metadata?.to_stage_id || row.metadata?.to_stage || '');
+        const key = `${row.deal_id}::${evt}::${stageKey}::${day}`;
         const existing = stageDedupeMap.get(key);
         if (!existing) { stageDedupeMap.set(key, row); continue; }
-        const existingIsBackfill = existing.metadata?.source === 'backfill';
-        const incomingIsBackfill = row.metadata?.source === 'backfill';
+        const existingIsBackfill = (existing.metadata?.source || '').startsWith('backfill');
+        const incomingIsBackfill = (row.metadata?.source || '').startsWith('backfill');
         if (existingIsBackfill && !incomingIsBackfill) stageDedupeMap.set(key, row);
       }
       const stageRows = Array.from(stageDedupeMap.values());
