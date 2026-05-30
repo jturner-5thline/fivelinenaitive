@@ -1416,18 +1416,9 @@ function EventDetailPane({
             </div>
             {notePrefilledFromClaap && (
               <div className="flex items-center gap-2 mb-1.5">
-                {(() => {
-                  const isClaap = notePrefillSource === 'claap';
-                  const label = isClaap ? 'Claap' : 'Synthesized';
-                  const cls = isClaap
-                    ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
-                    : 'border-sky-500/40 text-sky-300 bg-sky-500/10';
-                  return (
-                    <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border ${cls}`}>
-                      <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — {label}
-                    </span>
-                  );
-                })()}
+                <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                  <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — Claap
+                </span>
                 <button
                   type="button"
                   className="text-[10px] text-muted-foreground hover:text-white underline"
