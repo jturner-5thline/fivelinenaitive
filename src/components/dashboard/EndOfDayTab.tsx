@@ -1172,10 +1172,15 @@ function EventDetailPane({
     if (!hasContent || !claapCtx.recording) return;
     if (noteDirty) return;
     if (notePrefillRecordingId === claapCtx.recording.id) return;
-    // Recording changed and prior prefill is untouched → replace silently.
+    // Recording changed and prior prefill is untouched → replace.
+    const wasSynthesized = notePrefilledFromClaap && notePrefillSource !== 'claap';
     setNoteDraft(buildClaapNote(claapCtx));
     setNotePrefilledFromClaap(true);
+    setNotePrefillSource(claapCtx.source === 'claap' ? 'claap' : 'synthesized');
     setNotePrefillRecordingId(claapCtx.recording.id);
+    if (wasSynthesized && claapCtx.source === 'claap') {
+      toast.success('Replaced synthesized note with real Claap summary');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claapCtx.recording?.id, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty]);
 
@@ -1187,6 +1192,7 @@ function EventDetailPane({
     const synthesized = buildLocalSynthesizedNote();
     setNoteDraft(synthesized);
     setNotePrefilledFromClaap(true);
+    setNotePrefillSource('local');
     setNotePrefillRecordingId(prefillKey);
     console.info('[AddNote prefill]', event.id, true, synthesized.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
