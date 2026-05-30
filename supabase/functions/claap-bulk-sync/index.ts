@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
         recording_id: recordingRowId,
         link_role: "primary_meeting",
         confidence: 1.0,
-      }, { onConflict: "entity_type,entity_id,recording_id,link_role" });
+      }, { onConflict: "recording_id,link_role,entity_id" });
   }
 
   // Re-pull the stale list so newly-inserted rows get summaries fetched too.
