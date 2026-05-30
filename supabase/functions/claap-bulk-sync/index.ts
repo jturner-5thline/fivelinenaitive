@@ -24,7 +24,64 @@ Deno.serve(async (req) => {
     .limit(50);
 
   const results: any[] = [];
-  for (const row of stale ?? []) {
+
+  // 1) Backfill claap_recordings rows for any claap_meetings.claap_id that
+  //    doesn't yet have a paired recording. Without this, the read-path RPC
+  //    has nothing to join on and the textarea falls back to synthesized.
+  const { data: meetingsMissing } = await supabase
+    .from("claap_meetings")
+    .select("id, claap_id, title, company_id, started_at, organizer_email")
+    .not("claap_id", "is", null)
+    .limit(200);
+  for (const m of meetingsMissing ?? []) {
+    if (!m.claap_id || m.claap_id.startsWith("test-")) continue;
+    const { data: existing } = await supabase
+      .from("claap_recordings")
+      .select("id")
+      .eq("org_company_id", m.company_id)
+      .eq("external_id", m.claap_id)
+      .maybeSingle();
+    let recordingRowId = existing?.id ?? null;
+    if (!recordingRowId) {
+      const { data: inserted, error: insErr } = await supabase
+        .from("claap_recordings")
+        .insert({
+          org_company_id: m.company_id,
+          external_id: m.claap_id,
+          title: m.title,
+          started_at: m.started_at,
+          organizer_email: m.organizer_email,
+          status: "pending",
+        })
+        .select("id")
+        .single();
+      if (insErr) {
+        results.push({ meeting_id: m.id, ok: false, error: `insert: ${insErr.message}` });
+        continue;
+      }
+      recordingRowId = inserted!.id;
+    }
+    // Ensure a primary_meeting link exists.
+    await supabase
+      .from("claap_recording_links")
+      .upsert({
+        entity_type: "meeting",
+        entity_id: m.id,
+        recording_id: recordingRowId,
+        link_role: "primary_meeting",
+        confidence: 1.0,
+      }, { onConflict: "entity_type,entity_id,recording_id,link_role" });
+  }
+
+  // Re-pull the stale list so newly-inserted rows get summaries fetched too.
+  const { data: stale2 } = await supabase
+    .from("claap_recordings")
+    .select("id, external_id, title, summary, claap_summary_synced_at")
+    .or(`summary.is.null,claap_summary_synced_at.is.null,claap_summary_synced_at.lt.${cutoff}`)
+    .order("started_at", { ascending: false })
+    .limit(100);
+  const toSync = stale2 ?? stale ?? [];
+  for (const row of toSync) {
     if (!row.external_id) {
       results.push({ id: row.id, ok: false, error: "no_external_id" });
       continue;
