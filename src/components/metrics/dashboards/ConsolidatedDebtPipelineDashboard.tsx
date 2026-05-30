@@ -9,7 +9,7 @@ import {
   Coins, ScrollText, Handshake, Banknote,
 } from 'lucide-react';
 import {
-  ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell,
+  ResponsiveContainer, BarChart, Bar, CartesianGrid, XAxis, YAxis, Tooltip, Cell, Legend,
 } from 'recharts';
 import { Skeleton } from '@/components/ui/skeleton';
 import { createGlassBarShape } from '@/components/metrics/charts/LiquidGlassBar';
@@ -17,6 +17,7 @@ import { type QuarterOption } from '@/hooks/useQBQuarterlyRevenue';
 import {
   useConsolidatedDebtPipelineMetrics,
   type StageTrendBucket,
+  type StageSplitTrendBucket,
   type StageEntryDeal,
 } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
@@ -306,6 +307,135 @@ function CompactFundedBarChart({
                   );
                 })}
               </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+const FUNDED_INVOICED_COLOR = 'hsl(var(--chart-3))';
+const CLOSED_WON_COLOR = 'hsl(142 71% 45%)';
+
+function StageMovementStackedBarChart({
+  buckets,
+  isLoading,
+  trendMode,
+  onBarClick,
+}: {
+  buckets: StageSplitTrendBucket[];
+  isLoading: boolean;
+  trendMode: TrendChartMode;
+  onBarClick: (bucket: StageSplitTrendBucket) => void;
+}) {
+  const total = buckets.reduce((s, b) => s + b.total, 0);
+
+  if (isLoading) {
+    return (
+      <Card className="glass-module">
+        <CardHeader className="pb-2">
+          <Skeleton className="h-5 w-72" />
+          <Skeleton className="mt-1 h-3 w-96" />
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-[260px] w-full" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="glass-module glass-module-interactive">
+      <CardHeader className="pb-2 flex flex-row items-start justify-between">
+        <div>
+          <CardTitle className="text-sm font-medium text-foreground">
+            Stage Movement — Funded/Invoiced vs Closed Won
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Consolidated Debt Pipeline — {trendMode === 'monthly' ? 'monthly' : 'quarterly'} stage_enter events, past {trendMode === 'monthly' ? '6 months' : '4 quarters'} (rolling, anchored to today)
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-lg font-bold text-foreground">{total}</p>
+          <p className="text-[10px] text-muted-foreground">{buckets.length} {trendMode === 'monthly' ? 'Months' : 'Quarters'}</p>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div style={{ height: 260 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={buckets} margin={{ top: 8, right: 8, left: -10, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.4} vertical={false} />
+              <XAxis
+                dataKey="label"
+                tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={{ stroke: 'hsl(var(--border))' }}
+                tickLine={false}
+              />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }}
+                axisLine={false}
+                tickLine={false}
+                width={40}
+              />
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload || !payload.length) return null;
+                  const bucket = payload[0].payload as StageSplitTrendBucket;
+                  return (
+                    <div
+                      style={{
+                        backgroundColor: 'hsl(var(--popover) / 0.96)',
+                        border: '1px solid hsl(0 0% 100% / 0.14)',
+                        borderRadius: 8,
+                        padding: '8px 10px',
+                        fontSize: 12,
+                        color: 'hsl(0 0% 100%)',
+                        maxWidth: 280,
+                        boxShadow: 'var(--shadow-xl)',
+                        backdropFilter: 'blur(16px)',
+                      }}
+                    >
+                      <div style={{ fontWeight: 600, marginBottom: 4 }}>
+                        {bucket.label} · {bucket.total} event{bucket.total !== 1 ? 's' : ''}
+                      </div>
+                      <div style={{ color: FUNDED_INVOICED_COLOR }}>
+                        Funded / Invoiced: {bucket.fundedInvoicedCount}
+                      </div>
+                      <div style={{ color: CLOSED_WON_COLOR }}>
+                        Closed Won: {bucket.closedWonCount}
+                      </div>
+                    </div>
+                  );
+                }}
+                wrapperStyle={{ outline: 'none' }}
+                cursor={{ fill: 'hsl(var(--accent))', fillOpacity: 0.15 }}
+              />
+              <Legend
+                wrapperStyle={{ fontSize: 11, color: 'hsl(var(--muted-foreground))' }}
+                iconType="circle"
+              />
+              <Bar
+                dataKey="fundedInvoicedCount"
+                name="Funded / Invoiced"
+                stackId="stage"
+                fill={FUNDED_INVOICED_COLOR}
+                fillOpacity={0.85}
+                cursor="pointer"
+                onClick={(bucket: StageSplitTrendBucket) => onBarClick(bucket)}
+                radius={[0, 0, 0, 0]}
+              />
+              <Bar
+                dataKey="closedWonCount"
+                name="Closed Won"
+                stackId="stage"
+                fill={CLOSED_WON_COLOR}
+                fillOpacity={0.9}
+                cursor="pointer"
+                onClick={(bucket: StageSplitTrendBucket) => onBarClick(bucket)}
+                radius={[3, 3, 0, 0]}
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -656,6 +786,19 @@ export function ConsolidatedDebtPipelineDashboard({
             }
           />
         </div>
+
+        <StageMovementStackedBarChart
+          buckets={trendMode === 'monthly' ? m.closedSplitTrend.monthly : m.closedSplitTrend.quarterly}
+          isLoading={m.closedSplitTrend.isLoading}
+          trendMode={trendMode}
+          onBarClick={(bucket) =>
+            setDrilldown({
+              title: `Stage Movement — ${bucket.label}`,
+              deals: bucket.deals,
+              periodNote: `Funded / Invoiced + Closed Won stage_enter events · ${bucket.label}`,
+            })
+          }
+        />
       </div>
 
       <DrilldownModal

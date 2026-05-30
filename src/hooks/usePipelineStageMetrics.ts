@@ -57,6 +57,20 @@ export interface StageTrendSeriesResult {
   isLoading: boolean;
 }
 
+export interface StageSplitTrendBucket extends PeriodBucketDef {
+  fundedInvoicedCount: number;
+  closedWonCount: number;
+  total: number;
+  deals: StageEntryDeal[];
+}
+
+export interface StageSplitTrendSeriesResult {
+  monthly: StageSplitTrendBucket[];
+  quarterly: StageSplitTrendBucket[];
+  total: number;
+  isLoading: boolean;
+}
+
 interface RevenuePeriodTotalResult {
   total: number;
   isLoading: boolean;
@@ -252,6 +266,132 @@ function useStageEntryTrendSeries(
     quarterly: aggregateStageEntryTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId, targetStages),
     isLoading: isLoading || isFetching,
   }), [data, isLoading, isFetching, monthlyBuckets, pipelineId, quarterlyBuckets, targetStages.join(',')]);
+}
+
+function aggregateStageEntrySplitTrendBuckets(
+  rows: Array<Record<string, any>>,
+  bucketDefs: PeriodBucketDef[],
+  grain: 'monthly' | 'quarterly',
+  pipelineId: string,
+): StageSplitTrendBucket[] {
+  const buckets: StageSplitTrendBucket[] = bucketDefs.map((bucket) => ({
+    ...bucket,
+    fundedInvoicedCount: 0,
+    closedWonCount: 0,
+    total: 0,
+    deals: [],
+  }));
+
+  if (bucketDefs.length === 0) return buckets;
+
+  const windowStart = `${bucketDefs[0].start}T00:00:00.000Z`;
+  const windowEnd = `${bucketDefs[bucketDefs.length - 1].end}T23:59:59.999Z`;
+  // Dedupe per (deal, to_stage) — a deal can legitimately contribute one
+  // event to each stacked series, but not multiple times to the same series.
+  const seen = new Set<string>();
+  const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
+
+  for (const row of rows ?? []) {
+    const ts: string = row.changed_at;
+    if (!ts || ts < windowStart || ts > windowEnd) continue;
+    const stageId: string = row.to_stage_id;
+    if (stageId !== 'funded-invoiced' && stageId !== 'closed-won') continue;
+
+    const dedupeKey = `${row.deal_id}|${stageId}`;
+    if (seen.has(dedupeKey)) continue;
+
+    const deal = row.deals as Record<string, any> | null;
+    if (!deal || deal.pipeline_id !== pipelineId || isExcludedDealName(deal.company)) continue;
+
+    const bucketKey = grain === 'monthly' ? ts.slice(0, 7) : getQuarterKey(ts);
+    const bucket = bucketMap.get(bucketKey);
+    if (!bucket) continue;
+
+    seen.add(dedupeKey);
+
+    const entry: StageEntryDeal = {
+      deal_id: row.deal_id,
+      company: deal.company ?? '—',
+      value: Number(deal.value) || 0,
+      manager: deal.manager ?? null,
+      current_stage: deal.stage ?? '',
+      entered_at: ts,
+      pipeline_id: deal.pipeline_id ?? '',
+      from_stage: typeof row.from_stage_id === 'string' ? row.from_stage_id : null,
+      to_stage: stageId,
+    };
+
+    if (stageId === 'funded-invoiced') bucket.fundedInvoicedCount += 1;
+    else bucket.closedWonCount += 1;
+    bucket.total += 1;
+    bucket.deals.push(entry);
+  }
+
+  return buckets;
+}
+
+function useStageEntrySplitTrendSeries(
+  anchorEndDate: string,
+  pipelineId: string,
+): StageSplitTrendSeriesResult {
+  const { user } = useAuth();
+  const targetStages = ['funded-invoiced', 'closed-won'];
+
+  const monthlyBuckets = useMemo(
+    () => buildRollingMonthBuckets(anchorEndDate, 6),
+    [anchorEndDate],
+  );
+  const quarterlyBuckets = useMemo(
+    () => buildRollingQuarterBuckets(anchorEndDate, 4),
+    [anchorEndDate],
+  );
+
+  const queryStart = quarterlyBuckets[0]?.start ?? monthlyBuckets[0]?.start ?? '';
+  const queryEnd = quarterlyBuckets[quarterlyBuckets.length - 1]?.end ?? monthlyBuckets[monthlyBuckets.length - 1]?.end ?? '';
+
+  const { data, isLoading, isFetching } = useQuery({
+    queryKey: ['stage-entry-split-trend-dsh', pipelineId, queryStart, queryEnd],
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from('deal_stage_history')
+        .select(`
+          deal_id,
+          changed_at,
+          to_stage_id,
+          from_stage_id,
+          deals!inner (
+            company,
+            value,
+            manager,
+            stage,
+            pipeline_id
+          )
+        `)
+        .eq('event_type', 'stage_enter')
+        .eq('pipeline_id', pipelineId)
+        .in('to_stage_id', targetStages)
+        .gte('changed_at', queryStart)
+        .lte('changed_at', `${queryEnd}T23:59:59.999Z`)
+        .order('changed_at', { ascending: true });
+
+      if (error) throw error;
+      return rows ?? [];
+    },
+    enabled: !!user && !!queryStart && !!queryEnd,
+    staleTime: 30_000,
+  });
+
+  return useMemo(() => {
+    const monthly = aggregateStageEntrySplitTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId);
+    const quarterly = aggregateStageEntrySplitTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId);
+    const total = monthly.reduce((s, b) => s + b.total, 0);
+    return {
+      monthly,
+      quarterly,
+      total,
+      isLoading: isLoading || isFetching,
+    };
+  }, [data, isLoading, isFetching, monthlyBuckets, quarterlyBuckets, pipelineId]);
 }
 
 function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): RevenuePeriodTotalResult {
@@ -641,6 +781,7 @@ export interface ConsolidatedDebtPipelineMetrics {
   finalCreditItems: StageMetricResult;
   fundedInvoiced: StageMetricResult;
   fundedInvoicedTrend: StageTrendSeriesResult;
+  closedSplitTrend: StageSplitTrendSeriesResult;
   termsIssued: StageMetricResult;
   inDueDiligence: StageMetricResult;
   averageDealOnBoard: AverageMetricResult;
@@ -682,6 +823,7 @@ export function useConsolidatedDebtPipelineMetrics(
   const CLOSED_STAGES = [FUNDED_INVOICED_STAGE, 'closed-won'];
   const fundedInvoiced = useStageEntryMetric(CLOSED_STAGES, quarter, ACTIVE_PIPELINE_ID);
   const fundedInvoicedTrend = useStageEntryTrendSeries(CLOSED_STAGES, todayAnchor, ACTIVE_PIPELINE_ID);
+  const closedSplitTrend = useStageEntrySplitTrendSeries(todayAnchor, ACTIVE_PIPELINE_ID);
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
 
@@ -698,6 +840,7 @@ export function useConsolidatedDebtPipelineMetrics(
     finalCreditItems,
     fundedInvoiced,
     fundedInvoicedTrend,
+    closedSplitTrend,
     termsIssued,
     inDueDiligence,
     averageDealOnBoard: useAverageDealMetric(ndaNeedsListRolling6),
