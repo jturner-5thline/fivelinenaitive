@@ -99,9 +99,11 @@ export function ClaapNoteEditor({
       </div>
 
       {mode === 'view' ? (
-        <button
-          type="button"
+        <div
+          role="textbox"
+          tabIndex={0}
           onClick={enterEdit}
+          onKeyDown={(e) => { if (e.key === 'Enter') enterEdit(); }}
           // Click anywhere in the rendered area to enter edit mode.
           className={cn(
             'block w-full text-left',
@@ -159,7 +161,7 @@ export function ClaapNoteEditor({
           ) : (
             <span className="text-xs italic text-muted-foreground">{placeholder || 'Add a note…'}</span>
           )}
-        </button>
+        </div>
       ) : (
         <Textarea
           ref={textareaRef}
