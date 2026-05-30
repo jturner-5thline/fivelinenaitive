@@ -1376,7 +1376,7 @@ function EventDetailPane({
         {/* Action items */}
         <section>
           <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Action items</h3>
-          <div className="grid grid-cols-1 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 [&>*]:min-w-0">
             <MeetingFollowupInlineAction
               eventId={event.id}
               eventTitle={eventTitle}
@@ -1407,6 +1407,8 @@ function EventDetailPane({
               primaryAttendeeEmail={externals[0]?.email || null}
               onOpenScheduler={() => setScheduleNextOpen(true)}
             />
+          </div>
+          <div className="mt-2 space-y-2">
             <FindATimeDialog
               open={scheduleNextOpen}
               onOpenChange={setScheduleNextOpen}
