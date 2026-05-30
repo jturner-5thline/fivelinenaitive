@@ -36,12 +36,12 @@ function buildFollowupBody(summary: string | null, nextSteps: string[], name: st
 export function MeetingFollowupInlineAction({
   eventId, eventTitle, primaryAttendeeName, primaryAttendeeEmail, onOpenComposer,
 }: Props) {
-  const { data: ctx, isLoading } = useMeetingClaapContext(eventId);
+  const ctx = useMeetingClaapContext(eventId);
   const [opening, setOpening] = useState(false);
 
   const draftBody = useMemo(() => {
-    if (!ctx || (!ctx.summary && ctx.nextSteps.length === 0)) return null;
-    return buildFollowupBody(ctx.summary, ctx.nextSteps, primaryAttendeeName || null);
+    if ((!ctx.summary && ctx.actionItems.length === 0) || ctx.source === 'none') return null;
+    return buildFollowupBody(ctx.summary, ctx.actionItems, primaryAttendeeName || null);
   }, [ctx, primaryAttendeeName]);
 
   // No recording or no AI content → legacy CTA
@@ -51,7 +51,7 @@ export function MeetingFollowupInlineAction({
         size="sm" variant="outline"
         className="h-8 justify-start gap-2 text-xs"
         onClick={() => onOpenComposer()}
-        disabled={isLoading && !ctx}
+        disabled={ctx.isLoading && ctx.source === 'none'}
       >
         <Mail className="h-3.5 w-3.5" /> Send follow-up
       </Button>
