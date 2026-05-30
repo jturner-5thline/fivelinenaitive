@@ -1531,11 +1531,12 @@ function EventDetailPane({
                 </button>
               </div>
             )}
-            <Textarea
+            <ClaapNoteEditor
               value={noteDraft}
-              onChange={(e) => { setNoteDraft(e.target.value); setNoteDirty(true); }}
+              onChange={(next) => { setNoteDraft(next); setNoteDirty(true); }}
               placeholder={`Note for ${userFirstName}'s records…`}
-              className="min-h-[72px] text-xs resize-y bg-white/[0.02]"
+              defaultRendered={notePrefilledFromClaap}
+              recordingUrl={claapCtx.recording?.url ?? null}
             />
             <p className="mt-1 text-[10px] text-muted-foreground/70 italic">
               Action items moved to Suggested tasks above.
