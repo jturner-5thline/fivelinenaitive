@@ -212,7 +212,10 @@ export function DealAuditLogPanel({ entries, loading, hasMore, onLoadMore, onRes
                     const fromLabel = meta.from_label || (meta.from_stage ? String(meta.from_stage).replace(/-/g, ' ') : null);
                     const toLabel = meta.to_label || (meta.to_stage ? String(meta.to_stage).replace(/-/g, ' ') : entry.entity_name) || 'Unknown';
                     const hasFrom = fromLabel && fromLabel !== '—';
-                    const who = entry.user_display_name?.trim();
+                    const isBackfill = meta.source === 'backfill';
+                    const who = isBackfill
+                      ? 'System (backfill)'
+                      : entry.user_display_name?.trim();
                     return (
                       <div key={entry.id} className="group flex items-start gap-2 py-1.5 px-1 -mx-1 rounded hover:bg-muted/30 transition-colors">
                         <div className="flex-shrink-0 h-6 w-6 rounded-full flex items-center justify-center mt-0.5 bg-muted/50">
@@ -234,6 +237,11 @@ export function DealAuditLogPanel({ entries, loading, hasMore, onLoadMore, onRes
                             <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
                               {toLabel}
                             </span>
+                            {isBackfill && (
+                              <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                                Backfilled
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-muted-foreground">
                             {who && <><span>{who}</span><span aria-hidden>·</span></>}
