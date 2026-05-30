@@ -49,7 +49,7 @@ export function useDealAuditLog(dealId: string | undefined) {
         pageNum === 0
           ? supabase
               .from('deal_stage_history')
-              .select('id, deal_id, pipeline_id, from_stage, to_stage, changed_at, changed_by')
+              .select('id, deal_id, pipeline_id, from_stage, to_stage, changed_at, changed_by, source')
               .eq('deal_id', dealId)
               .order('changed_at', { ascending: false })
           : Promise.resolve({ data: [] as any[], error: null }),
@@ -94,7 +94,7 @@ export function useDealAuditLog(dealId: string | undefined) {
         return pipelineStageLabels[stageId] || stageId.replace(/-/g, ' ');
       };
 
-      const stageRows: DealAuditEntry[] = ((stageRes?.data || []) as any[]).map((row) => {
+      const stageRowsRaw: DealAuditEntry[] = ((stageRes?.data || []) as any[]).map((row) => {
         const fromLabel = labelFor(row.pipeline_id, row.from_stage);
         const toLabel = labelFor(row.pipeline_id, row.to_stage);
         return {
@@ -111,10 +111,25 @@ export function useDealAuditLog(dealId: string | undefined) {
             from_label: fromLabel,
             to_label: toLabel,
             pipeline_id: row.pipeline_id,
+            source: row.source || null,
           },
           created_at: row.changed_at,
         };
       });
+
+      // Dedupe stage rows by (deal_id, to_stage, calendar date) — prefer
+      // non-backfill (live) rows when both exist for the same day.
+      const stageDedupeMap = new Map<string, DealAuditEntry>();
+      for (const row of stageRowsRaw) {
+        const day = (row.created_at || '').slice(0, 10);
+        const key = `${row.deal_id}::${row.metadata?.to_stage || ''}::${day}`;
+        const existing = stageDedupeMap.get(key);
+        if (!existing) { stageDedupeMap.set(key, row); continue; }
+        const existingIsBackfill = existing.metadata?.source === 'backfill';
+        const incomingIsBackfill = row.metadata?.source === 'backfill';
+        if (existingIsBackfill && !incomingIsBackfill) stageDedupeMap.set(key, row);
+      }
+      const stageRows = Array.from(stageDedupeMap.values());
 
       const rows = [...auditRows, ...callRows, ...stageRows].sort(
         (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
