@@ -1,0 +1,356 @@
+import { useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
+import { toast } from 'sonner';
+import { stripClaapTimestamps } from '@/types/claap';
+
+export type SuggestionStatus = 'pending' | 'approved' | 'dismissed' | 'converted';
+export type SuggestionSource = 'claap' | 'synthesized';
+
+export interface RawActionItem {
+  text: string;
+  assignee_email: string | null;
+  due_date: string | null; // YYYY-MM-DD
+}
+
+export interface MeetingTaskSuggestion {
+  id: string | null;            // row id once persisted
+  suggestion_id: string;        // stable hash
+  text: string;
+  assignee_email: string | null;
+  due_date: string | null;
+  status: SuggestionStatus;
+  created_task_id: string | null;
+  source: SuggestionSource;
+}
+
+export interface UseMeetingTaskSuggestionsInput {
+  eventId: string;
+  meetingRowId: string | null;
+  recordingRowId: string | null;
+  source: SuggestionSource | 'none';
+  /** Action item strings rendered to the textarea (for synthesized fallback). */
+  fallbackActionItems?: string[];
+}
+
+const SLUG_RE = /[^a-z0-9]+/g;
+function slug(s: string): string {
+  return (s || '').toLowerCase().replace(SLUG_RE, '-').replace(/^-|-$/g, '').slice(0, 60);
+}
+function suggestionIdFor(scopeKey: string, index: number, text: string): string {
+  return `${scopeKey}#${index}#${slug(text)}`;
+}
+
+function parseDueDate(input: unknown): string | null {
+  if (!input || typeof input !== 'string') return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  // Accept YYYY-MM-DD as-is, otherwise try Date parsing.
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return trimmed;
+  const d = new Date(trimmed);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString().slice(0, 10);
+}
+
+function normalizeAssignee(input: unknown): string | null {
+  if (!input || typeof input !== 'string') return null;
+  const t = input.trim();
+  return t || null;
+}
+
+function normalizeRawItems(items: unknown): RawActionItem[] {
+  if (!Array.isArray(items)) return [];
+  const out: RawActionItem[] = [];
+  for (const it of items) {
+    if (it == null) continue;
+    if (typeof it === 'string') {
+      const text = stripClaapTimestamps(it);
+      if (text) out.push({ text, assignee_email: null, due_date: null });
+      continue;
+    }
+    if (typeof it !== 'object') continue;
+    const rec = it as Record<string, unknown>;
+    const rawText =
+      (typeof rec.text === 'string' && rec.text) ||
+      (typeof rec.content === 'string' && rec.content) ||
+      (typeof rec.description === 'string' && rec.description) ||
+      null;
+    if (!rawText) continue;
+    const text = stripClaapTimestamps(rawText);
+    if (!text) continue;
+    out.push({
+      text,
+      assignee_email: normalizeAssignee(rec.assignee ?? rec.owner ?? rec.assignee_email),
+      due_date: parseDueDate(rec.due ?? rec.deadline ?? rec.dueDate ?? rec.due_date),
+    });
+  }
+  return out;
+}
+
+const qk = (eventId: string, meetingRowId: string | null) => ['meeting-task-suggestions', eventId, meetingRowId];
+
+export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput) {
+  const { user } = useAuth();
+  const { company } = useCompany();
+  const queryClient = useQueryClient();
+  const { eventId, meetingRowId, recordingRowId, source, fallbackActionItems } = input;
+
+  const scopeKey = meetingRowId ? `meeting:${meetingRowId}` : `event:${eventId}`;
+
+  // 1) Load raw items from canonical sources.
+  const rawQuery = useQuery({
+    queryKey: ['mts-raw', recordingRowId, meetingRowId, source, eventId],
+    enabled: !!eventId && !!company?.id && source !== 'none',
+    staleTime: 60_000,
+    queryFn: async (): Promise<RawActionItem[]> => {
+      // Claap path: read raw structured action_items from claap_recordings.
+      if (source === 'claap' && recordingRowId) {
+        const { data, error } = await supabase
+          .from('claap_recordings')
+          .select('action_items')
+          .eq('id', recordingRowId)
+          .maybeSingle();
+        if (error) throw error;
+        return normalizeRawItems(data?.action_items);
+      }
+      // Synthesized path: meeting_synthesized_notes.content.action_items.
+      if (source === 'synthesized' && meetingRowId) {
+        const { data } = await supabase
+          .from('meeting_synthesized_notes')
+          .select('content')
+          .eq('meeting_id', meetingRowId)
+          .maybeSingle();
+        const content = (data?.content ?? null) as Record<string, unknown> | null;
+        const items = content && Array.isArray(content.action_items) ? content.action_items : [];
+        return normalizeRawItems(items);
+      }
+      // Last-ditch: use any plain-text action items the caller already has.
+      if (fallbackActionItems && fallbackActionItems.length > 0) {
+        return normalizeRawItems(fallbackActionItems);
+      }
+      return [];
+    },
+  });
+
+  const rawItems = rawQuery.data ?? [];
+
+  // 2) Load persisted suggestions for this scope.
+  const persistedQuery = useQuery({
+    queryKey: qk(eventId, meetingRowId),
+    enabled: !!eventId && !!company?.id,
+    staleTime: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('meeting_task_suggestions')
+        .select('id, suggestion_id, text, assignee_email, due_date, status, created_task_id, source')
+        .eq('scope_key', scopeKey);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // 3) Upsert new pending rows for any raw items we haven't seen yet.
+  useEffect(() => {
+    if (!company?.id || !user?.id) return;
+    if (rawQuery.isLoading || persistedQuery.isLoading) return;
+    if (rawItems.length === 0) return;
+    const persisted = persistedQuery.data ?? [];
+    const knownIds = new Set(persisted.map((r) => r.suggestion_id));
+
+    const toInsert = rawItems
+      .map((it, idx) => ({
+        org_company_id: company.id,
+        scope_key: scopeKey,
+        meeting_id: meetingRowId,
+        event_id: eventId,
+        recording_id: source === 'claap' ? recordingRowId : null,
+        suggestion_id: suggestionIdFor(scopeKey, idx, it.text),
+        text: it.text,
+        assignee_email: it.assignee_email,
+        due_date: it.due_date,
+        source: source === 'synthesized' ? 'synthesized' : 'claap',
+      }))
+      .filter((row) => !knownIds.has(row.suggestion_id));
+
+    if (toInsert.length === 0) return;
+
+    void supabase
+      .from('meeting_task_suggestions')
+      .insert(toInsert)
+      .then(({ error }) => {
+        if (error) {
+          // Unique-violation across concurrent renders is expected; ignore.
+          if (!String(error.message || '').includes('duplicate')) {
+            console.warn('[meeting-task-suggestions] insert failed', error);
+          }
+        }
+        queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company?.id, user?.id, rawItems.length, persistedQuery.data?.length, scopeKey, source]);
+
+  // 4) Merge raw + persisted into the public list, preserving raw order.
+  const suggestions: MeetingTaskSuggestion[] = useMemo(() => {
+    const persisted = persistedQuery.data ?? [];
+    const byId = new Map(persisted.map((r) => [r.suggestion_id, r]));
+    return rawItems.map((it, idx) => {
+      const sid = suggestionIdFor(scopeKey, idx, it.text);
+      const row = byId.get(sid);
+      return {
+        id: row?.id ?? null,
+        suggestion_id: sid,
+        text: row?.text ?? it.text,
+        assignee_email: row?.assignee_email ?? it.assignee_email,
+        due_date: row?.due_date ?? it.due_date,
+        status: ((row?.status as SuggestionStatus | undefined) ?? 'pending'),
+        created_task_id: row?.created_task_id ?? null,
+        source: ((row?.source as SuggestionSource | undefined) ?? (source === 'synthesized' ? 'synthesized' : 'claap')),
+      };
+    });
+  }, [rawItems, persistedQuery.data, scopeKey, source]);
+
+  // ─── mutations ──────────────────────────────────────────────
+  const approve = async (s: MeetingTaskSuggestion): Promise<{ taskId: string } | null> => {
+    if (!user?.id) {
+      toast.error('You must be signed in to create a task');
+      return null;
+    }
+    // 1) Insert the real task assigned to the current user (James Turner in
+    //    the rundown). Suggestion assignee_email is stored on the suggestion
+    //    for reference; we don't try to resolve external emails to users.
+    const dueAtIso = s.due_date ? new Date(`${s.due_date}T17:00:00Z`).toISOString() : null;
+    const { data: taskRow, error: taskErr } = await supabase
+      .from('tasks')
+      .insert({
+        title: s.text,
+        assigned_to: user.id,
+        assigned_by: user.id,
+        created_by: user.id,
+        status: 'not_started',
+        task_type: 'task',
+        due_at: dueAtIso,
+        due_date: s.due_date,
+        description: s.assignee_email ? `Suggested for: ${s.assignee_email}` : null,
+        tags: ['claap-suggestion'],
+      })
+      .select('id')
+      .single();
+    if (taskErr || !taskRow) {
+      toast.error(taskErr?.message || 'Failed to create task');
+      return null;
+    }
+    // 2) Upsert the suggestion row so it persists as 'converted'.
+    const baseRow = {
+      org_company_id: company!.id,
+      scope_key: scopeKey,
+      meeting_id: meetingRowId,
+      event_id: eventId,
+      recording_id: source === 'claap' ? recordingRowId : null,
+      suggestion_id: s.suggestion_id,
+      text: s.text,
+      assignee_email: s.assignee_email,
+      due_date: s.due_date,
+      source: s.source,
+      status: 'converted' as SuggestionStatus,
+      created_task_id: taskRow.id,
+      decided_at: new Date().toISOString(),
+      decided_by: user.id,
+    };
+    const { error: upErr } = await supabase
+      .from('meeting_task_suggestions')
+      .upsert(baseRow, { onConflict: 'scope_key,suggestion_id' });
+    if (upErr) console.warn('[meeting-task-suggestions] upsert on approve failed', upErr);
+    queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+    queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+    return { taskId: taskRow.id };
+  };
+
+  const approveAll = async (): Promise<number> => {
+    const pending = suggestions.filter((s) => s.status === 'pending');
+    let count = 0;
+    for (const s of pending) {
+      const res = await approve(s);
+      if (res) count++;
+    }
+    if (count > 0) toast.success(`Created ${count} task${count === 1 ? '' : 's'} — assigned to you`);
+    return count;
+  };
+
+  const dismiss = async (s: MeetingTaskSuggestion) => {
+    if (!user?.id || !company?.id) return;
+    const row = {
+      org_company_id: company.id,
+      scope_key: scopeKey,
+      meeting_id: meetingRowId,
+      event_id: eventId,
+      recording_id: source === 'claap' ? recordingRowId : null,
+      suggestion_id: s.suggestion_id,
+      text: s.text,
+      assignee_email: s.assignee_email,
+      due_date: s.due_date,
+      source: s.source,
+      status: 'dismissed' as SuggestionStatus,
+      decided_at: new Date().toISOString(),
+      decided_by: user.id,
+    };
+    const { error } = await supabase
+      .from('meeting_task_suggestions')
+      .upsert(row, { onConflict: 'scope_key,suggestion_id' });
+    if (error) {
+      toast.error('Failed to dismiss');
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+  };
+
+  const dismissAll = async () => {
+    const pending = suggestions.filter((s) => s.status === 'pending');
+    for (const s of pending) await dismiss(s);
+  };
+
+  const undo = async (s: MeetingTaskSuggestion) => {
+    if (!user?.id || !company?.id) return;
+    // If a task was created, delete it.
+    if (s.created_task_id) {
+      await supabase.from('tasks').delete().eq('id', s.created_task_id);
+    }
+    const row = {
+      org_company_id: company.id,
+      scope_key: scopeKey,
+      meeting_id: meetingRowId,
+      event_id: eventId,
+      recording_id: source === 'claap' ? recordingRowId : null,
+      suggestion_id: s.suggestion_id,
+      text: s.text,
+      assignee_email: s.assignee_email,
+      due_date: s.due_date,
+      source: s.source,
+      status: 'pending' as SuggestionStatus,
+      created_task_id: null,
+      decided_at: null,
+      decided_by: null,
+    };
+    const { error } = await supabase
+      .from('meeting_task_suggestions')
+      .upsert(row, { onConflict: 'scope_key,suggestion_id' });
+    if (error) {
+      toast.error('Undo failed');
+      return;
+    }
+    queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+    queryClient.invalidateQueries({ queryKey: ['my-tasks'] });
+  };
+
+  return {
+    suggestions,
+    isLoading: rawQuery.isLoading || persistedQuery.isLoading,
+    pendingCount: suggestions.filter((s) => s.status === 'pending').length,
+    approve,
+    approveAll,
+    dismiss,
+    dismissAll,
+    undo,
+  };
+}
