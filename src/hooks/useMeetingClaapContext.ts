@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import { asStringArray, type MeetingClaapContextValue, type MeetingClaapDebugInfo } from '@/types/claap';
+import { asStringArray, stripClaapTimestamps, type MeetingClaapContextValue, type MeetingClaapDebugInfo } from '@/types/claap';
 
 /**
  * For a given calendar event id, returns the linked Claap recording and (if any)
@@ -81,7 +81,7 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
             url: typeof recordingPayload.url === 'string' ? recordingPayload.url : null,
             linkedNote: typeof recordingPayload.linkedNote === 'string' ? recordingPayload.linkedNote : null,
           } : null,
-          summary: typeof payload.summary === 'string' ? payload.summary : null,
+          summary: typeof payload.summary === 'string' ? stripClaapTimestamps(payload.summary) : null,
           actionItems: asStringArray((payload.actionItems ?? null) as never),
           keyTakeaways: asStringArray((payload.keyTakeaways ?? null) as never),
           source: payload.source === 'claap' || payload.source === 'synthesized' ? payload.source : 'none',
