@@ -67,9 +67,10 @@ export type MeetingSynthesizedNoteRow = Pick<
 export function stripClaapTimestamps(input: string | null | undefined): string {
   if (!input) return '';
   return String(input)
-    .replace(/%\[(\d{1,2}:\d{2}(?::\d{2})?)\]\(\)/g, '')
+    .replace(/\s*%\[(\d{1,2}:\d{2}(?::\d{2})?)\]\(\)\s*/g, ' ')
     // collapse the double-spaces those substitutions can leave behind.
     .replace(/[ \t]{2,}/g, ' ')
+    .replace(/ +([.,;:!?])/g, '$1')
     .replace(/[ \t]+(\n)/g, '$1')
     .trim();
 }
