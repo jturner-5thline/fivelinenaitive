@@ -25194,6 +25194,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      backfill_claap_recordings_from_meetings: { Args: never; Returns: Json }
       calculate_next_schedule: {
         Args: { cron_expression: string; timezone?: string }
         Returns: string

@@ -24,7 +24,21 @@ Deno.serve(async (req) => {
     .limit(50);
 
   const results: any[] = [];
-  for (const row of stale ?? []) {
+
+  // 1) Backfill claap_recordings rows for any claap_meetings.claap_id that
+  //    doesn't yet have a paired recording. Batched via raw SQL for speed —
+  //    one INSERT covers everything, then one INSERT for the link rows.
+  await supabase.rpc("backfill_claap_recordings_from_meetings");
+
+  // Re-pull the stale list so newly-inserted rows get summaries fetched too.
+  const { data: stale2 } = await supabase
+    .from("claap_recordings")
+    .select("id, external_id, title, summary, claap_summary_synced_at")
+    .or(`summary.is.null,claap_summary_synced_at.is.null,claap_summary_synced_at.lt.${cutoff}`)
+    .order("started_at", { ascending: false })
+    .limit(40);
+  const toSync = stale2 ?? stale ?? [];
+  for (const row of toSync) {
     if (!row.external_id) {
       results.push({ id: row.id, ok: false, error: "no_external_id" });
       continue;
