@@ -7,7 +7,7 @@ import {
   asSynthesizedContent,
   type ClaapMeetingRow,
   type ClaapRecordingRow,
-  type EventClaapRecordingRow,
+  type MeetingClaapDebugInfo,
   type MeetingClaapContextValue,
   type MeetingSynthesizedNoteRow,
 } from '@/types/claap';
@@ -23,39 +23,162 @@ import {
  */
 type MeetingClaapQueryData = Omit<MeetingClaapContextValue, 'isLoading' | 'error'>;
 
-export function useMeetingClaapContext(eventId: string | null | undefined): MeetingClaapContextValue & { refetch: () => Promise<unknown> } {
+type UseMeetingClaapContextInput =
+  | string
+  | null
+  | undefined
+  | {
+      eventId: string | null | undefined;
+      eventTitle?: string | null;
+      eventStart?: string | null;
+      organizerEmail?: string | null;
+    };
+
+const PREFILL_QUERY_SQL = "claap_meetings(company_id scoped, scored by title/organizer/time) -> claap_recording_links(entity_type='meeting', link_role='primary_meeting') -> claap_recordings(summary, action_items, key_takeaways, recording_url); fallback direct match: claap_recordings scoped by title/organizer/time; synthesized fallback: meeting_synthesized_notes(meeting_id)";
+
+function normalizeMeetingTitle(value: string | null | undefined) {
+  return (value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function titleScore(a: string | null | undefined, b: string | null | undefined) {
+  const left = normalizeMeetingTitle(a);
+  const right = normalizeMeetingTitle(b);
+  if (!left || !right) return 0;
+  if (left === right) return 100;
+  if (left.includes(right) || right.includes(left)) return 85;
+  const leftTokens = new Set(left.split(' ').filter((token) => token.length > 2));
+  const rightTokens = right.split(' ').filter((token) => token.length > 2);
+  if (leftTokens.size === 0 || rightTokens.length === 0) return 0;
+  const overlap = rightTokens.filter((token) => leftTokens.has(token)).length;
+  return Math.round((overlap / Math.max(leftTokens.size, rightTokens.length)) * 70);
+}
+
+function minutesApart(a: string | null | undefined, b: string | null | undefined) {
+  if (!a || !b) return Number.POSITIVE_INFINITY;
+  const left = new Date(a).getTime();
+  const right = new Date(b).getTime();
+  if (Number.isNaN(left) || Number.isNaN(right)) return Number.POSITIVE_INFINITY;
+  return Math.abs(left - right) / 60000;
+}
+
+function pickBestMatch<T extends { title?: string | null; organizer_email?: string | null; started_at?: string | null }>(
+  rows: T[],
+  input: { eventTitle?: string | null; organizerEmail?: string | null; eventStart?: string | null },
+) {
+  const wantedTitle = input.eventTitle || null;
+  const wantedOrganizer = (input.organizerEmail || '').trim().toLowerCase();
+  return rows
+    .map((row) => {
+      const score =
+        titleScore(row.title, wantedTitle) +
+        ((wantedOrganizer && (row.organizer_email || '').trim().toLowerCase() === wantedOrganizer) ? 30 : 0) +
+        Math.max(0, 30 - Math.min(minutesApart(row.started_at || null, input.eventStart || null), 180) / 6);
+      return { row, score };
+    })
+    .sort((a, b) => b.score - a.score)[0]?.row ?? null;
+}
+
+export function useMeetingClaapContext(input: UseMeetingClaapContextInput): MeetingClaapContextValue & { refetch: () => Promise<unknown> } {
   const { company } = useCompany();
+  const eventId = typeof input === 'string' || !input ? input : input.eventId;
+  const eventTitle = typeof input === 'string' || !input ? null : input.eventTitle ?? null;
+  const eventStart = typeof input === 'string' || !input ? null : input.eventStart ?? null;
+  const organizerEmail = typeof input === 'string' || !input ? null : input.organizerEmail ?? null;
+
   const query = useQuery<MeetingClaapQueryData | null>({
-    queryKey: ['meeting-claap-context', eventId, company?.id],
+    queryKey: ['meeting-claap-context', eventId, company?.id, eventTitle, eventStart, organizerEmail],
     enabled: !!eventId && !!company?.id,
     staleTime: 60_000,
     queryFn: async () => {
       try {
-        const { data: linkData } = await supabase
+        const eventWindowStart = eventStart ? new Date(new Date(eventStart).getTime() - 24 * 60 * 60 * 1000).toISOString() : null;
+        const eventWindowEnd = eventStart ? new Date(new Date(eventStart).getTime() + 24 * 60 * 60 * 1000).toISOString() : null;
+
+        let meeting: (ClaapMeetingRow & {
+          title?: string | null;
+          organizer_email?: string | null;
+          started_at?: string | null;
+          transcript?: string | null;
+          recording_url?: string | null;
+        }) | null = null;
+
+        if (eventWindowStart && eventWindowEnd) {
+          const { data: meetingRows } = await supabase
+            .from('claap_meetings')
+            .select('id, claap_id, ai_summary, next_steps, key_decisions, transcript, title, organizer_email, started_at, recording_url')
+            .eq('company_id', company!.id)
+            .gte('started_at', eventWindowStart)
+            .lte('started_at', eventWindowEnd)
+            .limit(25);
+          meeting = pickBestMatch(meetingRows ?? [], { eventTitle, organizerEmail, eventStart }) as typeof meeting;
+        }
+
+        let recording: (ClaapRecordingRow & {
+          id?: string | null;
+          recording_url?: string | null;
+          transcript_available?: boolean | null;
+          title?: string | null;
+          organizer_email?: string | null;
+          started_at?: string | null;
+        }) | null = null;
+        let linkedNote: string | null = null;
+
+        if (meeting?.id) {
+          const { data: linkRows } = await supabase
+            .from('claap_recording_links')
+            .select('id, recording_id, confidence, link_role, created_at')
+            .eq('entity_type', 'meeting')
+            .eq('entity_id', meeting.id)
+            .eq('link_role', 'primary_meeting')
+            .order('confidence', { ascending: false })
+            .order('created_at', { ascending: false })
+            .limit(1);
+          const primaryLink = (linkRows ?? [])[0];
+
+          if (primaryLink?.recording_id) {
+            const { data: recordingData } = await supabase
+              .from('claap_recordings')
+              .select('id, external_id, summary, action_items, key_takeaways, synthesized_note, transcript_available, recording_url, title, organizer_email, started_at')
+              .eq('id', primaryLink.recording_id)
+              .maybeSingle();
+            recording = (recordingData ?? null) as typeof recording;
+          }
+        }
+
+        if (!recording && eventWindowStart && eventWindowEnd) {
+          const { data: recordingRows } = await supabase
+            .from('claap_recordings')
+            .select('id, external_id, summary, action_items, key_takeaways, synthesized_note, transcript_available, recording_url, title, organizer_email, started_at')
+            .eq('org_company_id', company!.id)
+            .gte('started_at', eventWindowStart)
+            .lte('started_at', eventWindowEnd)
+            .limit(25);
+          recording = pickBestMatch(recordingRows ?? [], { eventTitle, organizerEmail, eventStart }) as typeof recording;
+        }
+
+        if (!recording && meeting?.claap_id) {
+          const { data: recordingData } = await supabase
+            .from('claap_recordings')
+            .select('id, external_id, summary, action_items, key_takeaways, synthesized_note, transcript_available, recording_url, title, organizer_email, started_at')
+            .eq('org_company_id', company!.id)
+            .eq('external_id', meeting.claap_id)
+            .maybeSingle();
+          recording = (recordingData ?? null) as typeof recording;
+        }
+
+        const { data: eventLinkData } = await supabase
           .from('event_claap_recordings')
-          .select('recording_id, recording_title, recording_url, notes')
+          .select('notes')
           .eq('org_company_id', company!.id)
           .eq('event_id', eventId!)
           .order('linked_at', { ascending: false })
           .limit(1)
           .maybeSingle();
-        const link = (linkData ?? null) as EventClaapRecordingRow | null;
-        if (!link?.recording_id) return null;
-
-        const { data: recordingData } = await supabase
-          .from('claap_recordings')
-          .select('summary, action_items, key_takeaways, synthesized_note, transcript_available')
-          .eq('org_company_id', company!.id)
-          .eq('external_id', link.recording_id)
-          .maybeSingle();
-        const recording = (recordingData ?? null) as (ClaapRecordingRow & { transcript_available?: boolean | null }) | null;
-
-        const { data: meetingData } = await supabase
-          .from('claap_meetings')
-          .select('id, ai_summary, next_steps, key_decisions, transcript')
-          .eq('claap_id', link.recording_id)
-          .maybeSingle();
-        const meeting = (meetingData ?? null) as (ClaapMeetingRow & { transcript?: string | null }) | null;
+        linkedNote = eventLinkData?.notes || null;
 
         const { data: synthRowData } = meeting?.id
           ? await supabase
@@ -87,20 +210,30 @@ export function useMeetingClaapContext(eventId: string | null | undefined): Meet
             : null;
         const actionItems = hasReal ? recordingSteps : hasSynth ? synthesizedSteps : meetingSteps;
         const keyTakeaways = hasReal ? recordingTakeaways : hasSynth ? synthesizedTakeaways : meetingTakeaways;
+        const debug: MeetingClaapDebugInfo = {
+          querySql: PREFILL_QUERY_SQL,
+          meetingMatchId: meeting?.id ?? null,
+          eventLinkRecordingId: null,
+          recordingExternalId: recording?.external_id ?? null,
+          recordingRowId: recording?.id ?? null,
+          hookSource: hasReal ? 'claap' : hasSynth ? 'synthesized' : 'none',
+        };
 
         const ctx: MeetingClaapQueryData = {
           recording: {
-            id: link.recording_id,
+            id: recording?.external_id || meeting?.claap_id || eventId!,
+            rowId: recording?.id ?? null,
             meetingRowId: meeting?.id || null,
-            title: link.recording_title || null,
-            url: link.recording_url || null,
-            linkedNote: link.notes || null,
+            title: recording?.title || meeting?.title || null,
+            url: recording?.recording_url || meeting?.recording_url || null,
+            linkedNote: linkedNote || null,
           },
           summary,
           actionItems,
           keyTakeaways,
           source: hasReal ? 'claap' : hasSynth ? 'synthesized' : 'none',
           transcriptAvailable: Boolean(recording?.transcript_available || meeting?.transcript),
+          debug,
           fetching: false,
         };
         return ctx;
@@ -147,6 +280,7 @@ export function useMeetingClaapContext(eventId: string | null | undefined): Meet
     keyTakeaways: query.data?.keyTakeaways ?? [],
     source: query.data?.source ?? 'none',
     transcriptAvailable: query.data?.transcriptAvailable ?? false,
+    debug: query.data?.debug ?? null,
     isLoading: query.isLoading || query.isFetching,
     fetching: query.isFetching,
     error: query.error instanceof Error ? query.error.message : null,
