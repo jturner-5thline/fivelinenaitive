@@ -38,15 +38,12 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
 
   const visible = useMemo(() => suggestions, [suggestions]);
 
-  if (source === 'none' || (visible.length === 0 && !isLoading)) {
+  if (source !== 'claap' || (visible.length === 0 && !isLoading)) {
     return null;
   }
 
-  const isClaap = source === 'claap';
-  const pillCls = isClaap
-    ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
-    : 'border-sky-500/40 text-sky-300 bg-sky-500/10';
-  const pillLabel = isClaap ? 'From Claap' : 'Synthesized';
+  const pillCls = 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10';
+  const pillLabel = 'From Claap';
 
   const handleApprove = async (s: MeetingTaskSuggestion) => {
     setBusyId(s.suggestion_id);
@@ -76,7 +73,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
             Suggested tasks
           </span>
           <span className="text-[10px] text-muted-foreground/60">
-            • {visible.length} {isClaap ? 'from Claap' : 'synthesized'}
+            • {visible.length} from Claap
           </span>
           <span className={cn('inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border', pillCls)}>
             {pillLabel}
