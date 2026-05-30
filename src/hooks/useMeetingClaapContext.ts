@@ -4,12 +4,15 @@ import { useCompany } from '@/hooks/useCompany';
 
 export interface MeetingClaapContext {
   recordingId: string;
+  meetingRowId: string | null;
   recordingTitle: string | null;
   recordingUrl: string | null;
   summary: string | null;
   nextSteps: string[];
   keyDecisions: string[];
   transcript: string | null;
+  transcriptAvailable: boolean;
+  hasContent: boolean;
 }
 
 /**
@@ -41,19 +44,36 @@ export function useMeetingClaapContext(eventId: string | null | undefined) {
 
         const { data: meeting } = await (supabase
           .from('claap_meetings') as any)
-          .select('ai_summary, next_steps, key_decisions, transcript')
+          .select('id, ai_summary, next_steps, key_decisions, transcript')
           .eq('claap_id', link.recording_id)
           .maybeSingle();
 
-        return {
+        const summary = meeting?.ai_summary || null;
+        const nextSteps = Array.isArray(meeting?.next_steps) ? meeting!.next_steps.filter(Boolean) : [];
+        const keyDecisions = Array.isArray(meeting?.key_decisions) ? meeting!.key_decisions.filter(Boolean) : [];
+        const transcript = meeting?.transcript || null;
+        const ctx = {
           recordingId: link.recording_id,
+          meetingRowId: meeting?.id || null,
           recordingTitle: link.recording_title || null,
           recordingUrl: link.recording_url || null,
-          summary: meeting?.ai_summary || null,
-          nextSteps: Array.isArray(meeting?.next_steps) ? meeting!.next_steps.filter(Boolean) : [],
-          keyDecisions: Array.isArray(meeting?.key_decisions) ? meeting!.key_decisions.filter(Boolean) : [],
-          transcript: meeting?.transcript || null,
+          summary,
+          nextSteps,
+          keyDecisions,
+          transcript,
+          transcriptAvailable: !!transcript,
+          hasContent: !!summary || nextSteps.length > 0 || keyDecisions.length > 0,
         };
+        console.debug('[useMeetingClaapContext]', {
+          eventId,
+          recordingId: ctx.recordingId,
+          meetingRowId: ctx.meetingRowId,
+          transcriptLen: transcript?.length ?? 0,
+          summaryLen: summary?.length ?? 0,
+          nextStepsLen: nextSteps.length,
+          keyDecisionsLen: keyDecisions.length,
+        });
+        return ctx;
       } catch (err) {
         console.warn('useMeetingClaapContext failed', err);
         return null;
