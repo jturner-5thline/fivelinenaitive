@@ -38,6 +38,7 @@ export function MeetingClaapInlineAction(props: Props) {
   const [ranked, setRanked] = useState<RankedTop | null>(null);
   const [ranking, setRanking] = useState(false);
   const [approving, setApproving] = useState(false);
+  const [autoApproved, setAutoApproved] = useState(false);
   const [userRejected, setUserRejected] = useState(false);
 
   // Lazy load recordings once per mount
@@ -197,6 +198,7 @@ export function MeetingClaapInlineAction(props: Props) {
       toast.success('Recording linked');
       qc.invalidateQueries({ queryKey: ['event-claap-inline-link', eventId] });
       qc.invalidateQueries({ queryKey: ['event-claap-links', eventId] });
+      qc.invalidateQueries({ queryKey: ['meeting-claap-context', eventId, company?.id] });
     } catch (err: any) {
       console.error('approve claap link failed', err);
       toast.error(err?.message || 'Failed to approve link');
@@ -204,6 +206,17 @@ export function MeetingClaapInlineAction(props: Props) {
       setApproving(false);
     }
   };
+
+  useEffect(() => {
+    setAutoApproved(false);
+  }, [eventId]);
+
+  useEffect(() => {
+    if (band !== 'auto' || autoApproved || approving || !!existing || userRejected) return;
+    setAutoApproved(true);
+    void handleApprove();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [band, autoApproved, approving, existing, userRejected]);
 
   // Render variants ---------------------------------------------------------
   if (band === 'none') {
