@@ -335,7 +335,7 @@ export function ConsolidatedDebtPipelineDashboard({
   const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
 
   const buildTrendPeriodNote = (bucket: StageTrendBucket, metricLabel: string) =>
-    `${metricLabel} · Active Pipeline → Funded / Invoiced · ${bucket.label}`;
+    `${metricLabel} · Consolidated Debt Pipeline → Funded / Invoiced + Closed Won · ${bucket.label}`;
 
   useEffect(() => {
     if (m.fundedInvoicedTrend.isLoading || !selectedQuarter) return;
