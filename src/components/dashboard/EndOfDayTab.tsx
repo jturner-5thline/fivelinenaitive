@@ -493,18 +493,17 @@ export function EndOfDayTab({
     const ref = startOfDay(now);
     const normalizedEvents = (events || []).map(ev => {
       const start = safeParse(ev.start);
-      const attendeeCount = (ev.attendees || []).length;
-      const externalCount = (ev.attendees || []).filter(a => !a.self && !isInternalAttendee(a.email)).length;
-      return { ev, start, attendeeCount, externalCount };
+      const attendees = ev.attendees || [];
+      const attendeeCount = attendees.length;
+      const otherCount = attendees.filter(a => !a.self).length;
+      const externalCount = attendees.filter(a => !a.self && !isInternalAttendee(a.email)).length;
+      return { ev, start, attendeeCount, otherCount, externalCount };
     });
 
     const windowed = normalizedEvents.filter(({ start }) => !!start && start >= ws && start <= we);
-    const audienceEligible = windowed.filter(({ start, externalCount, attendeeCount }) => {
-      const age = start ? differenceInCalendarDays(ref, startOfDay(start)) : 0;
-      if (age <= 0) return true;
-      if (externalCount > 0) return true;
-      return attendeeCount === 0;
-    });
+    // Require at least one OTHER attendee besides the current user.
+    // Personal/solo events (Gym, focus blocks, etc.) are filtered out.
+    const audienceEligible = windowed.filter(({ otherCount }) => otherCount > 0);
     const uncleared = audienceEligible.filter(({ ev, start }) => (
       !isResolved(ev.id) && !isDismissed(ev.id, start) && !isSnoozed(ev.id)
     ));
