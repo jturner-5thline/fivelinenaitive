@@ -1499,6 +1499,17 @@ function EventDetailPane({
                 </button>
               </div>
             )}
+            {!claapTokenPresent && notePrefillSource !== 'claap' && (
+              <div className="mb-1.5 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-200 flex items-center justify-between gap-2">
+                <span>Add <code className="font-mono">CLAAP_API_TOKEN</code> secret to fetch real Claap summaries.</span>
+                <a
+                  href="https://docs.lovable.dev/integrations/supabase#secrets"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline whitespace-nowrap"
+                >How to add</a>
+              </div>
+            )}
             {claapStillGenerating && !notePrefilledFromClaap && !transcriptAvailable && !claapCtxFetching && (
               <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
                 <span>
