@@ -329,6 +329,15 @@ serve(async (req: Request): Promise<Response> => {
 
           if (!response.ok) {
             console.error("Nylas events error:", data);
+            // Nylas rate-limits aggressively. Degrade to an empty success so
+            // callers don't blow up with a 429 / blank screen. Surface a soft
+            // `rate_limited` flag for callers that want to react.
+            if (response.status === 429) {
+              return new Response(JSON.stringify({ events: allRaw, rate_limited: true, next_page_token: null }), {
+                status: 200,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+              });
+            }
             return new Response(JSON.stringify({ error: data.message || "Failed to list events" }), {
               status: response.status,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
