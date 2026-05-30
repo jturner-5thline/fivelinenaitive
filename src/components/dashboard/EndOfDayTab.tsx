@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
+import { useClaapTokenStatus } from '@/hooks/useClaapTokenStatus';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -1081,6 +1082,8 @@ function EventDetailPane({
   const [noteDirty, setNoteDirty] = useState(false);
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
+  const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'synthesized' | 'local'>('local');
+  const { tokenPresent: claapTokenPresent } = useClaapTokenStatus();
   const claapCtx = useMeetingClaapContext(event.id);
   const { fetching: claapCtxFetching, transcriptAvailable } = claapCtx;
   const [claapBackfilling, setClaapBackfilling] = useState(false);
@@ -1115,16 +1118,19 @@ function EventDetailPane({
 
   const buildClaapNote = (ctx: typeof claapCtx): string => {
     const lines: string[] = [];
-    lines.push(`🎥 Summary`);
+    const titleSuffix = eventTitle ? ` — ${eventTitle}` : '';
+    lines.push(`🎥 Claap Summary${titleSuffix}`);
     if (ctx.summary) lines.push('', ctx.summary.trim());
     if (ctx.actionItems.length) {
       lines.push('', '✅ Action items');
-      ctx.actionItems.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+      ctx.actionItems.forEach((s) => lines.push(`- ${s}`));
     }
     if (ctx.keyTakeaways.length) {
-      lines.push('', '💡 Takeaways');
-      ctx.keyTakeaways.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+      lines.push('', '💡 Key takeaways');
+      ctx.keyTakeaways.forEach((s) => lines.push(`- ${s}`));
     }
+    const url = ctx.recording?.url;
+    if (url) lines.push('', `[Watch in Claap](${url})`);
     return lines.join('\n');
   };
 
@@ -1168,10 +1174,15 @@ function EventDetailPane({
     if (!hasContent || !claapCtx.recording) return;
     if (noteDirty) return;
     if (notePrefillRecordingId === claapCtx.recording.id) return;
-    // Recording changed and prior prefill is untouched → replace silently.
+    // Recording changed and prior prefill is untouched → replace.
+    const wasSynthesized = notePrefilledFromClaap && notePrefillSource !== 'claap';
     setNoteDraft(buildClaapNote(claapCtx));
     setNotePrefilledFromClaap(true);
+    setNotePrefillSource(claapCtx.source === 'claap' ? 'claap' : 'synthesized');
     setNotePrefillRecordingId(claapCtx.recording.id);
+    if (wasSynthesized && claapCtx.source === 'claap') {
+      toast.success('Replaced synthesized note with real Claap summary');
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claapCtx.recording?.id, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty]);
 
@@ -1183,6 +1194,7 @@ function EventDetailPane({
     const synthesized = buildLocalSynthesizedNote();
     setNoteDraft(synthesized);
     setNotePrefilledFromClaap(true);
+    setNotePrefillSource('local');
     setNotePrefillRecordingId(prefillKey);
     console.info('[AddNote prefill]', event.id, true, synthesized.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1461,20 +1473,41 @@ function EventDetailPane({
             </div>
             {notePrefilledFromClaap && (
               <div className="flex items-center gap-2 mb-1.5">
-                <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
-                  <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — {claapCtx.source === 'synthesized' ? 'Synthesized' : 'Claap'}
-                </span>
+                {(() => {
+                  const isClaap = notePrefillSource === 'claap';
+                  const label = isClaap ? 'Claap' : 'Synthesized';
+                  const cls = isClaap
+                    ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
+                    : 'border-sky-500/40 text-sky-300 bg-sky-500/10';
+                  return (
+                    <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border ${cls}`}>
+                      <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — {label}
+                    </span>
+                  );
+                })()}
                 <button
                   type="button"
                   className="text-[10px] text-muted-foreground hover:text-white underline"
                   onClick={() => {
                     setNoteDraft('');
                     setNotePrefilledFromClaap(false);
+                    setNotePrefillSource('local');
                     setNoteDirty(true);
                   }}
                 >
                   Clear
                 </button>
+              </div>
+            )}
+            {!claapTokenPresent && notePrefillSource !== 'claap' && (
+              <div className="mb-1.5 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-[10px] text-amber-200 flex items-center justify-between gap-2">
+                <span>Add <code className="font-mono">CLAAP_API_TOKEN</code> secret to fetch real Claap summaries.</span>
+                <a
+                  href="https://docs.lovable.dev/integrations/supabase#secrets"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline whitespace-nowrap"
+                >How to add</a>
               </div>
             )}
             {claapStillGenerating && !notePrefilledFromClaap && !transcriptAvailable && !claapCtxFetching && (

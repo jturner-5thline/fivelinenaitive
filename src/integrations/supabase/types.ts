@@ -3139,6 +3139,7 @@ export type Database = {
       claap_recordings: {
         Row: {
           action_items: Json
+          chapters: Json | null
           claap_summary_synced_at: string | null
           created_at: string
           ended_at: string | null
@@ -3149,6 +3150,7 @@ export type Database = {
           org_company_id: string | null
           organizer_email: string | null
           participants: Json
+          recording_url: string | null
           source_payload: Json | null
           started_at: string | null
           status: string
@@ -3157,10 +3159,12 @@ export type Database = {
           synthesized_note_generated_at: string | null
           title: string | null
           transcript_available: boolean
+          transcript_url: string | null
           updated_at: string
         }
         Insert: {
           action_items?: Json
+          chapters?: Json | null
           claap_summary_synced_at?: string | null
           created_at?: string
           ended_at?: string | null
@@ -3171,6 +3175,7 @@ export type Database = {
           org_company_id?: string | null
           organizer_email?: string | null
           participants?: Json
+          recording_url?: string | null
           source_payload?: Json | null
           started_at?: string | null
           status?: string
@@ -3179,10 +3184,12 @@ export type Database = {
           synthesized_note_generated_at?: string | null
           title?: string | null
           transcript_available?: boolean
+          transcript_url?: string | null
           updated_at?: string
         }
         Update: {
           action_items?: Json
+          chapters?: Json | null
           claap_summary_synced_at?: string | null
           created_at?: string
           ended_at?: string | null
@@ -3193,6 +3200,7 @@ export type Database = {
           org_company_id?: string | null
           organizer_email?: string | null
           participants?: Json
+          recording_url?: string | null
           source_payload?: Json | null
           started_at?: string | null
           status?: string
@@ -3201,6 +3209,7 @@ export type Database = {
           synthesized_note_generated_at?: string | null
           title?: string | null
           transcript_available?: boolean
+          transcript_url?: string | null
           updated_at?: string
         }
         Relationships: [
