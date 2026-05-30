@@ -947,6 +947,7 @@ export function EndOfDayTab({
     <div className="flex flex-col h-full min-w-0 rounded-xl border border-white/10 bg-background/40">
       {selectedEvent ? (
         <EventDetailPane
+          key={selectedEvent.id}
           event={selectedEvent}
           contactsByEmail={contactsByEmail}
           activityEntries={activity.get(selectedEvent.id)}
