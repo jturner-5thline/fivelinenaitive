@@ -1125,6 +1125,38 @@ function EventDetailPane({
     return lines.join('\n');
   };
 
+  const buildLocalSynthesizedNote = (): string => {
+    const attendeeNames = externals
+      .map((a) => a.display_name || a.email || null)
+      .filter(Boolean)
+      .slice(0, 4) as string[];
+    const companyNames = Array.from(new Set(
+      externals
+        .map((a) => (a.email ? contactsByEmail[a.email]?.companyName : null))
+        .filter(Boolean),
+    )) as string[];
+    const companyLabel = companyNames[0] || 'the client team';
+    const summary = `Summary\n${eventTitle} was reviewed with ${attendeeNames.length ? attendeeNames.join(', ') : 'the meeting participants'}, with ${organizerEmail || 'the organizer'} coordinating next steps for ${companyLabel}. This note was synthesized from local meeting details because a Claap summary was not yet available.`;
+    const actionItems = [
+      `- Send a recap and confirm owners for the next ${companyLabel} follow-up.`,
+      `- Capture any open questions from ${attendeeNames[0] || 'the attendees'} and route them internally.`,
+      `- Schedule the next checkpoint and record any deal or company updates from this meeting.`,
+    ];
+    const takeaways = [
+      `- This synthesized note is anchored to “${eventTitle}”.`,
+      `- Attendees involved: ${attendeeNames.length ? attendeeNames.join(', ') : 'not fully captured on the event'}.`,
+    ];
+    return [summary, '', 'Action items', ...actionItems, '', 'Key takeaways', ...takeaways].join('\n');
+  };
+
+  useEffect(() => {
+    if (noteDirty || noteDraft.trim() || !claapCtx.recording?.linkedNote?.trim()) return;
+    const existingNote = claapCtx.recording.linkedNote.trim();
+    setNoteDraft(existingNote);
+    setNotePrefilledFromClaap(false);
+    setNotePrefillRecordingId(claapCtx.recording.id);
+  }, [claapCtx.recording?.id, claapCtx.recording?.linkedNote, noteDirty, noteDraft]);
+
   // Auto-prefill the note when a linked Claap recording has AI content and
   // the user hasn't typed yet. If a different recording later becomes linked,
   // prompt before overwriting an unedited prefill.
@@ -1139,6 +1171,19 @@ function EventDetailPane({
     setNotePrefillRecordingId(claapCtx.recording.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claapCtx.recording?.id, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty]);
+
+  useEffect(() => {
+    const hasContent = !!claapCtx.summary || claapCtx.actionItems.length > 0 || claapCtx.keyTakeaways.length > 0;
+    if (noteDirty || noteDraft.trim() || hasContent) return;
+    const prefillKey = claapCtx.recording?.id || `event:${event.id}`;
+    if (notePrefillRecordingId === prefillKey) return;
+    const synthesized = buildLocalSynthesizedNote();
+    setNoteDraft(synthesized);
+    setNotePrefilledFromClaap(true);
+    setNotePrefillRecordingId(prefillKey);
+    console.info('[AddNote prefill]', event.id, true, synthesized.length);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [event.id, claapCtx.recording?.id, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty, noteDraft, notePrefillRecordingId]);
 
   const claapStillGenerating = claapCtx.source === 'none' && !!claapCtx.recording;
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
