@@ -1076,15 +1076,8 @@ function EventDetailPane({
   const [composerPrefillBody, setComposerPrefillBody] = useState<string | undefined>(undefined);
   const [composerForOne, setComposerForOne] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
-  const [dealQuery, setDealQuery] = useState('');
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
-
-  const matchingDeals = useMemo(() => {
-    const q = dealQuery.trim().toLowerCase();
-    if (!q) return deals.slice(0, 8);
-    return deals.filter(d => d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q)).slice(0, 12);
-  }, [deals, dealQuery]);
 
   const eventTitle = (event.summary || '(No title)').trim();
   const allEmails = externals.map(a => (a.email || '').trim()).filter(Boolean);
