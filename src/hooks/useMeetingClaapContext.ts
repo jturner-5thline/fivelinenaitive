@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -99,6 +100,8 @@ export function useMeetingClaapContext(eventId: string | null | undefined): Meet
           actionItems,
           keyTakeaways,
           source: hasReal ? 'claap' : hasSynth ? 'synthesized' : 'none',
+          transcriptAvailable: Boolean(recording?.transcript_available || meeting?.transcript),
+          fetching: false,
         };
         return ctx;
       } catch (err) {
@@ -108,13 +111,44 @@ export function useMeetingClaapContext(eventId: string | null | undefined): Meet
     },
   });
 
+  const synthesisAttemptedRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const recording = query.data?.recording;
+    if (!eventId || !company?.id || !recording) return;
+    if (query.isLoading || query.isFetching) return;
+    if (query.data?.source !== 'none') return;
+
+    const attemptKey = recording.meetingRowId || recording.id;
+    if (!attemptKey || synthesisAttemptedRef.current === attemptKey) return;
+    synthesisAttemptedRef.current = attemptKey;
+
+    void supabase.functions.invoke('synthesize-meeting-note', {
+      body: {
+        event_id: eventId,
+        meeting_id: recording.meetingRowId,
+        recording_id: recording.id,
+      },
+    }).then(({ error }) => {
+      if (error) {
+        console.warn('useMeetingClaapContext synthesis invoke failed', error);
+        return;
+      }
+      void query.refetch();
+    }).catch((err) => {
+      console.warn('useMeetingClaapContext synthesis threw', err);
+    });
+  }, [company?.id, eventId, query.data, query.isFetching, query.isLoading, query.refetch]);
+
   return {
     recording: query.data?.recording ?? null,
     summary: query.data?.summary ?? null,
     actionItems: query.data?.actionItems ?? [],
     keyTakeaways: query.data?.keyTakeaways ?? [],
     source: query.data?.source ?? 'none',
+    transcriptAvailable: query.data?.transcriptAvailable ?? false,
     isLoading: query.isLoading || query.isFetching,
+    fetching: query.isFetching,
     error: query.error instanceof Error ? query.error.message : null,
     refetch: query.refetch,
   };

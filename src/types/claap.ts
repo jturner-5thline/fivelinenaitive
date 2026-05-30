@@ -22,7 +22,9 @@ export interface MeetingClaapContextValue {
   actionItems: string[];
   keyTakeaways: string[];
   source: MeetingClaapSource;
+  transcriptAvailable: boolean;
   isLoading: boolean;
+  fetching: boolean;
   error: string | null;
 }
 
