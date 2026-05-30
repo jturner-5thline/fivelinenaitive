@@ -9630,8 +9630,11 @@ export type Database = {
           changed_by: string | null
           company_id: string | null
           deal_id: string
+          event_type: string | null
           exited_at: string | null
           from_stage: string | null
+          from_stage_id: string | null
+          from_stage_label_raw: string | null
           id: string
           pipeline_id: string | null
           source: string | null
@@ -9645,8 +9648,11 @@ export type Database = {
           changed_by?: string | null
           company_id?: string | null
           deal_id: string
+          event_type?: string | null
           exited_at?: string | null
           from_stage?: string | null
+          from_stage_id?: string | null
+          from_stage_label_raw?: string | null
           id?: string
           pipeline_id?: string | null
           source?: string | null
@@ -9660,8 +9666,11 @@ export type Database = {
           changed_by?: string | null
           company_id?: string | null
           deal_id?: string
+          event_type?: string | null
           exited_at?: string | null
           from_stage?: string | null
+          from_stage_id?: string | null
+          from_stage_label_raw?: string | null
           id?: string
           pipeline_id?: string | null
           source?: string | null
@@ -25135,9 +25144,8 @@ export type Database = {
           duration: string | null
           entered_at: string | null
           exited_at: string | null
-          from_stage_id: string | null
           pipeline_id: string | null
-          to_stage_id: string | null
+          stage_id: string | null
         }
         Relationships: [
           {

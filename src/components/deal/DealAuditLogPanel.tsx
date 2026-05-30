@@ -44,6 +44,7 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   rename_reverted: { icon: Undo2, color: 'text-cyan-400', label: 'Rename Reverted' },
   claap_recording_linked: { icon: Video, color: 'text-primary', label: 'Call Linked' },
   stage_changed: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Changed' },
+  stage_exited: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Exited' },
 };
 
 const FILTER_OPTIONS = [
@@ -82,6 +83,10 @@ function describeAction(entry: DealAuditEntry): string {
       const toL = meta.to_label || (meta.to_stage ? String(meta.to_stage).replace(/-/g, ' ') : name);
       if (fromL && fromL !== '—') return `moved stage from "${fromL}" to "${toL}"`;
       return `set stage to "${toL}"`;
+    }
+    case 'stage_exited': {
+      const exitL = meta.exit_stage_label || name || 'a stage';
+      return `exited stage "${exitL}"`;
     }
     default: return entry.action_type.replace(/_/g, ' ');
   }
@@ -238,12 +243,14 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
                   const revertable = isRevertable(entry);
                   const isProcessing = processingId === entry.id;
 
-                  if (entry.action_type === 'stage_changed') {
+                  if (entry.action_type === 'stage_changed' || entry.action_type === 'stage_exited') {
                     const meta = entry.metadata || {};
+                    const isExit = entry.action_type === 'stage_exited';
                     const fromLabel = meta.from_label || (meta.from_stage ? String(meta.from_stage).replace(/-/g, ' ') : null);
                     const toLabel = meta.to_label || (meta.to_stage ? String(meta.to_stage).replace(/-/g, ' ') : entry.entity_name) || 'Unknown';
+                    const exitLabel = meta.exit_stage_label || entry.entity_name || 'a stage';
                     const hasFrom = fromLabel && fromLabel !== '—';
-                    const isBackfill = meta.source === 'backfill';
+                    const isBackfill = meta.source === 'backfill' || meta.source === 'backfill_exit';
                     const who = isBackfill
                       ? 'System (backfill)'
                       : entry.user_display_name?.trim();
@@ -254,20 +261,31 @@ export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loadin
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs leading-relaxed">
-                            <span className="text-muted-foreground">
-                              {hasFrom ? 'Stage changed from' : 'Stage set to'}
-                            </span>
-                            {hasFrom && (
+                            {isExit ? (
                               <>
-                                <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/40 bg-muted/40 text-[11px] text-muted-foreground break-words">
-                                  {fromLabel}
+                                <span className="text-muted-foreground">Exited stage</span>
+                                <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
+                                  {exitLabel}
                                 </span>
-                                <span className="text-muted-foreground"> to </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="text-muted-foreground">
+                                  {hasFrom ? 'Stage changed from' : 'Entered stage'}
+                                </span>
+                                {hasFrom && (
+                                  <>
+                                    <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/40 bg-muted/40 text-[11px] text-muted-foreground break-words">
+                                      {fromLabel}
+                                    </span>
+                                    <span className="text-muted-foreground"> to </span>
+                                  </>
+                                )}
+                                <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
+                                  {toLabel}
+                                </span>
                               </>
                             )}
-                            <span className="inline-flex items-center max-w-full px-1.5 py-0.5 rounded border border-border/60 bg-muted/70 text-[11px] font-medium text-foreground break-words">
-                              {toLabel}
-                            </span>
                             {isBackfill && (
                               <span className="inline-flex items-center px-1.5 py-0.5 rounded border border-amber-500/30 bg-amber-500/10 text-[10px] font-medium text-amber-600 dark:text-amber-400">
                                 Backfilled
