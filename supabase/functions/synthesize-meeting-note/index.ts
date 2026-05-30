@@ -4,7 +4,6 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 const CLAAP_API_TOKEN = Deno.env.get('CLAAP_API_TOKEN') ?? '';
 const CACHE_MS = 24 * 60 * 60 * 1000;
 
@@ -71,44 +70,98 @@ function deterministicFallback(input: {
   };
 }
 
-async function generateWithAnthropic(prompt: string): Promise<SynthNote | null> {
-  if (!ANTHROPIC_API_KEY) return null;
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 900,
-      temperature: 0.2,
-      system: 'You create concise, professional meeting recap notes for an internal CRM. Return only valid JSON with keys summary_md, action_items, key_takeaways.',
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
+async function loadMeetingContext(admin: ReturnType<typeof createClient>, params: {
+  companyIds: string[];
+  meetingId?: string;
+  recordingExternalId?: string;
+  eventId?: string;
+}) {
+  const { companyIds, meetingId, recordingExternalId, eventId } = params;
 
-  if (!response.ok) {
-    console.warn('synthesize-meeting-note anthropic error', response.status, await response.text());
-    return null;
+  let meeting: Record<string, any> | null = null;
+  if (meetingId) {
+    const { data } = await admin
+      .from('claap_meetings')
+      .select('id, claap_id, title, transcript, ai_summary, next_steps, key_decisions, deal_id, company_id, started_at, organizer_email')
+      .eq('id', meetingId)
+      .maybeSingle();
+    meeting = data ?? null;
   }
 
-  const data = await response.json();
-  const text = data?.content?.map((item: any) => item?.text || '').join('\n') || '';
-  if (!text) return null;
-
-  try {
-    const parsed = JSON.parse(text) as Partial<SynthNote>;
-    return {
-      summary_md: String(parsed.summary_md || '').trim(),
-      action_items: asTextArray(parsed.action_items),
-      key_takeaways: asTextArray(parsed.key_takeaways),
-    };
-  } catch (error) {
-    console.warn('synthesize-meeting-note parse error', error, text.slice(0, 300));
-    return null;
+  let recording: Record<string, any> | null = null;
+  if (recordingExternalId) {
+    const { data } = await admin
+      .from('claap_recordings')
+      .select('id, org_company_id, external_id, title, started_at, organizer_email, participants, synthesized_note, synthesized_note_generated_at')
+      .eq('external_id', recordingExternalId)
+      .in('org_company_id', companyIds)
+      .maybeSingle();
+    recording = data ?? null;
   }
+
+  if (!recording && meeting?.claap_id) {
+    const { data } = await admin
+      .from('claap_recordings')
+      .select('id, org_company_id, external_id, title, started_at, organizer_email, participants, synthesized_note, synthesized_note_generated_at')
+      .eq('external_id', meeting.claap_id)
+      .in('org_company_id', companyIds)
+      .maybeSingle();
+    recording = data ?? null;
+  }
+
+  if (!meeting && recording?.external_id) {
+    const { data } = await admin
+      .from('claap_meetings')
+      .select('id, claap_id, title, transcript, ai_summary, next_steps, key_decisions, deal_id, company_id, started_at, organizer_email')
+      .eq('claap_id', recording.external_id)
+      .maybeSingle();
+    meeting = data ?? null;
+  }
+
+  let linkedEvent: Record<string, any> | null = null;
+  if (eventId) {
+    const { data } = await admin
+      .from('calendar_events')
+      .select('event_id, title, start_time, end_time, organizer_email, attendees, description')
+      .eq('event_id', eventId)
+      .limit(1)
+      .maybeSingle();
+    linkedEvent = data ?? null;
+  }
+
+  let eventLink: Record<string, any> | null = null;
+  if (eventId && (recording?.external_id || meeting?.claap_id)) {
+    const { data } = await admin
+      .from('event_claap_recordings')
+      .select('event_id, recording_id, notes, org_company_id')
+      .eq('event_id', eventId)
+      .eq('recording_id', recording?.external_id || meeting?.claap_id)
+      .maybeSingle();
+    eventLink = data ?? null;
+  }
+
+  const companyId = eventLink?.org_company_id || recording?.org_company_id || meeting?.company_id || companyIds[0] || null;
+
+  return { meeting, recording, linkedEvent, eventLink, companyId };
+}
+
+async function upsertMeetingSynthesizedNote(admin: ReturnType<typeof createClient>, input: {
+  meetingId: string;
+  companyId: string;
+  payload: SynthNote;
+  createdBy: string;
+  model: string | null;
+}) {
+  await admin
+    .from('meeting_synthesized_notes')
+    .upsert({
+      meeting_id: input.meetingId,
+      org_company_id: input.companyId,
+      content: input.payload,
+      model: input.model,
+      source: 'synthesized',
+      created_by: input.createdBy,
+    }, { onConflict: 'meeting_id' });
 }
 
 Deno.serve(async (req) => {
@@ -123,8 +176,8 @@ Deno.serve(async (req) => {
     const admin = createClient(SB_URL, SERVICE);
     const body = await req.json().catch(() => ({} as any));
     const action = body?.action || 'single';
+    const meetingId = body?.meeting_id as string | undefined;
     const recordingExternalId = body?.recording_id as string | undefined;
-    const recordingPayload = body?.recording_payload as any;
     const eventId = body?.event_id as string | undefined;
     const days = Math.max(1, Math.min(Number(body?.days) || 30, 60));
 
@@ -143,114 +196,91 @@ Deno.serve(async (req) => {
       });
     }
 
-    async function synthesizeOne(externalId: string, linkedEventId?: string | null, payload?: any) {
-      let { data: recording, error: recordingError } = await admin
-        .from('claap_recordings')
-        .select('id, org_company_id, external_id, title, started_at, organizer_email, participants, summary, action_items, key_takeaways, synthesized_note, synthesized_note_generated_at')
-        .eq('external_id', externalId)
-        .in('org_company_id', companyIds)
-        .maybeSingle();
-      if ((!recording || recordingError) && payload?.id) {
-        const { data: seeded, error: seedError } = await admin
-          .from('claap_recordings')
-          .upsert({
-            org_company_id: companyIds[0],
-            external_id: payload.id,
-            title: payload.title || null,
-            started_at: payload?.meeting?.startingAt || payload?.createdAt || null,
-            ended_at: payload?.meeting?.endingAt || null,
-            organizer_email: payload?.recorder?.email || null,
-            participants: payload?.meeting?.participants || [],
-            source_payload: { url: payload?.url || null, thumbnailUrl: payload?.thumbnailUrl || null, durationSeconds: payload?.durationSeconds || null },
-            status: 'linked',
-          }, { onConflict: 'org_company_id,external_id' })
-          .select('id, org_company_id, external_id, title, started_at, organizer_email, participants, summary, action_items, key_takeaways, synthesized_note, synthesized_note_generated_at')
-          .single();
-        recording = seeded;
-        recordingError = seedError ?? null;
-      }
-      if (recordingError || !recording) throw new Error(recordingError?.message || 'Recording not found');
+    async function synthesizeOne(input: { meetingId?: string; recordingExternalId?: string; eventId?: string | null }) {
+      const context = await loadMeetingContext(admin, {
+        companyIds,
+        meetingId: input.meetingId,
+        recordingExternalId: input.recordingExternalId,
+        eventId: input.eventId || undefined,
+      });
 
-      const realSummary = (recording.summary || '').trim() || null;
-      const realActions = asTextArray(recording.action_items);
-      const realTakeaways = asTextArray(recording.key_takeaways);
-      if (realSummary || realActions.length > 0 || realTakeaways.length > 0) {
-        return {
-          source: 'claap',
-          note: buildNote(realSummary, realActions, realTakeaways),
-          payload: { summary_md: realSummary || '', action_items: realActions, key_takeaways: realTakeaways },
-          recording_id: externalId,
-        };
-      }
+      const { meeting, recording, linkedEvent, eventLink, companyId } = context;
+      if (!meeting && !recording && !linkedEvent) throw new Error('Meeting context not found');
 
-      const generatedAt = recording.synthesized_note_generated_at ? new Date(recording.synthesized_note_generated_at).getTime() : 0;
-      const cached = recording.synthesized_note as Record<string, unknown> | null;
+      const recordingId = recording?.external_id || meeting?.claap_id || null;
+      const meetingRowId = meeting?.id || null;
+
+      const generatedAt = recording?.synthesized_note_generated_at ? new Date(recording.synthesized_note_generated_at).getTime() : 0;
+      const cached = (recording?.synthesized_note as Record<string, unknown> | null) ?? null;
       if (cached && generatedAt > Date.now() - CACHE_MS) {
         const cachedPayload = {
           summary_md: String(cached.summary_md || '').trim(),
           action_items: asTextArray(cached.action_items),
           key_takeaways: asTextArray(cached.key_takeaways),
         };
+        if (meetingRowId && companyId) {
+          await upsertMeetingSynthesizedNote(admin, {
+            meetingId: meetingRowId,
+            companyId,
+            payload: cachedPayload,
+            createdBy: authData.user.id,
+            model: 'cached-local-synthesis',
+          });
+        }
         return {
           source: 'synthesized',
           note: buildNote(cachedPayload.summary_md, cachedPayload.action_items, cachedPayload.key_takeaways),
           payload: cachedPayload,
-          recording_id: externalId,
+          recording_id: recordingId,
+          meeting_id: meetingRowId,
         };
       }
 
-      const { data: meeting } = await admin
-        .from('claap_meetings')
-        .select('id, title, transcript, ai_summary, next_steps, key_decisions, deal_id, company_id')
-        .eq('claap_id', externalId)
-        .maybeSingle();
-      const { data: eventLink } = linkedEventId
-        ? await admin.from('event_claap_recordings').select('notes').eq('event_id', linkedEventId).eq('recording_id', externalId).maybeSingle()
-        : { data: null };
       const { data: deal } = meeting?.deal_id
         ? await admin.from('deals').select('name, company').eq('id', meeting.deal_id).maybeSingle()
         : { data: null };
 
-      const attendeeNames = (Array.isArray(recording.participants) ? recording.participants : [])
-        .map((p: any) => String(p?.name || p?.email || '').trim())
-        .filter(Boolean)
-        .slice(0, 8);
+      const attendeeNames = Array.from(new Set([
+        ...(Array.isArray(recording?.participants) ? recording!.participants : []).map((p: any) => String(p?.name || p?.email || '').trim()),
+        ...(Array.isArray(linkedEvent?.attendees) ? linkedEvent!.attendees : []).map((p: any) => String(p?.display_name || p?.name || p?.email || '').trim()),
+      ].filter(Boolean))).slice(0, 8);
 
-      const prompt = [
-        'Create a concise internal meeting note with three sections: Summary, Action items, Key takeaways.',
-        'Return only JSON: {"summary_md": string, "action_items": string[], "key_takeaways": string[]}.',
-        `Recording title: ${recording.title || meeting?.title || 'Untitled meeting'}`,
-        recording.started_at ? `Scheduled time: ${recording.started_at}` : null,
-        recording.organizer_email ? `Organizer: ${recording.organizer_email}` : null,
-        attendeeNames.length ? `Attendees: ${attendeeNames.join(', ')}` : null,
-        deal ? `Deal context: ${deal.name}${deal.company ? ` (${deal.company})` : ''}` : null,
-        eventLink?.notes ? `Prior saved note: ${String(eventLink.notes).slice(0, 600)}` : null,
-        meeting?.transcript ? `Transcript snippet:\n${String(meeting.transcript).slice(0, 6000)}` : 'Transcript snippet unavailable.',
-      ].filter(Boolean).join('\n\n');
-
-      const synthesized = await generateWithAnthropic(prompt) || deterministicFallback({
-        title: recording.title || meeting?.title || null,
-        startedAt: recording.started_at,
-        organizerEmail: recording.organizer_email,
+      const synthesized = deterministicFallback({
+        title: recording?.title || meeting?.title || linkedEvent?.title || null,
+        startedAt: recording?.started_at || meeting?.started_at || linkedEvent?.start_time || null,
+        organizerEmail: recording?.organizer_email || meeting?.organizer_email || linkedEvent?.organizer_email || null,
         attendees: attendeeNames,
-        transcript: meeting?.transcript || null,
+        transcript: null,
         dealName: deal?.name || deal?.company || null,
         savedNote: eventLink?.notes || null,
       });
 
-      await admin
-        .from('claap_recordings')
-        .update({
-          synthesized_note: synthesized,
-          synthesized_note_generated_at: new Date().toISOString(),
-        })
-        .eq('id', recording.id);
+      if (recording?.id) {
+        await admin
+          .from('claap_recordings')
+          .update({
+            synthesized_note: synthesized,
+            synthesized_note_generated_at: new Date().toISOString(),
+          })
+          .eq('id', recording.id);
+      }
+
+      if (meetingRowId && companyId) {
+        await upsertMeetingSynthesizedNote(admin, {
+          meetingId: meetingRowId,
+          companyId,
+          payload: synthesized,
+          createdBy: authData.user.id,
+          model: 'local-metadata-synthesizer',
+        });
+      }
 
       return {
         source: 'synthesized',
         note: buildNote(synthesized.summary_md, synthesized.action_items, synthesized.key_takeaways),
         payload: synthesized,
-        recording_id: externalId,
+        recording_id: recordingId,
+        meeting_id: meetingRowId,
       };
     }
 
@@ -268,7 +298,7 @@ Deno.serve(async (req) => {
       for (const link of links || []) {
         if (!link.recording_id || seen.has(link.recording_id)) continue;
         seen.add(link.recording_id);
-        const result = await synthesizeOne(link.recording_id, link.event_id);
+        const result = await synthesizeOne({ recordingExternalId: link.recording_id, eventId: link.event_id });
         results.push({ recording_id: result.recording_id, source: result.source });
       }
 
@@ -281,13 +311,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!recordingExternalId) return json({ error: 'recording_id required' }, 400);
-    const result = await synthesizeOne(recordingExternalId, eventId || null, recordingPayload);
+    if (!recordingExternalId && !meetingId && !eventId) return json({ error: 'recording_id, meeting_id, or event_id required' }, 400);
+    const result = await synthesizeOne({
+      meetingId,
+      recordingExternalId,
+      eventId: eventId || null,
+    });
     return json({
       ok: true,
       claap_token_present: !!CLAAP_API_TOKEN,
       source: result.source,
       recording_id: result.recording_id,
+      meeting_id: result.meeting_id,
       note: result.note,
       synthesized_note: result.payload,
     });

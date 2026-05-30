@@ -1082,8 +1082,11 @@ function EventDetailPane({
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
   const claapCtx = useMeetingClaapContext(event.id);
+  const { fetching: claapCtxFetching, transcriptAvailable } = claapCtx;
   const [claapBackfilling, setClaapBackfilling] = useState(false);
   const [claapBackfillTried, setClaapBackfillTried] = useState<string | null>(null);
+  const eventTitle = (event.summary || '(No title)').trim();
+  const organizerEmail = event.organizer?.email || null;
 
   const regenerateClaapSummary = async () => {
     if (!claapCtx.recording?.meetingRowId) return;
@@ -1136,7 +1139,6 @@ function EventDetailPane({
         .filter(Boolean),
     )) as string[];
     const companyLabel = companyNames[0] || 'the client team';
-    const organizerEmail = event.organizer?.email || null;
     const summary = `Summary\n${eventTitle} was reviewed with ${attendeeNames.length ? attendeeNames.join(', ') : 'the meeting participants'}, with ${organizerEmail || 'the organizer'} coordinating next steps for ${companyLabel}. This note was synthesized from local meeting details because a Claap summary was not yet available.`;
     const actionItems = [
       `- Send a recap and confirm owners for the next ${companyLabel} follow-up.`,
@@ -1190,7 +1192,6 @@ function EventDetailPane({
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
 
-  const eventTitle = (event.summary || '(No title)').trim();
   const allEmails = externals.map(a => (a.email || '').trim()).filter(Boolean);
   const why = useMemo(() => {
     if (isCarry && externals.length === 0) return 'Internal meeting still flagged as outstanding — no external follow-up captured.';
@@ -1461,7 +1462,7 @@ function EventDetailPane({
             {notePrefilledFromClaap && (
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
-                  <Sparkles className="h-2.5 w-2.5" /> AI pre-filled from Claap
+                  <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — {claapCtx.source === 'synthesized' ? 'Synthesized' : 'Claap'}
                 </span>
                 <button
                   type="button"
@@ -1476,7 +1477,7 @@ function EventDetailPane({
                 </button>
               </div>
             )}
-            {claapStillGenerating && !notePrefilledFromClaap && (
+            {claapStillGenerating && !notePrefilledFromClaap && !transcriptAvailable && !claapCtxFetching && (
               <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
                 <span>
                   Claap summary not yet available for this recording — generated after the call ends.

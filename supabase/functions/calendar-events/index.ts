@@ -32,6 +32,35 @@ async function safeUpstreamJson(response: Response): Promise<any> {
   };
 }
 
+function retryDelayMs(response: Response, attempt: number): number {
+  const retryAfter = Number(response.headers.get("retry-after") || "");
+  if (Number.isFinite(retryAfter) && retryAfter > 0) return retryAfter * 1000;
+  return Math.min(1000 * 2 ** attempt, 8000);
+}
+
+async function fetchWithBackoff(url: string, init: RequestInit, label: string): Promise<{ response: Response; data: any; attempts: number }> {
+  let lastResponse: Response | null = null;
+  let lastData: any = null;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const response = await fetch(url, init);
+    const data = await safeUpstreamJson(response);
+    lastResponse = response;
+    lastData = data;
+
+    if (response.ok) return { response, data, attempts: attempt + 1 };
+
+    const shouldRetry = response.status === 429 || response.status >= 500;
+    if (!shouldRetry || attempt === 2) break;
+
+    const waitMs = retryDelayMs(response, attempt);
+    console.warn(`[calendar-events] ${label} retrying after ${response.status} in ${waitMs}ms (attempt ${attempt + 1})`);
+    await new Promise((resolve) => setTimeout(resolve, waitMs));
+  }
+
+  return { response: lastResponse!, data: lastData, attempts: 3 };
+}
+
 interface EventsRequest {
   action: "list" | "get" | "list_calendars" | "sync_all" | "create" | "update" | "delete" | "create_calendar";
   calendar_id?: string;
@@ -272,8 +301,7 @@ serve(async (req: Request): Promise<Response> => {
 
     switch (body.action) {
       case "list_calendars": {
-        const response = await fetch(`${baseUrl}/calendars`, { headers });
-        const data = await safeUpstreamJson(response);
+        const { response, data } = await fetchWithBackoff(`${baseUrl}/calendars`, { headers }, "list_calendars");
 
         if (!response.ok) {
           console.error("Nylas calendars error:", data);
@@ -324,8 +352,7 @@ serve(async (req: Request): Promise<Response> => {
           url.searchParams.set("limit", String(Math.min(pageLimit, requested - allRaw.length)));
           if (cursor) url.searchParams.set("page_token", cursor);
 
-          const response = await fetch(url.toString(), { headers });
-          const data = await safeUpstreamJson(response);
+          const { response, data } = await fetchWithBackoff(url.toString(), { headers }, `list:${calendarId}`);
 
           if (!response.ok) {
             console.error("Nylas events error:", data);
@@ -333,7 +360,7 @@ serve(async (req: Request): Promise<Response> => {
             // callers don't blow up with a 429 / blank screen. Surface a soft
             // `rate_limited` flag for callers that want to react.
             if (response.status === 429) {
-              return new Response(JSON.stringify({ events: allRaw, rate_limited: true, next_page_token: null }), {
+              return new Response(JSON.stringify({ events: allRaw, rate_limited: true, next_page_token: null, warning: 'calendar_rate_limited' }), {
                 status: 200,
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
               });
@@ -373,8 +400,7 @@ serve(async (req: Request): Promise<Response> => {
         const url = new URL(`${baseUrl}/events/${body.event_id}`);
         url.searchParams.set("calendar_id", calendarId);
 
-        const response = await fetch(url.toString(), { headers });
-        const data = await safeUpstreamJson(response);
+        const { response, data } = await fetchWithBackoff(url.toString(), { headers }, `get:${body.event_id}`);
 
         if (!response.ok) {
           return new Response(JSON.stringify({ error: data.message || "Failed to get event" }), {
@@ -390,8 +416,7 @@ serve(async (req: Request): Promise<Response> => {
 
       case "sync_all": {
         // Fetch all calendars
-        const calResponse = await fetch(`${baseUrl}/calendars`, { headers });
-        const calData = await safeUpstreamJson(calResponse);
+        const { response: calResponse, data: calData } = await fetchWithBackoff(`${baseUrl}/calendars`, { headers }, "sync_all_calendars");
 
         if (!calResponse.ok) {
           return new Response(JSON.stringify({ error: calData.message || "Failed to list calendars" }), {
@@ -425,13 +450,14 @@ serve(async (req: Request): Promise<Response> => {
           url.searchParams.set("end", String(endUnix));
           url.searchParams.set("limit", String(Math.min(maxResults, 200)));
 
-          const evResponse = await fetch(url.toString(), { headers });
-          const evData = await safeUpstreamJson(evResponse);
+          const { response: evResponse, data: evData } = await fetchWithBackoff(url.toString(), { headers }, `sync_all:${cal.id}`);
 
           if (evResponse.ok && evData.data) {
             for (const e of evData.data) {
               allEvents.push(normalizeNylasEvent(e, cal.id));
             }
+          } else if (evResponse.status === 429) {
+            console.warn(`[calendar-events] sync_all rate limited for calendar ${cal.id}`);
           }
         }
 
