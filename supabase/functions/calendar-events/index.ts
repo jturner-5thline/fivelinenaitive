@@ -11,6 +11,27 @@ const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+/**
+ * Safely parse an upstream (Nylas) response. If the body is not JSON
+ * (e.g. an HTML 502/429/Cloudflare error page) we return a normalized
+ * object instead of throwing — otherwise the JSON parse error bubbles
+ * up as a 500 with the cryptic "Unexpected token '<'" message.
+ */
+async function safeUpstreamJson(response: Response): Promise<any> {
+  const ct = response.headers.get("content-type") || "";
+  const text = await response.text();
+  if (ct.includes("application/json")) {
+    try { return JSON.parse(text); } catch { /* fall through */ }
+  } else {
+    try { return JSON.parse(text); } catch { /* not JSON */ }
+  }
+  const snippet = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+  return {
+    __nonJson: true,
+    message: `Upstream returned ${response.status} ${response.statusText}${snippet ? `: ${snippet}` : ""}`,
+  };
+}
+
 interface EventsRequest {
   action: "list" | "get" | "list_calendars" | "sync_all" | "create" | "update" | "delete" | "create_calendar";
   calendar_id?: string;
