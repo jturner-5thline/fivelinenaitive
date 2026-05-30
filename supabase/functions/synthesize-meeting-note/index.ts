@@ -4,7 +4,6 @@ import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
 const SB_URL = Deno.env.get('SUPABASE_URL')!;
 const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
 const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const ANTHROPIC_API_KEY = Deno.env.get('ANTHROPIC_API_KEY') ?? '';
 const CLAAP_API_TOKEN = Deno.env.get('CLAAP_API_TOKEN') ?? '';
 const CACHE_MS = 24 * 60 * 60 * 1000;
 
@@ -163,46 +162,6 @@ async function upsertMeetingSynthesizedNote(admin: ReturnType<typeof createClien
       source: 'synthesized',
       created_by: input.createdBy,
     }, { onConflict: 'meeting_id' });
-}
-
-async function generateWithAnthropic(prompt: string): Promise<SynthNote | null> {
-  if (!ANTHROPIC_API_KEY) return null;
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'x-api-key': ANTHROPIC_API_KEY,
-      'anthropic-version': '2023-06-01',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-5',
-      max_tokens: 900,
-      temperature: 0.2,
-      system: 'You create concise, professional meeting recap notes for an internal CRM. Return only valid JSON with keys summary_md, action_items, key_takeaways.',
-      messages: [{ role: 'user', content: prompt }],
-    }),
-  });
-
-  if (!response.ok) {
-    console.warn('synthesize-meeting-note anthropic error', response.status, await response.text());
-    return null;
-  }
-
-  const data = await response.json();
-  const text = data?.content?.map((item: any) => item?.text || '').join('\n') || '';
-  if (!text) return null;
-
-  try {
-    const parsed = JSON.parse(text) as Partial<SynthNote>;
-    return {
-      summary_md: String(parsed.summary_md || '').trim(),
-      action_items: asTextArray(parsed.action_items),
-      key_takeaways: asTextArray(parsed.key_takeaways),
-    };
-  } catch (error) {
-    console.warn('synthesize-meeting-note parse error', error, text.slice(0, 300));
-    return null;
-  }
 }
 
 Deno.serve(async (req) => {
