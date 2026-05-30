@@ -323,6 +323,14 @@ export function ConsolidatedDebtPipelineDashboard({
   const [trendMode, setTrendMode] = useState<TrendChartMode>('monthly');
   const [pendingTrendReopen, setPendingTrendReopen] = useState<PendingTrendReopen | null>(null);
   const [drilldown, setDrilldown] = useState<{ title: string; deals: StageEntryDeal[]; periodNote?: string } | null>(null);
+  const [lastRefresh, setLastRefresh] = useState<Date>(() => new Date());
+
+  useEffect(() => {
+    if (!m.fundedInvoicedTrend.isLoading && !m.fundedInvoiced.isLoading) {
+      setLastRefresh(new Date());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [m.fundedInvoicedTrend.isLoading, m.fundedInvoiced.isLoading, m.fundedInvoicedTrend.monthly]);
 
   const fundedTrendBuckets = trendMode === 'monthly' ? m.fundedInvoicedTrend.monthly : m.fundedInvoicedTrend.quarterly;
 
@@ -657,6 +665,10 @@ export function ConsolidatedDebtPipelineDashboard({
         deals={drilldown?.deals ?? []}
         periodNote={drilldown?.periodNote}
       />
+
+      <div className="pt-2 text-[10px] text-muted-foreground/70 font-mono">
+        data source: deal_stage_history · source: all · last refresh: {lastRefresh.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'medium' })}
+      </div>
     </div>
   );
 }
