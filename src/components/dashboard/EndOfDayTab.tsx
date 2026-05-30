@@ -1289,52 +1289,37 @@ function EventDetailPane({
         {/* Action items */}
         <section>
           <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Action items</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs" onClick={() => setComposerForAll(true)}>
-              <Mail className="h-3.5 w-3.5" /> Send follow-up
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs" onClick={onCreateTask}>
-              <ListPlus className="h-3.5 w-3.5" /> Create task
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs">
-                  <Link2 className="h-3.5 w-3.5" /> Link to deal
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-2">
-                <Input
-                  value={dealQuery}
-                  onChange={(e) => setDealQuery(e.target.value)}
-                  placeholder="Search deals…"
-                  className="h-7 text-xs mb-2"
-                />
-                <div className="max-h-56 overflow-y-auto space-y-0.5">
-                  {matchingDeals.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground p-2">No deals match.</p>
-                  ) : matchingDeals.map(d => (
-                    <button
-                      key={d.id}
-                      onClick={() => onLinkDeal(d)}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-white/[0.05] text-xs"
-                    >
-                      <div className="font-medium text-white truncate flex items-center gap-1.5">
-                        <Briefcase className="h-3 w-3 text-white/60" />{d.name}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground truncate">{d.company}</div>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 justify-start gap-2 text-xs"
-              onClick={() => setScheduleNextOpen(true)}
-            >
-              <CalendarIcon className="h-3.5 w-3.5" /> Schedule next
-            </Button>
+          <div className="grid grid-cols-1 gap-2">
+            <MeetingFollowupInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              primaryAttendeeName={externals[0]?.display_name || null}
+              primaryAttendeeEmail={externals[0]?.email || null}
+              onOpenComposer={(prefilled) => {
+                setComposerPrefillBody(prefilled);
+                setComposerForAll(true);
+              }}
+            />
+            <MeetingTasksInlineAction
+              eventId={event.id}
+              onOpenTask={(initialTitle) => onCreateTask(initialTitle)}
+            />
+            <MeetingDealInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              attendees={(event.attendees || []).map(a => ({
+                email: a.email,
+                displayName: a.display_name,
+                self: a.self,
+              }))}
+              onLinkedDeal={(d) => onLinkDeal(d)}
+            />
+            <MeetingScheduleInlineAction
+              eventId={event.id}
+              primaryAttendeeName={externals[0]?.display_name || null}
+              primaryAttendeeEmail={externals[0]?.email || null}
+              onOpenScheduler={() => setScheduleNextOpen(true)}
+            />
             <FindATimeDialog
               open={scheduleNextOpen}
               onOpenChange={setScheduleNextOpen}
