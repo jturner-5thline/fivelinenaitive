@@ -1432,17 +1432,15 @@ function EventDetailPane({
             {claapStillGenerating && !notePrefilledFromClaap && (
               <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
                 <span>
-                  {claapCtx?.transcriptAvailable
-                    ? 'Claap summary is generating from the transcript — this usually takes ~30 seconds.'
-                    : 'Claap summary not yet available for this recording — generated after the call ends.'}
+                  Claap summary not yet available for this recording — generated after the call ends.
                 </span>
                 <button
                   type="button"
                   className="underline hover:text-white not-italic"
-                  disabled={claapCtxFetching || claapBackfilling}
+                  disabled={claapBackfilling}
                   onClick={regenerateClaapSummary}
                 >
-                  {claapBackfilling ? 'Generating…' : claapCtxFetching ? 'Refreshing…' : 'Refresh'}
+                  {claapBackfilling ? 'Generating…' : 'Refresh'}
                 </button>
               </div>
             )}
