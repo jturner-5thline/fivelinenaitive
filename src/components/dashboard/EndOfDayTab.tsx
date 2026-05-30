@@ -966,9 +966,9 @@ export function EndOfDayTab({
           onEmailSent={(label) => {
             activity.append(selectedEvent.id, { kind: 'email_sent', by: userId, detail: label });
           }}
-          onCreateTask={() => {
+          onCreateTask={(initialTitle) => {
             setPrefill({
-              title: `Follow Up: ${selectedEvent.summary || '(No title)'}`,
+              title: initialTitle || `Follow Up: ${selectedEvent.summary || '(No title)'}`,
               dealId: null,
               eventId: selectedEvent.id,
             });
