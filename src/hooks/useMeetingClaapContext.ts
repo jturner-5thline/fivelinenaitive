@@ -52,6 +52,9 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
       try {
         const { data, error } = await supabase.rpc('get_event_claap_prefill_context', {
           p_event_id: eventId!,
+          p_event_title: eventTitle ?? null,
+          p_event_start: eventStart ?? null,
+          p_organizer_email: organizerEmail ?? null,
         });
         if (error) throw error;
 
@@ -94,6 +97,31 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
   });
 
   const synthesisAttemptedRef = useRef<string | null>(null);
+
+  // Realtime: when a claap_recording_links row is inserted for the matched meeting,
+  // re-fetch immediately so the textarea picks up the freshly-linked real summary.
+  useEffect(() => {
+    const meetingRowId = query.data?.recording?.meetingRowId ?? null;
+    if (!meetingRowId) return;
+    const channel = supabase
+      .channel(`claap-links-${meetingRowId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'claap_recording_links',
+          filter: `entity_id=eq.${meetingRowId}`,
+        },
+        () => {
+          void query.refetch();
+        },
+      )
+      .subscribe();
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [query.data?.recording?.meetingRowId, query.refetch]);
 
   useEffect(() => {
     const recording = query.data?.recording;

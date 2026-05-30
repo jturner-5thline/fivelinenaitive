@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import {
   useClaapReviewQueue, useClaapReviewSummary, useClaapScoringRuns, useClaapMapping,
 } from '@/hooks/useClaapMapping';
 import { ClaapMappingPanel } from '@/components/claap/ClaapMappingPanel';
-import { ChevronDown, ChevronRight, FlaskConical, Activity, RefreshCw } from 'lucide-react';
+import { ChevronDown, ChevronRight, FlaskConical, Activity, RefreshCw, Link2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -118,6 +118,9 @@ export default function ClaapMappingReview() {
   const { data: summary } = useClaapReviewSummary();
   const [expanded, setExpanded] = useState<string | null>(null);
   const [email, setEmail] = useState<string | null>(null);
+  const [orphans, setOrphans] = useState<Array<{ id: string; title: string | null; started_at: string | null; external_id: string | null; summary_len: number }>>([]);
+  const [orphanLoading, setOrphanLoading] = useState(false);
+  const [repairing, setRepairing] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setEmail(data.user?.email ?? null));
@@ -129,6 +132,58 @@ export default function ClaapMappingReview() {
     if (error) { toast.error(error.message); return; }
     toast.success(`Smoke test: auto=${data?.bands?.auto ?? 0}, review=${data?.bands?.review ?? 0}, hold=${data?.bands?.hold ?? 0}`);
     console.log('claap_run_smoke_test result', data);
+  };
+
+  const loadOrphans = useCallback(async () => {
+    setOrphanLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('claap_recordings')
+        .select('id, title, started_at, external_id, summary')
+        .order('started_at', { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      const recIds = (data ?? []).map((r: any) => r.id);
+      if (recIds.length === 0) { setOrphans([]); return; }
+      const { data: links } = await supabase
+        .from('claap_recording_links')
+        .select('recording_id')
+        .eq('link_role', 'primary_meeting')
+        .in('recording_id', recIds);
+      const linked = new Set((links ?? []).map((l: any) => l.recording_id));
+      const out = (data ?? [])
+        .filter((r: any) => !linked.has(r.id))
+        .map((r: any) => ({
+          id: r.id,
+          title: r.title,
+          started_at: r.started_at,
+          external_id: r.external_id,
+          summary_len: (r.summary || '').length,
+        }));
+      setOrphans(out);
+    } catch (err: any) {
+      console.warn('loadOrphans failed', err);
+    } finally {
+      setOrphanLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { void loadOrphans(); }, [loadOrphans]);
+
+  const repairOrphans = async () => {
+    setRepairing(true);
+    try {
+      const { data, error } = await (supabase.rpc as any)('claap_link_orphan_recordings');
+      if (error) throw error;
+      const repaired = data?.orphans_repaired ?? 0;
+      const created = data?.meetings_created ?? 0;
+      toast.success(`Repaired ${repaired} orphan recording(s); created ${created} synthetic meeting(s).`);
+      await loadOrphans();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to repair orphans');
+    } finally {
+      setRepairing(false);
+    }
   };
 
   return (
@@ -166,6 +221,34 @@ export default function ClaapMappingReview() {
           ))}
         </div>
       </header>
+
+      {orphans.length > 0 && (
+        <Card className="p-4 space-y-3 border-amber-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <div className="text-sm font-medium">Orphan recordings ({orphans.length})</div>
+              <div className="text-xs text-muted-foreground">
+                Claap recordings with no primary meeting link. Repair to surface them on Daily Rundown.
+              </div>
+            </div>
+            <Button size="sm" onClick={repairOrphans} disabled={repairing || orphanLoading}>
+              <Link2 className="h-3 w-3 mr-1" /> {repairing ? 'Repairing…' : 'Find/create meetings'}
+            </Button>
+          </div>
+          <div className="space-y-1 max-h-64 overflow-auto">
+            {orphans.slice(0, 20).map(o => (
+              <div key={o.id} className="flex items-center justify-between text-xs px-2 py-1 rounded hover:bg-accent/30">
+                <div className="min-w-0">
+                  <div className="truncate font-medium">{o.title || 'Untitled'}</div>
+                  <div className="text-muted-foreground truncate">
+                    {o.started_at ? new Date(o.started_at).toLocaleString() : '—'} · ext:{o.external_id} · summary {o.summary_len}b
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {isLoading ? (
         <div className="space-y-2"><Skeleton className="h-14" /><Skeleton className="h-14" /></div>
