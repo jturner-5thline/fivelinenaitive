@@ -15686,54 +15686,6 @@ export type Database = {
           },
         ]
       }
-      meeting_claap_resolution: {
-        Row: {
-          created_at: string
-          event_id: string
-          id: string
-          org_company_id: string
-          resolution_status: Database["public"]["Enums"]["meeting_claap_resolution_status"]
-          resolved_at: string
-          run_id: string | null
-          top_candidate_external_id: string | null
-          top_candidate_recording_id: string | null
-          top_candidate_score: number | null
-          top_candidate_title: string | null
-          top_candidate_url: string | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          event_id: string
-          id?: string
-          org_company_id: string
-          resolution_status: Database["public"]["Enums"]["meeting_claap_resolution_status"]
-          resolved_at?: string
-          run_id?: string | null
-          top_candidate_external_id?: string | null
-          top_candidate_recording_id?: string | null
-          top_candidate_score?: number | null
-          top_candidate_title?: string | null
-          top_candidate_url?: string | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          event_id?: string
-          id?: string
-          org_company_id?: string
-          resolution_status?: Database["public"]["Enums"]["meeting_claap_resolution_status"]
-          resolved_at?: string
-          run_id?: string | null
-          top_candidate_external_id?: string | null
-          top_candidate_recording_id?: string | null
-          top_candidate_score?: number | null
-          top_candidate_title?: string | null
-          top_candidate_url?: string | null
-          updated_at?: string
-        }
-        Relationships: []
-      }
       meeting_deal_links: {
         Row: {
           created_at: string
@@ -25740,12 +25692,6 @@ export type Database = {
         | "diligence"
         | "closed_won"
         | "closed_lost"
-      meeting_claap_resolution_status:
-        | "auto_linked"
-        | "suggested"
-        | "no_match"
-        | "manual_linked"
-        | "manually_changed"
       meeting_hold_state: "held" | "confirmed" | "released" | "expired"
       notification_category:
         | "deals"
@@ -26025,13 +25971,6 @@ export const Constants = {
         "diligence",
         "closed_won",
         "closed_lost",
-      ],
-      meeting_claap_resolution_status: [
-        "auto_linked",
-        "suggested",
-        "no_match",
-        "manual_linked",
-        "manually_changed",
       ],
       meeting_hold_state: ["held", "confirmed", "released", "expired"],
       notification_category: [
