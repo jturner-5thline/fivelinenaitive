@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
+import { useClaapTokenStatus } from '@/hooks/useClaapTokenStatus';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
