@@ -30,10 +30,19 @@ const PREFILL_QUERY_SQL = "claap_meetings(company_id scoped, scored by title/org
 
 export function useMeetingClaapContext(input: UseMeetingClaapContextInput): MeetingClaapContextValue & { refetch: () => Promise<unknown> } {
   const { company } = useCompany();
-  const eventId = typeof input === 'object' && input !== null ? input.eventId ?? null : input ?? null;
-  const eventTitle = typeof input === 'object' && input !== null ? input.eventTitle ?? null : null;
-  const eventStart = typeof input === 'object' && input !== null ? input.eventStart ?? null : null;
-  const organizerEmail = typeof input === 'object' && input !== null ? input.organizerEmail ?? null : null;
+  let eventId: string | null = null;
+  let eventTitle: string | null = null;
+  let eventStart: string | null = null;
+  let organizerEmail: string | null = null;
+
+  if (typeof input === 'string') {
+    eventId = input;
+  } else if (input) {
+    eventId = input.eventId ?? null;
+    eventTitle = input.eventTitle ?? null;
+    eventStart = input.eventStart ?? null;
+    organizerEmail = input.organizerEmail ?? null;
+  }
 
   const query = useQuery<MeetingClaapQueryData | null>({
     queryKey: ['meeting-claap-context', eventId, company?.id, eventTitle, eventStart, organizerEmail],
