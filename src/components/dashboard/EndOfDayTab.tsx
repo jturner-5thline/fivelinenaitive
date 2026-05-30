@@ -1081,6 +1081,34 @@ function EventDetailPane({
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
   const { data: claapCtx, refetch: refetchClaapCtx, isFetching: claapCtxFetching } = useMeetingClaapContext(event.id);
+  const [claapBackfilling, setClaapBackfilling] = useState(false);
+  const [claapBackfillTried, setClaapBackfillTried] = useState<string | null>(null);
+
+  const regenerateClaapSummary = async () => {
+    if (!claapCtx?.meetingRowId) return;
+    setClaapBackfilling(true);
+    try {
+      await supabase.functions.invoke('claap-backfill-summaries', {
+        body: { meeting_id: claapCtx.meetingRowId },
+      });
+    } catch (err) {
+      console.warn('claap backfill failed', err);
+    } finally {
+      setClaapBackfilling(false);
+      refetchClaapCtx();
+    }
+  };
+
+  // Auto-trigger backfill once per meeting when transcript exists but no AI content yet.
+  useEffect(() => {
+    if (!claapCtx?.meetingRowId) return;
+    if (claapCtx.hasContent) return;
+    if (!claapCtx.transcriptAvailable) return;
+    if (claapBackfillTried === claapCtx.meetingRowId) return;
+    setClaapBackfillTried(claapCtx.meetingRowId);
+    regenerateClaapSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claapCtx?.meetingRowId, claapCtx?.transcriptAvailable, claapCtx?.hasContent]);
 
   const buildClaapNote = (ctx: NonNullable<typeof claapCtx>): string => {
     const lines: string[] = [];
