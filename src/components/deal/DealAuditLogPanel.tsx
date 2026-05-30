@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 interface DealAuditLogPanelProps {
   entries: DealAuditEntry[];
+  unresolvedStageEntries?: DealAuditEntry[];
   loading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
