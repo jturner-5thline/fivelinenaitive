@@ -50,6 +50,7 @@ import { MeetingFollowupInlineAction } from '@/components/dashboard/MeetingFollo
 import { MeetingTasksInlineAction } from '@/components/dashboard/MeetingTasksInlineAction';
 import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
+import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
@@ -1126,10 +1127,6 @@ function EventDetailPane({
     const titleSuffix = eventTitle ? ` — ${eventTitle}` : '';
     lines.push(`🎥 Claap Summary${titleSuffix}`);
     if (ctx.summary) lines.push('', ctx.summary.trim());
-    if (ctx.actionItems.length) {
-      lines.push('', '✅ Action items');
-      ctx.actionItems.forEach((s) => lines.push(`- ${s}`));
-    }
     if (ctx.keyTakeaways.length) {
       lines.push('', '💡 Key takeaways');
       ctx.keyTakeaways.forEach((s) => lines.push(`- ${s}`));
@@ -1151,16 +1148,11 @@ function EventDetailPane({
     )) as string[];
     const companyLabel = companyNames[0] || 'the client team';
     const summary = `Summary\n${eventTitle} was reviewed with ${attendeeNames.length ? attendeeNames.join(', ') : 'the meeting participants'}, with ${organizerEmail || 'the organizer'} coordinating next steps for ${companyLabel}. This note was synthesized from local meeting details because a Claap summary was not yet available.`;
-    const actionItems = [
-      `- Send a recap and confirm owners for the next ${companyLabel} follow-up.`,
-      `- Capture any open questions from ${attendeeNames[0] || 'the attendees'} and route them internally.`,
-      `- Schedule the next checkpoint and record any deal or company updates from this meeting.`,
-    ];
     const takeaways = [
       `- This synthesized note is anchored to “${eventTitle}”.`,
       `- Attendees involved: ${attendeeNames.length ? attendeeNames.join(', ') : 'not fully captured on the event'}.`,
     ];
-    return [summary, '', 'Action items', ...actionItems, '', 'Key takeaways', ...takeaways].join('\n');
+    return [summary, '', 'Key takeaways', ...takeaways].join('\n');
   };
 
   useEffect(() => {
@@ -1472,6 +1464,14 @@ function EventDetailPane({
 
           {/* Add note */}
           <div className="mt-3">
+            {/* Suggested tasks (extracted from Claap action items) */}
+            <SuggestedTasksSection
+              eventId={event.id}
+              meetingRowId={claapCtx.recording?.meetingRowId ?? null}
+              recordingRowId={claapCtx.recording?.rowId ?? null}
+              source={claapCtx.source}
+              fallbackActionItems={claapCtx.actionItems}
+            />
             <div className="flex items-center gap-1.5 mb-1.5">
               <StickyNote className="h-3 w-3 text-muted-foreground" />
               <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">Add note</span>
@@ -1536,6 +1536,9 @@ function EventDetailPane({
               placeholder={`Note for ${userFirstName}'s records…`}
               className="min-h-[72px] text-xs resize-y bg-white/[0.02]"
             />
+            <p className="mt-1 text-[10px] text-muted-foreground/70 italic">
+              Action items moved to Suggested tasks above.
+            </p>
             <div className="flex justify-end mt-1.5">
               <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
                 onClick={() => {
