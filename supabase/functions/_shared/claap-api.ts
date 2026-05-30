@@ -30,6 +30,7 @@ export interface ClaapActionItem {
   assignee?: string | null;
   due?: string | null;
   checked?: boolean;
+  raw?: string | null;
 }
 
 export interface NormalizedClaapRecording {
@@ -97,6 +98,43 @@ export async function claapGetRecording(externalId: string): Promise<NormalizedC
   return normalizeRecording(r);
 }
 
+// Ingestion-time sanitizer — mirrors src/lib/claap-format.ts so stored
+// action_items are clean and assignee is hoisted out of the text body.
+const ASSIGNEE_PREFIX_RE =
+  /^\s*[*_]{0,2}([A-Z][a-zA-Z'.\-]+(?:\s+[A-Z][a-zA-Z'.\-]+){0,3})[*_]{0,2}\s*[:\u2014\-]\s+/;
+function stripTimestamps(s: string): string {
+  return s
+    .replace(/\s*%\[(\d{1,2}:\d{2}(?::\d{2})?)\]\(\)\s*/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/ +([.,;:!?])/g, "$1")
+    .trim();
+}
+function stripInlineMd(s: string): string {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/\*([^*\n]+)\*/g, "$1");
+}
+function capFirst(s: string): string {
+  if (!s) return s;
+  const i = s.search(/\S/);
+  return i < 0 ? s : s.slice(0, i) + s.charAt(i).toUpperCase() + s.slice(i + 1);
+}
+function parseActionItem(raw: string): { text: string; assigneeName: string | null } {
+  if (!raw) return { text: "", assigneeName: null };
+  let s = raw;
+  let assigneeName: string | null = null;
+  const m = s.match(ASSIGNEE_PREFIX_RE);
+  if (m) {
+    assigneeName = m[1].trim();
+    s = s.slice(m[0].length);
+  }
+  s = stripInlineMd(s);
+  s = stripTimestamps(s);
+  s = capFirst(s.trimEnd());
+  return { text: s, assigneeName };
+}
+
 function normalizeRecording(r: any): NormalizedClaapRecording {
   // Prefer the rich `outlines[0].text` markdown (that's the actual summary
   // Claap renders in-app). Fallback to any string `summary`.
@@ -116,17 +154,21 @@ function normalizeRecording(r: any): NormalizedClaapRecording {
   for (const block of aiBlocks) {
     const items: any[] = Array.isArray(block?.items) ? block.items : [];
     for (const it of items) {
-      const text = typeof it?.description === "string"
+      const rawText = typeof it?.description === "string"
         ? it.description
         : typeof it?.text === "string"
           ? it.text
           : null;
-      if (!text) continue;
+      if (!rawText) continue;
+      const parsed = parseActionItem(rawText);
+      if (!parsed.text) continue;
+      const apiAssignee = it?.assignee?.name || it?.assignee?.email || it?.owner || null;
       action_items.push({
-        text,
-        assignee: it?.assignee?.name || it?.assignee?.email || it?.owner || null,
+        text: parsed.text,
+        assignee: apiAssignee || parsed.assigneeName || null,
         due: it?.dueDate || it?.due || null,
         checked: Boolean(it?.isChecked),
+        raw: rawText,
       });
     }
   }

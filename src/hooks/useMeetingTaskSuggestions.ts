@@ -5,12 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { stripClaapTimestamps } from '@/types/claap';
+import { parseClaapActionItemText } from '@/lib/claap-format';
 
 export type SuggestionStatus = 'pending' | 'approved' | 'dismissed' | 'converted';
 export type SuggestionSource = 'claap' | 'synthesized';
 
 export interface RawActionItem {
   text: string;
+  assignee_name: string | null;
   assignee_email: string | null;
   due_date: string | null; // YYYY-MM-DD
 }
@@ -19,6 +21,7 @@ export interface MeetingTaskSuggestion {
   id: string | null;            // row id once persisted
   suggestion_id: string;        // stable hash
   text: string;
+  assignee_name: string | null;
   assignee_email: string | null;
   due_date: string | null;
   status: SuggestionStatus;
@@ -66,8 +69,15 @@ function normalizeRawItems(items: unknown): RawActionItem[] {
   for (const it of items) {
     if (it == null) continue;
     if (typeof it === 'string') {
-      const text = stripClaapTimestamps(it);
-      if (text) out.push({ text, assignee_email: null, due_date: null });
+      const parsed = parseClaapActionItemText(stripClaapTimestamps(it));
+      if (parsed.text) {
+        out.push({
+          text: parsed.text,
+          assignee_name: parsed.assigneeName ?? null,
+          assignee_email: null,
+          due_date: null,
+        });
+      }
       continue;
     }
     if (typeof it !== 'object') continue;
@@ -78,11 +88,13 @@ function normalizeRawItems(items: unknown): RawActionItem[] {
       (typeof rec.description === 'string' && rec.description) ||
       null;
     if (!rawText) continue;
-    const text = stripClaapTimestamps(rawText);
-    if (!text) continue;
+    const parsed = parseClaapActionItemText(stripClaapTimestamps(rawText));
+    if (!parsed.text) continue;
+    const existingAssignee = normalizeAssignee(rec.assignee ?? rec.owner ?? rec.assignee_email);
     out.push({
-      text,
-      assignee_email: normalizeAssignee(rec.assignee ?? rec.owner ?? rec.assignee_email),
+      text: parsed.text,
+      assignee_name: parsed.assigneeName ?? existingAssignee ?? null,
+      assignee_email: existingAssignee && existingAssignee.includes('@') ? existingAssignee : null,
       due_date: parseDueDate(rec.due ?? rec.deadline ?? rec.dueDate ?? rec.due_date),
     });
   }
@@ -198,10 +210,18 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     return rawItems.map((it, idx) => {
       const sid = suggestionIdFor(scopeKey, idx, it.text);
       const row = byId.get(sid);
+      // Render-time fallback: historic rows may have stored the unsanitized
+      // markdown (e.g. "**James Turner**: send NDA..."). Re-parse so display
+      // is clean even before backfill lands.
+      const persistedText = row?.text ?? null;
+      const reparsed = persistedText ? parseClaapActionItemText(persistedText) : null;
+      const displayText = reparsed?.text || it.text;
+      const displayAssignee = reparsed?.assigneeName || it.assignee_name;
       return {
         id: row?.id ?? null,
         suggestion_id: sid,
-        text: row?.text ?? it.text,
+        text: displayText,
+        assignee_name: displayAssignee ?? null,
         assignee_email: row?.assignee_email ?? it.assignee_email,
         due_date: row?.due_date ?? it.due_date,
         status: ((row?.status as SuggestionStatus | undefined) ?? 'pending'),
@@ -212,27 +232,62 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
   }, [rawItems, persistedQuery.data, scopeKey, source]);
 
   // ─── mutations ──────────────────────────────────────────────
+  const resolveAssigneeUserId = async (name: string | null): Promise<{ userId: string | null; email: string | null }> => {
+    if (!name) return { userId: null, email: null };
+    const trimmed = name.trim();
+    if (!trimmed) return { userId: null, email: null };
+    const { data } = await supabase
+      .from('profiles')
+      .select('user_id, email, first_name, last_name, display_name')
+      .or(
+        `display_name.ilike.${trimmed},and(first_name.ilike.${trimmed.split(/\s+/)[0]},last_name.ilike.${trimmed.split(/\s+/).slice(-1)[0]})`,
+      )
+      .limit(2);
+    if (!data || data.length !== 1) return { userId: null, email: null };
+    return { userId: data[0].user_id ?? null, email: data[0].email ?? null };
+  };
+
   const approve = async (s: MeetingTaskSuggestion): Promise<{ taskId: string } | null> => {
     if (!user?.id) {
       toast.error('You must be signed in to create a task');
       return null;
     }
-    // 1) Insert the real task assigned to the current user (James Turner in
-    //    the rundown). Suggestion assignee_email is stored on the suggestion
-    //    for reference; we don't try to resolve external emails to users.
+    // 1) Resolve assignee name -> tenant user, fallback to current user.
+    const resolved = await resolveAssigneeUserId(s.assignee_name);
+    const assignedTo = resolved.userId ?? user.id;
+    const assigneeEmail = resolved.email ?? s.assignee_email ?? null;
+
+    // Optional recording url footer for description.
+    let recordingUrl: string | null = null;
+    if (source === 'claap' && recordingRowId) {
+      const { data } = await supabase
+        .from('claap_recordings')
+        .select('recording_url, url:external_id')
+        .eq('id', recordingRowId)
+        .maybeSingle();
+      recordingUrl = (data as any)?.recording_url ?? null;
+    }
+    const descParts: string[] = [];
+    if (assigneeEmail && !resolved.userId) descParts.push(`Suggested for: ${assigneeEmail}`);
+    descParts.push(
+      recordingUrl
+        ? `From Claap recording — [Watch](${recordingUrl})`
+        : 'From Claap recording',
+    );
+
     const dueAtIso = s.due_date ? new Date(`${s.due_date}T17:00:00Z`).toISOString() : null;
     const { data: taskRow, error: taskErr } = await supabase
       .from('tasks')
       .insert({
         title: s.text,
-        assigned_to: user.id,
+        assigned_to: assignedTo,
         assigned_by: user.id,
         created_by: user.id,
         status: 'not_started',
         task_type: 'task',
         due_at: dueAtIso,
         due_date: s.due_date,
-        description: s.assignee_email ? `Suggested for: ${s.assignee_email}` : null,
+        description: descParts.join('\n\n'),
         tags: ['claap-suggestion'],
       })
       .select('id')
@@ -250,7 +305,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       recording_id: source === 'claap' ? recordingRowId : null,
       suggestion_id: s.suggestion_id,
       text: s.text,
-      assignee_email: s.assignee_email,
+      assignee_email: assigneeEmail,
       due_date: s.due_date,
       source: s.source,
       status: 'converted' as SuggestionStatus,

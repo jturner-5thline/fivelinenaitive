@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Sparkles, CheckCircle2, X, ListPlus, Loader2, Undo2, Calendar as CalIcon, AtSign, ExternalLink } from 'lucide-react';
+import { Sparkles, CheckCircle2, X, ListPlus, Loader2, Undo2, Calendar as CalIcon, AtSign, User as UserIcon, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -141,8 +141,13 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                   <div className={cn('text-white/90', isDismissed && 'line-through text-muted-foreground')}>
                     {s.text}
                   </div>
-                  {(s.assignee_email || s.due_date) && (
+                  {(s.assignee_name || s.assignee_email || s.due_date) && (
                     <div className="flex flex-wrap items-center gap-1 mt-0.5">
+                      {s.assignee_name && (
+                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]">
+                          <UserIcon className="h-2.5 w-2.5" /> {s.assignee_name}
+                        </Badge>
+                      )}
                       {s.assignee_email && (
                         <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
                           <AtSign className="h-2.5 w-2.5" /> {s.assignee_email}
