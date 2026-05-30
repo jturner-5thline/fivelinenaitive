@@ -9630,6 +9630,7 @@ export type Database = {
           changed_by: string | null
           company_id: string | null
           deal_id: string
+          exited_at: string | null
           from_stage: string | null
           id: string
           pipeline_id: string | null
@@ -9644,6 +9645,7 @@ export type Database = {
           changed_by?: string | null
           company_id?: string | null
           deal_id: string
+          exited_at?: string | null
           from_stage?: string | null
           id?: string
           pipeline_id?: string | null
@@ -9658,6 +9660,7 @@ export type Database = {
           changed_by?: string | null
           company_id?: string | null
           deal_id?: string
+          exited_at?: string | null
           from_stage?: string | null
           id?: string
           pipeline_id?: string | null
