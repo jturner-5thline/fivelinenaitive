@@ -124,6 +124,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({} as any));
     const action = body?.action || 'single';
     const recordingExternalId = body?.recording_id as string | undefined;
+    const recordingPayload = body?.recording_payload as any;
     const eventId = body?.event_id as string | undefined;
     const days = Math.max(1, Math.min(Number(body?.days) || 30, 60));
 
@@ -142,13 +143,32 @@ Deno.serve(async (req) => {
       });
     }
 
-    async function synthesizeOne(externalId: string, linkedEventId?: string | null) {
-      const { data: recording, error: recordingError } = await admin
+    async function synthesizeOne(externalId: string, linkedEventId?: string | null, payload?: any) {
+      let { data: recording, error: recordingError } = await admin
         .from('claap_recordings')
         .select('id, org_company_id, external_id, title, started_at, organizer_email, participants, summary, action_items, key_takeaways, synthesized_note, synthesized_note_generated_at')
         .eq('external_id', externalId)
         .in('org_company_id', companyIds)
         .maybeSingle();
+      if ((!recording || recordingError) && payload?.id) {
+        const { data: seeded, error: seedError } = await admin
+          .from('claap_recordings')
+          .upsert({
+            org_company_id: companyIds[0],
+            external_id: payload.id,
+            title: payload.title || null,
+            started_at: payload?.meeting?.startingAt || payload?.createdAt || null,
+            ended_at: payload?.meeting?.endingAt || null,
+            organizer_email: payload?.recorder?.email || null,
+            participants: payload?.meeting?.participants || [],
+            source_payload: { url: payload?.url || null, thumbnailUrl: payload?.thumbnailUrl || null, durationSeconds: payload?.durationSeconds || null },
+            status: 'linked',
+          }, { onConflict: 'org_company_id,external_id' })
+          .select('id, org_company_id, external_id, title, started_at, organizer_email, participants, summary, action_items, key_takeaways, synthesized_note, synthesized_note_generated_at')
+          .single();
+        recording = seeded;
+        recordingError = seedError ?? null;
+      }
       if (recordingError || !recording) throw new Error(recordingError?.message || 'Recording not found');
 
       const realSummary = (recording.summary || '').trim() || null;
@@ -262,7 +282,7 @@ Deno.serve(async (req) => {
     }
 
     if (!recordingExternalId) return json({ error: 'recording_id required' }, 400);
-    const result = await synthesizeOne(recordingExternalId, eventId || null);
+    const result = await synthesizeOne(recordingExternalId, eventId || null, recordingPayload);
     return json({
       ok: true,
       claap_token_present: !!CLAAP_API_TOKEN,
