@@ -1080,49 +1080,47 @@ function EventDetailPane({
   const [noteDirty, setNoteDirty] = useState(false);
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
-  const { data: claapCtx, refetch: refetchClaapCtx, isFetching: claapCtxFetching } = useMeetingClaapContext(event.id);
+  const claapCtx = useMeetingClaapContext(event.id);
   const [claapBackfilling, setClaapBackfilling] = useState(false);
   const [claapBackfillTried, setClaapBackfillTried] = useState<string | null>(null);
 
   const regenerateClaapSummary = async () => {
-    if (!claapCtx?.meetingRowId) return;
+    if (!claapCtx.recording?.meetingRowId) return;
     setClaapBackfilling(true);
     try {
       await supabase.functions.invoke('claap-backfill-summaries', {
-        body: { meeting_id: claapCtx.meetingRowId },
+        body: { meeting_id: claapCtx.recording.meetingRowId },
       });
     } catch (err) {
       console.warn('claap backfill failed', err);
     } finally {
       setClaapBackfilling(false);
-      refetchClaapCtx();
+      await claapCtx.refetch();
     }
   };
 
   // Auto-trigger backfill once per meeting when transcript exists but no AI content yet.
   useEffect(() => {
-    if (!claapCtx?.meetingRowId) return;
-    if (claapCtx.hasContent) return;
-    if (!claapCtx.transcriptAvailable) return;
-    if (claapBackfillTried === claapCtx.meetingRowId) return;
-    setClaapBackfillTried(claapCtx.meetingRowId);
+    if (!claapCtx.recording?.meetingRowId) return;
+    if (claapCtx.source !== 'none') return;
+    if (claapBackfillTried === claapCtx.recording.meetingRowId) return;
+    setClaapBackfillTried(claapCtx.recording.meetingRowId);
     regenerateClaapSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claapCtx?.meetingRowId, claapCtx?.transcriptAvailable, claapCtx?.hasContent]);
+  }, [claapCtx.recording?.meetingRowId, claapCtx.source]);
 
-  const buildClaapNote = (ctx: NonNullable<typeof claapCtx>): string => {
+  const buildClaapNote = (ctx: typeof claapCtx): string => {
     const lines: string[] = [];
-    lines.push(`🎥 Claap summary — ${ctx.recordingTitle || 'Meeting recording'}`);
+    lines.push(`🎥 Summary`);
     if (ctx.summary) lines.push('', ctx.summary.trim());
-    if (ctx.nextSteps.length) {
+    if (ctx.actionItems.length) {
       lines.push('', '✅ Action items');
-      ctx.nextSteps.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+      ctx.actionItems.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
     }
-    if (ctx.keyDecisions.length) {
-      lines.push('', '💡 Key takeaways');
-      ctx.keyDecisions.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+    if (ctx.keyTakeaways.length) {
+      lines.push('', '💡 Takeaways');
+      ctx.keyTakeaways.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
     }
-    if (ctx.recordingUrl) lines.push('', `[Watch recording](${ctx.recordingUrl})`);
     return lines.join('\n');
   };
 
@@ -1130,19 +1128,18 @@ function EventDetailPane({
   // the user hasn't typed yet. If a different recording later becomes linked,
   // prompt before overwriting an unedited prefill.
   useEffect(() => {
-    if (!claapCtx) return;
-    const hasContent = !!claapCtx.summary || claapCtx.nextSteps.length > 0 || claapCtx.keyDecisions.length > 0;
-    if (!hasContent) return;
+    const hasContent = !!claapCtx.summary || claapCtx.actionItems.length > 0 || claapCtx.keyTakeaways.length > 0;
+    if (!hasContent || !claapCtx.recording) return;
     if (noteDirty) return;
-    if (notePrefillRecordingId === claapCtx.recordingId) return;
+    if (notePrefillRecordingId === claapCtx.recording.id) return;
     // Recording changed and prior prefill is untouched → replace silently.
     setNoteDraft(buildClaapNote(claapCtx));
     setNotePrefilledFromClaap(true);
-    setNotePrefillRecordingId(claapCtx.recordingId);
+    setNotePrefillRecordingId(claapCtx.recording.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claapCtx?.recordingId, claapCtx?.summary, claapCtx?.nextSteps?.length, claapCtx?.keyDecisions?.length, noteDirty]);
+  }, [claapCtx.recording?.id, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty]);
 
-  const claapStillGenerating = !!claapCtx && !claapCtx.summary && claapCtx.nextSteps.length === 0 && claapCtx.keyDecisions.length === 0;
+  const claapStillGenerating = claapCtx.source === 'none' && !!claapCtx.recording;
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
 

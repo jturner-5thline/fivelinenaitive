@@ -11,16 +11,16 @@ interface Props {
 }
 
 export function MeetingTasksInlineAction({ eventId, onOpenTask }: Props) {
-  const { data: ctx, isLoading } = useMeetingClaapContext(eventId);
+  const ctx = useMeetingClaapContext(eventId);
 
-  const suggestions = ctx?.nextSteps?.filter(Boolean) || [];
+  const suggestions = ctx.actionItems.filter(Boolean);
   if (suggestions.length === 0) {
     return (
       <Button
         size="sm" variant="outline"
         className="h-8 justify-start gap-2 text-xs"
         onClick={() => onOpenTask()}
-        disabled={isLoading && !ctx}
+        disabled={ctx.isLoading && ctx.source === 'none'}
       >
         <ListPlus className="h-3.5 w-3.5" /> Create task
       </Button>
