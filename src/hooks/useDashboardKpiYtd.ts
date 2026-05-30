@@ -18,6 +18,7 @@ import { useCompany } from '@/hooks/useCompany';
 import { QBO_REALM_DEBT } from '@/config/qboEntities';
 
 const STAGE_FUNDED = 'funded / invoiced';
+const STAGE_CLOSED_WON = 'closed won';
 const STAGE_FINAL_CREDIT = 'final credit items';
 
 const EXCLUDED = new Set(["Test-Niki's Store", 'Example Deal']);
@@ -74,6 +75,7 @@ function useActivePipelineStages() {
       return {
         pipelineId: (data?.id as string) ?? null,
         fundedStageId: find(STAGE_FUNDED),
+        closedWonStageId: find(STAGE_CLOSED_WON),
         finalCreditStageId: find(STAGE_FINAL_CREDIT),
       };
     },
@@ -85,7 +87,7 @@ export function useDashboardKpiYtd() {
   const { company } = useCompany();
   const companyId = company?.id ?? null;
   const stages = useActivePipelineStages();
-  const { pipelineId, fundedStageId, finalCreditStageId } = stages.data ?? {};
+  const { pipelineId, fundedStageId, closedWonStageId, finalCreditStageId } = stages.data ?? {};
 
   const plansQuery = useQuery({
     queryKey: ['dashboard_kpi_plans'],
@@ -100,24 +102,28 @@ export function useDashboardKpiYtd() {
   });
 
   const dealsYtdQuery = useQuery({
-    queryKey: ['dash-kpi-ytd', 'deals', companyId, pipelineId, fundedStageId, finalCreditStageId],
-    enabled: !!companyId && !!pipelineId && (!!fundedStageId || !!finalCreditStageId),
+    queryKey: ['dash-kpi-ytd', 'deals', companyId, pipelineId, fundedStageId, closedWonStageId, finalCreditStageId],
+    enabled: !!companyId && !!pipelineId && (!!fundedStageId || !!closedWonStageId || !!finalCreditStageId),
     staleTime: 60_000,
     queryFn: async () => {
       const start = startOfYear(new Date()).toISOString();
-      const targets: string[] = [];
-      if (fundedStageId) targets.push(fundedStageId);
+      const closedStageIds = [fundedStageId, closedWonStageId].filter(Boolean) as string[];
+      const targets: string[] = [...closedStageIds];
       if (finalCreditStageId) targets.push(finalCreditStageId);
+      // NO `source` filter — manual_bulk_update rows MUST be included so the
+      // 46 Closed Won + 101 Closed Lost backfill flows through the KPI strip.
       const { data, error } = await supabase
         .from('deal_stage_history')
         .select('deal_id, to_stage, changed_at, deals!inner(company, value)')
         .eq('company_id', companyId)
         .eq('pipeline_id', pipelineId)
+        .eq('event_type', 'stage_enter')
         .in('to_stage', targets)
         .gte('changed_at', start);
       if (error) throw error;
 
-      // Earliest entry per (deal, stage) within YTD.
+      // Deals Closed = distinct deals that entered EITHER Funded / Invoiced
+      // OR Closed Won within YTD (whichever happened first).
       const fundedDeals = new Map<string, number>();
       const finalCreditDeals = new Set<string>();
       for (const row of (data ?? []) as Array<{
@@ -126,7 +132,7 @@ export function useDashboardKpiYtd() {
         deals: { company: string | null; value: number | null } | null;
       }>) {
         if (isExcluded(row.deals?.company ?? null)) continue;
-        if (fundedStageId && row.to_stage === fundedStageId) {
+        if (closedStageIds.includes(row.to_stage)) {
           if (!fundedDeals.has(row.deal_id)) {
             const v = Number(row.deals?.value);
             fundedDeals.set(row.deal_id, Number.isFinite(v) ? v : 0);
