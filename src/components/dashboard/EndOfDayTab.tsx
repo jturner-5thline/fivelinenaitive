@@ -1116,16 +1116,19 @@ function EventDetailPane({
 
   const buildClaapNote = (ctx: typeof claapCtx): string => {
     const lines: string[] = [];
-    lines.push(`🎥 Summary`);
+    const titleSuffix = eventTitle ? ` — ${eventTitle}` : '';
+    lines.push(`🎥 Claap Summary${titleSuffix}`);
     if (ctx.summary) lines.push('', ctx.summary.trim());
     if (ctx.actionItems.length) {
       lines.push('', '✅ Action items');
-      ctx.actionItems.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+      ctx.actionItems.forEach((s) => lines.push(`- ${s}`));
     }
     if (ctx.keyTakeaways.length) {
-      lines.push('', '💡 Takeaways');
-      ctx.keyTakeaways.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+      lines.push('', '💡 Key takeaways');
+      ctx.keyTakeaways.forEach((s) => lines.push(`- ${s}`));
     }
+    const url = ctx.recording?.url;
+    if (url) lines.push('', `[Watch in Claap](${url})`);
     return lines.join('\n');
   };
 
