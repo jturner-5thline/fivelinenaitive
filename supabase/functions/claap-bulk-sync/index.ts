@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     .select("id, claap_id, title, company_id, started_at, organizer_email")
     .not("claap_id", "is", null)
     .order("started_at", { ascending: false })
-    .limit(40);
+    .limit(500);
   for (const m of meetingsMissing ?? []) {
     if (!m.claap_id || m.claap_id.startsWith("test-")) continue;
     const { data: existing } = await supabase
