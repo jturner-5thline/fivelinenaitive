@@ -145,7 +145,7 @@ function aggregateStageEntryTrendBuckets(
   bucketDefs: PeriodBucketDef[],
   grain: 'monthly' | 'quarterly',
   pipelineId: string,
-  targetStage: string,
+  targetStages: string[],
 ): StageTrendBucket[] {
   const buckets: StageTrendBucket[] = bucketDefs.map((bucket) => ({
     ...bucket,
@@ -162,29 +162,29 @@ function aggregateStageEntryTrendBuckets(
   const bucketMap = new Map(buckets.map((bucket) => [bucket.key, bucket]));
 
   for (const row of rows ?? []) {
-    if (row.created_at < windowStart || row.created_at > windowEnd) continue;
+    const ts: string = row.changed_at;
+    if (!ts || ts < windowStart || ts > windowEnd) continue;
     if (seen.has(row.deal_id)) continue;
 
     const deal = row.deals as Record<string, any> | null;
     if (!deal || deal.pipeline_id !== pipelineId || isExcludedDealName(deal.company)) continue;
 
-    const bucketKey = grain === 'monthly' ? row.created_at.slice(0, 7) : getQuarterKey(row.created_at);
+    const bucketKey = grain === 'monthly' ? ts.slice(0, 7) : getQuarterKey(ts);
     const bucket = bucketMap.get(bucketKey);
     if (!bucket) continue;
 
     seen.add(row.deal_id);
 
-    const metadata = (row.metadata as Record<string, unknown> | null) ?? {};
     const entry: StageEntryDeal = {
       deal_id: row.deal_id,
       company: deal.company ?? '—',
       value: Number(deal.value) || 0,
       manager: deal.manager ?? null,
       current_stage: deal.stage ?? '',
-      entered_at: row.created_at,
+      entered_at: ts,
       pipeline_id: deal.pipeline_id ?? '',
-      from_stage: typeof metadata.from === 'string' ? metadata.from : null,
-      to_stage: typeof metadata.to === 'string' ? metadata.to : targetStage,
+      from_stage: typeof row.from_stage_id === 'string' ? row.from_stage_id : null,
+      to_stage: typeof row.to_stage_id === 'string' ? row.to_stage_id : targetStages[0],
     };
 
     bucket.count += 1;
@@ -196,11 +196,12 @@ function aggregateStageEntryTrendBuckets(
 }
 
 function useStageEntryTrendSeries(
-  targetStage: string,
+  targetStage: string | string[],
   anchorEndDate: string,
   pipelineId: string,
 ): StageTrendSeriesResult {
   const { user } = useAuth();
+  const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
 
   const monthlyBuckets = useMemo(
     () => buildRollingMonthBuckets(anchorEndDate, 6),
@@ -215,14 +216,15 @@ function useStageEntryTrendSeries(
   const queryEnd = quarterlyBuckets[quarterlyBuckets.length - 1]?.end ?? monthlyBuckets[monthlyBuckets.length - 1]?.end ?? '';
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['stage-entry-trend-series', targetStage, pipelineId, queryStart, queryEnd],
+    queryKey: ['stage-entry-trend-series-dsh', targetStages.join(','), pipelineId, queryStart, queryEnd],
     queryFn: async () => {
       const { data: rows, error } = await supabase
-        .from('activity_logs')
+        .from('deal_stage_history')
         .select(`
           deal_id,
-          created_at,
-          metadata,
+          changed_at,
+          to_stage_id,
+          from_stage_id,
           deals!inner (
             company,
             value,
@@ -231,11 +233,12 @@ function useStageEntryTrendSeries(
             pipeline_id
           )
         `)
-        .eq('activity_type', 'stage_change')
-        .eq('metadata->>to', targetStage)
-        .gte('created_at', queryStart)
-        .lte('created_at', `${queryEnd}T23:59:59.999Z`)
-        .order('created_at', { ascending: true });
+        .eq('event_type', 'stage_enter')
+        .eq('pipeline_id', pipelineId)
+        .in('to_stage_id', targetStages)
+        .gte('changed_at', queryStart)
+        .lte('changed_at', `${queryEnd}T23:59:59.999Z`)
+        .order('changed_at', { ascending: true });
 
       if (error) throw error;
       return rows ?? [];
@@ -245,10 +248,10 @@ function useStageEntryTrendSeries(
   });
 
   return useMemo(() => ({
-    monthly: aggregateStageEntryTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId, targetStage),
-    quarterly: aggregateStageEntryTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId, targetStage),
+    monthly: aggregateStageEntryTrendBuckets(data ?? [], monthlyBuckets, 'monthly', pipelineId, targetStages),
+    quarterly: aggregateStageEntryTrendBuckets(data ?? [], quarterlyBuckets, 'quarterly', pipelineId, targetStages),
     isLoading: isLoading || isFetching,
-  }), [data, isLoading, isFetching, monthlyBuckets, pipelineId, quarterlyBuckets, targetStage]);
+  }), [data, isLoading, isFetching, monthlyBuckets, pipelineId, quarterlyBuckets, targetStages.join(',')]);
 }
 
 function useRevenueTotalForPeriod(realmId: string, period: QuarterOption): RevenuePeriodTotalResult {
@@ -306,24 +309,30 @@ function useRevenuePerDealMetric(
  * Deduplication: only the FIRST entry into the target stage per deal is counted.
  */
 function useStageEntryMetric(
-  targetStage: string,
+  targetStage: string | string[],
   quarter: QuarterOption,
   pipelineId?: string,
 ): StageMetricResult {
   const { user } = useAuth();
+  const targetStages = Array.isArray(targetStage) ? targetStage : [targetStage];
 
   const { data, isLoading, isFetching } = useQuery({
-    queryKey: ['stage-entry-metric', targetStage, quarter.value, pipelineId],
+    queryKey: ['stage-entry-metric-dsh', targetStages.join(','), quarter.value, pipelineId],
     queryFn: async () => {
       const startDate = quarter.startDate;
       const endDate = quarter.endDate;
 
-      // Get all stage_change events to the target stage in this period
+      // Source of truth: deal_stage_history (stage_enter events).
+      // NO `source` filter — manual_bulk_update rows MUST be included so bulk
+      // backfills (e.g. the 46 Closed Won + 101 Closed Lost moves) flow into
+      // stage-velocity, funnel, Deals Closed and Dollars Funded metrics.
       let query = supabase
-        .from('activity_logs')
+        .from('deal_stage_history')
         .select(`
           deal_id,
-          created_at,
+          changed_at,
+          to_stage_id,
+          from_stage_id,
           deals!inner (
             company,
             value,
@@ -334,17 +343,17 @@ function useStageEntryMetric(
             mrr
           )
         `)
-        .eq('activity_type', 'stage_change')
-        .eq('metadata->>to', targetStage)
-        .gte('created_at', startDate)
-        .lte('created_at', endDate + 'T23:59:59.999Z');
+        .eq('event_type', 'stage_enter')
+        .in('to_stage_id', targetStages)
+        .gte('changed_at', startDate)
+        .lte('changed_at', endDate + 'T23:59:59.999Z');
 
       if (pipelineId) {
-        query = query.eq('deals.pipeline_id', pipelineId);
+        query = query.eq('pipeline_id', pipelineId);
       }
 
       const { data: rows, error } = await query
-        .order('created_at', { ascending: true });
+        .order('changed_at', { ascending: true });
 
       if (error) throw error;
       return rows ?? [];
@@ -370,7 +379,7 @@ function useStageEntryMetric(
         value: Number(deal.value) || 0,
         manager: deal.manager,
         current_stage: deal.stage,
-        entered_at: row.created_at,
+        entered_at: (row as any).changed_at,
         pipeline_id: deal.pipeline_id,
         mrr: Number(deal.mrr) || 0,
       });
@@ -656,16 +665,19 @@ export function useConsolidatedDebtPipelineMetrics(
   const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const proposalsIssued = useStageEntryMetric(PROPOSAL_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const finalCreditItems = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, quarter, ACTIVE_PIPELINE_ID);
-  const fundedInvoiced = useStageEntryMetric(FUNDED_INVOICED_STAGE, quarter, ACTIVE_PIPELINE_ID);
-  const fundedInvoicedTrend = useStageEntryTrendSeries(FUNDED_INVOICED_STAGE, quarter.endDate, ACTIVE_PIPELINE_ID);
+  // Closed metrics aggregate BOTH "funded-invoiced" and "closed-won" stage
+  // entries within the Active Pipeline, per product spec.
+  const CLOSED_STAGES = [FUNDED_INVOICED_STAGE, 'closed-won'];
+  const fundedInvoiced = useStageEntryMetric(CLOSED_STAGES, quarter, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedTrend = useStageEntryTrendSeries(CLOSED_STAGES, quarter.endDate, ACTIVE_PIPELINE_ID);
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
 
   const ndaNeedsListRolling6 = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const finalCreditItemsRolling6 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
-  const fundedInvoicedRolling6 = useStageEntryMetric(FUNDED_INVOICED_STAGE, sixMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling6 = useStageEntryMetric(CLOSED_STAGES, sixMonthPeriod, ACTIVE_PIPELINE_ID);
   const finalCreditItemsRolling12 = useStageEntryMetric(FINAL_CREDIT_ITEMS_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
-  const fundedInvoicedRolling12 = useStageEntryMetric(FUNDED_INVOICED_STAGE, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedRolling12 = useStageEntryMetric(CLOSED_STAGES, twelveMonthPeriod, ACTIVE_PIPELINE_ID);
   const debtRevenueRolling12 = useRevenueTotalForPeriod(DEBT_REALM_ID, twelveMonthPeriod);
 
   return {
