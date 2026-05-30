@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
           title: m.title,
           started_at: m.started_at,
           organizer_email: m.organizer_email,
-          status: "pending",
+          status: "new",
         })
         .select("id")
         .single();
