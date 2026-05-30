@@ -1202,12 +1202,6 @@ function EventDetailPane({
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
 
   const allEmails = externals.map(a => (a.email || '').trim()).filter(Boolean);
-  const why = useMemo(() => {
-    if (isCarry && externals.length === 0) return 'Internal meeting still flagged as outstanding — no external follow-up captured.';
-    if (isCarry) return `Outstanding for ${ageDays} day${ageDays === 1 ? '' : 's'} with no follow-up logged from your end.`;
-    if (externals.length === 0) return 'Internal-only meeting. Mark as resolved if no follow-up is needed.';
-    return 'Follow-up to external attendees has not yet been sent.';
-  }, [isCarry, ageDays, externals.length]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
@@ -1286,27 +1280,6 @@ function EventDetailPane({
 
       {/* Scrollable body */}
       <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-5">
-        {/* Why outstanding */}
-        <section className="rounded-lg border border-white/10 bg-white/[0.02] p-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
-            <Sparkles className="h-3.5 w-3.5 text-primary" />
-            <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">Why this is still outstanding</span>
-          </div>
-          <p className="text-xs text-white/85 leading-relaxed">{why}</p>
-        </section>
-
-        {/* Agenda / context */}
-        <section>
-          <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Agenda</h3>
-          {event.description ? (
-            <div className="text-xs text-white/85 leading-relaxed whitespace-pre-wrap rounded-lg border border-white/10 bg-white/[0.02] p-3 max-h-48 overflow-y-auto">
-              {event.description.replace(/<[^>]+>/g, '')}
-            </div>
-          ) : (
-            <p className="text-xs text-muted-foreground italic">No agenda captured for this meeting.</p>
-          )}
-        </section>
-
         {/* Attendees */}
         <section>
           <div className="flex items-center justify-between mb-2">
