@@ -10,7 +10,7 @@ interface DealActivityLogTabProps {
 }
 
 export function DealActivityLogTab({ dealId }: DealActivityLogTabProps) {
-  const { entries, loading, hasMore, loadMore, logAuditAction, refetch } = useDealAuditLog(dealId);
+  const { entries, unresolvedStageEntries, loading, hasMore, loadMore, logAuditAction, refetch } = useDealAuditLog(dealId);
 
   const handleRestore = useCallback(async (entry: DealAuditEntry) => {
     if (!entry.entity_id) return;
@@ -61,6 +61,7 @@ export function DealActivityLogTab({ dealId }: DealActivityLogTabProps) {
   return (
     <DealAuditLogPanel
       entries={entries}
+      unresolvedStageEntries={unresolvedStageEntries}
       loading={loading}
       hasMore={hasMore}
       onLoadMore={loadMore}

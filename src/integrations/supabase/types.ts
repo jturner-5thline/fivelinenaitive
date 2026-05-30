@@ -9635,6 +9635,9 @@ export type Database = {
           pipeline_id: string | null
           source: string | null
           to_stage: string
+          to_stage_id: string | null
+          to_stage_label_raw: string | null
+          unresolved_stage_label: string | null
         }
         Insert: {
           changed_at?: string
@@ -9646,6 +9649,9 @@ export type Database = {
           pipeline_id?: string | null
           source?: string | null
           to_stage: string
+          to_stage_id?: string | null
+          to_stage_label_raw?: string | null
+          unresolved_stage_label?: string | null
         }
         Update: {
           changed_at?: string
@@ -9657,6 +9663,9 @@ export type Database = {
           pipeline_id?: string | null
           source?: string | null
           to_stage?: string
+          to_stage_id?: string | null
+          to_stage_label_raw?: string | null
+          unresolved_stage_label?: string | null
         }
         Relationships: [
           {
@@ -25117,6 +25126,26 @@ export type Database = {
         }
         Relationships: []
       }
+      v_deal_stage_transitions: {
+        Row: {
+          deal_id: string | null
+          duration: string | null
+          entered_at: string | null
+          exited_at: string | null
+          from_stage_id: string | null
+          pipeline_id: string | null
+          to_stage_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_weekly_advance_reasons: {
         Row: {
           last_week_count: number | null
@@ -25614,6 +25643,7 @@ export type Database = {
       }
       normalize_email_domain: { Args: { em: string }; Returns: string }
       normalize_stage: { Args: { stage_text: string }; Returns: string }
+      normalize_stage_label: { Args: { t: string }; Returns: string }
       normalize_website_domain: { Args: { url: string }; Returns: string }
       read_email_batch: {
         Args: { batch_size: number; queue_name: string; vt: number }

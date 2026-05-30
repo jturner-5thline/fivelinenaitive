@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 
 interface DealAuditLogPanelProps {
   entries: DealAuditEntry[];
+  unresolvedStageEntries?: DealAuditEntry[];
   loading: boolean;
   hasMore: boolean;
   onLoadMore: () => void;
@@ -97,10 +98,11 @@ function isRevertable(entry: DealAuditEntry): boolean {
   return ['file_moved', 'file_renamed', 'folder_renamed'].includes(entry.action_type);
 }
 
-export function DealAuditLogPanel({ entries, loading, hasMore, onLoadMore, onRestore, onRevert }: DealAuditLogPanelProps) {
+export function DealAuditLogPanel({ entries, unresolvedStageEntries = [], loading, hasMore, onLoadMore, onRestore, onRevert }: DealAuditLogPanelProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('all');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [showUnresolved, setShowUnresolved] = useState(false);
 
   const filtered = useMemo(() => {
     let result = entries;
@@ -181,6 +183,35 @@ export function DealAuditLogPanel({ entries, loading, hasMore, onLoadMore, onRes
       {/* Timeline */}
       <ScrollArea className="flex-1">
         <div className="p-3 space-y-4">
+          {unresolvedStageEntries.length > 0 && (
+            <div className="rounded border border-amber-500/30 bg-amber-500/5 px-2.5 py-2">
+              <button
+                type="button"
+                onClick={() => setShowUnresolved((s) => !s)}
+                className="w-full flex items-center justify-between text-[11px] font-medium text-amber-700 dark:text-amber-300"
+              >
+                <span>Unresolved stage events ({unresolvedStageEntries.length})</span>
+                <span className="text-[10px] opacity-70">{showUnresolved ? 'Hide' : 'Show'}</span>
+              </button>
+              {showUnresolved && (
+                <ul className="mt-2 space-y-1">
+                  {unresolvedStageEntries.map((u) => (
+                    <li key={u.id} className="flex items-center justify-between gap-2 text-[11px]">
+                      <span className="text-foreground truncate">
+                        “{u.metadata?.unresolved_stage_label || u.metadata?.to_stage_label_raw || u.metadata?.to_stage || '—'}”
+                      </span>
+                      <span className="text-muted-foreground shrink-0">
+                        {format(new Date(u.created_at), 'MMM d, yyyy')}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                These imported events don't map to a real stage in Active Deals or In Development. Hidden from the main feed.
+              </p>
+            </div>
+          )}
           {loading && entries.length === 0 && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
