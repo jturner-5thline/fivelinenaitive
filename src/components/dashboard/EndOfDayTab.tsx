@@ -51,6 +51,7 @@ import { MeetingTasksInlineAction } from '@/components/dashboard/MeetingTasksInl
 import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
+import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
