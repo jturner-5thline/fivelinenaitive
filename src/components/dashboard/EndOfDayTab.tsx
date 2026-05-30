@@ -16,7 +16,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
 import { useClaapTokenStatus } from '@/hooks/useClaapTokenStatus';
 import { Checkbox } from '@/components/ui/checkbox';
