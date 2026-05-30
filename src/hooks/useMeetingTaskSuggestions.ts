@@ -114,7 +114,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
   // 1) Load raw items from canonical sources.
   const rawQuery = useQuery({
     queryKey: ['mts-raw', recordingRowId, meetingRowId, source, eventId],
-    enabled: !!eventId && !!company?.id && source !== 'none',
+    enabled: !!eventId && !!company?.id && source === 'claap' && !!recordingRowId,
     staleTime: 60_000,
     queryFn: async (): Promise<RawActionItem[]> => {
       // Claap path: read raw structured action_items from claap_recordings.
@@ -127,21 +127,8 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
         if (error) throw error;
         return normalizeRawItems(data?.action_items);
       }
-      // Synthesized path: meeting_synthesized_notes.content.action_items.
-      if (source === 'synthesized' && meetingRowId) {
-        const { data } = await supabase
-          .from('meeting_synthesized_notes')
-          .select('content')
-          .eq('meeting_id', meetingRowId)
-          .maybeSingle();
-        const content = (data?.content ?? null) as Record<string, unknown> | null;
-        const items = content && Array.isArray(content.action_items) ? content.action_items : [];
-        return normalizeRawItems(items);
-      }
-      // Last-ditch: use any plain-text action items the caller already has.
-      if (fallbackActionItems && fallbackActionItems.length > 0) {
-        return normalizeRawItems(fallbackActionItems);
-      }
+      // No synthesized / fallback path — only render suggestions backed by a
+      // real Claap recording with parsed action items.
       return [];
     },
   });

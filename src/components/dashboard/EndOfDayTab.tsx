@@ -1082,7 +1082,7 @@ function EventDetailPane({
   const [noteDirty, setNoteDirty] = useState(false);
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
-  const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'synthesized' | 'local'>('local');
+  const [notePrefillSource, setNotePrefillSource] = useState<'claap' | 'local'>('local');
   const { tokenPresent: claapTokenPresent } = useClaapTokenStatus();
   const eventTitle = (event.summary || '(No title)').trim();
   const organizerEmail = event.organizer?.email || null;
@@ -1135,25 +1135,6 @@ function EventDetailPane({
     return lines.join('\n');
   };
 
-  const buildLocalSynthesizedNote = (): string => {
-    const attendeeNames = externals
-      .map((a) => a.display_name || a.email || null)
-      .filter(Boolean)
-      .slice(0, 4) as string[];
-    const companyNames = Array.from(new Set(
-      externals
-        .map((a) => (a.email ? contactsByEmail[a.email]?.companyName : null))
-        .filter(Boolean),
-    )) as string[];
-    const companyLabel = companyNames[0] || 'the client team';
-    const summary = `Summary\n${eventTitle} was reviewed with ${attendeeNames.length ? attendeeNames.join(', ') : 'the meeting participants'}, with ${organizerEmail || 'the organizer'} coordinating next steps for ${companyLabel}. This note was synthesized from local meeting details because a Claap summary was not yet available.`;
-    const takeaways = [
-      `- This synthesized note is anchored to “${eventTitle}”.`,
-      `- Attendees involved: ${attendeeNames.length ? attendeeNames.join(', ') : 'not fully captured on the event'}.`,
-    ];
-    return [summary, '', 'Key takeaways', ...takeaways].join('\n');
-  };
-
   useEffect(() => {
     if (noteDirty || noteDraft.trim() || !claapCtx.recording?.linkedNote?.trim()) return;
     const existingNote = claapCtx.recording.linkedNote.trim();
@@ -1166,35 +1147,18 @@ function EventDetailPane({
   // the user hasn't typed yet. If a different recording later becomes linked,
   // prompt before overwriting an unedited prefill.
   useEffect(() => {
+    // Only prefill from a REAL Claap recording — never synthesize.
+    if (claapCtx.source !== 'claap') return;
     const hasContent = !!claapCtx.summary || claapCtx.actionItems.length > 0 || claapCtx.keyTakeaways.length > 0;
     if (!hasContent || !claapCtx.recording) return;
     if (noteDirty) return;
     if (notePrefillRecordingId === claapCtx.recording.id) return;
-    // Recording changed and prior prefill is untouched → replace.
-    const wasSynthesized = notePrefilledFromClaap && notePrefillSource !== 'claap';
     setNoteDraft(buildClaapNote(claapCtx));
     setNotePrefilledFromClaap(true);
-    setNotePrefillSource(claapCtx.source === 'claap' ? 'claap' : 'synthesized');
+    setNotePrefillSource('claap');
     setNotePrefillRecordingId(claapCtx.recording.id);
-    if (wasSynthesized && claapCtx.source === 'claap') {
-      toast.success('Replaced synthesized note with real Claap summary');
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claapCtx.recording?.id, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty]);
-
-  useEffect(() => {
-    const hasContent = !!claapCtx.summary || claapCtx.actionItems.length > 0 || claapCtx.keyTakeaways.length > 0;
-    if (noteDirty || noteDraft.trim() || hasContent) return;
-    const prefillKey = claapCtx.recording?.id || `event:${event.id}`;
-    if (notePrefillRecordingId === prefillKey) return;
-    const synthesized = buildLocalSynthesizedNote();
-    setNoteDraft(synthesized);
-    setNotePrefilledFromClaap(true);
-    setNotePrefillSource('local');
-    setNotePrefillRecordingId(prefillKey);
-    console.info('[AddNote prefill]', event.id, true, synthesized.length);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [event.id, claapCtx.recording?.id, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty, noteDraft, notePrefillRecordingId]);
+  }, [claapCtx.recording?.id, claapCtx.source, claapCtx.summary, claapCtx.actionItems.length, claapCtx.keyTakeaways.length, noteDirty]);
 
   const claapStillGenerating = claapCtx.source === 'none' && !!claapCtx.recording;
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
@@ -1452,18 +1416,9 @@ function EventDetailPane({
             </div>
             {notePrefilledFromClaap && (
               <div className="flex items-center gap-2 mb-1.5">
-                {(() => {
-                  const isClaap = notePrefillSource === 'claap';
-                  const label = isClaap ? 'Claap' : 'Synthesized';
-                  const cls = isClaap
-                    ? 'border-emerald-500/40 text-emerald-300 bg-emerald-500/10'
-                    : 'border-sky-500/40 text-sky-300 bg-sky-500/10';
-                  return (
-                    <span className={`inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border ${cls}`}>
-                      <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — {label}
-                    </span>
-                  );
-                })()}
+                <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                  <Sparkles className="h-2.5 w-2.5" /> AI pre-filled — Claap
+                </span>
                 <button
                   type="button"
                   className="text-[10px] text-muted-foreground hover:text-white underline"

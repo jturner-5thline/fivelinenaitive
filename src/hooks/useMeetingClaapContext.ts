@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
@@ -72,6 +72,10 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
           hookSource: typeof payload.source === 'string' ? payload.source : 'none',
         };
 
+        const rawSource = payload.source === 'claap' ? 'claap' : 'none';
+        // Synthesis is disabled: ignore any non-'claap' source (e.g. 'synthesized')
+        // and only surface content that comes from a real Claap recording.
+        const isReal = rawSource === 'claap';
         return {
           recording: recordingPayload ? {
             id: typeof recordingPayload.id === 'string' ? recordingPayload.id : (eventId ?? ''),
@@ -81,10 +85,10 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
             url: typeof recordingPayload.url === 'string' ? recordingPayload.url : null,
             linkedNote: typeof recordingPayload.linkedNote === 'string' ? recordingPayload.linkedNote : null,
           } : null,
-          summary: typeof payload.summary === 'string' ? stripClaapTimestamps(payload.summary) : null,
-          actionItems: asStringArray((payload.actionItems ?? null) as never),
-          keyTakeaways: asStringArray((payload.keyTakeaways ?? null) as never),
-          source: payload.source === 'claap' || payload.source === 'synthesized' ? payload.source : 'none',
+          summary: isReal && typeof payload.summary === 'string' ? stripClaapTimestamps(payload.summary) : null,
+          actionItems: isReal ? asStringArray((payload.actionItems ?? null) as never) : [],
+          keyTakeaways: isReal ? asStringArray((payload.keyTakeaways ?? null) as never) : [],
+          source: rawSource,
           transcriptAvailable: Boolean(payload.transcriptAvailable),
           debug,
           fetching: false,
@@ -95,8 +99,6 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
       }
     },
   });
-
-  const synthesisAttemptedRef = useRef<string | null>(null);
 
   // Realtime: when a claap_recording_links row is inserted for the matched meeting,
   // re-fetch immediately so the textarea picks up the freshly-linked real summary.
@@ -122,33 +124,6 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
       void supabase.removeChannel(channel);
     };
   }, [query.data?.recording?.meetingRowId, query.refetch]);
-
-  useEffect(() => {
-    const recording = query.data?.recording;
-    if (!eventId || !company?.id || !recording) return;
-    if (query.isLoading || query.isFetching) return;
-    if (query.data?.source !== 'none') return;
-
-    const attemptKey = recording.meetingRowId || recording.id;
-    if (!attemptKey || synthesisAttemptedRef.current === attemptKey) return;
-    synthesisAttemptedRef.current = attemptKey;
-
-    void supabase.functions.invoke('synthesize-meeting-note', {
-      body: {
-        event_id: eventId,
-        meeting_id: recording.meetingRowId,
-        recording_id: recording.id,
-      },
-    }).then(({ error }) => {
-      if (error) {
-        console.warn('useMeetingClaapContext synthesis invoke failed', error);
-        return;
-      }
-      void query.refetch();
-    }).catch((err) => {
-      console.warn('useMeetingClaapContext synthesis threw', err);
-    });
-  }, [company?.id, eventId, query.data, query.isFetching, query.isLoading, query.refetch]);
 
   return {
     recording: query.data?.recording ?? null,
