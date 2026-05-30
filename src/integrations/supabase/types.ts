@@ -15827,6 +15827,85 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_task_suggestions: {
+        Row: {
+          assignee_email: string | null
+          created_at: string
+          created_task_id: string | null
+          decided_at: string | null
+          decided_by: string | null
+          due_date: string | null
+          event_id: string | null
+          id: string
+          meeting_id: string | null
+          org_company_id: string
+          recording_id: string | null
+          scope_key: string
+          source: string
+          status: string
+          suggestion_id: string
+          text: string
+        }
+        Insert: {
+          assignee_email?: string | null
+          created_at?: string
+          created_task_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          org_company_id: string
+          recording_id?: string | null
+          scope_key: string
+          source?: string
+          status?: string
+          suggestion_id: string
+          text: string
+        }
+        Update: {
+          assignee_email?: string | null
+          created_at?: string
+          created_task_id?: string | null
+          decided_at?: string | null
+          decided_by?: string | null
+          due_date?: string | null
+          event_id?: string | null
+          id?: string
+          meeting_id?: string | null
+          org_company_id?: string
+          recording_id?: string | null
+          scope_key?: string
+          source?: string
+          status?: string
+          suggestion_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_task_suggestions_created_task_id_fkey"
+            columns: ["created_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_task_suggestions_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_task_suggestions_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recordings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meeting_title_templates: {
         Row: {
           created_at: string
