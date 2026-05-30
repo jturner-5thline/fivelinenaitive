@@ -3138,10 +3138,13 @@ export type Database = {
       }
       claap_recordings: {
         Row: {
+          action_items: Json
+          claap_summary_synced_at: string | null
           created_at: string
           ended_at: string | null
           external_id: string
           id: string
+          key_takeaways: Json
           last_scored_at: string | null
           org_company_id: string | null
           organizer_email: string | null
@@ -3149,15 +3152,21 @@ export type Database = {
           source_payload: Json | null
           started_at: string | null
           status: string
+          summary: string | null
+          synthesized_note: Json | null
+          synthesized_note_generated_at: string | null
           title: string | null
           transcript_available: boolean
           updated_at: string
         }
         Insert: {
+          action_items?: Json
+          claap_summary_synced_at?: string | null
           created_at?: string
           ended_at?: string | null
           external_id: string
           id?: string
+          key_takeaways?: Json
           last_scored_at?: string | null
           org_company_id?: string | null
           organizer_email?: string | null
@@ -3165,15 +3174,21 @@ export type Database = {
           source_payload?: Json | null
           started_at?: string | null
           status?: string
+          summary?: string | null
+          synthesized_note?: Json | null
+          synthesized_note_generated_at?: string | null
           title?: string | null
           transcript_available?: boolean
           updated_at?: string
         }
         Update: {
+          action_items?: Json
+          claap_summary_synced_at?: string | null
           created_at?: string
           ended_at?: string | null
           external_id?: string
           id?: string
+          key_takeaways?: Json
           last_scored_at?: string | null
           org_company_id?: string | null
           organizer_email?: string | null
@@ -3181,6 +3196,9 @@ export type Database = {
           source_payload?: Json | null
           started_at?: string | null
           status?: string
+          summary?: string | null
+          synthesized_note?: Json | null
+          synthesized_note_generated_at?: string | null
           title?: string | null
           transcript_available?: boolean
           updated_at?: string
@@ -25169,6 +25187,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      claap_assert_prefill_examples: { Args: never; Returns: undefined }
       claap_assert_tenant_isolation: { Args: never; Returns: Json }
       claap_mark_unrelated: {
         Args: { p_entity_type: string; p_recording_id: string }
