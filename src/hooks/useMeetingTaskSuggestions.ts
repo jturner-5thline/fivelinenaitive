@@ -5,12 +5,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { stripClaapTimestamps } from '@/types/claap';
+import { parseClaapActionItemText } from '@/lib/claap-format';
 
 export type SuggestionStatus = 'pending' | 'approved' | 'dismissed' | 'converted';
 export type SuggestionSource = 'claap' | 'synthesized';
 
 export interface RawActionItem {
   text: string;
+  assignee_name: string | null;
   assignee_email: string | null;
   due_date: string | null; // YYYY-MM-DD
 }
@@ -19,6 +21,7 @@ export interface MeetingTaskSuggestion {
   id: string | null;            // row id once persisted
   suggestion_id: string;        // stable hash
   text: string;
+  assignee_name: string | null;
   assignee_email: string | null;
   due_date: string | null;
   status: SuggestionStatus;
@@ -66,8 +69,15 @@ function normalizeRawItems(items: unknown): RawActionItem[] {
   for (const it of items) {
     if (it == null) continue;
     if (typeof it === 'string') {
-      const text = stripClaapTimestamps(it);
-      if (text) out.push({ text, assignee_email: null, due_date: null });
+      const parsed = parseClaapActionItemText(stripClaapTimestamps(it));
+      if (parsed.text) {
+        out.push({
+          text: parsed.text,
+          assignee_name: parsed.assigneeName ?? null,
+          assignee_email: null,
+          due_date: null,
+        });
+      }
       continue;
     }
     if (typeof it !== 'object') continue;
@@ -78,11 +88,13 @@ function normalizeRawItems(items: unknown): RawActionItem[] {
       (typeof rec.description === 'string' && rec.description) ||
       null;
     if (!rawText) continue;
-    const text = stripClaapTimestamps(rawText);
-    if (!text) continue;
+    const parsed = parseClaapActionItemText(stripClaapTimestamps(rawText));
+    if (!parsed.text) continue;
+    const existingAssignee = normalizeAssignee(rec.assignee ?? rec.owner ?? rec.assignee_email);
     out.push({
-      text,
-      assignee_email: normalizeAssignee(rec.assignee ?? rec.owner ?? rec.assignee_email),
+      text: parsed.text,
+      assignee_name: parsed.assigneeName ?? existingAssignee ?? null,
+      assignee_email: existingAssignee && existingAssignee.includes('@') ? existingAssignee : null,
       due_date: parseDueDate(rec.due ?? rec.deadline ?? rec.dueDate ?? rec.due_date),
     });
   }
