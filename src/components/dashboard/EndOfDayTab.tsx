@@ -16,7 +16,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
 import { useClaapTokenStatus } from '@/hooks/useClaapTokenStatus';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -51,6 +50,7 @@ import { MeetingTasksInlineAction } from '@/components/dashboard/MeetingTasksInl
 import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 import { SuggestedTasksSection } from '@/components/dashboard/SuggestedTasksSection';
+import { ClaapNoteEditor } from '@/components/dashboard/ClaapNoteEditor';
 
 // ─────────────────────────────────────────────────────────────
 // End of Day · Two-pane master/detail layout
@@ -1530,11 +1530,12 @@ function EventDetailPane({
                 </button>
               </div>
             )}
-            <Textarea
+            <ClaapNoteEditor
               value={noteDraft}
-              onChange={(e) => { setNoteDraft(e.target.value); setNoteDirty(true); }}
+              onChange={(next) => { setNoteDraft(next); setNoteDirty(true); }}
               placeholder={`Note for ${userFirstName}'s records…`}
-              className="min-h-[72px] text-xs resize-y bg-white/[0.02]"
+              defaultRendered={notePrefilledFromClaap}
+              recordingUrl={claapCtx.recording?.url ?? null}
             />
             <p className="mt-1 text-[10px] text-muted-foreground/70 italic">
               Action items moved to Suggested tasks above.
