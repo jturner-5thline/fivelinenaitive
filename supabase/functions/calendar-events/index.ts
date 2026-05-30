@@ -11,6 +11,27 @@ const NYLAS_API_URI = "https://api.us.nylas.com";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+/**
+ * Safely parse an upstream (Nylas) response. If the body is not JSON
+ * (e.g. an HTML 502/429/Cloudflare error page) we return a normalized
+ * object instead of throwing — otherwise the JSON parse error bubbles
+ * up as a 500 with the cryptic "Unexpected token '<'" message.
+ */
+async function safeUpstreamJson(response: Response): Promise<any> {
+  const ct = response.headers.get("content-type") || "";
+  const text = await response.text();
+  if (ct.includes("application/json")) {
+    try { return JSON.parse(text); } catch { /* fall through */ }
+  } else {
+    try { return JSON.parse(text); } catch { /* not JSON */ }
+  }
+  const snippet = text.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 200);
+  return {
+    __nonJson: true,
+    message: `Upstream returned ${response.status} ${response.statusText}${snippet ? `: ${snippet}` : ""}`,
+  };
+}
+
 interface EventsRequest {
   action: "list" | "get" | "list_calendars" | "sync_all" | "create" | "update" | "delete" | "create_calendar";
   calendar_id?: string;
@@ -252,7 +273,7 @@ serve(async (req: Request): Promise<Response> => {
     switch (body.action) {
       case "list_calendars": {
         const response = await fetch(`${baseUrl}/calendars`, { headers });
-        const data = await response.json();
+        const data = await safeUpstreamJson(response);
 
         if (!response.ok) {
           console.error("Nylas calendars error:", data);
@@ -304,7 +325,7 @@ serve(async (req: Request): Promise<Response> => {
           if (cursor) url.searchParams.set("page_token", cursor);
 
           const response = await fetch(url.toString(), { headers });
-          const data = await response.json();
+          const data = await safeUpstreamJson(response);
 
           if (!response.ok) {
             console.error("Nylas events error:", data);
@@ -344,7 +365,7 @@ serve(async (req: Request): Promise<Response> => {
         url.searchParams.set("calendar_id", calendarId);
 
         const response = await fetch(url.toString(), { headers });
-        const data = await response.json();
+        const data = await safeUpstreamJson(response);
 
         if (!response.ok) {
           return new Response(JSON.stringify({ error: data.message || "Failed to get event" }), {
@@ -361,7 +382,7 @@ serve(async (req: Request): Promise<Response> => {
       case "sync_all": {
         // Fetch all calendars
         const calResponse = await fetch(`${baseUrl}/calendars`, { headers });
-        const calData = await calResponse.json();
+        const calData = await safeUpstreamJson(calResponse);
 
         if (!calResponse.ok) {
           return new Response(JSON.stringify({ error: calData.message || "Failed to list calendars" }), {
@@ -396,7 +417,7 @@ serve(async (req: Request): Promise<Response> => {
           url.searchParams.set("limit", String(Math.min(maxResults, 200)));
 
           const evResponse = await fetch(url.toString(), { headers });
-          const evData = await evResponse.json();
+          const evData = await safeUpstreamJson(evResponse);
 
           if (evResponse.ok && evData.data) {
             for (const e of evData.data) {
@@ -471,7 +492,7 @@ serve(async (req: Request): Promise<Response> => {
           headers,
           body: JSON.stringify(nylasEvent),
         });
-        const createData = await createResp.json();
+        const createData = await safeUpstreamJson(createResp);
 
         if (!createResp.ok) {
           console.error("Nylas create event error:", createData);
@@ -522,7 +543,7 @@ serve(async (req: Request): Promise<Response> => {
           headers,
           body: JSON.stringify(nylasUpdate),
         });
-        const updateData = await updateResp.json();
+        const updateData = await safeUpstreamJson(updateResp);
 
         if (!updateResp.ok) {
           console.error("Nylas update event error:", updateData);
@@ -555,7 +576,7 @@ serve(async (req: Request): Promise<Response> => {
         });
 
         if (!deleteResp.ok) {
-          const deleteData = await deleteResp.json();
+          const deleteData = await safeUpstreamJson(deleteResp);
           console.error("Nylas delete event error:", deleteData);
           return new Response(JSON.stringify({ error: deleteData.message || "Failed to delete event" }), {
             status: deleteResp.status,
@@ -584,7 +605,7 @@ serve(async (req: Request): Promise<Response> => {
             timezone: body.timezone ?? null,
           }),
         });
-        const data = await response.json();
+        const data = await safeUpstreamJson(response);
         if (!response.ok) {
           console.error("Nylas create calendar error:", data);
           return new Response(JSON.stringify({ error: data.message || "Failed to create calendar" }), {
