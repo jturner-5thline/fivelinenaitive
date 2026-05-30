@@ -43,6 +43,10 @@ import { usePersistentClears } from '@/hooks/usePersistentClears';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
 import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 import { MeetingClaapInlineAction } from '@/components/dashboard/MeetingClaapInlineAction';
+import { MeetingDealInlineAction } from '@/components/dashboard/MeetingDealInlineAction';
+import { MeetingFollowupInlineAction } from '@/components/dashboard/MeetingFollowupInlineAction';
+import { MeetingTasksInlineAction } from '@/components/dashboard/MeetingTasksInlineAction';
+import { MeetingScheduleInlineAction } from '@/components/dashboard/MeetingScheduleInlineAction';
 import { FindATimeDialog } from '@/components/scheduling/FindATimeDialog';
 
 // ─────────────────────────────────────────────────────────────
@@ -173,10 +177,11 @@ function useActivityLog(userId: string) {
 
 // ─── inline composer ─────────────────────────────────────────
 function InlineComposer({
-  to, defaultSubject, recipientLabel, onClose, onSent,
+  to, defaultSubject, defaultBody, recipientLabel, onClose, onSent,
 }: {
   to: string[];
   defaultSubject: string;
+  defaultBody?: string;
   recipientLabel: string;
   onClose: () => void;
   onSent?: () => void;
@@ -185,7 +190,7 @@ function InlineComposer({
   const { sendEmail } = useGmail();
   const [recipients, setRecipients] = useState<ComposerRecipients>({ to, cc: [], bcc: [] });
   const [subject, setSubject] = useState(defaultSubject);
-  const [body, setBody] = useState('');
+  const [body, setBody] = useState(defaultBody || '');
   const [attachments, setAttachments] = useState<string[]>([]);
   const [files, setFiles] = useState<File[]>([]);
 
@@ -961,9 +966,9 @@ export function EndOfDayTab({
           onEmailSent={(label) => {
             activity.append(selectedEvent.id, { kind: 'email_sent', by: userId, detail: label });
           }}
-          onCreateTask={() => {
+          onCreateTask={(initialTitle) => {
             setPrefill({
-              title: `Follow Up: ${selectedEvent.summary || '(No title)'}`,
+              title: initialTitle || `Follow Up: ${selectedEvent.summary || '(No title)'}`,
               dealId: null,
               eventId: selectedEvent.id,
             });
@@ -1059,7 +1064,7 @@ function EventDetailPane({
   onLinkDeal: (deal: { id: string; name: string }) => void;
   onNoteAdded: (text: string) => void;
   onEmailSent: (label: string) => void;
-  onCreateTask: () => void;
+  onCreateTask: (initialTitle?: string) => void;
 }) {
   const attendees = event.attendees || [];
   const externals = attendees.filter(a => !a.self);
@@ -1068,17 +1073,11 @@ function EventDetailPane({
   const isCarry = ageDays > 0;
 
   const [composerForAll, setComposerForAll] = useState(false);
+  const [composerPrefillBody, setComposerPrefillBody] = useState<string | undefined>(undefined);
   const [composerForOne, setComposerForOne] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
-  const [dealQuery, setDealQuery] = useState('');
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
-
-  const matchingDeals = useMemo(() => {
-    const q = dealQuery.trim().toLowerCase();
-    if (!q) return deals.slice(0, 8);
-    return deals.filter(d => d.name.toLowerCase().includes(q) || d.company.toLowerCase().includes(q)).slice(0, 12);
-  }, [deals, dealQuery]);
 
   const eventTitle = (event.summary || '(No title)').trim();
   const allEmails = externals.map(a => (a.email || '').trim()).filter(Boolean);
@@ -1204,8 +1203,9 @@ function EventDetailPane({
               <InlineComposer
                 to={allEmails}
                 defaultSubject={`${eventTitle} Follow Up`}
+                defaultBody={composerPrefillBody}
                 recipientLabel={`${allEmails.length} attendees`}
-                onClose={() => setComposerForAll(false)}
+                onClose={() => { setComposerForAll(false); setComposerPrefillBody(undefined); }}
                 onSent={() => onEmailSent(`Sent follow-up to ${allEmails.length} attendees`)}
               />
             </div>
@@ -1282,52 +1282,37 @@ function EventDetailPane({
         {/* Action items */}
         <section>
           <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Action items</h3>
-          <div className="grid grid-cols-2 gap-2">
-            <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs" onClick={() => setComposerForAll(true)}>
-              <Mail className="h-3.5 w-3.5" /> Send follow-up
-            </Button>
-            <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs" onClick={onCreateTask}>
-              <ListPlus className="h-3.5 w-3.5" /> Create task
-            </Button>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button size="sm" variant="outline" className="h-8 justify-start gap-2 text-xs">
-                  <Link2 className="h-3.5 w-3.5" /> Link to deal
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-72 p-2">
-                <Input
-                  value={dealQuery}
-                  onChange={(e) => setDealQuery(e.target.value)}
-                  placeholder="Search deals…"
-                  className="h-7 text-xs mb-2"
-                />
-                <div className="max-h-56 overflow-y-auto space-y-0.5">
-                  {matchingDeals.length === 0 ? (
-                    <p className="text-[11px] text-muted-foreground p-2">No deals match.</p>
-                  ) : matchingDeals.map(d => (
-                    <button
-                      key={d.id}
-                      onClick={() => onLinkDeal(d)}
-                      className="w-full text-left px-2 py-1.5 rounded hover:bg-white/[0.05] text-xs"
-                    >
-                      <div className="font-medium text-white truncate flex items-center gap-1.5">
-                        <Briefcase className="h-3 w-3 text-white/60" />{d.name}
-                      </div>
-                      <div className="text-[10px] text-muted-foreground truncate">{d.company}</div>
-                    </button>
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 justify-start gap-2 text-xs"
-              onClick={() => setScheduleNextOpen(true)}
-            >
-              <CalendarIcon className="h-3.5 w-3.5" /> Schedule next
-            </Button>
+          <div className="grid grid-cols-1 gap-2">
+            <MeetingFollowupInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              primaryAttendeeName={externals[0]?.display_name || null}
+              primaryAttendeeEmail={externals[0]?.email || null}
+              onOpenComposer={(prefilled) => {
+                setComposerPrefillBody(prefilled);
+                setComposerForAll(true);
+              }}
+            />
+            <MeetingTasksInlineAction
+              eventId={event.id}
+              onOpenTask={(initialTitle) => onCreateTask(initialTitle)}
+            />
+            <MeetingDealInlineAction
+              eventId={event.id}
+              eventTitle={eventTitle}
+              attendees={(event.attendees || []).map(a => ({
+                email: a.email,
+                displayName: a.display_name,
+                self: a.self,
+              }))}
+              onLinkedDeal={(d) => onLinkDeal(d)}
+            />
+            <MeetingScheduleInlineAction
+              eventId={event.id}
+              primaryAttendeeName={externals[0]?.display_name || null}
+              primaryAttendeeEmail={externals[0]?.email || null}
+              onOpenScheduler={() => setScheduleNextOpen(true)}
+            />
             <FindATimeDialog
               open={scheduleNextOpen}
               onOpenChange={setScheduleNextOpen}
