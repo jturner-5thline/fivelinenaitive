@@ -653,13 +653,25 @@ export interface ConsolidatedDebtPipelineMetrics {
 export function useConsolidatedDebtPipelineMetrics(
   quarter: QuarterOption,
 ): ConsolidatedDebtPipelineMetrics {
+  // Rolling windows anchor on TODAY (current month-end), independent of the
+  // selectedQuarter. This ensures the Closed Trend, Average Deal Closed, and
+  // Average Revenue per Deal Closed always include the most recent activity
+  // (e.g. the May 2026 bulk Closed Won moves) even when the user is viewing a
+  // prior quarter.
+  const todayAnchor = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const last = new Date(y, d.getMonth() + 1, 0).getDate();
+    return `${y}-${m}-${String(last).padStart(2, '0')}`;
+  }, []);
   const sixMonthPeriod = useMemo(
-    () => buildRollingMonthsPeriod(quarter.endDate, 6),
-    [quarter.endDate],
+    () => buildRollingMonthsPeriod(todayAnchor, 6),
+    [todayAnchor],
   );
   const twelveMonthPeriod = useMemo(
-    () => buildRollingMonthsPeriod(quarter.endDate, 12),
-    [quarter.endDate],
+    () => buildRollingMonthsPeriod(todayAnchor, 12),
+    [todayAnchor],
   );
 
   const ndaNeedsList = useStageEntryMetric(NDA_NEEDS_LIST_STAGE, quarter, ACTIVE_PIPELINE_ID);
@@ -669,7 +681,7 @@ export function useConsolidatedDebtPipelineMetrics(
   // entries within the Active Pipeline, per product spec.
   const CLOSED_STAGES = [FUNDED_INVOICED_STAGE, 'closed-won'];
   const fundedInvoiced = useStageEntryMetric(CLOSED_STAGES, quarter, ACTIVE_PIPELINE_ID);
-  const fundedInvoicedTrend = useStageEntryTrendSeries(CLOSED_STAGES, quarter.endDate, ACTIVE_PIPELINE_ID);
+  const fundedInvoicedTrend = useStageEntryTrendSeries(CLOSED_STAGES, todayAnchor, ACTIVE_PIPELINE_ID);
   const termsIssued = useStageEntryMetric(TERMS_ISSUED_STAGE, quarter, ACTIVE_PIPELINE_ID);
   const inDueDiligence = useStageEntryMetric(IN_DUE_DILIGENCE_STAGE, quarter, ACTIVE_PIPELINE_ID);
 
