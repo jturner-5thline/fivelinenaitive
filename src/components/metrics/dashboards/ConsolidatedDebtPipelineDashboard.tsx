@@ -657,6 +657,19 @@ export function ConsolidatedDebtPipelineDashboard({
             }
           />
         </div>
+
+        <StageMovementStackedBarChart
+          buckets={trendMode === 'monthly' ? m.closedSplitTrend.monthly : m.closedSplitTrend.quarterly}
+          isLoading={m.closedSplitTrend.isLoading}
+          trendMode={trendMode}
+          onBarClick={(bucket) =>
+            setDrilldown({
+              title: `Stage Movement — ${bucket.label}`,
+              deals: bucket.deals,
+              periodNote: `Funded / Invoiced + Closed Won stage_enter events · ${bucket.label}`,
+            })
+          }
+        />
       </div>
 
       <DrilldownModal
