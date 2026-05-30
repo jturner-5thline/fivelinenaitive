@@ -44,6 +44,7 @@ const ACTION_CONFIG: Record<string, { icon: typeof Upload; color: string; label:
   rename_reverted: { icon: Undo2, color: 'text-cyan-400', label: 'Rename Reverted' },
   claap_recording_linked: { icon: Video, color: 'text-primary', label: 'Call Linked' },
   stage_changed: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Changed' },
+  stage_exited: { icon: GitBranch, color: 'text-muted-foreground', label: 'Stage Exited' },
 };
 
 const FILTER_OPTIONS = [
@@ -82,6 +83,10 @@ function describeAction(entry: DealAuditEntry): string {
       const toL = meta.to_label || (meta.to_stage ? String(meta.to_stage).replace(/-/g, ' ') : name);
       if (fromL && fromL !== '—') return `moved stage from "${fromL}" to "${toL}"`;
       return `set stage to "${toL}"`;
+    }
+    case 'stage_exited': {
+      const exitL = meta.exit_stage_label || name || 'a stage';
+      return `exited stage "${exitL}"`;
     }
     default: return entry.action_type.replace(/_/g, ' ');
   }
