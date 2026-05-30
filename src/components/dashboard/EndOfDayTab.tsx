@@ -1202,12 +1202,6 @@ function EventDetailPane({
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
 
   const allEmails = externals.map(a => (a.email || '').trim()).filter(Boolean);
-  const why = useMemo(() => {
-    if (isCarry && externals.length === 0) return 'Internal meeting still flagged as outstanding — no external follow-up captured.';
-    if (isCarry) return `Outstanding for ${ageDays} day${ageDays === 1 ? '' : 's'} with no follow-up logged from your end.`;
-    if (externals.length === 0) return 'Internal-only meeting. Mark as resolved if no follow-up is needed.';
-    return 'Follow-up to external attendees has not yet been sent.';
-  }, [isCarry, ageDays, externals.length]);
 
   return (
     <div className="flex flex-col h-full min-h-0">
