@@ -1081,6 +1081,34 @@ function EventDetailPane({
   const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
   const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
   const { data: claapCtx, refetch: refetchClaapCtx, isFetching: claapCtxFetching } = useMeetingClaapContext(event.id);
+  const [claapBackfilling, setClaapBackfilling] = useState(false);
+  const [claapBackfillTried, setClaapBackfillTried] = useState<string | null>(null);
+
+  const regenerateClaapSummary = async () => {
+    if (!claapCtx?.meetingRowId) return;
+    setClaapBackfilling(true);
+    try {
+      await supabase.functions.invoke('claap-backfill-summaries', {
+        body: { meeting_id: claapCtx.meetingRowId },
+      });
+    } catch (err) {
+      console.warn('claap backfill failed', err);
+    } finally {
+      setClaapBackfilling(false);
+      refetchClaapCtx();
+    }
+  };
+
+  // Auto-trigger backfill once per meeting when transcript exists but no AI content yet.
+  useEffect(() => {
+    if (!claapCtx?.meetingRowId) return;
+    if (claapCtx.hasContent) return;
+    if (!claapCtx.transcriptAvailable) return;
+    if (claapBackfillTried === claapCtx.meetingRowId) return;
+    setClaapBackfillTried(claapCtx.meetingRowId);
+    regenerateClaapSummary();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claapCtx?.meetingRowId, claapCtx?.transcriptAvailable, claapCtx?.hasContent]);
 
   const buildClaapNote = (ctx: NonNullable<typeof claapCtx>): string => {
     const lines: string[] = [];
@@ -1406,14 +1434,18 @@ function EventDetailPane({
             )}
             {claapStillGenerating && !notePrefilledFromClaap && (
               <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
-                <span>Claap is still generating the summary — check back in a minute.</span>
+                <span>
+                  {claapCtx?.transcriptAvailable
+                    ? 'Claap summary is generating from the transcript — this usually takes ~30 seconds.'
+                    : 'Claap summary not yet available for this recording — generated after the call ends.'}
+                </span>
                 <button
                   type="button"
                   className="underline hover:text-white not-italic"
-                  disabled={claapCtxFetching}
-                  onClick={() => refetchClaapCtx()}
+                  disabled={claapCtxFetching || claapBackfilling}
+                  onClick={regenerateClaapSummary}
                 >
-                  {claapCtxFetching ? 'Refreshing…' : 'Refresh'}
+                  {claapBackfilling ? 'Generating…' : claapCtxFetching ? 'Refreshing…' : 'Refresh'}
                 </button>
               </div>
             )}
