@@ -271,7 +271,7 @@ export function useDealAuditLog(dealId: string | undefined) {
         const row = payload.new as {
           id: string; deal_id: string; pipeline_id: string | null;
           from_stage: string | null; to_stage: string;
-          changed_at: string; changed_by: string | null;
+          changed_at: string; changed_by: string | null; source?: string | null;
         };
         let displayName: string | null = null;
         let avatar: string | null = null;
@@ -298,6 +298,7 @@ export function useDealAuditLog(dealId: string | undefined) {
             from_label: (row.from_stage || '—').replace(/-/g, ' '),
             to_label: (row.to_stage || '').replace(/-/g, ' '),
             pipeline_id: row.pipeline_id,
+            source: row.source || null,
           },
           created_at: row.changed_at,
           user_display_name: displayName || 'System',
