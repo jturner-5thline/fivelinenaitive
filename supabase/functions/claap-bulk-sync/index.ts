@@ -32,7 +32,8 @@ Deno.serve(async (req) => {
     .from("claap_meetings")
     .select("id, claap_id, title, company_id, started_at, organizer_email")
     .not("claap_id", "is", null)
-    .limit(200);
+    .order("started_at", { ascending: false })
+    .limit(40);
   for (const m of meetingsMissing ?? []) {
     if (!m.claap_id || m.claap_id.startsWith("test-")) continue;
     const { data: existing } = await supabase
@@ -79,7 +80,7 @@ Deno.serve(async (req) => {
     .select("id, external_id, title, summary, claap_summary_synced_at")
     .or(`summary.is.null,claap_summary_synced_at.is.null,claap_summary_synced_at.lt.${cutoff}`)
     .order("started_at", { ascending: false })
-    .limit(100);
+    .limit(40);
   const toSync = stale2 ?? stale ?? [];
   for (const row of toSync) {
     if (!row.external_id) {
