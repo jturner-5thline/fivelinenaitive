@@ -17,6 +17,7 @@ import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -1076,6 +1077,44 @@ function EventDetailPane({
   const [composerPrefillBody, setComposerPrefillBody] = useState<string | undefined>(undefined);
   const [composerForOne, setComposerForOne] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
+  const [noteDirty, setNoteDirty] = useState(false);
+  const [notePrefilledFromClaap, setNotePrefilledFromClaap] = useState(false);
+  const [notePrefillRecordingId, setNotePrefillRecordingId] = useState<string | null>(null);
+  const { data: claapCtx, refetch: refetchClaapCtx, isFetching: claapCtxFetching } = useMeetingClaapContext(event.id);
+
+  const buildClaapNote = (ctx: NonNullable<typeof claapCtx>): string => {
+    const lines: string[] = [];
+    lines.push(`🎥 Claap summary — ${ctx.recordingTitle || 'Meeting recording'}`);
+    if (ctx.summary) lines.push('', ctx.summary.trim());
+    if (ctx.nextSteps.length) {
+      lines.push('', '✅ Action items');
+      ctx.nextSteps.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+    }
+    if (ctx.keyDecisions.length) {
+      lines.push('', '💡 Key takeaways');
+      ctx.keyDecisions.slice(0, 10).forEach((s) => lines.push(`- ${s}`));
+    }
+    if (ctx.recordingUrl) lines.push('', `[Watch recording](${ctx.recordingUrl})`);
+    return lines.join('\n');
+  };
+
+  // Auto-prefill the note when a linked Claap recording has AI content and
+  // the user hasn't typed yet. If a different recording later becomes linked,
+  // prompt before overwriting an unedited prefill.
+  useEffect(() => {
+    if (!claapCtx) return;
+    const hasContent = !!claapCtx.summary || claapCtx.nextSteps.length > 0 || claapCtx.keyDecisions.length > 0;
+    if (!hasContent) return;
+    if (noteDirty) return;
+    if (notePrefillRecordingId === claapCtx.recordingId) return;
+    // Recording changed and prior prefill is untouched → replace silently.
+    setNoteDraft(buildClaapNote(claapCtx));
+    setNotePrefilledFromClaap(true);
+    setNotePrefillRecordingId(claapCtx.recordingId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claapCtx?.recordingId, claapCtx?.summary, claapCtx?.nextSteps?.length, claapCtx?.keyDecisions?.length, noteDirty]);
+
+  const claapStillGenerating = !!claapCtx && !claapCtx.summary && claapCtx.nextSteps.length === 0 && claapCtx.keyDecisions.length === 0;
   const [claapLinkerOpen, setClaapLinkerOpen] = useState(false);
   const [scheduleNextOpen, setScheduleNextOpen] = useState(false);
 
@@ -1347,15 +1386,53 @@ function EventDetailPane({
               <StickyNote className="h-3 w-3 text-muted-foreground" />
               <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">Add note</span>
             </div>
+            {notePrefilledFromClaap && (
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="inline-flex items-center gap-1 h-5 px-1.5 rounded text-[10px] border border-emerald-500/40 text-emerald-300 bg-emerald-500/10">
+                  <Sparkles className="h-2.5 w-2.5" /> AI pre-filled from Claap
+                </span>
+                <button
+                  type="button"
+                  className="text-[10px] text-muted-foreground hover:text-white underline"
+                  onClick={() => {
+                    setNoteDraft('');
+                    setNotePrefilledFromClaap(false);
+                    setNoteDirty(true);
+                  }}
+                >
+                  Clear
+                </button>
+              </div>
+            )}
+            {claapStillGenerating && !notePrefilledFromClaap && (
+              <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
+                <span>Claap is still generating the summary — check back in a minute.</span>
+                <button
+                  type="button"
+                  className="underline hover:text-white not-italic"
+                  disabled={claapCtxFetching}
+                  onClick={() => refetchClaapCtx()}
+                >
+                  {claapCtxFetching ? 'Refreshing…' : 'Refresh'}
+                </button>
+              </div>
+            )}
             <Textarea
               value={noteDraft}
-              onChange={(e) => setNoteDraft(e.target.value)}
+              onChange={(e) => { setNoteDraft(e.target.value); setNoteDirty(true); }}
               placeholder={`Note for ${userFirstName}'s records…`}
               className="min-h-[72px] text-xs resize-y bg-white/[0.02]"
             />
             <div className="flex justify-end mt-1.5">
               <Button size="sm" className="h-7 text-[11px]" disabled={!noteDraft.trim()}
-                onClick={() => { onNoteAdded(noteDraft.trim()); setNoteDraft(''); toast.success('Note added'); }}
+                onClick={() => {
+                  onNoteAdded(noteDraft.trim());
+                  setNoteDraft('');
+                  setNoteDirty(false);
+                  setNotePrefilledFromClaap(false);
+                  setNotePrefillRecordingId(null);
+                  toast.success('Note added');
+                }}
               >
                 Save note
               </Button>
