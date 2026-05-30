@@ -10,10 +10,20 @@ export interface SynthesizedMeetingNoteContent {
 
 export interface MeetingClaapRecordingRef {
   id: string;
+  rowId?: string | null;
   title: string | null;
   url: string | null;
   meetingRowId: string | null;
   linkedNote: string | null;
+}
+
+export interface MeetingClaapDebugInfo {
+  querySql: string | null;
+  eventLinkRecordingId?: string | null;
+  meetingMatchId?: string | null;
+  recordingExternalId?: string | null;
+  recordingRowId?: string | null;
+  hookSource?: string | null;
 }
 
 export interface MeetingClaapContextValue {
@@ -23,6 +33,7 @@ export interface MeetingClaapContextValue {
   keyTakeaways: string[];
   source: MeetingClaapSource;
   transcriptAvailable: boolean;
+  debug: MeetingClaapDebugInfo | null;
   isLoading: boolean;
   fetching: boolean;
   error: string | null;

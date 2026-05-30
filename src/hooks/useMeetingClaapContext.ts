@@ -2,15 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
-import {
-  asStringArray,
-  asSynthesizedContent,
-  type ClaapMeetingRow,
-  type ClaapRecordingRow,
-  type EventClaapRecordingRow,
-  type MeetingClaapContextValue,
-  type MeetingSynthesizedNoteRow,
-} from '@/types/claap';
+import { asStringArray, type MeetingClaapContextValue, type MeetingClaapDebugInfo } from '@/types/claap';
 
 /**
  * For a given calendar event id, returns the linked Claap recording and (if any)
@@ -23,87 +15,77 @@ import {
  */
 type MeetingClaapQueryData = Omit<MeetingClaapContextValue, 'isLoading' | 'error'>;
 
-export function useMeetingClaapContext(eventId: string | null | undefined): MeetingClaapContextValue & { refetch: () => Promise<unknown> } {
+type UseMeetingClaapContextInput =
+  | string
+  | null
+  | undefined
+  | {
+      eventId: string | null | undefined;
+      eventTitle?: string | null;
+      eventStart?: string | null;
+      organizerEmail?: string | null;
+    };
+
+const PREFILL_QUERY_SQL = "claap_meetings(company_id scoped, scored by title/organizer/time) -> claap_recording_links(entity_type='meeting', link_role='primary_meeting') -> claap_recordings(summary, action_items, key_takeaways, recording_url); fallback direct match: claap_recordings scoped by title/organizer/time; synthesized fallback: meeting_synthesized_notes(meeting_id)";
+
+export function useMeetingClaapContext(input: UseMeetingClaapContextInput): MeetingClaapContextValue & { refetch: () => Promise<unknown> } {
   const { company } = useCompany();
+  let eventId: string | null = null;
+  let eventTitle: string | null = null;
+  let eventStart: string | null = null;
+  let organizerEmail: string | null = null;
+
+  if (typeof input === 'string') {
+    eventId = input;
+  } else if (input) {
+    eventId = input.eventId ?? null;
+    eventTitle = input.eventTitle ?? null;
+    eventStart = input.eventStart ?? null;
+    organizerEmail = input.organizerEmail ?? null;
+  }
+
   const query = useQuery<MeetingClaapQueryData | null>({
-    queryKey: ['meeting-claap-context', eventId, company?.id],
+    queryKey: ['meeting-claap-context', eventId, company?.id, eventTitle, eventStart, organizerEmail],
     enabled: !!eventId && !!company?.id,
     staleTime: 60_000,
     queryFn: async () => {
       try {
-        const { data: linkData } = await supabase
-          .from('event_claap_recordings')
-          .select('recording_id, recording_title, recording_url, notes')
-          .eq('org_company_id', company!.id)
-          .eq('event_id', eventId!)
-          .order('linked_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        const link = (linkData ?? null) as EventClaapRecordingRow | null;
-        if (!link?.recording_id) return null;
+        const { data, error } = await supabase.rpc('get_event_claap_prefill_context', {
+          p_event_id: eventId!,
+        });
+        if (error) throw error;
 
-        const { data: recordingData } = await supabase
-          .from('claap_recordings')
-          .select('summary, action_items, key_takeaways, synthesized_note, transcript_available')
-          .eq('org_company_id', company!.id)
-          .eq('external_id', link.recording_id)
-          .maybeSingle();
-        const recording = (recordingData ?? null) as (ClaapRecordingRow & { transcript_available?: boolean | null }) | null;
+        const payload = (data ?? null) as Record<string, unknown> | null;
+        if (!payload) return null;
 
-        const { data: meetingData } = await supabase
-          .from('claap_meetings')
-          .select('id, ai_summary, next_steps, key_decisions, transcript')
-          .eq('claap_id', link.recording_id)
-          .maybeSingle();
-        const meeting = (meetingData ?? null) as (ClaapMeetingRow & { transcript?: string | null }) | null;
+        const recordingPayload = payload.recording as Record<string, unknown> | null;
+        const debugPayload = payload.debug as Record<string, unknown> | null;
+        const debug: MeetingClaapDebugInfo = {
+          querySql: typeof debugPayload?.query_sql === 'string' ? debugPayload.query_sql : PREFILL_QUERY_SQL,
+          eventLinkRecordingId: typeof debugPayload?.event_link_recording_id === 'string' ? debugPayload.event_link_recording_id : null,
+          meetingMatchId: typeof debugPayload?.meeting_match_id === 'string' ? debugPayload.meeting_match_id : null,
+          recordingExternalId: typeof debugPayload?.recording_external_id === 'string' ? debugPayload.recording_external_id : null,
+          recordingRowId: typeof debugPayload?.recording_row_id === 'string' ? debugPayload.recording_row_id : null,
+          hookSource: typeof payload.source === 'string' ? payload.source : 'none',
+        };
 
-        const { data: synthRowData } = meeting?.id
-          ? await supabase
-              .from('meeting_synthesized_notes')
-              .select('meeting_id, content, model, updated_at')
-              .eq('meeting_id', meeting.id)
-              .maybeSingle()
-          : { data: null };
-        const synthRow = (synthRowData ?? null) as MeetingSynthesizedNoteRow | null;
-
-        const recordingSummary = typeof recording?.summary === 'string' ? recording.summary.trim() : '';
-        const recordingSteps = asStringArray(recording?.action_items);
-        const recordingTakeaways = asStringArray(recording?.key_takeaways);
-        const recordingSynth = asSynthesizedContent(recording?.synthesized_note ?? null);
-        const meetingSynth = asSynthesizedContent(synthRow?.content ?? null);
-        const synthesized = meetingSynth ?? recordingSynth;
-        const synthesizedSummary = synthesized?.summary_md ?? '';
-        const synthesizedSteps = synthesized?.action_items ?? [];
-        const synthesizedTakeaways = synthesized?.key_takeaways ?? [];
-        const meetingSteps = asStringArray(meeting?.next_steps ?? null);
-        const meetingTakeaways = asStringArray(meeting?.key_decisions ?? null);
-
-        const hasReal = !!recordingSummary || recordingSteps.length > 0 || recordingTakeaways.length > 0;
-        const hasSynth = !!synthesizedSummary || synthesizedSteps.length > 0 || synthesizedTakeaways.length > 0;
-        const summary = hasReal
-          ? (recordingSummary || meeting?.ai_summary || null)
-          : hasSynth
-            ? (synthesizedSummary || meeting?.ai_summary || null)
-            : null;
-        const actionItems = hasReal ? recordingSteps : hasSynth ? synthesizedSteps : meetingSteps;
-        const keyTakeaways = hasReal ? recordingTakeaways : hasSynth ? synthesizedTakeaways : meetingTakeaways;
-
-        const ctx: MeetingClaapQueryData = {
-          recording: {
-            id: link.recording_id,
-            meetingRowId: meeting?.id || null,
-            title: link.recording_title || null,
-            url: link.recording_url || null,
-            linkedNote: link.notes || null,
-          },
-          summary,
-          actionItems,
-          keyTakeaways,
-          source: hasReal ? 'claap' : hasSynth ? 'synthesized' : 'none',
-          transcriptAvailable: Boolean(recording?.transcript_available || meeting?.transcript),
+        return {
+          recording: recordingPayload ? {
+            id: typeof recordingPayload.id === 'string' ? recordingPayload.id : (eventId ?? ''),
+            rowId: typeof recordingPayload.row_id === 'string' ? recordingPayload.row_id : null,
+            meetingRowId: typeof recordingPayload.meetingRowId === 'string' ? recordingPayload.meetingRowId : null,
+            title: typeof recordingPayload.title === 'string' ? recordingPayload.title : null,
+            url: typeof recordingPayload.url === 'string' ? recordingPayload.url : null,
+            linkedNote: typeof recordingPayload.linkedNote === 'string' ? recordingPayload.linkedNote : null,
+          } : null,
+          summary: typeof payload.summary === 'string' ? payload.summary : null,
+          actionItems: asStringArray((payload.actionItems ?? null) as never),
+          keyTakeaways: asStringArray((payload.keyTakeaways ?? null) as never),
+          source: payload.source === 'claap' || payload.source === 'synthesized' ? payload.source : 'none',
+          transcriptAvailable: Boolean(payload.transcriptAvailable),
+          debug,
           fetching: false,
         };
-        return ctx;
       } catch (err) {
         console.warn('useMeetingClaapContext failed', err);
         return null;
@@ -147,6 +129,7 @@ export function useMeetingClaapContext(eventId: string | null | undefined): Meet
     keyTakeaways: query.data?.keyTakeaways ?? [],
     source: query.data?.source ?? 'none',
     transcriptAvailable: query.data?.transcriptAvailable ?? false,
+    debug: query.data?.debug ?? null,
     isLoading: query.isLoading || query.isFetching,
     fetching: query.isFetching,
     error: query.error instanceof Error ? query.error.message : null,
