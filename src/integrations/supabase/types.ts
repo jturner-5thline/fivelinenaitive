@@ -25257,6 +25257,10 @@ export type Database = {
         }
         Returns: string
       }
+      debug_claap_prefill_source: {
+        Args: { p_meeting_id: string }
+        Returns: Json
+      }
       delete_email: {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
@@ -25309,6 +25313,10 @@ export type Database = {
           user_email: string
           user_id: string
         }[]
+      }
+      get_event_claap_prefill_context: {
+        Args: { p_event_id: string }
+        Returns: Json
       }
       get_funding_source_qualified_actuals: {
         Args: { p_cadence?: string; p_tenant_id: string; p_year: number }
