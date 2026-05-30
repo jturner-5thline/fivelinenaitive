@@ -15785,6 +15785,39 @@ export type Database = {
         }
         Relationships: []
       }
+      meeting_synthesized_notes: {
+        Row: {
+          content: Json
+          created_at: string
+          created_by: string | null
+          meeting_id: string
+          model: string | null
+          org_company_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          meeting_id: string
+          model?: string | null
+          org_company_id: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          created_by?: string | null
+          meeting_id?: string
+          model?: string | null
+          org_company_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meeting_title_templates: {
         Row: {
           created_at: string
@@ -25305,6 +25338,25 @@ export type Database = {
           lender_name: string
           total_volume: number
         }[]
+      }
+      get_or_create_synthesized_note: {
+        Args: { p_meeting_id: string }
+        Returns: {
+          content: Json
+          created_at: string
+          created_by: string | null
+          meeting_id: string
+          model: string | null
+          org_company_id: string
+          source: string
+          updated_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "meeting_synthesized_notes"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_team_members_for_mention: {
         Args: { _user_id: string }
