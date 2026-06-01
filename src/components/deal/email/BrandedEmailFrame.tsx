@@ -1,6 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
+import { wrapEmailTables } from './emailHtmlLayout';
 
 interface Props {
   html: string;
@@ -220,14 +221,14 @@ function BrandedEmailFrameImpl({ html, className, maxHeight = 4000, onError }: P
       // Outlook/Gmail person-to-person replies (Brian Lewis "Project
       // Vista", Niki, etc.) solid white over the dark canvas — the
       // attribute-level hook above cannot see CSS rules.
-      const cleanWithStripped = stripCanvasBackgroundsFromStyleBlocks(clean);
+      const cleanWithStripped = wrapEmailTables(stripCanvasBackgroundsFromStyleBlocks(clean));
 
       const fid = JSON.stringify(frameId.current);
       const closeScript = '<' + '/script>';
       return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><base target="_blank"><style>
 :root{color-scheme:dark;}
-html,body{margin:0;padding:0;background:transparent !important;background-color:transparent !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
-body{padding:8px 0;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;background:transparent !important;}
+ html,body{margin:0;padding:0;width:100% !important;max-width:100% !important;min-width:0 !important;box-sizing:border-box;background:transparent !important;background-color:transparent !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+ body{padding:8px 0;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;word-break:break-word;background:transparent !important;overflow-x:hidden !important;}
 /* Neutralize hardcoded white/light backgrounds the email author set on
    outer wrapper elements so the message blends into the Naitive reading
    surface. We target only the outermost wrappers + any element whose
@@ -253,11 +254,12 @@ html, body, table, td { background: transparent !important; background-color: tr
 [style*="background: #fff" i],
 [style*="background:white" i],
 [style*="background: white" i] { background-color: transparent !important; background-image: none !important; }
-img{max-width:100% !important;height:auto !important;border:0;}
-table{max-width:100% !important;}
-/* Wide tables: allow horizontal scroll inside the email body so the
-   parent column (and the AI Assist panel) never get pushed off-screen. */
-body{overflow-x:auto;}
+ img{max-width:100% !important;height:auto !important;border:0;}
+ .email-table-scroll{max-width:100% !important;overflow-x:auto !important;overflow-y:hidden !important;-webkit-overflow-scrolling:touch;}
+ table{width:100% !important;max-width:100% !important;table-layout:fixed !important;}
+ td,th,blockquote,a,a *{overflow-wrap:anywhere !important;word-break:break-word !important;}
+ *{max-width:100% !important;min-width:0 !important;box-sizing:border-box;}
+ .email-table-scroll > table{min-width:100% !important;}
 /* Foreground default — any element that did not survive the sanitizer
    with its own explicit (readable) color inherits the near-white reading
    color. Bright brand colors still override via inline style. */
@@ -296,7 +298,7 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
   return (
     <div
       data-email-root=""
-      className={cn('w-full min-w-0 overflow-hidden bg-transparent', className)}
+      className={cn('w-full min-w-0 max-w-full overflow-hidden bg-transparent', className)}
     >
       <iframe
         ref={iframeRef}
@@ -306,7 +308,7 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
         // colorScheme: 'dark' makes the browser paint the iframe's pre-load
         // canvas using the dark UA backdrop instead of flashing solid white
         // for the few ms before our srcDoc <style> resolves.
-        style={{ width: '100%', height, border: 0, display: 'block', background: 'transparent', colorScheme: 'dark' }}
+        style={{ width: '100%', maxWidth: '100%', height, border: 0, display: 'block', background: 'transparent', colorScheme: 'dark' }}
         allowTransparency
         onError={handleError}
       />

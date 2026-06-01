@@ -950,7 +950,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       // Transparent — inherits the unified popup-shell surface. Separation
       // from the message column is handled by a thin left border on the
       // parent wrapper in EmailListAndDetail.
-      className="flex h-full w-full min-w-0 flex-col overflow-hidden bg-transparent min-[1100px]:w-[300px] min-[1100px]:min-w-[300px] min-[1100px]:max-w-[420px] min-[1280px]:w-[340px] min-[1536px]:w-[380px]"
+      className="flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden bg-transparent"
       style={{ contain: 'layout paint style' }}
       aria-label="AI Assist"
     >
