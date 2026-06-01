@@ -6710,6 +6710,39 @@ export type Database = {
           },
         ]
       }
+      data_quality_issues: {
+        Row: {
+          deal_id: string | null
+          details: Json
+          detected_at: string
+          id: string
+          issue_type: string
+          resolved_at: string | null
+          source_row_id: string | null
+          source_table: string
+        }
+        Insert: {
+          deal_id?: string | null
+          details?: Json
+          detected_at?: string
+          id?: string
+          issue_type: string
+          resolved_at?: string | null
+          source_row_id?: string | null
+          source_table: string
+        }
+        Update: {
+          deal_id?: string | null
+          details?: Json
+          detected_at?: string
+          id?: string
+          issue_type?: string
+          resolved_at?: string | null
+          source_row_id?: string | null
+          source_table?: string
+        }
+        Relationships: []
+      }
       data_room_audit_log: {
         Row: {
           action: string
@@ -9725,8 +9758,29 @@ export type Database = {
             foreignKeyName: "deal_stage_history_notes_stage_history_id_fkey"
             columns: ["stage_history_id"]
             isOneToOne: true
+            referencedRelation: "deal_stage_durations"
+            referencedColumns: ["enter_event_id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_notes_stage_history_id_fkey"
+            columns: ["stage_history_id"]
+            isOneToOne: true
             referencedRelation: "deal_stage_history"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_notes_stage_history_id_fkey"
+            columns: ["stage_history_id"]
+            isOneToOne: true
+            referencedRelation: "deal_stage_transitions"
+            referencedColumns: ["from_enter_event_id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_notes_stage_history_id_fkey"
+            columns: ["stage_history_id"]
+            isOneToOne: true
+            referencedRelation: "deal_stage_transitions"
+            referencedColumns: ["to_enter_event_id"]
           },
         ]
       }
@@ -15712,6 +15766,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mat_view_refresh_log: {
+        Row: {
+          duration_ms: number | null
+          error: string | null
+          finished_at: string | null
+          id: string
+          started_at: string
+          status: string
+          view_name: string
+        }
+        Insert: {
+          duration_ms?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          view_name: string
+        }
+        Update: {
+          duration_ms?: number | null
+          error?: string | null
+          finished_at?: string | null
+          id?: string
+          started_at?: string
+          status?: string
+          view_name?: string
+        }
+        Relationships: []
       }
       meeting_claap_resolution: {
         Row: {
@@ -25108,6 +25192,59 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_stage_durations: {
+        Row: {
+          company_id: string | null
+          deal_id: string | null
+          duration_seconds: number | null
+          enter_actor: string | null
+          enter_event_id: string | null
+          enter_precision: string | null
+          enter_source: string | null
+          entered_at: string | null
+          exit_actor: string | null
+          exit_precision: string | null
+          exit_source: string | null
+          exited_at: string | null
+          is_open: boolean | null
+          pipeline_id: string | null
+          quality_flag: string | null
+          stage_id: string | null
+          stage_slug: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      deal_stage_transitions: {
+        Row: {
+          company_id: string | null
+          deal_id: string | null
+          from_enter_event_id: string | null
+          from_entered_at: string | null
+          from_stage_slug: string | null
+          is_consecutive: boolean | null
+          to_enter_event_id: string | null
+          to_entered_at: string | null
+          to_stage_slug: string | null
+          transit_seconds: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles_public: {
         Row: {
           avatar_url: string | null
@@ -25473,6 +25610,38 @@ export type Database = {
           subtitle: string
         }[]
       }
+      get_avg_time_between_stages: {
+        Args: {
+          p_consecutive_only?: boolean
+          p_date_from?: string
+          p_date_to?: string
+          p_from_stage: string
+          p_to_stage: string
+        }
+        Returns: {
+          avg_seconds: number
+          from_stage_slug: string
+          median_seconds: number
+          n_transitions: number
+          p90_seconds: number
+          to_stage_slug: string
+        }[]
+      }
+      get_avg_time_in_stage: {
+        Args: {
+          p_date_from?: string
+          p_date_to?: string
+          p_include_open?: boolean
+          p_stage_slug: string
+        }
+        Returns: {
+          avg_seconds: number
+          median_seconds: number
+          n_instances: number
+          p90_seconds: number
+          stage_slug: string
+        }[]
+      }
       get_company_join_requests: {
         Args: { _company_id: string; _status?: string }
         Returns: {
@@ -25487,6 +25656,22 @@ export type Database = {
           user_display_name: string
           user_email: string
           user_id: string
+        }[]
+      }
+      get_deal_stage_durations: {
+        Args: { p_deal_id: string }
+        Returns: {
+          duration_seconds: number
+          enter_event_id: string
+          enter_precision: string
+          enter_source: string
+          entered_at: string
+          exit_precision: string
+          exit_source: string
+          exited_at: string
+          is_open: boolean
+          quality_flag: string
+          stage_slug: string
         }[]
       }
       get_event_claap_prefill_context: {
@@ -25524,6 +25709,18 @@ export type Database = {
           relationship_owners: string
           trigger_at: string
           trigger_kind: string
+        }[]
+      }
+      get_funnel_velocity: {
+        Args: { p_consecutive_only?: boolean; p_stage_path: string[] }
+        Returns: {
+          avg_seconds: number
+          from_stage_slug: string
+          median_seconds: number
+          n_transitions: number
+          p90_seconds: number
+          segment_index: number
+          to_stage_slug: string
         }[]
       }
       get_lender_deal_stats: {
@@ -25667,6 +25864,7 @@ export type Database = {
           read_ct: number
         }[]
       }
+      refresh_deal_stage_metrics: { Args: never; Returns: undefined }
       reject_join_request: {
         Args: { _rejection_note?: string; _request_id: string }
         Returns: undefined
