@@ -3163,41 +3163,16 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               currentDealName={linkedDealName}
               isLinked={!!linkedDealName}
               onLinkDeal={async (id, name) => {
+                const prev = { id: linkedDealId, name: linkedDealName };
                 // Optimistic UI — AI drafting + context immediately use the
                 // newly linked deal even before the DB write resolves.
                 setLinkedDealId(id);
                 setLinkedDealName(name);
                 onToggleLink(thread.latestEmail);
-
-                // Open the floating preview deterministically BEFORE the
-                // picker closes — preview lives as a sibling so the picker's
-                // unmount cannot race the preview state.
                 setLinkPreviewDealId(id);
                 setLinkPreviewOpen(true);
-
-                // Persist a deal_emails row per real Gmail message in the
-                // thread (skip mocks). Idempotent via the (deal_id, gmail_message_id)
-                // unique constraint — we use upsert to swallow duplicates.
-                try {
-                  const { data: auth } = await supabase.auth.getUser();
-                  const userId = auth?.user?.id;
-                  if (!userId) return;
-                  const rows = thread.emails
-                    .map(e => e.id)
-                    .filter(mid => mid && !mid.startsWith('mock-'))
-                    .map(mid => ({
-                      deal_id: id,
-                      gmail_message_id: mid,
-                      user_id: userId,
-                    }));
-                  if (rows.length > 0) {
-                    await supabase
-                      .from('deal_emails')
-                      .upsert(rows, { onConflict: 'deal_id,gmail_message_id', ignoreDuplicates: true });
-                  }
-                } catch (err) {
-                  console.error('[link-to-deal] persist failed', err);
-                }
+                // Manual link is locked → AI auto-linker cannot overwrite.
+                await persistManualDealLink(id, name, prev);
               }}
               onUnlink={async () => {
                 const prevId = linkedDealId;
