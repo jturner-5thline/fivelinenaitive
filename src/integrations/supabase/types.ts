@@ -7996,7 +7996,9 @@ export type Database = {
           deal_id: string
           gmail_message_id: string
           id: string
+          link_source: string
           linked_at: string
+          locked: boolean
           notes: string | null
           user_id: string
         }
@@ -8004,7 +8006,9 @@ export type Database = {
           deal_id: string
           gmail_message_id: string
           id?: string
+          link_source?: string
           linked_at?: string
+          locked?: boolean
           notes?: string | null
           user_id: string
         }
@@ -8012,7 +8016,9 @@ export type Database = {
           deal_id?: string
           gmail_message_id?: string
           id?: string
+          link_source?: string
           linked_at?: string
+          locked?: boolean
           notes?: string | null
           user_id?: string
         }
