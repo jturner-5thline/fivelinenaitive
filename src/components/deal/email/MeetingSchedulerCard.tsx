@@ -861,6 +861,32 @@ export function MeetingSchedulerCard({
     return () => clearTimeout(handle);
   }, [loadingBusy, errorMsg, proposedSlots.length, user, timezone, durationMinutes]);
 
+  // Dev-only: if loadingBusy stays true past STUCK_LOADING_DEV_MS, log a
+  // snapshot so hung fetches surface during development. The user-facing
+  // hard timeout (FETCH_TIMEOUT_MS) flips us into the error block well
+  // before this fires — anything reaching this guard is a real regression.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!loadingBusy) return;
+    const handle = setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.error('[MeetingScheduler] stuck-loading assertion tripped', {
+        elapsedSinceFetchMs: lastFetchStartedAtRef.current
+          ? Date.now() - lastFetchStartedAtRef.current
+          : null,
+        loadingBusy,
+        errorMsg,
+        proposedSlotsCount: proposedSlots.length,
+        hasUser: !!user,
+        timezone,
+        durationMinutes,
+        lastFetchStartedAt: lastFetchStartedAtRef.current,
+        calendarConn: calendarConn.kind,
+      });
+    }, STUCK_LOADING_DEV_MS);
+    return () => clearTimeout(handle);
+  }, [loadingBusy, errorMsg, proposedSlots.length, user, timezone, durationMinutes, calendarConn.kind]);
+
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
     try { localStorage.setItem(TZ_PREF_KEY, next); } catch { /* ignore */ }
