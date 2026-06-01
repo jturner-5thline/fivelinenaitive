@@ -43,6 +43,62 @@ const inflight = new Map<string, Promise<FullMessage>>();
 const MAX_CACHE = 200;
 
 /**
+ * localStorage-backed persistence layer for full email bodies. Survives
+ * modal close/reopen, route changes, and full page reloads so a thread
+ * the user has opened once renders instantly the next time.
+ *
+ * Keyed per message id under a single bucket so we can prune the LRU
+ * cheaply without scanning the whole storage. Failures (quota, private
+ * mode, serialization) are silent.
+ */
+const LS_KEY = 'naitive.email.body_cache.v1';
+const LS_MAX = 80; // smaller than in-memory cap to stay well under quota
+const LS_BODY_MAX = 250_000; // skip persisting absurdly large bodies
+
+type LSCache = Record<string, { msg: FullMessage; ts: number }>;
+
+function readLS(): LSCache {
+  if (typeof window === 'undefined') return {};
+  try {
+    const raw = window.localStorage.getItem(LS_KEY);
+    return raw ? (JSON.parse(raw) as LSCache) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeLS(c: LSCache) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(LS_KEY, JSON.stringify(c));
+  } catch {
+    /* quota — give up silently */
+  }
+}
+
+function persistMessage(id: string, msg: FullMessage) {
+  const htmlLen = msg.body_html?.length || 0;
+  const textLen = msg.body_text?.length || 0;
+  if (htmlLen + textLen > LS_BODY_MAX) return;
+  const c = readLS();
+  c[id] = { msg, ts: Date.now() };
+  const entries = Object.entries(c);
+  if (entries.length > LS_MAX) {
+    entries.sort((a, b) => a[1].ts - b[1].ts);
+    const trimmed = Object.fromEntries(entries.slice(-LS_MAX));
+    writeLS(trimmed);
+  } else {
+    writeLS(c);
+  }
+}
+
+function hydrateFromLS(id: string): FullMessage | null {
+  const c = readLS();
+  const hit = c[id];
+  return hit ? hit.msg : null;
+}
+
+/**
  * Hard timeout for a single message-body fetch. Without this, a hung edge
  * function or stalled network leaves the viewer spinning forever — the
  * symptom Niki reported as "Email message not loading, refreshed multiple
@@ -72,7 +128,16 @@ function rememberMessage(id: string, msg: FullMessage) {
 
 export function getCachedFullEmailMessage(messageId: string): FullMessage | null {
   if (!messageId) return null;
-  return messageCache.get(messageId) || null;
+  const mem = messageCache.get(messageId);
+  if (mem) return mem;
+  // Promote from localStorage into the in-memory LRU on first access so
+  // subsequent reads in this session are O(1).
+  const ls = hydrateFromLS(messageId);
+  if (ls) {
+    messageCache.set(messageId, ls);
+    return ls;
+  }
+  return null;
 }
 
 /**
@@ -127,6 +192,7 @@ export async function fetchFullEmailMessage(messageId: string): Promise<FullMess
     inline_attachments: Array.isArray(m.inline_attachments) ? m.inline_attachments : [],
   };
     rememberMessage(messageId, out);
+    persistMessage(messageId, out);
     return out;
   })();
   inflight.set(messageId, p);

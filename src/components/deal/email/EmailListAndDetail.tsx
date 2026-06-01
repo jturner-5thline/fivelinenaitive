@@ -1062,6 +1062,27 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
     ],
   );
 
+  // Idle-prefetch the top visible threads' newest message bodies so the
+  // first click opens instantly (skeleton frame at most). Runs once per
+  // unique top-N slice and is cancelled on unmount / list churn.
+  useEffect(() => {
+    if (!threads || threads.length === 0) return;
+    const ric: (cb: () => void) => number =
+      (window as any).requestIdleCallback?.bind(window) ||
+      ((cb: () => void) => window.setTimeout(cb, 200) as unknown as number);
+    const cic: (id: number) => void =
+      (window as any).cancelIdleCallback?.bind(window) ||
+      ((id: number) => window.clearTimeout(id));
+    const handle = ric(() => {
+      const top = threads.slice(0, 8);
+      for (const t of top) {
+        const newest = t.emails?.[0];
+        if (newest?.id) prefetchFullEmailMessage(newest.id);
+      }
+    });
+    return () => cic(handle);
+  }, [threads]);
+
   if (isLoading) {
     return <EmailListSkeleton />;
   }
