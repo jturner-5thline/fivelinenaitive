@@ -251,7 +251,7 @@ export function CalendarPanel({ deal, tasks = [], onOpenDeal }: CalendarPanelPro
       <div className="px-5 pt-2 pb-4 min-w-0 border-t border-white/[0.06]">
         {/* Header */}
         <div className="flex items-center justify-between mb-2 gap-2">
-          <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/80">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90">
             Calendar
           </div>
           <div className="flex items-center gap-1">
