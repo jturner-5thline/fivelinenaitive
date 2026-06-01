@@ -460,6 +460,7 @@ export function MeetingSchedulerCard({
   isReply = false,
 }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const teamMembers = useTeamMembers();
   const { render: renderTitle } = useRenderMeetingTitle(dealId ?? null);
 
@@ -468,6 +469,26 @@ export function MeetingSchedulerCard({
   const retryFreeBusy = useCallback(() => setLoadNonce((n) => n + 1), []);
   // Mount timestamp used by the dev-runtime "blank render" assertion below.
   const mountedAtRef = useRef<number>(Date.now());
+  // Timestamp of the most recent free/busy fetch — used by the dev-only
+  // stuck-loading assertion to report how long a hang lasted.
+  const lastFetchStartedAtRef = useRef<number | null>(null);
+
+  // ── Pre-flight: is Google Calendar actually connected? ────────────────
+  // We hit `calendar-status` first (with a hard timeout) so we never even
+  // attempt the free/busy fetch when there's no token — that was the
+  // silent root cause of the perpetual "Checking calendar…" spinner in
+  // preview environments where the OAuth grant is missing.
+  type CalendarConn =
+    | { kind: 'unknown' }                   // pre-flight still in flight
+    | { kind: 'connected'; email?: string }
+    | { kind: 'disconnected' }              // no token at all
+    | { kind: 'expired' }                   // token present but expired/invalid
+    | { kind: 'error'; message: string };   // pre-flight itself failed/timed out
+  const [calendarConn, setCalendarConn] = useState<CalendarConn>({ kind: 'unknown' });
+
+  const openCalendarSettings = useCallback(() => {
+    try { navigate('/integrations'); } catch { window.location.href = '/integrations'; }
+  }, [navigate]);
 
   // ── Timezone preference ───────────────────────────────────────────────
   // Persisted in localStorage so the user's choice sticks across sessions
