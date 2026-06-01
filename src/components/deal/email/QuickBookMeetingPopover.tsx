@@ -403,22 +403,51 @@ export function QuickBookMeetingPopover({
 
   useEffect(() => {
     let cancelled = false;
-    setStatusLoading(true);
+    // Optimistic path: if we have a recent cached "connected" status,
+    // render the UI immediately and revalidate in the background.
+    const cached = readStatusCache();
+    if (cached && cached.connected && !cached.is_expired) {
+      setCalendarConn({ kind: 'connected', email: cached.email ?? null });
+      setStatusLoading(false);
+    } else {
+      setStatusLoading(true);
+      setCalendarConn({ kind: 'unknown' });
+    }
     setBusyLoading(false);
     setBusyError(null);
     setBusyDebug(null);
-    setCalendarConn({ kind: 'unknown' });
     lastFetchErrorRef.current = null;
     timeoutHandleRef.current = null;
+
+    // Fallback: if preflight has timed out 2x in a row already, skip the
+    // status check entirely on this attempt and assume connected. The
+    // free/busy call will surface a real auth error if there is one.
+    const streak = getTimeoutStreak();
+    if (streak >= STATUS_TIMEOUT_BYPASS_AT) {
+      // eslint-disable-next-line no-console
+      console.warn('[scheduler] bypassing calendar-status preflight (timeout streak)', { streak });
+      toast.warning('Skipping calendar status check', {
+        description: 'Previous checks timed out. Loading availability directly.',
+      });
+      setCalendarConn({ kind: 'connected', email: null });
+      setStatusLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     (async () => {
       try {
         // eslint-disable-next-line no-console
         console.info('[scheduler] calendar-status request start', { nonce: loadNonce });
+        // eslint-disable-next-line no-console
+        console.time('calendar-status');
         const { data, error } = await Promise.race([
           supabase.functions.invoke('calendar-status', { body: {} }),
           timeoutReject(STATUS_TIMEOUT_MS, 'calendar-status', { nonce: loadNonce }),
         ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
+        // eslint-disable-next-line no-console
+        console.timeEnd('calendar-status');
         if (cancelled) return;
         if (error) throw buildInvokeError('calendar-status', error, data);
         const statusData = (data ?? {}) as Record<string, any>;
@@ -429,26 +458,57 @@ export function QuickBookMeetingPopover({
           isExpired: !!statusData.is_expired,
           provider: statusData.provider ?? null,
         });
+        // Successful response — reset timeout streak.
+        setTimeoutStreak(0);
         const provider = String(statusData.provider || '').toLowerCase() || null;
         if (!statusData.connected) {
+          clearStatusCache();
           if (provider && provider !== 'google') {
             setCalendarConn({ kind: 'alt_provider', provider });
           } else {
             setCalendarConn({ kind: 'missing' });
           }
         } else if (statusData.is_expired) {
+          clearStatusCache();
           setCalendarConn({ kind: 'expired', email: statusData.email ?? null });
         } else {
+          writeStatusCache({
+            ts: Date.now(),
+            connected: true,
+            is_expired: false,
+            provider,
+            email: statusData.email ?? null,
+          });
           setCalendarConn({ kind: 'connected', email: statusData.email ?? null });
         }
       } catch (e: any) {
         if (cancelled) return;
         const message = e?.message || 'Calendar status check failed.';
+        const isTimeout = /timed out/i.test(message);
         // eslint-disable-next-line no-console
         console.error('[scheduler] calendar-status error', { nonce: loadNonce, message });
+
+        // Graceful degradation: if the preflight timed out but we ALREADY
+        // believe the calendar is connected (either from cache or because
+        // we optimistically rendered as connected earlier in this effect),
+        // don't flip the UI into an error state. Track the timeout streak
+        // so the next attempt can bypass preflight entirely.
+        if (isTimeout) {
+          setTimeoutStreak(getTimeoutStreak() + 1);
+          const cachedNow = readStatusCache();
+          if (cachedNow && cachedNow.connected && !cachedNow.is_expired) {
+            // eslint-disable-next-line no-console
+            console.warn('[scheduler] preflight timed out — using cached connected status');
+            setCalendarConn({ kind: 'connected', email: cachedNow.email ?? null });
+            return;
+          }
+        }
+
         setCalendarConn({
           kind: 'error',
-          message: "Couldn't load your calendar availability.",
+          message: isTimeout
+            ? 'Taking longer than expected to verify your calendar.'
+            : "Couldn't load your calendar availability.",
           debug: message,
         });
       } finally {
