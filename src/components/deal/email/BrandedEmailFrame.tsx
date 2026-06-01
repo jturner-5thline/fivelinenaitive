@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 
@@ -47,10 +47,16 @@ function stripWhiteBackgroundsFromStyleBlocks(html: string): string {
  * the parent document, cookies, or storage. `allow-scripts` is granted
  * solely to run our trusted height-postMessage shim.
  */
-export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }: Props) {
+function BrandedEmailFrameImpl({ html, className, maxHeight = 4000, onError }: Props) {
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const [height, setHeight] = useState<number>(320);
   const frameId = useRef<string>(`bef-${Math.random().toString(36).slice(2)}`);
+  // Keep onError in a ref so consumers passing a fresh inline arrow on every
+  // render don't bust the (expensive) srcDoc memo + force an iframe reload
+  // + re-run DOMPurify on every parent re-render.
+  const onErrorRef = useRef(onError);
+  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  const handleError = useCallback((err: unknown) => { onErrorRef.current?.(err); }, []);
 
   // Resolve themed surface colors from the parent document so the sandboxed
   // iframe (which can't read our CSS vars) matches the Naitive email reader
@@ -70,7 +76,7 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
     } catch {
       return { bg: '#1b1f2a', text: '#f5f5f5', link: '#7aa7ff' };
     }
-  }, [html]);
+  }, []);
 
   const srcDoc = useMemo(() => {
     try {
@@ -155,16 +161,18 @@ a{color:${theme.link};}
 a[role="button"],.cta,.button,.btn{display:inline-block;}
 </style></head><body>${cleanWithStripped}<script>(function(){
 var fid=${fid};
-function post(){try{var h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);parent.postMessage({__bef:true,id:fid,height:h},"*");}catch(e){}}
+var lastH=0,raf=0;
+function post(){try{var h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);if(Math.abs(h-lastH)<2)return;lastH=h;parent.postMessage({__bef:true,id:fid,height:h},"*");}catch(e){}}
+function schedule(){if(raf)return;raf=requestAnimationFrame(function(){raf=0;post();});}
 window.addEventListener("load",function(){post();setTimeout(post,200);setTimeout(post,800);});
-try{var ro=new ResizeObserver(post);ro.observe(document.body);}catch(e){}
+try{var ro=new ResizeObserver(schedule);ro.observe(document.body);}catch(e){}
 document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&e.target.closest("a");if(a&&!a.target)a.target="_blank";});
 })();${closeScript}</body></html>`;
     } catch (err) {
-      onError?.(err);
+      handleError(err);
       return null;
     }
-  }, [html, onError, theme]);
+  }, [html, theme, handleError]);
 
   useEffect(() => {
     function onMessage(ev: MessageEvent) {
@@ -191,11 +199,24 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
         srcDoc={srcDoc}
         style={{ width: '100%', height, border: 0, display: 'block', background: 'transparent' }}
         allowTransparency
-        onError={(e) => onError?.(e)}
+        onError={handleError}
       />
     </div>
   );
 }
+
+/**
+ * Re-rendering this component is expensive (DOMPurify walks the full email
+ * tree, then we rebuild the iframe `srcDoc`, then the iframe reloads and the
+ * browser re-parses everything). Memoize on `html` + `maxHeight` so parent
+ * state churn — AI Assist sidebar polling, composer keystrokes, hover state,
+ * etc. — does not blow the work up O(parent renders).
+ */
+export const BrandedEmailFrame = memo(BrandedEmailFrameImpl, (prev, next) =>
+  prev.html === next.html &&
+  prev.maxHeight === next.maxHeight &&
+  prev.className === next.className,
+);
 
 const NOTIFICATION_DOMAINS = [
   'linkedin.com', 'e.linkedin.com', 'el.linkedin.com',

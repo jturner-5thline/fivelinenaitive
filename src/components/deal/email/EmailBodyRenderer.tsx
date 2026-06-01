@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useState } from 'react';
 import DOMPurify from 'dompurify';
 import { cn } from '@/lib/utils';
 import type { EmailAttachment } from './mockEmailData';
@@ -56,7 +56,7 @@ function stripColorDeclarations(style: string): string {
  * - Failed images render an inline muted placeholder with their alt/filename
  *   instead of an empty bordered box.
  */
-export function EmailBodyRenderer({
+function EmailBodyRendererImpl({
   html,
   text,
   className,
@@ -240,3 +240,20 @@ export function EmailBodyRenderer({
     </EmailMessageShell>
   );
 }
+
+/**
+ * Memoize so the (expensive) DOMPurify sanitize + iframe srcDoc rebuild only
+ * runs when the message content itself changes. The thread view re-renders
+ * frequently due to AI Assist sidebar state, hover, selection, composer
+ * keystrokes — none of which should invalidate a rendered message body.
+ */
+export const EmailBodyRenderer = memo(EmailBodyRendererImpl, (prev, next) =>
+  prev.html === next.html &&
+  prev.text === next.text &&
+  prev.messageId === next.messageId &&
+  prev.fromEmail === next.fromEmail &&
+  prev.forceBranded === next.forceBranded &&
+  prev.className === next.className &&
+  prev.inlineAttachments === next.inlineAttachments &&
+  prev.attachments === next.attachments,
+);
