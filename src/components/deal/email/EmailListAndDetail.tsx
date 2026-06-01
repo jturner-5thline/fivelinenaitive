@@ -1594,7 +1594,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
     )}>
       <button
         onClick={toggleExpand}
-        className="w-full min-w-0 flex items-center gap-3 px-5 py-2.5 text-left"
+        className="w-full min-w-0 max-w-full flex items-center gap-3 px-5 py-2.5 text-left"
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
@@ -1620,7 +1620,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       </button>
 
       {expanded && (
-        <div className="min-w-0 max-w-full overflow-x-hidden px-6 pb-5 pl-[64px]">
+        <div className="w-full min-w-0 max-w-full overflow-x-hidden px-4 pb-5 pl-[56px] sm:px-6 sm:pl-[64px]">
           <EmailHeaderDetails email={email} fullData={fullData as any} />
 
           {fullLoading && !hasRenderableBody && (
@@ -1729,7 +1729,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
               dealName: dealName || null,
               page: typeof window !== 'undefined' ? window.location.pathname : undefined,
             }}
-            className="min-w-0 max-w-full overflow-x-hidden"
+            className="w-full min-w-0 max-w-full overflow-x-hidden"
           >
             <EmailPaneErrorBoundary
               resetKey={`${email.id}-${resolvedHtml ? 'html' : 'text'}-${expanded ? 'open' : 'closed'}`}
