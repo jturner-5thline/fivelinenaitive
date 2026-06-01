@@ -801,7 +801,7 @@ export default function DealDetail() {
           company: dbDeal.company,
           stage: dbDeal.stage as DealStage,
           status: dbDeal.status as DealStatus,
-          engagementType: (dbDeal.engagement_type || 'guided') as EngagementType,
+          engagementType: (dbDeal.engagement_type || 'advisory') as EngagementType,
           exclusivity: (dbDeal.exclusivity || undefined) as ExclusivityType | undefined,
           dealTypes: parseDealTypes(dbDeal.deal_type),
           manager: dbDeal.manager || '',

@@ -139,7 +139,7 @@ export function useNaitivePipelineData(): NaitivePipelineData {
       contactInfo: d.contact_info || undefined,
       stage: d.stage || 'prospects',
       status: d.status || 'on-track',
-      engagementType: d.engagement_type || 'guided',
+      engagementType: d.engagement_type || 'advisory',
       exclusivity: d.exclusivity || undefined,
       dealTypes: d.deal_types || undefined,
       manager: d.manager || '',
