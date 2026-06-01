@@ -217,7 +217,7 @@ function EmailBodyRendererImpl({
       <EmailMessageShell className={className}>
         <div
           className={cn(
-            'email-html-body w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
+            'email-body email-html-body w-full min-w-0 max-w-full overflow-x-auto text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
             'break-words bg-transparent',
           )}
           style={{ width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
@@ -231,7 +231,7 @@ function EmailBodyRendererImpl({
     <EmailMessageShell className={className}>
       <div
         className={cn(
-          'w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words bg-transparent',
+          'email-body w-full min-w-0 max-w-full overflow-x-auto text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words bg-transparent',
         )}
         style={{ width: '100%', maxWidth: '100%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
       >
