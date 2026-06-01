@@ -1,5 +1,6 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { startVisibilityAwareInterval } from '@/lib/visibilityAwareInterval';
 import {
   format,
   startOfWeek,
@@ -1325,8 +1326,10 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   useEffect(() => {
     if (!open) return;
     refreshEvents();
-    const interval = setInterval(refreshEvents, 3 * 60 * 1000); // refresh every 3 minutes
-    return () => clearInterval(interval);
+    // Visibility-gated 3-min refresh: skips ticks when the tab is hidden,
+    // re-fires on focus so a backgrounded dialog doesn't keep hitting the
+    // calendar API.
+    return startVisibilityAwareInterval(refreshEvents, 3 * 60 * 1000);
   }, [open, refreshEvents]);
 
   // Fetch the user's connected calendars once when the dialog opens so we
