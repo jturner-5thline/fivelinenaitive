@@ -111,6 +111,107 @@ function FilterChip({
   );
 }
 
+// ── Single-select filter chip (Tasks) ──────────────────────────
+// Matches the visual treatment of FilterChip but enforces a single
+// active value with a clear/All option, so callers can model 1-of-N
+// state (e.g. Tasks = All | Late | None) without exposing nonsense
+// combinations like "Late AND None" that a multi-select would allow.
+function SingleSelectFilterChip<T extends string>({
+  label,
+  ariaLabel,
+  options,
+  value,
+  onChange,
+  allLabel = 'All',
+}: {
+  label: string;
+  ariaLabel?: string;
+  options: { value: T; label: string; count?: number }[];
+  value: T | null;
+  onChange: (next: T | null) => void;
+  allLabel?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const active = value !== null;
+  const activeOption = active ? options.find((o) => o.value === value) : null;
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label={ariaLabel || `Filter by ${label.toLowerCase()}`}
+          className={cn(
+            'inline-flex items-center gap-1 h-6 px-2 rounded-full border text-[10px] font-medium transition-colors',
+            active
+              ? 'border-white/30 bg-white/[0.08] text-white'
+              : 'border-white/10 bg-white/[0.02] text-white/70 hover:bg-white/[0.05] hover:text-white',
+          )}
+        >
+          <span>{label}</span>
+          {activeOption && (
+            <span className="inline-flex items-center justify-center h-[14px] px-1.5 rounded-full bg-white/15 text-white text-[9px]">
+              {activeOption.label}
+            </span>
+          )}
+          <ChevronDown className="h-3 w-3 opacity-60" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[200px] p-1 max-h-[280px] overflow-y-auto bg-popover border-white/10"
+      >
+        <button
+          key="__all__"
+          type="button"
+          onClick={() => { onChange(null); setOpen(false); }}
+          className={cn(
+            'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[11px] transition-colors',
+            value === null ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/[0.06]',
+          )}
+        >
+          <span
+            className={cn(
+              'flex h-3.5 w-3.5 items-center justify-center rounded-full border shrink-0',
+              value === null ? 'bg-primary border-primary text-primary-foreground' : 'border-white/30',
+            )}
+          >
+            {value === null && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+          </span>
+          <span className="flex-1 truncate">{allLabel}</span>
+        </button>
+        {options.map((opt) => {
+          const isSel = value === opt.value;
+          return (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={cn(
+                'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[11px] transition-colors',
+                isSel ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/[0.06]',
+              )}
+            >
+              <span
+                className={cn(
+                  'flex h-3.5 w-3.5 items-center justify-center rounded-full border shrink-0',
+                  isSel ? 'bg-primary border-primary text-primary-foreground' : 'border-white/30',
+                )}
+              >
+                {isSel && <Check className="h-2.5 w-2.5" strokeWidth={3} />}
+              </span>
+              <span className="flex-1 truncate">{opt.label}</span>
+              {typeof opt.count === 'number' && (
+                <span className="text-[10px] text-white/50">{opt.count}</span>
+              )}
+            </button>
+          );
+        })}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 interface PipelineMemoViewProps {
   deals: Deal[];
   /** Empty-state message when no deals match the filter. */
@@ -247,6 +348,40 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   const [managerFilter, setManagerFilter] = useState<string[]>([]);
   const [typeFilter, setTypeFilter] = useState<string[]>([]);
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
+  // Tasks filter — single-select: 'late' (≥1 overdue open task) or 'none'
+  // (zero non-archived tasks). Sits alongside the existing admin filters
+  // and combines additively (AND).
+  const [taskFilter, setTaskFilter] = useState<'late' | 'none' | null>(null);
+
+  // Per-deal task aggregates: { count: non-archived task count, hasLate:
+  // ≥1 open task with due_date < today }. One round-trip, used both for
+  // the Tasks filter and the chip option counts.
+  const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const taskAggQ = useQuery({
+    queryKey: ['rundown-task-aggregates', idsKey, todayStr],
+    enabled: dealIds.length > 0,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data: rows } = await supabase
+        .from('tasks')
+        .select('deal_id, due_date, status')
+        .in('deal_id', dealIds)
+        .is('archived_at', null);
+      const countByDeal = new Map<string, number>();
+      const lateByDeal = new Map<string, boolean>();
+      for (const r of (rows || []) as any[]) {
+        if (!r.deal_id) continue;
+        countByDeal.set(r.deal_id, (countByDeal.get(r.deal_id) ?? 0) + 1);
+        const isOpen = r.status !== 'complete' && r.status !== 'completed';
+        if (isOpen && r.due_date && r.due_date < todayStr) {
+          lateByDeal.set(r.deal_id, true);
+        }
+      }
+      return { countByDeal, lateByDeal };
+    },
+  });
+  const countByDeal = taskAggQ.data?.countByDeal ?? new Map<string, number>();
+  const lateByDeal = taskAggQ.data?.lateByDeal ?? new Map<string, boolean>();
 
   const filterOptions = useMemo(() => {
     const managers = new Set<string>();
@@ -265,11 +400,14 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     };
   }, [deals]);
 
-  const hasAnyFilter = isAdmin && (managerFilter.length + typeFilter.length + statusFilter.length) > 0;
+  const hasAnyFilter =
+    isAdmin &&
+    (managerFilter.length + typeFilter.length + statusFilter.length > 0 || taskFilter !== null);
   const clearAllFilters = () => {
     setManagerFilter([]);
     setTypeFilter([]);
     setStatusFilter([]);
+    setTaskFilter(null);
   };
 
   const filteredSorted = useMemo(() => {
@@ -278,9 +416,30 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
       if (managerFilter.length && !managerFilter.includes(String(d.manager ?? '').trim())) return false;
       if (typeFilter.length && !typeFilter.includes(String(d.engagementType ?? '').trim())) return false;
       if (statusFilter.length && !statusFilter.includes(String(d.status ?? '').trim())) return false;
+      if (taskFilter === 'late' && !lateByDeal.get(d.id)) return false;
+      if (taskFilter === 'none' && (countByDeal.get(d.id) ?? 0) > 0) return false;
       return true;
     });
-  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter]);
+  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter, taskFilter, lateByDeal, countByDeal]);
+
+  // Counts for chip option labels — computed against the post-other-filter
+  // set so users see how many extra deals each Tasks option would surface
+  // in their current filter context.
+  const tasksOptionCounts = useMemo(() => {
+    const base = sorted.filter((d: any) => {
+      if (managerFilter.length && !managerFilter.includes(String(d.manager ?? '').trim())) return false;
+      if (typeFilter.length && !typeFilter.includes(String(d.engagementType ?? '').trim())) return false;
+      if (statusFilter.length && !statusFilter.includes(String(d.status ?? '').trim())) return false;
+      return true;
+    });
+    let late = 0;
+    let none = 0;
+    for (const d of base) {
+      if (lateByDeal.get(d.id)) late++;
+      if ((countByDeal.get(d.id) ?? 0) === 0) none++;
+    }
+    return { late, none };
+  }, [sorted, managerFilter, typeFilter, statusFilter, lateByDeal, countByDeal]);
 
   const visible = useMemo(() => filteredSorted.filter((d) => !isDismissed(d.id)), [filteredSorted, isDismissed]);
 
@@ -353,6 +512,16 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
             selected={statusFilter}
             onChange={setStatusFilter}
             formatLabel={titleCase}
+          />
+          <SingleSelectFilterChip<'late' | 'none'>
+            label="Tasks"
+            ariaLabel="Filter by tasks"
+            value={taskFilter}
+            onChange={setTaskFilter}
+            options={[
+              { value: 'late', label: 'Late tasks', count: tasksOptionCounts.late },
+              { value: 'none', label: 'No tasks', count: tasksOptionCounts.none },
+            ]}
           />
           {hasAnyFilter && (
             <button
