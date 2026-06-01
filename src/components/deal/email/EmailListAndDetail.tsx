@@ -2888,11 +2888,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
         <div
-          className="relative grid h-full min-w-0 w-full overflow-hidden bg-transparent transition-[grid-template-columns] duration-200 ease-out"
+          className="relative grid h-full min-w-0 w-full max-w-full overflow-hidden bg-transparent transition-[grid-template-columns] duration-200 ease-out"
         style={{
           gridTemplateColumns: renderAiAssistColumn
-            ? 'minmax(0, 1fr) 360px'
-            : 'minmax(0, 1fr)',
+            ? 'minmax(0,1fr) minmax(280px,min(360px,30vw))'
+            : 'minmax(0,1fr)',
         }}
       >
         {/* Email message column — transparent so the unified popup-shell
@@ -2901,7 +2901,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         <div
           ref={messagePaneRef}
           data-inbox-surface-scope="message"
-          className="flex min-h-0 min-w-0 flex-col overflow-hidden bg-transparent"
+          className="flex min-h-0 min-w-0 max-w-full flex-[1_1_0%] flex-col overflow-hidden bg-transparent"
         >
           {/* Outlook-style command bar — portalled into the unified mail
               header (#email-detail-toolbar-slot) so the entire mail UI
@@ -3304,7 +3304,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             className="flex-1 min-h-0 min-w-0 overflow-hidden"
             style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
           >
-            <div className="min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
+            <div className="w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
@@ -3450,7 +3450,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           <div
             ref={aiAssistPaneRef}
             data-inbox-surface-scope="assistant"
-            className="flex h-full min-h-0 min-w-0 w-full overflow-hidden border-l border-[hsl(var(--email-border))] bg-transparent"
+            className="flex h-full min-h-0 min-w-0 w-full max-w-[min(360px,30vw)] overflow-hidden border-l border-[hsl(var(--email-border))] bg-transparent"
           >
             <EmailPaneErrorBoundary
               resetKey={`ai-assist-${thread.threadId}`}
