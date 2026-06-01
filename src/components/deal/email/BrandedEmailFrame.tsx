@@ -228,7 +228,7 @@ function BrandedEmailFrameImpl({ html, className, maxHeight = 4000, onError }: P
       return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><base target="_blank"><style>
 :root{color-scheme:dark;}
  html,body{margin:0;padding:0;width:100% !important;max-width:100% !important;min-width:0 !important;box-sizing:border-box;background:transparent !important;background-color:transparent !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
- body{padding:8px 0;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;word-break:break-word;background:transparent !important;overflow-x:hidden !important;}
+ body{padding:8px 0;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;word-break:break-word;background:transparent !important;overflow-x:auto !important;}
 /* Neutralize hardcoded white/light backgrounds the email author set on
    outer wrapper elements so the message blends into the Naitive reading
    surface. We target only the outermost wrappers + any element whose
@@ -256,7 +256,7 @@ html, body, table, td { background: transparent !important; background-color: tr
 [style*="background: white" i] { background-color: transparent !important; background-image: none !important; }
  img{max-width:100% !important;height:auto !important;border:0;}
  .email-table-scroll{max-width:100% !important;overflow-x:auto !important;overflow-y:hidden !important;-webkit-overflow-scrolling:touch;}
- table{width:100% !important;max-width:100% !important;table-layout:fixed !important;}
+  table{width:100% !important;max-width:100% !important;table-layout:fixed !important;display:block !important;overflow-x:auto !important;}
  td,th,blockquote,a,a *{overflow-wrap:anywhere !important;word-break:break-word !important;}
  *{max-width:100% !important;min-width:0 !important;box-sizing:border-box;}
  .email-table-scroll > table{min-width:100% !important;}

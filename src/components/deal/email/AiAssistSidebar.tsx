@@ -983,7 +983,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               Beta
             </span>
           </div>
-          <div className="text-[11px] text-muted-foreground truncate leading-tight mt-0.5">
+          <div className="mt-0.5 min-w-0 break-words text-[11px] leading-tight text-muted-foreground">
             {dealName
               || (workflowAnalysis?.likely_deal?.name
                 ? `Likely: ${workflowAnalysis.likely_deal.name}`

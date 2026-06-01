@@ -49,6 +49,25 @@ export function EmailMessageShell({ children, className }: Props) {
       const overflowX = bodyCs.overflowX;
       const shellOverflowX = shellCs.overflowX;
       const isClipped = /^(hidden|clip)$/.test(overflowX) && /^(hidden|clip)$/.test(shellOverflowX);
+      const styleDump = {
+        body: {
+          overflowX,
+          overflowY: bodyCs.overflowY,
+          minWidth: bodyCs.minWidth,
+          maxWidth: bodyCs.maxWidth,
+          width: bodyCs.width,
+          overflowWrap: bodyCs.overflowWrap,
+          wordBreak: bodyCs.wordBreak,
+          whiteSpace: bodyCs.whiteSpace,
+        },
+        shell: {
+          overflowX: shellOverflowX,
+          overflowY: shellCs.overflowY,
+          minWidth: shellCs.minWidth,
+          maxWidth: shellCs.maxWidth,
+          width: shellCs.width,
+        },
+      };
       // eslint-disable-next-line no-console
       console.error('[email-body] horizontal clip detected', {
         clientWidth: body.clientWidth,
@@ -56,6 +75,11 @@ export function EmailMessageShell({ children, className }: Props) {
         overflowX,
         shellOverflowX,
         clipped: isClipped,
+        styles: styleDump,
+        outerHtmlPreview:
+          body instanceof HTMLElement
+            ? body.outerHTML.slice(0, 200)
+            : '<iframe>',
         aiAssistOpen:
           typeof document !== 'undefined' &&
           !!document.querySelector('[data-inbox-surface-scope="assistant"]'),

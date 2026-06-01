@@ -1364,23 +1364,23 @@ function ThreadParticipantsHeader({ threadId, threadEmails, latest }: ThreadPart
   };
 
   return (
-    <div className="mt-0.5 flex items-center gap-x-2 gap-y-0.5 flex-wrap text-xs text-[hsl(var(--email-text-muted))] min-w-0">
+      <div className="mt-0.5 flex items-start gap-x-2 gap-y-0.5 flex-wrap text-xs text-[hsl(var(--email-text-muted))] min-w-0 max-w-full">
       {toDisplay.length > 0 && (
-        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+        <span className="inline-flex min-w-0 max-w-full flex-wrap items-start gap-1">
           <span className="shrink-0">To:</span>
-          <span className="truncate">{renderList(toDisplay)}</span>
+          <span className="min-w-0 break-all">{renderList(toDisplay)}</span>
         </span>
       )}
       {latestCc.length > 0 && (
-        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+        <span className="inline-flex min-w-0 max-w-full flex-wrap items-start gap-1">
           <span className="shrink-0">Cc:</span>
-          <span className="truncate">{renderList(latestCc)}</span>
+          <span className="min-w-0 break-all">{renderList(latestCc)}</span>
         </span>
       )}
       {latestBcc.length > 0 && latest.folder === 'sent' && (
-        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+        <span className="inline-flex min-w-0 max-w-full flex-wrap items-start gap-1">
           <span className="shrink-0">Bcc:</span>
-          <span className="truncate">{renderList(latestBcc)}</span>
+          <span className="min-w-0 break-all">{renderList(latestBcc)}</span>
         </span>
       )}
       {participants.length > 1 && (
@@ -1620,7 +1620,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       </button>
 
       {expanded && (
-        <div className="w-full min-w-0 max-w-full overflow-x-hidden px-4 pb-5 pl-[56px] sm:px-6 sm:pl-[64px]">
+        <div className="w-full min-w-0 max-w-full overflow-visible px-4 pb-5 pl-[56px] sm:px-6 sm:pl-[64px]">
           <EmailHeaderDetails email={email} fullData={fullData as any} />
 
           {fullLoading && !hasRenderableBody && (
@@ -1782,7 +1782,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                   <span>Show quoted text</span>
                 </button>
               ) : (
-                <div className="min-w-0 max-w-full overflow-x-hidden">
+                <div className="min-w-0 max-w-full overflow-x-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowQuoted(false); }}
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 mb-2"
@@ -3328,13 +3328,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             })()}
 
             {/* Sender info block */}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-start gap-2 min-w-0">
               <EmailAvatar name={senderName} email={senderEmail} size="sm" />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0 text-xs leading-tight">
-                  <span className="text-[13px] font-semibold text-[hsl(var(--email-text-primary))] truncate">{senderName}</span>
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0 text-xs leading-tight">
+                  <span className="min-w-0 break-words text-[13px] font-semibold text-[hsl(var(--email-text-primary))]">{senderName}</span>
                   <span
-                    className="text-[hsl(var(--email-text-muted))] truncate min-w-0"
+                    className="min-w-0 break-all text-[hsl(var(--email-text-muted))]"
                     title={senderEmail}
                   >
                     &lt;{senderEmail}&gt;
@@ -3346,7 +3346,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   {linkedDealName && (
                     <>
                       <span className="text-[hsl(var(--email-text-muted))]/60 shrink-0">·</span>
-                      <span className="text-[hsl(var(--outlook-blue))] truncate">Linked: {linkedDealName}</span>
+                      <span className="min-w-0 break-words text-[hsl(var(--outlook-blue))]">Linked: {linkedDealName}</span>
                     </>
                   )}
                 </div>
@@ -3399,9 +3399,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               repaint the body. */}
           <ScrollArea
             className="flex-1 min-h-0 min-w-0 overflow-hidden"
+            viewportClassName="min-w-0 max-w-full overflow-x-auto"
             style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
           >
-            <div className="w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
+            <div className="w-full min-w-0 max-w-full overflow-visible py-2 space-y-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
