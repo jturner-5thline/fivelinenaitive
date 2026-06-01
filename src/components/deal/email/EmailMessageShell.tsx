@@ -19,6 +19,7 @@ interface Props {
 export function EmailMessageShell({ children, className }: Props) {
   return (
     <div
+      data-email-root=""
       className={cn(
         'email-message-shell w-full min-w-0 max-w-full overflow-hidden',
         // Transparent canvas — inherit the deal pop-up / modal dark surface
