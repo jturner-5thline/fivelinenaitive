@@ -34,6 +34,54 @@ const WHITE_BG_DECL_RE =
 const CANVAS_RULE_RE = /(^|[},])\s*((?:html|body|table|td)(?:\s*,\s*(?:html|body|table|td))*)\s*\{([^}]*)\}/gi;
 const BG_DECL_RE = /background(-image|-color)?\s*:\s*[^;]+;?/gi;
 
+/**
+ * Foreground-color readability guard.
+ *
+ * Email HTML (especially Outlook / Gmail reply chains) hardcodes
+ * `color:#000`, `color:rgb(0,0,0)`, or legacy `<font color="black">` on
+ * inner `<p>`, `<span>`, `<div>`. On the Naitive dark reading surface
+ * these become near-black-on-near-black and disappear.
+ *
+ * Strategy: parse the color, compute WCAG relative luminance, and if
+ * the color is too dark to read on the dark reading surface (luminance
+ * < 0.5), drop the declaration so the inherited near-white
+ * `--email-text-primary` token shines through. Bright/brand colors
+ * (buttons, CTAs, links) survive untouched.
+ */
+const NAMED_DARK_COLORS = new Set([
+  'black', 'navy', 'maroon', 'purple', 'darkblue', 'darkgreen', 'darkred',
+  'darkslategray', 'darkslategrey', 'midnightblue', 'indigo', 'darkmagenta',
+  'darkviolet', 'darkcyan', 'darkolivegreen', 'darkgoldenrod', 'darkslateblue',
+  'saddlebrown', 'sienna', 'brown', 'firebrick',
+]);
+function parseColorToRgb(raw: string): [number, number, number] | null {
+  const s = raw.trim().toLowerCase().replace(/\s+/g, '');
+  if (!s) return null;
+  if (s.startsWith('#')) {
+    const h = s.slice(1);
+    if (h.length === 3) return [parseInt(h[0]+h[0],16), parseInt(h[1]+h[1],16), parseInt(h[2]+h[2],16)];
+    if (h.length === 6) return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+    return null;
+  }
+  const m = s.match(/^rgba?\((\d+),(\d+),(\d+)/);
+  if (m) return [+m[1], +m[2], +m[3]];
+  if (NAMED_DARK_COLORS.has(s)) return [0, 0, 0];
+  return null;
+}
+function isUnreadableOnDark(raw: string): boolean {
+  const rgb = parseColorToRgb(raw);
+  if (!rgb) return false;
+  const ch = (c: number) => { const v = c/255; return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); };
+  const L = 0.2126*ch(rgb[0]) + 0.7152*ch(rgb[1]) + 0.0722*ch(rgb[2]);
+  return L < 0.5;
+}
+/** Strip dark `color:` declarations from an inline style string. */
+function stripDarkColorDecls(style: string): string {
+  return style.replace(/(^|;)\s*color\s*:\s*([^;]+?)\s*(?=;|$)/gi, (m, lead, val) => {
+    return isUnreadableOnDark(val) ? String(lead) : m;
+  });
+}
+
 function stripCanvasBackgroundsFromStyleBlocks(html: string): string {
   return html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css: string) => {
     let cleaned = css.replace(WHITE_BG_DECL_RE, '');
