@@ -566,18 +566,29 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   useEffect(() => {
     if (!open || !status.connected) return;
     const onFocus = () => { void silentRefresh(); };
+    let interval: ReturnType<typeof setInterval> | null = null;
+    const startInterval = () => {
+      if (interval) clearInterval(interval);
+      const hidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      const ms = hidden ? SILENT_REFRESH_INTERVAL_HIDDEN_MS : SILENT_REFRESH_INTERVAL_VISIBLE_MS;
+      interval = setInterval(() => { void silentRefresh(); }, ms);
+    };
     const onVisible = () => {
+      // Immediately refresh on tab-return so newly-arrived mail surfaces
+      // without waiting for the next interval tick. Then re-arm the
+      // interval at the visible cadence (or back off when hidden).
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         void silentRefresh();
       }
+      startInterval();
     };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVisible);
-    const interval = setInterval(() => { void silentRefresh(); }, SILENT_REFRESH_INTERVAL_MS);
+    startInterval();
     return () => {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisible);
-      clearInterval(interval);
+      if (interval) clearInterval(interval);
     };
   }, [open, status.connected, silentRefresh]);
 
