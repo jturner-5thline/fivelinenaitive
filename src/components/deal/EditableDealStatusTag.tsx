@@ -20,6 +20,7 @@
 import { useCallback, useState } from 'react';
 import { ChevronDown, Check, Loader2, CircleDashed } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { cn } from '@/lib/utils';
 import {
   Popover, PopoverContent, PopoverTrigger,
@@ -51,12 +52,21 @@ export function EditableDealStatusTag({
 }: EditableDealStatusTagProps) {
   const { updateDealStatus } = useDealsContext();
   const invalidateFreshness = useInvalidateDealFreshness();
+  const queryClient = useQueryClient();
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(false);
 
   const current: DealStatus | null = (status as DealStatus | null) || null;
 
   const handleSelect = useCallback(async (choice: StatusChoice) => {
+    // Breadcrumb: confirms the click on a status option actually reaches
+    // our handler — useful when debugging surfaces (Deal Rundown, master
+    // tile lists) where ancestor click/keyboard handlers could otherwise
+    // swallow the event.
+    if (import.meta.env.DEV) {
+      // eslint-disable-next-line no-console
+      console.debug('[EditableDealStatusTag] select', { dealId, choice });
+    }
     setOpen(false);
     const next: DealStatus | null = choice === NONE_VALUE ? null : choice;
     if (next === current) return;
@@ -67,6 +77,16 @@ export function EditableDealStatusTag({
       // Recompute the left-column tile glow immediately — if the deal is
       // now fresh, the stale ring drops off on the next render tick.
       invalidateFreshness();
+      // Cross-surface sync: the Deal Rundown / Daily Briefing surfaces read
+      // deals from independent React Query caches (briefing-pipeline,
+      // briefing-catchup, naitive-pipeline-data, etc.) — invalidating them
+      // here ensures the pill, the tile list, and any rundown drill-down
+      // all reflect the new status without a page refresh.
+      queryClient.invalidateQueries({ queryKey: ['briefing-pipeline'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing-catchup'] });
+      queryClient.invalidateQueries({ queryKey: ['briefing'] });
+      queryClient.invalidateQueries({ queryKey: ['naitive-pipeline-data'] });
+      queryClient.invalidateQueries({ queryKey: ['finserv-pipeline-data'] });
       toast.success(
         next ? `Status updated to ${STATUS_CONFIG[next].label}` : 'Status cleared',
       );
@@ -81,7 +101,7 @@ export function EditableDealStatusTag({
     } finally {
       setPending(false);
     }
-  }, [current, dealId, updateDealStatus, invalidateFreshness]);
+  }, [current, dealId, updateDealStatus, invalidateFreshness, queryClient]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -93,7 +113,16 @@ export function EditableDealStatusTag({
           aria-expanded={open}
           disabled={pending}
           onClick={(e) => { e.stopPropagation(); }}
-          onKeyDown={(e) => { e.stopPropagation(); }}
+          onPointerDown={(e) => { e.stopPropagation(); }}
+          onMouseDown={(e) => { e.stopPropagation(); }}
+          onKeyDown={(e) => {
+            // Block Enter/Space from bubbling to ancestor tile/row handlers
+            // (e.g. PipelineMemoView DealTile uses Enter/Space to open the
+            // deal). Radix Popover still receives the keydown via its own
+            // capture-phase listener, so the menu opens as expected.
+            if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+            else e.stopPropagation();
+          }}
           className={cn(
             'inline-flex items-center rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-ring',
             'transition-opacity',
@@ -126,6 +155,9 @@ export function EditableDealStatusTag({
         align="end"
         className="w-44 p-1"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
       >
         <div role="menu" aria-label="Deal status">
           <button
@@ -133,7 +165,9 @@ export function EditableDealStatusTag({
             role="menuitemradio"
             aria-checked={current === null}
             type="button"
-            onClick={() => handleSelect(NONE_VALUE)}
+            onClick={(e) => { e.stopPropagation(); handleSelect(NONE_VALUE); }}
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
             className={cn(
               'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left',
               current === null ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
@@ -152,7 +186,9 @@ export function EditableDealStatusTag({
                 role="menuitemradio"
                 aria-checked={isActive}
                 type="button"
-                onClick={() => handleSelect(key)}
+                onClick={(e) => { e.stopPropagation(); handleSelect(key); }}
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
                 className={cn(
                   'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-xs transition-colors text-left',
                   isActive ? 'bg-accent text-accent-foreground' : 'hover:bg-accent/60',
