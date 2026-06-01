@@ -41,6 +41,17 @@ export function EmailMessageShell({ children, className }: Props) {
         rootRef.current,
       );
     }
+
+    const body = rootRef.current.querySelector<HTMLElement>('.email-html-body, iframe');
+    if (body && body.scrollWidth > body.clientWidth + 1) {
+      // eslint-disable-next-line no-console
+      console.error('[email-body.overflow-regression]', {
+        clientWidth: body.clientWidth,
+        scrollWidth: body.scrollWidth,
+        body,
+        shell: rootRef.current,
+      });
+    }
   });
 
   return (
@@ -48,7 +59,7 @@ export function EmailMessageShell({ children, className }: Props) {
       ref={rootRef}
       data-email-root=""
       className={cn(
-        'email-message-shell w-full min-w-0 max-w-full overflow-hidden',
+        'email-message-shell w-full min-w-0 max-w-full overflow-hidden flex-[1_1_0%]',
         // Transparent canvas — inherit the deal pop-up / modal dark surface
         // behind us so the email body never paints an inset card-on-card
         // block. A subtle border keeps stacked thread messages visually

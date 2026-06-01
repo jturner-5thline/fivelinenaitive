@@ -316,6 +316,7 @@
   background-color: transparent !important;
   background-image: none !important;
   max-width: 100% !important;
+  min-width: 0 !important;
   box-sizing: border-box;
   overflow-wrap: anywhere;
   /* Some emails arrive with `writing-mode`, `text-orientation`, or
@@ -384,19 +385,19 @@
 }
 
 .email-html-body {
-  width: 100%;
-  max-width: 100%;
-  /* Allow horizontal scrolling of wide inner content (tables, preformatted
-     blocks) inside the body so the parent column never gets pushed wider
-     than its grid track and clipped behind the AI Assist panel. */
-  overflow-x: auto;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  contain: layout;
+  overflow-x: hidden;
 }
 
-/* Wide inner tables: keep them scrollable inside the body wrapper rather
-   than forcing the parent column to grow. */
-.email-html-body table {
-  max-width: 100% !important;
-  table-layout: auto;
+.email-table-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 /* Themed link defaults for the simplified renderer — match the iframe
@@ -413,6 +414,8 @@
 .email-html-body li,
 .email-html-body td,
 .email-html-body th,
+.email-html-body strong,
+.email-html-body em,
 .email-html-body h1,
 .email-html-body h2,
 .email-html-body h3,
@@ -423,7 +426,7 @@
   max-width: 100%;
   white-space: normal;
   overflow-wrap: anywhere;
-  word-break: normal;
+  word-break: break-word;
 }
 
 .email-html-body p { margin: 0 0 0.75rem 0; }
@@ -443,8 +446,8 @@
    Add a soft light backdrop so transparent-PNG signature logos designed
    for white backgrounds remain visible against our dark reading surface. */
 .email-html-body img {
-  max-width: 100%;
-  height: auto;
+  max-width: 100% !important;
+  height: auto !important;
   border-radius: 4px;
   background-color: hsl(0 0% 100% / 0.92);
   padding: 2px;
@@ -484,10 +487,14 @@
 }
 
 .email-html-body table {
-  max-width: 100%;
+  max-width: 100% !important;
   width: 100% !important;
   border-collapse: collapse;
-  table-layout: fixed;
+  table-layout: fixed !important;
+}
+
+.email-table-scroll > table {
+  min-width: 100% !important;
 }
 
 .email-html-body pre,
@@ -502,6 +509,8 @@
   color: hsl(var(--outlook-blue)) !important;
   text-decoration: underline;
   text-underline-offset: 2px;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 .email-html-body a:hover,
 .email-html-body a:hover * {
@@ -517,6 +526,8 @@
   border-left: 2px solid hsl(var(--outlook-blue) / 0.4) !important;
   padding-left: 0.75rem;
   margin: 0.5rem 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .email-html-body pre,

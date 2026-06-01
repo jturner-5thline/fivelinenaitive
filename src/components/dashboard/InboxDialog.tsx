@@ -881,11 +881,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           // at all sizes (no fixed max width) while keeping a comfortable margin.
           "popup-shell-surface p-0 flex flex-col border-transparent glass-border-soft shadow-2xl shadow-black/20",
           "h-[92vh] sm:h-[92vh]",
-          "w-[94vw] max-w-none sm:max-w-none max-h-none",
+          "w-[min(1400px,calc(100vw-2rem))] max-w-[min(1400px,calc(100vw-2rem))] sm:max-w-[min(1400px,calc(100vw-2rem))] max-h-none",
           "overflow-hidden"
         )}
         style={{
-          width: '94vw',
+          width: 'min(1400px, calc(100vw - 2rem))',
         }}
       >
         <DialogTitle className="sr-only">Email</DialogTitle>
