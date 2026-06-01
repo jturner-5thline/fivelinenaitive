@@ -1455,7 +1455,61 @@ export function MeetingSchedulerCard({
       </div>
 
       {/* Slots list */}
-      {loadingBusy ? (
+      {calendarConn.kind === 'disconnected' || calendarConn.kind === 'expired' ? (
+        (() => {
+          const provider = (user as any)?.app_metadata?.provider as string | undefined;
+          const nonGoogle = provider && provider !== 'google';
+          return (
+            <div className="flex flex-col items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+              <div className="flex items-start gap-2">
+                <CalendarX className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="font-semibold">
+                    {calendarConn.kind === 'expired'
+                      ? 'Your Google Calendar connection expired.'
+                      : 'Google Calendar isn’t connected.'}
+                  </div>
+                  <div className="opacity-80">
+                    {nonGoogle
+                      ? `You signed in with ${provider}. Connect Google Calendar to read availability and propose times.`
+                      : 'Connect your Google Calendar to read availability and propose times.'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" className="h-6 text-[11px]" onClick={openCalendarSettings}>
+                  Connect calendar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[11px] gap-1"
+                  onClick={retryFreeBusy}
+                >
+                  <RefreshCw className="h-3 w-3" /> Retry
+                </Button>
+              </div>
+            </div>
+          );
+        })()
+      ) : calendarConn.kind === 'error' ? (
+        <div className="flex flex-col items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{calendarConn.message}</span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 text-[11px] gap-1"
+            onClick={retryFreeBusy}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
+        </div>
+      ) : loadingBusy ? (
         <div className="space-y-1.5">
           <Skeleton className="h-7 w-full" />
           <Skeleton className="h-7 w-full" />
