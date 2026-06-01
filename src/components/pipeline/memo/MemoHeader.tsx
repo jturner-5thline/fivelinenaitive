@@ -144,16 +144,16 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal }: MemoHeaderP
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap min-w-0">
           <h2
-            className="text-[15px] font-semibold leading-tight tracking-tight text-white truncate"
+            className="text-[17px] font-semibold leading-tight tracking-tight text-white truncate"
             title={deal.company || deal.name}
           >
             {deal.company || deal.name}
           </h2>
           {structureLabel && (
-            <Badge variant="gray" className="rounded-full">{structureLabel}</Badge>
+            <Badge variant="gray" className="rounded-full font-medium">{structureLabel}</Badge>
           )}
           {assetClass && (
-            <Badge variant="gray" className="rounded-full">{assetClass}</Badge>
+            <Badge variant="gray" className="rounded-full font-medium">{assetClass}</Badge>
           )}
         </div>
         <div
@@ -166,7 +166,7 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal }: MemoHeaderP
           {/* Editable status tag — reuses the shared status surface and
               writes back to deal.status so every other consumer updates. */}
           <EditableDealStatusTag dealId={deal.id} status={deal.status} />
-          <Badge variant="green" className="rounded-full">{amountLabel}</Badge>
+          <Badge variant="green" className="rounded-full font-semibold">{amountLabel}</Badge>
           {/* Email — launches the existing thread-aware Draft Email to
               Client Contact dialog. Reuses the same composer + thread
               picker shipped on the deal detail page. */}
@@ -247,11 +247,11 @@ export function MemoHeader({ deal, showLiveDot = true, onOpenDeal }: MemoHeaderP
             type="button"
             onClick={beginEdit}
             title={effectiveDisplay ? `${effectiveDisplay} — click to edit` : 'Add a status update'}
-            className="group w-full text-left text-[12px] leading-snug text-muted-foreground break-words rounded px-1 -mx-1 py-0.5 hover:bg-white/5 transition-colors"
+            className="group w-full text-left text-[13px] leading-snug text-foreground/85 break-words rounded px-1 -mx-1 py-0.5 hover:bg-white/5 transition-colors"
           >
-            <span className="text-muted-foreground/70">Status:</span>{' '}
+            <span className="text-foreground/60 font-medium uppercase tracking-wider text-[10px]">Status</span>{' '}
             {effectiveDisplay ? (
-              <span className="text-foreground/80">{effectiveDisplay}</span>
+              <span className="text-foreground">{effectiveDisplay}</span>
             ) : (
               <span className="italic text-muted-foreground/60">Add a status update</span>
             )}
