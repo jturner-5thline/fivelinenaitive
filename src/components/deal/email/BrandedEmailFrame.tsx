@@ -10,6 +10,32 @@ interface Props {
 }
 
 /**
+ * Strip white/near-white background declarations out of author-supplied
+ * `<style>` blocks AFTER DOMPurify has sanitized the HTML. DOMPurify
+ * `uponSanitizeAttribute` hooks only see inline `style="..."` and the
+ * `bgcolor` attribute — they do NOT see CSS rules inside `<style>`
+ * elements. Outlook and Gmail templates routinely set
+ * `body{background-color:#ffffff}` or class-scoped white fills in
+ * `<style>` blocks; without this pass those rules win the cascade
+ * against the iframe's injected `html, body { background: transparent }`
+ * reset and paint a solid white block over the dark reading surface.
+ *
+ * We only neutralize declarations whose value is white / #fff / #ffffff
+ * / rgb(255,255,255) — every other background (brand colors, hero
+ * blocks, CTAs, signatures) is preserved exactly as the author wrote it.
+ */
+const WHITE_BG_DECL_RE =
+  /background(-color)?\s*:\s*(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)|rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*1\s*\))\s*(!important)?\s*;?/gi;
+
+function stripWhiteBackgroundsFromStyleBlocks(html: string): string {
+  return html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css: string) => {
+    const cleaned = css.replace(WHITE_BG_DECL_RE, '');
+    if (cleaned === css) return full;
+    return full.replace(css, cleaned);
+  });
+}
+
+/**
  * Renders a branded/notification HTML email (LinkedIn, HubSpot, Stripe,
  * newsletters, etc.) inside a sandboxed iframe so the email's own CSS,
  * tables, colors, buttons and images render with full fidelity — the way
@@ -89,6 +115,13 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
       });
       DOMPurify.removeAllHooks();
 
+      // Post-sanitize: neutralize white backgrounds inside any surviving
+      // `<style>` blocks. This is the regression vector that re-paints
+      // Outlook/Gmail person-to-person replies (Brian Lewis "Project
+      // Vista", Niki, etc.) solid white over the dark canvas — the
+      // attribute-level hook above cannot see CSS rules.
+      const cleanWithStripped = stripWhiteBackgroundsFromStyleBlocks(clean);
+
       const fid = JSON.stringify(frameId.current);
       const closeScript = '<' + '/script>';
       return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>
@@ -120,7 +153,7 @@ img{max-width:100% !important;height:auto !important;border:0;}
 table{max-width:100% !important;}
 a{color:${theme.link};}
 a[role="button"],.cta,.button,.btn{display:inline-block;}
-</style></head><body>${clean}<script>(function(){
+</style></head><body>${cleanWithStripped}<script>(function(){
 var fid=${fid};
 function post(){try{var h=Math.max(document.body.scrollHeight,document.documentElement.scrollHeight);parent.postMessage({__bef:true,id:fid,height:h},"*");}catch(e){}}
 window.addEventListener("load",function(){post();setTimeout(post,200);setTimeout(post,800);});
