@@ -1603,9 +1603,34 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
           <EmailHeaderDetails email={email} fullData={fullData as any} />
 
           {fullLoading && !hasRenderableBody && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Loading full message…</span>
+            <div className="py-2">
+              {/* Snippet fast-path: render the list-sync snippet immediately
+                  so the user sees content within one frame instead of staring
+                  at a spinner while the full body fetch (up to 15s) resolves.
+                  Clearly marked as a preview so the prior "snippet renders as
+                  if it were the full body" bug stays fixed — the snippet ends
+                  mid-word, so we badge it and keep the loading indicator
+                  visible until the real body arrives and replaces it. */}
+              {(email.snippet || email.body_preview) ? (
+                <>
+                  <div className="mb-2 flex items-center gap-2 text-[11px] text-[hsl(var(--email-text-muted))]">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    <span>Loading full message — showing preview</span>
+                  </div>
+                  <div
+                    className="text-[14px] leading-[1.7] text-[hsl(var(--email-text-secondary))] italic break-words"
+                    style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+                  >
+                    {(email.snippet || email.body_preview || '').trim()}
+                    <span className="text-[hsl(var(--email-text-muted))]">…</span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Loading full message…</span>
+                </div>
+              )}
             </div>
           )}
 
