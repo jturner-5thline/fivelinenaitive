@@ -60,6 +60,39 @@ const ROW_PX = 22;
 
 const BROWSER_TZ =
   Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+const STATUS_TIMEOUT_MS = 3000;
+const BUSY_TIMEOUT_MS = 8000;
+const STUCK_LOADING_DEV_MS = 10_000;
+
+type CalendarConn =
+  | { kind: 'unknown' }
+  | { kind: 'connected'; email?: string | null }
+  | { kind: 'missing' }
+  | { kind: 'expired'; email?: string | null }
+  | { kind: 'alt_provider'; provider?: string | null }
+  | { kind: 'error'; message: string; debug?: string };
+
+function snippet(value: unknown, max = 240): string {
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function buildInvokeError(label: string, error: any, data?: any): Error {
+  const bodySnippet = data ? ` Body: ${snippet(data)}` : '';
+  return new Error(`${label} failed: ${error?.message || 'Unknown error.'}${bodySnippet}`);
+}
+
+function timeoutReject(ms: number, label: string, meta?: Record<string, unknown>) {
+  return new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      if (label === 'freebusy') {
+        // eslint-disable-next-line no-console
+        console.warn('[scheduler] 8s timeout fired', meta ?? {});
+      }
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+}
 
 interface Attendee {
   email: string;
@@ -294,39 +327,84 @@ export function QuickBookMeetingPopover({
   onClose,
 }: Props) {
   /* ----- calendar connection status */
+  const [loadNonce, setLoadNonce] = useState(0);
+  const retryScheduler = useCallback(() => setLoadNonce((n) => n + 1), []);
+  const [calendarConn, setCalendarConn] = useState<CalendarConn>({ kind: 'unknown' });
   const [statusLoading, setStatusLoading] = useState(true);
-  const [connected, setConnected] = useState<boolean | null>(null);
+  const [busyLoading, setBusyLoading] = useState(false);
+  const [busyError, setBusyError] = useState<string | null>(null);
+  const [busyDebug, setBusyDebug] = useState<string | null>(null);
+  const [debugSimulateTimeout, setDebugSimulateTimeout] = useState(false);
+  const lastFetchStartedAtRef = useRef<number | null>(null);
+  const lastFetchErrorRef = useRef<string | null>(null);
+  const timeoutHandleRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    setStatusLoading(true);
+    setBusyLoading(false);
+    setBusyError(null);
+    setBusyDebug(null);
+    setCalendarConn({ kind: 'unknown' });
+    lastFetchErrorRef.current = null;
+    timeoutHandleRef.current = null;
+
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('calendar-status', {
-          body: {},
-        });
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] calendar-status request start', { nonce: loadNonce });
+        const { data, error } = await Promise.race([
+          supabase.functions.invoke('calendar-status', { body: {} }),
+          timeoutReject(STATUS_TIMEOUT_MS, 'calendar-status', { nonce: loadNonce }),
+        ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
         if (cancelled) return;
-        if (error) {
-          setConnected(false);
+        if (error) throw buildInvokeError('calendar-status', error, data);
+        const statusData = (data ?? {}) as Record<string, any>;
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] calendar-status response', {
+          nonce: loadNonce,
+          connected: !!statusData.connected,
+          isExpired: !!statusData.is_expired,
+          provider: statusData.provider ?? null,
+        });
+        const provider = String(statusData.provider || '').toLowerCase() || null;
+        if (!statusData.connected) {
+          if (provider && provider !== 'google') {
+            setCalendarConn({ kind: 'alt_provider', provider });
+          } else {
+            setCalendarConn({ kind: 'missing' });
+          }
+        } else if (statusData.is_expired) {
+          setCalendarConn({ kind: 'expired', email: statusData.email ?? null });
         } else {
-          setConnected(!!data?.connected);
+          setCalendarConn({ kind: 'connected', email: statusData.email ?? null });
         }
-      } catch {
-        if (!cancelled) setConnected(false);
+      } catch (e: any) {
+        if (cancelled) return;
+        const message = e?.message || 'Calendar status check failed.';
+        // eslint-disable-next-line no-console
+        console.error('[scheduler] calendar-status error', { nonce: loadNonce, message });
+        setCalendarConn({
+          kind: 'error',
+          message: "Couldn't load your calendar availability.",
+          debug: message,
+        });
       } finally {
         if (!cancelled) setStatusLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadNonce]);
 
   // Surface a toast with a Connect CTA the first time we detect a
   // disconnected calendar, so the user notices even if the inline prompt
   // is scrolled out of view.
   const connectToastShownRef = useRef(false);
   useEffect(() => {
-    if (connected === false && !connectToastShownRef.current) {
+    if ((calendarConn.kind === 'missing' || calendarConn.kind === 'expired' || calendarConn.kind === 'alt_provider') && !connectToastShownRef.current) {
       connectToastShownRef.current = true;
       toast('Google Calendar not connected', {
         description: 'Connect your calendar to book meetings from here.',
@@ -336,7 +414,7 @@ export function QuickBookMeetingPopover({
         },
       });
     }
-  }, [connected]);
+  }, [calendarConn.kind]);
 
   /* ----- timezone + duration prefs */
   const [timezone] = useState<string>(() => {
@@ -364,6 +442,27 @@ export function QuickBookMeetingPopover({
     }
   }, []);
 
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!busyLoading) return;
+    const startedAt = lastFetchStartedAtRef.current ?? Date.now();
+    const handle = setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.error('[scheduler] stuck-loading assertion tripped', {
+        nonce: loadNonce,
+        hasUser: !!meEmail,
+        tz: timezone,
+        duration: Date.now() - startedAt,
+        calendarStatus: calendarConn.kind,
+        lastFetchStartedAt: lastFetchStartedAtRef.current,
+        lastFetchError: lastFetchErrorRef.current,
+        timeoutHandle: timeoutHandleRef.current,
+      });
+      toast.error('Scheduler stuck >10s — check console');
+    }, STUCK_LOADING_DEV_MS);
+    return () => clearTimeout(handle);
+  }, [busyLoading, loadNonce, meEmail, timezone, calendarConn.kind]);
+
   /* ----- week window */
   const [weekStart, setWeekStart] = useState<Date>(() => startOfWeekMon(new Date()));
   const weekDays = useMemo(
@@ -373,57 +472,88 @@ export function QuickBookMeetingPopover({
 
   /* ----- busy fetch (current visible week + previous next-1 week buffer) */
   const [busy, setBusy] = useState<BusyBlock[]>([]);
-  const [busyLoading, setBusyLoading] = useState(false);
   const busyReqRef = useRef(0);
 
   useEffect(() => {
-    if (!connected) return;
+    if (calendarConn.kind !== 'connected') return;
     const reqId = ++busyReqRef.current;
     const timeMin = new Date(weekStart);
     const timeMax = addDays(weekStart, 7);
     setBusyLoading(true);
+    setBusyError(null);
+    setBusyDebug(null);
+    lastFetchStartedAtRef.current = Date.now();
+    timeoutHandleRef.current = `freebusy:${reqId}`;
     (async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('calendar-events', {
-          body: {
-            action: 'list',
-            calendar_id: 'primary',
-            time_min: timeMin.toISOString(),
-            time_max: timeMax.toISOString(),
-            max_results: 250,
-          },
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] freebusy request start', {
+          nonce: loadNonce,
+          reqId,
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+          debugSimulateTimeout,
         });
+        const request = debugSimulateTimeout
+          ? new Promise<never>(() => {})
+          : supabase.functions.invoke('calendar-events', {
+              body: {
+                action: 'list',
+                calendar_id: 'primary',
+                time_min: timeMin.toISOString(),
+                time_max: timeMax.toISOString(),
+                max_results: 250,
+              },
+            });
+        const { data, error } = await Promise.race([
+          request,
+          timeoutReject(BUSY_TIMEOUT_MS, 'freebusy', { hasUser: !!meEmail, tz: timezone, nonce: loadNonce }),
+        ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
         if (busyReqRef.current !== reqId) return;
-        if (error) {
-          setBusy([]);
-        } else {
-          const evs = Array.isArray(data?.events) ? data.events : [];
-          setBusy(
-            evs
-              .filter((e: any) => e?.start && e?.end && !e?.all_day)
-              .map((e: any) => ({
-                start: new Date(e.start),
-                end: new Date(e.end),
-                title: e.summary || 'Busy',
-              })),
-          );
-        }
-      } catch {
-        if (busyReqRef.current === reqId) setBusy([]);
+        if (error) throw buildInvokeError('calendar-events', error, data);
+        const eventsData = (data ?? {}) as Record<string, any>;
+        const evs = Array.isArray(eventsData.events) ? eventsData.events : [];
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] freebusy response', {
+          nonce: loadNonce,
+          reqId,
+          eventCount: evs.length,
+        });
+        setBusy(
+          evs
+            .filter((e: any) => e?.start && e?.end && !e?.all_day)
+            .map((e: any) => ({
+              start: new Date(e.start),
+              end: new Date(e.end),
+              title: e.summary || 'Busy',
+            })),
+        );
+      } catch (e: any) {
+        if (busyReqRef.current !== reqId) return;
+        const message = e?.message || 'Could not read calendar availability.';
+        // eslint-disable-next-line no-console
+        console.error('[scheduler] freebusy error', { nonce: loadNonce, reqId, message });
+        lastFetchErrorRef.current = message;
+        setBusy([]);
+        setBusyError("Couldn't load your calendar availability.");
+        setBusyDebug(message);
       } finally {
-        if (busyReqRef.current === reqId) setBusyLoading(false);
+        if (busyReqRef.current === reqId) {
+          timeoutHandleRef.current = null;
+          setBusyLoading(false);
+        }
       }
     })();
-  }, [connected, weekStart]);
+  }, [calendarConn.kind, weekStart, loadNonce, debugSimulateTimeout, meEmail, timezone]);
 
   /* ----- AI-recommended slots */
   const aiSlots = useMemo<AiSlot[]>(() => {
-    if (!connected) return [];
+    if (calendarConn.kind !== 'connected') return [];
     const startFrom = new Date();
     // Recompute relative to today, not weekStart, so it stays sensible
     // when the user navigates weeks.
     return computeAiSlots(busy, duration, startFrom);
-  }, [busy, duration, connected]);
+  }, [busy, duration, calendarConn.kind]);
 
   /* ----- selected slot + editable invite fields */
   const initialAttendees = useMemo(
@@ -690,29 +820,63 @@ export function QuickBookMeetingPopover({
       </div>
     );
   }
-  if (!connected) {
+  if (calendarConn.kind !== 'connected') {
+    const isError = calendarConn.kind === 'error';
+    const isAltProvider = calendarConn.kind === 'alt_provider';
+    const isExpired = calendarConn.kind === 'expired';
+    const title = isError
+      ? "Couldn't load your calendar availability."
+      : isExpired
+        ? 'Your Google Calendar connection expired.'
+        : isAltProvider
+          ? 'Calendar provider mismatch'
+          : 'Calendar not connected';
+    const body = isError
+      ? calendarConn.debug || calendarConn.message
+      : isAltProvider
+        ? `You’re signed in with ${calendarConn.provider || 'another provider'}. Connect Google Calendar to book meetings here.`
+        : 'Connect your Google Calendar to book meetings, generate Meet links, and send invites directly from this thread.';
     return (
       <div className="w-[min(340px,calc(100vw-48px))] max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-4">
         <Header onClose={onClose} />
         <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 space-y-2">
           <div className="flex items-center gap-1.5 text-[12px] font-medium text-amber-200">
-            <CalendarX className="h-3.5 w-3.5" />
-            Calendar not connected
+            {isError ? <AlertTriangle className="h-3.5 w-3.5" /> : <CalendarX className="h-3.5 w-3.5" />}
+            {title}
           </div>
           <p className="text-[11.5px] leading-snug text-foreground/75">
-            Connect your Google Calendar to book meetings, generate Meet links,
-            and send invites directly from this thread.
+            {body}
           </p>
-          <Button
-            size="sm"
-            className="h-7 text-[11.5px] w-full"
-            onClick={() => {
-              window.open('/settings/integrations', '_blank');
-            }}
-          >
-            <ExternalLink className="h-3 w-3 mr-1.5" />
-            Connect calendar
-          </Button>
+          {isError && calendarConn.debug ? (
+            <details className="text-[10.5px] text-foreground/70">
+              <summary className="cursor-pointer">Debug details</summary>
+              <div className="mt-1 break-all rounded border border-white/10 bg-black/10 p-2 font-mono text-[10px]">
+                {calendarConn.debug}
+              </div>
+            </details>
+          ) : null}
+          <div className="flex gap-2">
+            {!isError ? (
+              <Button
+                size="sm"
+                className="h-7 text-[11.5px] flex-1"
+                onClick={() => {
+                  window.open('/settings/integrations', '_blank');
+                }}
+              >
+                <ExternalLink className="h-3 w-3 mr-1.5" />
+                Connect calendar
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11.5px] flex-1"
+              onClick={retryScheduler}
+            >
+              Retry
+            </Button>
+          </div>
         </div>
         <ProposeFallbackLink onClick={onProposeViaEmail} />
       </div>
@@ -725,6 +889,17 @@ export function QuickBookMeetingPopover({
   return (
     <div className="w-full max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-3 space-y-3 text-foreground">
       <Header onClose={onClose} />
+
+      {import.meta.env.DEV ? (
+        <label className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10.5px] text-muted-foreground/80">
+          <input
+            type="checkbox"
+            checked={debugSimulateTimeout}
+            onChange={(e) => setDebugSimulateTimeout(e.target.checked)}
+          />
+          Simulate calendar timeout
+        </label>
+      ) : null}
 
       {/* Duration pill row */}
       <div className="flex items-center gap-1.5">
@@ -780,6 +955,26 @@ export function QuickBookMeetingPopover({
           <ChevronRight className="h-3 w-3" />
         </button>
       </div>
+
+      {busyError ? (
+        <div className="rounded-md border border-amber-400/30 bg-amber-400/10 p-2 text-[11px] text-amber-200 space-y-2">
+          <div className="flex items-start gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>{busyError}</span>
+          </div>
+          {busyDebug ? (
+            <details className="text-[10.5px] text-foreground/70">
+              <summary className="cursor-pointer">Debug details</summary>
+              <div className="mt-1 break-all rounded border border-white/10 bg-black/10 p-2 font-mono text-[10px]">
+                {busyDebug}
+              </div>
+            </details>
+          ) : null}
+          <Button type="button" size="sm" variant="outline" className="h-6 text-[11px]" onClick={retryScheduler}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
 
       {/* Mini week grid */}
       <WeekGrid
