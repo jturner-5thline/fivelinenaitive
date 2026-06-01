@@ -282,8 +282,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       if (!detail || detail.threadId !== thread.threadId) return;
       if (scheduleHintDismissedThreads.current.has(detail.threadId)) return;
       if (schedulerOpen) return; // scheduler already up — no prompt needed
+      // Bug B: the "fromMe" check must use the CURRENT signed-in user's
+      // email — previously hardcoded to jturner@5thline.co which broke the
+      // experience for every other operator.
+      const meEmail = (currentUserEmailRef.current || '').toLowerCase();
       const inboundTexts = (thread.emails || [])
-        .filter((m: any) => (m?.from_email || '').toLowerCase() !== 'jturner@5thline.co')
+        .filter((m: any) => (m?.from_email || '').toLowerCase() !== meEmail)
         .map((m: any) => (m?.body_preview || m?.snippet || ''));
       if (inboundProposedTimes(inboundTexts)) {
         setScheduleHintActive(false);
