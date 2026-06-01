@@ -1,0 +1,6 @@
+# Function provision-demo-tenant uses verify_jwt=false because it validates the
+# service-role bearer manually. Add the block below to supabase/config.toml if
+# it isn't already present:
+#
+# [functions.provision-demo-tenant]
+# verify_jwt = false
