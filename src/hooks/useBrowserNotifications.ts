@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { startVisibilityAwareInterval } from '@/lib/visibilityAwareInterval';
 
 type PermissionState = 'default' | 'granted' | 'denied' | 'unsupported';
 
@@ -17,9 +18,12 @@ export function useBrowserNotifications() {
       setPermission(Notification.permission as PermissionState);
     };
 
-    // Poll briefly after requesting (some browsers don't fire events)
-    const interval = setInterval(updatePermission, 2000);
-    return () => clearInterval(interval);
+    // Previously polled `Notification.permission` every 2s for the entire
+    // session — wasted work for a value that almost never changes after
+    // page load. Now: poll at 30s, pause when the tab is hidden, and
+    // re-check on tab focus (which is when the user typically grants /
+    // revokes the permission in another tab anyway).
+    return startVisibilityAwareInterval(updatePermission, 30_000);
   }, []);
 
   const requestPermission = useCallback(async (): Promise<boolean> => {
