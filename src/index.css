@@ -329,6 +329,26 @@
   direction: ltr !important;
 }
 
+/* Hard guarantee: every email body container is transparent so the
+   deal pop-up's dark surface paints through. Applies to legacy
+   `.email-body` consumers AND the canonical `[data-email-root]`
+   marker used by EmailMessageShell / BrandedEmailFrame. */
+.email-body,
+.email-body *,
+[data-email-root],
+[data-email-root] * {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+[data-email-root] img,
+[data-email-root] .email-img-fallback,
+[data-email-root] [class*="bg-gradient"] {
+  /* Preserve image rendering and brand-coloured fallback pills; the
+     blanket rule above is too aggressive for these specific atoms. */
+  background: revert !important;
+  background-color: revert !important;
+}
+
 [data-inbox-surface-scope="message"],
 [data-inbox-surface-scope="assistant"] {
   /* Inherit the popup-shell-surface gradient from the dialog so every inbox
