@@ -522,6 +522,7 @@ function useStageEntryMetric(
         .select(`
           deal_id,
           changed_at,
+          to_stage,
           to_stage_id,
           from_stage_id,
           deals!inner (
@@ -535,7 +536,7 @@ function useStageEntryMetric(
           )
         `)
         .eq('event_type', 'stage_enter')
-        .in('to_stage_id', targetStages)
+        .in('to_stage', expandStageLabels(targetStages))
         .gte('changed_at', startDate)
         .lte('changed_at', endDate + 'T23:59:59.999Z');
 
@@ -547,6 +548,9 @@ function useStageEntryMetric(
         .order('changed_at', { ascending: true });
 
       if (error) throw error;
+      if ((rows?.length ?? 0) === 0) {
+        console.warn('[stage-entry-metric] 0 rows', { targetStages, pipelineId, startDate, endDate });
+      }
       return rows ?? [];
     },
     enabled: !!user,
@@ -564,6 +568,8 @@ function useStageEntryMetric(
       if (!deal) continue;
       // If pipelineId filter specified but inner join didn't filter (safety)
       if (pipelineId && deal.pipeline_id !== pipelineId) continue;
+      const stageSlug = normalizeStageSlug((row as any).to_stage, (row as any).to_stage_id);
+      if (!stageSlug || !targetStages.includes(stageSlug)) continue;
       seen.set(row.deal_id, {
         deal_id: row.deal_id,
         company: deal.company ?? '—',
