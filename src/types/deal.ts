@@ -2,7 +2,7 @@ export type DealStage = 'final-credit-items' | 'client-strategy-review' | 'write
 
 export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'archived';
 
-export type EngagementType = 'guided' | 'advisory' | 'managed-process';
+export type EngagementType = 'advisory' | 'managed-process';
 
 export type ExclusivityType = 'exclusive' | 'non-exclusive' | 'modified-exclusive';
 
@@ -233,7 +233,6 @@ export const STATUS_CONFIG: Record<DealStatus, { label: string; dotColor: string
 };
 
 export const ENGAGEMENT_TYPE_CONFIG: Record<EngagementType, { label: string }> = {
-  'guided': { label: 'Guided' },
   'advisory': { label: 'Advisory' },
   'managed-process': { label: 'Managed Process' },
 };
