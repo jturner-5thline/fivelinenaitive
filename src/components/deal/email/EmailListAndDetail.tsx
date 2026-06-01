@@ -2062,11 +2062,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   }, [showAiAssist, thread.threadId]);
   const [showAiDraft, setShowAiDraft] = useState(false);
   const [aiDraftMode, setAiDraftMode] = useState<DraftMode | undefined>(undefined);
-  const [linkedDealName, setLinkedDealName] = useState<string | undefined>(thread.dealName);
-  // Per-thread linked deal id chosen from the LinkToDealPopover. Falls through
-  // to the deal-page's own dealId when this Email pane is rendered inside a
-  // deal context. Drives AI drafting + downstream context retrieval.
+  // Canonical user-confirmed link comes from the deal_emails table (link_source='manual',
+  // locked=true). thread.dealName is the AI classifier's best guess and must never be
+  // shown as a "Linked" badge — it only seeds the chip color until hydrate resolves.
+  const [linkedDealName, setLinkedDealName] = useState<string | undefined>(undefined);
   const [linkedDealId, setLinkedDealId] = useState<string | undefined>(undefined);
+  const [linkHydrating, setLinkHydrating] = useState<boolean>(!dealId);
+  const [linkHydrateError, setLinkHydrateError] = useState<string | null>(null);
   const [showSendToDataRoom, setShowSendToDataRoom] = useState(false);
 
   // Floating "you just linked this deal" preview card. Opens deterministically
@@ -2106,38 +2108,137 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   // Q&A, Deal Context) all see the same resolved deal — eliminating the
   // contradictory "no deal linked" state when the chip row already shows
   // a deal.
+  // Hydrate canonical deal link from deal_emails. Manual/locked rows always win
+  // over AI suggestions. 5s hard timeout → inline error+Retry instead of a
+  // permanent spinner. Re-runs whenever the thread changes or Retry is hit.
+  const [hydrateNonce, setHydrateNonce] = useState(0);
   useEffect(() => {
-    // Skip when the parent already provides an explicit dealId (deal page
-    // context) or we've already hydrated from a click in this session.
-    if (dealId || linkedDealId) return;
+    if (dealId) { setLinkHydrating(false); return; }
     const messageIds = thread.emails
       .map((e) => e.id)
       .filter((mid): mid is string => !!mid && !mid.startsWith('mock-'));
-    if (messageIds.length === 0) return;
+    if (messageIds.length === 0) { setLinkHydrating(false); return; }
     let cancelled = false;
-    (async () => {
-      const { data: linkRow } = await supabase
-        .from('deal_emails')
-        .select('deal_id')
-        .in('gmail_message_id', messageIds)
-        .order('linked_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (cancelled || !linkRow?.deal_id) return;
-      const { data: dealRow } = await supabase
-        .from('deals')
-        .select('id, company')
-        .eq('id', linkRow.deal_id)
-        .maybeSingle();
+    setLinkHydrating(true);
+    setLinkHydrateError(null);
+    const timeoutMs = 5000;
+    const timeoutHandle = window.setTimeout(() => {
       if (cancelled) return;
-      setLinkedDealId(linkRow.deal_id);
-      if (dealRow?.company) setLinkedDealName(dealRow.company);
+      console.error('[link-deal hydrate] timeout', { threadId: thread.threadId, messageIds });
+      setLinkHydrateError('Couldn\u2019t verify deal link');
+      setLinkHydrating(false);
+    }, timeoutMs);
+    (async () => {
+      try {
+        // Prefer manual+locked, newest first. The composite index makes this cheap.
+        const { data: rows, error: linkErr } = await supabase
+          .from('deal_emails')
+          .select('deal_id, link_source, locked, linked_at')
+          .in('gmail_message_id', messageIds)
+          .order('locked', { ascending: false })
+          .order('linked_at', { ascending: false })
+          .limit(5);
+        if (cancelled) return;
+        if (linkErr) throw linkErr;
+        const winner = (rows ?? []).find((r: any) => r.locked || r.link_source === 'manual') ?? (rows ?? [])[0];
+        if (!winner?.deal_id) {
+          console.info('[link-deal hydrate]', { threadId: thread.threadId, source: 'none', dealId: null });
+          window.clearTimeout(timeoutHandle);
+          setLinkHydrating(false);
+          return;
+        }
+        const { data: dealRow, error: dErr } = await supabase
+          .from('deals')
+          .select('id, company')
+          .eq('id', winner.deal_id)
+          .maybeSingle();
+        if (cancelled) return;
+        if (dErr) throw dErr;
+        window.clearTimeout(timeoutHandle);
+        setLinkedDealId(winner.deal_id);
+        if (dealRow?.company) setLinkedDealName(dealRow.company);
+        setLinkHydrating(false);
+        console.info('[link-deal hydrate]', {
+          threadId: thread.threadId,
+          dealId: winner.deal_id,
+          dealName: dealRow?.company,
+          source: winner.link_source ?? 'manual',
+          locked: !!winner.locked,
+        });
+      } catch (err: any) {
+        if (cancelled) return;
+        console.error('[link-deal hydrate] failed', err);
+        window.clearTimeout(timeoutHandle);
+        setLinkHydrateError(err?.message || 'Could not load deal link');
+        setLinkHydrating(false);
+      }
     })();
     return () => {
       cancelled = true;
+      window.clearTimeout(timeoutHandle);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [thread.threadId, dealId]);
+  }, [thread.threadId, dealId, hydrateNonce]);
+
+  // Shared persistence helper used by both the toolbar popover and the AI
+  // Assist sidebar. Writes manual+locked rows so AI auto-linkers cannot
+  // overwrite (enforced by a DB trigger as belt-and-suspenders). On failure,
+  // reverts the optimistic UI and shows a Retry toast.
+  const persistManualDealLink = useCallback(async (id: string, name: string, prev: { id?: string; name?: string }) => {
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth?.user?.id;
+      if (!userId) return;
+      const realIds = thread.emails
+        .map((e) => e.id)
+        .filter((mid): mid is string => !!mid && !mid.startsWith('mock-'));
+      if (realIds.length === 0) return;
+      const rows = realIds.map((mid) => ({
+        deal_id: id,
+        gmail_message_id: mid,
+        user_id: userId,
+        link_source: 'manual' as const,
+        locked: true,
+      }));
+      console.info('[link-deal mutate]', {
+        threadId: thread.threadId,
+        dealId: id,
+        dealName: name,
+        source: 'manual',
+        messages: realIds.length,
+      });
+      const { error: upsertErr } = await supabase
+        .from('deal_emails')
+        .upsert(rows, { onConflict: 'deal_id,gmail_message_id', ignoreDuplicates: false });
+      if (upsertErr) throw upsertErr;
+      // Verify the write actually landed (defends against RLS denial / trigger drop).
+      const { data: verify, error: vErr } = await supabase
+        .from('deal_emails')
+        .select('deal_id')
+        .eq('deal_id', id)
+        .in('gmail_message_id', realIds)
+        .limit(1);
+      if (vErr) throw vErr;
+      if (!verify || verify.length === 0) {
+        throw new Error('Link saved but not visible on read-back');
+      }
+    } catch (err: any) {
+      console.error('[link-deal mutate] persist failed', err);
+      // Revert optimistic state so the badge matches DB truth.
+      setLinkedDealId(prev.id);
+      setLinkedDealName(prev.name);
+      const msg = err?.message || 'Couldn\u2019t save deal link';
+      toast.error('Couldn\u2019t save deal link', {
+        description: msg,
+        action: {
+          label: 'Retry',
+          onClick: () => { void persistManualDealLink(id, name, prev); },
+        },
+      });
+      throw err;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [thread.threadId, thread.emails]);
 
   const composerSignature = useUserEmailSignature();
 
