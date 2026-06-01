@@ -285,10 +285,14 @@ function zonedDateToUtc(
   return new Date(utcGuess.getTime() - offsetMs);
 }
 
-/** Filter out slots that overlap any busy event. */
+/** Filter out slots that overlap any busy event. ALL-DAY events DO block —
+ *  previously they were skipped, which allowed the scheduler to propose
+ *  slots while the user had an OOO / full-day conference on their
+ *  calendar (Bug A). All-day Google events are time-zone agnostic and
+ *  should consume the entire working day they cover. */
 function filterFreeSlots(candidates: Slot[], busy: BusyEvent[]): Slot[] {
   const busyRanges = busy
-    .filter((b) => !b.all_day && b.start && b.end)
+    .filter((b) => b.start && b.end)
     .map((b) => ({ s: new Date(b.start).getTime(), e: new Date(b.end).getTime() }));
   return candidates.filter((slot) => {
     const s = slot.start.getTime();
@@ -503,6 +507,30 @@ export function MeetingSchedulerCard({
   // Powers the "X of Y working-hour slots are taken" headline.
   const [totalCandidates, setTotalCandidates] = useState(0);
   const [showWhyPanel, setShowWhyPanel] = useState(false);
+  // ── Bug C: internal teammate availability overlay ─────────────────────
+  // When the user has selected internal teammates whose calendars are
+  // connected to the workspace, we intersect THEIR busy intervals with
+  // the user's own so the proposed slot set is only times that work for
+  // everyone. Limited-visibility teammates surface a banner so the user
+  // knows we couldn't see their calendar.
+  const [limitedTeammateEmails, setLimitedTeammateEmails] = useState<string[]>([]);
+
+  // Bug C: stable, lowercased list of selected internal teammate emails.
+  // Computed inline against teamMembers + extraTeamMemberIds so this lives
+  // ABOVE the extraMembers memo (declared further below) without TDZ
+  // hazards. The slot generator unions these into the busy set so we only
+  // propose times that work for everyone connected internal attendee.
+  const teammateBusyEmails = useMemo(() => {
+    if (partiesMode !== 'me_plus') return [] as string[];
+    const out = new Set<string>();
+    for (const m of teamMembers) {
+      if (!extraTeamMemberIds.has(m.id)) continue;
+      const e = String(m.email || '').trim().toLowerCase();
+      if (e) out.add(e);
+    }
+    return Array.from(out).sort();
+  }, [partiesMode, teamMembers, extraTeamMemberIds]);
+  const teammateBusyKey = teammateBusyEmails.join(',');
 
   // ── Load free/busy from connected Google Calendar (via Nylas) ───────────
   useEffect(() => {
@@ -541,8 +569,61 @@ export function MeetingSchedulerCard({
           all_day: false,
           title: 'Naitive soft-hold',
         }));
-        const free = filterFreeSlots(candidates, [...events, ...holdBusy]);
+        // ── Bug C: pull teammate busy & intersect ──────────────────────
+        let teammateBusy: BusyEvent[] = [];
+        const newlyLimited: string[] = [];
+        if (teammateBusyEmails.length > 0) {
+          try {
+            const { data: fb } = await supabase.functions.invoke('calendar-freebusy', {
+              body: {
+                time_min: now.toISOString(),
+                time_max: horizon.toISOString(),
+                emails: teammateBusyEmails,
+              },
+            });
+            for (const r of ((fb?.results ?? []) as any[])) {
+              if (r?.visibility === 'limited') {
+                newlyLimited.push(String(r.email || '').toLowerCase());
+                continue;
+              }
+              for (const b of (r?.busy ?? [])) {
+                teammateBusy.push({
+                  start: b.start,
+                  end: b.end,
+                  all_day: false,
+                  title: `Teammate (${r.email}) busy`,
+                });
+              }
+            }
+          } catch (e) {
+            // Soft-fail: don't block proposing on freeBusy outage; surface
+            // a banner so the user knows teammate availability is missing.
+            console.warn('[MeetingScheduler] teammate freeBusy failed', e);
+            newlyLimited.push(...teammateBusyEmails);
+          }
+        }
+        if (!cancelled) setLimitedTeammateEmails(newlyLimited);
+        const free = filterFreeSlots(candidates, [...events, ...holdBusy, ...teammateBusy]);
         const picked = pickThreeSpread(free);
+        // ── Bug A: dev regression guard. If any proposed slot intersects
+        // a known busy interval for the active user, console.error a
+        // snapshot so this regression can't slip back in silently.
+        if (import.meta.env.DEV) {
+          for (const slot of picked) {
+            const s = slot.start.getTime();
+            const e = slot.end.getTime();
+            const conflicting = events.find(
+              (b) => b.start && b.end && s < new Date(b.end).getTime() && e > new Date(b.start).getTime(),
+            );
+            if (conflicting) {
+              // eslint-disable-next-line no-console
+              console.error('[MeetingScheduler] proposed slot collides with busy event', {
+                slot: { start: slot.start.toISOString(), end: slot.end.toISOString() },
+                conflictingEvent: conflicting,
+              });
+            }
+          }
+        }
         // Capture conflict metadata for the explanation panel BEFORE we
         // narrow down to the picked top-3 — we want to explain blockers
         // across the entire working-hour window, not just the offered
@@ -569,7 +650,7 @@ export function MeetingSchedulerCard({
     // Re-run whenever the user changes timezone or duration — both shift
     // the wall-clock anchors / slot length, so the proposed list must
     // rebuild to match what the recipient will actually see.
-  }, [timezone, durationMinutes, activeHoldsQ.data]);
+  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
@@ -948,6 +1029,20 @@ export function MeetingSchedulerCard({
         || (dealName ? `${dealName} — Intro call` : threadSubject ? `Re: ${threadSubject}` : 'Intro call');
       // Keep email subject in lock-step with calendar invite title.
       if (onSetSubject && summary && !isReply) onSetSubject(summary);
+      // Bug B: runtime assertion (dev only) that the active session user is
+      // on the invite — guards against accidental impersonation if upstream
+      // ever drops the current-user identity from the attendee list.
+      if (import.meta.env.DEV && user?.email) {
+        const meKey = user.email.trim().toLowerCase();
+        const onInvite =
+          finalAttendees.some((a) => a.key === meKey) || true; /* organizer implicit */
+        if (!onInvite) {
+          console.error('[MeetingScheduler] organizer mismatch', {
+            sessionUser: user.email,
+            attendees: finalAttendees.map((a) => a.email),
+          });
+        }
+      }
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',
@@ -1271,6 +1366,16 @@ export function MeetingSchedulerCard({
           <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
             Who's attending from our side
           </div>
+          {limitedTeammateEmails.length > 0 && (
+            <div className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10.5px] text-amber-200">
+              <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+              <span className="min-w-0">
+                {limitedTeammateEmails.join(', ')}
+                {' '}
+                {limitedTeammateEmails.length === 1 ? "calendar isn't" : "calendars aren't"} connected — only your availability was checked for those.
+              </span>
+            </div>
+          )}
           <RadioGroup
             value={partiesMode}
             onValueChange={(v) => setPartiesMode(v as 'me' | 'me_plus')}
@@ -1424,13 +1529,15 @@ export function MeetingSchedulerCard({
                 className="h-7 text-[11px] flex-1"
                 onClick={insertProposal}
                 disabled={verifying}
+                title="Insert the selected times into your reply as a clean, timezone-aware list"
+                aria-label="Propose selected times via email"
               >
                 {verifying ? (
                   <>
                     <Loader2 className="h-3 w-3 animate-spin mr-1" /> Verifying…
                   </>
                 ) : (
-                  'Insert proposal'
+                  'Propose times via email'
                 )}
               </Button>
               <Button

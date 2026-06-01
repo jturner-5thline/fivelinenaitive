@@ -239,6 +239,21 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // full meeting scheduler workspace (calendar read → slot pick → invite).
   // This UPGRADES the existing chip without adding a new button anywhere.
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  // Bug B: track the current signed-in user's email so the "fromMe"
+  // heuristics across this panel use the active operator instead of a
+  // hardcoded jturner@5thline.co.
+  const currentUserEmailRef = useRef<string>('');
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      const e = (data?.user?.email || '').toLowerCase();
+      currentUserEmailRef.current = e;
+      setCurrentUserEmail(e);
+    });
+    return () => { cancelled = true; };
+  }, []);
   // Schedule-intent prompt card state. Driven by the COMPOSE_BODY_EVENT
   // fired (debounced 500ms) from InlineReplyComposer / PopOutComposer.
   // Dismissals are per-thread + per-compose-session: once the user X's
@@ -282,8 +297,12 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
       if (!detail || detail.threadId !== thread.threadId) return;
       if (scheduleHintDismissedThreads.current.has(detail.threadId)) return;
       if (schedulerOpen) return; // scheduler already up — no prompt needed
+      // Bug B: the "fromMe" check must use the CURRENT signed-in user's
+      // email — previously hardcoded to jturner@5thline.co which broke the
+      // experience for every other operator.
+      const meEmail = (currentUserEmailRef.current || '').toLowerCase();
       const inboundTexts = (thread.emails || [])
-        .filter((m: any) => (m?.from_email || '').toLowerCase() !== 'jturner@5thline.co')
+        .filter((m: any) => (m?.from_email || '').toLowerCase() !== meEmail)
         .map((m: any) => (m?.body_preview || m?.snippet || ''));
       if (inboundProposedTimes(inboundTexts)) {
         setScheduleHintActive(false);
@@ -1239,7 +1258,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               same component. */}
           {(() => {
             const latest = thread.latestEmail;
-            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            const fromMe = !!currentUserEmail && (latest?.from_email || '').toLowerCase() === currentUserEmail;
             if (fromMe) return null;
             if (schedulerOpen) return null;
             if (isCalendarOrAutomatedNoise(thread)) return null;
@@ -1266,7 +1285,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               inboundProposedTimes() gating inside detectOpenAvailability. */}
           {(() => {
             const latest = thread.latestEmail;
-            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            const fromMe = !!currentUserEmail && (latest?.from_email || '').toLowerCase() === currentUserEmail;
             if (fromMe) return null;
             if (schedulerOpen) return null;
             if (isCalendarOrAutomatedNoise(thread)) return null;
