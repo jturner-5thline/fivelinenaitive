@@ -410,6 +410,39 @@ export function LendersPanel({ deal }: LendersPanelProps) {
   const hasHidden = (['reviewing','onhold','ondeck','passed'] as Bucket[])
     .some(b => grouped[b].length > VISIBLE_PER_BUCKET);
 
+  // Reset bulk-edit/expansion state when the deal switches so we never
+  // momentarily show the previous deal's selection or stage state.
+  useEffect(() => {
+    setExpanded(false);
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  }, [deal.id]);
+
+  // Dev-only invariant: every rendered group header must have a non-empty
+  // label. Bucket meta labels are hardcoded, so this guards against future
+  // regressions where grouping switches to a dynamic key.
+  if (import.meta.env.DEV) {
+    for (const b of ['reviewing','onhold','ondeck','passed'] as Bucket[]) {
+      if (grouped[b].length > 0 && !BUCKET_META[b]?.label) {
+        // eslint-disable-next-line no-console
+        console.error('[LendersPanel] empty stage label for non-empty group', {
+          dealId: deal.id,
+          bucket: b,
+          count: grouped[b].length,
+        });
+      }
+      for (const l of grouped[b]) {
+        if (!l.name || !l.name.trim()) {
+          // eslint-disable-next-line no-console
+          console.warn('[LendersPanel] lender with empty name', {
+            dealId: deal.id,
+            lenderId: l.id,
+          });
+        }
+      }
+    }
+  }
+
   return (
     <div className="p-5 min-w-0 self-start">
       <div className="flex items-center justify-between gap-2 mb-3">
