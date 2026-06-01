@@ -1,14 +1,20 @@
 ---
-name: Historical stage import resolver policy
-description: Resolver and multi-match policy for sheet-driven historical deal_stage_history imports (5th Line backfill batches 2+)
-type: preference
+name: Historical stage import resolver
+description: Deterministic resolver policy + audit-trail destination for historical_import_* batches
+type: feature
 ---
-Stage resolution: composite (pipeline_id, stage_id). Use In Development overloaded IDs per pipeline-stage-id-overloading memory. NDA/Needs List Sent in Active Deals → stage_id 'ndaneeds-list-sent' (canonical, not orphan).
+**Resolver policy (effective Batch 2 / rows 52+):**
+- Exact-normalized match on `deals.company` within the 5th Line tenant (`company_id='44556c46-9127-4b12-b14e-d6fee784afcf'`).
+- Strict skip only when ≥2 candidates tie at sim=1.00. Single 1.00 match wins; <1.00 best match wins if uniquely highest above threshold.
+- Pipeline-aware stage resolution: every (sheet label → stage_id) lookup MUST scope to the target pipeline_id (default = "In Development" `40b17dfb-9122-49e0-bf7c-5aa993d5d615`). Stage IDs in In Development are overloaded (`closed-won` = "Indication of Interest"). See [Pipeline Stage IDs](mem://technical/pipeline-stage-id-overloading).
+- Timestamps: sheet date at 12:00 America/New_York → UTC (DST-aware).
+- Rule 5 (upsert-and-log): if `(deal_id, pipeline_id, stage_id)` row already exists in `deal_stage_history`, overwrite `changed_at` on the oldest such row; otherwise insert. `source='backfill'` on stage history rows.
 
-Multi-match policy: auto-resolve when exactly one candidate has sim=1.00 on normalized name (lowercase, alphanumeric-only). Skip + log to skipped_ambiguous ONLY when ≥2 candidates tie at sim=1.00. Never auto-pick when no candidate reaches 1.00.
+**Audit-trail destination — DO NOT write to `deal_audit_log`:**
+- Historical import runs MUST NOT insert `stage_history_import` or `stage_history_overwrite` rows into `deal_audit_log`. Those entries polluted the user-facing Activity feed in Batch 1 and were hard-deleted (66 rows on 2026-06-01).
+- Forensic record lives in `/mnt/documents/historical_batch<N>_audit_archive.json` — one file per run, exported BEFORE the transaction commits. Schema mirrors the old `deal_audit_log` row shape: `{deal_id, action_type, entity_type, entity_id, entity_name, metadata: {run_id, sheet_name, label, sheet_date, pipeline_id, stage_id, new_changed_at, op: 'insert'|'overwrite', old_changed_at?, overwrote_history_id?, flag?, sibling_deal_id?}, source, created_at}`.
+- Rollback trail (overwrote_history_id, old_changed_at) lives ONLY in the JSON archive — sufficient for forensic replay.
 
-Conflict policy: overwrite-and-log. Log old_changed_at → new_changed_at to deal_audit_log when changed_at differs.
+**Flags:** sibling-deal collisions (e.g. PacketFabric) carry `metadata.flag='sibling_deal_exists'` + `sibling_deal_id` in the JSON archive entry.
 
-Time anchor: (sheet_date || ' 12:00:00')::timestamp AT TIME ZONE 'America/New_York' (DST-aware).
-
-Audit sink: deal_audit_log with action_type='stage_history_import', metadata.run_id, metadata.op ∈ insert|overwrite|skipped_ambiguous. Flag sibling-deal cases with metadata.flag='sibling_deal_exists'.
+**Batch 1 completed 2026-06-01:** 50 deals, 7 inserts + 59 overwrites in `deal_stage_history`, 66-row audit archive at `/mnt/documents/historical_batch1_audit_archive.json`. `deal_audit_log` rows purged.
