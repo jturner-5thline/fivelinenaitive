@@ -336,8 +336,21 @@
 .email-message-shell * {
   max-width: 100% !important;
   min-width: 0 !important;
-  overflow-wrap: anywhere !important;
-  word-break: break-word !important;
+  /* Width safety only — aggressive character-level break rules are
+     scoped to `.email-html-body *` below so they apply ONLY to the
+     sanitized email body HTML and never to surrounding chrome
+     (sender chips, headers, AI Assist cards, list snippets). */
+}
+
+/* Character-level break-anywhere is intentionally limited to the
+   sanitized email body so long URLs / unbreakable strings inside the
+   message wrap instead of clipping, while sibling chrome (sender
+   names, snippet columns, AI Assist preview cards) still wrap on
+   normal word boundaries. */
+.email-html-body,
+.email-html-body * {
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Hard guarantee: every email body container is transparent so the
