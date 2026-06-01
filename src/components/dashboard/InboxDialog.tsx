@@ -538,6 +538,31 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         fetchPage({ labelIds: ['SENT'], forceRefresh: !!opts.manual }),
       ]);
       if (!isMountedRef.current) return;
+      // Reauth required from upstream — surface a CTA to /integrations
+      // instead of silently swallowing the empty fetch.
+      if (inbox.reauthRequired || sent.reauthRequired) {
+        setRefreshError(true);
+        if (opts.manual) {
+          toast.error('Reconnect Gmail to refresh', {
+            description: inbox.errorMessage || sent.errorMessage || 'Your mailbox session expired.',
+            action: {
+              label: 'Reconnect',
+              onClick: () => { onOpenChange(false); navigate('/integrations'); },
+            },
+          });
+        }
+        return;
+      }
+      // Other soft errors (rate-limit / transport / malformed) — keep the
+      // cached list visible and surface a non-blocking retry toast.
+      if ((inbox.errorCode || sent.errorCode) && opts.manual) {
+        toast.error("Couldn't refresh inbox", {
+          description: inbox.errorMessage || sent.errorMessage || undefined,
+          action: { label: 'Retry', onClick: () => void runRefresh({ force: true, manual: true }) },
+        });
+        setRefreshError(true);
+        return;
+      }
       // Prepend new messages above the cached list; mergeUniqueById
       // preserves the already-loaded tail so scroll position and the
       // currently-open thread stay put.
