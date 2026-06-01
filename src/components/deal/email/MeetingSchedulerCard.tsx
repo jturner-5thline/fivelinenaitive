@@ -367,6 +367,63 @@ function pickThreeSpread(free: Slot[]): Slot[] {
   return out.slice(0, 3);
 }
 
+/**
+ * SchedulerErrorBoundary — surfaces any thrown render error inside the
+ * scheduler subtree as a visible, retryable inline block instead of
+ * blanking the body (the root cause of the "empty gray rectangles"
+ * regression). Also logs to console with stack + props snapshot.
+ */
+class SchedulerErrorBoundary extends Component<
+  { children: ReactNode; label?: string; onRetry?: () => void },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    // eslint-disable-next-line no-console
+    console.error('[MeetingScheduler] subtree crashed', {
+      label: this.props.label,
+      message: error.message,
+      stack: error.stack,
+      componentStack: info.componentStack,
+    });
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-start gap-2 rounded-md border border-rose-400/30 bg-rose-400/10 p-2 text-[11px] text-rose-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-semibold">
+                {this.props.label || 'Scheduler'} couldn't render.
+              </div>
+              <div className="opacity-80 break-all">
+                {this.state.error.message || 'Unknown error.'}
+              </div>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 text-[11px] gap-1"
+            onClick={() => {
+              this.setState({ error: null });
+              this.props.onRetry?.();
+            }}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function MeetingSchedulerCard({
   recipientEmail,
   recipientName,
