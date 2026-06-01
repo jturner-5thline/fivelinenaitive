@@ -21,8 +21,11 @@ export function EmailMessageShell({ children, className }: Props) {
     <div
       className={cn(
         'email-message-shell w-full min-w-0 max-w-full overflow-hidden',
-        'rounded-lg border border-border/40',
-        'bg-[hsl(var(--email-reading-bg))]',
+        // Transparent canvas — inherit the deal pop-up / modal dark surface
+        // behind us so the email body never paints an inset card-on-card
+        // block. A subtle border keeps stacked thread messages visually
+        // separable without introducing a competing fill.
+        'rounded-lg border border-border/40 bg-transparent text-inherit',
         'px-4 py-3 sm:px-5 sm:py-4',
         className,
       )}
