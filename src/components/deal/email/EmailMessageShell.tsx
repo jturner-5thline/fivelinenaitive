@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 
 interface Props {
@@ -17,8 +17,35 @@ interface Props {
  * transparent.
  */
 export function EmailMessageShell({ children, className }: Props) {
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // Dev-mode runtime guard: assert the email body container resolves to a
+  // transparent computed background. If a future regression reintroduces a
+  // solid fill (bg-card, bg-background, white wrapper, etc.) this fires
+  // loudly in the console so we catch it before users do.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!rootRef.current) return;
+    const cs = getComputedStyle(rootRef.current);
+    const bg = cs.backgroundColor;
+    const isTransparent =
+      !bg ||
+      bg === 'transparent' ||
+      bg === 'rgba(0, 0, 0, 0)' ||
+      /rgba\([^)]*,\s*0\s*\)$/i.test(bg);
+    if (!isTransparent) {
+      // eslint-disable-next-line no-console
+      console.error(
+        '[email-body.bg-regression] EmailMessageShell resolved to a non-transparent background:',
+        bg,
+        rootRef.current,
+      );
+    }
+  });
+
   return (
     <div
+      ref={rootRef}
       data-email-root=""
       className={cn(
         'email-message-shell w-full min-w-0 max-w-full overflow-hidden',
