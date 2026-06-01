@@ -1529,13 +1529,15 @@ export function MeetingSchedulerCard({
                 className="h-7 text-[11px] flex-1"
                 onClick={insertProposal}
                 disabled={verifying}
+                title="Insert the selected times into your reply as a clean, timezone-aware list"
+                aria-label="Propose selected times via email"
               >
                 {verifying ? (
                   <>
                     <Loader2 className="h-3 w-3 animate-spin mr-1" /> Verifying…
                   </>
                 ) : (
-                  'Insert proposal'
+                  'Propose times via email'
                 )}
               </Button>
               <Button
