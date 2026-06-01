@@ -440,6 +440,12 @@ export function MeetingSchedulerCard({
   const teamMembers = useTeamMembers();
   const { render: renderTitle } = useRenderMeetingTitle(dealId ?? null);
 
+  // Bumped on Retry to force the free/busy effect to re-run.
+  const [loadNonce, setLoadNonce] = useState(0);
+  const retryFreeBusy = useCallback(() => setLoadNonce((n) => n + 1), []);
+  // Mount timestamp used by the dev-runtime "blank render" assertion below.
+  const mountedAtRef = useRef<number>(Date.now());
+
   // ── Timezone preference ───────────────────────────────────────────────
   // Persisted in localStorage so the user's choice sticks across sessions
   // (e.g. a London-based partner manager always wants Europe/London even
