@@ -126,7 +126,7 @@ function SingleSelectFilterChip<T extends string>({
 }: {
   label: string;
   ariaLabel?: string;
-  options: { value: T; label: string; count?: number }[];
+  options: { value: T; label: string; count?: number; description?: string }[];
   value: T | null;
   onChange: (next: T | null) => void;
   allLabel?: string;
@@ -187,6 +187,8 @@ function SingleSelectFilterChip<T extends string>({
               key={opt.value}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
+              title={opt.description}
+              aria-label={opt.description || opt.label}
               className={cn(
                 'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[11px] transition-colors',
                 isSel ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/[0.06]',
