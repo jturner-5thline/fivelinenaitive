@@ -642,7 +642,17 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
                 )}
               </div>
             )}
-            <p className="min-w-0 max-w-full flex-1 whitespace-normal break-all text-[11px] leading-snug text-[hsl(var(--email-text-muted))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+            <p
+              className="min-w-0 max-w-full flex-1 text-[11px] leading-snug text-[hsl(var(--email-text-muted))] break-words"
+              style={{
+                overflowWrap: 'break-word',
+                wordBreak: 'normal',
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 2,
+                overflow: 'hidden',
+              }}
+            >
               {previewSnippet}
             </p>
           </div>
@@ -858,7 +868,7 @@ function EmailDetailStatusState({
     <div className="flex h-full min-h-[240px] w-full min-w-0 items-center justify-center p-6">
       <div className="w-full min-w-0 max-w-2xl rounded-lg border border-[hsl(var(--email-border))] bg-card/40 px-5 py-4 text-center">
         <p className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{title}</p>
-        <p className="mt-1 min-w-0 whitespace-pre-wrap break-all text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{description}</p>
+        <p className="mt-1 min-w-0 whitespace-pre-wrap break-words text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>{description}</p>
         {actionLabel && onAction && (
           <button
             type="button"
@@ -1598,16 +1608,26 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className={cn(
-            'min-w-0 max-w-full break-all',
-            isLatest
-              ? 'font-semibold text-[hsl(var(--email-text-primary))]'
-              : 'font-medium text-[hsl(var(--email-text-secondary))]'
-          )} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+          <span
+            className={cn(
+              'min-w-[64px] shrink-0 truncate',
+              isLatest
+                ? 'font-semibold text-[hsl(var(--email-text-primary))]'
+                : 'font-medium text-[hsl(var(--email-text-secondary))]'
+            )}
+            style={{ overflowWrap: 'normal', wordBreak: 'normal', whiteSpace: 'nowrap' }}
+            title={displayName}
+          >
             {displayName}
           </span>
           {!expanded && (
-            <span className="min-w-0 max-w-full break-all text-xs text-[hsl(var(--email-text-muted))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{email.snippet}</span>
+            <span
+              className="min-w-0 flex-1 truncate text-xs text-[hsl(var(--email-text-muted))]"
+              style={{ overflowWrap: 'normal', wordBreak: 'normal', whiteSpace: 'nowrap' }}
+              title={email.snippet}
+            >
+              {email.snippet}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">

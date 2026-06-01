@@ -484,8 +484,8 @@ export function WorkflowIntelligenceCard({
             {hasUpdate ? (
               <div className="space-y-2">
                 <p
-                  className="text-[13px] text-foreground font-semibold leading-snug max-w-full"
-                  style={{ overflowWrap: 'anywhere', wordBreak: 'normal', whiteSpace: 'normal' }}
+                  className="text-[13px] text-foreground font-semibold leading-snug max-w-full break-words"
+                  style={{ overflowWrap: 'break-word', wordBreak: 'normal', whiteSpace: 'normal' }}
                 >
                   {rec.title}
                 </p>
