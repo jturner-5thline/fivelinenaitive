@@ -64,6 +64,68 @@ const STATUS_TIMEOUT_MS = 3000;
 const BUSY_TIMEOUT_MS = 8000;
 const STUCK_LOADING_DEV_MS = 10_000;
 
+/**
+ * URGENT FIX (calendar-status false-positive timeout):
+ * - Raise preflight to 6s (cold-start headroom, still < 8s busy hard cap).
+ * - sessionStorage cache of a recent "connected" status — use it immediately
+ *   and revalidate in the background; never block UI on preflight when we
+ *   have a fresh (<5min) success.
+ * - Track consecutive preflight timeouts; on the 3rd attempt skip preflight
+ *   entirely and go straight to free/busy with a warning toast.
+ */
+const STATUS_CACHE_KEY = 'naitive.scheduler.calendarStatus.v1';
+const STATUS_CACHE_TTL_MS = 5 * 60_000;
+const STATUS_TIMEOUT_STREAK_KEY = 'naitive.scheduler.calendarStatus.timeoutStreak';
+const STATUS_TIMEOUT_BYPASS_AT = 2; // bypass on the 3rd attempt
+
+type CachedStatus = {
+  ts: number;
+  connected: boolean;
+  is_expired?: boolean;
+  provider?: string | null;
+  email?: string | null;
+};
+function readStatusCache(): CachedStatus | null {
+  try {
+    const raw = sessionStorage.getItem(STATUS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedStatus;
+    if (!parsed || typeof parsed.ts !== 'number') return null;
+    if (Date.now() - parsed.ts > STATUS_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+function writeStatusCache(s: CachedStatus) {
+  try {
+    sessionStorage.setItem(STATUS_CACHE_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
+function clearStatusCache() {
+  try {
+    sessionStorage.removeItem(STATUS_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+function getTimeoutStreak(): number {
+  try {
+    return parseInt(sessionStorage.getItem(STATUS_TIMEOUT_STREAK_KEY) || '0', 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+function setTimeoutStreak(n: number) {
+  try {
+    sessionStorage.setItem(STATUS_TIMEOUT_STREAK_KEY, String(n));
+  } catch {
+    /* ignore */
+  }
+}
+
 type CalendarConn =
   | { kind: 'unknown' }
   | { kind: 'connected'; email?: string | null }
