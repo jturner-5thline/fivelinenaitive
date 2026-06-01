@@ -5,6 +5,51 @@ import { useAuth } from '@/contexts/AuthContext';
 import { type QuarterOption } from '@/hooks/useQBQuarterlyRevenue';
 import { isExcludedDealName } from '@/utils/excludedDeals';
 
+/**
+ * Stage-label normalization for deal_stage_history queries.
+ *
+ * Live transitions written by the `record_deal_stage_change` trigger populate
+ * `to_stage` with the raw `deals.stage` text (which is sometimes a display
+ * label like "Funded / Invoiced" and sometimes a slug like "closed-won") and
+ * leave `to_stage_id` empty. Historical imports also vary by source.
+ * Filtering on `to_stage_id` therefore drops virtually all live events.
+ *
+ * We resolve by `to_stage` text against the canonical variant list below and
+ * map to a stable internal slug. The list intentionally EXCLUDES
+ * "Indication of Interest" — that label is the In Development pipeline's
+ * overloaded use of `to_stage_id='closed-won'` and must never be counted as a
+ * real Closed Won event (see mem://technical/pipeline-stage-id-overloading).
+ */
+const STAGE_LABEL_VARIANTS: Record<string, string[]> = {
+  'funded-invoiced': ['funded-invoiced', 'Funded/Invoiced', 'Funded / Invoiced', 'Closed & Funded'],
+  'closed-won': ['closed-won', 'Closed Won', 'Closed won'],
+};
+
+/** Expand canonical slugs → full list of `to_stage` text values to filter on. */
+export function expandStageLabels(slugs: string[]): string[] {
+  const out = new Set<string>();
+  for (const slug of slugs) {
+    out.add(slug);
+    for (const v of STAGE_LABEL_VARIANTS[slug] ?? []) out.add(v);
+  }
+  return Array.from(out);
+}
+
+/**
+ * Normalize an observed `to_stage` text value back to a canonical slug.
+ * The `to_stage_id` column is intentionally ignored — it's empty on live rows
+ * AND is overloaded in the In Development pipeline (where 'closed-won' means
+ * "Indication of Interest", NOT "Closed Won"). The text label is the only
+ * unambiguous identifier.
+ */
+export function normalizeStageSlug(toStage: string | null | undefined, _toStageId?: string | null): string | null {
+  if (!toStage) return null;
+  for (const [slug, variants] of Object.entries(STAGE_LABEL_VARIANTS)) {
+    if (variants.includes(toStage)) return slug;
+  }
+  return null;
+}
+
 export interface StageEntryDeal {
   deal_id: string;
   company: string;
@@ -183,6 +228,9 @@ function aggregateStageEntryTrendBuckets(
     const deal = row.deals as Record<string, any> | null;
     if (!deal || deal.pipeline_id !== pipelineId || isExcludedDealName(deal.company)) continue;
 
+    const stageSlug = normalizeStageSlug(row.to_stage, row.to_stage_id);
+    if (!stageSlug || !targetStages.includes(stageSlug)) continue;
+
     const bucketKey = grain === 'monthly' ? ts.slice(0, 7) : getQuarterKey(ts);
     const bucket = bucketMap.get(bucketKey);
     if (!bucket) continue;
@@ -198,7 +246,7 @@ function aggregateStageEntryTrendBuckets(
       entered_at: ts,
       pipeline_id: deal.pipeline_id ?? '',
       from_stage: typeof row.from_stage_id === 'string' ? row.from_stage_id : null,
-      to_stage: typeof row.to_stage_id === 'string' ? row.to_stage_id : targetStages[0],
+      to_stage: stageSlug,
     };
 
     bucket.count += 1;
@@ -237,6 +285,7 @@ function useStageEntryTrendSeries(
         .select(`
           deal_id,
           changed_at,
+          to_stage,
           to_stage_id,
           from_stage_id,
           deals!inner (
@@ -249,12 +298,15 @@ function useStageEntryTrendSeries(
         `)
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', pipelineId)
-        .in('to_stage_id', targetStages)
+        .in('to_stage', expandStageLabels(targetStages))
         .gte('changed_at', queryStart)
         .lte('changed_at', `${queryEnd}T23:59:59.999Z`)
         .order('changed_at', { ascending: true });
 
       if (error) throw error;
+      if ((rows?.length ?? 0) === 0) {
+        console.warn('[stage-entry-trend] 0 rows', { targetStages, pipelineId, queryStart, queryEnd });
+      }
       return rows ?? [];
     },
     enabled: !!user && !!queryStart && !!queryEnd,
@@ -294,7 +346,7 @@ function aggregateStageEntrySplitTrendBuckets(
   for (const row of rows ?? []) {
     const ts: string = row.changed_at;
     if (!ts || ts < windowStart || ts > windowEnd) continue;
-    const stageId: string = row.to_stage_id;
+    const stageId = normalizeStageSlug(row.to_stage, row.to_stage_id);
     if (stageId !== 'funded-invoiced' && stageId !== 'closed-won') continue;
 
     const dedupeKey = `${row.deal_id}|${stageId}`;
@@ -318,7 +370,7 @@ function aggregateStageEntrySplitTrendBuckets(
       entered_at: ts,
       pipeline_id: deal.pipeline_id ?? '',
       from_stage: typeof row.from_stage_id === 'string' ? row.from_stage_id : null,
-      to_stage: stageId,
+      to_stage: stageId ?? '',
     };
 
     if (stageId === 'funded-invoiced') bucket.fundedInvoicedCount += 1;
@@ -357,6 +409,7 @@ function useStageEntrySplitTrendSeries(
         .select(`
           deal_id,
           changed_at,
+          to_stage,
           to_stage_id,
           from_stage_id,
           deals!inner (
@@ -369,12 +422,15 @@ function useStageEntrySplitTrendSeries(
         `)
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', pipelineId)
-        .in('to_stage_id', targetStages)
+        .in('to_stage', expandStageLabels(targetStages))
         .gte('changed_at', queryStart)
         .lte('changed_at', `${queryEnd}T23:59:59.999Z`)
         .order('changed_at', { ascending: true });
 
       if (error) throw error;
+      if ((rows?.length ?? 0) === 0) {
+        console.warn('[stage-entry-split-trend] 0 rows', { targetStages, pipelineId, queryStart, queryEnd });
+      }
       return rows ?? [];
     },
     enabled: !!user && !!queryStart && !!queryEnd,
@@ -471,6 +527,7 @@ function useStageEntryMetric(
         .select(`
           deal_id,
           changed_at,
+          to_stage,
           to_stage_id,
           from_stage_id,
           deals!inner (
@@ -484,7 +541,7 @@ function useStageEntryMetric(
           )
         `)
         .eq('event_type', 'stage_enter')
-        .in('to_stage_id', targetStages)
+        .in('to_stage', expandStageLabels(targetStages))
         .gte('changed_at', startDate)
         .lte('changed_at', endDate + 'T23:59:59.999Z');
 
@@ -496,6 +553,9 @@ function useStageEntryMetric(
         .order('changed_at', { ascending: true });
 
       if (error) throw error;
+      if ((rows?.length ?? 0) === 0) {
+        console.warn('[stage-entry-metric] 0 rows', { targetStages, pipelineId, startDate, endDate });
+      }
       return rows ?? [];
     },
     enabled: !!user,
@@ -513,6 +573,8 @@ function useStageEntryMetric(
       if (!deal) continue;
       // If pipelineId filter specified but inner join didn't filter (safety)
       if (pipelineId && deal.pipeline_id !== pipelineId) continue;
+      const stageSlug = normalizeStageSlug((row as any).to_stage, (row as any).to_stage_id);
+      if (!stageSlug || !targetStages.includes(stageSlug)) continue;
       seen.set(row.deal_id, {
         deal_id: row.deal_id,
         company: deal.company ?? '—',
