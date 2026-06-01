@@ -229,7 +229,7 @@ export function HubSpotDealSync() {
             value: hsDeal.properties.amount ? parseFloat(hsDeal.properties.amount) : 0,
             stage: mappedStage,
             status: 'on-track',
-            engagementType: 'guided' as EngagementType,
+            engagementType: 'advisory' as EngagementType,
             manager: ownerName || undefined,
             notes: `Imported from HubSpot (ID: ${hsDeal.id})`,
           });

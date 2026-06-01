@@ -154,7 +154,7 @@ export async function seedSampleDeal(userId: string, companyId?: string | null):
         value: 10000000,
         status: 'active',
         stage: defaultStage,
-        engagement_type: 'Retained',
+        engagement_type: 'advisory',
         deal_type: 'Debt Financing',
         manager: 'You',
         analyst: 'Unassigned',
