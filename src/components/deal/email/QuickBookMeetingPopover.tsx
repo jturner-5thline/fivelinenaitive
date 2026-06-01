@@ -60,7 +60,7 @@ const ROW_PX = 22;
 
 const BROWSER_TZ =
   Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
-const STATUS_TIMEOUT_MS = 3000;
+const STATUS_TIMEOUT_MS = 6000;
 const BUSY_TIMEOUT_MS = 8000;
 const STUCK_LOADING_DEV_MS = 10_000;
 
