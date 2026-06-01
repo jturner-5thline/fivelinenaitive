@@ -5,6 +5,7 @@ import type { EmailAttachment } from './mockEmailData';
 import { fetchAttachmentDataUrl } from './useFullEmailMessage';
 import { BrandedEmailFrame, shouldRenderAsBranded } from './BrandedEmailFrame';
 import { EmailMessageShell } from './EmailMessageShell';
+import { wrapEmailTables } from './emailHtmlLayout';
 
 interface Props {
   html?: string;
@@ -198,7 +199,7 @@ function EmailBodyRendererImpl({
 
     DOMPurify.removeAllHooks();
 
-    return clean;
+    return wrapEmailTables(clean);
   }, [html, cidUrls]);
 
   if (useBranded && html) {
@@ -217,10 +218,10 @@ function EmailBodyRendererImpl({
       <EmailMessageShell className={className}>
         <div
           className={cn(
-            'email-body email-html-body w-full min-w-0 max-w-full overflow-x-auto text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
+            'email-body email-html-body w-full min-w-0 max-w-full overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))]',
             'break-words bg-transparent',
           )}
-          style={{ width: '100%', maxWidth: '100%', whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+          style={{ width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', overflowWrap: 'anywhere', wordBreak: 'break-word', boxSizing: 'border-box' }}
           dangerouslySetInnerHTML={{ __html: sanitized }}
         />
       </EmailMessageShell>
@@ -231,9 +232,9 @@ function EmailBodyRendererImpl({
     <EmailMessageShell className={className}>
       <div
         className={cn(
-          'email-body w-full min-w-0 max-w-full overflow-x-auto text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words bg-transparent',
+          'email-body w-full min-w-0 max-w-full overflow-x-hidden text-[14px] leading-[1.7] text-[hsl(var(--email-text-primary))] break-words bg-transparent',
         )}
-        style={{ width: '100%', maxWidth: '100%', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word' }}
+        style={{ width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', wordBreak: 'break-word', boxSizing: 'border-box' }}
       >
         {text || ''}
       </div>
