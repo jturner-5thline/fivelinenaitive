@@ -515,18 +515,21 @@ export function MeetingSchedulerCard({
   // knows we couldn't see their calendar.
   const [limitedTeammateEmails, setLimitedTeammateEmails] = useState<string[]>([]);
 
-  // Stable, lowercased list of selected internal teammate emails (Bug C).
-  const teammateBusyEmails = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          (partiesMode === 'me_plus' ? extraMembers : [])
-            .map((m) => String(m.email || '').trim().toLowerCase())
-            .filter(Boolean),
-        ),
-      ).sort(),
-    [partiesMode, extraMembers],
-  );
+  // Bug C: stable, lowercased list of selected internal teammate emails.
+  // Computed inline against teamMembers + extraTeamMemberIds so this lives
+  // ABOVE the extraMembers memo (declared further below) without TDZ
+  // hazards. The slot generator unions these into the busy set so we only
+  // propose times that work for everyone connected internal attendee.
+  const teammateBusyEmails = useMemo(() => {
+    if (partiesMode !== 'me_plus') return [] as string[];
+    const out = new Set<string>();
+    for (const m of teamMembers) {
+      if (!extraTeamMemberIds.has(m.id)) continue;
+      const e = String(m.email || '').trim().toLowerCase();
+      if (e) out.add(e);
+    }
+    return Array.from(out).sort();
+  }, [partiesMode, teamMembers, extraTeamMemberIds]);
   const teammateBusyKey = teammateBusyEmails.join(',');
 
   // ── Load free/busy from connected Google Calendar (via Nylas) ───────────
