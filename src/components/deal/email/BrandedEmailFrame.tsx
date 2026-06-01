@@ -179,6 +179,28 @@ function BrandedEmailFrameImpl({ html, className, maxHeight = 4000, onError }: P
             else data.attrValue = cleaned;
           }
         }
+        // Foreground readability: strip unreadable-on-dark `color:` decls
+        // from inline styles, and drop legacy `<font color="...">` /
+        // text/link presentational attributes when they're too dark.
+        if (data.attrName === 'style' && typeof data.attrValue === 'string') {
+          const before = data.attrValue;
+          const stripped = stripDarkColorDecls(before)
+            .replace(/^;+|;+$/g, '')
+            .replace(/;{2,}/g, ';')
+            .trim();
+          if (stripped !== before) {
+            if (!stripped) data.keepAttr = false;
+            else data.attrValue = stripped;
+          }
+        }
+        if (
+          (data.attrName === 'color' || data.attrName === 'text' ||
+           data.attrName === 'link' || data.attrName === 'vlink' || data.attrName === 'alink') &&
+          typeof data.attrValue === 'string' &&
+          isUnreadableOnDark(data.attrValue)
+        ) {
+          data.keepAttr = false;
+        }
       });
 
       const clean = DOMPurify.sanitize(html, {
