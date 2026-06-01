@@ -31,10 +31,12 @@ interface ProvisionBody {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
-  // Simple shared-secret gate so the function isn't publicly callable.
-  const provided = req.headers.get("x-provision-secret") ?? "";
-  const expected = Deno.env.get("PROVISION_DEMO_SECRET") ?? "";
-  if (!expected || provided !== expected) {
+  // Service-role-only: require the SUPABASE_SERVICE_ROLE_KEY as bearer.
+  // This function provisions tenants + auth users, so it must never be
+  // callable with anon/user JWTs.
+  const auth = req.headers.get("Authorization") ?? "";
+  const token = auth.replace(/^Bearer\s+/i, "").trim();
+  if (!token || token !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) {
     return new Response(JSON.stringify({ error: "forbidden" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
