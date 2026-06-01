@@ -3548,32 +3548,11 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   requestAnimationFrame(() => aiAssistButtonRef.current?.focus());
                 }}
                 onLinkDeal={async (id, name) => {
+                  const prev = { id: linkedDealId, name: linkedDealName };
                   setLinkedDealId(id);
                   setLinkedDealName(name);
                   onToggleLink(thread.latestEmail);
-                  try {
-                    const { data: auth } = await supabase.auth.getUser();
-                    const userId = auth?.user?.id;
-                    if (!userId) return;
-                    const rows = thread.emails
-                      .map((e) => e.id)
-                      .filter((mid) => mid && !mid.startsWith('mock-'))
-                      .map((mid) => ({
-                        deal_id: id,
-                        gmail_message_id: mid,
-                        user_id: userId,
-                      }));
-                    if (rows.length > 0) {
-                      await supabase
-                        .from('deal_emails')
-                        .upsert(rows, {
-                          onConflict: 'deal_id,gmail_message_id',
-                          ignoreDuplicates: true,
-                        });
-                    }
-                  } catch (err) {
-                    console.error('[ai-assist link-to-deal] persist failed', err);
-                  }
+                  await persistManualDealLink(id, name, prev);
                 }}
                 onInsertDraft={(body) => {
                   const target = getReplyTarget();
