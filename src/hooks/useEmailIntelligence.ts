@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGmail } from '@/hooks/useGmail';
 import { toast } from 'sonner';
 import { DEMO_EMAIL_ANALYSIS } from '@/lib/demoSeed';
+import { startVisibilityAwareInterval } from '@/lib/visibilityAwareInterval';
 
 const isDemoUserEmail = (email?: string | null) =>
   email === 'demo@5thline.co' || email === 'demo@example.com';
@@ -480,15 +481,10 @@ export function useEmailIntelligence() {
   useEffect(() => {
     if (!gmailStatus.connected || !user) return;
 
-    syncTimerRef.current = setInterval(() => {
-      syncEmails();
-    }, SYNC_INTERVAL_MS);
-
-    return () => {
-      if (syncTimerRef.current) {
-        clearInterval(syncTimerRef.current);
-      }
-    };
+    // Visibility-gated: skip ticks when the tab is hidden, re-fire on
+    // focus. Prevents a backgrounded tab from continuously hammering the
+    // sync endpoint across long sessions.
+    return startVisibilityAwareInterval(syncEmails, SYNC_INTERVAL_MS);
   }, [gmailStatus.connected, user, syncEmails]);
 
   // Realtime: when the owner sends a reply (any new email_cache row from
