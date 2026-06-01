@@ -1320,9 +1320,20 @@ export function MeetingSchedulerCard({
           </div>
         </div>
       ) : errorMsg ? (
-        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>{errorMsg}</span>
+        <div className="flex flex-col items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 text-[11px] gap-1"
+            onClick={retryFreeBusy}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
         </div>
       ) : proposedSlots.length === 0 ? (
         <div className="text-[11px] text-muted-foreground">
