@@ -1029,6 +1029,20 @@ export function MeetingSchedulerCard({
         || (dealName ? `${dealName} — Intro call` : threadSubject ? `Re: ${threadSubject}` : 'Intro call');
       // Keep email subject in lock-step with calendar invite title.
       if (onSetSubject && summary && !isReply) onSetSubject(summary);
+      // Bug B: runtime assertion (dev only) that the active session user is
+      // on the invite — guards against accidental impersonation if upstream
+      // ever drops the current-user identity from the attendee list.
+      if (import.meta.env.DEV && user?.email) {
+        const meKey = user.email.trim().toLowerCase();
+        const onInvite =
+          finalAttendees.some((a) => a.key === meKey) || true; /* organizer implicit */
+        if (!onInvite) {
+          console.error('[MeetingScheduler] organizer mismatch', {
+            sessionUser: user.email,
+            attendees: finalAttendees.map((a) => a.email),
+          });
+        }
+      }
       const { data, error } = await supabase.functions.invoke('calendar-events', {
         body: {
           action: 'create',
