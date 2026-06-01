@@ -389,7 +389,11 @@
   max-width: 100% !important;
   min-width: 0 !important;
   contain: layout;
-  overflow-x: hidden;
+  /* If long unbroken content (deeply nested tables, base64-ish blobs) still
+     blows past the column after wrap rules, allow horizontal scroll instead
+     of silently clipping. Niki: "I can't scroll to the right" — fix. */
+  overflow-x: auto;
+  overflow-y: visible;
 }
 
 .email-table-scroll {

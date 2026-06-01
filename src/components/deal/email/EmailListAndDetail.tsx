@@ -1729,7 +1729,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
               dealName: dealName || null,
               page: typeof window !== 'undefined' ? window.location.pathname : undefined,
             }}
-            className="w-full min-w-0 max-w-full overflow-x-hidden"
+            className="w-full min-w-0 max-w-full overflow-x-auto"
           >
             <EmailPaneErrorBoundary
               resetKey={`${email.id}-${resolvedHtml ? 'html' : 'text'}-${expanded ? 'open' : 'closed'}`}
