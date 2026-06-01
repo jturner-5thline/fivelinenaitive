@@ -243,7 +243,7 @@ Deno.serve(async (req) => {
         value: 10000000,
         status: "active",
         stage: defaultStage,
-        engagement_type: "Retained",
+        engagement_type: "advisory",
         deal_type: "Debt Financing",
         manager: "You",
         analyst: "Unassigned",
