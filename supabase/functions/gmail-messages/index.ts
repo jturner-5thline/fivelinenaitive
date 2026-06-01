@@ -526,20 +526,86 @@ serve(async (req: Request): Promise<Response> => {
         if (!listResponse.ok) {
           const isRateLimit = listResponse.status === 429;
           const isServerError = listResponse.status >= 500;
-          // Drain body safely (Nylas may return HTML on 5xx)
-          await listResponse.text().catch(() => "");
+          // Drain body safely — may be JSON or HTML depending on the failure
+          // mode. Capture both shapes so we can detect grant-expired errors.
+          let providerCode = "";
+          let providerMessage = "";
+          let providerErrors: any[] = [];
+          try {
+            const ct = listResponse.headers.get("content-type") || "";
+            if (ct.includes("application/json")) {
+              const j: any = await listResponse.json();
+              providerCode = String(j?.error?.type || j?.error?.code || j?.type || "");
+              providerMessage = String(
+                j?.error?.message || j?.message || j?.error?.provider_error?.message || "",
+              );
+              providerErrors = Array.isArray(j?.error?.errors) ? j.error.errors : [];
+            } else {
+              providerMessage = (await listResponse.text()).slice(0, 200);
+            }
+          } catch { /* ignore */ }
+
+          console.error(
+            `[gmail-messages] list upstream ${listResponse.status} code=${providerCode} msg=${providerMessage}`,
+            providerErrors.length ? { errors: providerErrors } : undefined,
+          );
+
+          // Token-expired / grant invalidated on Nylas v3 — signal the client
+          // to show a "Reconnect Gmail" CTA instead of crashing.
+          const isAuth =
+            listResponse.status === 401 ||
+            /invalid[_ ]?grant|grant_invalid|grant.*expired|reauth|invalid_token|token.*expired/i.test(
+              `${providerCode} ${providerMessage}`,
+            );
+          if (isAuth) {
+            return new Response(JSON.stringify({
+              messages: [],
+              next_page_token: null,
+              fallback: true,
+              error: providerMessage || "Mailbox session expired.",
+              error_code: "reauth_required",
+              action: "reauth_required",
+              upstream_status: listResponse.status,
+            }), {
+              status: 200,
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
+
           if (isRateLimit || isServerError) {
             return new Response(JSON.stringify({
               error: isRateLimit ? "RATE_LIMITED" : "SERVICE_UNAVAILABLE",
               fallback: true,
               messages: [],
               next_page_token: null,
+              upstream_status: listResponse.status,
+              retryable: true,
             }), {
               status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
           }
-          return forwardNylasError(listResponse, "Failed to list messages");
+
+          // Other 4xx (malformed query, bad page_token, etc.) — return a
+          // soft 200 so the frontend never throws to the error boundary.
+          // The client can decide whether to clear filters / reset paging.
+          const isMalformedQuery =
+            /search_query|query|invalid.*param|bad.*request/i.test(
+              `${providerCode} ${providerMessage}`,
+            );
+          return new Response(JSON.stringify({
+            messages: [],
+            next_page_token: null,
+            fallback: true,
+            error: providerMessage || "Failed to list messages",
+            error_code: isMalformedQuery ? "malformed_query" : "list_failed",
+            action: isMalformedQuery ? "clear_filters" : undefined,
+            upstream_status: listResponse.status,
+            retryable: false,
+          }), {
+            status: 200,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
         }
         const listData = await listResponse.json();
 
