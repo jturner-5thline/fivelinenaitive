@@ -126,7 +126,7 @@ function SingleSelectFilterChip<T extends string>({
 }: {
   label: string;
   ariaLabel?: string;
-  options: { value: T; label: string; count?: number }[];
+  options: { value: T; label: string; count?: number; description?: string }[];
   value: T | null;
   onChange: (next: T | null) => void;
   allLabel?: string;
@@ -187,6 +187,8 @@ function SingleSelectFilterChip<T extends string>({
               key={opt.value}
               type="button"
               onClick={() => { onChange(opt.value); setOpen(false); }}
+              title={opt.description}
+              aria-label={opt.description || opt.label}
               className={cn(
                 'w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-[11px] transition-colors',
                 isSel ? 'bg-white/10 text-white' : 'text-white/80 hover:bg-white/[0.06]',
@@ -353,9 +355,11 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
   // and combines additively (AND).
   const [taskFilter, setTaskFilter] = useState<'late' | 'none' | null>(null);
 
-  // Per-deal task aggregates: { count: non-archived task count, hasLate:
-  // ≥1 open task with due_date < today }. One round-trip, used both for
-  // the Tasks filter and the chip option counts.
+  // Per-deal task aggregates: { openCount: non-archived OPEN (incomplete)
+  // task count, hasLate: ≥1 open task with due_date < today }. One
+  // round-trip, used both for the Tasks filter and the chip option counts.
+  // "Open" mirrors the app-wide definition used by Outstanding tab /
+  // overdue badges: status NOT in {complete, completed, done}.
   const todayStr = useMemo(() => new Date().toISOString().slice(0, 10), []);
   const taskAggQ = useQuery({
     queryKey: ['rundown-task-aggregates', idsKey, todayStr],
@@ -367,20 +371,23 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
         .select('deal_id, due_date, status')
         .in('deal_id', dealIds)
         .is('archived_at', null);
-      const countByDeal = new Map<string, number>();
+      const openCountByDeal = new Map<string, number>();
       const lateByDeal = new Map<string, boolean>();
       for (const r of (rows || []) as any[]) {
         if (!r.deal_id) continue;
-        countByDeal.set(r.deal_id, (countByDeal.get(r.deal_id) ?? 0) + 1);
-        const isOpen = r.status !== 'complete' && r.status !== 'completed';
+        const s = String(r.status ?? '').toLowerCase();
+        const isOpen = s !== 'complete' && s !== 'completed' && s !== 'done';
+        if (isOpen) {
+          openCountByDeal.set(r.deal_id, (openCountByDeal.get(r.deal_id) ?? 0) + 1);
+        }
         if (isOpen && r.due_date && r.due_date < todayStr) {
           lateByDeal.set(r.deal_id, true);
         }
       }
-      return { countByDeal, lateByDeal };
+      return { openCountByDeal, lateByDeal };
     },
   });
-  const countByDeal = taskAggQ.data?.countByDeal ?? new Map<string, number>();
+  const openCountByDeal = taskAggQ.data?.openCountByDeal ?? new Map<string, number>();
   const lateByDeal = taskAggQ.data?.lateByDeal ?? new Map<string, boolean>();
 
   const filterOptions = useMemo(() => {
@@ -417,10 +424,11 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
       if (typeFilter.length && !typeFilter.includes(String(d.engagementType ?? '').trim())) return false;
       if (statusFilter.length && !statusFilter.includes(String(d.status ?? '').trim())) return false;
       if (taskFilter === 'late' && !lateByDeal.get(d.id)) return false;
-      if (taskFilter === 'none' && (countByDeal.get(d.id) ?? 0) > 0) return false;
+      // "No tasks" = no OPEN tasks (completed-only deals + zero-task deals).
+      if (taskFilter === 'none' && (openCountByDeal.get(d.id) ?? 0) > 0) return false;
       return true;
     });
-  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter, taskFilter, lateByDeal, countByDeal]);
+  }, [sorted, isAdmin, hasAnyFilter, managerFilter, typeFilter, statusFilter, taskFilter, lateByDeal, openCountByDeal]);
 
   // Counts for chip option labels — computed against the post-other-filter
   // set so users see how many extra deals each Tasks option would surface
@@ -436,10 +444,10 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
     let none = 0;
     for (const d of base) {
       if (lateByDeal.get(d.id)) late++;
-      if ((countByDeal.get(d.id) ?? 0) === 0) none++;
+      if ((openCountByDeal.get(d.id) ?? 0) === 0) none++;
     }
     return { late, none };
-  }, [sorted, managerFilter, typeFilter, statusFilter, lateByDeal, countByDeal]);
+  }, [sorted, managerFilter, typeFilter, statusFilter, lateByDeal, openCountByDeal]);
 
   const visible = useMemo(() => filteredSorted.filter((d) => !isDismissed(d.id)), [filteredSorted, isDismissed]);
 
@@ -519,8 +527,18 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
             value={taskFilter}
             onChange={setTaskFilter}
             options={[
-              { value: 'late', label: 'Late tasks', count: tasksOptionCounts.late },
-              { value: 'none', label: 'No tasks', count: tasksOptionCounts.none },
+              {
+                value: 'late',
+                label: 'Late tasks',
+                count: tasksOptionCounts.late,
+                description: 'Deals with at least one open overdue task',
+              },
+              {
+                value: 'none',
+                label: 'No tasks',
+                count: tasksOptionCounts.none,
+                description: 'Deals with no open tasks (all completed or none assigned)',
+              },
             ]}
           />
           {hasAnyFilter && (
