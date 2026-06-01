@@ -255,7 +255,14 @@ html, body, table, td { background: transparent !important; background-color: tr
 [style*="background: white" i] { background-color: transparent !important; background-image: none !important; }
 img{max-width:100% !important;height:auto !important;border:0;}
 table{max-width:100% !important;}
-a{color:${theme.link};}
+/* Wide tables: allow horizontal scroll inside the email body so the
+   parent column (and the AI Assist panel) never get pushed off-screen. */
+body{overflow-x:auto;}
+/* Foreground default — any element that did not survive the sanitizer
+   with its own explicit (readable) color inherits the near-white reading
+   color. Bright brand colors still override via inline style. */
+body, body *:not(a):not([style*="color"]):not([color]) { color: ${theme.text}; }
+a, a * { color: ${theme.link}; text-decoration: underline; }
 a[role="button"],.cta,.button,.btn{display:inline-block;}
 </style></head><body>${cleanWithStripped}<script>(function(){
 var fid=${fid};
