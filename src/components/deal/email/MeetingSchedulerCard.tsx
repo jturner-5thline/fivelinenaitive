@@ -1352,6 +1352,16 @@ export function MeetingSchedulerCard({
           <div className="text-[10.5px] uppercase tracking-wide text-muted-foreground/70">
             Who's attending from our side
           </div>
+          {limitedTeammateEmails.length > 0 && (
+            <div className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1 text-[10.5px] text-amber-200">
+              <AlertTriangle className="h-3 w-3 shrink-0 mt-0.5" />
+              <span className="min-w-0">
+                {limitedTeammateEmails.join(', ')}
+                {' '}
+                {limitedTeammateEmails.length === 1 ? "calendar isn't" : "calendars aren't"} connected — only your availability was checked for those.
+              </span>
+            </div>
+          )}
           <RadioGroup
             value={partiesMode}
             onValueChange={(v) => setPartiesMode(v as 'me' | 'me_plus')}
