@@ -390,7 +390,13 @@ export function QuickBookMeetingPopover({
 }: Props) {
   /* ----- calendar connection status */
   const [loadNonce, setLoadNonce] = useState(0);
-  const retryScheduler = useCallback(() => setLoadNonce((n) => n + 1), []);
+  const retryScheduler = useCallback(() => {
+    // Clear cached status + reset timeout streak so the next preflight
+    // runs fresh and (if it succeeds) repopulates the cache.
+    clearStatusCache();
+    setTimeoutStreak(0);
+    setLoadNonce((n) => n + 1);
+  }, []);
   const [calendarConn, setCalendarConn] = useState<CalendarConn>({ kind: 'unknown' });
   const [statusLoading, setStatusLoading] = useState(true);
   const [busyLoading, setBusyLoading] = useState(false);
