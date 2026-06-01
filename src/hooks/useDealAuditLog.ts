@@ -62,17 +62,7 @@ export function useDealAuditLog(dealId: string | undefined) {
       if (error) throw error;
       if (callError) throw callError;
 
-      // Hide system import/overwrite audit entries from the user-facing Activity
-      // feed. They remain in deal_audit_log as the canonical audit trail, but
-      // the per-stage "Backfilled" badge on each stage_enter row already
-      // communicates import context — surfacing the audit rows too is redundant.
-      const HIDDEN_AUDIT_ACTIONS = new Set([
-        'stage_history_import',
-        'stage_history_overwrite',
-      ]);
-      const auditRows = ((data || []) as DealAuditEntry[]).filter(
-        (r) => !HIDDEN_AUDIT_ACTIONS.has(r.action_type)
-      );
+      const auditRows = (data || []) as DealAuditEntry[];
       const callRows: DealAuditEntry[] = (callData || []).map((entry) => ({
         id: `claap-${entry.id}`,
         deal_id: entry.deal_id,
