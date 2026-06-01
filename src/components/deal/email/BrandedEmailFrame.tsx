@@ -48,6 +48,35 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
 
   const srcDoc = useMemo(() => {
     try {
+      // Strip hardcoded white/near-white canvas backgrounds that email
+      // authors (Outlook, Gmail templates, marketing platforms) bake into
+      // inline styles and legacy bgcolor attributes. Without this the
+      // sandboxed iframe paints a solid white block over our dark reading
+      // surface, making near-white text effectively invisible.
+      DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
+        if (data.attrName === 'bgcolor' && typeof data.attrValue === 'string') {
+          if (/^\s*(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\s*$/i.test(data.attrValue)) {
+            data.keepAttr = false;
+          }
+        }
+        if (data.attrName === 'style' && typeof data.attrValue === 'string') {
+          // Remove any background / background-color declaration whose value
+          // is white, #fff, #ffffff, or rgb(255,255,255). Preserve every
+          // other background (brand colors, CTAs, hero blocks, signatures).
+          const cleaned = data.attrValue.replace(
+            /(^|;)\s*background(-color)?\s*:\s*(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)|rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*1\s*\))\s*(!important)?\s*(?=;|$)/gi,
+            '$1',
+          )
+            .replace(/^;+|;+$/g, '')
+            .replace(/;{2,}/g, ';')
+            .trim();
+          if (cleaned !== data.attrValue) {
+            if (!cleaned) data.keepAttr = false;
+            else data.attrValue = cleaned;
+          }
+        }
+      });
+
       const clean = DOMPurify.sanitize(html, {
         FORBID_TAGS: ['script', 'iframe', 'object', 'embed', 'form', 'input', 'button', 'meta', 'link'],
         FORBID_ATTR: [
@@ -58,6 +87,7 @@ export function BrandedEmailFrame({ html, className, maxHeight = 4000, onError }
         ADD_ATTR: ['target', 'rel', 'srcset', 'sizes', 'loading', 'decoding', 'bgcolor', 'background', 'align', 'valign'],
         ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel|data):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
       });
+      DOMPurify.removeAllHooks();
 
       const fid = JSON.stringify(frameId.current);
       const closeScript = '<' + '/script>';
@@ -76,6 +106,16 @@ body > table > tbody > tr > td,
 body > div > table, body > div > div { background: transparent !important; background-color: transparent !important; }
 [bgcolor="#ffffff" i], [bgcolor="#fff" i], [bgcolor="white" i],
 [bgcolor="#FFFFFF"], [bgcolor="#FFF"] { background-color: transparent !important; }
+/* Defense-in-depth: inline style attributes that still hardcode white
+   (in case the sanitizer transform misses an exotic spacing variant). */
+[style*="background-color:#fff" i],
+[style*="background-color: #fff" i],
+[style*="background-color:white" i],
+[style*="background-color: white" i],
+[style*="background:#fff" i],
+[style*="background: #fff" i],
+[style*="background:white" i],
+[style*="background: white" i] { background-color: transparent !important; background-image: none !important; }
 img{max-width:100% !important;height:auto !important;border:0;}
 table{max-width:100% !important;}
 a{color:${theme.link};}
