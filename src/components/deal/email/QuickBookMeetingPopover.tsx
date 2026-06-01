@@ -821,28 +821,62 @@ export function QuickBookMeetingPopover({
     );
   }
   if (calendarConn.kind !== 'connected') {
+    const isError = calendarConn.kind === 'error';
+    const isAltProvider = calendarConn.kind === 'alt_provider';
+    const isExpired = calendarConn.kind === 'expired';
+    const title = isError
+      ? "Couldn't load your calendar availability."
+      : isExpired
+        ? 'Your Google Calendar connection expired.'
+        : isAltProvider
+          ? 'Calendar provider mismatch'
+          : 'Calendar not connected';
+    const body = isError
+      ? calendarConn.debug || calendarConn.message
+      : isAltProvider
+        ? `You’re signed in with ${calendarConn.provider || 'another provider'}. Connect Google Calendar to book meetings here.`
+        : 'Connect your Google Calendar to book meetings, generate Meet links, and send invites directly from this thread.';
     return (
       <div className="w-[min(340px,calc(100vw-48px))] max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-4">
         <Header onClose={onClose} />
         <div className="mt-3 rounded-lg border border-amber-400/30 bg-amber-400/10 p-3 space-y-2">
           <div className="flex items-center gap-1.5 text-[12px] font-medium text-amber-200">
-            <CalendarX className="h-3.5 w-3.5" />
-            Calendar not connected
+            {isError ? <AlertTriangle className="h-3.5 w-3.5" /> : <CalendarX className="h-3.5 w-3.5" />}
+            {title}
           </div>
           <p className="text-[11.5px] leading-snug text-foreground/75">
-            Connect your Google Calendar to book meetings, generate Meet links,
-            and send invites directly from this thread.
+            {body}
           </p>
-          <Button
-            size="sm"
-            className="h-7 text-[11.5px] w-full"
-            onClick={() => {
-              window.open('/settings/integrations', '_blank');
-            }}
-          >
-            <ExternalLink className="h-3 w-3 mr-1.5" />
-            Connect calendar
-          </Button>
+          {isError && calendarConn.debug ? (
+            <details className="text-[10.5px] text-foreground/70">
+              <summary className="cursor-pointer">Debug details</summary>
+              <div className="mt-1 break-all rounded border border-white/10 bg-black/10 p-2 font-mono text-[10px]">
+                {calendarConn.debug}
+              </div>
+            </details>
+          ) : null}
+          <div className="flex gap-2">
+            {!isError ? (
+              <Button
+                size="sm"
+                className="h-7 text-[11.5px] flex-1"
+                onClick={() => {
+                  window.open('/settings/integrations', '_blank');
+                }}
+              >
+                <ExternalLink className="h-3 w-3 mr-1.5" />
+                Connect calendar
+              </Button>
+            ) : null}
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-[11.5px] flex-1"
+              onClick={retryScheduler}
+            >
+              Retry
+            </Button>
+          </div>
         </div>
         <ProposeFallbackLink onClick={onProposeViaEmail} />
       </div>
@@ -855,6 +889,17 @@ export function QuickBookMeetingPopover({
   return (
     <div className="w-full max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-3 space-y-3 text-foreground">
       <Header onClose={onClose} />
+
+      {import.meta.env.DEV ? (
+        <label className="flex items-center gap-2 rounded-md border border-white/10 bg-white/[0.03] px-2 py-1 text-[10.5px] text-muted-foreground/80">
+          <input
+            type="checkbox"
+            checked={debugSimulateTimeout}
+            onChange={(e) => setDebugSimulateTimeout(e.target.checked)}
+          />
+          Simulate calendar timeout
+        </label>
+      ) : null}
 
       {/* Duration pill row */}
       <div className="flex items-center gap-1.5">
@@ -910,6 +955,26 @@ export function QuickBookMeetingPopover({
           <ChevronRight className="h-3 w-3" />
         </button>
       </div>
+
+      {busyError ? (
+        <div className="rounded-md border border-amber-400/30 bg-amber-400/10 p-2 text-[11px] text-amber-200 space-y-2">
+          <div className="flex items-start gap-1.5">
+            <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+            <span>{busyError}</span>
+          </div>
+          {busyDebug ? (
+            <details className="text-[10.5px] text-foreground/70">
+              <summary className="cursor-pointer">Debug details</summary>
+              <div className="mt-1 break-all rounded border border-white/10 bg-black/10 p-2 font-mono text-[10px]">
+                {busyDebug}
+              </div>
+            </details>
+          ) : null}
+          <Button type="button" size="sm" variant="outline" className="h-6 text-[11px]" onClick={retryScheduler}>
+            Retry
+          </Button>
+        </div>
+      ) : null}
 
       {/* Mini week grid */}
       <WeekGrid
