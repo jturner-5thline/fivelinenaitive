@@ -44,10 +44,21 @@ export function EmailMessageShell({ children, className }: Props) {
 
     const body = rootRef.current.querySelector<HTMLElement>('.email-html-body, iframe');
     if (body && body.scrollWidth > body.clientWidth + 1) {
+      const bodyCs = getComputedStyle(body);
+      const shellCs = getComputedStyle(rootRef.current);
+      const overflowX = bodyCs.overflowX;
+      const shellOverflowX = shellCs.overflowX;
+      const isClipped = /^(hidden|clip)$/.test(overflowX) && /^(hidden|clip)$/.test(shellOverflowX);
       // eslint-disable-next-line no-console
-      console.error('[email-body.overflow-regression]', {
+      console.error('[email-body] horizontal clip detected', {
         clientWidth: body.clientWidth,
         scrollWidth: body.scrollWidth,
+        overflowX,
+        shellOverflowX,
+        clipped: isClipped,
+        aiAssistOpen:
+          typeof document !== 'undefined' &&
+          !!document.querySelector('[data-inbox-surface-scope="assistant"]'),
         body,
         shell: rootRef.current,
       });
