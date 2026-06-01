@@ -1587,7 +1587,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
 
   return (
     <div ref={messageRef} className={cn(
-      'border-b border-[hsl(var(--email-border))] transition-all duration-100 min-w-0',
+      'w-full min-w-0 max-w-full border-b border-[hsl(var(--email-border))] transition-all duration-100',
       // Unified popup surface: no separate fill on expanded messages — keep a
       // subtle hover tint so collapsed rows remain clickable-feeling.
       expanded ? 'bg-transparent' : 'hover:bg-[hsl(var(--foreground)/0.03)]'

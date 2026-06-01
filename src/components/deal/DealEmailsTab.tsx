@@ -2302,7 +2302,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
 
           {/* ─── Right: Reading pane / Compose ─── */}
           <div className={cn(
-            'flex h-full min-h-0 w-full min-w-0 flex-col overflow-hidden',
+            'flex h-full min-h-0 w-full min-w-0 max-w-full flex-[1_1_0%] flex-col overflow-hidden',
             // No local fill — inherit the popup-shell-surface gradient from
             // the dialog so the email pane matches the Deal pop-up exactly.
             (currentThread || composeOpen) ? 'bg-transparent' : '',
