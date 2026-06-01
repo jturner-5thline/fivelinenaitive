@@ -713,7 +713,31 @@ export function MeetingSchedulerCard({
     // Re-run whenever the user changes timezone or duration — both shift
     // the wall-clock anchors / slot length, so the proposed list must
     // rebuild to match what the recipient will actually see.
-  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey]);
+  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey, loadNonce]);
+
+  // ── Dev runtime assertion: if the scheduler never paints a loading,
+  // error, or populated state within 1500ms, log a snapshot. Catches
+  // the "blank gray rectangles" regression early in dev.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const handle = setTimeout(() => {
+      const elapsed = Date.now() - mountedAtRef.current;
+      const blank = !loadingBusy && !errorMsg && proposedSlots.length === 0;
+      if (blank) {
+        // eslint-disable-next-line no-console
+        console.error('[MeetingScheduler] blank-render assertion tripped', {
+          elapsedMs: elapsed,
+          loadingBusy,
+          errorMsg,
+          proposedSlotsCount: proposedSlots.length,
+          hasUser: !!user,
+          timezone,
+          durationMinutes,
+        });
+      }
+    }, 1500);
+    return () => clearTimeout(handle);
+  }, [loadingBusy, errorMsg, proposedSlots.length, user, timezone, durationMinutes]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
