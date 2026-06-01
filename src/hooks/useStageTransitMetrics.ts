@@ -29,6 +29,8 @@ export interface StageTransitBucket {
   avgMonths: number;
   medianMonths: number;
   dealCount: number;
+  /** True for the trailing "Open · still pre-FCI" synthetic bucket. */
+  isOpen?: boolean;
 }
 
 export interface UseStageTransitMetricsArgs {
@@ -44,6 +46,13 @@ export interface UseStageTransitMetricsArgs {
 
 export interface StageTransitMetricsResult {
   buckets: StageTransitBucket[];
+  /** Count of closed PI→FCI transits inside the window. */
+  completedCount: number;
+  /** Count of deals with PI in window but no FCI yet. */
+  openCount: number;
+  /** Avg running months (NOW - pi_at) across the open deals. */
+  openAvgMonths: number;
+  /** Closed + Open (for backward compatibility). */
   totalDeals: number;
   isLoading: boolean;
   error: Error | null;
@@ -108,13 +117,22 @@ export function useStageTransitMetrics({
   const query = useQuery({
     queryKey: ['stage-transit-monthly', fromKey, toKey, windowMonths, anchorIso],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('get_stage_transit_monthly', {
-        p_from_variants: fromVariants,
-        p_to_variants: toVariants,
-        p_window_months: windowMonths,
-        p_anchor: anchorIso,
-      });
-      if (error) throw error;
+      const [monthlyRes, openRes] = await Promise.all([
+        supabase.rpc('get_stage_transit_monthly', {
+          p_from_variants: fromVariants,
+          p_to_variants: toVariants,
+          p_window_months: windowMonths,
+          p_anchor: anchorIso,
+        }),
+        supabase.rpc('get_stage_transit_open', {
+          p_from_variants: fromVariants,
+          p_to_variants: toVariants,
+          p_window_months: windowMonths,
+          p_anchor: anchorIso,
+        }),
+      ]);
+      if (monthlyRes.error) throw monthlyRes.error;
+      if (openRes.error) throw openRes.error;
 
       // Side-effect: log inverted PI→FCI pairs to data_quality_issues.
       // Fire-and-forget; failure here must not break the chart.
@@ -129,12 +147,16 @@ export function useStageTransitMetrics({
           });
       }
 
-      const rows = (data ?? []) as Array<{
+      const rows = (monthlyRes.data ?? []) as Array<{
         bucket_month: string;
         avg_months: string | number | null;
         median_months: string | number | null;
         deal_count: number | string;
       }>;
+      const openRow = ((openRes.data ?? []) as Array<{
+        open_count: number | string;
+        avg_open_months: number | string | null;
+      }>)[0] ?? { open_count: 0, avg_open_months: 0 };
 
       if (rows.length === 0) {
         console.warn('[stage-transit-PI-FCI] 0 rows', {
@@ -156,16 +178,36 @@ export function useStageTransitMetrics({
         bucket.medianMonths = Number(row.median_months ?? 0);
         bucket.dealCount = Number(row.deal_count ?? 0);
       }
-      return skeleton;
+
+      const openCount = Number(openRow.open_count ?? 0);
+      const openAvgMonths = Number(openRow.avg_open_months ?? 0);
+      const openBucket: StageTransitBucket = {
+        key: 'open',
+        label: 'Open',
+        monthStart: anchor.toISOString(),
+        avgMonths: openAvgMonths,
+        medianMonths: openAvgMonths,
+        dealCount: openCount,
+        isOpen: true,
+      };
+      return { skeleton: [...skeleton, openBucket], openCount, openAvgMonths };
     },
     staleTime: 60_000,
   });
 
-  const buckets = query.data ?? [];
-  const totalDeals = buckets.reduce((s, b) => s + b.dealCount, 0);
+  const buckets = query.data?.skeleton ?? [];
+  const openCount = query.data?.openCount ?? 0;
+  const openAvgMonths = query.data?.openAvgMonths ?? 0;
+  const completedCount = buckets
+    .filter((b) => !b.isOpen)
+    .reduce((s, b) => s + b.dealCount, 0);
+  const totalDeals = completedCount + openCount;
 
   return {
     buckets,
+    completedCount,
+    openCount,
+    openAvgMonths,
     totalDeals,
     isLoading: query.isLoading,
     error: (query.error as Error | null) ?? null,

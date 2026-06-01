@@ -25766,6 +25766,18 @@ export type Database = {
           median_months: number
         }[]
       }
+      get_stage_transit_open: {
+        Args: {
+          p_anchor?: string
+          p_from_variants: string[]
+          p_to_variants: string[]
+          p_window_months?: number
+        }
+        Returns: {
+          avg_open_months: number
+          open_count: number
+        }[]
+      }
       get_team_members_for_mention: {
         Args: { _user_id: string }
         Returns: {
