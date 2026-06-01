@@ -646,7 +646,10 @@ export function MeetingSchedulerCard({
     // (or the pre-flight itself errored) we render a CTA/error block —
     // the free/busy fetch is never even attempted.
     if (calendarConn.kind !== 'connected') {
-      setLoadingBusy(false);
+      // While pre-flight is in flight ('unknown') keep the skeleton up so
+      // the UI doesn't flicker to "empty" and back. Only stop the spinner
+      // when we have a definitive non-connected state (CTA/error renders).
+      if (calendarConn.kind !== 'unknown') setLoadingBusy(false);
       return;
     }
     let cancelled = false;
