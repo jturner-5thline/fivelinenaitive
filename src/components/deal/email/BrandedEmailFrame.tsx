@@ -27,9 +27,20 @@ interface Props {
 const WHITE_BG_DECL_RE =
   /background(-color)?\s*:\s*(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)|rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*1\s*\))\s*(!important)?\s*;?/gi;
 
-function stripWhiteBackgroundsFromStyleBlocks(html: string): string {
+// Targets `html { ... }`, `body { ... }`, `table { ... }`, `td { ... }`
+// rule selectors inside an author <style> block so we can null out *any*
+// background on the email canvas tags — not just white. Brand backgrounds
+// on inner wrappers, hero blocks, CTAs and buttons are left untouched.
+const CANVAS_RULE_RE = /(^|[},])\s*((?:html|body|table|td)(?:\s*,\s*(?:html|body|table|td))*)\s*\{([^}]*)\}/gi;
+const BG_DECL_RE = /background(-image|-color)?\s*:\s*[^;]+;?/gi;
+
+function stripCanvasBackgroundsFromStyleBlocks(html: string): string {
   return html.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (full, css: string) => {
-    const cleaned = css.replace(WHITE_BG_DECL_RE, '');
+    let cleaned = css.replace(WHITE_BG_DECL_RE, '');
+    cleaned = cleaned.replace(CANVAS_RULE_RE, (_m, lead, sels, body) => {
+      const stripped = String(body).replace(BG_DECL_RE, '');
+      return `${lead} ${sels} {${stripped}}`;
+    });
     if (cleaned === css) return full;
     return full.replace(css, cleaned);
   });
@@ -87,18 +98,31 @@ function BrandedEmailFrameImpl({ html, className, maxHeight = 4000, onError }: P
       // surface, making near-white text effectively invisible.
       DOMPurify.addHook('uponSanitizeAttribute', (_node, data) => {
         if (data.attrName === 'bgcolor' && typeof data.attrValue === 'string') {
-          if (/^\s*(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\s*$/i.test(data.attrValue)) {
+          // Drop bgcolor on canvas tags entirely; preserve on inner cells
+          // (buttons, hero blocks) so brand color is not lost.
+          const tag = (_node as Element).tagName?.toLowerCase();
+          if (tag === 'html' || tag === 'body' || tag === 'table' || tag === 'td') {
+            data.keepAttr = false;
+          } else if (/^\s*(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\))\s*$/i.test(data.attrValue)) {
             data.keepAttr = false;
           }
         }
         if (data.attrName === 'style' && typeof data.attrValue === 'string') {
-          // Remove any background / background-color declaration whose value
-          // is white, #fff, #ffffff, or rgb(255,255,255). Preserve every
-          // other background (brand colors, CTAs, hero blocks, signatures).
-          const cleaned = data.attrValue.replace(
+          // On html/body/table/td: strip ANY inline background. On other
+          // elements: strip only white-equivalent values so brand fills
+          // survive.
+          const tag = (_node as Element).tagName?.toLowerCase();
+          const isCanvas = tag === 'html' || tag === 'body' || tag === 'table' || tag === 'td';
+          let cleaned: string;
+          if (isCanvas) {
+            cleaned = data.attrValue.replace(BG_DECL_RE, '');
+          } else {
+            cleaned = data.attrValue.replace(
             /(^|;)\s*background(-color)?\s*:\s*(#fff(fff)?|white|rgb\(\s*255\s*,\s*255\s*,\s*255\s*\)|rgba\(\s*255\s*,\s*255\s*,\s*255\s*,\s*1\s*\))\s*(!important)?\s*(?=;|$)/gi,
             '$1',
-          )
+            );
+          }
+          cleaned = cleaned
             .replace(/^;+|;+$/g, '')
             .replace(/;{2,}/g, ';')
             .trim();
@@ -126,12 +150,13 @@ function BrandedEmailFrameImpl({ html, className, maxHeight = 4000, onError }: P
       // Outlook/Gmail person-to-person replies (Brian Lewis "Project
       // Vista", Niki, etc.) solid white over the dark canvas — the
       // attribute-level hook above cannot see CSS rules.
-      const cleanWithStripped = stripWhiteBackgroundsFromStyleBlocks(clean);
+      const cleanWithStripped = stripCanvasBackgroundsFromStyleBlocks(clean);
 
       const fid = JSON.stringify(frameId.current);
       const closeScript = '<' + '/script>';
-      return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><base target="_blank"><style>
-html,body{margin:0;padding:0;background:transparent !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
+      return `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="color-scheme" content="dark"><base target="_blank"><style>
+:root{color-scheme:dark;}
+html,body{margin:0;padding:0;background:transparent !important;background-color:transparent !important;color:${theme.text};font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;-webkit-font-smoothing:antialiased;}
 body{padding:8px 0;box-sizing:border-box;word-wrap:break-word;overflow-wrap:anywhere;background:transparent !important;}
 /* Neutralize hardcoded white/light backgrounds the email author set on
    outer wrapper elements so the message blends into the Naitive reading
@@ -143,6 +168,9 @@ body > table, body > div, body > center,
 body > center > table, body > center > div,
 body > table > tbody > tr > td,
 body > div > table, body > div > div { background: transparent !important; background-color: transparent !important; }
+/* Belt-and-suspenders: every canvas tag (html/body/table/td) renders
+   transparent regardless of inline style or attribute the author baked in. */
+html, body, table, td { background: transparent !important; background-color: transparent !important; background-image: none !important; }
 [bgcolor="#ffffff" i], [bgcolor="#fff" i], [bgcolor="white" i],
 [bgcolor="#FFFFFF"], [bgcolor="#FFF"] { background-color: transparent !important; }
 /* Defense-in-depth: inline style attributes that still hardcode white
@@ -190,6 +218,7 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
 
   return (
     <div
+      data-email-root=""
       className={cn('w-full min-w-0 overflow-hidden bg-transparent', className)}
     >
       <iframe
@@ -197,7 +226,10 @@ document.addEventListener("click",function(e){var a=e.target&&e.target.closest&&
         title="Email content"
         sandbox="allow-scripts allow-popups allow-popups-to-escape-sandbox"
         srcDoc={srcDoc}
-        style={{ width: '100%', height, border: 0, display: 'block', background: 'transparent' }}
+        // colorScheme: 'dark' makes the browser paint the iframe's pre-load
+        // canvas using the dark UA backdrop instead of flashing solid white
+        // for the few ms before our srcDoc <style> resolves.
+        style={{ width: '100%', height, border: 0, display: 'block', background: 'transparent', colorScheme: 'dark' }}
         allowTransparency
         onError={handleError}
       />
