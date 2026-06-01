@@ -35,13 +35,18 @@ export function expandStageLabels(slugs: string[]): string[] {
   return Array.from(out);
 }
 
-/** Normalize any observed to_stage text or to_stage_id back to a canonical slug. */
-export function normalizeStageSlug(toStage: string | null | undefined, toStageId?: string | null): string | null {
+/**
+ * Normalize an observed `to_stage` text value back to a canonical slug.
+ * The `to_stage_id` column is intentionally ignored — it's empty on live rows
+ * AND is overloaded in the In Development pipeline (where 'closed-won' means
+ * "Indication of Interest", NOT "Closed Won"). The text label is the only
+ * unambiguous identifier.
+ */
+export function normalizeStageSlug(toStage: string | null | undefined, _toStageId?: string | null): string | null {
+  if (!toStage) return null;
   for (const [slug, variants] of Object.entries(STAGE_LABEL_VARIANTS)) {
-    if (toStage && variants.includes(toStage)) return slug;
+    if (variants.includes(toStage)) return slug;
   }
-  // Last-resort fallback: trust to_stage_id only when it's one of our known slugs.
-  if (toStageId && Object.prototype.hasOwnProperty.call(STAGE_LABEL_VARIANTS, toStageId)) return toStageId;
   return null;
 }
 
