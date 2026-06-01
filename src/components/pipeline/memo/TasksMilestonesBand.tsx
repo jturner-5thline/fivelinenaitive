@@ -591,7 +591,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
     <div className="px-5 py-3 bg-white/[0.03] border-b border-white/[0.08]">
       <div className="w-full min-w-0">
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 mb-2 min-w-0">
-        <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 shrink-0 truncate">
+        <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 shrink-0 truncate">
           Tasks & milestones
         </div>
         <div
