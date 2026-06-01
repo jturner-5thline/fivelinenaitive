@@ -1500,9 +1500,18 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
   );
 
   // Resolve the best available body: prefer freshly fetched HTML, then prop HTML,
-  // then fetched text, then prop text/preview snippet.
+  // then fetched text, then prop text.
+  //
+  // IMPORTANT: do NOT fall back to `email.body_preview` here. `body_preview`
+  // is sourced from the Gmail `snippet` field at list time — a truncated
+  // ~200-char excerpt that ends mid-word with no ellipsis. Rendering it as
+  // the message body caused the "message ends mid-sentence with no scrollbar"
+  // bug: while `useFullEmailMessage` was still in flight (or had returned
+  // an empty body), the open thread showed the snippet as if it were the
+  // full message. The fix is to treat only real body sources as renderable
+  // and surface the proper loading / unavailable state otherwise.
   const resolvedHtml = fullData?.body_html || email.body_html || '';
-  const resolvedText = fullData?.body_text || email.body_text || email.body_preview || '';
+  const resolvedText = fullData?.body_text || email.body_text || '';
   const trimmedResolvedText = resolvedText.trim();
   const hasRenderableBody = !!resolvedHtml || trimmedResolvedText.length > 0;
   const gmailThreadTarget = email.provider_thread_id || email.threadId || threadId;
@@ -1593,14 +1602,14 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
         <div className="min-w-0 max-w-full overflow-x-hidden px-6 pb-5 pl-[64px]">
           <EmailHeaderDetails email={email} fullData={fullData as any} />
 
-          {fullLoading && !alreadyHasFullBody && !resolvedHtml && !resolvedText && (
+          {fullLoading && !hasRenderableBody && (
             <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
               <Loader2 className="h-3 w-3 animate-spin" />
               <span>Loading full message…</span>
             </div>
           )}
 
-          {!fullLoading && fullError && !resolvedHtml && !resolvedText && (
+          {!fullLoading && fullError && !hasRenderableBody && (
             <div
               className="my-2 flex items-start justify-between gap-3 rounded border border-[hsl(var(--email-border))] bg-[hsl(var(--destructive)/0.05)] px-3 py-2 text-xs text-[hsl(var(--email-text-secondary))]"
               title={fullError}
