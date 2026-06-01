@@ -25564,6 +25564,14 @@ export type Database = {
       claap_run_smoke_test: { Args: never; Returns: Json }
       claap_seed_demo: { Args: { p_tenant_id: string }; Returns: Json }
       cleanup_old_rate_limits: { Args: never; Returns: undefined }
+      clone_demo_tenant: {
+        Args: {
+          p_owner_user_id: string
+          p_source_company_id: string
+          p_target_company_id: string
+        }
+        Returns: Json
+      }
       create_task_inapp_notification: {
         Args: {
           _body: string
