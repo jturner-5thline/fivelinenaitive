@@ -799,7 +799,7 @@ export function QuickBookMeetingPopover({
       </div>
     );
   }
-  if (!connected) {
+  if (calendarConn.kind !== 'connected') {
     return (
       <div className="w-[min(340px,calc(100vw-48px))] max-w-full max-h-[calc(100%-48px)] overflow-y-auto p-4">
         <Header onClose={onClose} />
