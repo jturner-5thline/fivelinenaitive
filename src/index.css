@@ -386,7 +386,25 @@
 .email-html-body {
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  /* Allow horizontal scrolling of wide inner content (tables, preformatted
+     blocks) inside the body so the parent column never gets pushed wider
+     than its grid track and clipped behind the AI Assist panel. */
+  overflow-x: auto;
+}
+
+/* Wide inner tables: keep them scrollable inside the body wrapper rather
+   than forcing the parent column to grow. */
+.email-html-body table {
+  max-width: 100% !important;
+  table-layout: auto;
+}
+
+/* Themed link defaults for the simplified renderer — match the iframe
+   path so quoted links remain visible on the dark reading surface. */
+.email-html-body a,
+.email-html-body a * {
+  color: hsl(var(--primary)) !important;
+  text-decoration: underline;
 }
 
 .email-html-body p,
