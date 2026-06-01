@@ -1,4 +1,5 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -114,6 +115,28 @@ const WORK_START_HOUR = 9;   // 9 AM local
 const WORK_END_HOUR = 17;    // 5 PM local
 
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+/** Hard ceiling for any single calendar fetch. If the free/busy or
+ *  calendar-status edge function hasn't responded by this point we treat
+ *  it as a failure and show an inline error + Retry — never a permanent
+ *  spinner. */
+const FETCH_TIMEOUT_MS = 8000;
+/** Dev-only guard: if `loadingBusy` stays true past this threshold we
+ *  log a snapshot to console.error so hung fetches surface during
+ *  development instead of silently spinning forever. */
+const STUCK_LOADING_DEV_MS = 10_000;
+
+/** Race a promise against a timeout. Resolves with the promise value
+ *  when it wins; rejects with a stable Error message when the timer
+ *  wins first. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
 const TZ_PREF_KEY = 'naitive.meetingScheduler.tz';
 const DURATION_PREF_KEY = 'naitive.meetingScheduler.durationMinutes';
 /** Persisted parties mode: 'me' or 'me_plus'. */
