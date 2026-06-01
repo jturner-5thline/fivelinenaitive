@@ -1,4 +1,5 @@
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -114,6 +115,28 @@ const WORK_START_HOUR = 9;   // 9 AM local
 const WORK_END_HOUR = 17;    // 5 PM local
 
 const BROWSER_TZ = Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC';
+/** Hard ceiling for any single calendar fetch. If the free/busy or
+ *  calendar-status edge function hasn't responded by this point we treat
+ *  it as a failure and show an inline error + Retry — never a permanent
+ *  spinner. */
+const FETCH_TIMEOUT_MS = 8000;
+/** Dev-only guard: if `loadingBusy` stays true past this threshold we
+ *  log a snapshot to console.error so hung fetches surface during
+ *  development instead of silently spinning forever. */
+const STUCK_LOADING_DEV_MS = 10_000;
+
+/** Race a promise against a timeout. Resolves with the promise value
+ *  when it wins; rejects with a stable Error message when the timer
+ *  wins first. */
+function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+    p.then(
+      (v) => { clearTimeout(t); resolve(v); },
+      (e) => { clearTimeout(t); reject(e); },
+    );
+  });
+}
 const TZ_PREF_KEY = 'naitive.meetingScheduler.tz';
 const DURATION_PREF_KEY = 'naitive.meetingScheduler.durationMinutes';
 /** Persisted parties mode: 'me' or 'me_plus'. */
@@ -437,6 +460,7 @@ export function MeetingSchedulerCard({
   isReply = false,
 }: Props) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const teamMembers = useTeamMembers();
   const { render: renderTitle } = useRenderMeetingTitle(dealId ?? null);
 
@@ -445,6 +469,26 @@ export function MeetingSchedulerCard({
   const retryFreeBusy = useCallback(() => setLoadNonce((n) => n + 1), []);
   // Mount timestamp used by the dev-runtime "blank render" assertion below.
   const mountedAtRef = useRef<number>(Date.now());
+  // Timestamp of the most recent free/busy fetch — used by the dev-only
+  // stuck-loading assertion to report how long a hang lasted.
+  const lastFetchStartedAtRef = useRef<number | null>(null);
+
+  // ── Pre-flight: is Google Calendar actually connected? ────────────────
+  // We hit `calendar-status` first (with a hard timeout) so we never even
+  // attempt the free/busy fetch when there's no token — that was the
+  // silent root cause of the perpetual "Checking calendar…" spinner in
+  // preview environments where the OAuth grant is missing.
+  type CalendarConn =
+    | { kind: 'unknown' }                   // pre-flight still in flight
+    | { kind: 'connected'; email?: string }
+    | { kind: 'disconnected' }              // no token at all
+    | { kind: 'expired' }                   // token present but expired/invalid
+    | { kind: 'error'; message: string };   // pre-flight itself failed/timed out
+  const [calendarConn, setCalendarConn] = useState<CalendarConn>({ kind: 'unknown' });
+
+  const openCalendarSettings = useCallback(() => {
+    try { navigate('/integrations'); } catch { window.location.href = '/integrations'; }
+  }, [navigate]);
 
   // ── Timezone preference ───────────────────────────────────────────────
   // Persisted in localStorage so the user's choice sticks across sessions
@@ -597,24 +641,44 @@ export function MeetingSchedulerCard({
 
   // ── Load free/busy from connected Google Calendar (via Nylas) ───────────
   useEffect(() => {
+    if (!user) return;
+    // Skip until pre-flight has resolved. If the calendar isn't connected
+    // (or the pre-flight itself errored) we render a CTA/error block —
+    // the free/busy fetch is never even attempted.
+    if (calendarConn.kind !== 'connected') {
+      // While pre-flight is in flight ('unknown') keep the skeleton up so
+      // the UI doesn't flicker to "empty" and back. Only stop the spinner
+      // when we have a definitive non-connected state (CTA/error renders).
+      if (calendarConn.kind !== 'unknown') setLoadingBusy(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoadingBusy(true);
       setErrorMsg(null);
+      lastFetchStartedAtRef.current = Date.now();
       try {
         const now = new Date();
         const horizon = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);
-        const { data, error } = await supabase.functions.invoke('calendar-events', {
-          body: {
-            action: 'list',
-            time_min: now.toISOString(),
-            time_max: horizon.toISOString(),
-            max_results: 200,
-            timezone,
-          },
-        });
+        const { data, error } = await withTimeout(
+          supabase.functions.invoke('calendar-events', {
+            body: {
+              action: 'list',
+              time_min: now.toISOString(),
+              time_max: horizon.toISOString(),
+              max_results: 200,
+              timezone,
+            },
+          }),
+          FETCH_TIMEOUT_MS,
+          'calendar-events',
+        );
         if (cancelled) return;
-        if (error) throw error;
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.error('[MeetingScheduler] calendar-events 4xx/5xx', error);
+          throw new Error(error.message || 'Calendar request failed.');
+        }
         const events: BusyEvent[] = (data?.events || []).map((e: any) => ({
           start: e.start,
           end: e.end,
@@ -637,13 +701,17 @@ export function MeetingSchedulerCard({
         const newlyLimited: string[] = [];
         if (teammateBusyEmails.length > 0) {
           try {
-            const { data: fb } = await supabase.functions.invoke('calendar-freebusy', {
-              body: {
-                time_min: now.toISOString(),
-                time_max: horizon.toISOString(),
-                emails: teammateBusyEmails,
-              },
-            });
+            const { data: fb } = await withTimeout(
+              supabase.functions.invoke('calendar-freebusy', {
+                body: {
+                  time_min: now.toISOString(),
+                  time_max: horizon.toISOString(),
+                  emails: teammateBusyEmails,
+                },
+              }),
+              FETCH_TIMEOUT_MS,
+              'calendar-freebusy',
+            );
             for (const r of ((fb?.results ?? []) as any[])) {
               if (r?.visibility === 'limited') {
                 newlyLimited.push(String(r.email || '').toLowerCase());
@@ -704,7 +772,13 @@ export function MeetingSchedulerCard({
         });
       } catch (e: any) {
         console.error('[MeetingScheduler] free/busy load failed', e);
-        setErrorMsg(e?.message || 'Could not read calendar. Reconnect your account in Settings.');
+        const msg = e?.message || '';
+        const timedOut = /timed out after/i.test(msg);
+        setErrorMsg(
+          timedOut
+            ? "Couldn't load your calendar availability. Check that your Google Calendar is connected, then retry."
+            : (msg || 'Could not read calendar. Reconnect your account in Settings.'),
+        );
       } finally {
         if (!cancelled) setLoadingBusy(false);
       }
@@ -713,7 +787,58 @@ export function MeetingSchedulerCard({
     // Re-run whenever the user changes timezone or duration — both shift
     // the wall-clock anchors / slot length, so the proposed list must
     // rebuild to match what the recipient will actually see.
-  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey, loadNonce]);
+  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey, loadNonce, user, calendarConn.kind]);
+
+  // ── Pre-flight: probe Google Calendar connection status. Runs on mount
+  // and any time the user hits Retry (loadNonce). Hard-timed so it can
+  // never wedge the spinner on its own.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setCalendarConn({ kind: 'unknown' });
+    setLoadingBusy(true);
+    (async () => {
+      try {
+        const { data, error } = await withTimeout(
+          supabase.functions.invoke('calendar-status'),
+          FETCH_TIMEOUT_MS,
+          'calendar-status',
+        );
+        if (cancelled) return;
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.error('[MeetingScheduler] calendar-status error', error);
+          setCalendarConn({ kind: 'error', message: error.message || 'Calendar status check failed.' });
+          setLoadingBusy(false);
+          return;
+        }
+        const connected = !!(data && (data as any).connected);
+        const expired = !!(data && (data as any).is_expired);
+        if (!connected) {
+          setCalendarConn({ kind: 'disconnected' });
+        } else if (expired) {
+          setCalendarConn({ kind: 'expired' });
+        } else {
+          setCalendarConn({ kind: 'connected', email: (data as any).email });
+        }
+        // The free/busy effect will flip loadingBusy on/off appropriately
+        // once it runs; if we're not connected, surface the CTA right away.
+        if (!connected || expired) setLoadingBusy(false);
+      } catch (e: any) {
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.error('[MeetingScheduler] calendar-status hung/failed', e);
+        setCalendarConn({
+          kind: 'error',
+          message: /timed out/i.test(e?.message || '')
+            ? "Couldn't reach the calendar service. Check your connection and retry."
+            : (e?.message || 'Calendar status check failed.'),
+        });
+        setLoadingBusy(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, loadNonce]);
 
   // ── Dev runtime assertion: if the scheduler never paints a loading,
   // error, or populated state within 1500ms, log a snapshot. Catches
@@ -738,6 +863,32 @@ export function MeetingSchedulerCard({
     }, 1500);
     return () => clearTimeout(handle);
   }, [loadingBusy, errorMsg, proposedSlots.length, user, timezone, durationMinutes]);
+
+  // Dev-only: if loadingBusy stays true past STUCK_LOADING_DEV_MS, log a
+  // snapshot so hung fetches surface during development. The user-facing
+  // hard timeout (FETCH_TIMEOUT_MS) flips us into the error block well
+  // before this fires — anything reaching this guard is a real regression.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!loadingBusy) return;
+    const handle = setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.error('[MeetingScheduler] stuck-loading assertion tripped', {
+        elapsedSinceFetchMs: lastFetchStartedAtRef.current
+          ? Date.now() - lastFetchStartedAtRef.current
+          : null,
+        loadingBusy,
+        errorMsg,
+        proposedSlotsCount: proposedSlots.length,
+        hasUser: !!user,
+        timezone,
+        durationMinutes,
+        lastFetchStartedAt: lastFetchStartedAtRef.current,
+        calendarConn: calendarConn.kind,
+      });
+    }, STUCK_LOADING_DEV_MS);
+    return () => clearTimeout(handle);
+  }, [loadingBusy, errorMsg, proposedSlots.length, user, timezone, durationMinutes, calendarConn.kind]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
@@ -1307,7 +1458,61 @@ export function MeetingSchedulerCard({
       </div>
 
       {/* Slots list */}
-      {loadingBusy ? (
+      {calendarConn.kind === 'disconnected' || calendarConn.kind === 'expired' ? (
+        (() => {
+          const provider = (user as any)?.app_metadata?.provider as string | undefined;
+          const nonGoogle = provider && provider !== 'google';
+          return (
+            <div className="flex flex-col items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+              <div className="flex items-start gap-2">
+                <CalendarX className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                <div className="space-y-0.5">
+                  <div className="font-semibold">
+                    {calendarConn.kind === 'expired'
+                      ? 'Your Google Calendar connection expired.'
+                      : 'Google Calendar isn’t connected.'}
+                  </div>
+                  <div className="opacity-80">
+                    {nonGoogle
+                      ? `You signed in with ${provider}. Connect Google Calendar to read availability and propose times.`
+                      : 'Connect your Google Calendar to read availability and propose times.'}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Button type="button" size="sm" className="h-6 text-[11px]" onClick={openCalendarSettings}>
+                  Connect calendar
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 text-[11px] gap-1"
+                  onClick={retryFreeBusy}
+                >
+                  <RefreshCw className="h-3 w-3" /> Retry
+                </Button>
+              </div>
+            </div>
+          );
+        })()
+      ) : calendarConn.kind === 'error' ? (
+        <div className="flex flex-col items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{calendarConn.message}</span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 text-[11px] gap-1"
+            onClick={retryFreeBusy}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
+        </div>
+      ) : loadingBusy ? (
         <div className="space-y-1.5">
           <Skeleton className="h-7 w-full" />
           <Skeleton className="h-7 w-full" />
