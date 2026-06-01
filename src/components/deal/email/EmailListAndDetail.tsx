@@ -3144,6 +3144,26 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
 
 
             <span ref={linkPreviewAnchorRef} className="inline-flex">
+            {linkHydrating && !linkedDealName ? (
+              <div
+                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded border border-transparent"
+                aria-busy="true"
+                aria-label="Loading deal link"
+              >
+                <div className="h-4 w-4 rounded bg-muted/60 animate-pulse" />
+                <div className="h-2 w-12 rounded bg-muted/60 animate-pulse mt-0.5" />
+              </div>
+            ) : linkHydrateError && !linkedDealName ? (
+              <button
+                type="button"
+                onClick={() => { setLinkHydrateError(null); setHydrateNonce((n) => n + 1); }}
+                className="flex flex-col items-center gap-0.5 px-3 py-1 rounded border border-destructive/40 text-destructive hover:bg-destructive/5"
+                title={linkHydrateError}
+              >
+                <Link2 className="h-4 w-4" />
+                <span className="text-[10px]">Retry</span>
+              </button>
+            ) : (
             <LinkToDealPopover
               trigger={
                 <button
