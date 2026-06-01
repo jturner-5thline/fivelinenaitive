@@ -60,6 +60,39 @@ const ROW_PX = 22;
 
 const BROWSER_TZ =
   Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
+const STATUS_TIMEOUT_MS = 3000;
+const BUSY_TIMEOUT_MS = 8000;
+const STUCK_LOADING_DEV_MS = 10_000;
+
+type CalendarConn =
+  | { kind: 'unknown' }
+  | { kind: 'connected'; email?: string | null }
+  | { kind: 'missing' }
+  | { kind: 'expired'; email?: string | null }
+  | { kind: 'alt_provider'; provider?: string | null }
+  | { kind: 'error'; message: string; debug?: string };
+
+function snippet(value: unknown, max = 240): string {
+  const text = typeof value === 'string' ? value : JSON.stringify(value);
+  return text.length > max ? `${text.slice(0, max)}…` : text;
+}
+
+function buildInvokeError(label: string, error: any, data?: any): Error {
+  const bodySnippet = data ? ` Body: ${snippet(data)}` : '';
+  return new Error(`${label} failed: ${error?.message || 'Unknown error.'}${bodySnippet}`);
+}
+
+function timeoutReject(ms: number, label: string, meta?: Record<string, unknown>) {
+  return new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      if (label === 'freebusy') {
+        // eslint-disable-next-line no-console
+        console.warn('[scheduler] 8s timeout fired', meta ?? {});
+      }
+      reject(new Error(`${label} timed out after ${ms}ms`));
+    }, ms);
+  });
+}
 
 interface Attendee {
   email: string;
