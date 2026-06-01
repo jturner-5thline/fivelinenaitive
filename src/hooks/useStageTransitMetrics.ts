@@ -1,3 +1,4 @@
+import { useMemo, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -86,11 +87,26 @@ export function useStageTransitMetrics({
   anchorDate,
   logInverted = true,
 }: UseStageTransitMetricsArgs): StageTransitMetricsResult {
-  const anchor = anchorDate ?? new Date();
-  const anchorIso = anchor.toISOString();
+  // CRITICAL: anchor must be stable across renders. `new Date()` on every
+  // render mutates the React Query key, which triggers an infinite
+  // refetch loop (each refetch flips isLoading back to true, so the
+  // card never escapes its skeleton state).
+  const stableAnchorRef = useRef<Date | null>(null);
+  if (stableAnchorRef.current === null) {
+    stableAnchorRef.current = anchorDate ?? new Date();
+  } else if (anchorDate && anchorDate.getTime() !== stableAnchorRef.current.getTime()) {
+    stableAnchorRef.current = anchorDate;
+  }
+  const anchor = stableAnchorRef.current;
+  const anchorIso = useMemo(() => anchor.toISOString(), [anchor]);
+
+  // Stabilize variant arrays so callers can pass inline literals without
+  // tripping the same key-drift loop.
+  const fromKey = useMemo(() => fromVariants.join('|'), [fromVariants]);
+  const toKey = useMemo(() => toVariants.join('|'), [toVariants]);
 
   const query = useQuery({
-    queryKey: ['stage-transit-monthly', fromVariants, toVariants, windowMonths, anchorIso],
+    queryKey: ['stage-transit-monthly', fromKey, toKey, windowMonths, anchorIso],
     queryFn: async () => {
       const { data, error } = await supabase.rpc('get_stage_transit_monthly', {
         p_from_variants: fromVariants,
