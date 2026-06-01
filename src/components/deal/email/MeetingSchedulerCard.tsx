@@ -641,24 +641,41 @@ export function MeetingSchedulerCard({
 
   // ── Load free/busy from connected Google Calendar (via Nylas) ───────────
   useEffect(() => {
+    if (!user) return;
+    // Skip until pre-flight has resolved. If the calendar isn't connected
+    // (or the pre-flight itself errored) we render a CTA/error block —
+    // the free/busy fetch is never even attempted.
+    if (calendarConn.kind !== 'connected') {
+      setLoadingBusy(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setLoadingBusy(true);
       setErrorMsg(null);
+      lastFetchStartedAtRef.current = Date.now();
       try {
         const now = new Date();
         const horizon = new Date(now.getTime() + 8 * 24 * 60 * 60 * 1000);
-        const { data, error } = await supabase.functions.invoke('calendar-events', {
-          body: {
-            action: 'list',
-            time_min: now.toISOString(),
-            time_max: horizon.toISOString(),
-            max_results: 200,
-            timezone,
-          },
-        });
+        const { data, error } = await withTimeout(
+          supabase.functions.invoke('calendar-events', {
+            body: {
+              action: 'list',
+              time_min: now.toISOString(),
+              time_max: horizon.toISOString(),
+              max_results: 200,
+              timezone,
+            },
+          }),
+          FETCH_TIMEOUT_MS,
+          'calendar-events',
+        );
         if (cancelled) return;
-        if (error) throw error;
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.error('[MeetingScheduler] calendar-events 4xx/5xx', error);
+          throw new Error(error.message || 'Calendar request failed.');
+        }
         const events: BusyEvent[] = (data?.events || []).map((e: any) => ({
           start: e.start,
           end: e.end,
@@ -681,13 +698,17 @@ export function MeetingSchedulerCard({
         const newlyLimited: string[] = [];
         if (teammateBusyEmails.length > 0) {
           try {
-            const { data: fb } = await supabase.functions.invoke('calendar-freebusy', {
-              body: {
-                time_min: now.toISOString(),
-                time_max: horizon.toISOString(),
-                emails: teammateBusyEmails,
-              },
-            });
+            const { data: fb } = await withTimeout(
+              supabase.functions.invoke('calendar-freebusy', {
+                body: {
+                  time_min: now.toISOString(),
+                  time_max: horizon.toISOString(),
+                  emails: teammateBusyEmails,
+                },
+              }),
+              FETCH_TIMEOUT_MS,
+              'calendar-freebusy',
+            );
             for (const r of ((fb?.results ?? []) as any[])) {
               if (r?.visibility === 'limited') {
                 newlyLimited.push(String(r.email || '').toLowerCase());
@@ -748,7 +769,13 @@ export function MeetingSchedulerCard({
         });
       } catch (e: any) {
         console.error('[MeetingScheduler] free/busy load failed', e);
-        setErrorMsg(e?.message || 'Could not read calendar. Reconnect your account in Settings.');
+        const msg = e?.message || '';
+        const timedOut = /timed out after/i.test(msg);
+        setErrorMsg(
+          timedOut
+            ? "Couldn't load your calendar availability. Check that your Google Calendar is connected, then retry."
+            : (msg || 'Could not read calendar. Reconnect your account in Settings.'),
+        );
       } finally {
         if (!cancelled) setLoadingBusy(false);
       }
@@ -757,7 +784,58 @@ export function MeetingSchedulerCard({
     // Re-run whenever the user changes timezone or duration — both shift
     // the wall-clock anchors / slot length, so the proposed list must
     // rebuild to match what the recipient will actually see.
-  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey, loadNonce]);
+  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey, loadNonce, user, calendarConn.kind]);
+
+  // ── Pre-flight: probe Google Calendar connection status. Runs on mount
+  // and any time the user hits Retry (loadNonce). Hard-timed so it can
+  // never wedge the spinner on its own.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    setCalendarConn({ kind: 'unknown' });
+    setLoadingBusy(true);
+    (async () => {
+      try {
+        const { data, error } = await withTimeout(
+          supabase.functions.invoke('calendar-status'),
+          FETCH_TIMEOUT_MS,
+          'calendar-status',
+        );
+        if (cancelled) return;
+        if (error) {
+          // eslint-disable-next-line no-console
+          console.error('[MeetingScheduler] calendar-status error', error);
+          setCalendarConn({ kind: 'error', message: error.message || 'Calendar status check failed.' });
+          setLoadingBusy(false);
+          return;
+        }
+        const connected = !!(data && (data as any).connected);
+        const expired = !!(data && (data as any).is_expired);
+        if (!connected) {
+          setCalendarConn({ kind: 'disconnected' });
+        } else if (expired) {
+          setCalendarConn({ kind: 'expired' });
+        } else {
+          setCalendarConn({ kind: 'connected', email: (data as any).email });
+        }
+        // The free/busy effect will flip loadingBusy on/off appropriately
+        // once it runs; if we're not connected, surface the CTA right away.
+        if (!connected || expired) setLoadingBusy(false);
+      } catch (e: any) {
+        if (cancelled) return;
+        // eslint-disable-next-line no-console
+        console.error('[MeetingScheduler] calendar-status hung/failed', e);
+        setCalendarConn({
+          kind: 'error',
+          message: /timed out/i.test(e?.message || '')
+            ? "Couldn't reach the calendar service. Check your connection and retry."
+            : (e?.message || 'Calendar status check failed.'),
+        });
+        setLoadingBusy(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, loadNonce]);
 
   // ── Dev runtime assertion: if the scheduler never paints a loading,
   // error, or populated state within 1500ms, log a snapshot. Catches
