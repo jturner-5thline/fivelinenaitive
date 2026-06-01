@@ -341,7 +341,7 @@ function aggregateStageEntrySplitTrendBuckets(
   for (const row of rows ?? []) {
     const ts: string = row.changed_at;
     if (!ts || ts < windowStart || ts > windowEnd) continue;
-    const stageId: string = row.to_stage_id;
+    const stageId = normalizeStageSlug(row.to_stage, row.to_stage_id);
     if (stageId !== 'funded-invoiced' && stageId !== 'closed-won') continue;
 
     const dedupeKey = `${row.deal_id}|${stageId}`;
@@ -365,7 +365,7 @@ function aggregateStageEntrySplitTrendBuckets(
       entered_at: ts,
       pipeline_id: deal.pipeline_id ?? '',
       from_stage: typeof row.from_stage_id === 'string' ? row.from_stage_id : null,
-      to_stage: stageId,
+      to_stage: stageId ?? '',
     };
 
     if (stageId === 'funded-invoiced') bucket.fundedInvoicedCount += 1;
@@ -404,6 +404,7 @@ function useStageEntrySplitTrendSeries(
         .select(`
           deal_id,
           changed_at,
+          to_stage,
           to_stage_id,
           from_stage_id,
           deals!inner (
@@ -416,12 +417,15 @@ function useStageEntrySplitTrendSeries(
         `)
         .eq('event_type', 'stage_enter')
         .eq('pipeline_id', pipelineId)
-        .in('to_stage_id', targetStages)
+        .in('to_stage', expandStageLabels(targetStages))
         .gte('changed_at', queryStart)
         .lte('changed_at', `${queryEnd}T23:59:59.999Z`)
         .order('changed_at', { ascending: true });
 
       if (error) throw error;
+      if ((rows?.length ?? 0) === 0) {
+        console.warn('[stage-entry-split-trend] 0 rows', { targetStages, pipelineId, queryStart, queryEnd });
+      }
       return rows ?? [];
     },
     enabled: !!user && !!queryStart && !!queryEnd,
