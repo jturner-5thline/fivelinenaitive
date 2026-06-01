@@ -330,6 +330,16 @@
   direction: ltr !important;
 }
 
+.email-body,
+.email-body *,
+.email-message-shell,
+.email-message-shell * {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
 /* Hard guarantee: every email body container is transparent so the
    deal pop-up's dark surface paints through. Applies to legacy
    `.email-body` consumers AND the canonical `[data-email-root]`
@@ -495,6 +505,12 @@
   width: 100% !important;
   border-collapse: collapse;
   table-layout: fixed !important;
+}
+
+.email-body table,
+.email-html-body table {
+  display: block !important;
+  overflow-x: auto !important;
 }
 
 .email-table-scroll > table {
