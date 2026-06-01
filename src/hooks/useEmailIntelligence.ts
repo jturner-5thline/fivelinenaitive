@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useGmail } from '@/hooks/useGmail';
 import { toast } from 'sonner';
 import { DEMO_EMAIL_ANALYSIS } from '@/lib/demoSeed';
+import { startVisibilityAwareInterval } from '@/lib/visibilityAwareInterval';
 
 const isDemoUserEmail = (email?: string | null) =>
   email === 'demo@5thline.co' || email === 'demo@example.com';
