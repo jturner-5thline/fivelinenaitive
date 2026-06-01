@@ -3220,6 +3220,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                 }
               }}
             />
+            )}
             <LinkedDealPreviewPopover
               anchorRef={linkPreviewAnchorRef}
               open={linkPreviewOpen}
