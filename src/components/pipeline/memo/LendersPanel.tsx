@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { ChevronDown, StickyNote, Check, ListChecks } from 'lucide-react';
 import type { Deal, DealLender, LenderTrackingStatus } from '@/types/deal';
 import { LENDER_TRACKING_STATUS_CONFIG, LENDER_STAGE_CONFIG } from '@/types/deal';
@@ -180,9 +180,10 @@ function LenderRow({
             onPointerDown={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
             className="flex-1 min-w-0 text-left text-xs text-foreground truncate cursor-help decoration-dotted decoration-muted-foreground/50 underline-offset-[3px] hover:underline hover:text-foreground focus-visible:underline focus-visible:outline-none focus-visible:text-foreground transition-colors"
+            style={undefined}
             aria-label={`${lender.name} status note`}
           >
-            {lender.name}
+            <span className="text-[13px] font-medium text-foreground">{lender.name || 'Unnamed lender'}</span>
           </button>
         </HoverCardTrigger>
         <HoverCardContent
@@ -274,7 +275,7 @@ function LenderRow({
           >
             <Badge
               variant={tag.variant}
-              className="text-[9px] px-1.5 py-0 rounded-full cursor-pointer hover:brightness-110"
+              className="text-[10px] px-2 py-0.5 rounded-full cursor-pointer font-semibold hover:brightness-110"
             >
               {tag.label}
             </Badge>
@@ -418,7 +419,7 @@ export function LendersPanel({ deal }: LendersPanelProps) {
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           disabled={lenders.length === 0}
-          className="group flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70 hover:text-white transition-colors disabled:cursor-default disabled:hover:text-muted-foreground"
+          className="group flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 hover:text-white transition-colors disabled:cursor-default disabled:hover:text-foreground/60"
           aria-expanded={expanded}
           title={hasHidden ? (expanded ? 'Collapse lenders' : 'Show all lenders') : undefined}
         >
@@ -610,8 +611,8 @@ export function LendersPanel({ deal }: LendersPanelProps) {
             const hidden = showAll ? [] : items.slice(VISIBLE_PER_BUCKET);
             return (
               <div key={b}>
-                <div className="flex items-center justify-between text-[10px] font-semibold uppercase tracking-wider text-white/70 mb-1">
-                  <span>{meta.label} · {items.length}</span>
+                <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 mb-1.5">
+                  <span>{meta.label || 'Unassigned'} · {items.length}</span>
                   {selectionMode && (
                     <button
                       type="button"
