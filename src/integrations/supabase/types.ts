@@ -25752,6 +25752,20 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      get_stage_transit_monthly: {
+        Args: {
+          p_anchor?: string
+          p_from_variants: string[]
+          p_to_variants: string[]
+          p_window_months?: number
+        }
+        Returns: {
+          avg_months: number
+          bucket_month: string
+          deal_count: number
+          median_months: number
+        }[]
+      }
       get_team_members_for_mention: {
         Args: { _user_id: string }
         Returns: {
@@ -25821,6 +25835,10 @@ export type Database = {
           _target_type: string
         }
         Returns: string
+      }
+      log_inverted_pi_fci_pairs: {
+        Args: { p_from_variants: string[]; p_to_variants: string[] }
+        Returns: number
       }
       mark_email_thread_dirty: {
         Args: {

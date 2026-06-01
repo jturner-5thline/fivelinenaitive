@@ -22,6 +22,7 @@ import {
 } from '@/hooks/usePipelineStageMetrics';
 import { cn } from '@/lib/utils';
 import { consumePendingReopen } from '@/lib/dealOriginContext';
+import { StageTransitTimeChart } from '@/components/metrics/charts/StageTransitTimeChart';
 
 const formatCurrency = (value: number) => {
   if (Math.abs(value) >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
@@ -799,6 +800,8 @@ export function ConsolidatedDebtPipelineDashboard({
             })
           }
         />
+
+        <StageTransitTimeChart />
       </div>
 
       <DrilldownModal
