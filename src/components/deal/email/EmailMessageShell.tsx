@@ -59,7 +59,7 @@ export function EmailMessageShell({ children, className }: Props) {
       ref={rootRef}
       data-email-root=""
       className={cn(
-        'email-message-shell w-full min-w-0 max-w-full overflow-hidden flex-[1_1_0%]',
+        'email-message-shell w-full min-w-0 max-w-full overflow-x-auto overflow-y-visible flex-[1_1_0%]',
         // Transparent canvas — inherit the deal pop-up / modal dark surface
         // behind us so the email body never paints an inset card-on-card
         // block. A subtle border keeps stacked thread messages visually
