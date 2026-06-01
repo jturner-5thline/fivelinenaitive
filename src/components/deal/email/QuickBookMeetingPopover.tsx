@@ -60,9 +60,71 @@ const ROW_PX = 22;
 
 const BROWSER_TZ =
   Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/New_York';
-const STATUS_TIMEOUT_MS = 3000;
+const STATUS_TIMEOUT_MS = 6000;
 const BUSY_TIMEOUT_MS = 8000;
 const STUCK_LOADING_DEV_MS = 10_000;
+
+/**
+ * URGENT FIX (calendar-status false-positive timeout):
+ * - Raise preflight to 6s (cold-start headroom, still < 8s busy hard cap).
+ * - sessionStorage cache of a recent "connected" status — use it immediately
+ *   and revalidate in the background; never block UI on preflight when we
+ *   have a fresh (<5min) success.
+ * - Track consecutive preflight timeouts; on the 3rd attempt skip preflight
+ *   entirely and go straight to free/busy with a warning toast.
+ */
+const STATUS_CACHE_KEY = 'naitive.scheduler.calendarStatus.v1';
+const STATUS_CACHE_TTL_MS = 5 * 60_000;
+const STATUS_TIMEOUT_STREAK_KEY = 'naitive.scheduler.calendarStatus.timeoutStreak';
+const STATUS_TIMEOUT_BYPASS_AT = 2; // bypass on the 3rd attempt
+
+type CachedStatus = {
+  ts: number;
+  connected: boolean;
+  is_expired?: boolean;
+  provider?: string | null;
+  email?: string | null;
+};
+function readStatusCache(): CachedStatus | null {
+  try {
+    const raw = sessionStorage.getItem(STATUS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedStatus;
+    if (!parsed || typeof parsed.ts !== 'number') return null;
+    if (Date.now() - parsed.ts > STATUS_CACHE_TTL_MS) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+function writeStatusCache(s: CachedStatus) {
+  try {
+    sessionStorage.setItem(STATUS_CACHE_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
+function clearStatusCache() {
+  try {
+    sessionStorage.removeItem(STATUS_CACHE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+function getTimeoutStreak(): number {
+  try {
+    return parseInt(sessionStorage.getItem(STATUS_TIMEOUT_STREAK_KEY) || '0', 10) || 0;
+  } catch {
+    return 0;
+  }
+}
+function setTimeoutStreak(n: number) {
+  try {
+    sessionStorage.setItem(STATUS_TIMEOUT_STREAK_KEY, String(n));
+  } catch {
+    /* ignore */
+  }
+}
 
 type CalendarConn =
   | { kind: 'unknown' }
@@ -328,7 +390,13 @@ export function QuickBookMeetingPopover({
 }: Props) {
   /* ----- calendar connection status */
   const [loadNonce, setLoadNonce] = useState(0);
-  const retryScheduler = useCallback(() => setLoadNonce((n) => n + 1), []);
+  const retryScheduler = useCallback(() => {
+    // Clear cached status + reset timeout streak so the next preflight
+    // runs fresh and (if it succeeds) repopulates the cache.
+    clearStatusCache();
+    setTimeoutStreak(0);
+    setLoadNonce((n) => n + 1);
+  }, []);
   const [calendarConn, setCalendarConn] = useState<CalendarConn>({ kind: 'unknown' });
   const [statusLoading, setStatusLoading] = useState(true);
   const [busyLoading, setBusyLoading] = useState(false);
@@ -341,22 +409,51 @@ export function QuickBookMeetingPopover({
 
   useEffect(() => {
     let cancelled = false;
-    setStatusLoading(true);
+    // Optimistic path: if we have a recent cached "connected" status,
+    // render the UI immediately and revalidate in the background.
+    const cached = readStatusCache();
+    if (cached && cached.connected && !cached.is_expired) {
+      setCalendarConn({ kind: 'connected', email: cached.email ?? null });
+      setStatusLoading(false);
+    } else {
+      setStatusLoading(true);
+      setCalendarConn({ kind: 'unknown' });
+    }
     setBusyLoading(false);
     setBusyError(null);
     setBusyDebug(null);
-    setCalendarConn({ kind: 'unknown' });
     lastFetchErrorRef.current = null;
     timeoutHandleRef.current = null;
+
+    // Fallback: if preflight has timed out 2x in a row already, skip the
+    // status check entirely on this attempt and assume connected. The
+    // free/busy call will surface a real auth error if there is one.
+    const streak = getTimeoutStreak();
+    if (streak >= STATUS_TIMEOUT_BYPASS_AT) {
+      // eslint-disable-next-line no-console
+      console.warn('[scheduler] bypassing calendar-status preflight (timeout streak)', { streak });
+      toast.warning('Skipping calendar status check', {
+        description: 'Previous checks timed out. Loading availability directly.',
+      });
+      setCalendarConn({ kind: 'connected', email: null });
+      setStatusLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
 
     (async () => {
       try {
         // eslint-disable-next-line no-console
         console.info('[scheduler] calendar-status request start', { nonce: loadNonce });
+        // eslint-disable-next-line no-console
+        console.time('calendar-status');
         const { data, error } = await Promise.race([
           supabase.functions.invoke('calendar-status', { body: {} }),
           timeoutReject(STATUS_TIMEOUT_MS, 'calendar-status', { nonce: loadNonce }),
         ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
+        // eslint-disable-next-line no-console
+        console.timeEnd('calendar-status');
         if (cancelled) return;
         if (error) throw buildInvokeError('calendar-status', error, data);
         const statusData = (data ?? {}) as Record<string, any>;
@@ -367,26 +464,57 @@ export function QuickBookMeetingPopover({
           isExpired: !!statusData.is_expired,
           provider: statusData.provider ?? null,
         });
+        // Successful response — reset timeout streak.
+        setTimeoutStreak(0);
         const provider = String(statusData.provider || '').toLowerCase() || null;
         if (!statusData.connected) {
+          clearStatusCache();
           if (provider && provider !== 'google') {
             setCalendarConn({ kind: 'alt_provider', provider });
           } else {
             setCalendarConn({ kind: 'missing' });
           }
         } else if (statusData.is_expired) {
+          clearStatusCache();
           setCalendarConn({ kind: 'expired', email: statusData.email ?? null });
         } else {
+          writeStatusCache({
+            ts: Date.now(),
+            connected: true,
+            is_expired: false,
+            provider,
+            email: statusData.email ?? null,
+          });
           setCalendarConn({ kind: 'connected', email: statusData.email ?? null });
         }
       } catch (e: any) {
         if (cancelled) return;
         const message = e?.message || 'Calendar status check failed.';
+        const isTimeout = /timed out/i.test(message);
         // eslint-disable-next-line no-console
         console.error('[scheduler] calendar-status error', { nonce: loadNonce, message });
+
+        // Graceful degradation: if the preflight timed out but we ALREADY
+        // believe the calendar is connected (either from cache or because
+        // we optimistically rendered as connected earlier in this effect),
+        // don't flip the UI into an error state. Track the timeout streak
+        // so the next attempt can bypass preflight entirely.
+        if (isTimeout) {
+          setTimeoutStreak(getTimeoutStreak() + 1);
+          const cachedNow = readStatusCache();
+          if (cachedNow && cachedNow.connected && !cachedNow.is_expired) {
+            // eslint-disable-next-line no-console
+            console.warn('[scheduler] preflight timed out — using cached connected status');
+            setCalendarConn({ kind: 'connected', email: cachedNow.email ?? null });
+            return;
+          }
+        }
+
         setCalendarConn({
           kind: 'error',
-          message: "Couldn't load your calendar availability.",
+          message: isTimeout
+            ? 'Taking longer than expected to verify your calendar.'
+            : "Couldn't load your calendar availability.",
           debug: message,
         });
       } finally {
