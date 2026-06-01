@@ -239,6 +239,21 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // full meeting scheduler workspace (calendar read → slot pick → invite).
   // This UPGRADES the existing chip without adding a new button anywhere.
   const [schedulerOpen, setSchedulerOpen] = useState(false);
+  // Bug B: track the current signed-in user's email so the "fromMe"
+  // heuristics across this panel use the active operator instead of a
+  // hardcoded jturner@5thline.co.
+  const currentUserEmailRef = useRef<string>('');
+  const [currentUserEmail, setCurrentUserEmail] = useState<string>('');
+  useEffect(() => {
+    let cancelled = false;
+    supabase.auth.getUser().then(({ data }) => {
+      if (cancelled) return;
+      const e = (data?.user?.email || '').toLowerCase();
+      currentUserEmailRef.current = e;
+      setCurrentUserEmail(e);
+    });
+    return () => { cancelled = true; };
+  }, []);
   // Schedule-intent prompt card state. Driven by the COMPOSE_BODY_EVENT
   // fired (debounced 500ms) from InlineReplyComposer / PopOutComposer.
   // Dismissals are per-thread + per-compose-session: once the user X's
