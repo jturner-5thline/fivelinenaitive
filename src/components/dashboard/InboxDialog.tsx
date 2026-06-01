@@ -463,7 +463,12 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // are preserved because we merge in-place rather than reset state.
   const lastSilentRefreshRef = useRef(0);
   const SILENT_REFRESH_MIN_GAP_MS = 10_000;
-  const SILENT_REFRESH_INTERVAL_MS = 60_000;
+  // Visible-tab cadence: 30s so newly-arrived mail surfaces quickly without
+  // hammering the Gmail quota. When the tab is hidden we back off to 120s
+  // (we still resume immediately on visibilitychange → visible below) so
+  // background tabs aren't burning quota the user can't see.
+  const SILENT_REFRESH_INTERVAL_VISIBLE_MS = 30_000;
+  const SILENT_REFRESH_INTERVAL_HIDDEN_MS = 120_000;
   // Tracks the in-flight refresh so we can render a top loading bar
   // without blanking the cached list. Separate from `isInitialLoading`
   // (cold-open spinner) so warm opens stay instant.
