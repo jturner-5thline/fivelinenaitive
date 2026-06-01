@@ -561,7 +561,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
           </p>
           
           {/* Row 3: Preview text + deal pill */}
-          <div className="flex items-center gap-1.5 mt-0.5">
+          <div className="mt-0.5 flex items-start gap-1.5 min-w-0 max-w-full">
             {priorityFlag && (() => {
               const sev = getSignalSeverity(priorityFlag.type);
               return (
@@ -642,7 +642,7 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
                 )}
               </div>
             )}
-            <p className="text-[11px] text-[hsl(var(--email-text-muted))] truncate flex-1 min-w-0">
+            <p className="min-w-0 max-w-full flex-1 whitespace-normal break-all text-[11px] leading-snug text-[hsl(var(--email-text-muted))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
               {previewSnippet}
             </p>
           </div>
@@ -1599,15 +1599,15 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <span className={cn(
-            'text-[13px] truncate',
+            'min-w-0 max-w-full break-all',
             isLatest
               ? 'font-semibold text-[hsl(var(--email-text-primary))]'
               : 'font-medium text-[hsl(var(--email-text-secondary))]'
-          )}>
+          )} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
             {displayName}
           </span>
           {!expanded && (
-            <span className="text-xs text-[hsl(var(--email-text-muted))] truncate">{email.snippet}</span>
+            <span className="min-w-0 max-w-full break-all text-xs text-[hsl(var(--email-text-muted))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{email.snippet}</span>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
