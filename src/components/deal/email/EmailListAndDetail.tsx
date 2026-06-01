@@ -1620,7 +1620,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       </button>
 
       {expanded && (
-        <div className="w-full min-w-0 max-w-full overflow-x-hidden px-4 pb-5 pl-[56px] sm:px-6 sm:pl-[64px]">
+        <div className="w-full min-w-0 max-w-full overflow-visible px-4 pb-5 pl-[56px] sm:px-6 sm:pl-[64px]">
           <EmailHeaderDetails email={email} fullData={fullData as any} />
 
           {fullLoading && !hasRenderableBody && (
@@ -1782,7 +1782,7 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
                   <span>Show quoted text</span>
                 </button>
               ) : (
-                <div className="min-w-0 max-w-full overflow-x-hidden">
+                <div className="min-w-0 max-w-full overflow-x-auto">
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowQuoted(false); }}
                     className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 mb-2"
@@ -3399,9 +3399,10 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
               repaint the body. */}
           <ScrollArea
             className="flex-1 min-h-0 min-w-0 overflow-hidden"
+            viewportClassName="min-w-0 max-w-full overflow-x-auto"
             style={{ overscrollBehavior: 'contain', contain: 'layout paint style' }}
           >
-            <div className="w-full min-w-0 max-w-full overflow-hidden overflow-x-hidden py-2 space-y-0 pb-24">
+            <div className="w-full min-w-0 max-w-full overflow-visible py-2 space-y-0 pb-24">
               <div className="px-5 mb-3">
                 <AiSummaryStrip email={thread.latestEmail} />
               </div>
