@@ -868,7 +868,7 @@ function EmailDetailStatusState({
     <div className="flex h-full min-h-[240px] w-full min-w-0 items-center justify-center p-6">
       <div className="w-full min-w-0 max-w-2xl rounded-lg border border-[hsl(var(--email-border))] bg-card/40 px-5 py-4 text-center">
         <p className="text-sm font-semibold text-[hsl(var(--email-text-primary))]">{title}</p>
-        <p className="mt-1 min-w-0 whitespace-pre-wrap break-all text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{description}</p>
+        <p className="mt-1 min-w-0 whitespace-pre-wrap break-words text-xs leading-relaxed text-[hsl(var(--email-text-secondary))]" style={{ overflowWrap: 'break-word', wordBreak: 'normal' }}>{description}</p>
         {actionLabel && onAction && (
           <button
             type="button"
