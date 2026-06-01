@@ -1166,6 +1166,34 @@ export function MeetingSchedulerCard({
     }
   }, [confirmedIdx, proposedSlots, finalAttendees, dealName, threadSubject, timezone, onInsert, onClose]);
 
+  // No authenticated user → show a clear CTA instead of a blank body.
+  // Without a session the free/busy edge function returns 401 and the
+  // whole subtree silently degrades — surface the actual cause.
+  if (!user) {
+    return (
+      <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/90">
+            <CalendarClock className="h-3.5 w-3.5 text-primary" />
+            Schedule a meeting
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close scheduler"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>Sign in to your calendar to use the scheduler.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-3">
       <div className="flex items-center justify-between">
@@ -1185,7 +1213,10 @@ export function MeetingSchedulerCard({
 
       {/* Canonical NaitiveCalendar embedded in compact mode, with the
           auto-proposed slots highlighted so the user can see them in
-          context against their real Google Calendar week. */}
+          context against their real Google Calendar week. Wrapped in an
+          error boundary so a calendar-events failure surfaces as a
+          visible, retryable block instead of an empty gray rectangle. */}
+      <SchedulerErrorBoundary label="Calendar preview" onRetry={retryFreeBusy}>
       <NaitiveCalendar
         view="week"
         compact
@@ -1207,6 +1238,7 @@ export function MeetingSchedulerCard({
           console.log('[NaitiveCalendar] onSlotClick', slot);
         }}
       />
+      </SchedulerErrorBoundary>
 
       {/* Availability Check — parses proposed times from the open thread,
           cross-references the user's connected calendar, and surfaces
