@@ -642,7 +642,17 @@ function ThreadListItemImpl({ thread, isSelected, onSelect, onToggleLink, onTogg
                 )}
               </div>
             )}
-            <p className="min-w-0 max-w-full flex-1 whitespace-normal break-all text-[11px] leading-snug text-[hsl(var(--email-text-muted))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+            <p
+              className="min-w-0 max-w-full flex-1 text-[11px] leading-snug text-[hsl(var(--email-text-muted))] break-words"
+              style={{
+                overflowWrap: 'break-word',
+                wordBreak: 'normal',
+                display: '-webkit-box',
+                WebkitBoxOrient: 'vertical',
+                WebkitLineClamp: 2,
+                overflow: 'hidden',
+              }}
+            >
               {previewSnippet}
             </p>
           </div>
