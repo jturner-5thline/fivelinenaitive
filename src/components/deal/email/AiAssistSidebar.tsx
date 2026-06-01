@@ -1258,7 +1258,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               same component. */}
           {(() => {
             const latest = thread.latestEmail;
-            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            const fromMe = !!currentUserEmail && (latest?.from_email || '').toLowerCase() === currentUserEmail;
             if (fromMe) return null;
             if (schedulerOpen) return null;
             if (isCalendarOrAutomatedNoise(thread)) return null;
@@ -1285,7 +1285,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
               inboundProposedTimes() gating inside detectOpenAvailability. */}
           {(() => {
             const latest = thread.latestEmail;
-            const fromMe = (latest?.from_email || '').toLowerCase() === 'jturner@5thline.co';
+            const fromMe = !!currentUserEmail && (latest?.from_email || '').toLowerCase() === currentUserEmail;
             if (fromMe) return null;
             if (schedulerOpen) return null;
             if (isCalendarOrAutomatedNoise(thread)) return null;
