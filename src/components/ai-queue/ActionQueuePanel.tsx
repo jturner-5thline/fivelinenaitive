@@ -355,9 +355,9 @@ export function ActionQueuePanel({ items, onClose }: PanelProps) {
                               </div>
                             ) : (
                               <>
-                                <p className="text-xs font-medium text-foreground truncate">{item.title}</p>
+                                <p className="text-xs font-medium text-foreground line-clamp-2 break-words" title={item.title}>{item.title}</p>
                                 {item.description && (
-                                  <p className="text-[11px] text-muted-foreground line-clamp-2">{item.description}</p>
+                                  <p className="text-[11px] text-muted-foreground line-clamp-3 break-words" title={item.description}>{item.description}</p>
                                 )}
                               </>
                             )}
