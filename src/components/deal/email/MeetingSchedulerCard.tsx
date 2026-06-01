@@ -507,6 +507,27 @@ export function MeetingSchedulerCard({
   // Powers the "X of Y working-hour slots are taken" headline.
   const [totalCandidates, setTotalCandidates] = useState(0);
   const [showWhyPanel, setShowWhyPanel] = useState(false);
+  // ── Bug C: internal teammate availability overlay ─────────────────────
+  // When the user has selected internal teammates whose calendars are
+  // connected to the workspace, we intersect THEIR busy intervals with
+  // the user's own so the proposed slot set is only times that work for
+  // everyone. Limited-visibility teammates surface a banner so the user
+  // knows we couldn't see their calendar.
+  const [limitedTeammateEmails, setLimitedTeammateEmails] = useState<string[]>([]);
+
+  // Stable, lowercased list of selected internal teammate emails (Bug C).
+  const teammateBusyEmails = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          (partiesMode === 'me_plus' ? extraMembers : [])
+            .map((m) => String(m.email || '').trim().toLowerCase())
+            .filter(Boolean),
+        ),
+      ).sort(),
+    [partiesMode, extraMembers],
+  );
+  const teammateBusyKey = teammateBusyEmails.join(',');
 
   // ── Load free/busy from connected Google Calendar (via Nylas) ───────────
   useEffect(() => {
@@ -545,8 +566,61 @@ export function MeetingSchedulerCard({
           all_day: false,
           title: 'Naitive soft-hold',
         }));
-        const free = filterFreeSlots(candidates, [...events, ...holdBusy]);
+        // ── Bug C: pull teammate busy & intersect ──────────────────────
+        let teammateBusy: BusyEvent[] = [];
+        const newlyLimited: string[] = [];
+        if (teammateBusyEmails.length > 0) {
+          try {
+            const { data: fb } = await supabase.functions.invoke('calendar-freebusy', {
+              body: {
+                time_min: now.toISOString(),
+                time_max: horizon.toISOString(),
+                emails: teammateBusyEmails,
+              },
+            });
+            for (const r of ((fb?.results ?? []) as any[])) {
+              if (r?.visibility === 'limited') {
+                newlyLimited.push(String(r.email || '').toLowerCase());
+                continue;
+              }
+              for (const b of (r?.busy ?? [])) {
+                teammateBusy.push({
+                  start: b.start,
+                  end: b.end,
+                  all_day: false,
+                  title: `Teammate (${r.email}) busy`,
+                });
+              }
+            }
+          } catch (e) {
+            // Soft-fail: don't block proposing on freeBusy outage; surface
+            // a banner so the user knows teammate availability is missing.
+            console.warn('[MeetingScheduler] teammate freeBusy failed', e);
+            newlyLimited.push(...teammateBusyEmails);
+          }
+        }
+        if (!cancelled) setLimitedTeammateEmails(newlyLimited);
+        const free = filterFreeSlots(candidates, [...events, ...holdBusy, ...teammateBusy]);
         const picked = pickThreeSpread(free);
+        // ── Bug A: dev regression guard. If any proposed slot intersects
+        // a known busy interval for the active user, console.error a
+        // snapshot so this regression can't slip back in silently.
+        if (import.meta.env.DEV) {
+          for (const slot of picked) {
+            const s = slot.start.getTime();
+            const e = slot.end.getTime();
+            const conflicting = events.find(
+              (b) => b.start && b.end && s < new Date(b.end).getTime() && e > new Date(b.start).getTime(),
+            );
+            if (conflicting) {
+              // eslint-disable-next-line no-console
+              console.error('[MeetingScheduler] proposed slot collides with busy event', {
+                slot: { start: slot.start.toISOString(), end: slot.end.toISOString() },
+                conflictingEvent: conflicting,
+              });
+            }
+          }
+        }
         // Capture conflict metadata for the explanation panel BEFORE we
         // narrow down to the picked top-3 — we want to explain blockers
         // across the entire working-hour window, not just the offered
@@ -573,7 +647,7 @@ export function MeetingSchedulerCard({
     // Re-run whenever the user changes timezone or duration — both shift
     // the wall-clock anchors / slot length, so the proposed list must
     // rebuild to match what the recipient will actually see.
-  }, [timezone, durationMinutes, activeHoldsQ.data]);
+  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
