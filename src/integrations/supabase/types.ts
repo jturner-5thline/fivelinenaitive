@@ -7380,7 +7380,8 @@ export type Database = {
           entity_type: string
           id: string
           metadata: Json | null
-          user_id: string
+          source: string | null
+          user_id: string | null
         }
         Insert: {
           action_type: string
@@ -7391,7 +7392,8 @@ export type Database = {
           entity_type: string
           id?: string
           metadata?: Json | null
-          user_id: string
+          source?: string | null
+          user_id?: string | null
         }
         Update: {
           action_type?: string
@@ -7402,7 +7404,8 @@ export type Database = {
           entity_type?: string
           id?: string
           metadata?: Json | null
-          user_id?: string
+          source?: string | null
+          user_id?: string | null
         }
         Relationships: [
           {
