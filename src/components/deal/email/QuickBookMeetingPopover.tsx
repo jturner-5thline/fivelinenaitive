@@ -359,24 +359,25 @@ export function QuickBookMeetingPopover({
         ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
         if (cancelled) return;
         if (error) throw buildInvokeError('calendar-status', error, data);
+        const statusData = (data ?? {}) as Record<string, any>;
         // eslint-disable-next-line no-console
         console.info('[scheduler] calendar-status response', {
           nonce: loadNonce,
-          connected: !!data?.connected,
-          isExpired: !!data?.is_expired,
-          provider: (data as any)?.provider ?? null,
+          connected: !!statusData.connected,
+          isExpired: !!statusData.is_expired,
+          provider: statusData.provider ?? null,
         });
-        const provider = String((data as any)?.provider || '').toLowerCase() || null;
-        if (!data?.connected) {
+        const provider = String(statusData.provider || '').toLowerCase() || null;
+        if (!statusData.connected) {
           if (provider && provider !== 'google') {
             setCalendarConn({ kind: 'alt_provider', provider });
           } else {
             setCalendarConn({ kind: 'missing' });
           }
-        } else if ((data as any)?.is_expired) {
-          setCalendarConn({ kind: 'expired', email: (data as any)?.email ?? null });
+        } else if (statusData.is_expired) {
+          setCalendarConn({ kind: 'expired', email: statusData.email ?? null });
         } else {
-          setCalendarConn({ kind: 'connected', email: (data as any)?.email ?? null });
+          setCalendarConn({ kind: 'connected', email: statusData.email ?? null });
         }
       } catch (e: any) {
         if (cancelled) return;
@@ -489,7 +490,8 @@ export function QuickBookMeetingPopover({
         ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
         if (busyReqRef.current !== reqId) return;
         if (error) throw buildInvokeError('calendar-events', error, data);
-        const evs = Array.isArray(data?.events) ? data.events : [];
+        const eventsData = (data ?? {}) as Record<string, any>;
+        const evs = Array.isArray(eventsData.events) ? eventsData.events : [];
         // eslint-disable-next-line no-console
         console.info('[scheduler] freebusy response', {
           nonce: loadNonce,
