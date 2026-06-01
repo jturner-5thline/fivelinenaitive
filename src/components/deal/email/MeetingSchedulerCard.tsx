@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -367,6 +367,63 @@ function pickThreeSpread(free: Slot[]): Slot[] {
   return out.slice(0, 3);
 }
 
+/**
+ * SchedulerErrorBoundary — surfaces any thrown render error inside the
+ * scheduler subtree as a visible, retryable inline block instead of
+ * blanking the body (the root cause of the "empty gray rectangles"
+ * regression). Also logs to console with stack + props snapshot.
+ */
+class SchedulerErrorBoundary extends Component<
+  { children: ReactNode; label?: string; onRetry?: () => void },
+  { error: Error | null }
+> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
+  componentDidCatch(error: Error, info: { componentStack: string }) {
+    // eslint-disable-next-line no-console
+    console.error('[MeetingScheduler] subtree crashed', {
+      label: this.props.label,
+      message: error.message,
+      stack: error.stack,
+      componentStack: info.componentStack,
+    });
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="flex flex-col items-start gap-2 rounded-md border border-rose-400/30 bg-rose-400/10 p-2 text-[11px] text-rose-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <div className="space-y-0.5">
+              <div className="font-semibold">
+                {this.props.label || 'Scheduler'} couldn't render.
+              </div>
+              <div className="opacity-80 break-all">
+                {this.state.error.message || 'Unknown error.'}
+              </div>
+            </div>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 text-[11px] gap-1"
+            onClick={() => {
+              this.setState({ error: null });
+              this.props.onRetry?.();
+            }}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function MeetingSchedulerCard({
   recipientEmail,
   recipientName,
@@ -382,6 +439,12 @@ export function MeetingSchedulerCard({
   const { user } = useAuth();
   const teamMembers = useTeamMembers();
   const { render: renderTitle } = useRenderMeetingTitle(dealId ?? null);
+
+  // Bumped on Retry to force the free/busy effect to re-run.
+  const [loadNonce, setLoadNonce] = useState(0);
+  const retryFreeBusy = useCallback(() => setLoadNonce((n) => n + 1), []);
+  // Mount timestamp used by the dev-runtime "blank render" assertion below.
+  const mountedAtRef = useRef<number>(Date.now());
 
   // ── Timezone preference ───────────────────────────────────────────────
   // Persisted in localStorage so the user's choice sticks across sessions
@@ -650,7 +713,31 @@ export function MeetingSchedulerCard({
     // Re-run whenever the user changes timezone or duration — both shift
     // the wall-clock anchors / slot length, so the proposed list must
     // rebuild to match what the recipient will actually see.
-  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey]);
+  }, [timezone, durationMinutes, activeHoldsQ.data, teammateBusyKey, loadNonce]);
+
+  // ── Dev runtime assertion: if the scheduler never paints a loading,
+  // error, or populated state within 1500ms, log a snapshot. Catches
+  // the "blank gray rectangles" regression early in dev.
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const handle = setTimeout(() => {
+      const elapsed = Date.now() - mountedAtRef.current;
+      const blank = !loadingBusy && !errorMsg && proposedSlots.length === 0;
+      if (blank) {
+        // eslint-disable-next-line no-console
+        console.error('[MeetingScheduler] blank-render assertion tripped', {
+          elapsedMs: elapsed,
+          loadingBusy,
+          errorMsg,
+          proposedSlotsCount: proposedSlots.length,
+          hasUser: !!user,
+          timezone,
+          durationMinutes,
+        });
+      }
+    }, 1500);
+    return () => clearTimeout(handle);
+  }, [loadingBusy, errorMsg, proposedSlots.length, user, timezone, durationMinutes]);
 
   const handleTimezoneChange = useCallback((next: string) => {
     setTimezone(next);
@@ -1079,6 +1166,34 @@ export function MeetingSchedulerCard({
     }
   }, [confirmedIdx, proposedSlots, finalAttendees, dealName, threadSubject, timezone, onInsert, onClose]);
 
+  // No authenticated user → show a clear CTA instead of a blank body.
+  // Without a session the free/busy edge function returns 401 and the
+  // whole subtree silently degrades — surface the actual cause.
+  if (!user) {
+    return (
+      <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[12px] font-medium text-foreground/90">
+            <CalendarClock className="h-3.5 w-3.5 text-primary" />
+            Schedule a meeting
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close scheduler"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>Sign in to your calendar to use the scheduler.</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="rounded-lg border border-white/10 bg-card/60 p-3 space-y-3">
       <div className="flex items-center justify-between">
@@ -1098,7 +1213,10 @@ export function MeetingSchedulerCard({
 
       {/* Canonical NaitiveCalendar embedded in compact mode, with the
           auto-proposed slots highlighted so the user can see them in
-          context against their real Google Calendar week. */}
+          context against their real Google Calendar week. Wrapped in an
+          error boundary so a calendar-events failure surfaces as a
+          visible, retryable block instead of an empty gray rectangle. */}
+      <SchedulerErrorBoundary label="Calendar preview" onRetry={retryFreeBusy}>
       <NaitiveCalendar
         view="week"
         compact
@@ -1120,6 +1238,7 @@ export function MeetingSchedulerCard({
           console.log('[NaitiveCalendar] onSlotClick', slot);
         }}
       />
+      </SchedulerErrorBoundary>
 
       {/* Availability Check — parses proposed times from the open thread,
           cross-references the user's connected calendar, and surfaces
@@ -1201,9 +1320,20 @@ export function MeetingSchedulerCard({
           </div>
         </div>
       ) : errorMsg ? (
-        <div className="flex items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
-          <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>{errorMsg}</span>
+        <div className="flex flex-col items-start gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-200">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-6 text-[11px] gap-1"
+            onClick={retryFreeBusy}
+          >
+            <RefreshCw className="h-3 w-3" /> Retry
+          </Button>
         </div>
       ) : proposedSlots.length === 0 ? (
         <div className="text-[11px] text-muted-foreground">
