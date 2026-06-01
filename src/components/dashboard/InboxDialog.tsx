@@ -141,7 +141,14 @@ async function fetchPage(args: {
   pageToken?: string | null;
   maxResults?: number;
   forceRefresh?: boolean;
-}): Promise<{ messages: any[]; nextPageToken: string | null; rateLimited: boolean }> {
+}): Promise<{
+  messages: any[];
+  nextPageToken: string | null;
+  rateLimited: boolean;
+  reauthRequired?: boolean;
+  errorCode?: string;
+  errorMessage?: string;
+}> {
   const { labelIds, pageToken, maxResults = PAGE_SIZE, forceRefresh = false } = args;
   try {
     const { data, error } = await supabase.functions.invoke('gmail-messages', {
@@ -162,18 +169,43 @@ async function fetchPage(args: {
       },
     });
     if (error) {
-      return { messages: [], nextPageToken: null, rateLimited: false };
+      // Defensive: supabase.functions.invoke throws/returns an `error`
+      // on non-2xx. The edge function now soft-returns 200 for 4xx/5xx,
+      // so this branch should only fire on transport failures. Treat as
+      // a soft error — never let it bubble to the error boundary.
+      console.warn('[InboxDialog] gmail-messages transport error', error);
+      return {
+        messages: [],
+        nextPageToken: null,
+        rateLimited: false,
+        errorCode: 'transport_error',
+        errorMessage: (error as any)?.message || 'Network error',
+      };
     }
     if (data?.fallback) {
-      return { messages: [], nextPageToken: null, rateLimited: true };
+      return {
+        messages: [],
+        nextPageToken: null,
+        rateLimited: data?.error_code !== 'reauth_required',
+        reauthRequired: data?.action === 'reauth_required' || data?.error_code === 'reauth_required',
+        errorCode: data?.error_code,
+        errorMessage: data?.error,
+      };
     }
     return {
       messages: data?.messages || [],
       nextPageToken: data?.next_page_token || null,
       rateLimited: false,
     };
-  } catch {
-    return { messages: [], nextPageToken: null, rateLimited: false };
+  } catch (e: any) {
+    console.warn('[InboxDialog] gmail-messages threw', e);
+    return {
+      messages: [],
+      nextPageToken: null,
+      rateLimited: false,
+      errorCode: 'threw',
+      errorMessage: e?.message || 'Unknown error',
+    };
   }
 }
 
