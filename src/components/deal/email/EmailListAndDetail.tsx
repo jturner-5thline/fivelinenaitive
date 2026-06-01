@@ -3328,13 +3328,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
             })()}
 
             {/* Sender info block */}
-            <div className="flex items-center gap-2 min-w-0">
+            <div className="flex items-start gap-2 min-w-0">
               <EmailAvatar name={senderName} email={senderEmail} size="sm" />
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-1.5 min-w-0 text-xs leading-tight">
-                  <span className="text-[13px] font-semibold text-[hsl(var(--email-text-primary))] truncate">{senderName}</span>
+                <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 min-w-0 text-xs leading-tight">
+                  <span className="min-w-0 break-words text-[13px] font-semibold text-[hsl(var(--email-text-primary))]">{senderName}</span>
                   <span
-                    className="text-[hsl(var(--email-text-muted))] truncate min-w-0"
+                    className="min-w-0 break-all text-[hsl(var(--email-text-muted))]"
                     title={senderEmail}
                   >
                     &lt;{senderEmail}&gt;
@@ -3346,7 +3346,7 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
                   {linkedDealName && (
                     <>
                       <span className="text-[hsl(var(--email-text-muted))]/60 shrink-0">·</span>
-                      <span className="text-[hsl(var(--outlook-blue))] truncate">Linked: {linkedDealName}</span>
+                      <span className="min-w-0 break-words text-[hsl(var(--outlook-blue))]">Linked: {linkedDealName}</span>
                     </>
                   )}
                 </div>
