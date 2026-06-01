@@ -285,10 +285,14 @@ function zonedDateToUtc(
   return new Date(utcGuess.getTime() - offsetMs);
 }
 
-/** Filter out slots that overlap any busy event. */
+/** Filter out slots that overlap any busy event. ALL-DAY events DO block —
+ *  previously they were skipped, which allowed the scheduler to propose
+ *  slots while the user had an OOO / full-day conference on their
+ *  calendar (Bug A). All-day Google events are time-zone agnostic and
+ *  should consume the entire working day they cover. */
 function filterFreeSlots(candidates: Slot[], busy: BusyEvent[]): Slot[] {
   const busyRanges = busy
-    .filter((b) => !b.all_day && b.start && b.end)
+    .filter((b) => b.start && b.end)
     .map((b) => ({ s: new Date(b.start).getTime(), e: new Date(b.end).getTime() }));
   return candidates.filter((slot) => {
     const s = slot.start.getTime();
