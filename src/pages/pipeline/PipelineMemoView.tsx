@@ -527,8 +527,18 @@ export function PipelineMemoView({ deals, emptyMessage = 'No deals to summarize.
             value={taskFilter}
             onChange={setTaskFilter}
             options={[
-              { value: 'late', label: 'Late tasks', count: tasksOptionCounts.late },
-              { value: 'none', label: 'No tasks', count: tasksOptionCounts.none },
+              {
+                value: 'late',
+                label: 'Late tasks',
+                count: tasksOptionCounts.late,
+                description: 'Deals with at least one open overdue task',
+              },
+              {
+                value: 'none',
+                label: 'No tasks',
+                count: tasksOptionCounts.none,
+                description: 'Deals with no open tasks (all completed or none assigned)',
+              },
             ]}
           />
           {hasAnyFilter && (
