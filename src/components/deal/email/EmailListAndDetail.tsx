@@ -1364,23 +1364,23 @@ function ThreadParticipantsHeader({ threadId, threadEmails, latest }: ThreadPart
   };
 
   return (
-    <div className="mt-0.5 flex items-center gap-x-2 gap-y-0.5 flex-wrap text-xs text-[hsl(var(--email-text-muted))] min-w-0">
+      <div className="mt-0.5 flex items-start gap-x-2 gap-y-0.5 flex-wrap text-xs text-[hsl(var(--email-text-muted))] min-w-0 max-w-full">
       {toDisplay.length > 0 && (
-        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+        <span className="inline-flex min-w-0 max-w-full flex-wrap items-start gap-1">
           <span className="shrink-0">To:</span>
-          <span className="truncate">{renderList(toDisplay)}</span>
+          <span className="min-w-0 break-all">{renderList(toDisplay)}</span>
         </span>
       )}
       {latestCc.length > 0 && (
-        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+        <span className="inline-flex min-w-0 max-w-full flex-wrap items-start gap-1">
           <span className="shrink-0">Cc:</span>
-          <span className="truncate">{renderList(latestCc)}</span>
+          <span className="min-w-0 break-all">{renderList(latestCc)}</span>
         </span>
       )}
       {latestBcc.length > 0 && latest.folder === 'sent' && (
-        <span className="inline-flex items-center gap-1 min-w-0 max-w-full truncate">
+        <span className="inline-flex min-w-0 max-w-full flex-wrap items-start gap-1">
           <span className="shrink-0">Bcc:</span>
-          <span className="truncate">{renderList(latestBcc)}</span>
+          <span className="min-w-0 break-all">{renderList(latestBcc)}</span>
         </span>
       )}
       {participants.length > 1 && (
