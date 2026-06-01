@@ -1604,10 +1604,10 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
     )}>
       <button
         onClick={toggleExpand}
-        className="w-full min-w-0 max-w-full flex items-center gap-3 px-5 py-2.5 text-left"
+        className="w-full min-w-0 max-w-full flex items-start gap-3 px-5 py-2.5 text-left"
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
-        <div className="flex-1 min-w-0 flex items-center gap-2">
+        <div className="flex-1 min-w-0 flex flex-col gap-0.5 min-h-[28px] justify-center">
           <span
             className={cn(
               'min-w-[64px] shrink-0 truncate',
@@ -1622,8 +1622,16 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
           </span>
           {!expanded && (
             <span
-              className="min-w-0 flex-1 truncate text-xs text-[hsl(var(--email-text-muted))]"
-              style={{ overflowWrap: 'normal', wordBreak: 'normal', whiteSpace: 'nowrap' }}
+              className="min-w-0 w-full text-xs text-[hsl(var(--email-text-muted))] break-words"
+              style={{
+                overflowWrap: 'break-word',
+                wordBreak: 'normal',
+                whiteSpace: 'normal',
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+              }}
               title={email.snippet}
             >
               {email.snippet}
