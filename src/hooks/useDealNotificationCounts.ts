@@ -108,12 +108,12 @@ export function useDealNotificationCounts(dealIds: string[]) {
     };
   }, [fetchCounts, dealIdsKey]);
 
-  // Fallback polling every 60s (reduced from 10s to avoid excessive requests)
+  // Fallback polling every 60s (reduced from 10s to avoid excessive requests).
+  // Visibility-gated: pauses when the tab is hidden and re-fires on focus
+  // so a backgrounded tab doesn't pile up Supabase queries across hours.
   useEffect(() => {
     if (dealIds.length === 0) return;
-
-    const interval = setInterval(fetchCounts, 60000);
-    return () => clearInterval(interval);
+    return startVisibilityAwareInterval(fetchCounts, 60_000);
   }, [fetchCounts, dealIdsKey]);
 
   return flexCounts;
