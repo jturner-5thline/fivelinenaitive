@@ -340,6 +340,27 @@ export function QuickBookMeetingPopover({
   const timeoutHandleRef = useRef<string | null>(null);
 
   useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    if (!busyLoading) return;
+    const startedAt = lastFetchStartedAtRef.current ?? Date.now();
+    const handle = setTimeout(() => {
+      // eslint-disable-next-line no-console
+      console.error('[scheduler] stuck-loading assertion tripped', {
+        nonce: loadNonce,
+        hasUser: !!meEmail,
+        tz: timezone,
+        duration: Date.now() - startedAt,
+        calendarStatus: calendarConn.kind,
+        lastFetchStartedAt: lastFetchStartedAtRef.current,
+        lastFetchError: lastFetchErrorRef.current,
+        timeoutHandle: timeoutHandleRef.current,
+      });
+      toast.error('Scheduler stuck >10s — check console');
+    }, STUCK_LOADING_DEV_MS);
+    return () => clearTimeout(handle);
+  }, [busyLoading, loadNonce, meEmail, timezone, calendarConn.kind]);
+
+  useEffect(() => {
     let cancelled = false;
     setStatusLoading(true);
     setBusyLoading(false);
