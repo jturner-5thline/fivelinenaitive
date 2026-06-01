@@ -1608,16 +1608,26 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
       >
         <EmailAvatar name={email.from_name === 'You' ? 'J' : email.from_name} email={email.from_email} size="md" />
         <div className="flex-1 min-w-0 flex items-center gap-2">
-          <span className={cn(
-            'min-w-0 max-w-full break-all',
-            isLatest
-              ? 'font-semibold text-[hsl(var(--email-text-primary))]'
-              : 'font-medium text-[hsl(var(--email-text-secondary))]'
-          )} style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>
+          <span
+            className={cn(
+              'min-w-[64px] shrink-0 truncate',
+              isLatest
+                ? 'font-semibold text-[hsl(var(--email-text-primary))]'
+                : 'font-medium text-[hsl(var(--email-text-secondary))]'
+            )}
+            style={{ overflowWrap: 'normal', wordBreak: 'normal', whiteSpace: 'nowrap' }}
+            title={displayName}
+          >
             {displayName}
           </span>
           {!expanded && (
-            <span className="min-w-0 max-w-full break-all text-xs text-[hsl(var(--email-text-muted))]" style={{ overflowWrap: 'anywhere', wordBreak: 'break-word' }}>{email.snippet}</span>
+            <span
+              className="min-w-0 flex-1 truncate text-xs text-[hsl(var(--email-text-muted))]"
+              style={{ overflowWrap: 'normal', wordBreak: 'normal', whiteSpace: 'nowrap' }}
+              title={email.snippet}
+            >
+              {email.snippet}
+            </span>
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
