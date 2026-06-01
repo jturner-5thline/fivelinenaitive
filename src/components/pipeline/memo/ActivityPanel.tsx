@@ -85,7 +85,7 @@ export function ActivityPanel({ deal, rawDigest, isLoading, emails = [] }: Activ
 
   return (
     <div className="px-5 pt-2 pb-4 min-w-0 self-start">
-      <div className="text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground/80 mb-2">
+      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-foreground/90 mb-2">
         Activity · Last 24h
       </div>
 
