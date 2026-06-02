@@ -570,7 +570,7 @@ export function AgendaEditor() {
   }, [editor, user?.id, company?.id, periodType, periodKey, persist, copying]);
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 32px' }}>
+    <div className="agenda-editor-shell">
       <style>{`
         /* Vertical offset of the rail's sticky top. The Insights tab strip is
            ~96px tall on desktop; this var lets the page override if needed. */
@@ -611,11 +611,8 @@ export function AgendaEditor() {
         }
         .agenda-prose .agenda-comment:hover { background: rgba(255, 213, 0, 0.32); }
       `}</style>
-    </div>
-  );
-}
-
-// (placeholder — replaced by the JSX returned below)
+      <div className="agenda-editor-col">
+      <Toolbar editor={editor} />
       <div style={{
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
         height: 18, marginBottom: 4, fontSize: 11, color: 'rgba(180,210,245,0.7)',
