@@ -763,6 +763,7 @@ const tools = [
           source: { type: "string", description: "How the deal was sourced (e.g. 'LinkedIn Outreach', 'Referral')." },
           deal_value: { type: "number", description: "Estimated deal value in USD." },
           notes: { type: "string", description: "Optional free-text notes; stored on the deal's notes/next_step field." },
+          force_create: { type: "boolean", description: "If true, bypass the same-name collision pre-flight check and proceed to create the deal even if one already exists with the same name. Only set this when the user has explicitly confirmed they want a duplicate after seeing a name_collision card." },
         },
         required: ["company_name"],
       },
