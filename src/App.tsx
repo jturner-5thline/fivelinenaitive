@@ -133,6 +133,7 @@ const Notifications = lazy(lazyRetry(() => import("./pages/Notifications")));
 const Help = lazy(lazyRetry(() => import("./pages/Help")));
 const MigrationTool = lazy(lazyRetry(() => import("./pages/MigrationTool")));
 const Admin = lazy(lazyRetry(() => import("./pages/Admin")));
+const PerformanceAudit = lazy(lazyRetry(() => import("./pages/PerformanceAudit")));
 const Signal = lazy(lazyRetry(() => import("./pages/Signal")));
 const Studio = lazy(lazyRetry(() => import("./pages/Studio")));
 const Integrations = lazy(lazyRetry(() => import("./pages/Integrations")));
@@ -389,6 +390,7 @@ const App = () => (
                             <Route path="/notifications" element={<Notifications />} />
                             <Route path="/help" element={<Help />} />
                             <Route path="/admin" element={<Admin />} />
+                            <Route path="/admin/performance-audit" element={<PerformanceAudit />} />
                             <Route path="/signal" element={<Signal />} />
                             <Route path="/studio" element={<Studio />} />
                             <Route path="/integrations/hubspot/health" element={<HubspotSyncHealth />} />
