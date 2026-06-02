@@ -2214,6 +2214,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     }
     case "search_deals": {
       const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
+      const searchStartedAt = Date.now();
       // When a name query is supplied, pull a broader candidate pool across
       // ALL statuses (including archived/closed_lost/dead) so fuzzy matching
       // can find near-misses like "censys technology" -> "Censys Technologies".
@@ -2227,6 +2228,33 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       const broaden = args.broaden === true;
       q = applyDealScope(q, scope, { allowOutOfScope: broaden });
       if (queryText) {
+        // ── Tier 1: exact, case-insensitive, trimmed equality. Short-circuit. ──
+        try {
+          let eq: any = supabase
+            .from("deals")
+            .select("id, company, value, stage, status, deal_type, updated_at")
+            .ilike("company", queryText.replace(/\s+/g, " ").trim())
+            .limit(5);
+          if (args.status) eq = eq.eq("status", args.status);
+          eq = applyDealScope(eq, scope, { allowOutOfScope: broaden });
+          const { data: exactRows } = await eq;
+          const exact = (exactRows || []).filter((r: any) =>
+            (r.company || "").trim().toLowerCase() === queryText.trim().toLowerCase()
+          );
+          if (exact.length > 0) {
+            return {
+              count: exact.length,
+              query: queryText,
+              tier: "exact",
+              confidence: 1.0,
+              scope_label: scope.label,
+              scope_applied: !broaden,
+              latency_ms: Date.now() - searchStartedAt,
+              deals: exact.map((d: any) => ({ ...d, similarity: 1, _score: 1, tier: "exact" })),
+            };
+          }
+        } catch (e) { console.warn("[search_deals] tier1 exact check failed", e); }
+
         // Broad ilike OR across the query and its tokens, then fuzzy-rank.
         const tokens = Array.from(new Set(
           [queryText, ..._normalizeDealName(queryText).split(" ")]
@@ -2246,16 +2274,31 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         results = results.filter((d: any) => d.updated_at && new Date(d.updated_at).getTime() < cutoff);
       }
       if (queryText) {
-        const ranked = rankDealsByQuery(results, queryText, 0.45).slice(0, 8);
+        // Tier 2/3: substring + fuzzy rank. Lowered threshold so trigram
+        // near-misses ("Exampl Deal" → "Example Deal") surface for confirmation
+        // instead of triggering "I couldn't find" responses.
+        const ranked = rankDealsByQuery(results, queryText, 0.30).slice(0, 8);
+        const top = ranked[0];
+        const topScore = top ? Number(top._score.toFixed(3)) : 0;
+        const tier = topScore >= 0.85 ? "high" : topScore >= 0.60 ? "medium" : ranked.length > 0 ? "low" : "none";
         return {
           count: ranked.length,
           query: queryText,
+          tier,
+          confidence: topScore,
           scope_label: scope.label,
           scope_applied: !broaden,
+          latency_ms: Date.now() - searchStartedAt,
+          guidance:
+            ranked.length === 0
+              ? "No deals matched in current scope. If you have inline fuzzy suggestions, show them as quick-reply chips; do NOT say 'I couldn't find'. Otherwise ask the user to confirm the name or click 'List all active deals'."
+              : topScore >= 0.85
+                ? "High-confidence match — safe to proceed."
+                : "Medium/low confidence — ask the user 'Did you mean <top match> ($<value>, <stage>)?' with Yes / Show other matches / No, none of these. NEVER say 'I couldn't find' when matches were returned.",
           broaden_hint: ranked.length === 0 && !broaden
             ? "No matches inside the current scope. Re-run search_deals with { broaden: true } to look across all workspaces / pipelines / statuses."
             : undefined,
-          deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)) })),
+          deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)), tier: Number(d._score.toFixed(3)) >= 0.85 ? "high" : Number(d._score.toFixed(3)) >= 0.60 ? "medium" : "low" })),
         };
       }
       return { count: results.length, scope_label: scope.label, scope_applied: !broaden, deals: results };
