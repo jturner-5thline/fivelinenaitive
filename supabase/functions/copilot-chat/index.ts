@@ -540,6 +540,27 @@ function rankDealsByQuery<T extends { company?: string | null }>(deals: T[], que
 // calls per step before the model emits confirm cards + the final summary.
 const MAX_TOOL_TURNS = 20;
 
+/**
+ * Detect a CREATE-deal intent from the user's raw message. We only fire when
+ * the message starts with a clear creation verb so we don't false-positive on
+ * "update X" or "look at the new deal Y". When this returns true the loop:
+ *   1) injects an extra system instruction forcing create_deal to be the
+ *      first tool call (so the collision pre-flight always runs), and
+ *   2) blocks the model from using update_deal_fields as the FIRST tool
+ *      call this turn — if it tries, we reroute through create_deal so the
+ *      name-collision card can render and the user (not the model) decides
+ *      between Update / Duplicate / Rename.
+ */
+function detectCreateDealIntent(message: unknown): boolean {
+  if (typeof message !== "string") return false;
+  const m = message.trim().toLowerCase();
+  if (!m) return false;
+  // Must START with a creation verb — "I want to create…" also counts.
+  // We deliberately exclude "update", "edit", "change", "rename", "move".
+  return /^(create|add|new|make|set\s*up|spin\s*up|start|open\s+a\s+new|i\s+(?:want|need|would\s+like)\s+to\s+(?:create|add|make|open|start|spin\s*up))\b/.test(m)
+    && /\bdeal\b/.test(m);
+}
+
 // Context fetchers removed — data is now lazy-loaded via tool calls
 
 // Compile firm-level Copilot Instructions (Settings → AI) into a system-prompt prefix.
@@ -650,7 +671,7 @@ const tools = [
     type: "function",
     function: {
       name: "search_deals",
-      description: "Search/filter deals by free-text name (fuzzy/phonetic), status, stage, stale days, or deal type. ALWAYS pass `query` when the user references a deal by name — matching tolerates typos, missing suffixes (Inc/LLC/Technologies), word reorderings, singular/plural, and phonetic near-misses (e.g. 'censys technology' matches 'Censys Technologies').",
+      description: "Search/filter deals by free-text name (fuzzy/phonetic), status, stage, stale days, or deal type. **REQUIRED FIRST CALL for any 'find', 'lookup', 'search for', 'show me', 'look up', 'where is', 'do we have', 'is there a deal', 'pull up' intent — even when the name has typos or is approximate.** ALWAYS pass `query` when the user references a deal by name — matching tolerates typos, missing suffixes (Inc/LLC/Technologies), word reorderings, singular/plural, and phonetic near-misses (e.g. 'censys technology' matches 'Censys Technologies', 'Exampl Deal' matches 'Example Deal'). Test/example deals (e.g. 'Example Deal', 'Test - Niki's Store') ARE indexed and ARE returned by this tool — never claim a deal does not exist without calling search_deals first.",
       parameters: {
         type: "object",
         properties: {
@@ -6939,15 +6960,13 @@ serve(async (req) => {
             .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
             .or(orFilter)
             .limit(40);
-          // Filter out globally excluded deal names (test / example).
-          const excluded = (n: string | null) => {
-            const x = (n || "").toLowerCase().trim();
-            if (!x) return false;
-            if (x === "example deal" || x === "test - niki's store") return true;
-            if (x === "test" || x.startsWith("test ")) return true;
-            return false;
-          };
-          const filteredAll = (matches || []).filter((d: any) => !excluded(d.company));
+          // NOTE: The global "Example Deal / Test-Niki's Store / test ..."
+          // exclusion list is for METRICS & DASHBOARDS ONLY. Copilot lookups
+          // MUST be able to resolve test/example deals so users testing the
+          // assistant get accurate answers; otherwise search_deals silently
+          // shadows the very deal the user just referenced. Do not re-add
+          // exclusion here.
+          const filteredAll = matches || [];
           // Rank against the strongest probe (capitalized phrase if present,
           // otherwise the full user text) so typos / missing suffixes / phonetic
           // near-misses surface as a confident match.
@@ -7837,8 +7856,23 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
 - If the focused deal is set, at least one chip should reference it by name.
 - DO NOT emit chips when (a) you are emitting only a tool confirmation card with no prose, or (b) you are asking a clarifying question that already lists choices for the user.`;
 
+    // ── CREATE-intent preflight (system-level) ──
+    // When the user's message begins with create/add/new/etc + "deal", force
+    // the model's FIRST tool call to be create_deal so the same-name collision
+    // pre-flight runs and the user (not the model) decides whether to update
+    // the existing deal, create a duplicate, or rename.
+    const isCreateDealIntent = detectCreateDealIntent(message);
+    const createIntentSystemBlock = isCreateDealIntent
+      ? `\n\nCREATE-DEAL INTENT DETECTED (this turn only — STRICT):\n` +
+        `- The user's message starts with a creation verb ("create", "add", "new", "make", etc.) + the word "deal". This is a NEW-DEAL request, NOT an update.\n` +
+        `- Your FIRST tool call THIS TURN MUST be \`create_deal\` with the fields parsed from the message (company_name, deal_value, deal_owner_name, pipeline_name, etc.).\n` +
+        `- DO NOT call \`update_deal_fields\` as your first tool call on this turn — even if you think the deal already exists. The create_deal pre-flight will detect any name collision and return a {action_type:"name_collision"} envelope; render that envelope verbatim and let the USER pick Update / Create duplicate / Rename. If you call update_deal_fields first the user never sees the collision card and we silently overwrite the wrong deal.\n` +
+        `- DO NOT call search_deals first to "check if it exists" — create_deal's pre-flight already does an exact-match lookup. Calling search_deals first wastes a turn and can mislead you into an update path.\n` +
+        `- The ONLY exception is when the prior assistant turn already rendered a name_collision card and this user message is them picking an option (Update existing / Create duplicate / Rename). In that case follow the card's contract.\n`
+      : "";
+
     const apiMessages: any[] = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemPrompt + createIntentSystemBlock },
       ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
       { role: "user", content: message },
     ];
@@ -7862,6 +7896,10 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
     const encoder = new TextEncoder();
 
     (async () => {
+      // Tracks whether ANY tool call has executed in this user turn — used to
+      // enforce the CREATE-intent guard (only the FIRST tool call is blocked
+      // from being update_deal_fields).
+      let firstToolCallExecuted = false;
       try {
         for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
           const response = await fetch(AI_GATEWAY, {
@@ -7908,6 +7946,55 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                   ? JSON.parse(tc.function.arguments)
                   : tc.function.arguments;
               } catch { /* empty args */ }
+              // ── CREATE-intent runtime guard ──
+              // If the user said "create … deal" but the model's FIRST tool
+              // call this turn is update_deal_fields, reroute to create_deal
+              // so the same-name collision pre-flight runs and the user sees
+              // the Update / Create duplicate / Rename card.
+              if (
+                isCreateDealIntent &&
+                !firstToolCallExecuted &&
+                tc.function.name === "update_deal_fields"
+              ) {
+                console.warn("[copilot-chat] CREATE-intent guard: rerouting update_deal_fields → create_deal", {
+                  original_args: args,
+                });
+                const rerouteArgs: any = {
+                  company_name:
+                    args.company_name ||
+                    args.deal_name ||
+                    args.name ||
+                    args.company ||
+                    null,
+                  deal_value:
+                    typeof args.value === "number" ? args.value :
+                    typeof args.deal_value === "number" ? args.deal_value : null,
+                  deal_owner_id: args.deal_owner_id || args.manager_id || null,
+                  deal_owner_name: args.deal_owner_name || args.manager_name || null,
+                  pipeline_name: args.pipeline_name || null,
+                  pipeline_id: args.pipeline_id || null,
+                  stage_name: args.stage_name || null,
+                  stage_id: args.stage_id || null,
+                  notes: args.notes || null,
+                };
+                // If we still don't know the company name, fall back to the
+                // existing deal record so create_deal has something to match
+                // against — otherwise the collision check can't run.
+                if (!rerouteArgs.company_name && args.deal_id) {
+                  try {
+                    const { data: d } = await supabaseUser
+                      .from("deals")
+                      .select("company")
+                      .eq("id", args.deal_id)
+                      .maybeSingle();
+                    if (d?.company) rerouteArgs.company_name = d.company;
+                  } catch { /* non-fatal */ }
+                }
+                tc.function.name = "create_deal";
+                tc.function.arguments = JSON.stringify(rerouteArgs);
+                args = rerouteArgs;
+              }
+              firstToolCallExecuted = true;
               // Server-side authorization: refuse restricted tools even if the
               // model attempts to call them despite being filtered out.
               let result: any;
