@@ -10,6 +10,19 @@ import { parseClaapActionItemText } from '@/lib/claap-format';
 export type SuggestionStatus = 'pending' | 'approved' | 'dismissed' | 'converted';
 export type SuggestionSource = 'claap' | 'synthesized';
 
+/**
+ * Thrown by approve() when a suggestion has no resolved internal
+ * assignee. Callers must either pre-gate the UI or catch and surface
+ * a "choose an assignee first" message — no task row is ever created
+ * unassigned.
+ */
+export class MissingAssigneeError extends Error {
+  constructor(public readonly suggestionId: string) {
+    super('Suggestion has no assignee — choose one before creating a task.');
+    this.name = 'MissingAssigneeError';
+  }
+}
+
 export interface RawActionItem {
   text: string;
   assignee_name: string | null;
@@ -29,8 +42,8 @@ export interface MeetingTaskSuggestion {
   /** Raw external @mention preserved for context when no internal match. */
   external_mention: string | null;
   /** How the assignee was resolved: by mention, by deal-manager fallback,
-   *  or unassigned. Drives the UI chip styling. */
-  assignment_source: 'mention' | 'deal-manager' | null;
+   *  by manual user pick, or unassigned. Drives the UI chip styling. */
+  assignment_source: 'mention' | 'deal-manager' | 'manual' | null;
   due_date: string | null;
   status: SuggestionStatus;
   created_task_id: string | null;
@@ -359,13 +372,26 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       const displayAssignee = reparsed?.assigneeName || it.assignee_name;
       const mention = displayAssignee || it.assignee_email || (row as any)?.external_mention || null;
       const resolved = resolveInternalAssignee(mention, internalMembers);
-      // Fallback: if the mention didn't resolve to an internal member but
-      // the linked deal has a manager who IS an internal member, assign
-      // the deal manager. The raw external mention (if any) is preserved
-      // so the UI can still render "mentioned: <name>" as muted context.
-      const effective = resolved ?? dealManager;
-      const assignmentSource: 'mention' | 'deal-manager' | null =
-        resolved ? 'mention' : (dealManager ? 'deal-manager' : null);
+      // Manual override: if the persisted row has an assignee_email that
+      // matches an internal member, treat that as the canonical assignee
+      // (covers picks made via the Unassigned chip / bulk-assign picker).
+      const persistedEmail = ((row as any)?.assignee_email as string | null) || null;
+      const manualMember = persistedEmail
+        ? internalMembers.find(
+            (m) => (m.email || '').toLowerCase() === persistedEmail.toLowerCase(),
+          ) ?? null
+        : null;
+      // Fallback chain: manual pick > mention resolution > linked deal
+      // manager. External mention text is preserved as muted context
+      // unless the mention itself resolved to an internal member.
+      const effective = manualMember ?? resolved ?? dealManager;
+      const assignmentSource: 'mention' | 'deal-manager' | 'manual' | null = manualMember
+        ? (resolved && resolved.user_id === manualMember.user_id ? 'mention' : 'manual')
+        : resolved
+          ? 'mention'
+          : dealManager
+            ? 'deal-manager'
+            : null;
       return {
         id: row?.id ?? null,
         suggestion_id: sid,
@@ -388,9 +414,15 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       toast.error('You must be signed in to create a task');
       return null;
     }
-    // 1) Internal-only assignment. External mentions never assign a real user.
-    const assignedTo = s.assignee_user_id ?? user.id;
-    const assigneeEmail = s.assignee_user_id ? s.assignee_email : null;
+    // 1) Gate: require an internal assignee. Defense-in-depth so the
+    //    tasks insert path never produces an unassigned task. We throw a
+    //    typed error so any direct caller (not just the UI button) is
+    //    forced to handle it; the UI catches and shows an inline toast.
+    if (!s.assignee_user_id) {
+      throw new MissingAssigneeError(s.suggestion_id);
+    }
+    const assignedTo = s.assignee_user_id;
+    const assigneeEmail = s.assignee_email;
 
     // Optional recording url footer for description.
     let recordingUrl: string | null = null;
@@ -458,15 +490,77 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     return { taskId: taskRow.id };
   };
 
-  const approveAll = async (): Promise<number> => {
-    const pending = suggestions.filter((s) => s.status === 'pending');
-    let count = 0;
-    for (const s of pending) {
-      const res = await approve(s);
-      if (res) count++;
+  const approveAll = async (subset?: MeetingTaskSuggestion[]): Promise<number> => {
+    const pool = (subset ?? suggestions).filter((s) => s.status === 'pending');
+    // Gate: refuse the whole batch if any row has no assignee. The UI
+    // already disables the button in this case; this is defense in depth.
+    if (pool.some((s) => !s.assignee_user_id)) {
+      toast.error('One or more selected tasks have no assignee. Choose assignees first.');
+      return 0;
     }
-    if (count > 0) toast.success(`Created ${count} task${count === 1 ? '' : 's'} — assigned to you`);
+    let count = 0;
+    for (const s of pool) {
+      try {
+        const res = await approve(s);
+        if (res) count++;
+      } catch (err) {
+        if (err instanceof MissingAssigneeError) continue;
+        throw err;
+      }
+    }
+    if (count > 0) toast.success(`Created ${count} task${count === 1 ? '' : 's'}`);
     return count;
+  };
+
+  /**
+   * Manually assign an internal member to a suggestion (from the
+   * Unassigned chip picker or the bulk-assign flow). Persists the pick
+   * to the suggestion row via assignee_email; the render-time resolver
+   * picks it up as a 'manual' assignment.
+   */
+  const assignManually = async (
+    s: MeetingTaskSuggestion,
+    member: InternalMember,
+  ): Promise<boolean> => {
+    if (!user?.id || !company?.id) return false;
+    const row = {
+      org_company_id: company.id,
+      scope_key: scopeKey,
+      meeting_id: meetingRowId,
+      event_id: eventId,
+      recording_id: source === 'claap' ? recordingRowId : null,
+      suggestion_id: s.suggestion_id,
+      text: s.text,
+      assignee_email: member.email,
+      external_mention: s.external_mention,
+      due_date: s.due_date,
+      source: s.source,
+      status: s.status,
+      created_task_id: s.created_task_id,
+    };
+    const { error } = await supabase
+      .from('meeting_task_suggestions')
+      .upsert(row, { onConflict: 'scope_key,suggestion_id' });
+    if (error) {
+      toast.error('Failed to assign');
+      return false;
+    }
+    queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+    return true;
+  };
+
+  const bulkAssignUnassigned = async (
+    subset: MeetingTaskSuggestion[],
+    member: InternalMember,
+  ): Promise<number> => {
+    const targets = subset.filter((s) => s.status === 'pending' && !s.assignee_user_id);
+    let n = 0;
+    for (const s of targets) {
+      const ok = await assignManually(s, member);
+      if (ok) n++;
+    }
+    if (n > 0) toast.success(`Assigned ${n} task${n === 1 ? '' : 's'} to ${member.display_name}`);
+    return n;
   };
 
   const dismiss = async (s: MeetingTaskSuggestion) => {
@@ -538,8 +632,11 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     suggestions,
     isLoading: rawQuery.isLoading || persistedQuery.isLoading,
     pendingCount: suggestions.filter((s) => s.status === 'pending').length,
+    internalMembers,
     approve,
     approveAll,
+    assignManually,
+    bulkAssignUnassigned,
     dismiss,
     dismissAll,
     undo,

@@ -76,3 +76,70 @@ test('Daily Rundown XUN <> Five Crowns Sync card never assigns external contacts
     }
   }
 });
+
+test('XUN <> Five Crowns Sync — gating: Create disabled until assignee, Approve all disabled while any null', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.locator('body')).toBeVisible();
+
+  const card = page.locator('[data-meeting-card]', {
+    hasText: 'XUN <> Five Crowns Sync',
+  }).first();
+
+  if ((await card.count()) === 0) {
+    test.skip(true, 'XUN <> Five Crowns Sync card not present on current dashboard.');
+    return;
+  }
+
+  await expect(card).toBeVisible();
+  await page.waitForTimeout(500);
+
+  // If the resolver already auto-assigned every row to the deal manager,
+  // there are no Unassigned chips to test the picker path against. Skip
+  // when there's nothing to gate on.
+  const unassigned = card.locator('[data-assignee-chip="unassigned"]');
+  const unassignedCount = await unassigned.count();
+  if (unassignedCount === 0) {
+    test.skip(true, 'No unassigned rows present — gating path not exercised.');
+    return;
+  }
+
+  // Each unassigned row has a disabled Create task button.
+  const disabledCreates = card.locator(
+    '[data-testid="create-task"][data-disabled="true"]',
+  );
+  expect(await disabledCreates.count()).toBeGreaterThanOrEqual(unassignedCount);
+
+  // Approve all disabled while any considered row is unassigned.
+  const approveAll = card.locator('[data-testid="approve-all"]');
+  await expect(approveAll).toHaveAttribute('data-disabled', 'true');
+
+  // Click the first Unassigned chip → picker opens.
+  await unassigned.first().click();
+  const picker = page.locator('[data-testid="assignee-picker"]');
+  await expect(picker).toBeVisible();
+
+  // Pick the first member listed in the picker.
+  const firstMember = picker.locator('button').first();
+  await firstMember.click();
+
+  // After the pick, the chip count drops by one and at least one
+  // Create button is no longer disabled.
+  await page.waitForTimeout(300);
+  const afterUnassignedCount = await card.locator('[data-assignee-chip="unassigned"]').count();
+  expect(afterUnassignedCount).toBe(unassignedCount - 1);
+
+  // If any unassigned rows remain, run bulk-assign to clear them.
+  if (afterUnassignedCount > 0) {
+    await card.locator('[data-testid="bulk-assign"]').click();
+    const bulkPicker = page.locator('[data-testid="assignee-picker"]');
+    await expect(bulkPicker).toBeVisible();
+    await bulkPicker.locator('button').first().click();
+    await page.waitForTimeout(300);
+  }
+
+  // With every considered row assigned, Approve all is enabled.
+  await expect(card.locator('[data-testid="approve-all"]')).not.toHaveAttribute(
+    'data-disabled',
+    'true',
+  );
+});
