@@ -18338,6 +18338,50 @@ export type Database = {
           },
         ]
       }
+      pending_mention_emails: {
+        Row: {
+          attempts: number
+          comment_id: string
+          created_at: string
+          id: string
+          last_error: string | null
+          recipient_user_id: string
+          sent_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          comment_id: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          recipient_user_id: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          comment_id?: string
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          recipient_user_id?: string
+          sent_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_mention_emails_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pilot_kpi_events: {
         Row: {
           company_id: string
@@ -22948,6 +22992,27 @@ export type Database = {
           user_id?: string
           verify_on_send?: boolean
           working_hours?: Json
+        }
+        Relationships: []
+      }
+      user_email_preferences: {
+        Row: {
+          agenda_mention_emails: boolean
+          created_at: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agenda_mention_emails?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agenda_mention_emails?: boolean
+          created_at?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
