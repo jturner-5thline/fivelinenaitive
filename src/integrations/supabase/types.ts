@@ -14279,6 +14279,33 @@ export type Database = {
           },
         ]
       }
+      insights_agenda: {
+        Row: {
+          company_id: string
+          content_json: Json
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company_id: string
+          content_json?: Json
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company_id?: string
+          content_json?: Json
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       insights_anomaly_history: {
         Row: {
           abs_change: number | null
