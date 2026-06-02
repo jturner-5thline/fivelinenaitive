@@ -317,6 +317,19 @@ export function AgendaEditor() {
 
   const persist = useCallback(async (doc: any, type: string, key: string) => {
     if (!user?.id || !company?.id) return;
+    // Client-side schema validation mirroring the DB CHECK constraint.
+    const parsed = agendaPersistSchema.safeParse({
+      period_type: type,
+      period_key: key,
+      content_json: doc ?? {},
+    });
+    if (!parsed.success) {
+      setSaveState('error');
+      toast.error('Invalid reporting period', {
+        description: 'Agenda was not saved. Please re-select a valid month or quarter.',
+      });
+      return;
+    }
     setSaveState('saving');
     const payload = {
       user_id: user.id,
@@ -332,6 +345,13 @@ export function AgendaEditor() {
       .maybeSingle();
     if (error) {
       setSaveState('error');
+      // Surface the DB-side CHECK failure with the same friendly copy.
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('period_key') || msg.includes('check')) {
+        toast.error('Invalid reporting period', { description: error.message });
+      } else {
+        toast.error('Failed to save agenda', { description: error.message });
+      }
       return;
     }
     if (data) {
