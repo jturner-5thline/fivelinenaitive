@@ -1096,18 +1096,39 @@ function EventDetailPane({
   const [claapBackfilling, setClaapBackfilling] = useState(false);
   const [claapBackfillTried, setClaapBackfillTried] = useState<string | null>(null);
 
-  const regenerateClaapSummary = async () => {
-    if (!claapCtx.recording?.meetingRowId) return;
+  // Pull live sync status for the linked recording (attempts + last error)
+  // so the card can surface "Syncing…" / Retry on permanent failure.
+  const recordingRowIdForStatus = claapCtx.recording?.rowId ?? null;
+  const { data: claapSyncStatus, refetch: refetchSyncStatus } = useQuery({
+    queryKey: ['claap-recording-sync-status', recordingRowIdForStatus],
+    enabled: !!recordingRowIdForStatus,
+    refetchInterval: claapCtx.source === 'none' ? 5000 : false,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('claap_recordings')
+        .select('sync_attempts, last_sync_error, last_sync_status, claap_summary_synced_at')
+        .eq('id', recordingRowIdForStatus!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const regenerateClaapSummary = async (opts: { force?: boolean } = {}) => {
+    if (!claapCtx.recording?.meetingRowId && !claapCtx.recording?.rowId) return;
     setClaapBackfilling(true);
     try {
       await supabase.functions.invoke('claap-backfill-summaries', {
-        body: { meeting_id: claapCtx.recording.meetingRowId },
+        body: {
+          recording_id: claapCtx.recording?.rowId ?? undefined,
+          meeting_id: claapCtx.recording?.meetingRowId ?? undefined,
+          force: !!opts.force,
+        },
       });
     } catch (err) {
       console.warn('claap backfill failed', err);
     } finally {
       setClaapBackfilling(false);
-      await claapCtx.refetch();
+      await Promise.all([claapCtx.refetch(), refetchSyncStatus()]);
     }
   };
 
@@ -1117,7 +1138,7 @@ function EventDetailPane({
     if (claapCtx.source !== 'none') return;
     if (claapBackfillTried === claapCtx.recording.meetingRowId) return;
     setClaapBackfillTried(claapCtx.recording.meetingRowId);
-    regenerateClaapSummary();
+    void regenerateClaapSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claapCtx.recording?.meetingRowId, claapCtx.source]);
 
@@ -1445,19 +1466,44 @@ function EventDetailPane({
               </div>
             )}
             {claapStillGenerating && !notePrefilledFromClaap && !transcriptAvailable && !claapCtxFetching && (
-              <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
-                <span>
-                  Claap summary not yet available for this recording — generated after the call ends.
-                </span>
-                <button
-                  type="button"
-                  className="underline hover:text-white not-italic"
-                  disabled={claapBackfilling}
-                  onClick={regenerateClaapSummary}
-                >
-                  {claapBackfilling ? 'Generating…' : 'Refresh'}
-                </button>
-              </div>
+              (claapSyncStatus?.sync_attempts ?? 0) > 3 && claapSyncStatus?.last_sync_status !== 'ok' ? (
+                <div className="flex items-center gap-2 mb-1.5 text-[10px] text-rose-300 italic">
+                  <span className="not-italic">
+                    Claap recording is linked but its summary couldn't be retrieved
+                    {claapSyncStatus?.last_sync_status === 'not_found' ? ' (Claap returned 404)' : ''}
+                    {' — '}
+                  </span>
+                  <button
+                    type="button"
+                    className="underline hover:text-white not-italic"
+                    disabled={claapBackfilling}
+                    onClick={() => { void regenerateClaapSummary({ force: true }); }}
+                  >
+                    {claapBackfilling ? 'Retrying…' : 'Retry'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
+                  {claapBackfilling ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Syncing Claap…</span>
+                    </>
+                  ) : (
+                    <span>
+                      Claap summary not yet available for this recording — generated after the call ends.
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="underline hover:text-white not-italic"
+                    disabled={claapBackfilling}
+                    onClick={() => { void regenerateClaapSummary(); }}
+                  >
+                    {claapBackfilling ? 'Generating…' : 'Refresh'}
+                  </button>
+                </div>
+              )
             )}
             <ClaapNoteEditor
               value={noteDraft}

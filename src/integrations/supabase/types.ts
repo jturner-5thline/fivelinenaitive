@@ -3320,6 +3320,9 @@ export type Database = {
           id: string
           key_takeaways: Json
           last_scored_at: string | null
+          last_sync_error: string | null
+          last_sync_status: string | null
+          next_sync_at: string | null
           org_company_id: string | null
           organizer_email: string | null
           participants: Json
@@ -3328,6 +3331,7 @@ export type Database = {
           started_at: string | null
           status: string
           summary: string | null
+          sync_attempts: number
           synthesized_note: Json | null
           synthesized_note_generated_at: string | null
           title: string | null
@@ -3345,6 +3349,9 @@ export type Database = {
           id?: string
           key_takeaways?: Json
           last_scored_at?: string | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          next_sync_at?: string | null
           org_company_id?: string | null
           organizer_email?: string | null
           participants?: Json
@@ -3353,6 +3360,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           summary?: string | null
+          sync_attempts?: number
           synthesized_note?: Json | null
           synthesized_note_generated_at?: string | null
           title?: string | null
@@ -3370,6 +3378,9 @@ export type Database = {
           id?: string
           key_takeaways?: Json
           last_scored_at?: string | null
+          last_sync_error?: string | null
+          last_sync_status?: string | null
+          next_sync_at?: string | null
           org_company_id?: string | null
           organizer_email?: string | null
           participants?: Json
@@ -3378,6 +3389,7 @@ export type Database = {
           started_at?: string | null
           status?: string
           summary?: string | null
+          sync_attempts?: number
           synthesized_note?: Json | null
           synthesized_note_generated_at?: string | null
           title?: string | null
@@ -3597,6 +3609,57 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      claap_sync_errors: {
+        Row: {
+          attempts: number
+          created_at: string
+          error_code: string
+          error_message: string | null
+          id: string
+          meeting_id: string | null
+          org_company_id: string | null
+          recording_external_id: string | null
+          recording_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error_code: string
+          error_message?: string | null
+          id?: string
+          meeting_id?: string | null
+          org_company_id?: string | null
+          recording_external_id?: string | null
+          recording_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error_code?: string
+          error_message?: string | null
+          id?: string
+          meeting_id?: string | null
+          org_company_id?: string | null
+          recording_external_id?: string | null
+          recording_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claap_sync_errors_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "claap_meetings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_sync_errors_recording_id_fkey"
+            columns: ["recording_id"]
+            isOneToOne: false
+            referencedRelation: "claap_recordings"
             referencedColumns: ["id"]
           },
         ]

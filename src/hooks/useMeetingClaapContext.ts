@@ -125,6 +125,43 @@ export function useMeetingClaapContext(input: UseMeetingClaapContextInput): Meet
     };
   }, [query.data?.recording?.meetingRowId, query.refetch]);
 
+  // Realtime: when the linked claap_recordings row gets its summary/action_items
+  // populated by the background backfill (or when new task suggestions land),
+  // re-fetch immediately so the card flips from "Syncing Claap…" to the real
+  // summary without a page reload.
+  useEffect(() => {
+    const recordingRowId = query.data?.recording?.rowId ?? null;
+    const meetingRowId = query.data?.recording?.meetingRowId ?? null;
+    if (!recordingRowId && !meetingRowId) return;
+    const channel = supabase.channel(`claap-sync-${recordingRowId ?? meetingRowId}`);
+    if (recordingRowId) {
+      channel.on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'claap_recordings',
+          filter: `id=eq.${recordingRowId}`,
+        },
+        () => { void query.refetch(); },
+      );
+    }
+    if (meetingRowId) {
+      channel.on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'meeting_task_suggestions',
+          filter: `meeting_id=eq.${meetingRowId}`,
+        },
+        () => { void query.refetch(); },
+      );
+    }
+    channel.subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, [query.data?.recording?.rowId, query.data?.recording?.meetingRowId, query.refetch]);
+
   return {
     recording: query.data?.recording ?? null,
     summary: query.data?.summary ?? null,
