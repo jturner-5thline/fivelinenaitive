@@ -3,20 +3,31 @@ import {
   agendaPersistSchema,
   isSeedContent,
   previousPeriodKey,
+  SEED_SUBTITLE,
 } from '../AgendaEditor';
 
+const headingNode = (text: string) => ({
+  type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text }],
+});
+const subtitleNode = () => ({
+  type: 'paragraph',
+  content: [{
+    type: 'text',
+    marks: [
+      { type: 'italic' },
+      { type: 'textStyle', attrs: { fontSize: '13px', color: 'rgba(200,225,255,0.55)' } },
+    ],
+    text: SEED_SUBTITLE,
+  }],
+});
+const SECTIONS = ['Presentation', 'Looking Forward', 'New Items', 'Prep'];
 const SEED = {
   type: 'doc',
-  content: [
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Presentation' }] },
-    { type: 'paragraph' },
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Looking Forward' }] },
-    { type: 'paragraph' },
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'New Items' }] },
-    { type: 'paragraph' },
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Prep' }] },
-    { type: 'paragraph' },
-  ],
+  content: SECTIONS.flatMap((s) => [headingNode(s), subtitleNode(), { type: 'paragraph' }]),
+};
+const LEGACY_SEED = {
+  type: 'doc',
+  content: SECTIONS.flatMap((s) => [headingNode(s), { type: 'paragraph' }]),
 };
 
 describe('agendaPersistSchema', () => {
@@ -50,9 +61,18 @@ describe('isSeedContent', () => {
   it('returns true for the seeded 4-heading doc', () => {
     expect(isSeedContent(SEED)).toBe(true);
   });
+  it('seed subtitle text is the exact required string', () => {
+    expect(SEED_SUBTITLE).toBe('(5-Minute Overview + Discussion & Q&A) - 12 Minutes Total Max');
+    const subs = SEED.content.filter((n: any) =>
+      n.type === 'paragraph' && n.content?.[0]?.text === SEED_SUBTITLE);
+    expect(subs.length).toBe(4);
+  });
+  it('still treats the legacy headings-only seed as seed', () => {
+    expect(isSeedContent(LEGACY_SEED)).toBe(true);
+  });
   it('returns false when a paragraph has user text', () => {
     const dirty = JSON.parse(JSON.stringify(SEED));
-    dirty.content[1] = { type: 'paragraph', content: [{ type: 'text', text: 'hello' }] };
+    dirty.content[2] = { type: 'paragraph', content: [{ type: 'text', text: 'hello' }] };
     expect(isSeedContent(dirty)).toBe(false);
   });
   it('returns false when headings differ', () => {
