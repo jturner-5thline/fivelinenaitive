@@ -7900,6 +7900,7 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
             apiMessages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
 
             // Execute all tool calls
+            let directRenderPayload: any | null = null;
             for (const tc of toolCalls) {
               let args: any = {};
               try {
@@ -7939,6 +7940,13 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                   });
                   result = fuzzyUi;
                 }
+              }
+              if (
+                result &&
+                result.action === "confirm" &&
+                ["name_collision", "deal_fuzzy_confirm", "deal_fuzzy_suggestions"].includes(result.action_type)
+              ) {
+                directRenderPayload = result;
               }
               // Audit log: every AI-drafted task action (intent, confidence, resolved
               // entities, extracted fields) — must happen even if the user later cancels.
@@ -7982,6 +7990,17 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                 }
               }
               apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+            }
+            if (directRenderPayload) {
+              const chunk = {
+                choices: [{
+                  delta: { content: `\`\`\`json\n${JSON.stringify(directRenderPayload, null, 2)}\n\`\`\`` },
+                  index: 0,
+                  finish_reason: "stop",
+                }],
+              };
+              await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              break;
             }
             continue; // Next turn
           }
