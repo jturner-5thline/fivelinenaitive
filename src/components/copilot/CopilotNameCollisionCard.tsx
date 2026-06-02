@@ -1,7 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ExternalLink, Pencil, Copy, X, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
 
 /**
  * Renders the "duplicate deal name detected" collision card emitted by the
@@ -134,60 +137,39 @@ export function CopilotNameCollisionCard({ action }: Props) {
   }
 
   return (
-    <div
-      style={{
-        margin: '8px 0',
-        padding: 12,
-        borderRadius: 10,
-        border: '1px solid hsl(var(--destructive) / 0.45)',
-        background: 'hsl(var(--destructive) / 0.08)',
-      }}
-      data-testid="copilot-name-collision-card"
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-        <AlertTriangle size={16} style={{ color: 'hsl(var(--destructive))', flexShrink: 0 }} />
-        <div style={{ fontSize: 13, fontWeight: 600 }}>
-          A deal named “{proposedName}” already exists
+    <Card className="my-2 border-destructive/40 bg-destructive/5" data-testid="copilot-name-collision-card">
+      <CardContent className="space-y-3 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2">
+          <AlertTriangle size={16} style={{ color: 'hsl(var(--destructive))', flexShrink: 0, marginTop: 2 }} />
+          <div>
+            <div className="text-sm font-semibold">A deal named “{proposedName}” already exists</div>
+            {summary && (
+              <div className="mt-1 text-xs text-muted-foreground">
+                You wanted to create: {summary}
+              </div>
+            )}
+          </div>
         </div>
+        <Badge variant="outline" className="text-[10px] shrink-0">Collision</Badge>
       </div>
-      {summary && (
-        <div style={{ fontSize: 11, color: 'hsl(var(--muted-foreground))', marginBottom: 8 }}>
-          You wanted to create: {summary}
-        </div>
-      )}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, marginBottom: 10 }}>
+      <div className="flex flex-col gap-2">
         {safeExisting.map((d) => (
           <div
             key={d.id}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              fontSize: 12,
-              padding: '6px 8px',
-              borderRadius: 6,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid var(--glass-border)',
-            }}
+            className="flex items-center gap-2 rounded-md border border-border/70 bg-background/40 px-3 py-2 text-xs"
           >
-            <div style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              <strong style={{ fontWeight: 600 }}>{d.name}</strong>
-              {d.stage ? <span style={{ opacity: 0.7 }}> — {d.stage}</span> : null}
-              <span style={{ opacity: 0.7 }}> — {formatUSD(d.value)}</span>
-              {d.manager_name ? <span style={{ opacity: 0.7 }}> — mgr: {d.manager_name}</span> : null}
-              {d.updated_at ? <span style={{ opacity: 0.5 }}> · updated {relativeTime(d.updated_at)}</span> : null}
+            <div className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap">
+              <strong className="font-semibold">{d.name}</strong>
+              {d.stage ? <span className="opacity-70"> — {d.stage}</span> : null}
+              <span className="opacity-70"> — {formatUSD(d.value)}</span>
+              {d.manager_name ? <span className="opacity-70"> — mgr: {d.manager_name}</span> : null}
+              {d.updated_at ? <span className="opacity-50"> · updated {relativeTime(d.updated_at)}</span> : null}
             </div>
             <Link
               to={`/deals/${d.id}`}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 4,
-                fontSize: 11,
-                color: 'hsl(var(--primary))',
-                textDecoration: 'none',
-              }}
+              className="inline-flex items-center gap-1 text-[11px] text-primary no-underline"
             >
               View <ExternalLink size={11} />
             </Link>
@@ -196,7 +178,7 @@ export function CopilotNameCollisionCard({ action }: Props) {
       </div>
 
       {mode === 'choose' && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+        <div className="flex flex-wrap gap-2">
           <CardButton onClick={handleUpdateExisting} icon={<Pencil size={12} />} label="Update existing" tone="primary" />
           <CardButton onClick={handleDuplicate} icon={<Copy size={12} />} label="Create duplicate" />
           <CardButton onClick={() => setMode('rename')} icon={<Pencil size={12} />} label="Rename" />
@@ -256,37 +238,24 @@ export function CopilotNameCollisionCard({ action }: Props) {
           {doneLabel}
         </div>
       )}
-    </div>
+      </CardContent>
+    </Card>
   );
 }
 
 function CardButton({
   onClick, icon, label, tone = 'default',
-}: { onClick: () => void; icon: React.ReactNode; label: string; tone?: 'primary' | 'default' | 'ghost' }) {
-  const styles =
-    tone === 'primary'
-      ? { background: 'hsl(var(--primary) / 0.18)', border: '1px solid hsl(var(--primary) / 0.45)', color: 'hsl(var(--primary))' }
-      : tone === 'ghost'
-        ? { background: 'transparent', border: '1px solid var(--glass-border)', color: 'hsl(var(--muted-foreground))' }
-        : { background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'var(--foreground)' };
+}: { onClick: () => void; icon: ReactNode; label: string; tone?: 'primary' | 'default' | 'ghost' }) {
   return (
-    <button
+    <Button
       type="button"
+      size="sm"
+      variant={tone === 'primary' ? 'default' : tone === 'ghost' ? 'ghost' : 'outline'}
       onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 4,
-        padding: '6px 10px',
-        fontSize: 12,
-        borderRadius: 999,
-        cursor: 'pointer',
-        lineHeight: 1.2,
-        ...styles,
-      }}
+      className="h-8 rounded-full px-3 text-xs"
     >
       {icon}
       {label}
-    </button>
+    </Button>
   );
 }

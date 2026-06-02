@@ -6315,6 +6315,9 @@ async function consumeToolStream(
         // Forward content deltas to client immediately
         if (delta.content) {
           content += delta.content;
+          // If this turn ends up containing tool calls, the caller will
+          // suppress the speculative prose and render the structured tool UI
+          // instead. We still buffer here so pure-text turns stream normally.
           await writer.write(encoder.encode(line + "\n\n"));
         }
         // Collect tool call deltas
@@ -6332,6 +6335,68 @@ async function consumeToolStream(
     }
   }
   return { content, toolCalls: Array.from(tcMap.values()).filter(tc => tc.function.name) };
+}
+
+function buildFuzzySearchUiPayload(result: any): any | null {
+  const deals = Array.isArray(result?.deals) ? result.deals : [];
+  const top = deals[0];
+  const tier = typeof result?.tier === "string" ? result.tier : "none";
+  if (!deals.length || !top) return null;
+  if (tier === "medium") {
+    return {
+      action: "confirm",
+      action_type: "deal_fuzzy_confirm",
+      description: `Did you mean \"${top.company}\"?`,
+      params: {
+        query: result?.query || "",
+        tier,
+        confidence: typeof result?.confidence === "number" ? result.confidence : null,
+        latency_ms: typeof result?.latency_ms === "number" ? result.latency_ms : null,
+        top_match: top,
+        matches: deals.slice(0, 5),
+      },
+    };
+  }
+  if (tier === "low") {
+    return {
+      action: "confirm",
+      action_type: "deal_fuzzy_suggestions",
+      description: `I found a few similar deals for \"${result?.query || "that request"}\"`,
+      params: {
+        query: result?.query || "",
+        tier,
+        confidence: typeof result?.confidence === "number" ? result.confidence : null,
+        latency_ms: typeof result?.latency_ms === "number" ? result.latency_ms : null,
+        matches: deals.slice(0, 3),
+      },
+    };
+  }
+  return null;
+}
+
+async function logCopilotAuditEvent(input: {
+  supabase: any;
+  userId: string;
+  companyId?: string | null;
+  action: string;
+  dealIds?: string[] | null;
+  proposed?: Record<string, unknown> | null;
+  details?: Record<string, unknown> | null;
+  resolvedAction?: string | null;
+}) {
+  try {
+    await input.supabase.from("ai_copilot_audit").insert({
+      user_id: input.userId,
+      company_id: input.companyId || null,
+      action: input.action,
+      deal_ids: input.dealIds || null,
+      proposed: input.proposed || null,
+      details: input.details || null,
+      resolved_action: input.resolvedAction || null,
+    });
+  } catch (e) {
+    console.warn("[copilot-audit] insert failed", e);
+  }
 }
 
 // ── Main handler ──────────────────────────────────────────────────
@@ -7824,13 +7889,18 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
           }
 
           // Parse stream: forward content deltas to client, collect tool calls
-          const { content, toolCalls } = await consumeToolStream(response, writer, encoder);
+          let { content, toolCalls } = await consumeToolStream(response, writer, encoder);
 
           if (toolCalls.length > 0) {
+            // If the model emitted prose before tool calls, scrub that
+            // speculative content from the pending assistant turn so the UI
+            // only shows the structured card(s) for this turn.
+            content = "";
             // Add assistant message with tool calls to conversation
             apiMessages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
 
             // Execute all tool calls
+            let directRenderPayload: any | null = null;
             for (const tc of toolCalls) {
               let args: any = {};
               try {
@@ -7849,6 +7919,58 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                 };
               } else {
                 result = await executeTool(supabaseUser, tc.function.name, args, userId, chatScope);
+              }
+              if (tc.function.name === "search_deals") {
+                const fuzzyUi = buildFuzzySearchUiPayload(result);
+                if (fuzzyUi) {
+                  const matches = Array.isArray(fuzzyUi.params?.matches) ? fuzzyUi.params.matches : [];
+                  await logCopilotAuditEvent({
+                    supabase,
+                    userId,
+                    companyId: companyId || null,
+                    action: fuzzyUi.action_type === "deal_fuzzy_confirm" ? "deal_fuzzy_confirm" : "deal_fuzzy_suggestions",
+                    dealIds: matches.map((m: any) => m?.id).filter(Boolean),
+                    proposed: { query: result?.query || null },
+                    details: {
+                      tier: result?.tier || null,
+                      confidence: result?.confidence ?? null,
+                      latency_ms: result?.latency_ms ?? null,
+                      scope_label: result?.scope_label || null,
+                    },
+                  });
+                  await writeAuditDraft({
+                    userId,
+                    companyId: companyId || null,
+                    conversationId: (body as any)?.conversationId || null,
+                    actionType: "search_deals",
+                    intent: fuzzyUi.action_type === "deal_fuzzy_confirm" ? "deal_lookup_fuzzy_confirm" : "deal_lookup_fuzzy_suggestions",
+                    prompt: typeof message === "string" ? message : null,
+                    resolvedDealId: matches[0]?.id || null,
+                    resolvedDealName: matches[0]?.company || null,
+                    extractedFields: {
+                      query: result?.query || null,
+                      tier: result?.tier || null,
+                      matches: matches.map((m: any) => ({ id: m?.id, company: m?.company, stage: m?.stage, status: m?.status })),
+                      latency_ms: result?.latency_ms ?? null,
+                    },
+                    confidence: {
+                      score: result?.confidence ?? null,
+                      tier: result?.tier || null,
+                      latency_ms: result?.latency_ms ?? null,
+                    },
+                    pageContext: { page, entityType, entityId, activeTab },
+                    rationale: `Rendered ${fuzzyUi.action_type} UI from search_deals result`,
+                    source: "copilot",
+                  });
+                  result = fuzzyUi;
+                }
+              }
+              if (
+                result &&
+                result.action === "confirm" &&
+                ["name_collision", "deal_fuzzy_confirm", "deal_fuzzy_suggestions"].includes(result.action_type)
+              ) {
+                directRenderPayload = result;
               }
               // Audit log: every AI-drafted task action (intent, confidence, resolved
               // entities, extracted fields) — must happen even if the user later cancels.
@@ -7892,6 +8014,17 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                 }
               }
               apiMessages.push({ role: "tool", tool_call_id: tc.id, content: JSON.stringify(result) });
+            }
+            if (directRenderPayload) {
+              const chunk = {
+                choices: [{
+                  delta: { content: `\`\`\`json\n${JSON.stringify(directRenderPayload, null, 2)}\n\`\`\`` },
+                  index: 0,
+                  finish_reason: "stop",
+                }],
+              };
+              await writer.write(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+              break;
             }
             continue; // Next turn
           }
