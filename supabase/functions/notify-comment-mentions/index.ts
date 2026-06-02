@@ -20,7 +20,8 @@ const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SERVICE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!;
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY');
+const RESEND_API_KEY =
+  Deno.env.get('RESEND_API_KEY_1') ?? Deno.env.get('RESEND_API_KEY');
 
 const FROM = 'Naitive <notifications@naitive.5thline.co>';
 const APP_URL =
