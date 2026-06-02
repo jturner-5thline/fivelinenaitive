@@ -14,6 +14,7 @@ import {
   type MeetingTaskSuggestion,
   type SuggestionSource,
   type InternalMember,
+  MissingAssigneeError,
 } from '@/hooks/useMeetingTaskSuggestions';
 
 interface Props {
@@ -56,6 +57,12 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
     try {
       const res = await approve(s);
       if (res) toast.success('Task created — assigned to you');
+    } catch (err) {
+      if (err instanceof MissingAssigneeError) {
+        toast.error('Please choose an assignee before creating this task.');
+      } else {
+        toast.error('Failed to create task');
+      }
     } finally {
       setBusyId(null);
     }
