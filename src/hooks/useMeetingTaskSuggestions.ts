@@ -402,10 +402,11 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       return null;
     }
     // 1) Gate: require an internal assignee. Defense-in-depth so the
-    //    tasks insert path never produces an unassigned task.
+    //    tasks insert path never produces an unassigned task. We throw a
+    //    typed error so any direct caller (not just the UI button) is
+    //    forced to handle it; the UI catches and shows an inline toast.
     if (!s.assignee_user_id) {
-      toast.error('Please choose an assignee before creating this task.');
-      return null;
+      throw new MissingAssigneeError(s.suggestion_id);
     }
     const assignedTo = s.assignee_user_id;
     const assigneeEmail = s.assignee_email;
