@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Editor } from '@tiptap/react';
+import {
+  useFloating, autoUpdate, offset, flip, shift, arrow,
+} from '@floating-ui/react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
@@ -609,7 +612,7 @@ function CommentRow({
 }
 
 // ---------- Thread card ----------
-function ThreadCard({
+export function ThreadCard({
   thread, comments, currentUserId, members, flash, onJump,
   api,
 }: {
@@ -737,7 +740,7 @@ function ThreadCard({
 
 // ---------- Right-side rail ----------
 export function AgendaCommentsRail({
-  open, onClose, editor, api, currentUserId, scrollListRef,
+  open, onClose, editor, api, currentUserId, scrollListRef, onOpenInline,
 }: {
   open: boolean;
   onClose: () => void;
@@ -746,6 +749,8 @@ export function AgendaCommentsRail({
   currentUserId: string | null;
   /** Ref to the scrollable list inside the rail (so the editor can scroll a thread card into view). */
   scrollListRef?: React.Ref<HTMLDivElement>;
+  /** Open the inline floating popover anchored to a thread's span in the editor. */
+  onOpenInline?: (threadId: string, anchorEl: HTMLElement) => void;
 }) {
   const members = useTeamMembers();
   const listRef = useRef<HTMLDivElement>(null);
@@ -775,8 +780,11 @@ export function AgendaCommentsRail({
     const r = ranges.find((x) => x.threadId === threadId);
     if (!r) return;
     editor.chain().focus().setTextSelection({ from: r.from, to: r.to }).run();
-    const target = editor.view.dom.querySelector(`[data-thread-id="${threadId}"]`);
+    const target = editor.view.dom.querySelector(
+      `[data-thread-id="${threadId}"]`,
+    ) as HTMLElement | null;
     target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (target && onOpenInline) onOpenInline(threadId, target);
   };
 
   if (!open) return null;
@@ -877,6 +885,127 @@ export function NewThreadPopover({
         onCancel={onCancel}
         onSubmit={onSubmit}
       />
+    </div>
+  );
+}
+
+// ---------- Inline thread popover (anchored to a commented span) ----------
+/**
+ * Pure helper: given an anchor rect + viewport size, choose a Google-Docs-style
+ * placement. Exposed for unit testing — the real popover uses floating-ui's
+ * middleware to do the same work with autoUpdate.
+ */
+export function chooseThreadPopoverPlacement(
+  anchor: { left: number; right: number; top: number; bottom: number },
+  viewport: { width: number; height: number },
+  popover: { width: number; height: number } = { width: 380, height: 320 },
+): 'right-start' | 'left-start' | 'top-start' | 'bottom-start' {
+  const rightSpace = viewport.width - anchor.right;
+  const leftSpace = anchor.left;
+  const bottomSpace = viewport.height - anchor.top;
+  if (rightSpace >= popover.width + 12) return 'right-start';
+  if (leftSpace >= popover.width + 12) return 'left-start';
+  if (bottomSpace >= popover.height) return 'bottom-start';
+  return 'top-start';
+}
+
+export function CommentThreadPopover({
+  anchorEl, threadId, api, currentUserId, onClose,
+}: {
+  anchorEl: HTMLElement | null;
+  threadId: string | null;
+  api: ReturnType<typeof useAgendaComments>;
+  currentUserId: string | null;
+  onClose: () => void;
+}) {
+  const members = useTeamMembers();
+  const arrowRef = useRef<HTMLDivElement>(null);
+  const { refs, floatingStyles, placement, middlewareData } = useFloating({
+    placement: 'right-start',
+    middleware: [
+      offset(12),
+      flip({ fallbackPlacements: ['left-start', 'bottom-start', 'top-start'] }),
+      shift({ padding: 8 }),
+      arrow({ element: arrowRef }),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
+
+  useEffect(() => {
+    refs.setReference(anchorEl);
+  }, [anchorEl, refs]);
+
+  useEffect(() => {
+    if (!anchorEl) return;
+    const onDocMouseDown = (e: MouseEvent) => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return;
+      // Click inside the popover → keep open.
+      const fl = refs.floating.current;
+      if (fl && fl.contains(t)) return;
+      // Click on another comment span → let the parent reposition; don't close.
+      if (t.closest?.('.agenda-comment')) return;
+      onClose();
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    document.addEventListener('mousedown', onDocMouseDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDocMouseDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [anchorEl, refs, onClose]);
+
+  const thread = api.threads.find((t) => t.id === threadId) ?? null;
+  if (!thread || !anchorEl) return null;
+
+  const side = placement.split('-')[0] as 'top' | 'bottom' | 'left' | 'right';
+  const ax = middlewareData.arrow?.x;
+  const ay = middlewareData.arrow?.y;
+  const arrowStyle: React.CSSProperties = {
+    position: 'absolute',
+    width: 10, height: 10,
+    background: 'rgba(16,28,52,0.98)',
+    borderLeft: side === 'right' ? '0.5px solid rgba(80,140,255,0.35)' : 'none',
+    borderTop: side === 'bottom' ? '0.5px solid rgba(80,140,255,0.35)' : 'none',
+    borderRight: side === 'left' ? '0.5px solid rgba(80,140,255,0.35)' : 'none',
+    borderBottom: side === 'top' ? '0.5px solid rgba(80,140,255,0.35)' : 'none',
+    transform: 'rotate(45deg)',
+    left: ax != null ? `${ax}px` : '',
+    top: ay != null ? `${ay}px` : '',
+    [({ top: 'bottom', bottom: 'top', left: 'right', right: 'left' } as const)[side]]: '-5px',
+  };
+
+  return (
+    <div
+      ref={refs.setFloating}
+      data-agenda-thread-popover={thread.id}
+      style={{
+        ...floatingStyles,
+        zIndex: 50,
+        width: 360,
+        maxHeight: 'min(70vh, 520px)',
+        overflowY: 'auto',
+        background: 'rgba(16,28,52,0.98)',
+        border: '0.5px solid rgba(80,140,255,0.35)',
+        borderRadius: 12,
+        boxShadow: '0 14px 40px rgba(0,0,0,0.5)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+      }}
+    >
+      <div ref={arrowRef} style={arrowStyle} />
+      <div style={{ padding: 10 }}>
+        <ThreadCard
+          thread={thread}
+          comments={api.comments}
+          currentUserId={currentUserId}
+          members={members}
+          flash={api.flashThreadId === thread.id}
+          onJump={() => {}}
+          api={api}
+        />
+      </div>
     </div>
   );
 }

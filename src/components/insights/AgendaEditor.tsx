@@ -28,6 +28,7 @@ import { CommentMark } from './CommentMark';
 import {
   AgendaCommentsRail,
   CommentContextMenu,
+  CommentThreadPopover,
   NewThreadPopover,
   SelectionBubble,
   useAgendaComments,
@@ -318,6 +319,7 @@ export function AgendaEditor() {
   const [copying, setCopying] = useState(false);
   const [, force] = useState(0);
   const [railOpen, setRailOpen] = useState(false);
+  const [activeThread, setActiveThread] = useState<{ id: string; el: HTMLElement } | null>(null);
   const [pendingComment, setPendingComment] = useState<
     { from: number; to: number; text: string; anchor: { left: number; top: number } } | null
   >(null);
@@ -364,11 +366,8 @@ export function AgendaEditor() {
       if (!target) return;
       const threadId = target.getAttribute('data-thread-id');
       if (!threadId) return;
-      setRailOpen(true);
-      requestAnimationFrame(() => {
-        const card = document.querySelector(`[data-thread-card="${threadId}"]`);
-        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
+      // Open / move the floating popover to this span. Don't auto-open the rail.
+      setActiveThread({ id: threadId, el: target });
     };
     dom.addEventListener('click', onClick);
     return () => { dom.removeEventListener('click', onClick); };
@@ -712,7 +711,13 @@ export function AgendaEditor() {
                 .setCommentMark(t.id)
                 .run();
               await commentsApi.addComment(t.id, body);
-              setRailOpen(true);
+              // Auto-open the inline popover on the freshly-marked span.
+              requestAnimationFrame(() => {
+                const span = editor.view.dom.querySelector(
+                  `[data-thread-id="${t.id}"]`,
+                ) as HTMLElement | null;
+                if (span) setActiveThread({ id: t.id, el: span });
+              });
             }
             setPendingComment(null);
           }}
@@ -726,6 +731,14 @@ export function AgendaEditor() {
         api={commentsApi}
         currentUserId={user?.id ?? null}
         scrollListRef={railListRef}
+        onOpenInline={(threadId, el) => setActiveThread({ id: threadId, el })}
+      />
+      <CommentThreadPopover
+        anchorEl={activeThread?.el ?? null}
+        threadId={activeThread?.id ?? null}
+        api={commentsApi}
+        currentUserId={user?.id ?? null}
+        onClose={() => setActiveThread(null)}
       />
     </div>
   );
