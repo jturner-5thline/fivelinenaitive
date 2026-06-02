@@ -34,6 +34,7 @@ interface AuditRow {
   error_message: string | null;
   page_context: Record<string, unknown> | null;
   created_at: string;
+  latency_ms?: number | null;
 }
 
 const OUTCOME_VARIANT: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -57,6 +58,16 @@ function toScore(c: AuditRow['confidence']): number | null {
   }
   if (!vals.length) return null;
   return vals.reduce((a, b) => a + b, 0) / vals.length;
+}
+
+function getLatency(row: AuditRow): number | null {
+  const direct = (row as any).latency_ms;
+  if (typeof direct === 'number' && Number.isFinite(direct)) return direct;
+  const confidenceLatency = row.confidence && typeof row.confidence === 'object' ? (row.confidence as any).latency_ms : null;
+  if (typeof confidenceLatency === 'number' && Number.isFinite(confidenceLatency)) return confidenceLatency;
+  const extractedLatency = row.extracted_fields && typeof row.extracted_fields === 'object' ? (row.extracted_fields as any).latency_ms : null;
+  if (typeof extractedLatency === 'number' && Number.isFinite(extractedLatency)) return extractedLatency;
+  return null;
 }
 
 export function AIActionAuditPanel() {
@@ -192,13 +203,15 @@ export function AIActionAuditPanel() {
                   <TableHead className="w-[140px]">When</TableHead>
                   <TableHead>Intent / Action</TableHead>
                   <TableHead className="hidden lg:table-cell">Prompt</TableHead>
-                  <TableHead className="w-[120px]">Confidence</TableHead>
+                   <TableHead className="w-[120px]">Confidence</TableHead>
+                   <TableHead className="w-[90px]">Latency</TableHead>
                   <TableHead className="w-[140px]">Outcome</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filtered.map(row => {
                   const score = toScore(row.confidence);
+                  const latency = getLatency(row);
                   const isOpen = !!expanded[row.id];
                   return (
                     <Collapsible key={row.id} asChild open={isOpen} onOpenChange={(o) => setExpanded(p => ({ ...p, [row.id]: o }))}>
@@ -223,7 +236,7 @@ export function AIActionAuditPanel() {
                               {row.prompt ?? '—'}
                             </div>
                           </TableCell>
-                          <TableCell>
+                           <TableCell>
                             {score === null ? (
                               <Badge variant="outline" className="text-[10px]">n/a</Badge>
                             ) : (
@@ -235,6 +248,9 @@ export function AIActionAuditPanel() {
                               </Badge>
                             )}
                           </TableCell>
+                           <TableCell className="text-xs text-muted-foreground whitespace-nowrap">
+                             {typeof latency === 'number' ? `${latency}ms` : '—'}
+                           </TableCell>
                           <TableCell>
                             <Badge variant={OUTCOME_VARIANT[row.outcome] ?? 'outline'} className="text-[10px]">
                               {row.outcome}
@@ -246,13 +262,14 @@ export function AIActionAuditPanel() {
                         </TableRow>
                         <CollapsibleContent asChild>
                           <TableRow className="bg-muted/30 hover:bg-muted/30">
-                            <TableCell colSpan={6} className="p-4">
+                            <TableCell colSpan={7} className="p-4">
                               <div className="grid gap-3 md:grid-cols-2 text-xs">
                                 <DetailField label="Prompt" value={row.prompt} mono />
                                 <DetailField label="Intent" value={row.intent} />
                                 <DetailField label="Resolved deal" value={row.resolved_deal_name} />
                                 <DetailField label="Resolved assignee" value={row.resolved_assignee_name} />
                                 <DetailField label="Outcome detail" value={row.outcome_detail} />
+                                <DetailField label="Latency" value={typeof latency === 'number' ? `${latency}ms` : null} />
                                 <DetailField label="Clarification reason" value={row.clarification_reason} />
                                 <DetailField label="Error" value={row.error_message} className="text-destructive" />
                                 <JsonField label="Confidence" value={row.confidence} />
