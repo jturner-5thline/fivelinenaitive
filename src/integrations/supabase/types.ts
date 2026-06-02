@@ -1406,6 +1406,42 @@ export type Database = {
           },
         ]
       }
+      ai_copilot_audit: {
+        Row: {
+          action: string
+          company_id: string | null
+          deal_ids: string[] | null
+          details: Json | null
+          id: string
+          occurred_at: string
+          proposed: Json | null
+          resolved_action: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          company_id?: string | null
+          deal_ids?: string[] | null
+          details?: Json | null
+          id?: string
+          occurred_at?: string
+          proposed?: Json | null
+          resolved_action?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          company_id?: string | null
+          deal_ids?: string[] | null
+          details?: Json | null
+          id?: string
+          occurred_at?: string
+          proposed?: Json | null
+          resolved_action?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_copilot_config: {
         Row: {
           company_id: string

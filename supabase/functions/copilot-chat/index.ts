@@ -763,6 +763,7 @@ const tools = [
           source: { type: "string", description: "How the deal was sourced (e.g. 'LinkedIn Outreach', 'Referral')." },
           deal_value: { type: "number", description: "Estimated deal value in USD." },
           notes: { type: "string", description: "Optional free-text notes; stored on the deal's notes/next_step field." },
+          force_create: { type: "boolean", description: "If true, bypass the same-name collision pre-flight check and proceed to create the deal even if one already exists with the same name. Only set this when the user has explicitly confirmed they want a duplicate after seeing a name_collision card." },
         },
         required: ["company_name"],
       },
@@ -2213,6 +2214,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
     }
     case "search_deals": {
       const queryText: string = typeof args.query === "string" ? args.query.trim() : "";
+      const searchStartedAt = Date.now();
       // When a name query is supplied, pull a broader candidate pool across
       // ALL statuses (including archived/closed_lost/dead) so fuzzy matching
       // can find near-misses like "censys technology" -> "Censys Technologies".
@@ -2226,6 +2228,33 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       const broaden = args.broaden === true;
       q = applyDealScope(q, scope, { allowOutOfScope: broaden });
       if (queryText) {
+        // ── Tier 1: exact, case-insensitive, trimmed equality. Short-circuit. ──
+        try {
+          let eq: any = supabase
+            .from("deals")
+            .select("id, company, value, stage, status, deal_type, updated_at")
+            .ilike("company", queryText.replace(/\s+/g, " ").trim())
+            .limit(5);
+          if (args.status) eq = eq.eq("status", args.status);
+          eq = applyDealScope(eq, scope, { allowOutOfScope: broaden });
+          const { data: exactRows } = await eq;
+          const exact = (exactRows || []).filter((r: any) =>
+            (r.company || "").trim().toLowerCase() === queryText.trim().toLowerCase()
+          );
+          if (exact.length > 0) {
+            return {
+              count: exact.length,
+              query: queryText,
+              tier: "exact",
+              confidence: 1.0,
+              scope_label: scope.label,
+              scope_applied: !broaden,
+              latency_ms: Date.now() - searchStartedAt,
+              deals: exact.map((d: any) => ({ ...d, similarity: 1, _score: 1, tier: "exact" })),
+            };
+          }
+        } catch (e) { console.warn("[search_deals] tier1 exact check failed", e); }
+
         // Broad ilike OR across the query and its tokens, then fuzzy-rank.
         const tokens = Array.from(new Set(
           [queryText, ..._normalizeDealName(queryText).split(" ")]
@@ -2245,16 +2274,31 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         results = results.filter((d: any) => d.updated_at && new Date(d.updated_at).getTime() < cutoff);
       }
       if (queryText) {
-        const ranked = rankDealsByQuery(results, queryText, 0.45).slice(0, 8);
+        // Tier 2/3: substring + fuzzy rank. Lowered threshold so trigram
+        // near-misses ("Exampl Deal" → "Example Deal") surface for confirmation
+        // instead of triggering "I couldn't find" responses.
+        const ranked = rankDealsByQuery(results, queryText, 0.30).slice(0, 8);
+        const top = ranked[0];
+        const topScore = top ? Number(top._score.toFixed(3)) : 0;
+        const tier = topScore >= 0.85 ? "high" : topScore >= 0.60 ? "medium" : ranked.length > 0 ? "low" : "none";
         return {
           count: ranked.length,
           query: queryText,
+          tier,
+          confidence: topScore,
           scope_label: scope.label,
           scope_applied: !broaden,
+          latency_ms: Date.now() - searchStartedAt,
+          guidance:
+            ranked.length === 0
+              ? "No deals matched in current scope. If you have inline fuzzy suggestions, show them as quick-reply chips; do NOT say 'I couldn't find'. Otherwise ask the user to confirm the name or click 'List all active deals'."
+              : topScore >= 0.85
+                ? "High-confidence match — safe to proceed."
+                : "Medium/low confidence — ask the user 'Did you mean <top match> ($<value>, <stage>)?' with Yes / Show other matches / No, none of these. NEVER say 'I couldn't find' when matches were returned.",
           broaden_hint: ranked.length === 0 && !broaden
             ? "No matches inside the current scope. Re-run search_deals with { broaden: true } to look across all workspaces / pipelines / statuses."
             : undefined,
-          deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)) })),
+          deals: ranked.map((d: any) => ({ ...d, similarity: Number(d._score.toFixed(3)), tier: Number(d._score.toFixed(3)) >= 0.85 ? "high" : Number(d._score.toFixed(3)) >= 0.60 ? "medium" : "low" })),
         };
       }
       return { count: results.length, scope_label: scope.label, scope_applied: !broaden, deals: results };
@@ -2493,6 +2537,101 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           .limit(1)
           .maybeSingle();
         if (pr?.user_id) ownerId = pr.user_id;
+      }
+
+      // ── Pre-flight: same-name collision check (case-insensitive, trimmed) ──
+      // Runs after stage/owner resolution so the collision card and the eventual
+      // confirm card share the same resolved field set. Skipped only when the
+      // LLM passes force_create=true after the user picked "Create duplicate".
+      const forceCreate = args.force_create === true;
+      const normalizedName = companyName.replace(/\s+/g, " ").trim();
+      if (!forceCreate && normalizedName) {
+        try {
+          let cq: any = supabase
+            .from("deals")
+            .select("id, company, value, stage, manager, owned_by, company_id, updated_at")
+            .ilike("company", normalizedName) // ilike with no wildcards == case-insensitive equality
+            .limit(5);
+          // Constrain to current chat scope (tenant + pipeline) so other
+          // workspaces' deals never trigger a false collision.
+          cq = applyDealScope(cq, scope);
+          const { data: existingRows } = await cq;
+          const exact = (existingRows || []).filter((r: any) =>
+            (r.company || "").trim().toLowerCase() === normalizedName.toLowerCase()
+          );
+          if (exact.length > 0) {
+            const stageMap: Record<string, string> = {};
+            for (const s of pipelineStages) {
+              const sid = (s as any)?.id; const slabel = (s as any)?.label || (s as any)?.name;
+              if (sid && slabel) stageMap[sid] = slabel;
+            }
+            const existing = exact.map((r: any) => ({
+              id: r.id,
+              name: r.company,
+              value: r.value,
+              stage: stageMap[r.stage] || r.stage,
+              manager_name: r.manager || r.owned_by || null,
+              company_id: r.company_id,
+              updated_at: r.updated_at,
+            }));
+            try {
+              await supabase.from("ai_copilot_audit").insert({
+                user_id: userId,
+                company_id: pipelineCompanyId,
+                action: "name_collision_warning",
+                proposed: {
+                  name: normalizedName,
+                  value: typeof args.deal_value === "number" ? args.deal_value : null,
+                  manager_name: ownerName,
+                  pipeline_id: pipelineId,
+                  stage_id: stageId,
+                  stage_label: stageLabel,
+                },
+                deal_ids: existing.map((e) => e.id),
+                details: { source: "create_deal_preflight", match_count: existing.length },
+              });
+            } catch (e) { console.warn("[create_deal] audit insert failed", e); }
+            return {
+              status: "name_collision",
+              proposed: {
+                name: normalizedName,
+                value: typeof args.deal_value === "number" ? args.deal_value : null,
+                manager_id: ownerId,
+                manager_name: ownerName,
+                company_name: companyName,
+                pipeline_id: pipelineId,
+                pipeline_name: pipelineName,
+                stage_id: stageId,
+                stage_label: stageLabel,
+                contact_name: args.contact_name || null,
+                contact_email: args.contact_email || null,
+                notes: args.notes || null,
+              },
+              existing,
+              guidance:
+                `A deal named "${normalizedName}" already exists in this workspace. DO NOT auto-confirm — you MUST present a collision card to the user. Title it "A deal named '${normalizedName}' already exists" and list each match as: "<name> — <stage> — $<value> — mgr: <manager_name> — updated <relative time>". Offer EXACTLY three options as quick replies: ` +
+                `(1) **Update existing** — call update_deal_fields on the existing deal id with the proposed fields; ` +
+                `(2) **Create duplicate** — re-call create_deal with the same args plus force_create=true; ` +
+                `(3) **Rename** — ask the user for a new name, then re-call create_deal with the new name. ` +
+                `Always include a Cancel option. If there are multiple matches, ask the user which one to update before opening the update draft.`,
+            };
+          }
+        } catch (e) {
+          console.warn("[create_deal] collision pre-check failed (non-fatal)", e);
+        }
+      }
+
+      if (forceCreate) {
+        try {
+          await supabase.from("ai_copilot_audit").insert({
+            user_id: userId,
+            company_id: pipelineCompanyId,
+            action: "name_collision_warning",
+            resolved_action: "duplicate",
+            proposed: { name: normalizedName, intent: "force_duplicate" },
+            details: { source: "create_deal_force_create" },
+          });
+        } catch (e) { console.warn("[create_deal] force_create audit insert failed", e); }
       }
 
       return {
@@ -7607,7 +7746,21 @@ FUZZY DEAL NAME INTERPRETATION (STRICT):
 - When the user references a deal by name and no RESOLVED DEAL FROM PROMPT is present, ALWAYS call search_deals({ query: "<the name they used>" }) FIRST. That tool does fuzzy + phonetic + token-set ranking across ALL deals (active, archived, closed_won, closed_lost).
 - If search_deals returns exactly one match with similarity >= 0.85, proceed with that deal and PREFACE your reply with: Interpreting "<user input>" as "<matched deal>" — let me know if that's wrong.
 - If it returns 2–3 plausible matches (top scores within 0.10 of each other, or none >= 0.85), ask ONE short clarifying question listing the top 3 by name + stage + status, ranked by confidence. Do NOT guess.
-- Only respond that no deal exists after search_deals returns zero matches above 0.45 similarity.
+- NEVER say "I couldn't find" / "no deal called X exists" when search_deals returned any matches (any tier). If tier=high (confidence ≥ 0.85), proceed with the top match. If tier=medium (0.60–0.84), ask "Did you mean <top match> ($<value>, <stage>)?" with quick-reply options [Yes] / [Show other matches] / [No, none of these]. If tier=low (<0.60) but matches were returned, still surface the top 3 as inline quick-reply chips ("Update <Name A>", "Update <Name B>", "Update <Name C>") so the user can pick — do NOT make them re-prompt "List all active deals". Only respond that no deal exists after search_deals returns count=0.
+
+DEAL NAME COLLISION ON CREATE (STRICT — applies whenever create_deal returns { status: "name_collision", existing: [...] }):
+- DO NOT auto-confirm. DO NOT emit a normal create_deal confirm card. The collision result REPLACES the confirm card for this turn.
+- Render a Copilot card titled exactly: A deal named "<proposed.name>" already exists
+- List EACH row in existing as: [<name>](entity://deal/<id>) — <stage> — $<value formatted as $X.XXMM or $XXX,XXXK> — mgr: <manager_name or "unassigned"> — updated <relative time>
+- Offer EXACTLY these three quick-reply chips (use the [[CHIPS:[...]]] grammar, labels must match):
+  [[CHIPS:["Update existing","Create duplicate","Rename"]]]
+- Behaviors when the user clicks a chip:
+  • "Update existing" → if there is a single match, call update_deal_fields on that deal id with the proposed fields (deal_value, manager_id, contact_name/email, notes, stage_id if explicitly requested). If there are multiple matches, FIRST ask the user to pick which existing deal to update (list by name + stage), then call update_deal_fields.
+  • "Create duplicate" → re-call create_deal with the SAME original args plus force_create=true. The server will audit intent=force_duplicate and skip the collision check.
+  • "Rename" → ask the user a single short question: "What name should I use instead?" Once they reply, re-call create_deal with the new company_name (collision check re-runs automatically).
+- Always allow Cancel — if the user dismisses or says "never mind", drop the flow and confirm nothing was created.
+- NEVER fabricate a different name on the user's behalf without asking. NEVER set force_create=true unless the user explicitly clicked Create duplicate.
+- This rule applies across the floating Ask naitive AI bar, the deal-detail Copilot, and the email AI Assist.
 
 SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confirmation-card-only responses):
 - At the very end of EVERY normal reply, append a single line in EXACTLY this format with no extra prose around it:
