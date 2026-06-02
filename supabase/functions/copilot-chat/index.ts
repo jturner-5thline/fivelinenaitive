@@ -732,14 +732,15 @@ const tools = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a task. Returns a confirmation card the user must approve. To assign to a teammate, first call search_team_members to resolve their user UUID, then pass it as assignee_id. The tasks table has NO priority column the AI may set, NO calendar field, and due_date is DATE-ONLY (no time-of-day).",
+      description: "Create a task. Returns a confirmation card the user must approve. CRITICAL: Whenever the user names a person to assign to (e.g. 'for James Turner', 'have Scott do this', 'Niki needs to …'), you MUST pass that exact name verbatim as `assignee_name` — the handler resolves it server-side via fuzzy match. If you also have a UUID from search_team_members, pass `assignee_id` too. Omit BOTH only for first-person reminders ('remind me to …') — the handler will default the owner to the current user. NEVER silently default to the caller when the user named someone.",
       parameters: {
         type: "object",
         additionalProperties: false,
         properties: {
           title: { type: "string", description: "Required. Concise, action-oriented title." },
           description: { type: "string", description: "Optional. Maps to the task's Notes field." },
-          assignee_id: { type: "string", description: "Optional UUID of the owner. Resolve names via search_team_members first. Defaults to the current user when omitted." },
+          assignee_id: { type: "string", description: "Optional UUID of the owner. If you already resolved the user via search_team_members, pass the UUID here. If omitted but `assignee_name` is set, the handler resolves it." },
+          assignee_name: { type: "string", description: "REQUIRED whenever the user named a teammate to assign to. Pass the raw human-readable name or email exactly as the user said it (e.g. 'James Turner', 'James', 'jturner@5thline.co'). The handler will fuzzy-match against the workspace roster. Leave UNSET ONLY for first-person reminders ('remind me to …') where the caller is the intended owner." },
           due_date: {
             type: "string",
             pattern: "^\\d{4}-\\d{2}-\\d{2}$",
