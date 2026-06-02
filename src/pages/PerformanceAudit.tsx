@@ -58,6 +58,15 @@ interface AuditResult {
   run_id: string;
   summary: AuditSummary;
   rows: AuditRow[];
+  bbp_candidates?: Array<{
+    deal_id: string;
+    deal_name: string;
+    deal_owner: string | null;
+    manager: string | null;
+    stage: string | null;
+    status: string | null;
+    score: number;
+  }>;
 }
 
 const changeBg: Record<AuditRow["change_type"], string> = {
@@ -299,6 +308,36 @@ export default function PerformanceAudit() {
                   <TableCell className="text-xs text-muted-foreground max-w-xs">
                     {r.notes}
                   </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
+
+      {result?.bbp_candidates && result.bbp_candidates.length > 0 && (
+        <Card className="mt-6 p-5">
+          <div className="mb-3 text-sm font-semibold text-foreground">
+            BBP candidate matches (top {result.bbp_candidates.length}) — pick one manually
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Deal</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Similarity</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.bbp_candidates.map((c) => (
+                <TableRow key={c.deal_id}>
+                  <TableCell className="text-xs">{c.deal_name}</TableCell>
+                  <TableCell className="text-xs">{c.deal_owner ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{c.stage ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{c.status ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{(c.score * 100).toFixed(1)}%</TableCell>
                 </TableRow>
               ))}
             </TableBody>
