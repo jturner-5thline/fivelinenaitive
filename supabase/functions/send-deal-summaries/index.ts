@@ -1,5 +1,6 @@
 // deno-lint-ignore-file
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
@@ -385,7 +386,7 @@ Deno.serve(async (req) => {
         if (type === 'fake') continue;
         const email = buildSummaryEmail(type as 'daily' | 'weekly', userName, emailData);
         await resend.emails.send({
-          from: 'naitive <noreply@updates.naitive.co>',
+          from: buildFrom("naitive"),
           reply_to: 'support@naitive.co',
           to: [testMode.email!],
           subject: `[TEST] ${email.subject}`,
@@ -509,7 +510,7 @@ Deno.serve(async (req) => {
           });
 
           await resend.emails.send({
-            from: 'naitive <noreply@updates.naitive.co>',
+            from: buildFrom("naitive"),
             reply_to: 'support@naitive.co',
             to: [userData.user.email],
             subject: email.subject,
@@ -568,7 +569,7 @@ Deno.serve(async (req) => {
           });
 
           await resend.emails.send({
-            from: 'naitive <noreply@updates.naitive.co>',
+            from: buildFrom("naitive"),
             reply_to: 'support@naitive.co',
             to: [userData.user.email],
             subject: email.subject,

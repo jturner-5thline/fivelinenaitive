@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
@@ -781,7 +782,7 @@ const handler = async (req: Request): Promise<Response> => {
           );
 
           await resend.emails.send({
-            from: "naitive <noreply@updates.naitive.co>",
+            from: buildFrom("naitive"),
             to: [email],
             subject: `naitive: ${recipient.deals.length} Deal${recipient.deals.length !== 1 ? 's' : ''} Need${recipient.deals.length === 1 ? 's' : ''} Attention`,
             html: emailHtml,

@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -120,7 +121,7 @@ serve(async (req) => {
             Authorization: `Bearer ${resendApiKey}`,
           },
            body: JSON.stringify({
-            from: "naitive <noreply@updates.naitive.co>",
+            from: buildFrom("naitive"),
             to: adminEmails,
             subject: `New User Approval Required: ${displayName}`,
             text: `New User Awaiting Approval\n\nA new user has signed up and requires your approval:\n\nName: ${displayName}\nEmail: ${user_email}\n\nPlease log in to the admin panel to review: https://naitive.co/admin\n\n— naitive`,

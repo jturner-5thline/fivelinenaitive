@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { buildFrom } from '../_shared/resendFrom.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -212,7 +213,7 @@ Deno.serve(async (req) => {
             Authorization: `Bearer ${RESEND_API_KEY}`,
           },
           body: JSON.stringify({
-            from: "naitive <noreply@updates.naitive.co>",
+            from: buildFrom("naitive"),
             to: RECIPIENTS,
             subject: "Your naitive Pipeline Report",
             html,

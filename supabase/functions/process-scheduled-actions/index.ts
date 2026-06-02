@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
 
 const corsHeaders = {
@@ -466,7 +467,7 @@ async function sendEmail(
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          from: 'naitive <noreply@updates.naitive.co>',
+          from: buildFrom("naitive"),
           to: [toEmail],
           subject: subject,
           html: `<p>${body}</p><p style="color: #888; font-size: 12px; margin-top: 20px;">This is a delayed automated email from your workflow.</p>`,
@@ -713,7 +714,7 @@ async function sendWorkflowSummaryEmail(
         'Content-Type': 'application/json',
       },
         body: JSON.stringify({
-          from: 'naitive <noreply@updates.naitive.co>',
+          from: buildFrom("naitive"),
           to: adminEmails,
           subject: `${statusEmoji} Workflow Actions Processed ${status}`,
         html: `

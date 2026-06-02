@@ -5,6 +5,7 @@
 // IMPORTANT: This is the ONLY workflow allowed to send outbound email from
 // the Naitive backend besides the pre-existing notification-engine path.
 import { serve } from 'https://deno.land/std@0.190.0/http/server.ts';
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.4';
 import { Resend } from 'https://esm.sh/resend@2.0.0';
 
@@ -14,7 +15,7 @@ const corsHeaders = {
 };
 
 const APP_URL = Deno.env.get('APP_URL') ?? 'https://fivelinenaitive.lovable.app';
-const FROM_EMAIL = 'naitive <noreply@updates.naitive.co>';
+const FROM_EMAIL = buildFrom("naitive");
 const MAX_ATTEMPTS = 3;
 
 // ---------- Template (exported for testing) ----------
