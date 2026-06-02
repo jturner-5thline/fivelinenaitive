@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -7,6 +7,33 @@ import { useCopilotStore } from '@/stores/copilotStore';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { syncTaskAfterCreate, retryAsanaSyncForTask } from '@/lib/asana/syncTaskAfterCreate';
+
+// Module-level flag: run the orphan-copilot-task backfill once per browser
+// session, the first time a CopilotTaskConfirm card is mounted.
+let __copilotAsanaBackfillRan = false;
+async function backfillOrphanCopilotTasks() {
+  if (__copilotAsanaBackfillRan) return;
+  __copilotAsanaBackfillRan = true;
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data } = await supabase
+      .from('tasks')
+      .select('id')
+      .eq('sync_source', 'copilot')
+      .is('asana_task_gid', null)
+      .gte('created_at', since)
+      .limit(50);
+    if (!data?.length) return;
+    // eslint-disable-next-line no-console
+    console.info(`[CopilotAsanaBackfill] retrying ${data.length} orphan copilot tasks`);
+    for (const row of data) {
+      try { await retryAsanaSyncForTask((row as any).id); } catch { /* logged inside */ }
+    }
+  } catch (e) {
+    console.warn('[CopilotAsanaBackfill] failed:', e);
+  }
+}
 
 interface DuplicateMatch {
   task_id?: string;
@@ -84,6 +111,10 @@ export function CopilotTaskConfirm({ action }: Props) {
   const addMutation = useCopilotStore(s => s.addMutation);
   const initial = action.params || {};
   const auditId: string | null = (initial as any).audit_id || null;
+
+  // Kick off the one-time backfill for orphan copilot-created tasks that
+  // were inserted before the Asana fan-out was wired (bug #1215344941044849).
+  useEffect(() => { void backfillOrphanCopilotTasks(); }, []);
 
   const [title, setTitle] = useState<string>(initial.title || '');
   const [description, setDescription] = useState<string>(initial.description || '');
@@ -176,6 +207,45 @@ export function CopilotTaskConfirm({ action }: Props) {
       setStatus('done');
       setCreatedTaskId(result?.params?.task_id || null);
       toast.success(result.message || 'Task created');
+      // ─── Asana fan-out (fire-and-forget, soft-success) ───
+      // The copilot-chat edge function only writes the local `tasks` row.
+      // Mirror the same task to Asana from the client so we reuse the user
+      // session, the existing asana-proxy integration lookup, retry logic,
+      // and the asana_sync_log surfaced in the dev sync panel.
+      const createdId: string | null = result?.params?.task_id || null;
+      if (createdId) {
+        const assignedTo = (result?.params?.assigned_to as string) || null;
+        const dealId = (params.deal_id as string) || null;
+        void (async () => {
+          try {
+            const t0 = performance.now();
+            const out = await syncTaskAfterCreate({
+              taskId: createdId,
+              title: title.trim(),
+              description: description.trim() || null,
+              dueDate: (params.due_date as string) || null,
+              assignedTo,
+            });
+            const latency = Math.round(performance.now() - t0);
+            // eslint-disable-next-line no-console
+            console.info('[CopilotTaskAsana]', {
+              task_id: createdId,
+              deal_id: dealId,
+              ok: out.ok,
+              gid: out.gid,
+              skipped: out.skipped || false,
+              reason: out.reason || null,
+              error: out.error || null,
+              latency_ms: latency,
+            });
+            if (!out.ok && !out.skipped) {
+              toast.message('Created locally. Asana sync retried in background.');
+            }
+          } catch (e) {
+            console.warn('[CopilotTaskAsana] unexpected sync error:', e);
+          }
+        })();
+      }
       addMutation({
         type: 'create_task',
         deal: (params.deal_id as string) || undefined,
