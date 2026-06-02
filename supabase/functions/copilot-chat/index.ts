@@ -2448,16 +2448,93 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           dealName = d?.company || null;
         } catch { /* non-fatal */ }
       }
-      // Resolve display name for the assignee when one was provided.
+      // ── Assignee resolution ────────────────────────────────────────────
+      // Priority: explicit assignee_id (UUID) > assignee_name (fuzzy) > omitted (defaults to caller in executor).
+      // CRITICAL: if the LLM passed assignee_name we MUST resolve it here — falling back to the caller
+      // when the user named someone else is bug #1215344941044854.
+      let resolvedAssigneeId: string | null = args.assignee_id || null;
       let assigneeName: string | null = null;
-      if (args.assignee_id) {
+      let assigneeStrategy = "omitted";
+      let assigneeCandidates: any[] = [];
+      if (resolvedAssigneeId) {
         try {
-          const { data: p } = await supabase.from("profiles").select("display_name, email").eq("user_id", args.assignee_id).maybeSingle();
+          const { data: p } = await supabase.from("profiles").select("display_name, email").eq("user_id", resolvedAssigneeId).maybeSingle();
           assigneeName = p?.display_name || p?.email || null;
+          assigneeStrategy = "uuid";
         } catch { /* non-fatal */ }
+      } else if (typeof args.assignee_name === "string" && args.assignee_name.trim()) {
+        const rawName = String(args.assignee_name).trim();
+        try {
+          const { data: membership } = await supabase.from("company_members").select("company_id").eq("user_id", userId).limit(1).maybeSingle();
+          const companyId = membership?.company_id || null;
+          if (companyId) {
+            const { data: members } = await supabase.from("company_members").select("user_id").eq("company_id", companyId);
+            const memberIds = (members || []).map((m: any) => m.user_id);
+            const { data: profiles } = memberIds.length
+              ? await supabase.from("profiles").select("user_id, display_name, first_name, last_name, email").in("user_id", memberIds)
+              : { data: [] as any[] };
+            const norm = (s: string) => (s || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9@.\s]/g, "").trim();
+            const q = norm(rawName);
+            const scored = (profiles || []).map((p: any) => {
+              const first = norm(p.first_name || "");
+              const last = norm(p.last_name || "");
+              const display = norm(p.display_name || "");
+              const email = norm(p.email || "");
+              const emailPrefix = email.split("@")[0] || "";
+              const full = `${first} ${last}`.trim();
+              let score = 0;
+              if (email && email === q) score = 100;
+              else if (display && display === q) score = 100;
+              else if (full && full === q) score = 100;
+              else if (emailPrefix && emailPrefix === q) score = 95;
+              else if (q.includes(" ")) {
+                // multi-token query: require both first AND last to appear
+                const tokens = q.split(/\s+/).filter(Boolean);
+                const hay = `${first} ${last} ${display} ${email}`;
+                if (tokens.every(t => hay.includes(t))) score = 90;
+              } else {
+                if (first === q || last === q) score = 85;
+                else if (display.startsWith(q) || first.startsWith(q) || last.startsWith(q)) score = 70;
+                else if (display.includes(q) || full.includes(q)) score = 55;
+                else if (emailPrefix.includes(q)) score = 50;
+              }
+              return { user_id: p.user_id, display_name: p.display_name, email: p.email, score };
+            }).filter((x: any) => x.score > 0).sort((a: any, b: any) => b.score - a.score);
+            assigneeCandidates = scored.slice(0, 3);
+            // Decide based on top-tier matches (treat anything within 10 pts of the top as a tie).
+            const topTier = scored.filter((s: any) => scored[0] && s.score >= scored[0].score - 10);
+            if (topTier.length === 1) {
+              resolvedAssigneeId = topTier[0].user_id;
+              assigneeName = topTier[0].display_name || topTier[0].email || rawName;
+              assigneeStrategy = "fuzzy_unique";
+            } else if (topTier.length === 0) {
+              console.warn("[CopilotAssignee]", JSON.stringify({ input: rawName, candidates_count: 0, resolved_user_id: null, strategy: "no_match" }));
+              return {
+                error: `No teammate matched "${rawName}". Ask the user to confirm the full name or email — do NOT default to the caller.`,
+                assignee_input: rawName,
+                candidates: [],
+              };
+            } else {
+              console.warn("[CopilotAssignee]", JSON.stringify({ input: rawName, candidates_count: topTier.length, resolved_user_id: null, strategy: "ambiguous" }));
+              return {
+                error: `Multiple teammates matched "${rawName}". Ask the user to pick one before retrying create_task — do NOT guess and do NOT default to the caller.`,
+                assignee_input: rawName,
+                candidates: topTier.map((m: any) => ({ user_id: m.user_id, display_name: m.display_name, email: m.email })),
+              };
+            }
+          }
+        } catch (e) {
+          console.error("[CopilotAssignee] resolver error:", (e as Error).message);
+        }
       }
+      console.log("[CopilotAssignee]", JSON.stringify({
+        input: args.assignee_name || args.assignee_id || null,
+        candidates_count: assigneeCandidates.length,
+        resolved_user_id: resolvedAssigneeId,
+        strategy: assigneeStrategy,
+      }));
       // Strip any fields the LLM may have hallucinated outside the schema (priority, calendar, time, etc.)
-      const ALLOWED = new Set(["title", "description", "assignee_id", "due_date", "deal_id", "type", "collaborator_ids"]);
+      const ALLOWED = new Set(["title", "description", "assignee_id", "assignee_name", "due_date", "deal_id", "type", "collaborator_ids"]);
       for (const k of Object.keys(args)) {
         if (!ALLOWED.has(k)) {
           console.warn(`[create_task] dropping unsupported field from tool args: ${k}`);
@@ -2478,7 +2555,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           description: args.description,
           deal_id: args.deal_id,
           deal_name: dealName,
-          assignee_user_id: args.assignee_id || null,
+          assignee_user_id: resolvedAssigneeId,
           assignee_name: assigneeName,
           due_date: safeDue,
           task_type: args.type || "task",
