@@ -409,7 +409,7 @@ export function AgendaEditor() {
       }
       // Use chain so the change lands on the undo stack (snapshot is the prior state).
       void snapshot;
-      editor.chain().focus().setContent(prev, true).run();
+      editor.chain().focus().setContent(prev, { emitUpdate: true }).run();
       // Trigger a save immediately.
       const doc = editor.getJSON();
       latestDocRef.current = doc;
