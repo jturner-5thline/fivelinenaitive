@@ -8,6 +8,7 @@ import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
 import { InsightsReportingBar } from './InsightsReportingBar';
+import { AgendaEditor } from '@/components/insights/AgendaEditor';
 import {
   QuarterlyReportPrintStyles,
   QuarterlyInsightsReportPage,
@@ -177,7 +178,8 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
 }
 
 export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }: { isEditMode?: boolean; onExitEditMode?: () => void } = {}) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  // Default to the Dashboard tab (index 1); Agenda (index 0) is opt-in.
+  const [activeIndex, setActiveIndex] = useState(1);
   const touchStartX = useRef<number | null>(null);
   const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
@@ -221,6 +223,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   }, [reportSave.hasUnsavedChanges]);
 
   const PAGE_META: { title: string; tabLabel: string }[] = [
+    { title: 'Agenda',                               tabLabel: 'Agenda'      },
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard'   },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts'   },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics' },
@@ -278,6 +281,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   );
 
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
+    { title: 'Agenda',                               tabLabel: 'Agenda',     render: () => <AgendaEditor /> },
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
@@ -311,7 +315,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   };
 
   const activePage = PAGES[activeIndex];
-  const isReportTab = activeIndex >= 3;
+  const isReportTab = activeIndex >= 4;
 
   return (
     <div
