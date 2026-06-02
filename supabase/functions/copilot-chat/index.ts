@@ -6939,15 +6939,13 @@ serve(async (req) => {
             .select("id, company, stage, status, value, deal_type, manager, deal_owner, updated_at")
             .or(orFilter)
             .limit(40);
-          // Filter out globally excluded deal names (test / example).
-          const excluded = (n: string | null) => {
-            const x = (n || "").toLowerCase().trim();
-            if (!x) return false;
-            if (x === "example deal" || x === "test - niki's store") return true;
-            if (x === "test" || x.startsWith("test ")) return true;
-            return false;
-          };
-          const filteredAll = (matches || []).filter((d: any) => !excluded(d.company));
+          // NOTE: The global "Example Deal / Test-Niki's Store / test ..."
+          // exclusion list is for METRICS & DASHBOARDS ONLY. Copilot lookups
+          // MUST be able to resolve test/example deals so users testing the
+          // assistant get accurate answers; otherwise search_deals silently
+          // shadows the very deal the user just referenced. Do not re-add
+          // exclusion here.
+          const filteredAll = matches || [];
           // Rank against the strongest probe (capitalized phrase if present,
           // otherwise the full user text) so typos / missing suffixes / phonetic
           // near-misses surface as a confident match.
