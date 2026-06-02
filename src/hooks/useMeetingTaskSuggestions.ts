@@ -236,7 +236,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     queryFn: async () => {
       const { data, error } = await supabase
         .from('meeting_task_suggestions')
-        .select('id, suggestion_id, text, assignee_email, due_date, status, created_task_id, source')
+        .select('id, suggestion_id, text, assignee_email, external_mention, due_date, status, created_task_id, source')
         .eq('scope_key', scopeKey);
       if (error) throw error;
       return data ?? [];
