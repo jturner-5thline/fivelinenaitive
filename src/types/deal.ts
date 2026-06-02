@@ -1,4 +1,4 @@
-export type DealStage = 'final-credit-items' | 'client-strategy-review' | 'write-up-pending' | 'submitted-to-lenders' | 'lenders-in-review' | 'terms-issued' | 'in-due-diligence' | 'funded-invoiced' | 'closed-won' | 'closed-lost' | 'on-hold' | string;
+export type DealStage = 'final-credit-items' | 'client-strategy-review' | 'write-up-pending' | 'proposal-issued' | 'submitted-to-lenders' | 'lenders-in-review' | 'terms-issued' | 'in-due-diligence' | 'funded-invoiced' | 'closed-won' | 'closed-lost' | 'on-hold' | string;
 
 export type DealStatus = 'on-track' | 'at-risk' | 'off-track' | 'on-hold' | 'archived';
 
@@ -214,6 +214,7 @@ export const STAGE_CONFIG: Record<DealStage, { label: string; color: string }> =
   'final-credit-items': { label: 'Final Credit Items', color: 'bg-slate-500' },
   'client-strategy-review': { label: 'Client Strategy Review', color: 'bg-blue-500' },
   'write-up-pending': { label: 'Write-Up Pending', color: 'bg-indigo-500' },
+  'proposal-issued': { label: 'Proposal Issued', color: 'bg-sky-500' },
   'submitted-to-lenders': { label: 'Submitted to Lenders', color: 'bg-violet-500' },
   'lenders-in-review': { label: 'Lenders in Review', color: 'bg-purple-500' },
   'terms-issued': { label: 'Terms Issued', color: 'bg-fuchsia-500' },
