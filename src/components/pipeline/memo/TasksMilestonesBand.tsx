@@ -13,6 +13,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { toast } from 'sonner';
 import { AddFollowupInlineForm } from './AddFollowupInlineForm';
+import { AddTaskInlineForm } from './AddTaskInlineForm';
+import { AddMilestoneInlineForm } from './AddMilestoneInlineForm';
 import { prefillFollowupTitle } from '@/lib/dealNextBestAction';
 import { getAsanaSyncContext } from '@/hooks/useAsanaTaskSync';
 import { updateTaskInAsana } from '@/hooks/useAsanaTaskUpdate';
@@ -191,11 +193,19 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
 
   // Standalone "+" button rendered as a sibling to the bottom-most
   // task/milestone row — never embedded inside the row's bordered container.
+  // Label is context-aware so it reflects the creator the active filter
+  // pill will mount.
+  const addLabel =
+    activeFilter === 'task'
+      ? 'Add task'
+      : activeFilter === 'milestone'
+      ? 'Add milestone'
+      : 'Add follow-up';
   const StandalonePlusButton = (
     <button
       type="button"
-      aria-label="Add follow-up task"
-      title="Add follow-up"
+      aria-label={addLabel}
+      title={addLabel}
       onClick={(e) => {
         e.stopPropagation();
         setAddFormOpen(true);
@@ -934,11 +944,23 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
           shows a single "+" button as the only entry point. */}
       {addFormOpen ? (
         <div className="mt-2">
-          <AddFollowupInlineForm
-            deal={deal}
-            defaultTitle={prefillTitle}
-            onClose={() => setAddFormOpen(false)}
-          />
+          {activeFilter === 'task' ? (
+            <AddTaskInlineForm
+              deal={deal}
+              onClose={() => setAddFormOpen(false)}
+            />
+          ) : activeFilter === 'milestone' ? (
+            <AddMilestoneInlineForm
+              deal={deal}
+              onClose={() => setAddFormOpen(false)}
+            />
+          ) : (
+            <AddFollowupInlineForm
+              deal={deal}
+              defaultTitle={prefillTitle}
+              onClose={() => setAddFormOpen(false)}
+            />
+          )}
         </div>
       ) : !hasContent ? (
         <div className="mt-2 flex justify-end">{StandalonePlusButton}</div>
