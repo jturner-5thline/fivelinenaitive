@@ -335,6 +335,7 @@ export function AgendaEditor() {
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      CommentMark,
     ],
     content: SEED_CONTENT,
     editorProps: {
