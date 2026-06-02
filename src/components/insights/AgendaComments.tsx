@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Editor } from '@tiptap/react';
+import {
+  useFloating, autoUpdate, offset, flip, shift, arrow,
+} from '@floating-ui/react-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
