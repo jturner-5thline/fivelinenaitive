@@ -1,80 +1,177 @@
-# Rep Scorecard — Scoped Live Build
+# @-mention Tagging in Task Comments — Dry Run
 
-Static `RepPerformanceModelGrid` stays as-is (the spreadsheet model is untouched). We add a **separate** live "Rep Scorecard" card on Insights → Performance that pulls from real deal data, plus the minimum schema and backfill to make it accurate.
+## What already exists (reuse, don't rebuild)
 
-## Phase 1 — Schema + stage + auto-stamp (migration only, awaits approval)
+- **`task_mentions` table** (with RLS, indexes, unread-count + realtime). Populated by `useCreateMentions()` in `src/hooks/useTaskMentions.ts`.
+- **Mention parser**: `extractMentions(text)` and `renderMentionText(text)` in the same file handle `@[Name](user_id)` markup.
+- **Composer primitive**: `src/components/ui/mention-textarea.tsx` + `mention-list.tsx` (Tiptap-based, arrow keys / Enter / Esc, avatar + email rows).
+- **TaskDetailDrawer** (surface a) already uses `MentionTextarea` for the composer but does NOT call `useCreateMentions` after insert. Other 3 surfaces use plain `<textarea>`.
 
-1. **New pipeline stage** `proposal-issued` (label "Proposal Issued"), inserted between `client-strategy-review` and `submitted-to-lenders` in `src/types/deal.ts` `STAGE_CONFIG` and in any default `deal_pipelines` rows.
-2. **New columns on `public.deals`** (all `timestamptz null`):
-   - `proposal_issued_at`
-   - `terms_issued_at`
-   - `terms_signed_at`
-   - `closed_at`
-   - `lost_at`
-   - `deal_owner_user_id uuid` (FK to `auth.users`, indexed)
-3. **Trigger** `deals_stamp_stage_anchors_trg` (BEFORE UPDATE OF stage): when `NEW.stage` first transitions into a milestone stage, stamp the corresponding anchor if NULL.
-   - `proposal-issued` → `proposal_issued_at`
-   - `terms-issued` → `terms_issued_at`
-   - `funded-invoiced` → `closed_at`
-   - `closed-won` → `closed_at` (if not already set)
-   - `closed-lost` → `lost_at`
-   - `terms_signed_at` is **only** set via explicit UI action (no stage maps to it) — handled in phase 3.
-4. **Idempotent backfill** (one SQL statement, in same migration) using `deal_stage_durations`:
-   - For each `(deal_id, stage_slug)` with `entered_at`, MIN(`entered_at`) populates the matching anchor on `deals` where it's currently NULL.
-   - `proposal_issued_at` cannot be backfilled (stage didn't exist) — left NULL.
-   - `terms_signed_at` left NULL (no historical signal).
-5. **Owner backfill (dry-run report only this phase)**: a view `v_deal_owner_resolution` resolves free-text `deal_owner` / `manager` against `profiles.display_name` within the same `org_company_id`. No writes. Phase 4 applies after you review.
+## What we still need
 
-GRANTs + RLS preserved (deals already has policies; new columns inherit). Trigger is `SECURITY DEFINER` with `search_path = public`.
+### 1. Migration — add denormalized `mentions` + trigger + RLS tightening
 
-## Phase 2 — Hook + Rep Scorecard card
+```sql
+-- Denormalized mention list on the comment row (per spec)
+ALTER TABLE public.task_comments
+  ADD COLUMN IF NOT EXISTS mentions uuid[] NOT NULL DEFAULT '{}';
 
-- `src/hooks/useRepScorecard.ts`: query deals scoped to current tenant, filtered by `deal_owner_user_id`, bucketed by `fiscal_quarter` derived from each anchor (calendar quarters, FY = calendar year per existing convention — confirm in implementation).
-- `src/components/metrics/rep-model/RepScorecardCard.tsx`: Liquid Glass card with:
-  - Rep dropdown (defaults to current user, admins see all reps).
-  - Period buttons: Q1 / Q2 / Q3 / Q4 / Year (current FY).
-  - **Active only** toggle (default OFF) for Pipeline Production rows.
-  - Rows: Deals on Board, Dollars on Board, Proposals Issued #, Dollars Proposed, **Terms Issued** (count + $), Terms Signed (count + $), Clients Signed (count + $), Deals Closed (count + $), Dollars Funded, **Lost Deals** (count + $).
-  - Each row has a tooltip showing the anchor column it uses.
-- Mount on `Insights.tsx` Performance tab, above the static grid.
-- Admin-only banner (uses `useAdminRole`): "N orphan deals are not attributed to any rep" linking to phase 4's picker. Hidden if N = 0.
+CREATE INDEX IF NOT EXISTS idx_task_comments_mentions
+  ON public.task_comments USING GIN (mentions);
 
-Exclusions: applies the global "Test-Niki's Store / Example Deal / starts with 'test '" rule and the deal-class isolation per memory.
+-- Parse @[Name](uuid) tokens from body on insert/update and keep mentions in sync
+CREATE OR REPLACE FUNCTION public.task_comments_populate_mentions()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  ids uuid[];
+BEGIN
+  SELECT COALESCE(array_agg(DISTINCT (m[2])::uuid), '{}')
+    INTO ids
+  FROM regexp_matches(NEW.body, '@\[([^\]]+)\]\(([0-9a-f-]{36})\)', 'g') AS m;
+  NEW.mentions := ids;
+  RETURN NEW;
+END $$;
 
-## Phase 3 — `terms_signed_at` capture UI
+DROP TRIGGER IF EXISTS trg_task_comments_populate_mentions ON public.task_comments;
+CREATE TRIGGER trg_task_comments_populate_mentions
+  BEFORE INSERT OR UPDATE OF body ON public.task_comments
+  FOR EACH ROW EXECUTE FUNCTION public.task_comments_populate_mentions();
 
-Small affordance on the deal detail page when stage = `terms-issued` or later: a single "Mark Terms Signed" button stamps `terms_signed_at = now()`. Free-text override allowed (date picker) for historical entries. Admin-only.
+-- Fanout to task_mentions + notify edge function via pg_net
+CREATE OR REPLACE FUNCTION public.task_comments_fanout_mentions()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  uid uuid;
+BEGIN
+  FOREACH uid IN ARRAY NEW.mentions LOOP
+    IF uid <> NEW.author_id THEN
+      INSERT INTO public.task_mentions
+        (task_id, comment_id, mentioned_by, mentioned_user_id, source)
+      VALUES (NEW.task_id, NEW.id, NEW.author_id, uid, 'comment')
+      ON CONFLICT DO NOTHING;
+    END IF;
+  END LOOP;
 
-## Phase 4 — Niki backfill (dry-run → apply) + Audit page
+  IF array_length(NEW.mentions, 1) > 0 THEN
+    PERFORM net.http_post(
+      url := current_setting('app.functions_url', true) || '/notify-comment-mentions',
+      headers := jsonb_build_object('Content-Type', 'application/json',
+                                    'Authorization', 'Bearer ' || current_setting('app.service_role_key', true)),
+      body := jsonb_build_object('comment_id', NEW.id)
+    );
+  END IF;
+  RETURN NEW;
+END $$;
 
-- Page `/admin/performance-audit` (gated `useAdminRole`) listing the proposed owner resolutions from `v_deal_owner_resolution` for the 11 Asana deals + Opconnect, with confidence scores and an "Apply" button per row (and "Apply all >= 0.9").
-- Same page also lists scorecard delta per metric per rep before/after each backfill operation.
-- Specific writes (gated behind the page's "Apply"):
-  - Set `deal_owner_user_id` to Niki on the 12 named deals (you confirm her user id in this phase).
-  - Mark EVGateway `status = 'lost'`, stamp `lost_at` = stage transition into closed-lost (or now()).
-  - Mark BBP `terms_issued_at` = stage entry into `terms-issued`.
-  - Lango / Opconnect: re-derive `signed_at` / `closed_at` from earliest matching stage event; no manual quarter override — the bucket comes from the anchor.
+DROP TRIGGER IF EXISTS trg_task_comments_fanout_mentions ON public.task_comments;
+CREATE TRIGGER trg_task_comments_fanout_mentions
+  AFTER INSERT ON public.task_comments
+  FOR EACH ROW EXECUTE FUNCTION public.task_comments_fanout_mentions();
 
-## Phase 5 — Tests
+-- RLS: the existing "View comments" / "Insert comments" policies already scope
+-- to company_members of the parent deal/task. No change needed.
+```
 
-- Unit (vitest): fiscal-quarter helper, anchor selection per metric, Active-only filter excludes lost.
-- Unit: scorecard aggregation includes lost in Pipeline Production unless Active-only.
-- E2E (`e2e/rep-performance-niki.spec.ts`): runs **after** phase 4 backfill — open Insights → Performance, pick Niki, assert new rows and that EVGateway is in the Lost row.
+(Note: `task_mentions` is the source of truth for notification UX — the `mentions` array on `task_comments` is the spec-requested denormalization for fast querying.)
 
-## What's explicitly **not** in scope
+### 2. Edge function `supabase/functions/notify-comment-mentions/index.ts`
 
-- Refactoring the static `RepPerformanceModelGrid` spreadsheet.
-- A SQL `rep_performance` materialized view (we'll query directly; matview can come later if perf demands).
-- Application-layer NOT NULL check on `deal_owner_user_id` for stages ≥ Proposal Issued (would break too many existing rows; revisit after backfill).
-- `fiscal_year` / `fiscal_quarter` as stored columns — computed in the hook + a SQL function `deal_fiscal_bucket(ts)` used by audit queries. Cheaper, no triggers on every anchor write.
+```ts
+// Pseudocode diff (new file)
+serve(async (req) => {
+  const { comment_id } = await req.json();
+  const supa = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-## Technical notes
+  const { data: c } = await supa
+    .from('task_comments')
+    .select('id, body, mentions, author_id, task:task_id(id, title, deal_id)')
+    .eq('id', comment_id).single();
+  if (!c?.mentions?.length) return ok();
 
-- Trigger uses `WHEN (OLD.stage IS DISTINCT FROM NEW.stage)` and only writes if the anchor is currently NULL — idempotent on stage bounce.
-- All new columns nullable; no existing code paths break.
-- `deal_owner_user_id` FK uses `ON DELETE SET NULL` to keep historical scorecards alive after a user is removed.
-- `fiscal_quarter` derivation lives in `src/lib/fiscalQuarter.ts` (new). Calendar-year FY assumed; if your FY ≠ calendar year, say so before Phase 2.
+  const [{ data: author }, { data: targets }] = await Promise.all([
+    supa.from('profiles').select('display_name, email').eq('user_id', c.author_id).single(),
+    supa.from('profiles').select('user_id, display_name, email').in('user_id', c.mentions),
+  ]);
 
-## Ship order
+  const plain = c.body.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, '@$1');
+  const deepLink = `${APP_URL}/tasks/${c.task.id}?comment=${c.id}`;
 
-Phase 1 migration → I'll halt for approval. Then Phase 2 ships in one turn. Phase 3, 4, 5 follow each in their own turn so we can sanity-check numbers as we go.
+  for (const t of targets ?? []) {
+    if (!t.email || t.user_id === c.author_id) continue;
+    // Idempotency: skip if notification_log already has (comment_id, t.user_id)
+    const { count } = await supa.from('notification_log')
+      .select('id', { count: 'exact', head: true })
+      .eq('kind', 'task_mention').eq('ref_id', c.id).eq('user_id', t.user_id);
+    if (count && count > 0) continue;
+
+    // Resend via connector gateway
+    await fetch('https://connector-gateway.lovable.dev/resend/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        'X-Connection-Api-Key': RESEND_API_KEY,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Naitive <notify@5thline.co>',
+        to: [t.email],
+        subject: `You were mentioned on "${c.task.title}"`,
+        html: renderEmail({ commenter: author?.display_name, body: plain, title: c.task.title, link: deepLink }),
+      }),
+    });
+
+    await supa.from('notification_log').insert({
+      kind: 'task_mention', ref_id: c.id, user_id: t.user_id, channel: 'email'
+    });
+  }
+});
+```
+
+Auth: `verify_jwt = false` (trigger calls with service role).
+
+### 3. UI integration points (4 surfaces)
+
+| # | Surface | File | Today | Change |
+|---|---|---|---|---|
+| a | Task drawer in a deal | `src/components/tasks/TaskDetailDrawer.tsx` | Uses `MentionTextarea` ✓ but doesn't fanout | After `addComment.mutate(...)` resolves with `newCommentId`, call `useCreateMentions().mutate({ taskId, text, commentId, source: 'comment' })`. Render existing comment bodies through `<MentionChips text={body} />` (new tiny component using `renderMentionText` + click→user preview). |
+| b | Daily Rundown task cards | `src/components/dashboard/SuggestedTasksSection.tsx` + `MoffittDealRundown.tsx` | No composer; tasks shown as cards | Add an inline collapsed "Add comment" affordance per task card that opens the same `MentionTextarea`. Same submit handler (`useTaskComments(taskId).addComment` + mention fanout). |
+| c | Deal Rundown task cards | `src/components/deals/DealsOverlay.tsx` | Same as (b) | Same inline composer; pass the deal context so `MentionTextarea`'s user list is filtered by the deal's company members. |
+| d | My Tasks page | `src/components/tasks/ExpandedTaskDetails.tsx` | Plain `<textarea>` | Replace with `MentionTextarea`; wire mention fanout the same way. |
+
+For all 4 surfaces we'll also extract a single reusable `<TaskCommentComposer taskId>` to dedupe — the four call sites become one-liners.
+
+### 4. Tests
+
+- `src/hooks/__tests__/taskMentionParser.test.ts` — unit tests for `extractMentions`: extracts ids, ignores `@plainName` without parens, dedupes repeats, ignores malformed UUIDs.
+- `src/components/tasks/__tests__/TaskCommentComposer.test.tsx` — RTL test that typing `@Jam` opens the typeahead, Enter inserts a chip, submit calls `addComment` then `useCreateMentions`.
+- `e2e/task-mention-notify.spec.ts` — Playwright: sign in as Niki, open a task, mention James Turner, assert (i) `task_mentions` row exists, (ii) `notification_log` row with `kind='task_mention'` exists, (iii) edge function logs show Resend POST.
+
+### 5. Open questions (please confirm before I apply)
+
+1. **Sender domain for Resend** — should the mention email go from `notify@5thline.co` (matches Daily Briefing) or a different verified address?
+2. **Daily / Deal Rundown cards (surfaces b & c)** are read-only summaries today — do you want the composer **always visible** under each task card, or **revealed on hover/click** to keep the rundown dense?
+3. The `mentions uuid[]` column is technically redundant with `task_mentions` rows. OK to keep both (one for fast filter queries, one for notification UX) — or do you want only one?
+
+## Files touched (final list)
+
+- `supabase/migrations/<ts>_task_comment_mentions.sql` (new)
+- `supabase/functions/notify-comment-mentions/index.ts` (new)
+- `src/components/tasks/TaskCommentComposer.tsx` (new, shared)
+- `src/components/tasks/MentionChips.tsx` (new, shared renderer)
+- `src/components/tasks/TaskDetailDrawer.tsx` (wire fanout + renderer)
+- `src/components/tasks/ExpandedTaskDetails.tsx` (swap textarea → composer)
+- `src/components/dashboard/SuggestedTasksSection.tsx` (add composer)
+- `src/components/dashboard/MoffittDealRundown.tsx` (add composer)
+- `src/components/deals/DealsOverlay.tsx` (add composer)
+- `src/hooks/useTasks.ts` (extend `useTaskComments.addComment` to return new id so fanout can run)
+- Tests: `src/hooks/__tests__/taskMentionParser.test.ts`, `src/components/tasks/__tests__/TaskCommentComposer.test.tsx`, `e2e/task-mention-notify.spec.ts`
+
+Nothing is applied yet — confirm the three open questions and I'll ship it.
