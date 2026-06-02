@@ -26,6 +26,7 @@ interface ProvisionBody {
   display_name: string;
   company_name: string;
   source_company_id?: string;
+  skip_clone?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -52,6 +53,7 @@ Deno.serve(async (req) => {
 
   const { email, password, display_name, company_name } = body;
   const source_company_id = body.source_company_id ?? FIFTH_LINE_COMPANY_ID;
+  const skip_clone = body.skip_clone === true;
 
   if (!email || !password || !display_name || !company_name) {
     return json({ error: "missing required fields" }, 400);
@@ -136,6 +138,16 @@ Deno.serve(async (req) => {
   }
 
   // 4. Clone source tenant data (idempotent — function wipes target rows first)
+  if (skip_clone) {
+    return json({
+      ok: true,
+      created_user: createdUser,
+      user_id: userId,
+      company_id: companyId,
+      email,
+      clone: { skipped: true },
+    });
+  }
   const { data: cloneResult, error: cloneErr } = await supabase.rpc("clone_demo_tenant", {
     p_source_company_id: source_company_id,
     p_target_company_id: companyId,
