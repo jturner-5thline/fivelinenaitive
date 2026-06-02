@@ -637,6 +637,19 @@ function CopilotAssistantContent({ content }: { content: string }) {
           <ReactMarkdown
             key={i}
             remarkPlugins={[remarkGfm]}
+            urlTransform={(url) => {
+              // Preserve our internal custom schemes — react-markdown's default
+              // sanitizer drops anything outside http(s)/mailto/tel and leaves
+              // the anchor with an empty href, which is exactly why clicking
+              // disambiguation links (e.g. `deal://<id>`) used to do nothing.
+              if (!url) return url;
+              if (/^(entity|deal|naitive|contact|company|lender|funding_source):/i.test(url)) {
+                return url;
+              }
+              if (url.startsWith('/') || url.startsWith('#')) return url;
+              if (/^(https?|mailto|tel):/i.test(url)) return url;
+              return url;
+            }}
             components={{
               h1: ({ children }) => <h1 style={{ fontSize: 16, fontWeight: 700, margin: '12px 0 6px 0', lineHeight: 1.3 }}>{children}</h1>,
               h2: ({ children }) => <h2 style={{ fontSize: 14, fontWeight: 700, margin: '10px 0 4px 0', lineHeight: 1.3 }}>{children}</h2>,
@@ -662,6 +675,29 @@ function CopilotAssistantContent({ content }: { content: string }) {
                   href={href || '#'}
                   onClick={(e) => {
                     if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return;
+                    // Disambiguation / inline entity picker links. The LLM
+                    // emits these as `deal://<id>`, `naitive://deals/<id>`,
+                    // `contact://<id>`, `company://<id>`, etc. Clicking
+                    // should resolve the open disambiguation by posting the
+                    // user's choice back into the chat — not just navigate
+                    // away from the conversation.
+                    const customMatch = href ? /^(deal|contact|company|lender|funding_source|naitive):\/\/(?:([a-z_]+)\/)?([^/?#\s]+)/i.exec(href) : null;
+                    if (customMatch) {
+                      e.preventDefault();
+                      const scheme = customMatch[1].toLowerCase();
+                      const subtype = customMatch[2]?.toLowerCase();
+                      const id = customMatch[3];
+                      const kind = scheme === 'naitive' ? (subtype || 'deal').replace(/s$/, '') : scheme;
+                      const label = typeof children === 'string'
+                        ? children
+                        : Array.isArray(children)
+                          ? children.map((c) => (typeof c === 'string' ? c : '')).join('').trim()
+                          : '';
+                      const labelPart = label ? ` "${label.replace(/"/g, '\\"')}"` : '';
+                      const prompt = `Use the ${kind}${labelPart} (id: ${id}). Resolve the disambiguation with this choice and continue.`;
+                      window.dispatchEvent(new CustomEvent('copilot-chip-click', { detail: { prompt } }));
+                      return;
+                    }
                     if (href?.startsWith('entity://')) {
                       e.preventDefault();
                       const m = /^entity:\/\/([a-z_]+)\/([^/?#\s]+)$/i.exec(href);
