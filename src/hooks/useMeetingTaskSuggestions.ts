@@ -500,8 +500,13 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     }
     let count = 0;
     for (const s of pool) {
-      const res = await approve(s);
-      if (res) count++;
+      try {
+        const res = await approve(s);
+        if (res) count++;
+      } catch (err) {
+        if (err instanceof MissingAssigneeError) continue;
+        throw err;
+      }
     }
     if (count > 0) toast.success(`Created ${count} task${count === 1 ? '' : 's'}`);
     return count;
