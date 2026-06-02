@@ -22,7 +22,16 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Eraser, Heading1, Heading2, Heading3, Check, Loader2, Copy,
+  MessageSquare,
 } from 'lucide-react';
+import { CommentMark } from './CommentMark';
+import {
+  AgendaCommentsRail,
+  CommentContextMenu,
+  NewThreadPopover,
+  SelectionBubble,
+  useAgendaComments,
+} from './AgendaComments';
 
 const FONT_FAMILIES = [
   { label: 'Default', value: '' },
