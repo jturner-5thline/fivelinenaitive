@@ -167,7 +167,11 @@ export function SaveToDealCard({
     if (error) throw error;
   };
 
-  const saveTextAsDataRoomFile = async (text: string, label: string): Promise<string> => {
+  const saveTextAsDataRoomFile = async (
+    text: string,
+    label: string,
+    sourceKind: 'email_body' | 'email_highlight',
+  ): Promise<string> => {
     if (!user || !dealId) return '';
     const fullText = `${buildContextHeader(thread)}${text}`;
     const blob = new Blob([fullText], { type: 'text/plain' });
@@ -187,13 +191,16 @@ export function SaveToDealCard({
       content_type: 'text/plain',
       size_bytes: blob.size,
       category: 'other',
-      source: 'email_body',
+      source: sourceKind,
       source_email_id: messageId,
       source_thread_id: thread.threadId,
       source_subject: thread.subject,
       source_sender: `${thread.latestEmail.from_name} <${thread.latestEmail.from_email}>`,
     } as any);
-    if (dbErr) throw dbErr;
+    if (dbErr) {
+      // 23505 = unique_violation on (deal_id, source_email_id, source) — treat as idempotent success
+      if ((dbErr as any).code !== '23505') throw dbErr;
+    }
     return finalName;
   };
 
@@ -320,7 +327,11 @@ export function SaveToDealCard({
           toast.success(`Saved to ${dealName} Notes.`);
           setLastSaved({ destination: 'notes', dealId, dealName, label: 'Deal note' });
         } else {
-          const fileName = await saveTextAsDataRoomFile(text, source === 'body' ? 'email body' : 'highlight');
+          const fileName = await saveTextAsDataRoomFile(
+            text,
+            source === 'body' ? 'email body' : 'highlight',
+            source === 'body' ? 'email_body' : 'email_highlight',
+          );
           toast.success(`Saved to ${dealName} Data Room.`);
           setLastSaved({ destination: 'data_room', dealId, dealName, label: fileName || 'File' });
         }
