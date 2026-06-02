@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, ExternalLink, Pencil, Copy, X, Check } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -245,7 +245,7 @@ export function CopilotNameCollisionCard({ action }: Props) {
 
 function CardButton({
   onClick, icon, label, tone = 'default',
-}: { onClick: () => void; icon: React.ReactNode; label: string; tone?: 'primary' | 'default' | 'ghost' }) {
+}: { onClick: () => void; icon: ReactNode; label: string; tone?: 'primary' | 'default' | 'ghost' }) {
   return (
     <Button
       type="button"
