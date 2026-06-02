@@ -359,13 +359,26 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       const displayAssignee = reparsed?.assigneeName || it.assignee_name;
       const mention = displayAssignee || it.assignee_email || (row as any)?.external_mention || null;
       const resolved = resolveInternalAssignee(mention, internalMembers);
-      // Fallback: if the mention didn't resolve to an internal member but
-      // the linked deal has a manager who IS an internal member, assign
-      // the deal manager. The raw external mention (if any) is preserved
-      // so the UI can still render "mentioned: <name>" as muted context.
-      const effective = resolved ?? dealManager;
-      const assignmentSource: 'mention' | 'deal-manager' | null =
-        resolved ? 'mention' : (dealManager ? 'deal-manager' : null);
+      // Manual override: if the persisted row has an assignee_email that
+      // matches an internal member, treat that as the canonical assignee
+      // (covers picks made via the Unassigned chip / bulk-assign picker).
+      const persistedEmail = ((row as any)?.assignee_email as string | null) || null;
+      const manualMember = persistedEmail
+        ? internalMembers.find(
+            (m) => (m.email || '').toLowerCase() === persistedEmail.toLowerCase(),
+          ) ?? null
+        : null;
+      // Fallback chain: manual pick > mention resolution > linked deal
+      // manager. External mention text is preserved as muted context
+      // unless the mention itself resolved to an internal member.
+      const effective = manualMember ?? resolved ?? dealManager;
+      const assignmentSource: 'mention' | 'deal-manager' | 'manual' | null = manualMember
+        ? (resolved && resolved.user_id === manualMember.user_id ? 'mention' : 'manual')
+        : resolved
+          ? 'mention'
+          : dealManager
+            ? 'deal-manager'
+            : null;
       return {
         id: row?.id ?? null,
         suggestion_id: sid,
