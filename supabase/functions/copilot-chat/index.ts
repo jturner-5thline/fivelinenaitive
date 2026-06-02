@@ -6315,6 +6315,9 @@ async function consumeToolStream(
         // Forward content deltas to client immediately
         if (delta.content) {
           content += delta.content;
+          // If this turn ends up containing tool calls, the caller will
+          // suppress the speculative prose and render the structured tool UI
+          // instead. We still buffer here so pure-text turns stream normally.
           await writer.write(encoder.encode(line + "\n\n"));
         }
         // Collect tool call deltas
@@ -7889,6 +7892,10 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
           const { content, toolCalls } = await consumeToolStream(response, writer, encoder);
 
           if (toolCalls.length > 0) {
+            // If the model emitted prose before tool calls, scrub that
+            // speculative content from the pending assistant turn so the UI
+            // only shows the structured card(s) for this turn.
+            content = "";
             // Add assistant message with tool calls to conversation
             apiMessages.push({ role: "assistant", content: content || null, tool_calls: toolCalls });
 
@@ -7911,6 +7918,27 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                 };
               } else {
                 result = await executeTool(supabaseUser, tc.function.name, args, userId, chatScope);
+              }
+              if (tc.function.name === "search_deals") {
+                const fuzzyUi = buildFuzzySearchUiPayload(result);
+                if (fuzzyUi) {
+                  const matches = Array.isArray(fuzzyUi.params?.matches) ? fuzzyUi.params.matches : [];
+                  await logCopilotAuditEvent({
+                    supabase,
+                    userId,
+                    companyId: companyId || null,
+                    action: fuzzyUi.action_type === "deal_fuzzy_confirm" ? "deal_fuzzy_confirm" : "deal_fuzzy_suggestions",
+                    dealIds: matches.map((m: any) => m?.id).filter(Boolean),
+                    proposed: { query: result?.query || null },
+                    details: {
+                      tier: result?.tier || null,
+                      confidence: result?.confidence ?? null,
+                      latency_ms: result?.latency_ms ?? null,
+                      scope_label: result?.scope_label || null,
+                    },
+                  });
+                  result = fuzzyUi;
+                }
               }
               // Audit log: every AI-drafted task action (intent, confidence, resolved
               // entities, extracted fields) — must happen even if the user later cancels.
