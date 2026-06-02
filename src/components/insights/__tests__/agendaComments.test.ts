@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseMentionIds, renderCommentBody } from '../AgendaComments';
+import { parseMentionIds, renderCommentBody, chooseThreadPopoverPlacement } from '../AgendaComments';
 
 describe('parseMentionIds', () => {
   const u1 = '11111111-1111-1111-1111-111111111111';
@@ -40,4 +40,27 @@ describe('renderCommentBody', () => {
  */
 describe('agenda comments – coverage map', () => {
   it('documents intent', () => { expect(true).toBe(true); });
+});
+
+describe('chooseThreadPopoverPlacement', () => {
+  const vp = { width: 1280, height: 800 };
+  const popover = { width: 380, height: 320 };
+  it('prefers right-start when there is room to the right', () => {
+    const r = { left: 100, right: 200, top: 100, bottom: 120 };
+    expect(chooseThreadPopoverPlacement(r, vp, popover)).toBe('right-start');
+  });
+  it('flips to left-start when right side is too tight', () => {
+    const r = { left: 1000, right: 1100, top: 100, bottom: 120 };
+    expect(chooseThreadPopoverPlacement(r, vp, popover)).toBe('left-start');
+  });
+  it('falls back to bottom-start when both sides are tight', () => {
+    const narrow = { width: 700, height: 800 };
+    const r = { left: 300, right: 400, top: 100, bottom: 120 };
+    expect(chooseThreadPopoverPlacement(r, narrow, popover)).toBe('bottom-start');
+  });
+  it('falls back to top-start when below also lacks space', () => {
+    const narrow = { width: 700, height: 200 };
+    const r = { left: 300, right: 400, top: 180, bottom: 195 };
+    expect(chooseThreadPopoverPlacement(r, narrow, popover)).toBe('top-start');
+  });
 });
