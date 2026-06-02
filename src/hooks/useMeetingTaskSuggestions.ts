@@ -476,15 +476,72 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     return { taskId: taskRow.id };
   };
 
-  const approveAll = async (): Promise<number> => {
-    const pending = suggestions.filter((s) => s.status === 'pending');
+  const approveAll = async (subset?: MeetingTaskSuggestion[]): Promise<number> => {
+    const pool = (subset ?? suggestions).filter((s) => s.status === 'pending');
+    // Gate: refuse the whole batch if any row has no assignee. The UI
+    // already disables the button in this case; this is defense in depth.
+    if (pool.some((s) => !s.assignee_user_id)) {
+      toast.error('One or more selected tasks have no assignee. Choose assignees first.');
+      return 0;
+    }
     let count = 0;
-    for (const s of pending) {
+    for (const s of pool) {
       const res = await approve(s);
       if (res) count++;
     }
-    if (count > 0) toast.success(`Created ${count} task${count === 1 ? '' : 's'} — assigned to you`);
+    if (count > 0) toast.success(`Created ${count} task${count === 1 ? '' : 's'}`);
     return count;
+  };
+
+  /**
+   * Manually assign an internal member to a suggestion (from the
+   * Unassigned chip picker or the bulk-assign flow). Persists the pick
+   * to the suggestion row via assignee_email; the render-time resolver
+   * picks it up as a 'manual' assignment.
+   */
+  const assignManually = async (
+    s: MeetingTaskSuggestion,
+    member: InternalMember,
+  ): Promise<boolean> => {
+    if (!user?.id || !company?.id) return false;
+    const row = {
+      org_company_id: company.id,
+      scope_key: scopeKey,
+      meeting_id: meetingRowId,
+      event_id: eventId,
+      recording_id: source === 'claap' ? recordingRowId : null,
+      suggestion_id: s.suggestion_id,
+      text: s.text,
+      assignee_email: member.email,
+      external_mention: s.external_mention,
+      due_date: s.due_date,
+      source: s.source,
+      status: s.status,
+      created_task_id: s.created_task_id,
+    };
+    const { error } = await supabase
+      .from('meeting_task_suggestions')
+      .upsert(row, { onConflict: 'scope_key,suggestion_id' });
+    if (error) {
+      toast.error('Failed to assign');
+      return false;
+    }
+    queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+    return true;
+  };
+
+  const bulkAssignUnassigned = async (
+    subset: MeetingTaskSuggestion[],
+    member: InternalMember,
+  ): Promise<number> => {
+    const targets = subset.filter((s) => s.status === 'pending' && !s.assignee_user_id);
+    let n = 0;
+    for (const s of targets) {
+      const ok = await assignManually(s, member);
+      if (ok) n++;
+    }
+    if (n > 0) toast.success(`Assigned ${n} task${n === 1 ? '' : 's'} to ${member.display_name}`);
+    return n;
   };
 
   const dismiss = async (s: MeetingTaskSuggestion) => {
@@ -556,8 +613,11 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     suggestions,
     isLoading: rawQuery.isLoading || persistedQuery.isLoading,
     pendingCount: suggestions.filter((s) => s.status === 'pending').length,
+    internalMembers,
     approve,
     approveAll,
+    assignManually,
+    bulkAssignUnassigned,
     dismiss,
     dismissAll,
     undo,
