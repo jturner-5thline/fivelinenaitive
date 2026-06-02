@@ -75,7 +75,7 @@ describe('isSeedContent', () => {
     const presIdx = SEED.content.findIndex(
       (n: any) => n.type === 'heading' && n.content?.[0]?.text === 'Presentation',
     );
-    expect(SEED.content[presIdx + 1]?.content?.[0]?.text).toBe(SEED_SUBTITLE);
+    expect((SEED.content[presIdx + 1] as any)?.content?.[0]?.text).toBe(SEED_SUBTITLE);
   });
   it('still treats the legacy headings-only seed as seed', () => {
     expect(isSeedContent(LEGACY_SEED)).toBe(true);
