@@ -73,7 +73,7 @@ export function AddTaskInlineForm({ deal, onClose, onCreated }: Props) {
         due_date: toIsoDate(dueDate),
         due_time: null,
         priority,
-        type: 'task',
+        type: 'general',
         is_recurring: false,
         recurrence_rule: null,
         confidence: 1,
