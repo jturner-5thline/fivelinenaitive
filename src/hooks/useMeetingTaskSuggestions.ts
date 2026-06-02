@@ -252,18 +252,23 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     const knownIds = new Set(persisted.map((r) => r.suggestion_id));
 
     const toInsert = rawItems
-      .map((it, idx) => ({
-        org_company_id: company.id,
-        scope_key: scopeKey,
-        meeting_id: meetingRowId,
-        event_id: eventId,
-        recording_id: source === 'claap' ? recordingRowId : null,
-        suggestion_id: suggestionIdFor(scopeKey, idx, it.text),
-        text: it.text,
-        assignee_email: it.assignee_email,
-        due_date: it.due_date,
-        source: source === 'synthesized' ? 'synthesized' : 'claap',
-      }))
+      .map((it, idx) => {
+        const mention = it.assignee_name || it.assignee_email || null;
+        const resolved = resolveInternalAssignee(mention, internalMembers);
+        return {
+          org_company_id: company.id,
+          scope_key: scopeKey,
+          meeting_id: meetingRowId,
+          event_id: eventId,
+          recording_id: source === 'claap' ? recordingRowId : null,
+          suggestion_id: suggestionIdFor(scopeKey, idx, it.text),
+          text: it.text,
+          assignee_email: resolved ? resolved.email : null,
+          external_mention: resolved ? null : mention,
+          due_date: it.due_date,
+          source: source === 'synthesized' ? 'synthesized' : 'claap',
+        };
+      })
       .filter((row) => !knownIds.has(row.suggestion_id));
 
     if (toInsert.length === 0) return;
@@ -281,7 +286,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
         queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [company?.id, user?.id, rawItems.length, persistedQuery.data?.length, scopeKey, source]);
+  }, [company?.id, user?.id, rawItems.length, persistedQuery.data?.length, scopeKey, source, internalMembers.length]);
 
   // 4) Merge raw + persisted into the public list, preserving raw order.
   const suggestions: MeetingTaskSuggestion[] = useMemo(() => {
@@ -297,19 +302,23 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       const reparsed = persistedText ? parseClaapActionItemText(persistedText) : null;
       const displayText = reparsed?.text || it.text;
       const displayAssignee = reparsed?.assigneeName || it.assignee_name;
+      const mention = displayAssignee || it.assignee_email || (row as any)?.external_mention || null;
+      const resolved = resolveInternalAssignee(mention, internalMembers);
       return {
         id: row?.id ?? null,
         suggestion_id: sid,
         text: displayText,
-        assignee_name: displayAssignee ?? null,
-        assignee_email: row?.assignee_email ?? it.assignee_email,
+        assignee_name: resolved ? resolved.display_name : null,
+        assignee_email: resolved ? resolved.email : null,
+        assignee_user_id: resolved ? resolved.user_id : null,
+        external_mention: resolved ? null : mention,
         due_date: row?.due_date ?? it.due_date,
         status: ((row?.status as SuggestionStatus | undefined) ?? 'pending'),
         created_task_id: row?.created_task_id ?? null,
         source: ((row?.source as SuggestionSource | undefined) ?? (source === 'synthesized' ? 'synthesized' : 'claap')),
       };
     });
-  }, [rawItems, persistedQuery.data, scopeKey, source]);
+  }, [rawItems, persistedQuery.data, scopeKey, source, internalMembers]);
 
   // ─── mutations ──────────────────────────────────────────────
   const resolveAssigneeUserId = async (name: string | null): Promise<{ userId: string | null; email: string | null }> => {
