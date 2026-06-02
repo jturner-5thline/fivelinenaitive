@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { act, render, screen, fireEvent } from '@testing-library/react';
 import { createRef } from 'react';
 import { MentionList, matchesMentionQuery, type MentionUser } from '../mention-list';
 
@@ -27,10 +27,13 @@ describe('MentionList', () => {
     expect(screen.getByText('James Turner')).toBeInTheDocument();
     expect(screen.getByText('Jamie Patel')).toBeInTheDocument();
 
-    // ArrowDown → second item highlighted
-    expect(ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowDown' }) })).toBe(true);
-    // Enter → selects index 1 (Jamie)
-    ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) });
+    // ArrowDown → second item highlighted (must commit before Enter reads closure)
+    act(() => {
+      expect(ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowDown' }) })).toBe(true);
+    });
+    act(() => {
+      ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) });
+    });
     expect(command).toHaveBeenCalledWith({ id: 'u2', label: 'Jamie Patel' });
   });
 
@@ -38,8 +41,12 @@ describe('MentionList', () => {
     const command = vi.fn();
     const ref = createRef<any>();
     render(<MentionList ref={ref} items={users} command={command} />);
-    ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowUp' }) });
-    ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) });
+    act(() => {
+      ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'ArrowUp' }) });
+    });
+    act(() => {
+      ref.current.onKeyDown({ event: new KeyboardEvent('keydown', { key: 'Enter' }) });
+    });
     expect(command).toHaveBeenCalledWith({ id: 'u3', label: 'Niki Heikali' });
   });
 
