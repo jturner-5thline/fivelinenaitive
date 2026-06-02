@@ -29,8 +29,8 @@ export interface MeetingTaskSuggestion {
   /** Raw external @mention preserved for context when no internal match. */
   external_mention: string | null;
   /** How the assignee was resolved: by mention, by deal-manager fallback,
-   *  or unassigned. Drives the UI chip styling. */
-  assignment_source: 'mention' | 'deal-manager' | null;
+   *  by manual user pick, or unassigned. Drives the UI chip styling. */
+  assignment_source: 'mention' | 'deal-manager' | 'manual' | null;
   due_date: string | null;
   status: SuggestionStatus;
   created_task_id: string | null;
