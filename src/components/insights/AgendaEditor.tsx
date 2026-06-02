@@ -528,7 +528,11 @@ export function AgendaEditor() {
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 32px' }}>
       <style>{`
         .agenda-prose h1 { font-size: 28px; font-weight: 700; margin: 24px 0 12px; color: rgba(235,245,255,0.95); }
-        .agenda-prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 10px; color: rgba(230,240,255,0.95); border-bottom: 1px solid rgba(80,140,255,0.15); padding-bottom: 4px; }
+        .agenda-prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 2px; color: rgba(230,240,255,0.95); padding-bottom: 0; }
+        /* The seeded subtitle paragraph sits directly after each H2 heading.
+           Move the section divider line BELOW the subtitle by attaching the
+           border-bottom to that paragraph instead of the heading itself. */
+        .agenda-prose h2 + p { margin-top: 0; padding-bottom: 6px; border-bottom: 1px solid rgba(80,140,255,0.15); margin-bottom: 10px; }
         .agenda-prose h3 { font-size: 17px; font-weight: 600; margin: 18px 0 8px; color: rgba(225,235,255,0.9); }
         .agenda-prose p { margin: 6px 0; }
         .agenda-prose ul { list-style: disc; padding-left: 22px; }
