@@ -23,6 +23,11 @@ export interface MeetingTaskSuggestion {
   text: string;
   assignee_name: string | null;
   assignee_email: string | null;
+  /** Resolved internal tenant user (company_member). Null when the
+   *  mention is an external contact or no unique internal match. */
+  assignee_user_id: string | null;
+  /** Raw external @mention preserved for context when no internal match. */
+  external_mention: string | null;
   due_date: string | null;
   status: SuggestionStatus;
   created_task_id: string | null;
