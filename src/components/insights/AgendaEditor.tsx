@@ -16,6 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useInsightsTimeframe, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
+import { toast } from 'sonner';
+import { z } from 'zod';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -47,6 +49,75 @@ const SEED_CONTENT = {
     { type: 'paragraph' },
   ],
 };
+
+// Zod schema mirroring the DB CHECK constraint on insights_agenda.
+const monthKeyRe = /^\d{4}-(0[1-9]|1[0-2])$/;
+const quarterKeyRe = /^\d{4}-Q[1-4]$/;
+export const agendaPersistSchema = z
+  .object({
+    period_type: z.enum(['month', 'quarter']),
+    period_key: z.string(),
+    content_json: z.record(z.any()),
+  })
+  .refine(
+    (v) =>
+      (v.period_type === 'month' && monthKeyRe.test(v.period_key)) ||
+      (v.period_type === 'quarter' && quarterKeyRe.test(v.period_key)),
+    { message: 'Invalid reporting period', path: ['period_key'] },
+  );
+
+/**
+ * Returns true when the editor JSON doc matches the default 4-heading seed
+ * (i.e. user hasn't added any real content yet).
+ */
+export function isSeedContent(doc: any): boolean {
+  if (!doc || doc.type !== 'doc' || !Array.isArray(doc.content)) return true;
+  const headings = doc.content
+    .filter((n: any) => n?.type === 'heading')
+    .map((n: any) => n?.content?.[0]?.text ?? '');
+  const required = ['Presentation', 'Looking Forward', 'New Items', 'Prep'];
+  const headingsMatch =
+    headings.length === required.length &&
+    required.every((h, i) => headings[i] === h);
+  if (!headingsMatch) return false;
+  // Any non-empty paragraph / list / etc. means user added content.
+  const hasUserContent = doc.content.some((n: any) => {
+    if (n?.type === 'heading') return false;
+    if (n?.type === 'paragraph') {
+      return Array.isArray(n.content) && n.content.length > 0;
+    }
+    return true; // lists, tasks, etc.
+  });
+  return !hasUserContent;
+}
+
+/** Compute the previous period token for a given granularity. */
+export function previousPeriodKey(type: 'month' | 'quarter', key: string): string | null {
+  if (type === 'month') {
+    const m = monthKeyRe.exec(key);
+    if (!m) return null;
+    const y = parseInt(key.slice(0, 4), 10);
+    const mo = parseInt(key.slice(5, 7), 10);
+    const d = new Date(y, mo - 2, 1); // JS handles year rollover
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const m = quarterKeyRe.exec(key);
+  if (!m) return null;
+  let y = parseInt(key.slice(0, 4), 10);
+  let q = parseInt(key.slice(6, 7), 10) - 1;
+  if (q < 1) { q = 4; y -= 1; }
+  return `${y}-Q${q}`;
+}
+
+function formatPeriodLabel(type: 'month' | 'quarter', key: string): string {
+  if (type === 'month') {
+    const [y, mo] = key.split('-').map(Number);
+    const d = new Date(y, mo - 1, 1);
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+  const [y, q] = key.split('-Q');
+  return `Q${q} ${y}`;
+}
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
@@ -246,6 +317,19 @@ export function AgendaEditor() {
 
   const persist = useCallback(async (doc: any, type: string, key: string) => {
     if (!user?.id || !company?.id) return;
+    // Client-side schema validation mirroring the DB CHECK constraint.
+    const parsed = agendaPersistSchema.safeParse({
+      period_type: type,
+      period_key: key,
+      content_json: doc ?? {},
+    });
+    if (!parsed.success) {
+      setSaveState('error');
+      toast.error('Invalid reporting period', {
+        description: 'Agenda was not saved. Please re-select a valid month or quarter.',
+      });
+      return;
+    }
     setSaveState('saving');
     const payload = {
       user_id: user.id,
@@ -261,6 +345,13 @@ export function AgendaEditor() {
       .maybeSingle();
     if (error) {
       setSaveState('error');
+      // Surface the DB-side CHECK failure with the same friendly copy.
+      const msg = (error.message || '').toLowerCase();
+      if (msg.includes('period_key') || msg.includes('check')) {
+        toast.error('Invalid reporting period', { description: error.message });
+      } else {
+        toast.error('Failed to save agenda', { description: error.message });
+      }
       return;
     }
     if (data) {
@@ -311,7 +402,7 @@ export function AgendaEditor() {
           hasContent ? (data.content_json as any) : SEED_CONTENT,
           { emitUpdate: false },
         );
-        setIsEmpty(!hasContent);
+        setIsEmpty(!hasContent || isSeedContent(data.content_json));
         if (data.updated_at) setSavedAt(new Date(data.updated_at));
       } else {
         editor.commands.setContent(SEED_CONTENT, { emitUpdate: false });
@@ -330,7 +421,7 @@ export function AgendaEditor() {
     const handler = () => {
       const doc = editor.getJSON();
       latestDocRef.current = doc;
-      setIsEmpty(editor.isEmpty);
+      setIsEmpty(editor.isEmpty || isSeedContent(doc));
       setSaveState('saving');
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       const { type, key } = periodRef.current;
@@ -355,28 +446,11 @@ export function AgendaEditor() {
     if (!editor || !user?.id || !company?.id || copying) return;
     setCopying(true);
     try {
-      // Build a "previous period" token for the same granularity.
-      let prevKey: string | null = null;
-      if (periodType === 'month') {
-        const m = /^(\d{4})-(\d{2})$/.exec(periodKey);
-        if (m) {
-          const y = parseInt(m[1], 10);
-          const mo = parseInt(m[2], 10);
-          const d = new Date(y, mo - 2, 1);
-          prevKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        }
-      } else {
-        const m = /^(\d{4})-Q([1-4])$/.exec(periodKey);
-        if (m) {
-          let y = parseInt(m[1], 10);
-          let q = parseInt(m[2], 10) - 1;
-          if (q < 1) { q = 4; y -= 1; }
-          prevKey = `${y}-Q${q}`;
-        }
-      }
-      // Snapshot the editor state so the copy is undoable (Ctrl/Cmd+Z).
+      const prevKey = previousPeriodKey(periodType as 'month' | 'quarter', periodKey);
+      // Snapshot the editor's current (empty/seed) state so we can undo.
       const snapshot = editor.getJSON();
       let prev: any = null;
+      let usedKey: string | null = prevKey;
       if (prevKey) {
         const { data } = await supabase
           .from('insights_agenda')
@@ -392,7 +466,7 @@ export function AgendaEditor() {
       if (!prev) {
         const { data } = await supabase
           .from('insights_agenda')
-          .select('content_json, period_key, updated_at')
+          .select('content_json, period_key')
           .eq('user_id', user.id)
           .eq('company_id', company.id)
           .eq('period_type', periodType)
@@ -401,19 +475,35 @@ export function AgendaEditor() {
           .limit(1)
           .maybeSingle();
         prev = data?.content_json ?? null;
+        usedKey = data?.period_key ?? null;
       }
-      if (!prev || Object.keys(prev).length === 0) {
-        setSaveState('error');
-        window.setTimeout(() => setSaveState('idle'), 1500);
+      if (!prev || Object.keys(prev).length === 0 || isSeedContent(prev)) {
+        toast('No previous agenda found');
         return;
       }
-      // Use chain so the change lands on the undo stack (snapshot is the prior state).
-      void snapshot;
+      // Apply the copied content. setContent lands on the TipTap undo stack
+      // (Ctrl/Cmd+Z) and the toast also exposes an explicit Undo action.
       editor.chain().focus().setContent(prev, { emitUpdate: true }).run();
-      // Trigger a save immediately.
       const doc = editor.getJSON();
       latestDocRef.current = doc;
+      setIsEmpty(false);
       void persist(doc, periodType, periodKey);
+      const prevLabel = usedKey
+        ? formatPeriodLabel(periodType as 'month' | 'quarter', usedKey)
+        : 'previous period';
+      toast.success(`Copied agenda from ${prevLabel}`, {
+        duration: 10000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            editor.chain().focus().setContent(snapshot, { emitUpdate: true }).run();
+            const reverted = editor.getJSON();
+            latestDocRef.current = reverted;
+            setIsEmpty(isSeedContent(reverted));
+            void persist(reverted, periodType, periodKey);
+          },
+        },
+      });
     } finally {
       setCopying(false);
     }
