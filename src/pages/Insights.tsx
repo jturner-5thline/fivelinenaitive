@@ -172,7 +172,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'sales-bd',
     name: 'Sales & BD',
-    dashboardIds: ['sales-team-board', 'sales-bd-roi', 'consolidated-debt-pipeline'],
+    dashboardIds: ['sales-team-board', 'sales-bd-roi', 'consolidated-debt-pipeline', 'rep-scorecard'],
   },
 ];
 
