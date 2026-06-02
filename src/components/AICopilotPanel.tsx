@@ -602,6 +602,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
     <>
       {groupedSegments.map((seg, i) => {
         if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
+        if (seg.type === 'name_collision') return <CopilotNameCollisionCard key={i} action={seg.value} />;
         if (seg.type === 'confirm_group') return <CopilotApprovalGroup key={i} actions={seg.value} />;
         if (seg.type === 'auto_executed') return <CopilotAutoExecuted key={i} action={seg.value} />;
         if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
