@@ -2457,6 +2457,102 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
         return { error: `Could not find a pipeline matching "${args.pipeline_name || args.pipeline_id || ''}".` };
       }
 
+      // ── Pre-flight: same-name collision check (case-insensitive, trimmed) ──
+      // Skipped only when the LLM explicitly passes force_create=true after
+      // the user picked "Create duplicate" from a collision card.
+      const forceCreate = args.force_create === true;
+      const normalizedName = companyName.replace(/\s+/g, " ").trim();
+      if (!forceCreate && normalizedName) {
+        try {
+          let cq: any = supabase
+            .from("deals")
+            .select("id, company, value, stage, manager, owned_by, company_id, updated_at")
+            .ilike("company", normalizedName) // ilike with no wildcards == case-insensitive equality
+            .limit(5);
+          // Constrain to current chat scope (tenant + pipeline) so other
+          // workspaces' deals never trigger a false collision.
+          cq = applyDealScope(cq, scope);
+          const { data: existingRows } = await cq;
+          const exact = (existingRows || []).filter((r: any) =>
+            (r.company || "").trim().toLowerCase() === normalizedName.toLowerCase()
+          );
+          if (exact.length > 0) {
+            // Resolve manager display names + stage labels for the card.
+            const stageMap: Record<string, string> = {};
+            for (const s of pipelineStages) {
+              const sid = (s as any)?.id; const slabel = (s as any)?.label || (s as any)?.name;
+              if (sid && slabel) stageMap[sid] = slabel;
+            }
+            const existing = exact.map((r: any) => ({
+              id: r.id,
+              name: r.company,
+              value: r.value,
+              stage: stageMap[r.stage] || r.stage,
+              manager_name: r.manager || r.owned_by || null,
+              company_id: r.company_id,
+              updated_at: r.updated_at,
+            }));
+            // Fire-and-forget audit row.
+            try {
+              await supabase.from("ai_copilot_audit").insert({
+                user_id: userId,
+                company_id: pipelineCompanyId,
+                action: "name_collision_warning",
+                proposed: {
+                  name: normalizedName,
+                  value: typeof args.deal_value === "number" ? args.deal_value : null,
+                  manager_name: ownerName,
+                  pipeline_id: pipelineId,
+                  stage_id: stageId,
+                  stage_label: stageLabel,
+                },
+                deal_ids: existing.map((e) => e.id),
+                details: { source: "create_deal_preflight", match_count: existing.length },
+              });
+            } catch (e) { console.warn("[create_deal] audit insert failed", e); }
+            return {
+              status: "name_collision",
+              proposed: {
+                name: normalizedName,
+                value: typeof args.deal_value === "number" ? args.deal_value : null,
+                manager_id: ownerId,
+                manager_name: ownerName,
+                company_name: companyName,
+                pipeline_id: pipelineId,
+                pipeline_name: pipelineName,
+                stage_id: stageId,
+                stage_label: stageLabel,
+                contact_name: args.contact_name || null,
+                contact_email: args.contact_email || null,
+                notes: args.notes || null,
+              },
+              existing,
+              guidance:
+                `A deal named "${normalizedName}" already exists in this workspace. DO NOT auto-confirm. Render a collision card titled "A deal named '${normalizedName}' already exists" listing each match (name — stage — $value — manager — updated). Offer EXACTLY three options to the user as quick replies: ` +
+                `(1) [Update existing] — call update_deal_fields on the existing deal with the proposed fields; ` +
+                `(2) [Create duplicate] — re-call create_deal with the same args plus force_create=true (server logs intent=force_duplicate); ` +
+                `(3) [Rename] — ask the user for a new name, then re-call create_deal with the new name (collision check re-runs). ` +
+                `Always include a Cancel option.`,
+            };
+          }
+        } catch (e) {
+          console.warn("[create_deal] collision pre-check failed (non-fatal)", e);
+        }
+      }
+
+      if (forceCreate) {
+        try {
+          await supabase.from("ai_copilot_audit").insert({
+            user_id: userId,
+            company_id: pipelineCompanyId,
+            action: "name_collision_warning",
+            resolved_action: "duplicate",
+            proposed: { name: normalizedName, intent: "force_duplicate" },
+            details: { source: "create_deal_force_create" },
+          });
+        } catch (e) { console.warn("[create_deal] force_create audit insert failed", e); }
+      }
+
       // 2) Resolve stage by id or name; fall back to the pipeline's first stage.
       let stageId: string | null = null;
       let stageLabel: string | null = null;
