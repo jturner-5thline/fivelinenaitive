@@ -6334,6 +6334,68 @@ async function consumeToolStream(
   return { content, toolCalls: Array.from(tcMap.values()).filter(tc => tc.function.name) };
 }
 
+function buildFuzzySearchUiPayload(result: any): any | null {
+  const deals = Array.isArray(result?.deals) ? result.deals : [];
+  const top = deals[0];
+  const tier = typeof result?.tier === "string" ? result.tier : "none";
+  if (!deals.length || !top) return null;
+  if (tier === "medium") {
+    return {
+      action: "confirm",
+      action_type: "deal_fuzzy_confirm",
+      description: `Did you mean \"${top.company}\"?`,
+      params: {
+        query: result?.query || "",
+        tier,
+        confidence: typeof result?.confidence === "number" ? result.confidence : null,
+        latency_ms: typeof result?.latency_ms === "number" ? result.latency_ms : null,
+        top_match: top,
+        matches: deals.slice(0, 5),
+      },
+    };
+  }
+  if (tier === "low") {
+    return {
+      action: "confirm",
+      action_type: "deal_fuzzy_suggestions",
+      description: `I found a few similar deals for \"${result?.query || "that request"}\"`,
+      params: {
+        query: result?.query || "",
+        tier,
+        confidence: typeof result?.confidence === "number" ? result.confidence : null,
+        latency_ms: typeof result?.latency_ms === "number" ? result.latency_ms : null,
+        matches: deals.slice(0, 3),
+      },
+    };
+  }
+  return null;
+}
+
+async function logCopilotAuditEvent(input: {
+  supabase: any;
+  userId: string;
+  companyId?: string | null;
+  action: string;
+  dealIds?: string[] | null;
+  proposed?: Record<string, unknown> | null;
+  details?: Record<string, unknown> | null;
+  resolvedAction?: string | null;
+}) {
+  try {
+    await input.supabase.from("ai_copilot_audit").insert({
+      user_id: input.userId,
+      company_id: input.companyId || null,
+      action: input.action,
+      deal_ids: input.dealIds || null,
+      proposed: input.proposed || null,
+      details: input.details || null,
+      resolved_action: input.resolvedAction || null,
+    });
+  } catch (e) {
+    console.warn("[copilot-audit] insert failed", e);
+  }
+}
+
 // ── Main handler ──────────────────────────────────────────────────
 /**
  * Page-aware context prefetch.
