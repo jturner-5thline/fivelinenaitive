@@ -15,10 +15,11 @@ import TaskItem from '@tiptap/extension-task-item';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useInsightsTimeframe, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify,
-  Link as LinkIcon, Eraser, Heading1, Heading2, Heading3, Check, Loader2,
+  Link as LinkIcon, Eraser, Heading1, Heading2, Heading3, Check, Loader2, Copy,
 } from 'lucide-react';
 
 const FONT_FAMILIES = [
@@ -200,13 +201,24 @@ function formatJustNow(ts: Date | null) {
 export function AgendaEditor() {
   const { user } = useAuth();
   const { company } = useCompany();
+  const { reportingPeriod } = useInsightsTimeframe();
+  // Fall back to the same default the picker seeds with so we always have a
+  // valid (period_type, period_key) pair even before the user opens the picker.
+  const activePeriod = reportingPeriod ?? reportingPeriodHelpers.defaultReportingPeriod('quarter');
+  const periodType = activePeriod.view;
+  const periodKey = activePeriod.period;
+  const periodLabel = activePeriod.label;
+
   const [loaded, setLoaded] = useState(false);
   const [rowId, setRowId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [isEmpty, setIsEmpty] = useState(true);
+  const [copying, setCopying] = useState(false);
   const [, force] = useState(0);
   const debounceRef = useRef<number | null>(null);
   const latestDocRef = useRef<any>(null);
+  const periodRef = useRef<{ type: string; key: string }>({ type: periodType, key: periodKey });
 
   const editor = useEditor({
     extensions: [
@@ -232,41 +244,19 @@ export function AgendaEditor() {
     },
   });
 
-  // Load existing row
-  useEffect(() => {
-    if (!user?.id || !company?.id || !editor) return;
-    let cancelled = false;
-    (async () => {
-      const { data, error } = await supabase
-        .from('insights_agenda')
-        .select('id, content_json, updated_at')
-        .eq('user_id', user.id)
-        .eq('company_id', company.id)
-        .maybeSingle();
-      if (cancelled) return;
-      if (!error && data) {
-        setRowId(data.id);
-        if (data.content_json && Object.keys(data.content_json as any).length > 0) {
-          editor.commands.setContent(data.content_json as any, { emitUpdate: false });
-        }
-        if (data.updated_at) setSavedAt(new Date(data.updated_at));
-      }
-      setLoaded(true);
-    })();
-    return () => { cancelled = true; };
-  }, [user?.id, company?.id, editor]);
-
-  const persist = useCallback(async (doc: any) => {
+  const persist = useCallback(async (doc: any, type: string, key: string) => {
     if (!user?.id || !company?.id) return;
     setSaveState('saving');
     const payload = {
       user_id: user.id,
       company_id: company.id,
+      period_type: type,
+      period_key: key,
       content_json: doc,
-    };
+    } as any;
     const { data, error } = await supabase
       .from('insights_agenda')
-      .upsert(payload, { onConflict: 'user_id,company_id' })
+      .upsert(payload, { onConflict: 'user_id,company_id,period_type,period_key' })
       .select('id, updated_at')
       .maybeSingle();
     if (error) {
@@ -280,15 +270,71 @@ export function AgendaEditor() {
     setSaveState('saved');
   }, [user?.id, company?.id]);
 
-  // Debounced autosave on update
+  // Flush pending save (used before switching periods or unmount)
+  const flushPending = useCallback(() => {
+    if (debounceRef.current) {
+      window.clearTimeout(debounceRef.current);
+      debounceRef.current = null;
+    }
+    if (latestDocRef.current) {
+      const { type, key } = periodRef.current;
+      void persist(latestDocRef.current, type, key);
+      latestDocRef.current = null;
+    }
+  }, [persist]);
+
+  // Load / reload row whenever the active period changes.
+  useEffect(() => {
+    if (!user?.id || !company?.id || !editor) return;
+    // Flush any in-flight edits to the previous period before switching.
+    flushPending();
+    let cancelled = false;
+    setLoaded(false);
+    setSaveState('idle');
+    setSavedAt(null);
+    setRowId(null);
+    periodRef.current = { type: periodType, key: periodKey };
+    (async () => {
+      const { data, error } = await supabase
+        .from('insights_agenda')
+        .select('id, content_json, updated_at')
+        .eq('user_id', user.id)
+        .eq('company_id', company.id)
+        .eq('period_type', periodType)
+        .eq('period_key', periodKey)
+        .maybeSingle();
+      if (cancelled) return;
+      if (!error && data) {
+        setRowId(data.id);
+        const hasContent = data.content_json && Object.keys(data.content_json as any).length > 0;
+        editor.commands.setContent(
+          hasContent ? (data.content_json as any) : SEED_CONTENT,
+          { emitUpdate: false },
+        );
+        setIsEmpty(!hasContent);
+        if (data.updated_at) setSavedAt(new Date(data.updated_at));
+      } else {
+        editor.commands.setContent(SEED_CONTENT, { emitUpdate: false });
+        setIsEmpty(true);
+      }
+      latestDocRef.current = null;
+      setLoaded(true);
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id, company?.id, editor, periodType, periodKey]);
+
+  // Debounced autosave on update — always writes to the CURRENT period.
   useEffect(() => {
     if (!editor || !loaded) return;
     const handler = () => {
       const doc = editor.getJSON();
       latestDocRef.current = doc;
+      setIsEmpty(editor.isEmpty);
       setSaveState('saving');
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
-      debounceRef.current = window.setTimeout(() => { void persist(doc); }, 1000);
+      const { type, key } = periodRef.current;
+      debounceRef.current = window.setTimeout(() => { void persist(doc, type, key); }, 1000);
     };
     editor.on('update', handler);
     return () => { editor.off('update', handler); };
@@ -301,12 +347,77 @@ export function AgendaEditor() {
   }, []);
 
   // Flush on unmount
-  useEffect(() => () => {
-    if (debounceRef.current) {
-      window.clearTimeout(debounceRef.current);
-      if (latestDocRef.current) void persist(latestDocRef.current);
+  useEffect(() => () => { flushPending(); }, [flushPending]);
+
+  // Copy from previous period: fetches the most recent earlier row for this
+  // (user, company) and replaces the current editor content if empty.
+  const handleCopyFromPrevious = useCallback(async () => {
+    if (!editor || !user?.id || !company?.id || copying) return;
+    setCopying(true);
+    try {
+      // Build a "previous period" token for the same granularity.
+      let prevKey: string | null = null;
+      if (periodType === 'month') {
+        const m = /^(\d{4})-(\d{2})$/.exec(periodKey);
+        if (m) {
+          const y = parseInt(m[1], 10);
+          const mo = parseInt(m[2], 10);
+          const d = new Date(y, mo - 2, 1);
+          prevKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+        }
+      } else {
+        const m = /^(\d{4})-Q([1-4])$/.exec(periodKey);
+        if (m) {
+          let y = parseInt(m[1], 10);
+          let q = parseInt(m[2], 10) - 1;
+          if (q < 1) { q = 4; y -= 1; }
+          prevKey = `${y}-Q${q}`;
+        }
+      }
+      // Snapshot the editor state so the copy is undoable (Ctrl/Cmd+Z).
+      const snapshot = editor.getJSON();
+      let prev: any = null;
+      if (prevKey) {
+        const { data } = await supabase
+          .from('insights_agenda')
+          .select('content_json')
+          .eq('user_id', user.id)
+          .eq('company_id', company.id)
+          .eq('period_type', periodType)
+          .eq('period_key', prevKey)
+          .maybeSingle();
+        prev = data?.content_json ?? null;
+      }
+      // Fallback: most recent earlier row of the same granularity.
+      if (!prev) {
+        const { data } = await supabase
+          .from('insights_agenda')
+          .select('content_json, period_key, updated_at')
+          .eq('user_id', user.id)
+          .eq('company_id', company.id)
+          .eq('period_type', periodType)
+          .lt('period_key', periodKey)
+          .order('period_key', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        prev = data?.content_json ?? null;
+      }
+      if (!prev || Object.keys(prev).length === 0) {
+        setSaveState('error');
+        window.setTimeout(() => setSaveState('idle'), 1500);
+        return;
+      }
+      // Use chain so the change lands on the undo stack (snapshot is the prior state).
+      void snapshot;
+      editor.chain().focus().setContent(prev, { emitUpdate: true }).run();
+      // Trigger a save immediately.
+      const doc = editor.getJSON();
+      latestDocRef.current = doc;
+      void persist(doc, periodType, periodKey);
+    } finally {
+      setCopying(false);
     }
-  }, [persist]);
+  }, [editor, user?.id, company?.id, periodType, periodKey, persist, copying]);
 
   return (
     <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 32px' }}>
@@ -329,6 +440,37 @@ export function AgendaEditor() {
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
         height: 18, marginBottom: 4, fontSize: 11, color: 'rgba(180,210,245,0.7)',
       }}>
+        {isEmpty && loaded && (
+          <button
+            type="button"
+            onClick={handleCopyFromPrevious}
+            disabled={copying}
+            title="Copy from previous period (undoable)"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '2px 8px', borderRadius: 999,
+              border: '0.5px solid rgba(80,140,255,0.28)',
+              background: 'rgba(16,28,52,0.55)',
+              color: 'rgba(200,225,255,0.85)',
+              fontSize: 11, cursor: copying ? 'wait' : 'pointer',
+              marginRight: 6,
+            }}
+          >
+            <Copy size={11} /> Copy from previous period
+          </button>
+        )}
+        <span
+          title={`Agenda for ${periodLabel}`}
+          style={{
+            display: 'inline-flex', alignItems: 'center', padding: '1px 8px',
+            borderRadius: 999, marginRight: 6,
+            border: '0.5px solid rgba(80,140,255,0.35)',
+            background: 'rgba(80,140,255,0.12)',
+            color: 'rgba(200,225,255,0.95)', fontWeight: 600,
+          }}
+        >
+          {periodLabel}
+        </span>
         {saveState === 'saving' && (<><Loader2 size={12} className="animate-spin" /> Saving…</>)}
         {saveState === 'saved' && savedAt && (<><Check size={12} /> Saved · {formatJustNow(savedAt)}</>)}
         {saveState === 'error' && (<span style={{ color: '#f87171' }}>Save failed — will retry</span>)}

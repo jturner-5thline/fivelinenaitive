@@ -14285,6 +14285,8 @@ export type Database = {
           content_json: Json
           created_at: string
           id: string
+          period_key: string
+          period_type: string
           updated_at: string
           user_id: string
         }
@@ -14293,6 +14295,8 @@ export type Database = {
           content_json?: Json
           created_at?: string
           id?: string
+          period_key: string
+          period_type: string
           updated_at?: string
           user_id: string
         }
@@ -14301,6 +14305,8 @@ export type Database = {
           content_json?: Json
           created_at?: string
           id?: string
+          period_key?: string
+          period_type?: string
           updated_at?: string
           user_id?: string
         }
