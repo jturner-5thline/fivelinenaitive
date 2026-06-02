@@ -540,6 +540,27 @@ function rankDealsByQuery<T extends { company?: string | null }>(deals: T[], que
 // calls per step before the model emits confirm cards + the final summary.
 const MAX_TOOL_TURNS = 20;
 
+/**
+ * Detect a CREATE-deal intent from the user's raw message. We only fire when
+ * the message starts with a clear creation verb so we don't false-positive on
+ * "update X" or "look at the new deal Y". When this returns true the loop:
+ *   1) injects an extra system instruction forcing create_deal to be the
+ *      first tool call (so the collision pre-flight always runs), and
+ *   2) blocks the model from using update_deal_fields as the FIRST tool
+ *      call this turn — if it tries, we reroute through create_deal so the
+ *      name-collision card can render and the user (not the model) decides
+ *      between Update / Duplicate / Rename.
+ */
+function detectCreateDealIntent(message: unknown): boolean {
+  if (typeof message !== "string") return false;
+  const m = message.trim().toLowerCase();
+  if (!m) return false;
+  // Must START with a creation verb — "I want to create…" also counts.
+  // We deliberately exclude "update", "edit", "change", "rename", "move".
+  return /^(create|add|new|make|set\s*up|spin\s*up|start|open\s+a\s+new|i\s+(?:want|need|would\s+like)\s+to\s+(?:create|add|make|open|start|spin\s*up))\b/.test(m)
+    && /\bdeal\b/.test(m);
+}
+
 // Context fetchers removed — data is now lazy-loaded via tool calls
 
 // Compile firm-level Copilot Instructions (Settings → AI) into a system-prompt prefix.
