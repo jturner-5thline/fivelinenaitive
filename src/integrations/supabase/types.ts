@@ -379,6 +379,42 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_one_time_links: {
+        Row: {
+          admin_email: string | null
+          admin_user_id: string | null
+          consumed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          magic_link: string
+          tenant_id: string
+          tenant_name: string | null
+        }
+        Insert: {
+          admin_email?: string | null
+          admin_user_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          magic_link: string
+          tenant_id: string
+          tenant_name?: string | null
+        }
+        Update: {
+          admin_email?: string | null
+          admin_user_id?: string | null
+          consumed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          magic_link?: string
+          tenant_id?: string
+          tenant_name?: string | null
+        }
+        Relationships: []
+      }
       agent_conversations: {
         Row: {
           agent_id: string
@@ -9000,6 +9036,7 @@ export type Database = {
           created_at: string
           id: string
           is_default: boolean
+          is_qa: boolean
           name: string
           position: number
           stages: Json
@@ -9010,6 +9047,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean
+          is_qa?: boolean
           name: string
           position?: number
           stages?: Json
@@ -9020,6 +9058,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_default?: boolean
+          is_qa?: boolean
           name?: string
           position?: number
           stages?: Json

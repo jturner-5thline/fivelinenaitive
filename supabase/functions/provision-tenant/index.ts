@@ -67,7 +67,7 @@ serve(async (req: Request) => {
 
     // Caller must be a platform admin AND a 5th Line internal email.
     const callerEmail = (caller.email ?? "").toLowerCase();
-    if (!callerEmail.endsWith("@5thline.com")) {
+    if (!callerEmail.endsWith("@5thline.com") && !callerEmail.endsWith("@5thline.co")) {
       return json({ error: "Restricted to 5th Line internal operators" }, 403);
     }
     const { data: roleRow } = await admin
