@@ -108,6 +108,62 @@ function normalizeRawItems(items: unknown): RawActionItem[] {
 
 const qk = (eventId: string, meetingRowId: string | null) => ['meeting-task-suggestions', eventId, meetingRowId];
 
+function nameTokens(s: string): string[] {
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+export interface InternalMember {
+  user_id: string;
+  email: string | null;
+  display_name: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
+/**
+ * Match an external mention (name or email) to a single internal tenant
+ * user. Returns null on no match or on ambiguous tie. Never falls back
+ * to external contacts.
+ */
+export function resolveInternalAssignee(
+  mention: string | null | undefined,
+  members: InternalMember[],
+): InternalMember | null {
+  if (!mention) return null;
+  const raw = String(mention).trim();
+  if (!raw) return null;
+
+  if (raw.includes('@')) {
+    const lower = raw.toLowerCase();
+    const byEmail = members.filter((m) => (m.email || '').toLowerCase() === lower);
+    return byEmail.length === 1 ? byEmail[0] : null;
+  }
+
+  const tokens = nameTokens(raw);
+  if (tokens.length === 0) return null;
+
+  const scored = members
+    .map((m) => {
+      const memberTokens = new Set([
+        ...nameTokens(m.display_name || ''),
+        ...nameTokens(m.first_name || ''),
+        ...nameTokens(m.last_name || ''),
+      ]);
+      const overlap = tokens.filter((t) => memberTokens.has(t)).length;
+      return { m, overlap };
+    })
+    .filter((x) => x.overlap > 0)
+    .sort((a, b) => b.overlap - a.overlap);
+
+  if (scored.length === 0) return null;
+  if (scored.length > 1 && scored[0].overlap === scored[1].overlap) return null;
+  return scored[0].m;
+}
+
 export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -115,6 +171,38 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
   const { eventId, meetingRowId, recordingRowId, source, fallbackActionItems } = input;
 
   const scopeKey = meetingRowId ? `meeting:${meetingRowId}` : `event:${eventId}`;
+
+  // Internal tenant members (company_members ∩ profiles). Gates assignee
+  // resolution — external contact names are never auto-assigned.
+  const membersQuery = useQuery({
+    queryKey: ['internal-members', company?.id],
+    enabled: !!company?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<InternalMember[]> => {
+      const { data: cm } = await supabase
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', company!.id);
+      if (!cm?.length) return [];
+      const userIds = cm.map((r) => r.user_id);
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('user_id, email, first_name, last_name, display_name')
+        .in('user_id', userIds);
+      return (profs || []).map((p) => ({
+        user_id: p.user_id,
+        email: p.email,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        display_name:
+          p.display_name ||
+          [p.first_name, p.last_name].filter(Boolean).join(' ') ||
+          p.email ||
+          'Member',
+      }));
+    },
+  });
+  const internalMembers = membersQuery.data ?? [];
 
   // 1) Load raw items from canonical sources.
   const rawQuery = useQuery({
