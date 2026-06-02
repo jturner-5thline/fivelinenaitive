@@ -16210,6 +16210,7 @@ export type Database = {
           decided_by: string | null
           due_date: string | null
           event_id: string | null
+          external_mention: string | null
           id: string
           meeting_id: string | null
           org_company_id: string
@@ -16228,6 +16229,7 @@ export type Database = {
           decided_by?: string | null
           due_date?: string | null
           event_id?: string | null
+          external_mention?: string | null
           id?: string
           meeting_id?: string | null
           org_company_id: string
@@ -16246,6 +16248,7 @@ export type Database = {
           decided_by?: string | null
           due_date?: string | null
           event_id?: string | null
+          external_mention?: string | null
           id?: string
           meeting_id?: string | null
           org_company_id?: string

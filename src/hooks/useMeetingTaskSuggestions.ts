@@ -23,6 +23,11 @@ export interface MeetingTaskSuggestion {
   text: string;
   assignee_name: string | null;
   assignee_email: string | null;
+  /** Resolved internal tenant user (company_member). Null when the
+   *  mention is an external contact or no unique internal match. */
+  assignee_user_id: string | null;
+  /** Raw external @mention preserved for context when no internal match. */
+  external_mention: string | null;
   due_date: string | null;
   status: SuggestionStatus;
   created_task_id: string | null;
@@ -103,6 +108,62 @@ function normalizeRawItems(items: unknown): RawActionItem[] {
 
 const qk = (eventId: string, meetingRowId: string | null) => ['meeting-task-suggestions', eventId, meetingRowId];
 
+function nameTokens(s: string): string[] {
+  return (s || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+export interface InternalMember {
+  user_id: string;
+  email: string | null;
+  display_name: string;
+  first_name: string | null;
+  last_name: string | null;
+}
+
+/**
+ * Match an external mention (name or email) to a single internal tenant
+ * user. Returns null on no match or on ambiguous tie. Never falls back
+ * to external contacts.
+ */
+export function resolveInternalAssignee(
+  mention: string | null | undefined,
+  members: InternalMember[],
+): InternalMember | null {
+  if (!mention) return null;
+  const raw = String(mention).trim();
+  if (!raw) return null;
+
+  if (raw.includes('@')) {
+    const lower = raw.toLowerCase();
+    const byEmail = members.filter((m) => (m.email || '').toLowerCase() === lower);
+    return byEmail.length === 1 ? byEmail[0] : null;
+  }
+
+  const tokens = nameTokens(raw);
+  if (tokens.length === 0) return null;
+
+  const scored = members
+    .map((m) => {
+      const memberTokens = new Set([
+        ...nameTokens(m.display_name || ''),
+        ...nameTokens(m.first_name || ''),
+        ...nameTokens(m.last_name || ''),
+      ]);
+      const overlap = tokens.filter((t) => memberTokens.has(t)).length;
+      return { m, overlap };
+    })
+    .filter((x) => x.overlap > 0)
+    .sort((a, b) => b.overlap - a.overlap);
+
+  if (scored.length === 0) return null;
+  if (scored.length > 1 && scored[0].overlap === scored[1].overlap) return null;
+  return scored[0].m;
+}
+
 export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -110,6 +171,38 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
   const { eventId, meetingRowId, recordingRowId, source, fallbackActionItems } = input;
 
   const scopeKey = meetingRowId ? `meeting:${meetingRowId}` : `event:${eventId}`;
+
+  // Internal tenant members (company_members ∩ profiles). Gates assignee
+  // resolution — external contact names are never auto-assigned.
+  const membersQuery = useQuery({
+    queryKey: ['internal-members', company?.id],
+    enabled: !!company?.id,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<InternalMember[]> => {
+      const { data: cm } = await supabase
+        .from('company_members')
+        .select('user_id')
+        .eq('company_id', company!.id);
+      if (!cm?.length) return [];
+      const userIds = cm.map((r) => r.user_id);
+      const { data: profs } = await supabase
+        .from('profiles')
+        .select('user_id, email, first_name, last_name, display_name')
+        .in('user_id', userIds);
+      return (profs || []).map((p) => ({
+        user_id: p.user_id,
+        email: p.email,
+        first_name: p.first_name,
+        last_name: p.last_name,
+        display_name:
+          p.display_name ||
+          [p.first_name, p.last_name].filter(Boolean).join(' ') ||
+          p.email ||
+          'Member',
+      }));
+    },
+  });
+  const internalMembers = membersQuery.data ?? [];
 
   // 1) Load raw items from canonical sources.
   const rawQuery = useQuery({
@@ -143,7 +236,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     queryFn: async () => {
       const { data, error } = await supabase
         .from('meeting_task_suggestions')
-        .select('id, suggestion_id, text, assignee_email, due_date, status, created_task_id, source')
+        .select('id, suggestion_id, text, assignee_email, external_mention, due_date, status, created_task_id, source')
         .eq('scope_key', scopeKey);
       if (error) throw error;
       return data ?? [];
@@ -159,18 +252,23 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     const knownIds = new Set(persisted.map((r) => r.suggestion_id));
 
     const toInsert = rawItems
-      .map((it, idx) => ({
-        org_company_id: company.id,
-        scope_key: scopeKey,
-        meeting_id: meetingRowId,
-        event_id: eventId,
-        recording_id: source === 'claap' ? recordingRowId : null,
-        suggestion_id: suggestionIdFor(scopeKey, idx, it.text),
-        text: it.text,
-        assignee_email: it.assignee_email,
-        due_date: it.due_date,
-        source: source === 'synthesized' ? 'synthesized' : 'claap',
-      }))
+      .map((it, idx) => {
+        const mention = it.assignee_name || it.assignee_email || null;
+        const resolved = resolveInternalAssignee(mention, internalMembers);
+        return {
+          org_company_id: company.id,
+          scope_key: scopeKey,
+          meeting_id: meetingRowId,
+          event_id: eventId,
+          recording_id: source === 'claap' ? recordingRowId : null,
+          suggestion_id: suggestionIdFor(scopeKey, idx, it.text),
+          text: it.text,
+          assignee_email: resolved ? resolved.email : null,
+          external_mention: resolved ? null : mention,
+          due_date: it.due_date,
+          source: source === 'synthesized' ? 'synthesized' : 'claap',
+        };
+      })
       .filter((row) => !knownIds.has(row.suggestion_id));
 
     if (toInsert.length === 0) return;
@@ -188,7 +286,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
         queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [company?.id, user?.id, rawItems.length, persistedQuery.data?.length, scopeKey, source]);
+  }, [company?.id, user?.id, rawItems.length, persistedQuery.data?.length, scopeKey, source, internalMembers.length]);
 
   // 4) Merge raw + persisted into the public list, preserving raw order.
   const suggestions: MeetingTaskSuggestion[] = useMemo(() => {
@@ -204,45 +302,32 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       const reparsed = persistedText ? parseClaapActionItemText(persistedText) : null;
       const displayText = reparsed?.text || it.text;
       const displayAssignee = reparsed?.assigneeName || it.assignee_name;
+      const mention = displayAssignee || it.assignee_email || (row as any)?.external_mention || null;
+      const resolved = resolveInternalAssignee(mention, internalMembers);
       return {
         id: row?.id ?? null,
         suggestion_id: sid,
         text: displayText,
-        assignee_name: displayAssignee ?? null,
-        assignee_email: row?.assignee_email ?? it.assignee_email,
+        assignee_name: resolved ? resolved.display_name : null,
+        assignee_email: resolved ? resolved.email : null,
+        assignee_user_id: resolved ? resolved.user_id : null,
+        external_mention: resolved ? null : mention,
         due_date: row?.due_date ?? it.due_date,
         status: ((row?.status as SuggestionStatus | undefined) ?? 'pending'),
         created_task_id: row?.created_task_id ?? null,
         source: ((row?.source as SuggestionSource | undefined) ?? (source === 'synthesized' ? 'synthesized' : 'claap')),
       };
     });
-  }, [rawItems, persistedQuery.data, scopeKey, source]);
-
-  // ─── mutations ──────────────────────────────────────────────
-  const resolveAssigneeUserId = async (name: string | null): Promise<{ userId: string | null; email: string | null }> => {
-    if (!name) return { userId: null, email: null };
-    const trimmed = name.trim();
-    if (!trimmed) return { userId: null, email: null };
-    const { data } = await supabase
-      .from('profiles')
-      .select('user_id, email, first_name, last_name, display_name')
-      .or(
-        `display_name.ilike.${trimmed},and(first_name.ilike.${trimmed.split(/\s+/)[0]},last_name.ilike.${trimmed.split(/\s+/).slice(-1)[0]})`,
-      )
-      .limit(2);
-    if (!data || data.length !== 1) return { userId: null, email: null };
-    return { userId: data[0].user_id ?? null, email: data[0].email ?? null };
-  };
+  }, [rawItems, persistedQuery.data, scopeKey, source, internalMembers]);
 
   const approve = async (s: MeetingTaskSuggestion): Promise<{ taskId: string } | null> => {
     if (!user?.id) {
       toast.error('You must be signed in to create a task');
       return null;
     }
-    // 1) Resolve assignee name -> tenant user, fallback to current user.
-    const resolved = await resolveAssigneeUserId(s.assignee_name);
-    const assignedTo = resolved.userId ?? user.id;
-    const assigneeEmail = resolved.email ?? s.assignee_email ?? null;
+    // 1) Internal-only assignment. External mentions never assign a real user.
+    const assignedTo = s.assignee_user_id ?? user.id;
+    const assigneeEmail = s.assignee_user_id ? s.assignee_email : null;
 
     // Optional recording url footer for description.
     let recordingUrl: string | null = null;
@@ -255,7 +340,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       recordingUrl = (data as any)?.recording_url ?? null;
     }
     const descParts: string[] = [];
-    if (assigneeEmail && !resolved.userId) descParts.push(`Suggested for: ${assigneeEmail}`);
+    if (s.external_mention) descParts.push(`Mentioned: ${s.external_mention}`);
     descParts.push(
       recordingUrl
         ? `From Claap recording — [Watch](${recordingUrl})`
@@ -293,6 +378,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       suggestion_id: s.suggestion_id,
       text: s.text,
       assignee_email: assigneeEmail,
+      external_mention: s.external_mention,
       due_date: s.due_date,
       source: s.source,
       status: 'converted' as SuggestionStatus,
