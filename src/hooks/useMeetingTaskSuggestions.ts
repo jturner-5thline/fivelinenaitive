@@ -10,6 +10,19 @@ import { parseClaapActionItemText } from '@/lib/claap-format';
 export type SuggestionStatus = 'pending' | 'approved' | 'dismissed' | 'converted';
 export type SuggestionSource = 'claap' | 'synthesized';
 
+/**
+ * Thrown by approve() when a suggestion has no resolved internal
+ * assignee. Callers must either pre-gate the UI or catch and surface
+ * a "choose an assignee first" message — no task row is ever created
+ * unassigned.
+ */
+export class MissingAssigneeError extends Error {
+  constructor(public readonly suggestionId: string) {
+    super('Suggestion has no assignee — choose one before creating a task.');
+    this.name = 'MissingAssigneeError';
+  }
+}
+
 export interface RawActionItem {
   text: string;
   assignee_name: string | null;
