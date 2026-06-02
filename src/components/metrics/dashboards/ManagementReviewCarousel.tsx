@@ -178,7 +178,8 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
 }
 
 export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }: { isEditMode?: boolean; onExitEditMode?: () => void } = {}) {
-  const [activeIndex, setActiveIndex] = useState(0);
+  // Default to the Dashboard tab (index 1); Agenda (index 0) is opt-in.
+  const [activeIndex, setActiveIndex] = useState(1);
   const touchStartX = useRef<number | null>(null);
   const [reportSave, setReportSave] = useState<{ fn: (() => Promise<boolean>) | null; canEdit: boolean; hasUnsavedChanges: boolean }>({ fn: null, canEdit: false, hasUnsavedChanges: false });
   const [justSaved, setJustSaved] = useState(false);
@@ -314,7 +315,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   };
 
   const activePage = PAGES[activeIndex];
-  const isReportTab = activeIndex >= 3;
+  const isReportTab = activeIndex >= 4;
 
   return (
     <div
