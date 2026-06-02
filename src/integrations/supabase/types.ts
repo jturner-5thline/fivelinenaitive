@@ -415,6 +415,107 @@ export type Database = {
         }
         Relationships: []
       }
+      agenda_comment_threads: {
+        Row: {
+          agenda_id: string
+          anchor_text: string | null
+          company_id: string
+          created_at: string
+          created_by: string
+          id: string
+          resolved: boolean
+          resolved_at: string | null
+          resolved_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          agenda_id: string
+          anchor_text?: string | null
+          company_id: string
+          created_at?: string
+          created_by: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          agenda_id?: string
+          anchor_text?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          resolved?: boolean
+          resolved_at?: string | null
+          resolved_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_comment_threads_agenda_id_fkey"
+            columns: ["agenda_id"]
+            isOneToOne: false
+            referencedRelation: "insights_agenda"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      agenda_comments: {
+        Row: {
+          author_id: string
+          body: string
+          company_id: string
+          created_at: string
+          deleted_at: string | null
+          id: string
+          mentions: string[]
+          parent_comment_id: string | null
+          thread_id: string
+          updated_at: string
+        }
+        Insert: {
+          author_id: string
+          body: string
+          company_id: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          mentions?: string[]
+          parent_comment_id?: string | null
+          thread_id: string
+          updated_at?: string
+        }
+        Update: {
+          author_id?: string
+          body?: string
+          company_id?: string
+          created_at?: string
+          deleted_at?: string | null
+          id?: string
+          mentions?: string[]
+          parent_comment_id?: string | null
+          thread_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agenda_comments_parent_comment_id_fkey"
+            columns: ["parent_comment_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agenda_comments_thread_id_fkey"
+            columns: ["thread_id"]
+            isOneToOne: false
+            referencedRelation: "agenda_comment_threads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_conversations: {
         Row: {
           agent_id: string

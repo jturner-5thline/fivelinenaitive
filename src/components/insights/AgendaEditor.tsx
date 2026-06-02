@@ -22,7 +22,16 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Eraser, Heading1, Heading2, Heading3, Check, Loader2, Copy,
+  MessageSquare,
 } from 'lucide-react';
+import { CommentMark } from './CommentMark';
+import {
+  AgendaCommentsRail,
+  CommentContextMenu,
+  NewThreadPopover,
+  SelectionBubble,
+  useAgendaComments,
+} from './AgendaComments';
 
 const FONT_FAMILIES = [
   { label: 'Default', value: '' },
@@ -308,9 +317,16 @@ export function AgendaEditor() {
   const [isEmpty, setIsEmpty] = useState(true);
   const [copying, setCopying] = useState(false);
   const [, force] = useState(0);
+  const [railOpen, setRailOpen] = useState(false);
+  const [pendingComment, setPendingComment] = useState<
+    { from: number; to: number; text: string; anchor: { left: number; top: number } } | null
+  >(null);
   const debounceRef = useRef<number | null>(null);
   const latestDocRef = useRef<any>(null);
   const periodRef = useRef<{ type: string; key: string }>({ type: periodType, key: periodKey });
+  const editorWrapRef = useRef<HTMLDivElement>(null);
+
+  const commentsApi = useAgendaComments(rowId, company?.id ?? null);
 
   const editor = useEditor({
     extensions: [
@@ -326,6 +342,7 @@ export function AgendaEditor() {
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      CommentMark,
     ],
     content: SEED_CONTENT,
     editorProps: {
@@ -549,12 +566,35 @@ export function AgendaEditor() {
         .agenda-prose a { color: #7ed0ff; text-decoration: underline; }
         .agenda-prose mark { padding: 0 2px; border-radius: 2px; }
         .agenda-prose blockquote { border-left: 3px solid rgba(80,140,255,0.4); padding-left: 12px; color: rgba(200,225,255,0.75); margin: 10px 0; }
+        .agenda-prose .agenda-comment {
+          background: rgba(255, 213, 0, 0.18);
+          border-bottom: 1px solid rgba(255, 213, 0, 0.45);
+          cursor: pointer;
+          border-radius: 2px;
+          transition: background 0.15s ease;
+        }
+        .agenda-prose .agenda-comment:hover { background: rgba(255, 213, 0, 0.32); }
       `}</style>
       <Toolbar editor={editor} />
       <div style={{
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
         height: 18, marginBottom: 4, fontSize: 11, color: 'rgba(180,210,245,0.7)',
       }}>
+        <button
+          type="button"
+          onClick={() => setRailOpen((v) => !v)}
+          title="Open comments"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 999, marginRight: 6,
+            border: '0.5px solid rgba(80,140,255,0.28)',
+            background: railOpen ? 'rgba(80,140,255,0.18)' : 'rgba(16,28,52,0.55)',
+            color: 'rgba(200,225,255,0.95)', fontSize: 11, cursor: 'pointer',
+          }}
+        >
+          <MessageSquare size={11} />
+          {commentsApi.threads.filter((t) => !t.resolved).length}
+        </button>
         {isEmpty && loaded && (
           <button
             type="button"
@@ -590,7 +630,8 @@ export function AgendaEditor() {
         {saveState === 'saved' && savedAt && (<><Check size={12} /> Saved · {formatJustNow(savedAt)}</>)}
         {saveState === 'error' && (<span style={{ color: '#f87171' }}>Save failed — will retry</span>)}
       </div>
-      <div style={{
+      <div ref={editorWrapRef} style={{
+        position: 'relative',
         background: 'rgba(10,20,40,0.55)',
         border: '0.5px solid rgba(80,140,255,0.18)',
         borderRadius: 14,
@@ -598,7 +639,56 @@ export function AgendaEditor() {
         minHeight: '60vh',
       }}>
         <EditorContent editor={editor} />
+        <SelectionBubble
+          editor={editor}
+          onComment={(text, from, to) => {
+            if (!editor) return;
+            const start = editor.view.coordsAtPos(from);
+            const end = editor.view.coordsAtPos(to);
+            const wrapRect = editorWrapRef.current?.getBoundingClientRect();
+            const left = ((start.left + end.right) / 2) - (wrapRect?.left ?? 0);
+            const top = end.bottom - (wrapRect?.top ?? 0);
+            setPendingComment({ from, to, text, anchor: { left, top } });
+          }}
+        />
+        <CommentContextMenu
+          editor={editor}
+          onAddComment={(text, from, to) => {
+            if (!editor) return;
+            const start = editor.view.coordsAtPos(from);
+            const end = editor.view.coordsAtPos(to);
+            const wrapRect = editorWrapRef.current?.getBoundingClientRect();
+            const left = ((start.left + end.right) / 2) - (wrapRect?.left ?? 0);
+            const top = end.bottom - (wrapRect?.top ?? 0);
+            setPendingComment({ from, to, text, anchor: { left, top } });
+          }}
+        />
+        <NewThreadPopover
+          anchor={pendingComment?.anchor ?? null}
+          onCancel={() => setPendingComment(null)}
+          onSubmit={async (body) => {
+            if (!pendingComment || !editor) return;
+            const t = await commentsApi.createThread(pendingComment.text);
+            if (t) {
+              editor.chain()
+                .focus()
+                .setTextSelection({ from: pendingComment.from, to: pendingComment.to })
+                .setCommentMark(t.id)
+                .run();
+              await commentsApi.addComment(t.id, body);
+              setRailOpen(true);
+            }
+            setPendingComment(null);
+          }}
+        />
       </div>
+      <AgendaCommentsRail
+        open={railOpen}
+        onClose={() => setRailOpen(false)}
+        editor={editor}
+        api={commentsApi}
+        currentUserId={user?.id ?? null}
+      />
     </div>
   );
 }
