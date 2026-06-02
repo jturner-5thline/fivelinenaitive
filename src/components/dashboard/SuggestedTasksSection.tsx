@@ -141,8 +141,22 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                   {(s.assignee_user_id || s.external_mention || s.due_date) && (
                     <div className="flex flex-wrap items-center gap-1 mt-0.5">
                       {s.assignee_user_id && s.assignee_name ? (
-                        <Badge data-assignee-chip="internal" variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]">
+                        <Badge
+                          data-assignee-chip={s.assignment_source === 'deal-manager' ? 'deal-manager' : 'internal'}
+                          variant="outline"
+                          className={cn(
+                            'h-4 px-1 text-[9px] gap-0.5',
+                            s.assignment_source === 'deal-manager'
+                              ? 'border-sky-500/30 text-sky-200/90 bg-sky-500/[0.06]'
+                              : 'border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]',
+                          )}
+                        >
                           <UserIcon className="h-2.5 w-2.5" /> {s.assignee_name}
+                          {s.assignment_source === 'deal-manager' && (
+                            <span className="ml-0.5 inline-flex items-center rounded-sm border border-sky-400/30 bg-sky-400/[0.08] px-0.5 text-[8px] uppercase tracking-wider text-sky-200/80">
+                              deal mgr
+                            </span>
+                          )}
                         </Badge>
                       ) : (
                         <Badge data-assignee-chip="unassigned" variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
