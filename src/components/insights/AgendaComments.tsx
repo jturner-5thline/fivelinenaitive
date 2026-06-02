@@ -612,7 +612,7 @@ function CommentRow({
 }
 
 // ---------- Thread card ----------
-function ThreadCard({
+export function ThreadCard({
   thread, comments, currentUserId, members, flash, onJump,
   api,
 }: {
