@@ -7856,8 +7856,23 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
 - If the focused deal is set, at least one chip should reference it by name.
 - DO NOT emit chips when (a) you are emitting only a tool confirmation card with no prose, or (b) you are asking a clarifying question that already lists choices for the user.`;
 
+    // ── CREATE-intent preflight (system-level) ──
+    // When the user's message begins with create/add/new/etc + "deal", force
+    // the model's FIRST tool call to be create_deal so the same-name collision
+    // pre-flight runs and the user (not the model) decides whether to update
+    // the existing deal, create a duplicate, or rename.
+    const isCreateDealIntent = detectCreateDealIntent(message);
+    const createIntentSystemBlock = isCreateDealIntent
+      ? `\n\nCREATE-DEAL INTENT DETECTED (this turn only — STRICT):\n` +
+        `- The user's message starts with a creation verb ("create", "add", "new", "make", etc.) + the word "deal". This is a NEW-DEAL request, NOT an update.\n` +
+        `- Your FIRST tool call THIS TURN MUST be \`create_deal\` with the fields parsed from the message (company_name, deal_value, deal_owner_name, pipeline_name, etc.).\n` +
+        `- DO NOT call \`update_deal_fields\` as your first tool call on this turn — even if you think the deal already exists. The create_deal pre-flight will detect any name collision and return a {action_type:"name_collision"} envelope; render that envelope verbatim and let the USER pick Update / Create duplicate / Rename. If you call update_deal_fields first the user never sees the collision card and we silently overwrite the wrong deal.\n` +
+        `- DO NOT call search_deals first to "check if it exists" — create_deal's pre-flight already does an exact-match lookup. Calling search_deals first wastes a turn and can mislead you into an update path.\n` +
+        `- The ONLY exception is when the prior assistant turn already rendered a name_collision card and this user message is them picking an option (Update existing / Create duplicate / Rename). In that case follow the card's contract.\n`
+      : "";
+
     const apiMessages: any[] = [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemPrompt + createIntentSystemBlock },
       ...(history || []).map((m: any) => ({ role: m.role, content: m.content })),
       { role: "user", content: message },
     ];
