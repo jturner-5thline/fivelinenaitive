@@ -5,7 +5,7 @@ import { useAdminRole } from "@/hooks/useAdminRole";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Download, Play } from "lucide-react";
+import { Loader2, Download, Play, CheckCircle2, Check } from "lucide-react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -121,6 +121,49 @@ export default function PerformanceAudit() {
   const [lastRowsAffected, setLastRowsAffected] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [undoing, setUndoing] = useState(false);
+  const [appliedByName, setAppliedByName] = useState<string | null>(null);
+  const [appliedDealIds, setAppliedDealIds] = useState<Set<string>>(new Set());
+
+  const loadExistingApply = async (runId: string) => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("performance_audit_applies")
+        .select("id, applied_at, applied_by, rows_affected, changes, reversed_at")
+        .eq("run_id", runId)
+        .is("reversed_at", null)
+        .order("applied_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) {
+        setAppliedAt(null);
+        setLastApplyId(null);
+        setLastRowsAffected(null);
+        setAppliedByName(null);
+        setAppliedDealIds(new Set());
+        return;
+      }
+      setAppliedAt(data.applied_at);
+      setLastApplyId(data.id);
+      setLastRowsAffected(data.rows_affected);
+      const ids = new Set<string>();
+      const changes = Array.isArray(data.changes) ? data.changes : [];
+      for (const c of changes) {
+        if (c?.deal_id) ids.add(String(c.deal_id));
+      }
+      setAppliedDealIds(ids);
+      if (data.applied_by) {
+        const { data: prof } = await (supabase as any)
+          .from("profiles")
+          .select("name, email")
+          .eq("id", data.applied_by)
+          .maybeSingle();
+        setAppliedByName(prof?.name ?? prof?.email ?? null);
+      }
+    } catch (err) {
+      console.error("loadExistingApply", err);
+    }
+  };
 
   const runDryRun = async () => {
     setRunning(true);
@@ -130,10 +173,15 @@ export default function PerformanceAudit() {
       });
       if (error) throw error;
       setResult(data as AuditResult);
-      setAppliedAt(null);
-      setLastApplyId(null);
-      setLastRowsAffected(null);
       toast.success("Dry-run complete");
+      const runId = (data as AuditResult)?.run_id;
+      if (runId) await loadExistingApply(runId);
+      else {
+        setAppliedAt(null);
+        setLastApplyId(null);
+        setLastRowsAffected(null);
+        setAppliedDealIds(new Set());
+      }
     } catch (err: any) {
       console.error(err);
       toast.error(`Dry-run failed: ${err?.message ?? err}`);
@@ -160,6 +208,7 @@ export default function PerformanceAudit() {
       setAppliedAt(payload.applied_at);
       setLastApplyId(payload.apply_id);
       setLastRowsAffected(payload.rows_affected);
+      if (result?.run_id) await loadExistingApply(result.run_id);
       toast.success(
         `Applied ${payload.rows_affected} change(s): ${payload.owners_attributed} owner + ${payload.marked_lost} lost`,
       );
@@ -185,6 +234,8 @@ export default function PerformanceAudit() {
       setAppliedAt(null);
       setLastApplyId(null);
       setLastRowsAffected(null);
+      setAppliedByName(null);
+      setAppliedDealIds(new Set());
     } catch (err: any) {
       console.error(err);
       toast.error(`Undo failed: ${err?.message ?? err}`);
@@ -257,6 +308,7 @@ export default function PerformanceAudit() {
 
   const willAttribute = result?.summary.will_attribute ?? 0;
   const willMarkLost = result?.summary.will_mark_lost ?? 0;
+  const isApplied = !!appliedAt && !!lastApplyId;
 
   return (
     <div className="container mx-auto px-6 py-8">
@@ -337,6 +389,7 @@ export default function PerformanceAudit() {
       {appliedAt && (
         <Card className="mb-6 border-green-500/40 bg-green-500/10 p-4 text-sm text-foreground">
           Applied at <span className="font-medium">{new Date(appliedAt).toLocaleString()}</span>
+          {appliedByName && <> by <span className="font-medium">{appliedByName}</span></>}
           {lastRowsAffected != null && (
             <> · {lastRowsAffected} row(s) updated</>
           )}
@@ -345,23 +398,48 @@ export default function PerformanceAudit() {
 
       {result && (
         <Card className="mb-6 p-5">
-          <div className="text-sm text-muted-foreground">Summary</div>
-          <div className="mt-1 text-base text-foreground">
-            <span className="font-semibold">{result.summary.will_attribute}</span>{" "}
-            deals will be owner-attributed to {result.summary.rep_name},{" "}
-            <span className="font-semibold">{result.summary.will_mark_lost}</span>{" "}
-            will be marked lost,{" "}
-            <span className="font-semibold">
-              {result.summary.will_stamp_terms_issued}
-            </span>{" "}
-            terms_issued anchor(s) stamped,{" "}
-            <span className="font-semibold">{result.summary.will_requarter}</span>{" "}
-            re-quartered. Total candidates:{" "}
-            <span className="font-semibold">{result.summary.total_rows}</span>.
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            Summary
+            {isApplied && <CheckCircle2 className="h-4 w-4 text-green-500" />}
           </div>
+          {isApplied ? (
+            <div className="mt-1 text-base text-foreground">
+              <span className="font-semibold">{result.summary.will_attribute}</span>{" "}
+              deals were owner-attributed to {result.summary.rep_name},{" "}
+              <span className="font-semibold">{result.summary.will_mark_lost}</span>{" "}
+              were marked lost,{" "}
+              <span className="font-semibold">
+                {result.summary.will_stamp_terms_issued}
+              </span>{" "}
+              terms_issued anchor(s) stamped,{" "}
+              <span className="font-semibold">{result.summary.will_requarter}</span>{" "}
+              re-quartered. Total applied:{" "}
+              <span className="font-semibold">{lastRowsAffected ?? 0}</span>.
+            </div>
+          ) : (
+            <div className="mt-1 text-base text-foreground">
+              <span className="font-semibold">{result.summary.will_attribute}</span>{" "}
+              deals will be owner-attributed to {result.summary.rep_name},{" "}
+              <span className="font-semibold">{result.summary.will_mark_lost}</span>{" "}
+              will be marked lost,{" "}
+              <span className="font-semibold">
+                {result.summary.will_stamp_terms_issued}
+              </span>{" "}
+              terms_issued anchor(s) stamped,{" "}
+              <span className="font-semibold">{result.summary.will_requarter}</span>{" "}
+              re-quartered. Total candidates:{" "}
+              <span className="font-semibold">{result.summary.total_rows}</span>.
+            </div>
+          )}
           <div className="mt-2 text-xs text-muted-foreground">
             run_id: <code>{result.run_id}</code> · generated{" "}
             {fmt(result.summary.generated_at)}
+            {isApplied && appliedAt && (
+              <>
+                {" "}· applied {new Date(appliedAt).toLocaleString()}
+                {appliedByName && <> by {appliedByName}</>}
+              </>
+            )}
           </div>
         </Card>
       )}
@@ -392,29 +470,33 @@ export default function PerformanceAudit() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {groupedRows.map((r) => (
+              {groupedRows.map((r) => {
+                const wasApplied = isApplied && appliedDealIds.has(r.deal_id);
+                const currentCls = wasApplied ? "text-xs line-through text-muted-foreground" : "text-xs";
+                const proposedCls = wasApplied ? "text-xs text-green-600 font-medium" : "text-xs";
+                const Checkmark = wasApplied ? <Check className="inline h-3 w-3 mr-1 text-green-600" /> : null;
+                return (
                 <TableRow key={r.deal_id} className={changeBg[r.change_type]}>
                   <TableCell className="font-medium">{r.deal_name}</TableCell>
                   <TableCell>
                     <Badge variant="outline">{r.change_type}</Badge>
                   </TableCell>
-                  <TableCell className="text-xs">
+                  <TableCell className={currentCls}>
                     {r.current_owner ?? "—"}
                   </TableCell>
-                  <TableCell className="text-xs">
-                    {r.proposed_owner ?? "—"}
+                  <TableCell className={proposedCls}>
+                    {Checkmark}{r.proposed_owner ?? "—"}
                   </TableCell>
-                  <TableCell className="text-xs">{r.current_status ?? "—"}</TableCell>
-                  <TableCell className="text-xs">
-                    {r.proposed_status ?? "—"}
+                  <TableCell className={currentCls}>{r.current_status ?? "—"}</TableCell>
+                  <TableCell className={proposedCls}>
+                    {Checkmark}{r.proposed_status ?? "—"}
                   </TableCell>
                   <TableCell className="text-xs">{fmt(r.current_closed_at)}</TableCell>
                   <TableCell className="text-xs">
-                    {fmt(r.current_lost_at)} → {fmt(r.proposed_lost_at)}
+                    <span className={wasApplied ? "line-through text-muted-foreground" : ""}>{fmt(r.current_lost_at)}</span> → <span className={wasApplied ? "text-green-600 font-medium" : ""}>{fmt(r.proposed_lost_at)}</span>
                   </TableCell>
                   <TableCell className="text-xs">
-                    {fmt(r.current_terms_issued_at)} →{" "}
-                    {fmt(r.proposed_terms_issued_at)}
+                    <span className={wasApplied ? "line-through text-muted-foreground" : ""}>{fmt(r.current_terms_issued_at)}</span> → <span className={wasApplied ? "text-green-600 font-medium" : ""}>{fmt(r.proposed_terms_issued_at)}</span>
                   </TableCell>
                   <TableCell className="text-xs">
                     {r.current_fiscal_bucket ?? "—"} →{" "}
@@ -427,7 +509,7 @@ export default function PerformanceAudit() {
                     {r.notes}
                   </TableCell>
                 </TableRow>
-              ))}
+              );})}
             </TableBody>
           </Table>
         </Card>
