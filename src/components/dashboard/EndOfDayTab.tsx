@@ -17,7 +17,6 @@ import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
-import { useQuery as useTanQuery } from '@tanstack/react-query';
 import { useClaapTokenStatus } from '@/hooks/useClaapTokenStatus';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -1100,7 +1099,7 @@ function EventDetailPane({
   // Pull live sync status for the linked recording (attempts + last error)
   // so the card can surface "Syncing…" / Retry on permanent failure.
   const recordingRowIdForStatus = claapCtx.recording?.rowId ?? null;
-  const { data: claapSyncStatus, refetch: refetchSyncStatus } = useTanQuery({
+  const { data: claapSyncStatus, refetch: refetchSyncStatus } = useQuery({
     queryKey: ['claap-recording-sync-status', recordingRowIdForStatus],
     enabled: !!recordingRowIdForStatus,
     refetchInterval: claapCtx.source === 'none' ? 5000 : false,
