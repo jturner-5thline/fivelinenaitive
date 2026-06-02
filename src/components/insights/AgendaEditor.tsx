@@ -56,9 +56,15 @@ const subtitleNode = () => ({
   }],
 });
 
+// Only the Presentation section carries the subtitle; the other sections
+// render as a heading followed by an empty body.
 const SEED_CONTENT = {
   type: 'doc',
-  content: SEED_SECTIONS.flatMap((s) => [headingNode(s), subtitleNode(), { type: 'paragraph' }]),
+  content: SEED_SECTIONS.flatMap((s) =>
+    s === 'Presentation'
+      ? [headingNode(s), subtitleNode(), { type: 'paragraph' }]
+      : [headingNode(s), { type: 'paragraph' }],
+  ),
 };
 
 // Zod schema mirroring the DB CHECK constraint on insights_agenda.
