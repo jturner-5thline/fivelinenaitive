@@ -1467,19 +1467,44 @@ function EventDetailPane({
               </div>
             )}
             {claapStillGenerating && !notePrefilledFromClaap && !transcriptAvailable && !claapCtxFetching && (
-              <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
-                <span>
-                  Claap summary not yet available for this recording — generated after the call ends.
-                </span>
-                <button
-                  type="button"
-                  className="underline hover:text-white not-italic"
-                  disabled={claapBackfilling}
-                  onClick={regenerateClaapSummary}
-                >
-                  {claapBackfilling ? 'Generating…' : 'Refresh'}
-                </button>
-              </div>
+              (claapSyncStatus?.sync_attempts ?? 0) > 3 && claapSyncStatus?.last_sync_status !== 'ok' ? (
+                <div className="flex items-center gap-2 mb-1.5 text-[10px] text-rose-300 italic">
+                  <span className="not-italic">
+                    Claap recording is linked but its summary couldn't be retrieved
+                    {claapSyncStatus?.last_sync_status === 'not_found' ? ' (Claap returned 404)' : ''}
+                    {' — '}
+                  </span>
+                  <button
+                    type="button"
+                    className="underline hover:text-white not-italic"
+                    disabled={claapBackfilling}
+                    onClick={() => { void regenerateClaapSummary({ force: true }); }}
+                  >
+                    {claapBackfilling ? 'Retrying…' : 'Retry'}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mb-1.5 text-[10px] text-muted-foreground italic">
+                  {claapBackfilling ? (
+                    <>
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Syncing Claap…</span>
+                    </>
+                  ) : (
+                    <span>
+                      Claap summary not yet available for this recording — generated after the call ends.
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className="underline hover:text-white not-italic"
+                    disabled={claapBackfilling}
+                    onClick={() => { void regenerateClaapSummary(); }}
+                  >
+                    {claapBackfilling ? 'Generating…' : 'Refresh'}
+                  </button>
+                </div>
+              )
             )}
             <ClaapNoteEditor
               value={noteDraft}
