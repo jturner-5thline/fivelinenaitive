@@ -740,7 +740,7 @@ export function ThreadCard({
 
 // ---------- Right-side rail ----------
 export function AgendaCommentsRail({
-  open, onClose, editor, api, currentUserId, scrollListRef,
+  open, onClose, editor, api, currentUserId, scrollListRef, onOpenInline,
 }: {
   open: boolean;
   onClose: () => void;
@@ -749,6 +749,8 @@ export function AgendaCommentsRail({
   currentUserId: string | null;
   /** Ref to the scrollable list inside the rail (so the editor can scroll a thread card into view). */
   scrollListRef?: React.Ref<HTMLDivElement>;
+  /** Open the inline floating popover anchored to a thread's span in the editor. */
+  onOpenInline?: (threadId: string, anchorEl: HTMLElement) => void;
 }) {
   const members = useTeamMembers();
   const listRef = useRef<HTMLDivElement>(null);
@@ -778,8 +780,11 @@ export function AgendaCommentsRail({
     const r = ranges.find((x) => x.threadId === threadId);
     if (!r) return;
     editor.chain().focus().setTextSelection({ from: r.from, to: r.to }).run();
-    const target = editor.view.dom.querySelector(`[data-thread-id="${threadId}"]`);
+    const target = editor.view.dom.querySelector(
+      `[data-thread-id="${threadId}"]`,
+    ) as HTMLElement | null;
     target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (target && onOpenInline) onOpenInline(threadId, target);
   };
 
   if (!open) return null;
