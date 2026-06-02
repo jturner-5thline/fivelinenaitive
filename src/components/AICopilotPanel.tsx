@@ -13,6 +13,8 @@ import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
 import { CopilotNameCollisionCard } from '@/components/copilot/CopilotNameCollisionCard';
+import { CopilotDealFuzzyConfirmCard } from '@/components/copilot/CopilotDealFuzzyConfirmCard';
+import { CopilotDealFuzzySuggestionsCard } from '@/components/copilot/CopilotDealFuzzySuggestionsCard';
 import { CopilotApprovalGroup } from '@/components/copilot/CopilotApprovalGroup';
 import { DealAiSettingsPopover } from '@/components/copilot/DealAiSettingsPopover';
 import { useDealCopilotMemory } from '@/hooks/useDealCopilotMemory';
@@ -394,7 +396,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
     }
   );
   
-  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline' | 'settings_proposal' | 'name_collision'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline' | 'settings_proposal' | 'name_collision' | 'deal_fuzzy_confirm' | 'deal_fuzzy_suggestions'; value: any }> = [];
   // Match either fenced ```json {...} ``` blocks OR bare {...} objects that
   // contain an "action" key. The LLM sometimes drops the fence or uses
   // alternate key names ("type" instead of "action_type", "label" instead of
@@ -453,6 +455,24 @@ function CopilotAssistantContent({ content }: { content: string }) {
           if (!seenActions.has(key)) {
             seenActions.add(key);
             segments.push({ type: 'name_collision', value: parsed });
+          }
+          lastIndex = matchStart + match[0].length;
+          continue;
+        }
+        if (parsed.action_type === 'deal_fuzzy_confirm') {
+          const key = `deal_fuzzy_confirm:${parsed.params?.query || ''}:${parsed.params?.top_match?.id || ''}`;
+          if (!seenActions.has(key)) {
+            seenActions.add(key);
+            segments.push({ type: 'deal_fuzzy_confirm', value: parsed });
+          }
+          lastIndex = matchStart + match[0].length;
+          continue;
+        }
+        if (parsed.action_type === 'deal_fuzzy_suggestions') {
+          const key = `deal_fuzzy_suggestions:${parsed.params?.query || ''}:${(parsed.params?.matches || []).map((m: any) => m.id).join(',')}`;
+          if (!seenActions.has(key)) {
+            seenActions.add(key);
+            segments.push({ type: 'deal_fuzzy_suggestions', value: parsed });
           }
           lastIndex = matchStart + match[0].length;
           continue;
@@ -603,6 +623,8 @@ function CopilotAssistantContent({ content }: { content: string }) {
       {groupedSegments.map((seg, i) => {
         if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
         if (seg.type === 'name_collision') return <CopilotNameCollisionCard key={i} action={seg.value} />;
+        if (seg.type === 'deal_fuzzy_confirm') return <CopilotDealFuzzyConfirmCard key={i} action={seg.value} />;
+        if (seg.type === 'deal_fuzzy_suggestions') return <CopilotDealFuzzySuggestionsCard key={i} action={seg.value} />;
         if (seg.type === 'confirm_group') return <CopilotApprovalGroup key={i} actions={seg.value} />;
         if (seg.type === 'auto_executed') return <CopilotAutoExecuted key={i} action={seg.value} />;
         if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
