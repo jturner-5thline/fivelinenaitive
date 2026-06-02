@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
@@ -36,7 +37,7 @@ const handler = async (req: Request): Promise<Response> => {
     const typeColor = type === 'bug' ? '#dc2626' : '#8b5cf6';
 
     const emailResponse = await resend.emails.send({
-      from: "naitive <noreply@updates.naitive.co>",
+      from: buildFrom("naitive"),
       to: ["jturner@5thline.co"],
       subject: `[Feedback] ${typeLabel}: ${title}`,
       text: `${typeLabel}: ${title}\n\nSubmitted by: ${user_name || 'Unknown'} (${user_email || 'No email'})\nPage: ${page_url || 'Unknown'}\n\nDescription:\n${message}\n\n${screenshot_url ? 'Screenshot attached - view in admin panel' : ''}\n\n— naitive Platform`,

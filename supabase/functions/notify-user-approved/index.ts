@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -88,7 +89,7 @@ serve(async (req) => {
         Authorization: `Bearer ${resendApiKey}`,
       },
       body: JSON.stringify({
-        from: "naitive <noreply@updates.naitive.co>",
+        from: buildFrom("naitive"),
         to: [user_email],
         subject: "Your naitive Account Has Been Approved!",
         headers: {

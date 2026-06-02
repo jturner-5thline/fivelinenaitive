@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
 const corsHeaders = {
@@ -231,7 +232,7 @@ Deno.serve(async (req) => {
           const appUrl = "https://naitive.co";
 
           await resend.emails.send({
-            from: "naitive <noreply@updates.naitive.co>",
+            from: buildFrom("naitive"),
             reply_to: profile?.email || "support@naitive.co",
             to: [payload.user_email],
             subject: `naitive: Update on your information request for ${dealName}`,

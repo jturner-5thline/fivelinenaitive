@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
@@ -432,7 +433,7 @@ naitive - Manage preferences: ${appUrl}/settings | Unsubscribe: ${appUrl}/unsubs
 
         // Send email
         const emailResponse = await resend.emails.send({
-          from: "naitive <noreply@updates.naitive.co>",
+          from: buildFrom("naitive"),
           reply_to: "support@naitive.co",
           to: [userEmail],
           subject: `🔥 Weekly FLEx Summary: ${totalViews} views from ${totalUniqueLenders} lenders`,

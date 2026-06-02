@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { Resend } from "https://esm.sh/resend@2.0.0";
 
@@ -75,7 +76,7 @@ serve(async (req) => {
 
     const resend = new Resend(RESEND_API_KEY);
     const fromName = user.user_metadata?.full_name || user.email || "Naitive";
-    const fromEmail = "Naitive <noreply@updates.naitive.co>";
+    const fromEmail = buildFrom("Naitive");
 
     const html = bodyHtmlInput
       ? `<!doctype html><html><body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;color:#0f172a;line-height:1.55;">${bodyHtmlInput}</body></html>`

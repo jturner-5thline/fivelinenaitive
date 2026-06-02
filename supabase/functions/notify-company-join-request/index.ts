@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { buildFrom } from '../_shared/resendFrom.ts';
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -106,7 +107,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "naitive <noreply@updates.naitive.co>",
+            from: buildFrom("naitive"),
             to: [admin.email],
             subject: `New join request for ${companyName}`,
             html: `
@@ -139,7 +140,7 @@ Deno.serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            from: "naitive <noreply@updates.naitive.co>",
+            from: buildFrom("naitive"),
             to: [admin.email],
             subject: `New join request for ${companyName}`,
             html: `

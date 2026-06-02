@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { buildFrom } from '../_shared/resendFrom.ts';
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 const corsHeaders = {
@@ -160,7 +161,7 @@ async function executeEmailAction(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "naitive <noreply@updates.naitive.co>",
+        from: buildFrom("naitive"),
         to: [userEmail],
         subject: subject,
         html: `<div style="font-family: sans-serif; max-width: 600px; margin: 0 auto;">
