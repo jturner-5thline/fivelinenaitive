@@ -7896,6 +7896,10 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
     const encoder = new TextEncoder();
 
     (async () => {
+      // Tracks whether ANY tool call has executed in this user turn — used to
+      // enforce the CREATE-intent guard (only the FIRST tool call is blocked
+      // from being update_deal_fields).
+      let firstToolCallExecuted = false;
       try {
         for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
           const response = await fetch(AI_GATEWAY, {
@@ -7942,6 +7946,55 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                   ? JSON.parse(tc.function.arguments)
                   : tc.function.arguments;
               } catch { /* empty args */ }
+              // ── CREATE-intent runtime guard ──
+              // If the user said "create … deal" but the model's FIRST tool
+              // call this turn is update_deal_fields, reroute to create_deal
+              // so the same-name collision pre-flight runs and the user sees
+              // the Update / Create duplicate / Rename card.
+              if (
+                isCreateDealIntent &&
+                !firstToolCallExecuted &&
+                tc.function.name === "update_deal_fields"
+              ) {
+                console.warn("[copilot-chat] CREATE-intent guard: rerouting update_deal_fields → create_deal", {
+                  original_args: args,
+                });
+                const rerouteArgs: any = {
+                  company_name:
+                    args.company_name ||
+                    args.deal_name ||
+                    args.name ||
+                    args.company ||
+                    null,
+                  deal_value:
+                    typeof args.value === "number" ? args.value :
+                    typeof args.deal_value === "number" ? args.deal_value : null,
+                  deal_owner_id: args.deal_owner_id || args.manager_id || null,
+                  deal_owner_name: args.deal_owner_name || args.manager_name || null,
+                  pipeline_name: args.pipeline_name || null,
+                  pipeline_id: args.pipeline_id || null,
+                  stage_name: args.stage_name || null,
+                  stage_id: args.stage_id || null,
+                  notes: args.notes || null,
+                };
+                // If we still don't know the company name, fall back to the
+                // existing deal record so create_deal has something to match
+                // against — otherwise the collision check can't run.
+                if (!rerouteArgs.company_name && args.deal_id) {
+                  try {
+                    const { data: d } = await supabaseUser
+                      .from("deals")
+                      .select("company")
+                      .eq("id", args.deal_id)
+                      .maybeSingle();
+                    if (d?.company) rerouteArgs.company_name = d.company;
+                  } catch { /* non-fatal */ }
+                }
+                tc.function.name = "create_deal";
+                tc.function.arguments = JSON.stringify(rerouteArgs);
+                args = rerouteArgs;
+              }
+              firstToolCallExecuted = true;
               // Server-side authorization: refuse restricted tools even if the
               // model attempts to call them despite being filtered out.
               let result: any;
