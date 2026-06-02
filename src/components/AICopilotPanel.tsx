@@ -2123,6 +2123,28 @@ export function AICopilotPanel() {
                     className="copilot-message-content"
                   >
                     {msg.role === 'user' ? msg.content : <CopilotAssistantContent content={msg.content} />}
+                    {msg.role === 'assistant' && !isProcessing && (() => {
+                      const c = (msg.content || '').trim();
+                      // Strip CHIPS tokens and fenced JSON action blocks the
+                      // parser already extracted — if nothing meaningful
+                      // remains AND no card was emitted, show an honest
+                      // fallback instead of letting the bubble look empty.
+                      const visible = c
+                        .replace(/\[\[CHIPS:\s*\[[\s\S]*?\]\s*\]\]/g, '')
+                        .replace(/```json[\s\S]*?```/g, '')
+                        .trim();
+                      if (visible.length > 0) return null;
+                      // If we already rendered a card (the parser found a JSON
+                      // action block), the original message will have had
+                      // that block — its presence in raw content is enough.
+                      const hadCard = /```json|"action"\s*:\s*"(confirm|auto_executed)"/.test(c);
+                      if (hadCard) return null;
+                      return (
+                        <div style={{ fontSize: 12, fontStyle: 'italic', color: 'hsl(var(--muted-foreground))', marginTop: 4 }}>
+                          (No response from the Copilot — please try rephrasing.)
+                        </div>
+                      );
+                    })()}
                     {msg.role === 'assistant' && msg.content && (
                       <MessageActions msg={msg} conversationId={conversationId} />
                     )}
