@@ -817,12 +817,24 @@ export function useTaskComments(taskId: string | null) {
     mutationFn: async (body: string) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user || !taskId) throw new Error('Missing context');
-      const { error } = await supabase.from('task_comments').insert({
-        task_id: taskId,
-        author_id: user.id,
-        body,
-      });
+      const { data, error } = await supabase
+        .from('task_comments')
+        .insert({ task_id: taskId, author_id: user.id, body })
+        .select('id')
+        .single();
       if (error) throw error;
+      // Fire-and-forget mention notification fanout. Server is idempotent
+      // (notification_log unique on kind+ref_id+user_id+channel) so a
+      // double-invoke is safe.
+      if (data?.id && /@\[[^\]]+\]\([0-9a-fA-F-]{36}\)/.test(body)) {
+        supabase.functions
+          .invoke('notify-comment-mentions', { body: { comment_id: data.id } })
+          .catch((e) => {
+            // eslint-disable-next-line no-console
+            console.warn('[notify-comment-mentions] invoke failed', e);
+          });
+      }
+      return data?.id as string | undefined;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: key }),
   });
