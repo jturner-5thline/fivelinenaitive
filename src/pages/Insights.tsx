@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { Sparkles } from "lucide-react";
 import { RepPerformanceModelGrid } from "@/components/metrics/rep-model/RepPerformanceModelGrid";
+import { RepScorecardCard } from "@/components/metrics/rep-model/RepScorecardCard";
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, rectSortingStrategy } from '@dnd-kit/sortable';
 import { DraggableGridLayout } from "@/components/metrics/DraggableGridLayout";
@@ -148,6 +149,7 @@ const DASHBOARD_OPTIONS = [
   { id: 'consolidated-debt-pipeline', name: 'Consolidated Debt Pipeline Board', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'sales-bd-roi', name: 'Sales & BD ROI', isFavorite: false, folder: 'sales-bd' as const },
   { id: 'management-review', name: 'Insights Dashboard', isFavorite: false, folder: 'management-insights' as const },
+  { id: 'rep-scorecard', name: 'Rep Scorecard', isFavorite: false, folder: 'sales-bd' as const },
 ];
 
 /**
@@ -170,7 +172,7 @@ const DEFAULT_FOLDER_GROUPS: { id: string; name: string; dashboardIds: string[] 
   {
     id: 'sales-bd',
     name: 'Sales & BD',
-    dashboardIds: ['sales-team-board', 'sales-bd-roi', 'consolidated-debt-pipeline'],
+    dashboardIds: ['sales-team-board', 'sales-bd-roi', 'consolidated-debt-pipeline', 'rep-scorecard'],
   },
 ];
 
@@ -2681,6 +2683,12 @@ function MetricsInner() {
               </div>
             )}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
+            {selectedDashboard === 'rep-scorecard' && (
+              <div className="space-y-4">
+                <RepScorecardCard />
+                <RepPerformanceModelGrid />
+              </div>
+            )}
             {selectedDashboard === 'consolidated-debt-pipeline' && (
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
             )}

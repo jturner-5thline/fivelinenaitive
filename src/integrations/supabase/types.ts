@@ -341,6 +341,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "activity_logs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       admin_audit_logs: {
@@ -559,6 +566,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "agent_conversations_context_deal_id_fkey"
+            columns: ["context_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       agent_memory: {
@@ -715,6 +729,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agent_runs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "agent_runs_lender_id_fkey"
@@ -2434,6 +2455,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cashflow_cash_in_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       cashflow_deal_overrides: {
@@ -2914,6 +2942,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "claap_match_feedback_chosen_deal_id_fkey"
+            columns: ["chosen_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "claap_match_feedback_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
@@ -2933,6 +2968,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_match_feedback_suggested_deal_id_fkey"
+            columns: ["suggested_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "claap_match_feedback_suggestion_id_fkey"
@@ -3005,6 +3047,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_match_suggestions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "claap_match_suggestions_meeting_id_fkey"
@@ -3205,6 +3254,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claap_meetings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -3719,6 +3775,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "claap_transcripts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       claap_webhook_errors: {
@@ -3949,6 +4012,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "client_request_drafts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       client_requests: {
@@ -4011,6 +4081,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_requests_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "client_requests_draft_id_fkey"
@@ -4636,6 +4713,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "contact_activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       contact_company_associations: {
@@ -4716,6 +4800,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contact_deals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -6443,6 +6534,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "copilot_deal_messages_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       copilot_user_preferences: {
@@ -6752,6 +6850,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "crm_company_activities_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       crm_company_team: {
@@ -7024,6 +7129,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "data_room_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       data_room_checklist_categories: {
@@ -7163,6 +7275,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "data_room_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "data_room_comments_parent_comment_id_fkey"
             columns: ["parent_comment_id"]
             isOneToOne: false
@@ -7203,6 +7322,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_exports_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -7247,6 +7373,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "data_room_file_permissions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "data_room_file_permissions_file_id_fkey"
@@ -7314,6 +7447,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "data_room_share_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_access_requests: {
@@ -7370,6 +7510,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_access_requests_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_activity: {
@@ -7411,6 +7558,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_activity_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_advance_reasons: {
@@ -7446,6 +7600,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_advance_reasons_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_ai_settings: {
@@ -7477,6 +7638,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_ai_settings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -7525,6 +7693,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_ai_status_snapshots_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_aliases: {
@@ -7559,6 +7734,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_aliases_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -7684,6 +7866,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_audit_log_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_calendar_items: {
@@ -7730,6 +7919,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_calendar_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -7784,6 +7980,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_call_transcripts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_checklist_items: {
@@ -7833,6 +8036,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_checklist_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -7905,6 +8115,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_checklist_status_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_claap_recordings: {
@@ -7963,6 +8180,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_claap_recordings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -8064,6 +8288,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deal_computed_metrics_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "deal_computed_metrics_source_file_id_fkey"
             columns: ["source_file_id"]
             isOneToOne: false
@@ -8113,6 +8344,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_data_room_custom_folders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -8225,6 +8463,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_email_prompts_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_emails: {
@@ -8265,6 +8510,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_emails_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -8316,6 +8568,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_financial_data_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "deal_financial_data_source_file_id_fkey"
@@ -8402,6 +8661,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_financial_files_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_financial_insights: {
@@ -8467,6 +8733,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_financial_insights_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -8560,6 +8833,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_flag_notes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_info_requests: {
@@ -8639,6 +8919,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_kpi_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "deal_kpi_links_kpi_event_id_fkey"
@@ -8767,6 +9054,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deal_lenders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "deal_lenders_master_lender_id_fkey"
             columns: ["master_lender_id"]
             isOneToOne: false
@@ -8824,6 +9118,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deal_memo_approvals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "deal_memo_approvals_deal_memo_id_fkey"
             columns: ["deal_memo_id"]
             isOneToOne: false
@@ -8870,6 +9171,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_memo_audit_logs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -8934,6 +9242,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deal_memo_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "deal_memo_comments_memo_id_fkey"
             columns: ["memo_id"]
             isOneToOne: false
@@ -8975,6 +9290,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_memo_views_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -9053,6 +9375,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_memos_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_milestones: {
@@ -9103,6 +9432,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_milestones_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_ownership: {
@@ -9143,6 +9479,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_ownership_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -9191,6 +9534,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_pipeline_configs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -9283,6 +9633,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_research_cache_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_saas_lenders: {
@@ -9314,6 +9671,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_saas_lenders_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -9371,6 +9735,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_saas_mappings_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_saas_model: {
@@ -9403,6 +9774,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_saas_model_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_saas_sensitivity: {
@@ -9431,6 +9809,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_saas_sensitivity_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -9539,6 +9924,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_space_conversations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_space_document_summaries: {
@@ -9627,6 +10019,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_space_documents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_space_financials: {
@@ -9679,6 +10078,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_space_financials_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -9897,6 +10303,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "deal_space_notes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "deal_space_notes_linked_lender_id_fkey"
             columns: ["linked_lender_id"]
             isOneToOne: false
@@ -9967,6 +10380,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -10058,6 +10478,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_status_notes_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -10223,6 +10650,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_writeups_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deals: {
@@ -10232,6 +10666,7 @@ export type Database = {
           ai_status_snapshot: Json | null
           analyst: string | null
           business_model: string | null
+          closed_at: string | null
           closing_date: string | null
           company: string
           company_id: string | null
@@ -10248,6 +10683,7 @@ export type Database = {
           dashboard_closing_date: string | null
           deal_class: string
           deal_owner: string | null
+          deal_owner_user_id: string | null
           deal_type: string | null
           dm_name: string | null
           dm_present: string | null
@@ -10265,6 +10701,7 @@ export type Database = {
           is_flagged: boolean
           key_signal: string | null
           lead_source: string | null
+          lost_at: string | null
           manager: string | null
           manager_move_forward_decision: boolean
           materials_added_to_naitive: boolean
@@ -10293,6 +10730,7 @@ export type Database = {
           pricing: string | null
           product_gap_flagged: string | null
           projected_close_date: string | null
+          proposal_issued_at: string | null
           prospect_type: string | null
           referral_source: string | null
           referral_source_contact_id: string | null
@@ -10305,6 +10743,8 @@ export type Database = {
           status: string | null
           success_fee_percent: number | null
           tags: string[]
+          terms_issued_at: string | null
+          terms_signed_at: string | null
           total_fee: number | null
           updated_at: string
           user_id: string
@@ -10317,6 +10757,7 @@ export type Database = {
           ai_status_snapshot?: Json | null
           analyst?: string | null
           business_model?: string | null
+          closed_at?: string | null
           closing_date?: string | null
           company: string
           company_id?: string | null
@@ -10333,6 +10774,7 @@ export type Database = {
           dashboard_closing_date?: string | null
           deal_class?: string
           deal_owner?: string | null
+          deal_owner_user_id?: string | null
           deal_type?: string | null
           dm_name?: string | null
           dm_present?: string | null
@@ -10350,6 +10792,7 @@ export type Database = {
           is_flagged?: boolean
           key_signal?: string | null
           lead_source?: string | null
+          lost_at?: string | null
           manager?: string | null
           manager_move_forward_decision?: boolean
           materials_added_to_naitive?: boolean
@@ -10378,6 +10821,7 @@ export type Database = {
           pricing?: string | null
           product_gap_flagged?: string | null
           projected_close_date?: string | null
+          proposal_issued_at?: string | null
           prospect_type?: string | null
           referral_source?: string | null
           referral_source_contact_id?: string | null
@@ -10390,6 +10834,8 @@ export type Database = {
           status?: string | null
           success_fee_percent?: number | null
           tags?: string[]
+          terms_issued_at?: string | null
+          terms_signed_at?: string | null
           total_fee?: number | null
           updated_at?: string
           user_id: string
@@ -10402,6 +10848,7 @@ export type Database = {
           ai_status_snapshot?: Json | null
           analyst?: string | null
           business_model?: string | null
+          closed_at?: string | null
           closing_date?: string | null
           company?: string
           company_id?: string | null
@@ -10418,6 +10865,7 @@ export type Database = {
           dashboard_closing_date?: string | null
           deal_class?: string
           deal_owner?: string | null
+          deal_owner_user_id?: string | null
           deal_type?: string | null
           dm_name?: string | null
           dm_present?: string | null
@@ -10435,6 +10883,7 @@ export type Database = {
           is_flagged?: boolean
           key_signal?: string | null
           lead_source?: string | null
+          lost_at?: string | null
           manager?: string | null
           manager_move_forward_decision?: boolean
           materials_added_to_naitive?: boolean
@@ -10463,6 +10912,7 @@ export type Database = {
           pricing?: string | null
           product_gap_flagged?: string | null
           projected_close_date?: string | null
+          proposal_issued_at?: string | null
           prospect_type?: string | null
           referral_source?: string | null
           referral_source_contact_id?: string | null
@@ -10475,6 +10925,8 @@ export type Database = {
           status?: string | null
           success_fee_percent?: number | null
           tags?: string[]
+          terms_issued_at?: string | null
+          terms_signed_at?: string | null
           total_fee?: number | null
           updated_at?: string
           user_id?: string
@@ -10502,6 +10954,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deals_merged_into_fkey"
+            columns: ["merged_into"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "deals_pipeline_id_fkey"
@@ -10626,6 +11085,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "diligence_report_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "diligence_report_comments_parent_comment_id_fkey"
@@ -10837,6 +11303,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_analysis_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "email_analysis_email_cache_id_fkey"
@@ -11720,6 +12193,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "email_threads_matched_deal_id_fkey"
+            columns: ["matched_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       email_unsubscribe_tokens: {
@@ -11815,6 +12295,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_workflow_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "email_workflow_events_prompt_id_fkey"
@@ -12522,6 +13009,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "file_ai_classifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "file_ai_classifications_document_id_fkey"
             columns: ["document_id"]
             isOneToOne: true
@@ -12565,6 +13059,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_checklist_map_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "file_checklist_map_file_id_fkey"
@@ -12740,6 +13241,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_comments_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -13007,6 +13515,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "finserv_deal_projects_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       finserv_mrr_components: {
@@ -13050,6 +13565,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "finserv_mrr_components_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -13117,6 +13639,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "flex_auto_removal_audit_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       flex_info_notifications: {
@@ -13160,6 +13689,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flex_info_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -13211,6 +13747,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "flex_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       flex_sync_history: {
@@ -13254,6 +13797,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flex_sync_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -13623,6 +14173,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "gamma_analytics_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "gamma_analytics_generation_id_fkey"
             columns: ["generation_id"]
             isOneToOne: false
@@ -13796,6 +14353,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamma_generations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -14400,6 +14964,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "hubspot_sync_logs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       hubspot_sync_runs: {
@@ -14989,6 +15560,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "lender_disqualifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "lender_disqualifications_deal_lender_id_fkey"
             columns: ["deal_lender_id"]
             isOneToOne: false
@@ -15102,6 +15680,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_history_warning_dismissals_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -15310,6 +15895,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "lender_pass_detections_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "lender_pass_detections_deal_lender_id_fkey"
@@ -15876,6 +16468,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "mapping_patterns_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       master_lenders: {
@@ -16164,6 +16763,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "meeting_deal_links_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "meeting_deal_links_org_company_id_fkey"
@@ -16492,6 +17098,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "model_annotations_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       model_snapshots: {
@@ -16685,6 +17298,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "naitive_deal_stage_meta_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: true
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -16982,6 +17602,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "naitive_stage_milestones_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       news_alerts: {
@@ -17274,6 +17901,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notification_audit_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -17684,6 +18318,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "outstanding_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "outstanding_items_lender_id_fkey"
@@ -18285,6 +18926,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pending_deal_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       pending_deal_suggestions: {
@@ -18344,6 +18992,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "pending_deal_suggestions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       pending_lender_notifications: {
@@ -18394,6 +19049,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_lender_notifications_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "pending_lender_notifications_lender_id_fkey"
@@ -18493,6 +19155,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pilot_kpi_events_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -20053,6 +20722,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "recognition_log_chosen_deal_id_fkey"
+            columns: ["chosen_deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "recognition_log_org_company_id_fkey"
             columns: ["org_company_id"]
             isOneToOne: false
@@ -20096,6 +20772,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recognition_overrides_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
           {
             foreignKeyName: "recognition_overrides_org_company_id_fkey"
@@ -20888,6 +21571,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_followup_actions_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -22433,6 +23123,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "tasks_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+          {
             foreignKeyName: "tasks_lender_id_fkey"
             columns: ["lender_id"]
             isOneToOne: false
@@ -22644,6 +23341,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "upload_jobs_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       uploaded_item_checklist_mapping: {
@@ -22719,6 +23423,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "uploaded_items_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -23811,6 +24522,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "vdr_documents_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       vdr_irl_document_matches: {
@@ -23921,6 +24639,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_irl_requests_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -24050,6 +24775,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vdr_tasks_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -24278,6 +25010,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_time_entries_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -25566,6 +26305,13 @@ export type Database = {
             referencedRelation: "deals"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
         ]
       }
       deal_stage_transitions: {
@@ -25588,6 +26334,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -25624,6 +26377,31 @@ export type Database = {
         }
         Relationships: []
       }
+      v_deal_owner_resolution: {
+        Row: {
+          candidate_user_id: string | null
+          company_id: string | null
+          confidence: number | null
+          current_owner_user_id: string | null
+          deal_id: string | null
+          deal_name: string | null
+          display_name: string | null
+          email: string | null
+          full_name: string | null
+          raw_owner_text: string | null
+          stage: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deals_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_deal_stage_transitions: {
         Row: {
           deal_id: string | null
@@ -25640,6 +26418,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "deals"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_stage_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
           },
         ]
       }
@@ -25922,6 +26707,13 @@ export type Database = {
           _trigger_key: string
         }
         Returns: string
+      }
+      deal_fiscal_bucket: {
+        Args: { ts: string }
+        Returns: {
+          fiscal_quarter: number
+          fiscal_year: number
+        }[]
       }
       debug_claap_prefill_source: {
         Args: { p_meeting_id: string }

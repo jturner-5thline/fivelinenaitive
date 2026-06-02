@@ -1,86 +1,80 @@
-# Extend intelligent action-item UX to all Daily Rundown actions
+# Rep Scorecard — Scoped Live Build
 
-The Claap recording action-item now resolves to an Auto-matched / Suggested chip with inline Approve/Change. Extend the same pattern to the four other action items on each meeting card.
+Static `RepPerformanceModelGrid` stays as-is (the spreadsheet model is untouched). We add a **separate** live "Rep Scorecard" card on Insights → Performance that pulls from real deal data, plus the minimum schema and backfill to make it accurate.
 
-## Scope
+## Phase 1 — Schema + stage + auto-stamp (migration only, awaits approval)
 
-Files touched (one focused build):
+1. **New pipeline stage** `proposal-issued` (label "Proposal Issued"), inserted between `client-strategy-review` and `submitted-to-lenders` in `src/types/deal.ts` `STAGE_CONFIG` and in any default `deal_pipelines` rows.
+2. **New columns on `public.deals`** (all `timestamptz null`):
+   - `proposal_issued_at`
+   - `terms_issued_at`
+   - `terms_signed_at`
+   - `closed_at`
+   - `lost_at`
+   - `deal_owner_user_id uuid` (FK to `auth.users`, indexed)
+3. **Trigger** `deals_stamp_stage_anchors_trg` (BEFORE UPDATE OF stage): when `NEW.stage` first transitions into a milestone stage, stamp the corresponding anchor if NULL.
+   - `proposal-issued` → `proposal_issued_at`
+   - `terms-issued` → `terms_issued_at`
+   - `funded-invoiced` → `closed_at`
+   - `closed-won` → `closed_at` (if not already set)
+   - `closed-lost` → `lost_at`
+   - `terms_signed_at` is **only** set via explicit UI action (no stage maps to it) — handled in phase 3.
+4. **Idempotent backfill** (one SQL statement, in same migration) using `deal_stage_durations`:
+   - For each `(deal_id, stage_slug)` with `entered_at`, MIN(`entered_at`) populates the matching anchor on `deals` where it's currently NULL.
+   - `proposal_issued_at` cannot be backfilled (stage didn't exist) — left NULL.
+   - `terms_signed_at` left NULL (no historical signal).
+5. **Owner backfill (dry-run report only this phase)**: a view `v_deal_owner_resolution` resolves free-text `deal_owner` / `manager` against `profiles.display_name` within the same `org_company_id`. No writes. Phase 4 applies after you review.
 
-```text
-supabase/functions/rundown-rank-deals-for-meeting/index.ts        (new)
-supabase/functions/rundown-prefill-followup/index.ts              (new)
-supabase/functions/rundown-prefill-tasks/index.ts                 (new)
-supabase/functions/rundown-suggest-schedule/index.ts              (new)
-supabase/functions/_shared/rundown-scoring.ts                     (new)
-src/components/dashboard/MeetingDealInlineAction.tsx              (new)
-src/components/dashboard/MeetingFollowupInlineAction.tsx          (new)
-src/components/dashboard/MeetingTasksInlineAction.tsx             (new)
-src/components/dashboard/MeetingScheduleInlineAction.tsx          (new)
-src/components/dashboard/EndOfDayTab.tsx                          (wire-in)
-supabase/migrations/<ts>_rundown_assert_examples.sql              (new)
-```
+GRANTs + RLS preserved (deals already has policies; new columns inherit). Trigger is `SECURITY DEFINER` with `search_path = public`.
 
-All four new components follow the existing `MeetingClaapInlineAction` shape: identical 4 s timeout, abort-on-unmount, try/catch with silent fallback to the legacy CTA, no error toast, independent state, and an "AI suggested" sparkle icon when pre-filled.
+## Phase 2 — Hook + Rep Scorecard card
 
-## 1. Link to deal
+- `src/hooks/useRepScorecard.ts`: query deals scoped to current tenant, filtered by `deal_owner_user_id`, bucketed by `fiscal_quarter` derived from each anchor (calendar quarters, FY = calendar year per existing convention — confirm in implementation).
+- `src/components/metrics/rep-model/RepScorecardCard.tsx`: Liquid Glass card with:
+  - Rep dropdown (defaults to current user, admins see all reps).
+  - Period buttons: Q1 / Q2 / Q3 / Q4 / Year (current FY).
+  - **Active only** toggle (default OFF) for Pipeline Production rows.
+  - Rows: Deals on Board, Dollars on Board, Proposals Issued #, Dollars Proposed, **Terms Issued** (count + $), Terms Signed (count + $), Clients Signed (count + $), Deals Closed (count + $), Dollars Funded, **Lost Deals** (count + $).
+  - Each row has a tooltip showing the anchor column it uses.
+- Mount on `Insights.tsx` Performance tab, above the static grid.
+- Admin-only banner (uses `useAdminRole`): "N orphan deals are not attributed to any rep" linking to phase 4's picker. Hidden if N = 0.
 
-Edge function `rundown-rank-deals-for-meeting` scores every active deal in the tenant for the meeting:
+Exclusions: applies the global "Test-Niki's Store / Example Deal / starts with 'test '" rule and the deal-class isolation per memory.
 
-- attendee email-domain → `deals.company_id` match: **+0.40**
-- attendee email → `deals.contact_id` match: **+0.30**
-- token Jaccard ≥ 0.5 between meeting title and deal name/borrower/lender: **+0.25**
-- deal touched in last 14 days: **+0.15**
-- existing `deal_meetings` row: **+0.50** (treated as confirmed link)
-- cap at 1.00
+## Phase 3 — `terms_signed_at` capture UI
 
-Bands:
-- ≥ 0.90 → Auto-matched (green pill, ▶ Deal name, Approve / Change)
-- 0.65–0.89 → Suggested (amber pill, Approve / Reject / Change)
-- otherwise → legacy "Link to deal" CTA
+Small affordance on the deal detail page when stage = `terms-issued` or later: a single "Mark Terms Signed" button stamps `terms_signed_at = now()`. Free-text override allowed (date picker) for historical entries. Admin-only.
 
-Approve writes `deal_meetings` row `{ meeting_id, deal_id, source: 'auto' | 'manual' }`. Click on the deal name opens `/deals/:id` in a new tab.
+## Phase 4 — Niki backfill (dry-run → apply) + Audit page
 
-## 2. Send follow-up
+- Page `/admin/performance-audit` (gated `useAdminRole`) listing the proposed owner resolutions from `v_deal_owner_resolution` for the 11 Asana deals + Opconnect, with confidence scores and an "Apply" button per row (and "Apply all >= 0.9").
+- Same page also lists scorecard delta per metric per rep before/after each backfill operation.
+- Specific writes (gated behind the page's "Apply"):
+  - Set `deal_owner_user_id` to Niki on the 12 named deals (you confirm her user id in this phase).
+  - Mark EVGateway `status = 'lost'`, stamp `lost_at` = stage transition into closed-lost (or now()).
+  - Mark BBP `terms_issued_at` = stage entry into `terms-issued`.
+  - Lango / Opconnect: re-derive `signed_at` / `closed_at` from earliest matching stage event; no manual quarter override — the bucket comes from the anchor.
 
-If a Claap recording is Auto-matched on this meeting AND has `ai_summary` or `transcript`:
-- Call `rundown-prefill-followup` → reuses existing follow-up generator (`generate-followup-email` or equivalent) seeded with the recording's summary/transcript and primary attendee.
-- Render `▶ Draft ready: Follow-up to <attendee>` with **Review & send** button (opens existing composer with draft).
-- No recording → keep legacy CTA.
+## Phase 5 — Tests
 
-## 3. Create task
+- Unit (vitest): fiscal-quarter helper, anchor selection per metric, Active-only filter excludes lost.
+- Unit: scorecard aggregation includes lost in Pipeline Production unless Active-only.
+- E2E (`e2e/rep-performance-niki.spec.ts`): runs **after** phase 4 backfill — open Insights → Performance, pick Niki, assert new rows and that EVGateway is in the Lost row.
 
-If Auto-matched recording has Claap-extracted action items OR we can run `claap-extract-action-items`:
-- Render `▶ N tasks suggested` + **Review** button (opens existing task-batch review modal pre-populated).
-- None → legacy CTA.
+## What's explicitly **not** in scope
 
-## 4. Schedule next
+- Refactoring the static `RepPerformanceModelGrid` spreadsheet.
+- A SQL `rep_performance` materialized view (we'll query directly; matview can come later if perf demands).
+- Application-layer NOT NULL check on `deal_owner_user_id` for stages ≥ Proposal Issued (would break too many existing rows; revisit after backfill).
+- `fiscal_year` / `fiscal_quarter` as stored columns — computed in the hook + a SQL function `deal_fiscal_bucket(ts)` used by audit queries. Cheaper, no triggers on every anchor write.
 
-`rundown-suggest-schedule` reads the recording summary/transcript and looks for cadence phrases ("next week", "in two weeks", "monthly", "follow up Friday", etc.) via lightweight regex + a Gemini fallback for ambiguous phrases.
-- If a date can be resolved → `▶ Suggested: <Date> follow-up with <attendee>` + **Schedule** button (opens existing scheduler pre-filled).
-- Otherwise → legacy CTA.
+## Technical notes
 
-## Shared rules (all four)
+- Trigger uses `WHEN (OLD.stage IS DISTINCT FROM NEW.stage)` and only writes if the anchor is currently NULL — idempotent on stage bounce.
+- All new columns nullable; no existing code paths break.
+- `deal_owner_user_id` FK uses `ON DELETE SET NULL` to keep historical scorecards alive after a user is removed.
+- `fiscal_quarter` derivation lives in `src/lib/fiscalQuarter.ts` (new). Calendar-year FY assumed; if your FY ≠ calendar year, say so before Phase 2.
 
-- Each component owns its own state, runs in parallel on card render, never blocks the others.
-- 4 s timeout; on timeout or error the legacy CTA renders silently (no toast).
-- All RPCs check `supabase.auth.getUser()` → 401 if missing, then use a user-scoped client so tenant RLS applies.
-- A small `Sparkles` icon (lucide) sits next to any pre-filled action.
+## Ship order
 
-## SQL test
-
-`rundown_assert_examples()` PL/pgSQL function asserts that for the existing Datarails | 5th Line, Shimmy Ruben & James Turner, and Blount Consulting fixtures:
-- deal link resolves to the expected deal id with score ≥ 0.90
-- follow-up pre-fill returns a non-empty draft body
-- task pre-fill returns ≥ 1 task
-
-Raises `EXCEPTION` on mismatch. Callable manually from the SQL editor; not wired to a trigger.
-
-## Non-goals
-
-- No changes to the existing Claap inline action (already shipping correctly).
-- No changes to the legacy CTAs themselves — they remain the fallback render.
-- No schema changes beyond the test function (the `deal_meetings` table is assumed to already exist; if it doesn't, that's a follow-up migration the user should confirm before we add it).
-
-## Open question before I build
-
-The `deal_meetings` join table — does it already exist, or should the Approve action write to a different table (e.g. `meeting_links`, `calendar_event_deals`)? I'll grep on build start; if it's missing I'll surface that and pause on Approve wiring rather than invent a schema.
+Phase 1 migration → I'll halt for approval. Then Phase 2 ships in one turn. Phase 3, 4, 5 follow each in their own turn so we can sanity-check numbers as we go.
