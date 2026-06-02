@@ -394,7 +394,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
     }
   );
   
-  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline' | 'settings_proposal'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline' | 'settings_proposal' | 'name_collision'; value: any }> = [];
   // Match either fenced ```json {...} ``` blocks OR bare {...} objects that
   // contain an "action" key. The LLM sometimes drops the fence or uses
   // alternate key names ("type" instead of "action_type", "label" instead of
@@ -446,6 +446,17 @@ function CopilotAssistantContent({ content }: { content: string }) {
         // Don't render the raw JSON in chat.
       }
       else if (parsed.action === 'confirm' && parsed.action_type) {
+        // Name-collision cards have their own renderer — route them out of the
+        // generic confirm pipeline so they don't get a Save/Cancel approve UI.
+        if (parsed.action_type === 'name_collision') {
+          const key = `collision:${parsed.params?.proposed?.name || ''}:${(parsed.params?.existing || []).map((e: any) => e.id).join(',')}`;
+          if (!seenActions.has(key)) {
+            seenActions.add(key);
+            segments.push({ type: 'name_collision', value: parsed });
+          }
+          lastIndex = matchStart + match[0].length;
+          continue;
+        }
         // Dedup key MUST include an entity discriminator. Without it, two
         // sibling cards (e.g. "Add Wells Fargo TMT" + "Add CIT") collapse
         // into one and the user only sees the first lender. We include
