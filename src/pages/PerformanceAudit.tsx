@@ -8,6 +8,17 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Download, Play } from "lucide-react";
 import { toast } from "sonner";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -104,6 +115,12 @@ export default function PerformanceAudit() {
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<AuditResult | null>(null);
   const [autoRan, setAutoRan] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [appliedAt, setAppliedAt] = useState<string | null>(null);
+  const [lastApplyId, setLastApplyId] = useState<string | null>(null);
+  const [lastRowsAffected, setLastRowsAffected] = useState<number | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [undoing, setUndoing] = useState(false);
 
   const runDryRun = async () => {
     setRunning(true);
@@ -113,12 +130,66 @@ export default function PerformanceAudit() {
       });
       if (error) throw error;
       setResult(data as AuditResult);
+      setAppliedAt(null);
+      setLastApplyId(null);
+      setLastRowsAffected(null);
       toast.success("Dry-run complete");
     } catch (err: any) {
       console.error(err);
       toast.error(`Dry-run failed: ${err?.message ?? err}`);
     } finally {
       setRunning(false);
+    }
+  };
+
+  const applyChanges = async () => {
+    if (!result?.run_id) return;
+    setApplying(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("rep_audit_apply", {
+        p_run_id: result.run_id,
+      });
+      if (error) throw error;
+      const payload = data as {
+        apply_id: string;
+        rows_affected: number;
+        applied_at: string;
+        owners_attributed: number;
+        marked_lost: number;
+      };
+      setAppliedAt(payload.applied_at);
+      setLastApplyId(payload.apply_id);
+      setLastRowsAffected(payload.rows_affected);
+      toast.success(
+        `Applied ${payload.rows_affected} change(s): ${payload.owners_attributed} owner + ${payload.marked_lost} lost`,
+      );
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Apply failed: ${err?.message ?? err}`);
+    } finally {
+      setApplying(false);
+      setConfirmOpen(false);
+    }
+  };
+
+  const undoApply = async () => {
+    if (!lastApplyId) return;
+    setUndoing(true);
+    try {
+      const { data, error } = await (supabase as any).rpc("rep_audit_undo", {
+        p_apply_id: lastApplyId,
+      });
+      if (error) throw error;
+      const payload = data as { rows_reverted: number };
+      toast.success(`Reverted ${payload.rows_reverted} change(s)`);
+      setAppliedAt(null);
+      setLastApplyId(null);
+      setLastRowsAffected(null);
+    } catch (err: any) {
+      console.error(err);
+      toast.error(`Undo failed: ${err?.message ?? err}`);
+    } finally {
+      setUndoing(false);
     }
   };
 
@@ -184,6 +255,9 @@ export default function PerformanceAudit() {
     result &&
     Date.now() - new Date(result.summary.generated_at).getTime() < 10 * 60 * 1000;
 
+  const willAttribute = result?.summary.will_attribute ?? 0;
+  const willMarkLost = result?.summary.will_mark_lost ?? 0;
+
   return (
     <div className="container mx-auto px-6 py-8">
       <Helmet>
@@ -208,22 +282,66 @@ export default function PerformanceAudit() {
             )}
             Dry-run
           </Button>
-          <Button
-            disabled={!recentEnough}
-            title={
-              recentEnough
-                ? "Apply changes"
-                : "Run a dry-run within the last 10 minutes to enable"
-            }
-          >
-            Apply changes
-          </Button>
+          {appliedAt ? (
+            <Button
+              variant="destructive"
+              onClick={undoApply}
+              disabled={undoing || !lastApplyId}
+            >
+              {undoing && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+              Undo last apply
+            </Button>
+          ) : (
+            <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  disabled={!recentEnough || applying}
+                  title={
+                    recentEnough
+                      ? "Apply changes"
+                      : "Run a dry-run within the last 10 minutes to enable"
+                  }
+                >
+                  {applying && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                  Apply changes
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>
+                    Apply {willAttribute} owner attributions + {willMarkLost} lost marks?
+                  </AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will update {willAttribute} deals to set the owner to{" "}
+                    {NIKI_NAME} (only where unowned) and mark {willMarkLost} EVGateway
+                    duplicates as lost. Lango and low-confidence BBP rows are skipped.
+                    You can undo immediately after.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={applyChanges} disabled={applying}>
+                    Apply
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
           <Button variant="ghost" onClick={downloadCsv} disabled={!result}>
             <Download className="h-4 w-4" />
             CSV
           </Button>
         </div>
       </header>
+
+      {appliedAt && (
+        <Card className="mb-6 border-green-500/40 bg-green-500/10 p-4 text-sm text-foreground">
+          Applied at <span className="font-medium">{new Date(appliedAt).toLocaleString()}</span>
+          {lastRowsAffected != null && (
+            <> · {lastRowsAffected} row(s) updated</>
+          )}
+        </Card>
+      )}
 
       {result && (
         <Card className="mb-6 p-5">
