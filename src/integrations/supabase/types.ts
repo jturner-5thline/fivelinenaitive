@@ -19110,6 +19110,50 @@ export type Database = {
           },
         ]
       }
+      performance_audit_applies: {
+        Row: {
+          applied_at: string
+          applied_by: string | null
+          changes: Json
+          id: string
+          reversed_at: string | null
+          reversed_by: string | null
+          rows_affected: number
+          run_id: string
+          summary: Json
+        }
+        Insert: {
+          applied_at?: string
+          applied_by?: string | null
+          changes?: Json
+          id?: string
+          reversed_at?: string | null
+          reversed_by?: string | null
+          rows_affected?: number
+          run_id: string
+          summary?: Json
+        }
+        Update: {
+          applied_at?: string
+          applied_by?: string | null
+          changes?: Json
+          id?: string
+          reversed_at?: string | null
+          reversed_by?: string | null
+          rows_affected?: number
+          run_id?: string
+          summary?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "performance_audit_applies_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "performance_audit_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       performance_audit_runs: {
         Row: {
           applied_at: string | null
@@ -27075,7 +27119,9 @@ export type Database = {
         Args: { _rejection_note?: string; _request_id: string }
         Returns: undefined
       }
+      rep_audit_apply: { Args: { p_run_id: string }; Returns: Json }
       rep_audit_dry_run: { Args: { rep_user_id: string }; Returns: Json }
+      rep_audit_undo: { Args: { p_apply_id?: string }; Returns: Json }
       reset_dashboard_grid_layout: {
         Args: { _company_id: string; _dashboard_id: string }
         Returns: undefined
