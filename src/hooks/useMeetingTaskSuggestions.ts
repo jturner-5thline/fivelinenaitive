@@ -167,6 +167,22 @@ export function resolveInternalAssignee(
   return scored[0].m;
 }
 
+/**
+ * Pure resolver: prefer the internal user matched from the @mention; if
+ * none, fall back to the linked deal's manager (must be an internal
+ * tenant member). Returns null when neither is available.
+ */
+export function resolveAssigneeWithDealManagerFallback(
+  mention: string | null | undefined,
+  members: InternalMember[],
+  dealManager: InternalMember | null,
+): { member: InternalMember | null; source: 'mention' | 'deal-manager' | null } {
+  const resolved = resolveInternalAssignee(mention, members);
+  if (resolved) return { member: resolved, source: 'mention' };
+  if (dealManager) return { member: dealManager, source: 'deal-manager' };
+  return { member: null, source: null };
+}
+
 export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput) {
   const { user } = useAuth();
   const { company } = useCompany();
