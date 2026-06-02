@@ -2592,8 +2592,16 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
               });
             } catch (e) { console.warn("[create_deal] audit insert failed", e); }
             return {
+              // ── Action envelope: the system prompt instructs the model to
+              // echo this JSON block verbatim so the frontend can render the
+              // NameCollisionCard. We keep `status` for backward compat and
+              // for audit/log surfaces that scan tool results directly.
+              action: "confirm",
+              action_type: "name_collision",
               status: "name_collision",
-              proposed: {
+              description: `A deal named "${normalizedName}" already exists`,
+              params: {
+                proposed: {
                 name: normalizedName,
                 value: typeof args.deal_value === "number" ? args.deal_value : null,
                 manager_id: ownerId,
@@ -2607,7 +2615,8 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
                 contact_email: args.contact_email || null,
                 notes: args.notes || null,
               },
-              existing,
+                existing,
+              },
               guidance:
                 `A deal named "${normalizedName}" already exists in this workspace. DO NOT auto-confirm — you MUST present a collision card to the user. Title it "A deal named '${normalizedName}' already exists" and list each match as: "<name> — <stage> — $<value> — mgr: <manager_name> — updated <relative time>". Offer EXACTLY three options as quick replies: ` +
                 `(1) **Update existing** — call update_deal_fields on the existing deal id with the proposed fields; ` +
