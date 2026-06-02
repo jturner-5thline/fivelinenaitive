@@ -1139,7 +1139,7 @@ function EventDetailPane({
     if (claapCtx.source !== 'none') return;
     if (claapBackfillTried === claapCtx.recording.meetingRowId) return;
     setClaapBackfillTried(claapCtx.recording.meetingRowId);
-    regenerateClaapSummary();
+    void regenerateClaapSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claapCtx.recording?.meetingRowId, claapCtx.source]);
 
