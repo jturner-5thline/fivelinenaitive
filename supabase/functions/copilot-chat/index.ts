@@ -7938,6 +7938,30 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
                       scope_label: result?.scope_label || null,
                     },
                   });
+                  await writeAuditDraft({
+                    userId,
+                    companyId: companyId || null,
+                    conversationId: (body as any)?.conversationId || null,
+                    actionType: "search_deals",
+                    intent: fuzzyUi.action_type === "deal_fuzzy_confirm" ? "deal_lookup_fuzzy_confirm" : "deal_lookup_fuzzy_suggestions",
+                    prompt: typeof message === "string" ? message : null,
+                    resolvedDealId: matches[0]?.id || null,
+                    resolvedDealName: matches[0]?.company || null,
+                    extractedFields: {
+                      query: result?.query || null,
+                      tier: result?.tier || null,
+                      matches: matches.map((m: any) => ({ id: m?.id, company: m?.company, stage: m?.stage, status: m?.status })),
+                      latency_ms: result?.latency_ms ?? null,
+                    },
+                    confidence: {
+                      score: result?.confidence ?? null,
+                      tier: result?.tier || null,
+                      latency_ms: result?.latency_ms ?? null,
+                    },
+                    pageContext: { page, entityType, entityId, activeTab },
+                    rationale: `Rendered ${fuzzyUi.action_type} UI from search_deals result`,
+                    source: "copilot",
+                  });
                   result = fuzzyUi;
                 }
               }
