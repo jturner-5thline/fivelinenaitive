@@ -8,6 +8,7 @@ import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
 import { KeyMetricsPage } from './KeyMetricsPage';
 import { InsightsReportingBar } from './InsightsReportingBar';
+import { AgendaEditor } from '@/components/insights/AgendaEditor';
 import {
   QuarterlyReportPrintStyles,
   QuarterlyInsightsReportPage,
@@ -221,6 +222,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   }, [reportSave.hasUnsavedChanges]);
 
   const PAGE_META: { title: string; tabLabel: string }[] = [
+    { title: 'Agenda',                               tabLabel: 'Agenda'      },
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard'   },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts'   },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics' },
@@ -278,6 +280,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   );
 
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
+    { title: 'Agenda',                               tabLabel: 'Agenda',     render: () => <AgendaEditor /> },
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
     { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
     { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
