@@ -28,6 +28,9 @@ export interface MeetingTaskSuggestion {
   assignee_user_id: string | null;
   /** Raw external @mention preserved for context when no internal match. */
   external_mention: string | null;
+  /** How the assignee was resolved: by mention, by deal-manager fallback,
+   *  or unassigned. Drives the UI chip styling. */
+  assignment_source: 'mention' | 'deal-manager' | null;
   due_date: string | null;
   status: SuggestionStatus;
   created_task_id: string | null;
@@ -164,6 +167,22 @@ export function resolveInternalAssignee(
   return scored[0].m;
 }
 
+/**
+ * Pure resolver: prefer the internal user matched from the @mention; if
+ * none, fall back to the linked deal's manager (must be an internal
+ * tenant member). Returns null when neither is available.
+ */
+export function resolveAssigneeWithDealManagerFallback(
+  mention: string | null | undefined,
+  members: InternalMember[],
+  dealManager: InternalMember | null,
+): { member: InternalMember | null; source: 'mention' | 'deal-manager' | null } {
+  const resolved = resolveInternalAssignee(mention, members);
+  if (resolved) return { member: resolved, source: 'mention' };
+  if (dealManager) return { member: dealManager, source: 'deal-manager' };
+  return { member: null, source: null };
+}
+
 export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput) {
   const { user } = useAuth();
   const { company } = useCompany();
@@ -203,6 +222,36 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     },
   });
   const internalMembers = membersQuery.data ?? [];
+
+  // Resolve the linked deal's manager to an internal tenant user.
+  // Used as the fallback assignee when a task @mention does not match an
+  // internal team member. Manager is stored as a text display name on
+  // public.deals, so we map name -> profile -> verify company_member.
+  const dealManagerQuery = useQuery({
+    queryKey: ['mts-deal-manager', meetingRowId, company?.id, internalMembers.length],
+    enabled: !!meetingRowId && !!company?.id && internalMembers.length > 0,
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<InternalMember | null> => {
+      const { data: meeting } = await supabase
+        .from('claap_meetings')
+        .select('deal_id')
+        .eq('id', meetingRowId!)
+        .maybeSingle();
+      const dealId = (meeting as { deal_id?: string | null } | null)?.deal_id;
+      if (!dealId) return null;
+      const { data: deal } = await supabase
+        .from('deals')
+        .select('manager')
+        .eq('id', dealId)
+        .maybeSingle();
+      const managerName = (deal as { manager?: string | null } | null)?.manager;
+      if (!managerName || !managerName.trim()) return null;
+      // Re-use the same internal resolver so behavior is consistent
+      // (must match a unique internal company_member).
+      return resolveInternalAssignee(managerName, internalMembers);
+    },
+  });
+  const dealManager = dealManagerQuery.data ?? null;
 
   // 1) Load raw items from canonical sources.
   const rawQuery = useQuery({
@@ -263,7 +312,13 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
           recording_id: source === 'claap' ? recordingRowId : null,
           suggestion_id: suggestionIdFor(scopeKey, idx, it.text),
           text: it.text,
-          assignee_email: resolved ? resolved.email : null,
+          // Persist the resolved internal email when we matched a mention;
+          // otherwise fall back to the linked deal's manager. The render-
+          // time resolver re-derives this anyway, but persisting it keeps
+          // downstream consumers (e.g. SQL exports) consistent.
+          assignee_email: resolved
+            ? resolved.email
+            : (dealManager ? dealManager.email : null),
           external_mention: resolved ? null : mention,
           due_date: it.due_date,
           source: source === 'synthesized' ? 'synthesized' : 'claap',
@@ -286,7 +341,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
         queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [company?.id, user?.id, rawItems.length, persistedQuery.data?.length, scopeKey, source, internalMembers.length]);
+  }, [company?.id, user?.id, rawItems.length, persistedQuery.data?.length, scopeKey, source, internalMembers.length, dealManager?.user_id]);
 
   // 4) Merge raw + persisted into the public list, preserving raw order.
   const suggestions: MeetingTaskSuggestion[] = useMemo(() => {
@@ -304,21 +359,29 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       const displayAssignee = reparsed?.assigneeName || it.assignee_name;
       const mention = displayAssignee || it.assignee_email || (row as any)?.external_mention || null;
       const resolved = resolveInternalAssignee(mention, internalMembers);
+      // Fallback: if the mention didn't resolve to an internal member but
+      // the linked deal has a manager who IS an internal member, assign
+      // the deal manager. The raw external mention (if any) is preserved
+      // so the UI can still render "mentioned: <name>" as muted context.
+      const effective = resolved ?? dealManager;
+      const assignmentSource: 'mention' | 'deal-manager' | null =
+        resolved ? 'mention' : (dealManager ? 'deal-manager' : null);
       return {
         id: row?.id ?? null,
         suggestion_id: sid,
         text: displayText,
-        assignee_name: resolved ? resolved.display_name : null,
-        assignee_email: resolved ? resolved.email : null,
-        assignee_user_id: resolved ? resolved.user_id : null,
+        assignee_name: effective ? effective.display_name : null,
+        assignee_email: effective ? effective.email : null,
+        assignee_user_id: effective ? effective.user_id : null,
         external_mention: resolved ? null : mention,
+        assignment_source: assignmentSource,
         due_date: row?.due_date ?? it.due_date,
         status: ((row?.status as SuggestionStatus | undefined) ?? 'pending'),
         created_task_id: row?.created_task_id ?? null,
         source: ((row?.source as SuggestionSource | undefined) ?? (source === 'synthesized' ? 'synthesized' : 'claap')),
       };
     });
-  }, [rawItems, persistedQuery.data, scopeKey, source, internalMembers]);
+  }, [rawItems, persistedQuery.data, scopeKey, source, internalMembers, dealManager]);
 
   const approve = async (s: MeetingTaskSuggestion): Promise<{ taskId: string } | null> => {
     if (!user?.id) {

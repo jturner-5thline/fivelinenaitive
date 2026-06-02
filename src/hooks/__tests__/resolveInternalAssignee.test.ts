@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest';
-import { resolveInternalAssignee, type InternalMember } from '@/hooks/useMeetingTaskSuggestions';
+import {
+  resolveInternalAssignee,
+  resolveAssigneeWithDealManagerFallback,
+  type InternalMember,
+} from '@/hooks/useMeetingTaskSuggestions';
 
 const members: InternalMember[] = [
   { user_id: 'u1', email: 'jturner@5thline.co', first_name: 'James', last_name: 'Turner', display_name: 'James Turner' },
@@ -29,5 +33,36 @@ describe('resolveInternalAssignee', () => {
     expect(resolveInternalAssignee(null, members)).toBeNull();
     expect(resolveInternalAssignee('', members)).toBeNull();
     expect(resolveInternalAssignee('   ', members)).toBeNull();
+  });
+});
+
+describe('resolveAssigneeWithDealManagerFallback', () => {
+  const chris: InternalMember = {
+    user_id: 'u9', email: 'chris@5thline.co',
+    first_name: 'Chris', last_name: 'T', display_name: 'Chris T',
+  };
+
+  it('assigns the deal manager when no internal mention matches', () => {
+    const out = resolveAssigneeWithDealManagerFallback('Jerry Mikolajczyk', members, chris);
+    expect(out.member?.user_id).toBe('u9');
+    expect(out.source).toBe('deal-manager');
+  });
+
+  it('prefers the internal mention over the deal manager', () => {
+    const out = resolveAssigneeWithDealManagerFallback('Flora Tan', members, chris);
+    expect(out.member?.user_id).toBe('u2');
+    expect(out.source).toBe('mention');
+  });
+
+  it('returns null when neither mention nor deal manager resolve', () => {
+    const out = resolveAssigneeWithDealManagerFallback('Kevin Grapes', members, null);
+    expect(out.member).toBeNull();
+    expect(out.source).toBeNull();
+  });
+
+  it('returns null when there is no linked deal manager and no mention', () => {
+    const out = resolveAssigneeWithDealManagerFallback(null, members, null);
+    expect(out.member).toBeNull();
+    expect(out.source).toBeNull();
   });
 });
