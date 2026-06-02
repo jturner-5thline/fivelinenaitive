@@ -317,9 +317,16 @@ export function AgendaEditor() {
   const [isEmpty, setIsEmpty] = useState(true);
   const [copying, setCopying] = useState(false);
   const [, force] = useState(0);
+  const [railOpen, setRailOpen] = useState(false);
+  const [pendingComment, setPendingComment] = useState<
+    { from: number; to: number; text: string; anchor: { left: number; top: number } } | null
+  >(null);
   const debounceRef = useRef<number | null>(null);
   const latestDocRef = useRef<any>(null);
   const periodRef = useRef<{ type: string; key: string }>({ type: periodType, key: periodKey });
+  const editorWrapRef = useRef<HTMLDivElement>(null);
+
+  const commentsApi = useAgendaComments(rowId, company?.id ?? null);
 
   const editor = useEditor({
     extensions: [
