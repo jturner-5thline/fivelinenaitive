@@ -401,9 +401,14 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       toast.error('You must be signed in to create a task');
       return null;
     }
-    // 1) Internal-only assignment. External mentions never assign a real user.
-    const assignedTo = s.assignee_user_id ?? user.id;
-    const assigneeEmail = s.assignee_user_id ? s.assignee_email : null;
+    // 1) Gate: require an internal assignee. Defense-in-depth so the
+    //    tasks insert path never produces an unassigned task.
+    if (!s.assignee_user_id) {
+      toast.error('Please choose an assignee before creating this task.');
+      return null;
+    }
+    const assignedTo = s.assignee_user_id;
+    const assigneeEmail = s.assignee_email;
 
     // Optional recording url footer for description.
     let recordingUrl: string | null = null;
