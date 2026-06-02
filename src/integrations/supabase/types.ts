@@ -10702,6 +10702,7 @@ export type Database = {
           key_signal: string | null
           lead_source: string | null
           lost_at: string | null
+          lost_reason: string | null
           manager: string | null
           manager_move_forward_decision: boolean
           materials_added_to_naitive: boolean
@@ -10793,6 +10794,7 @@ export type Database = {
           key_signal?: string | null
           lead_source?: string | null
           lost_at?: string | null
+          lost_reason?: string | null
           manager?: string | null
           manager_move_forward_decision?: boolean
           materials_added_to_naitive?: boolean
@@ -10884,6 +10886,7 @@ export type Database = {
           key_signal?: string | null
           lead_source?: string | null
           lost_at?: string | null
+          lost_reason?: string | null
           manager?: string | null
           manager_move_forward_decision?: boolean
           materials_added_to_naitive?: boolean
