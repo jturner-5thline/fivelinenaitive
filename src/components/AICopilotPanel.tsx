@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { format, isToday, isYesterday } from 'date-fns';
 import naitiveFavicon from '@/assets/naitive-favicon.png';
 import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm';
+import { CopilotNameCollisionCard } from '@/components/copilot/CopilotNameCollisionCard';
 import { CopilotApprovalGroup } from '@/components/copilot/CopilotApprovalGroup';
 import { DealAiSettingsPopover } from '@/components/copilot/DealAiSettingsPopover';
 import { useDealCopilotMemory } from '@/hooks/useDealCopilotMemory';
@@ -393,7 +394,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
     }
   );
   
-  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline' | 'settings_proposal'; value: any }> = [];
+  const segments: Array<{ type: 'text' | 'confirm' | 'auto_executed' | 'email' | 'deal' | 'lender' | 'task' | 'pipeline' | 'settings_proposal' | 'name_collision'; value: any }> = [];
   // Match either fenced ```json {...} ``` blocks OR bare {...} objects that
   // contain an "action" key. The LLM sometimes drops the fence or uses
   // alternate key names ("type" instead of "action_type", "label" instead of
@@ -445,6 +446,17 @@ function CopilotAssistantContent({ content }: { content: string }) {
         // Don't render the raw JSON in chat.
       }
       else if (parsed.action === 'confirm' && parsed.action_type) {
+        // Name-collision cards have their own renderer — route them out of the
+        // generic confirm pipeline so they don't get a Save/Cancel approve UI.
+        if (parsed.action_type === 'name_collision') {
+          const key = `collision:${parsed.params?.proposed?.name || ''}:${(parsed.params?.existing || []).map((e: any) => e.id).join(',')}`;
+          if (!seenActions.has(key)) {
+            seenActions.add(key);
+            segments.push({ type: 'name_collision', value: parsed });
+          }
+          lastIndex = matchStart + match[0].length;
+          continue;
+        }
         // Dedup key MUST include an entity discriminator. Without it, two
         // sibling cards (e.g. "Add Wells Fargo TMT" + "Add CIT") collapse
         // into one and the user only sees the first lender. We include
@@ -590,6 +602,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
     <>
       {groupedSegments.map((seg, i) => {
         if (seg.type === 'confirm') return <CopilotActionConfirm key={i} action={seg.value} />;
+        if (seg.type === 'name_collision') return <CopilotNameCollisionCard key={i} action={seg.value} />;
         if (seg.type === 'confirm_group') return <CopilotApprovalGroup key={i} actions={seg.value} />;
         if (seg.type === 'auto_executed') return <CopilotAutoExecuted key={i} action={seg.value} />;
         if (seg.type === 'email') return <CopilotEmailDraft key={i} draft={seg.value} />;
@@ -2110,6 +2123,28 @@ export function AICopilotPanel() {
                     className="copilot-message-content"
                   >
                     {msg.role === 'user' ? msg.content : <CopilotAssistantContent content={msg.content} />}
+                    {msg.role === 'assistant' && !isProcessing && (() => {
+                      const c = (msg.content || '').trim();
+                      // Strip CHIPS tokens and fenced JSON action blocks the
+                      // parser already extracted — if nothing meaningful
+                      // remains AND no card was emitted, show an honest
+                      // fallback instead of letting the bubble look empty.
+                      const visible = c
+                        .replace(/\[\[CHIPS:\s*\[[\s\S]*?\]\s*\]\]/g, '')
+                        .replace(/```json[\s\S]*?```/g, '')
+                        .trim();
+                      if (visible.length > 0) return null;
+                      // If we already rendered a card (the parser found a JSON
+                      // action block), the original message will have had
+                      // that block — its presence in raw content is enough.
+                      const hadCard = /```json|"action"\s*:\s*"(confirm|auto_executed)"/.test(c);
+                      if (hadCard) return null;
+                      return (
+                        <div style={{ fontSize: 12, fontStyle: 'italic', color: 'hsl(var(--muted-foreground))', marginTop: 4 }}>
+                          (No response from the Copilot — please try rephrasing.)
+                        </div>
+                      );
+                    })()}
                     {msg.role === 'assistant' && msg.content && (
                       <MessageActions msg={msg} conversationId={conversationId} />
                     )}
