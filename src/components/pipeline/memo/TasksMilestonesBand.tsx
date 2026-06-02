@@ -193,11 +193,19 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
 
   // Standalone "+" button rendered as a sibling to the bottom-most
   // task/milestone row — never embedded inside the row's bordered container.
+  // Label is context-aware so it reflects the creator the active filter
+  // pill will mount.
+  const addLabel =
+    activeFilter === 'task'
+      ? 'Add task'
+      : activeFilter === 'milestone'
+      ? 'Add milestone'
+      : 'Add follow-up';
   const StandalonePlusButton = (
     <button
       type="button"
-      aria-label="Add follow-up task"
-      title="Add follow-up"
+      aria-label={addLabel}
+      title={addLabel}
       onClick={(e) => {
         e.stopPropagation();
         setAddFormOpen(true);
