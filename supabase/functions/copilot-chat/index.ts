@@ -732,14 +732,15 @@ const tools = [
     type: "function",
     function: {
       name: "create_task",
-      description: "Create a task. Returns a confirmation card the user must approve. To assign to a teammate, first call search_team_members to resolve their user UUID, then pass it as assignee_id. The tasks table has NO priority column the AI may set, NO calendar field, and due_date is DATE-ONLY (no time-of-day).",
+      description: "Create a task. Returns a confirmation card the user must approve. CRITICAL: Whenever the user names a person to assign to (e.g. 'for James Turner', 'have Scott do this', 'Niki needs to …'), you MUST pass that exact name verbatim as `assignee_name` — the handler resolves it server-side via fuzzy match. If you also have a UUID from search_team_members, pass `assignee_id` too. Omit BOTH only for first-person reminders ('remind me to …') — the handler will default the owner to the current user. NEVER silently default to the caller when the user named someone.",
       parameters: {
         type: "object",
         additionalProperties: false,
         properties: {
           title: { type: "string", description: "Required. Concise, action-oriented title." },
           description: { type: "string", description: "Optional. Maps to the task's Notes field." },
-          assignee_id: { type: "string", description: "Optional UUID of the owner. Resolve names via search_team_members first. Defaults to the current user when omitted." },
+          assignee_id: { type: "string", description: "Optional UUID of the owner. If you already resolved the user via search_team_members, pass the UUID here. If omitted but `assignee_name` is set, the handler resolves it." },
+          assignee_name: { type: "string", description: "REQUIRED whenever the user named a teammate to assign to. Pass the raw human-readable name or email exactly as the user said it (e.g. 'James Turner', 'James', 'jturner@5thline.co'). The handler will fuzzy-match against the workspace roster. Leave UNSET ONLY for first-person reminders ('remind me to …') where the caller is the intended owner." },
           due_date: {
             type: "string",
             pattern: "^\\d{4}-\\d{2}-\\d{2}$",
@@ -2447,16 +2448,93 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           dealName = d?.company || null;
         } catch { /* non-fatal */ }
       }
-      // Resolve display name for the assignee when one was provided.
+      // ── Assignee resolution ────────────────────────────────────────────
+      // Priority: explicit assignee_id (UUID) > assignee_name (fuzzy) > omitted (defaults to caller in executor).
+      // CRITICAL: if the LLM passed assignee_name we MUST resolve it here — falling back to the caller
+      // when the user named someone else is bug #1215344941044854.
+      let resolvedAssigneeId: string | null = args.assignee_id || null;
       let assigneeName: string | null = null;
-      if (args.assignee_id) {
+      let assigneeStrategy = "omitted";
+      let assigneeCandidates: any[] = [];
+      if (resolvedAssigneeId) {
         try {
-          const { data: p } = await supabase.from("profiles").select("display_name, email").eq("user_id", args.assignee_id).maybeSingle();
+          const { data: p } = await supabase.from("profiles").select("display_name, email").eq("user_id", resolvedAssigneeId).maybeSingle();
           assigneeName = p?.display_name || p?.email || null;
+          assigneeStrategy = "uuid";
         } catch { /* non-fatal */ }
+      } else if (typeof args.assignee_name === "string" && args.assignee_name.trim()) {
+        const rawName = String(args.assignee_name).trim();
+        try {
+          const { data: membership } = await supabase.from("company_members").select("company_id").eq("user_id", userId).limit(1).maybeSingle();
+          const companyId = membership?.company_id || null;
+          if (companyId) {
+            const { data: members } = await supabase.from("company_members").select("user_id").eq("company_id", companyId);
+            const memberIds = (members || []).map((m: any) => m.user_id);
+            const { data: profiles } = memberIds.length
+              ? await supabase.from("profiles").select("user_id, display_name, first_name, last_name, email").in("user_id", memberIds)
+              : { data: [] as any[] };
+            const norm = (s: string) => (s || "").toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9@.\s]/g, "").trim();
+            const q = norm(rawName);
+            const scored = (profiles || []).map((p: any) => {
+              const first = norm(p.first_name || "");
+              const last = norm(p.last_name || "");
+              const display = norm(p.display_name || "");
+              const email = norm(p.email || "");
+              const emailPrefix = email.split("@")[0] || "";
+              const full = `${first} ${last}`.trim();
+              let score = 0;
+              if (email && email === q) score = 100;
+              else if (display && display === q) score = 100;
+              else if (full && full === q) score = 100;
+              else if (emailPrefix && emailPrefix === q) score = 95;
+              else if (q.includes(" ")) {
+                // multi-token query: require both first AND last to appear
+                const tokens = q.split(/\s+/).filter(Boolean);
+                const hay = `${first} ${last} ${display} ${email}`;
+                if (tokens.every(t => hay.includes(t))) score = 90;
+              } else {
+                if (first === q || last === q) score = 85;
+                else if (display.startsWith(q) || first.startsWith(q) || last.startsWith(q)) score = 70;
+                else if (display.includes(q) || full.includes(q)) score = 55;
+                else if (emailPrefix.includes(q)) score = 50;
+              }
+              return { user_id: p.user_id, display_name: p.display_name, email: p.email, score };
+            }).filter((x: any) => x.score > 0).sort((a: any, b: any) => b.score - a.score);
+            assigneeCandidates = scored.slice(0, 3);
+            // Decide based on top-tier matches (treat anything within 10 pts of the top as a tie).
+            const topTier = scored.filter((s: any) => scored[0] && s.score >= scored[0].score - 10);
+            if (topTier.length === 1) {
+              resolvedAssigneeId = topTier[0].user_id;
+              assigneeName = topTier[0].display_name || topTier[0].email || rawName;
+              assigneeStrategy = "fuzzy_unique";
+            } else if (topTier.length === 0) {
+              console.warn("[CopilotAssignee]", JSON.stringify({ input: rawName, candidates_count: 0, resolved_user_id: null, strategy: "no_match" }));
+              return {
+                error: `No teammate matched "${rawName}". Ask the user to confirm the full name or email — do NOT default to the caller.`,
+                assignee_input: rawName,
+                candidates: [],
+              };
+            } else {
+              console.warn("[CopilotAssignee]", JSON.stringify({ input: rawName, candidates_count: topTier.length, resolved_user_id: null, strategy: "ambiguous" }));
+              return {
+                error: `Multiple teammates matched "${rawName}". Ask the user to pick one before retrying create_task — do NOT guess and do NOT default to the caller.`,
+                assignee_input: rawName,
+                candidates: topTier.map((m: any) => ({ user_id: m.user_id, display_name: m.display_name, email: m.email })),
+              };
+            }
+          }
+        } catch (e) {
+          console.error("[CopilotAssignee] resolver error:", (e as Error).message);
+        }
       }
+      console.log("[CopilotAssignee]", JSON.stringify({
+        input: args.assignee_name || args.assignee_id || null,
+        candidates_count: assigneeCandidates.length,
+        resolved_user_id: resolvedAssigneeId,
+        strategy: assigneeStrategy,
+      }));
       // Strip any fields the LLM may have hallucinated outside the schema (priority, calendar, time, etc.)
-      const ALLOWED = new Set(["title", "description", "assignee_id", "due_date", "deal_id", "type", "collaborator_ids"]);
+      const ALLOWED = new Set(["title", "description", "assignee_id", "assignee_name", "due_date", "deal_id", "type", "collaborator_ids"]);
       for (const k of Object.keys(args)) {
         if (!ALLOWED.has(k)) {
           console.warn(`[create_task] dropping unsupported field from tool args: ${k}`);
@@ -2477,7 +2555,7 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
           description: args.description,
           deal_id: args.deal_id,
           deal_name: dealName,
-          assignee_user_id: args.assignee_id || null,
+          assignee_user_id: resolvedAssigneeId,
           assignee_name: assigneeName,
           due_date: safeDue,
           task_type: args.type || "task",
@@ -7133,7 +7211,7 @@ DEAL-SPACE QUESTION ANSWERING (apply when the focused deal is set):
 PERSONAL TASK & REMINDER CREATION (apply when the user says "remind me to …", "create a task for me to …", "add a to-do for …", "set a reminder", or any equivalent natural-language reminder):
 - ALWAYS use the create_task tool. NEVER persist the task yourself or in any other way — create_task returns an { action: "confirm", action_type: "create_task" } payload that the UI renders as an approval card. The user must click Save before anything is written.
 - ALLOWED FIELDS (the only keys you may pass): title (required), description (optional, maps to Notes), assignee_id (uuid, optional owner — defaults to current user), due_date (YYYY-MM-DD only — NEVER include a time-of-day, "T...", or timezone), deal_id (uuid, optional), type (one of task | follow_up | call | email | meeting), collaborator_ids (uuid[]). DO NOT pass priority, due_time, add_to_calendar, calendar, or any other key — the tasks table has no priority column the AI may set and no calendar field. The schema rejects extra keys.
-- Owner default: leave assignee_user_id and assignee_name UNSET. The executor falls back to the current user — that is the correct behavior for "remind me", "create a task for me", and any first-person reminder. NEVER silently set assignee_user_id to another teammate. Only set assignee_user_id when the user EXPLICITLY says "assign to <Person>" / "task for <Person>" — and even then, first call search_team_members to resolve the UUID, and only one match. If multiple matches, ask the user to pick before calling create_task.
+- Owner default: leave BOTH assignee_id AND assignee_name UNSET only for FIRST-PERSON reminders ("remind me to …", "create a task for me to …"). The executor will default the owner to the current user. The MOMENT the user names ANY teammate ("for James Turner", "have Scott do this", "Niki should …"), you MUST pass that exact verbatim name string as `assignee_name` on the create_task call — the handler will fuzzy-resolve it server-side. Calling search_team_members beforehand is OPTIONAL; if you do, also pass `assignee_id`. NEVER silently default to the caller when the user named someone — bug #1215344941044854.
 - Deal link: if the focused deal is set (entityType=deal above OR a RESOLVED DEAL FROM PROMPT block is present) AND the reminder text plausibly relates to that deal (mentions the company, the lender on it, "this deal", "this company", "here", "the write-up", "the memo", a milestone, etc.), set deal_id to that focused deal's UUID — task_type stays the default "task" and the tool will treat it as a deal-linked task. If the user is NOT on a deal page and does not name a deal, omit deal_id — it becomes a personal task for the current user.
 - Title: extract a concise, action-oriented title from the reminder. Strip the "remind me to" / "create a task to" prefix. Keep the verb. Example: "Remind me to call Dan tomorrow" → title "Call Dan". "Create a task for me to review the write-up on Friday" → title "Review the write-up".
 - Due date: parse natural-language dates ("today", "tomorrow", "Friday", "next Tuesday", "in two weeks", "Mar 15") into a YYYY-MM-DD string (date only, no time) and pass as due_date. If the user gave NO date at all, DEFAULT due_date to TODAY in the user's local timezone. If genuinely AMBIGUOUS, ask ONE short clarifying question first.
@@ -7150,7 +7228,7 @@ DEAL TASK CREATION (apply when the user wants a task tied to a SPECIFIC deal —
   3. If the user is NOT on a deal page and names a deal, resolve via RESOLVED DEAL FROM PROMPT first; if absent, call search_deals.
   4. Ambiguity / low confidence: if search_deals returns multiple plausible matches (e.g. "Worthy" matches more than one active deal) OR no clear single best match, STOP. Ask ONE short clarifying question listing the top 2–3 candidates with company + stage. Do NOT call create_task with a guessed deal_id. Never link a task to the wrong deal.
   5. If the user clearly intends a personal (non-deal) task even from a deal page (e.g. "remind me to pick up groceries", "personal task: book flight"), omit deal_id — fall back to the PERSONAL TASK rules above.
-- Owner: default to the current user (omit assignee_user_id). Only set assignee_user_id when the user explicitly says "assign to <Person>" / "task for <Person>" — first call search_team_members to resolve a single UUID; if multiple matches, ask before calling create_task. Never silently reassign.
+- Owner: default to the current user ONLY when no person is named (omit BOTH assignee_id and assignee_name). When the user names a teammate ("assign to <Person>", "task for <Person>"), pass that exact verbatim name as `assignee_name` on the create_task call — the handler fuzzy-resolves server-side. Optionally also call search_team_members first and pass the UUID as `assignee_id`. NEVER silently reassign to the caller — bug #1215344941044854.
 - Title: concise and action-oriented. Strip "create a task to" / "remind me to" / "add a task on <Deal> to" prefixes and any deal-name preamble. Example: "Create a task to follow up with management on Xnergy" → title "Follow up with management". "Add a task on Worthy to check in with Dan in 5 days" → "Check in with Dan".
 - Due date: parse natural-language dates ("tomorrow", "Friday", "next Monday", "in 5 days", "Mar 15") into YYYY-MM-DD (date only — no time-of-day) and pass as due_date. If genuinely ambiguous, ask ONE clarifying question. If no date is given, DEFAULT due_date to TODAY in the user's local timezone.
 - Description: optional. Only include if the user added context beyond the title (e.g. "…about the CIM revisions" → description carries that detail). Do not invent context.
@@ -7161,11 +7239,10 @@ DEAL TASK CREATION (apply when the user wants a task tied to a SPECIFIC deal —
 DELEGATED TASK ASSIGNMENT (apply when the user asks to create a task for ANOTHER teammate — e.g. "Niki needs to send the daily briefing tomorrow", "create a task for Scott to review the lender update", "John should follow up with management next week", "have <Person> do …", "assign <Person> to …", "<Person> should/needs to/has to …"):
 - ALWAYS use the create_task tool. NEVER write the task directly. The tool returns an approval card { action: "confirm", action_type: "create_task" } which the UI renders as a PROPOSED ASSIGNMENT requiring explicit human approval. No assignment happens until the user clicks Save.
 - Assignee resolution (do this BEFORE calling create_task):
-  1. Extract the named person from the prompt (first name, last name, or full name).
-  2. Call search_team_members({ query: "<name>" }) to resolve to a real user in the system. Pass BOTH assignee_user_id (the resolved UUID) AND assignee_name (the canonical full name) to create_task so the approval card shows who it will be assigned to.
-  3. If search_team_members returns ZERO matches: do NOT call create_task. Tell the user no teammate matched and ask for the full name or a different identifier.
-  4. If search_team_members returns MULTIPLE plausible matches (e.g. two "John"s): STOP. Ask ONE clarifying question listing the candidates with their email/role, and wait for the user to pick. NEVER guess the assignee.
-  5. Never silently substitute the current user as the assignee for a delegated task — if you cannot resolve the named person, ask; do not fall back to "me".
+  1. Extract the named person from the prompt (first name, last name, full name, or email).
+  2. ALWAYS pass that exact verbatim string as `assignee_name` on the create_task call. The handler will fuzzy-resolve it server-side against the workspace roster. You may ALSO call search_team_members and pass the resolved UUID as `assignee_id`, but `assignee_name` is the authoritative input — never omit it when the user named someone.
+  3. If the handler returns an error like "No teammate matched <name>" or "Multiple teammates matched <name>", relay that to the user (list the candidates if provided) and ask one short clarifying question. Then retry create_task with the corrected name or the picked UUID. Do NOT call create_task with `assignee_name` omitted — that silently reassigns to the caller, which is bug #1215344941044854.
+  4. Never silently substitute the current user as the assignee for a delegated task — if you cannot resolve the named person, ask; do not fall back to "me".
 - Deal linking: same rules as DEAL TASK CREATION above.
   - On a deal page and the delegated task plausibly relates to the focused deal (mentions the company/lender/"this deal"/"here"/the write-up/memo/milestone) → set deal_id to the focused deal's UUID.
   - User explicitly names a different deal → resolve via RESOLVED DEAL FROM PROMPT or search_deals. If ambiguous, ask before calling create_task.
