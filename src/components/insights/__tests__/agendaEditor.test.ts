@@ -21,9 +21,14 @@ const subtitleNode = () => ({
   }],
 });
 const SECTIONS = ['Presentation', 'Looking Forward', 'New Items', 'Prep'];
+// Only Presentation carries the subtitle in the seeded doc.
 const SEED = {
   type: 'doc',
-  content: SECTIONS.flatMap((s) => [headingNode(s), subtitleNode(), { type: 'paragraph' }]),
+  content: SECTIONS.flatMap((s) =>
+    s === 'Presentation'
+      ? [headingNode(s), subtitleNode(), { type: 'paragraph' }]
+      : [headingNode(s), { type: 'paragraph' }],
+  ),
 };
 const LEGACY_SEED = {
   type: 'doc',
@@ -61,11 +66,16 @@ describe('isSeedContent', () => {
   it('returns true for the seeded 4-heading doc', () => {
     expect(isSeedContent(SEED)).toBe(true);
   });
-  it('seed subtitle text is the exact required string', () => {
+  it('only the Presentation section carries the subtitle', () => {
     expect(SEED_SUBTITLE).toBe('(5-Minute Overview + Discussion & Q&A) - 12 Minutes Total Max');
     const subs = SEED.content.filter((n: any) =>
       n.type === 'paragraph' && n.content?.[0]?.text === SEED_SUBTITLE);
-    expect(subs.length).toBe(4);
+    expect(subs.length).toBe(1);
+    // It must sit immediately after the Presentation heading.
+    const presIdx = SEED.content.findIndex(
+      (n: any) => n.type === 'heading' && n.content?.[0]?.text === 'Presentation',
+    );
+    expect(SEED.content[presIdx + 1]?.content?.[0]?.text).toBe(SEED_SUBTITLE);
   });
   it('still treats the legacy headings-only seed as seed', () => {
     expect(isSeedContent(LEGACY_SEED)).toBe(true);
