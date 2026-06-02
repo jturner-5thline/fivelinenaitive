@@ -936,11 +936,23 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
           shows a single "+" button as the only entry point. */}
       {addFormOpen ? (
         <div className="mt-2">
-          <AddFollowupInlineForm
-            deal={deal}
-            defaultTitle={prefillTitle}
-            onClose={() => setAddFormOpen(false)}
-          />
+          {activeFilter === 'task' ? (
+            <AddTaskInlineForm
+              deal={deal}
+              onClose={() => setAddFormOpen(false)}
+            />
+          ) : activeFilter === 'milestone' ? (
+            <AddMilestoneInlineForm
+              deal={deal}
+              onClose={() => setAddFormOpen(false)}
+            />
+          ) : (
+            <AddFollowupInlineForm
+              deal={deal}
+              defaultTitle={prefillTitle}
+              onClose={() => setAddFormOpen(false)}
+            />
+          )}
         </div>
       ) : !hasContent ? (
         <div className="mt-2 flex justify-end">{StandalonePlusButton}</div>
