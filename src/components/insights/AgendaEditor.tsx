@@ -16,6 +16,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
 import { useInsightsTimeframe, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
+import { toast } from 'sonner';
+import { z } from 'zod';
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify,
@@ -47,6 +49,75 @@ const SEED_CONTENT = {
     { type: 'paragraph' },
   ],
 };
+
+// Zod schema mirroring the DB CHECK constraint on insights_agenda.
+const monthKeyRe = /^\d{4}-(0[1-9]|1[0-2])$/;
+const quarterKeyRe = /^\d{4}-Q[1-4]$/;
+export const agendaPersistSchema = z
+  .object({
+    period_type: z.enum(['month', 'quarter']),
+    period_key: z.string(),
+    content_json: z.record(z.any()),
+  })
+  .refine(
+    (v) =>
+      (v.period_type === 'month' && monthKeyRe.test(v.period_key)) ||
+      (v.period_type === 'quarter' && quarterKeyRe.test(v.period_key)),
+    { message: 'Invalid reporting period', path: ['period_key'] },
+  );
+
+/**
+ * Returns true when the editor JSON doc matches the default 4-heading seed
+ * (i.e. user hasn't added any real content yet).
+ */
+export function isSeedContent(doc: any): boolean {
+  if (!doc || doc.type !== 'doc' || !Array.isArray(doc.content)) return true;
+  const headings = doc.content
+    .filter((n: any) => n?.type === 'heading')
+    .map((n: any) => n?.content?.[0]?.text ?? '');
+  const required = ['Presentation', 'Looking Forward', 'New Items', 'Prep'];
+  const headingsMatch =
+    headings.length === required.length &&
+    required.every((h, i) => headings[i] === h);
+  if (!headingsMatch) return false;
+  // Any non-empty paragraph / list / etc. means user added content.
+  const hasUserContent = doc.content.some((n: any) => {
+    if (n?.type === 'heading') return false;
+    if (n?.type === 'paragraph') {
+      return Array.isArray(n.content) && n.content.length > 0;
+    }
+    return true; // lists, tasks, etc.
+  });
+  return !hasUserContent;
+}
+
+/** Compute the previous period token for a given granularity. */
+export function previousPeriodKey(type: 'month' | 'quarter', key: string): string | null {
+  if (type === 'month') {
+    const m = monthKeyRe.exec(key);
+    if (!m) return null;
+    const y = parseInt(key.slice(0, 4), 10);
+    const mo = parseInt(key.slice(5, 7), 10);
+    const d = new Date(y, mo - 2, 1); // JS handles year rollover
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+  const m = quarterKeyRe.exec(key);
+  if (!m) return null;
+  let y = parseInt(key.slice(0, 4), 10);
+  let q = parseInt(key.slice(6, 7), 10) - 1;
+  if (q < 1) { q = 4; y -= 1; }
+  return `${y}-Q${q}`;
+}
+
+function formatPeriodLabel(type: 'month' | 'quarter', key: string): string {
+  if (type === 'month') {
+    const [y, mo] = key.split('-').map(Number);
+    const d = new Date(y, mo - 1, 1);
+    return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  }
+  const [y, q] = key.split('-Q');
+  return `Q${q} ${y}`;
+}
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
