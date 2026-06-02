@@ -23,9 +23,13 @@ const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const RESEND_API_KEY =
   Deno.env.get('RESEND_API_KEY_1') ?? Deno.env.get('RESEND_API_KEY');
 
-const FROM = 'Naitive <notifications@naitive.5thline.co>';
+const FROM_DOMAIN = Deno.env.get('RESEND_FROM_DOMAIN') || 'updates.naitive.co';
+const FROM = `Naitive <notifications@${FROM_DOMAIN}>`;
 const APP_URL =
   Deno.env.get('APP_URL') || 'https://www.naitive.co';
+
+// Cold-start log: confirms the verified sender domain in use.
+console.log(`[notify-comment-mentions] cold-start FROM_DOMAIN=${FROM_DOMAIN} (RESEND_FROM_DOMAIN ${Deno.env.get('RESEND_FROM_DOMAIN') ? 'set' : 'fallback'})`);
 
 function renderPlain(body: string): string {
   return body.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, '@$1');
