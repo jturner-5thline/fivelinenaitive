@@ -19110,6 +19110,36 @@ export type Database = {
           },
         ]
       }
+      performance_audit_runs: {
+        Row: {
+          applied_at: string | null
+          applied_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          rep_user_id: string
+          snapshot: Json
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          rep_user_id: string
+          snapshot: Json
+        }
+        Update: {
+          applied_at?: string | null
+          applied_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          rep_user_id?: string
+          snapshot?: Json
+        }
+        Relationships: []
+      }
       pilot_kpi_events: {
         Row: {
           company_id: string
@@ -27045,6 +27075,7 @@ export type Database = {
         Args: { _rejection_note?: string; _request_id: string }
         Returns: undefined
       }
+      rep_audit_dry_run: { Args: { rep_user_id: string }; Returns: Json }
       reset_dashboard_grid_layout: {
         Args: { _company_id: string; _dashboard_id: string }
         Returns: undefined
