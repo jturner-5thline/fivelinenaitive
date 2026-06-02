@@ -17979,6 +17979,45 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          channel: string
+          created_at: string
+          error: string | null
+          id: string
+          kind: string
+          payload: Json | null
+          provider_message_id: string | null
+          ref_id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind: string
+          payload?: Json | null
+          provider_message_id?: string | null
+          ref_id: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          channel?: string
+          created_at?: string
+          error?: string | null
+          id?: string
+          kind?: string
+          payload?: Json | null
+          provider_message_id?: string | null
+          ref_id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       notification_reads: {
         Row: {
           id: string
@@ -22425,6 +22464,7 @@ export type Database = {
           id: string
           is_deleted: boolean | null
           is_edited: boolean | null
+          mentions: string[]
           task_id: string
           updated_at: string
         }
@@ -22435,6 +22475,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
+          mentions?: string[]
           task_id: string
           updated_at?: string
         }
@@ -22445,6 +22486,7 @@ export type Database = {
           id?: string
           is_deleted?: boolean | null
           is_edited?: boolean | null
+          mentions?: string[]
           task_id?: string
           updated_at?: string
         }
