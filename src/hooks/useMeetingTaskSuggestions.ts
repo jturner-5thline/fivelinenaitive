@@ -320,31 +320,14 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     });
   }, [rawItems, persistedQuery.data, scopeKey, source, internalMembers]);
 
-  // ─── mutations ──────────────────────────────────────────────
-  const resolveAssigneeUserId = async (name: string | null): Promise<{ userId: string | null; email: string | null }> => {
-    if (!name) return { userId: null, email: null };
-    const trimmed = name.trim();
-    if (!trimmed) return { userId: null, email: null };
-    const { data } = await supabase
-      .from('profiles')
-      .select('user_id, email, first_name, last_name, display_name')
-      .or(
-        `display_name.ilike.${trimmed},and(first_name.ilike.${trimmed.split(/\s+/)[0]},last_name.ilike.${trimmed.split(/\s+/).slice(-1)[0]})`,
-      )
-      .limit(2);
-    if (!data || data.length !== 1) return { userId: null, email: null };
-    return { userId: data[0].user_id ?? null, email: data[0].email ?? null };
-  };
-
   const approve = async (s: MeetingTaskSuggestion): Promise<{ taskId: string } | null> => {
     if (!user?.id) {
       toast.error('You must be signed in to create a task');
       return null;
     }
-    // 1) Resolve assignee name -> tenant user, fallback to current user.
-    const resolved = await resolveAssigneeUserId(s.assignee_name);
-    const assignedTo = resolved.userId ?? user.id;
-    const assigneeEmail = resolved.email ?? s.assignee_email ?? null;
+    // 1) Internal-only assignment. External mentions never assign a real user.
+    const assignedTo = s.assignee_user_id ?? user.id;
+    const assigneeEmail = s.assignee_user_id ? s.assignee_email : null;
 
     // Optional recording url footer for description.
     let recordingUrl: string | null = null;
@@ -357,7 +340,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       recordingUrl = (data as any)?.recording_url ?? null;
     }
     const descParts: string[] = [];
-    if (assigneeEmail && !resolved.userId) descParts.push(`Suggested for: ${assigneeEmail}`);
+    if (s.external_mention) descParts.push(`Mentioned: ${s.external_mention}`);
     descParts.push(
       recordingUrl
         ? `From Claap recording — [Watch](${recordingUrl})`
@@ -395,6 +378,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       suggestion_id: s.suggestion_id,
       text: s.text,
       assignee_email: assigneeEmail,
+      external_mention: s.external_mention,
       due_date: s.due_date,
       source: s.source,
       status: 'converted' as SuggestionStatus,
