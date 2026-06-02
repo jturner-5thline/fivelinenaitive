@@ -314,6 +314,36 @@ export default function PerformanceAudit() {
           </Table>
         </Card>
       )}
+
+      {result?.bbp_candidates && result.bbp_candidates.length > 0 && (
+        <Card className="mt-6 p-5">
+          <div className="mb-3 text-sm font-semibold text-foreground">
+            BBP candidate matches (top {result.bbp_candidates.length}) — pick one manually
+          </div>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Deal</TableHead>
+                <TableHead>Owner</TableHead>
+                <TableHead>Stage</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Similarity</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {result.bbp_candidates.map((c) => (
+                <TableRow key={c.deal_id}>
+                  <TableCell className="text-xs">{c.deal_name}</TableCell>
+                  <TableCell className="text-xs">{c.deal_owner ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{c.stage ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{c.status ?? "—"}</TableCell>
+                  <TableCell className="text-xs">{(c.score * 100).toFixed(1)}%</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }
