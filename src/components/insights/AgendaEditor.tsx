@@ -28,6 +28,7 @@ import { CommentMark } from './CommentMark';
 import {
   AgendaCommentsRail,
   CommentContextMenu,
+  CommentThreadPopover,
   NewThreadPopover,
   SelectionBubble,
   useAgendaComments,
@@ -318,6 +319,7 @@ export function AgendaEditor() {
   const [copying, setCopying] = useState(false);
   const [, force] = useState(0);
   const [railOpen, setRailOpen] = useState(false);
+  const [activeThread, setActiveThread] = useState<{ id: string; el: HTMLElement } | null>(null);
   const [pendingComment, setPendingComment] = useState<
     { from: number; to: number; text: string; anchor: { left: number; top: number } } | null
   >(null);
@@ -364,11 +366,8 @@ export function AgendaEditor() {
       if (!target) return;
       const threadId = target.getAttribute('data-thread-id');
       if (!threadId) return;
-      setRailOpen(true);
-      requestAnimationFrame(() => {
-        const card = document.querySelector(`[data-thread-card="${threadId}"]`);
-        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      });
+      // Open / move the floating popover to this span. Don't auto-open the rail.
+      setActiveThread({ id: threadId, el: target });
     };
     dom.addEventListener('click', onClick);
     return () => { dom.removeEventListener('click', onClick); };
