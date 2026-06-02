@@ -1224,6 +1224,7 @@ export function AICopilotPanel() {
       return;
     }
 
+    useCopilotStore.setState({ isOpen: true, isMinimized: false });
     isProcessingRef.current = true;
     setProcessing(true);
 
@@ -1371,7 +1372,7 @@ export function AICopilotPanel() {
           messages: [...useCopilotStore.getState().messages, {
             id: fallbackId,
             role: 'assistant',
-            content: "I'm sorry, I wasn't able to process that request. Could you try rephrasing it?",
+            content: "I found a match but couldn't render a response card for it. Please try again, or use a more specific deal name.",
             timestamp: new Date(),
           }],
         });
