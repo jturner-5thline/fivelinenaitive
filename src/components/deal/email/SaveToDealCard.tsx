@@ -230,12 +230,13 @@ export function SaveToDealCard({
 
   const checkDuplicateTextFile = async (): Promise<boolean> => {
     if (!dealId) return false;
+    const sourceKind = source === 'highlighted' ? 'email_highlight' : 'email_body';
     const { data } = await supabase
       .from('deal_attachments')
       .select('id')
       .eq('deal_id', dealId)
       .eq('source_email_id', messageId)
-      .eq('source', 'email_body')
+      .eq('source', sourceKind)
       .limit(1);
     return !!(data && data.length);
   };
