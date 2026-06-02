@@ -7239,11 +7239,10 @@ DEAL TASK CREATION (apply when the user wants a task tied to a SPECIFIC deal —
 DELEGATED TASK ASSIGNMENT (apply when the user asks to create a task for ANOTHER teammate — e.g. "Niki needs to send the daily briefing tomorrow", "create a task for Scott to review the lender update", "John should follow up with management next week", "have <Person> do …", "assign <Person> to …", "<Person> should/needs to/has to …"):
 - ALWAYS use the create_task tool. NEVER write the task directly. The tool returns an approval card { action: "confirm", action_type: "create_task" } which the UI renders as a PROPOSED ASSIGNMENT requiring explicit human approval. No assignment happens until the user clicks Save.
 - Assignee resolution (do this BEFORE calling create_task):
-  1. Extract the named person from the prompt (first name, last name, or full name).
-  2. Call search_team_members({ query: "<name>" }) to resolve to a real user in the system. Pass BOTH assignee_user_id (the resolved UUID) AND assignee_name (the canonical full name) to create_task so the approval card shows who it will be assigned to.
-  3. If search_team_members returns ZERO matches: do NOT call create_task. Tell the user no teammate matched and ask for the full name or a different identifier.
-  4. If search_team_members returns MULTIPLE plausible matches (e.g. two "John"s): STOP. Ask ONE clarifying question listing the candidates with their email/role, and wait for the user to pick. NEVER guess the assignee.
-  5. Never silently substitute the current user as the assignee for a delegated task — if you cannot resolve the named person, ask; do not fall back to "me".
+  1. Extract the named person from the prompt (first name, last name, full name, or email).
+  2. ALWAYS pass that exact verbatim string as `assignee_name` on the create_task call. The handler will fuzzy-resolve it server-side against the workspace roster. You may ALSO call search_team_members and pass the resolved UUID as `assignee_id`, but `assignee_name` is the authoritative input — never omit it when the user named someone.
+  3. If the handler returns an error like "No teammate matched <name>" or "Multiple teammates matched <name>", relay that to the user (list the candidates if provided) and ask one short clarifying question. Then retry create_task with the corrected name or the picked UUID. Do NOT call create_task with `assignee_name` omitted — that silently reassigns to the caller, which is bug #1215344941044854.
+  4. Never silently substitute the current user as the assignee for a delegated task — if you cannot resolve the named person, ask; do not fall back to "me".
 - Deal linking: same rules as DEAL TASK CREATION above.
   - On a deal page and the delegated task plausibly relates to the focused deal (mentions the company/lender/"this deal"/"here"/the write-up/memo/milestone) → set deal_id to the focused deal's UUID.
   - User explicitly names a different deal → resolve via RESOLVED DEAL FROM PROMPT or search_deals. If ambiguous, ask before calling create_task.
