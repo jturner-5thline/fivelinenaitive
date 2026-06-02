@@ -402,7 +402,7 @@ export function AgendaEditor() {
           hasContent ? (data.content_json as any) : SEED_CONTENT,
           { emitUpdate: false },
         );
-        setIsEmpty(!hasContent);
+        setIsEmpty(!hasContent || isSeedContent(data.content_json));
         if (data.updated_at) setSavedAt(new Date(data.updated_at));
       } else {
         editor.commands.setContent(SEED_CONTENT, { emitUpdate: false });
@@ -421,7 +421,7 @@ export function AgendaEditor() {
     const handler = () => {
       const doc = editor.getJSON();
       latestDocRef.current = doc;
-      setIsEmpty(editor.isEmpty);
+      setIsEmpty(editor.isEmpty || isSeedContent(doc));
       setSaveState('saving');
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
       const { type, key } = periodRef.current;
