@@ -2683,6 +2683,12 @@ function MetricsInner() {
               </div>
             )}
             {selectedDashboard === 'sales-team-board' && <SalesTeamBoardDashboard />}
+            {selectedDashboard === 'rep-scorecard' && (
+              <div className="space-y-4">
+                <RepScorecardCard />
+                <RepPerformanceModelGrid />
+              </div>
+            )}
             {selectedDashboard === 'consolidated-debt-pipeline' && (
               <ConsolidatedDebtPipelineDashboard selectedQuarter={dashboardSelectedQuarter} />
             )}
