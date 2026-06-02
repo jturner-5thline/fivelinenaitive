@@ -12,6 +12,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { splitTextByUrls } from '@/lib/emailNotesCleanup';
 import { buildSourceEmailUrl } from '@/lib/sourceEmailLink';
 import { SourceEmailLink } from '@/components/tasks/SourceEmailLink';
+import { MentionTextarea, MentionText } from '@/components/tasks/MentionTextarea';
 
 /**
  * Auto-linkify URLs in plain-text descriptions so source-email links
