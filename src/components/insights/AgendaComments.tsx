@@ -6,6 +6,7 @@ import { useTeamMembers, type TeamMember } from '@/hooks/useTeamMembers';
 import { toast } from 'sonner';
 import {
   Check, Trash2, Pencil, X, MessageSquare, Send, CornerDownRight,
+  ArrowUp,
 } from 'lucide-react';
 import { findCommentRanges } from './CommentMark';
 
@@ -628,6 +629,7 @@ function ThreadCard({
   const opener = members.find((m) => m.id === thread.created_by);
   return (
     <div
+      data-thread-card={thread.id}
       onClick={onJump}
       style={{
         background: thread.resolved ? 'rgba(16,28,52,0.45)' : 'rgba(16,28,52,0.75)',
@@ -735,15 +737,24 @@ function ThreadCard({
 
 // ---------- Right-side rail ----------
 export function AgendaCommentsRail({
-  open, onClose, editor, api, currentUserId,
+  open, onClose, editor, api, currentUserId, scrollListRef,
 }: {
   open: boolean;
   onClose: () => void;
   editor: Editor | null;
   api: ReturnType<typeof useAgendaComments>;
   currentUserId: string | null;
+  /** Ref to the scrollable list inside the rail (so the editor can scroll a thread card into view). */
+  scrollListRef?: React.Ref<HTMLDivElement>;
 }) {
   const members = useTeamMembers();
+  const listRef = useRef<HTMLDivElement>(null);
+  // Bridge external ref → internal ref (so parent can scrollIntoView on a card).
+  useEffect(() => {
+    if (!scrollListRef) return;
+    if (typeof scrollListRef === 'function') scrollListRef(listRef.current);
+    else (scrollListRef as React.MutableRefObject<HTMLDivElement | null>).current = listRef.current;
+  });
 
   // Sort threads by document position so the rail mirrors the editor.
   const orderedThreads = useMemo(() => {
@@ -764,20 +775,32 @@ export function AgendaCommentsRail({
     const r = ranges.find((x) => x.threadId === threadId);
     if (!r) return;
     editor.chain().focus().setTextSelection({ from: r.from, to: r.to }).run();
-    editor.view.dom.querySelector(`[data-thread-id="${threadId}"]`)
-      ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const target = editor.view.dom.querySelector(`[data-thread-id="${threadId}"]`);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
   if (!open) return null;
   return (
-    <div style={{
-      position: 'fixed', top: 0, right: 0, bottom: 0, width: 360, zIndex: 1300,
-      background: 'rgba(10,18,36,0.96)',
-      borderLeft: '0.5px solid rgba(80,140,255,0.22)',
-      backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
-      display: 'flex', flexDirection: 'column',
-      boxShadow: '-10px 0 30px rgba(0,0,0,0.4)',
-    }}>
+    <div
+      className="agenda-comments-rail"
+      style={{
+        // On desktop the rail lives in-flow as a sticky sibling column
+        // (see AgendaEditor's flex row). On mobile (<768px) it expands to
+        // a full-width drawer via the CSS rule below.
+        position: 'sticky',
+        top: 'var(--agenda-toolbar-offset, 96px)',
+        alignSelf: 'flex-start',
+        width: 360,
+        maxHeight: 'calc(100vh - var(--agenda-toolbar-offset, 96px) - 24px)',
+        background: 'rgba(10,18,36,0.96)',
+        border: '0.5px solid rgba(80,140,255,0.22)',
+        borderRadius: 14,
+        backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
+        display: 'flex', flexDirection: 'column',
+        boxShadow: '-6px 6px 24px rgba(0,0,0,0.35)',
+        zIndex: 5,
+      }}
+    >
       <div style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '12px 14px', borderBottom: '0.5px solid rgba(80,140,255,0.18)',
@@ -788,11 +811,24 @@ export function AgendaCommentsRail({
             {api.threads.filter((t) => !t.resolved).length} open · {api.threads.length} total
           </span>
         </div>
-        <button type="button" onClick={onClose} style={iconBtn} title="Close">
-          <X size={14} />
-        </button>
+        <div style={{ display: 'inline-flex', gap: 2 }}>
+          <button
+            type="button"
+            style={iconBtn}
+            title="Jump to top"
+            onClick={() => listRef.current?.scrollTo({ top: 0, behavior: 'smooth' })}
+          >
+            <ArrowUp size={14} />
+          </button>
+          <button type="button" onClick={onClose} style={iconBtn} title="Close">
+            <X size={14} />
+          </button>
+        </div>
       </div>
-      <div style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div
+        ref={listRef}
+        style={{ flex: 1, overflowY: 'auto', padding: 12, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}
+      >
         {orderedThreads.length === 0 && (
           <div style={{ color: 'rgba(180,210,245,0.55)', fontSize: 12, textAlign: 'center', padding: 24 }}>
             No comments yet. Highlight any text and click 💬 Comment to start a thread.

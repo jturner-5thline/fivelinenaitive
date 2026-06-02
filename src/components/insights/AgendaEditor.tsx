@@ -325,6 +325,7 @@ export function AgendaEditor() {
   const latestDocRef = useRef<any>(null);
   const periodRef = useRef<{ type: string; key: string }>({ type: periodType, key: periodKey });
   const editorWrapRef = useRef<HTMLDivElement>(null);
+  const railListRef = useRef<HTMLDivElement | null>(null);
 
   const commentsApi = useAgendaComments(rowId, company?.id ?? null);
 
@@ -352,6 +353,26 @@ export function AgendaEditor() {
       },
     },
   });
+
+  // Click a highlighted comment span in the editor → open the rail and
+  // scroll the matching thread card into view.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const onClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest('.agenda-comment') as HTMLElement | null;
+      if (!target) return;
+      const threadId = target.getAttribute('data-thread-id');
+      if (!threadId) return;
+      setRailOpen(true);
+      requestAnimationFrame(() => {
+        const card = document.querySelector(`[data-thread-card="${threadId}"]`);
+        card?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      });
+    };
+    dom.addEventListener('click', onClick);
+    return () => { dom.removeEventListener('click', onClick); };
+  }, [editor]);
 
   const persist = useCallback(async (doc: any, type: string, key: string) => {
     if (!user?.id || !company?.id) return;
@@ -548,8 +569,22 @@ export function AgendaEditor() {
   }, [editor, user?.id, company?.id, periodType, periodKey, persist, copying]);
 
   return (
-    <div style={{ maxWidth: 960, margin: '0 auto', padding: '0 16px 32px' }}>
+    <div className="agenda-editor-shell">
       <style>{`
+        /* Vertical offset of the rail's sticky top. The Insights tab strip is
+           ~96px tall on desktop; this var lets the page override if needed. */
+        .agenda-editor-shell { --agenda-toolbar-offset: 96px; }
+        .agenda-editor-shell { display: flex; gap: 16px; align-items: flex-start; max-width: 1360px; margin: 0 auto; padding: 0 16px 32px; }
+        .agenda-editor-col { flex: 1 1 auto; min-width: 0; }
+        @media (max-width: 768px) {
+          .agenda-editor-shell { display: block; padding: 0 12px 32px; }
+          .agenda-comments-rail {
+            position: fixed !important;
+            top: 0 !important; right: 0; bottom: 0; left: 0;
+            width: 100% !important; max-height: 100vh !important;
+            border-radius: 0 !important; z-index: 1400 !important;
+          }
+        }
         .agenda-prose h1 { font-size: 28px; font-weight: 700; margin: 24px 0 12px; color: rgba(235,245,255,0.95); }
         .agenda-prose h2 { font-size: 22px; font-weight: 700; margin: 22px 0 2px; color: rgba(230,240,255,0.95); padding-bottom: 0; }
         /* The seeded subtitle paragraph sits directly after each H2 heading.
@@ -575,6 +610,7 @@ export function AgendaEditor() {
         }
         .agenda-prose .agenda-comment:hover { background: rgba(255, 213, 0, 0.32); }
       `}</style>
+      <div className="agenda-editor-col">
       <Toolbar editor={editor} />
       <div style={{
         display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
@@ -682,12 +718,14 @@ export function AgendaEditor() {
           }}
         />
       </div>
+      </div>
       <AgendaCommentsRail
         open={railOpen}
         onClose={() => setRailOpen(false)}
         editor={editor}
         api={commentsApi}
         currentUserId={user?.id ?? null}
+        scrollListRef={railListRef}
       />
     </div>
   );
