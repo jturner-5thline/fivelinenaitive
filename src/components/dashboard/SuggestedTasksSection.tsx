@@ -141,11 +141,11 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
                   {(s.assignee_user_id || s.external_mention || s.due_date) && (
                     <div className="flex flex-wrap items-center gap-1 mt-0.5">
                       {s.assignee_user_id && s.assignee_name ? (
-                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]">
+                        <Badge data-assignee-chip="internal" variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-emerald-500/30 text-emerald-200/90 bg-emerald-500/[0.06]">
                           <UserIcon className="h-2.5 w-2.5" /> {s.assignee_name}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
+                        <Badge data-assignee-chip="unassigned" variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-white/15 text-muted-foreground bg-transparent">
                           <UserIcon className="h-2.5 w-2.5" /> Unassigned
                         </Badge>
                       )}
