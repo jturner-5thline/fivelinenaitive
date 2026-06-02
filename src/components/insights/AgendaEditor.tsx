@@ -719,12 +719,14 @@ export function AgendaEditor() {
           }}
         />
       </div>
+      </div>
       <AgendaCommentsRail
         open={railOpen}
         onClose={() => setRailOpen(false)}
         editor={editor}
         api={commentsApi}
         currentUserId={user?.id ?? null}
+        scrollListRef={railListRef}
       />
     </div>
   );
