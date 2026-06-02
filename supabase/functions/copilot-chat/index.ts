@@ -7889,7 +7889,7 @@ SUGGESTED FOLLOW-UPS (REQUIRED — applies to every assistant reply EXCEPT confi
           }
 
           // Parse stream: forward content deltas to client, collect tool calls
-          const { content, toolCalls } = await consumeToolStream(response, writer, encoder);
+          let { content, toolCalls } = await consumeToolStream(response, writer, encoder);
 
           if (toolCalls.length > 0) {
             // If the model emitted prose before tool calls, scrub that
