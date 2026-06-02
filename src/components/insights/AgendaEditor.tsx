@@ -36,18 +36,29 @@ const FONT_FAMILIES = [
 
 const FONT_SIZES = ['12px', '14px', '16px', '18px', '20px', '24px', '28px', '32px', '40px'];
 
+export const SEED_SECTIONS = ['Presentation', 'Looking Forward', 'New Items', 'Prep'] as const;
+export const SEED_SUBTITLE = '(5-Minute Overview + Discussion & Q&A) - 12 Minutes Total Max';
+
+const headingNode = (text: string) => ({
+  type: 'heading',
+  attrs: { level: 2 },
+  content: [{ type: 'text', text }],
+});
+const subtitleNode = () => ({
+  type: 'paragraph',
+  content: [{
+    type: 'text',
+    marks: [
+      { type: 'italic' },
+      { type: 'textStyle', attrs: { fontSize: '13px', color: 'rgba(200,225,255,0.55)' } },
+    ],
+    text: SEED_SUBTITLE,
+  }],
+});
+
 const SEED_CONTENT = {
   type: 'doc',
-  content: [
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Presentation' }] },
-    { type: 'paragraph' },
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Looking Forward' }] },
-    { type: 'paragraph' },
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'New Items' }] },
-    { type: 'paragraph' },
-    { type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Prep' }] },
-    { type: 'paragraph' },
-  ],
+  content: SEED_SECTIONS.flatMap((s) => [headingNode(s), subtitleNode(), { type: 'paragraph' }]),
 };
 
 // Zod schema mirroring the DB CHECK constraint on insights_agenda.
@@ -75,18 +86,22 @@ export function isSeedContent(doc: any): boolean {
   const headings = doc.content
     .filter((n: any) => n?.type === 'heading')
     .map((n: any) => n?.content?.[0]?.text ?? '');
-  const required = ['Presentation', 'Looking Forward', 'New Items', 'Prep'];
+  const required = [...SEED_SECTIONS];
   const headingsMatch =
     headings.length === required.length &&
     required.every((h, i) => headings[i] === h);
   if (!headingsMatch) return false;
-  // Any non-empty paragraph / list / etc. means user added content.
+  // Non-heading nodes must be either empty paragraphs or exactly the
+  // auto-seeded subtitle paragraph. Anything else means the user added content.
   const hasUserContent = doc.content.some((n: any) => {
     if (n?.type === 'heading') return false;
-    if (n?.type === 'paragraph') {
-      return Array.isArray(n.content) && n.content.length > 0;
+    if (n?.type !== 'paragraph') return true; // lists, tasks, etc.
+    if (!Array.isArray(n.content) || n.content.length === 0) return false;
+    // Allow a single text node equal to the seed subtitle.
+    if (n.content.length === 1 && n.content[0]?.type === 'text' && n.content[0]?.text === SEED_SUBTITLE) {
+      return false;
     }
-    return true; // lists, tasks, etc.
+    return true;
   });
   return !hasUserContent;
 }
