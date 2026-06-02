@@ -245,7 +245,7 @@ export function ExpandedTaskDetails({ task, onUpdate, onOpenFullDetail }: Expand
                     <div className="text-[10px]" style={{ color: '#5b6173' }}>
                       {formatDistanceToNow(new Date(c.created_at), { addSuffix: true })}
                     </div>
-                    <div className="text-[12.5px] whitespace-pre-wrap" style={{ color: '#cfd5e0' }}>{c.body}</div>
+                    <MentionText text={c.body} className="text-[12.5px]" />
                   </div>
                 </div>
               ))}
@@ -264,15 +264,16 @@ export function ExpandedTaskDetails({ task, onUpdate, onOpenFullDetail }: Expand
                     {(user?.email || '?').slice(0, 2).toUpperCase()}
                   </AvatarFallback>
                 </Avatar>
-                <Textarea
-                  value={newComment}
-                  onChange={e => setNewComment(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); handleAddComment(); }
-                  }}
-                  placeholder="Add a comment… (⌘+Enter)"
-                  className="min-h-[34px] text-[12px] bg-[#13181f] border-[rgba(255,255,255,0.08)] text-[#eef1f6] py-1.5"
-                />
+                <div className="flex-1 min-w-0">
+                  <MentionTextarea
+                    value={newComment}
+                    onChange={setNewComment}
+                    onSubmit={handleAddComment}
+                    placeholder="Add a comment… (@ to mention, ⌘+Enter to send)"
+                    className="min-h-[34px] text-[12px]"
+                    minRows={2}
+                  />
+                </div>
               </div>
             </div>
           )}
