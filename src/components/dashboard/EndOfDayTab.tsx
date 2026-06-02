@@ -17,6 +17,7 @@ import { useGoogleCalendar, CalendarEvent } from '@/hooks/useGoogleCalendar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useMeetingClaapContext } from '@/hooks/useMeetingClaapContext';
+import { useQuery as useTanQuery } from '@tanstack/react-query';
 import { useClaapTokenStatus } from '@/hooks/useClaapTokenStatus';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
@@ -1096,18 +1097,39 @@ function EventDetailPane({
   const [claapBackfilling, setClaapBackfilling] = useState(false);
   const [claapBackfillTried, setClaapBackfillTried] = useState<string | null>(null);
 
-  const regenerateClaapSummary = async () => {
-    if (!claapCtx.recording?.meetingRowId) return;
+  // Pull live sync status for the linked recording (attempts + last error)
+  // so the card can surface "Syncing…" / Retry on permanent failure.
+  const recordingRowIdForStatus = claapCtx.recording?.rowId ?? null;
+  const { data: claapSyncStatus, refetch: refetchSyncStatus } = useTanQuery({
+    queryKey: ['claap-recording-sync-status', recordingRowIdForStatus],
+    enabled: !!recordingRowIdForStatus,
+    refetchInterval: claapCtx.source === 'none' ? 5000 : false,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('claap_recordings')
+        .select('sync_attempts, last_sync_error, last_sync_status, claap_summary_synced_at')
+        .eq('id', recordingRowIdForStatus!)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const regenerateClaapSummary = async (opts: { force?: boolean } = {}) => {
+    if (!claapCtx.recording?.meetingRowId && !claapCtx.recording?.rowId) return;
     setClaapBackfilling(true);
     try {
       await supabase.functions.invoke('claap-backfill-summaries', {
-        body: { meeting_id: claapCtx.recording.meetingRowId },
+        body: {
+          recording_id: claapCtx.recording?.rowId ?? undefined,
+          meeting_id: claapCtx.recording?.meetingRowId ?? undefined,
+          force: !!opts.force,
+        },
       });
     } catch (err) {
       console.warn('claap backfill failed', err);
     } finally {
       setClaapBackfilling(false);
-      await claapCtx.refetch();
+      await Promise.all([claapCtx.refetch(), refetchSyncStatus()]);
     }
   };
 
