@@ -34,11 +34,21 @@ test('Daily Rundown XUN <> Five Crowns Sync card never assigns external contacts
   // Wait for any suggested-tasks list to render.
   await page.waitForTimeout(500);
 
-  // Collect every assignee chip rendered inside the card. We scope to the
-  // emerald assignee Badge used by SuggestedTasksSection (internal user
-  // pill) — "Unassigned" pills are rendered with muted styling and are OK.
-  const assigneeChips = card.locator('[data-assignee-chip="internal"]');
+  // Collect every assignee chip rendered inside the card — both
+  // direct internal mentions and deal-manager fallbacks. Neither
+  // variant should ever contain an external contact name.
+  const assigneeChips = card.locator(
+    '[data-assignee-chip="internal"], [data-assignee-chip="deal-manager"]',
+  );
   const chipCount = await assigneeChips.count();
+
+  // The XUN <> Five Crowns Sync card has three Claap action items. With
+  // the deal-manager fallback enabled, none of them should render as
+  // "Unassigned" when the linked deal has an internal manager.
+  const unassignedCount = await card
+    .locator('[data-assignee-chip="unassigned"]')
+    .count();
+  expect(unassignedCount).toBe(0);
 
   for (let i = 0; i < chipCount; i++) {
     const text = (await assigneeChips.nth(i).innerText()).trim();
@@ -56,7 +66,7 @@ test('Daily Rundown XUN <> Five Crowns Sync card never assigns external contacts
   for (const ext of EXTERNAL_NAMES) {
     const mentionedNode = card.locator(`text=mentioned: ${ext}`);
     const internalChipWithName = card.locator(
-      `[data-assignee-chip="internal"]:has-text("${ext}")`,
+      `[data-assignee-chip="internal"]:has-text("${ext}"), [data-assignee-chip="deal-manager"]:has-text("${ext}")`,
     );
     expect(await internalChipWithName.count()).toBe(0);
     // If present at all, it must be in the mentioned: variant.
