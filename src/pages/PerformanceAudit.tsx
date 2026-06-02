@@ -58,6 +58,15 @@ interface AuditResult {
   run_id: string;
   summary: AuditSummary;
   rows: AuditRow[];
+  bbp_candidates?: Array<{
+    deal_id: string;
+    deal_name: string;
+    deal_owner: string | null;
+    manager: string | null;
+    stage: string | null;
+    status: string | null;
+    score: number;
+  }>;
 }
 
 const changeBg: Record<AuditRow["change_type"], string> = {
