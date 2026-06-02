@@ -17,7 +17,9 @@ export interface TaskMention {
 
 /** Extract @mention user IDs from text like "@[Display Name](userId)" */
 export function extractMentions(text: string): string[] {
-  const regex = /@\[([^\]]+)\]\(([^)]+)\)/g;
+  // Only accept UUID payloads — matches the DB trigger
+  // (regexp_matches '@\[[^\]]+\]\(([0-9a-fA-F-]{36})\)').
+  const regex = /@\[([^\]]+)\]\(([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})\)/g;
   const ids: string[] = [];
   let match;
   while ((match = regex.exec(text)) !== null) {
