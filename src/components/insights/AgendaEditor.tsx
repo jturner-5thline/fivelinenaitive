@@ -446,28 +446,11 @@ export function AgendaEditor() {
     if (!editor || !user?.id || !company?.id || copying) return;
     setCopying(true);
     try {
-      // Build a "previous period" token for the same granularity.
-      let prevKey: string | null = null;
-      if (periodType === 'month') {
-        const m = /^(\d{4})-(\d{2})$/.exec(periodKey);
-        if (m) {
-          const y = parseInt(m[1], 10);
-          const mo = parseInt(m[2], 10);
-          const d = new Date(y, mo - 2, 1);
-          prevKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        }
-      } else {
-        const m = /^(\d{4})-Q([1-4])$/.exec(periodKey);
-        if (m) {
-          let y = parseInt(m[1], 10);
-          let q = parseInt(m[2], 10) - 1;
-          if (q < 1) { q = 4; y -= 1; }
-          prevKey = `${y}-Q${q}`;
-        }
-      }
-      // Snapshot the editor state so the copy is undoable (Ctrl/Cmd+Z).
+      const prevKey = previousPeriodKey(periodType as 'month' | 'quarter', periodKey);
+      // Snapshot the editor's current (empty/seed) state so we can undo.
       const snapshot = editor.getJSON();
       let prev: any = null;
+      let usedKey: string | null = prevKey;
       if (prevKey) {
         const { data } = await supabase
           .from('insights_agenda')
@@ -483,7 +466,7 @@ export function AgendaEditor() {
       if (!prev) {
         const { data } = await supabase
           .from('insights_agenda')
-          .select('content_json, period_key, updated_at')
+          .select('content_json, period_key')
           .eq('user_id', user.id)
           .eq('company_id', company.id)
           .eq('period_type', periodType)
@@ -492,19 +475,35 @@ export function AgendaEditor() {
           .limit(1)
           .maybeSingle();
         prev = data?.content_json ?? null;
+        usedKey = data?.period_key ?? null;
       }
-      if (!prev || Object.keys(prev).length === 0) {
-        setSaveState('error');
-        window.setTimeout(() => setSaveState('idle'), 1500);
+      if (!prev || Object.keys(prev).length === 0 || isSeedContent(prev)) {
+        toast('No previous agenda found');
         return;
       }
-      // Use chain so the change lands on the undo stack (snapshot is the prior state).
-      void snapshot;
+      // Apply the copied content. setContent lands on the TipTap undo stack
+      // (Ctrl/Cmd+Z) and the toast also exposes an explicit Undo action.
       editor.chain().focus().setContent(prev, { emitUpdate: true }).run();
-      // Trigger a save immediately.
       const doc = editor.getJSON();
       latestDocRef.current = doc;
+      setIsEmpty(false);
       void persist(doc, periodType, periodKey);
+      const prevLabel = usedKey
+        ? formatPeriodLabel(periodType as 'month' | 'quarter', usedKey)
+        : 'previous period';
+      toast.success(`Copied agenda from ${prevLabel}`, {
+        duration: 10000,
+        action: {
+          label: 'Undo',
+          onClick: () => {
+            editor.chain().focus().setContent(snapshot, { emitUpdate: true }).run();
+            const reverted = editor.getJSON();
+            latestDocRef.current = reverted;
+            setIsEmpty(isSeedContent(reverted));
+            void persist(reverted, periodType, periodKey);
+          },
+        },
+      });
     } finally {
       setCopying(false);
     }
