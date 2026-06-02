@@ -650,7 +650,7 @@ const tools = [
     type: "function",
     function: {
       name: "search_deals",
-      description: "Search/filter deals by free-text name (fuzzy/phonetic), status, stage, stale days, or deal type. ALWAYS pass `query` when the user references a deal by name — matching tolerates typos, missing suffixes (Inc/LLC/Technologies), word reorderings, singular/plural, and phonetic near-misses (e.g. 'censys technology' matches 'Censys Technologies').",
+      description: "Search/filter deals by free-text name (fuzzy/phonetic), status, stage, stale days, or deal type. **REQUIRED FIRST CALL for any 'find', 'lookup', 'search for', 'show me', 'look up', 'where is', 'do we have', 'is there a deal', 'pull up' intent — even when the name has typos or is approximate.** ALWAYS pass `query` when the user references a deal by name — matching tolerates typos, missing suffixes (Inc/LLC/Technologies), word reorderings, singular/plural, and phonetic near-misses (e.g. 'censys technology' matches 'Censys Technologies', 'Exampl Deal' matches 'Example Deal'). Test/example deals (e.g. 'Example Deal', 'Test - Niki's Store') ARE indexed and ARE returned by this tool — never claim a deal does not exist without calling search_deals first.",
       parameters: {
         type: "object",
         properties: {
