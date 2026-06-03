@@ -15463,6 +15463,7 @@ export type Database = {
       }
       lender_contacts: {
         Row: {
+          contact_id: string | null
           created_at: string
           email: string | null
           geography: string | null
@@ -15476,6 +15477,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          contact_id?: string | null
           created_at?: string
           email?: string | null
           geography?: string | null
@@ -15489,6 +15491,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          contact_id?: string | null
           created_at?: string
           email?: string | null
           geography?: string | null
@@ -15502,6 +15505,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "lender_contacts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "lender_contacts_lender_id_fkey"
             columns: ["lender_id"]
