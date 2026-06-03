@@ -688,7 +688,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_stage",
-      description: "Move a deal to a different pipeline stage. HIGH RISK — returns a confirmation card.",
+      description: "Move a deal to a different pipeline STAGE — the column the deal card sits in on the board (e.g. Pre-Credit Needs, NDA/Needs List Sent, Terms Issued, In Due Diligence, Funded/Invoiced, Closed Won, Closed Lost, On Hold, Passed). USE THIS whenever the user says 'move <Deal> to <X>', 'change stage to <X>', 'mark as closed lost/won', or 'close <Deal> won/lost' — including Closed Won and Closed Lost. Do NOT use update_deal_status for those — Closed Won/Lost are STAGES, not statuses. HIGH RISK — returns a confirmation card.",
       parameters: {
         type: "object",
         properties: {
@@ -1021,7 +1021,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_status",
-      description: "Update a deal's overall status (on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost). HIGH RISK — returns a confirmation card.",
+      description: "Update a deal's HEALTH INDICATOR only — the colored badge on the deal card. Valid values are STRICTLY: on-track, at-risk, off-track, on-hold, archived. DO NOT use this to move a deal to Closed Won / Closed Lost / On Hold-as-stage / any pipeline column — those are STAGES; use update_deal_stage instead. HIGH RISK — returns a confirmation card.",
       parameters: {
         type: "object",
         properties: {
@@ -1029,7 +1029,8 @@ const tools = [
           deal_name: { type: "string", description: "Deal company name for display" },
           new_status: {
             type: "string",
-            description: "New status. Common values: on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost",
+            enum: ["on-track", "at-risk", "off-track", "on-hold", "archived"],
+            description: "Deal health indicator. STRICT enum — no other values accepted. For Closed Won / Closed Lost or any pipeline column change, call update_deal_stage instead.",
           },
           status_note: { type: "string", description: "Optional note explaining the status change" },
         },
@@ -3642,6 +3643,13 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── HIGH RISK: Confirm deal status update (on-track / at-risk / off-track) ──
     case "update_deal_status": {
+      const ALLOWED_STATUSES_CONFIRM = ["on-track", "at-risk", "off-track", "on-hold", "archived"];
+      const incomingConfirm = String(args.new_status ?? "").toLowerCase().trim();
+      if (!ALLOWED_STATUSES_CONFIRM.includes(incomingConfirm)) {
+        return {
+          error: `Invalid status "${args.new_status}". Status must be one of: ${ALLOWED_STATUSES_CONFIRM.join(", ")}. If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", call update_deal_stage instead — those are STAGES, not statuses.`,
+        };
+      }
       const { data: deal } = await supabase
         .from("deals")
         .select("id, company, status")
@@ -3652,11 +3660,11 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "update_deal_status",
-        description: `Update ${dealName} status to "${args.new_status}"`,
+        description: `Update ${dealName} status to "${incomingConfirm}"`,
         params: {
           deal_id: args.deal_id,
           deal_name: dealName,
-          new_status: args.new_status,
+          new_status: incomingConfirm,
           current_status: deal.status,
           status_note: args.status_note || null,
         },
@@ -6058,8 +6066,16 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       };
     }
     case "update_deal_status": {
+      const ALLOWED_STATUSES_EXEC = ["on-track", "at-risk", "off-track", "on-hold", "archived"];
+      const incomingExec = String(params.new_status ?? "").toLowerCase().trim();
+      if (!ALLOWED_STATUSES_EXEC.includes(incomingExec)) {
+        return {
+          success: false,
+          error: `Invalid status "${params.new_status}". Status must be one of: ${ALLOWED_STATUSES_EXEC.join(", ")}. If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", call update_deal_stage instead — those are STAGES, not statuses.`,
+        };
+      }
       try {
-        await verifiedDealUpdate(supabase, params.deal_id, { status: params.new_status });
+        await verifiedDealUpdate(supabase, params.deal_id, { status: incomingExec });
       } catch (e) {
         if (e instanceof WriteNotPersistedError) {
           return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
@@ -6069,12 +6085,12 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id,
         activity_type: "status_change",
-        description: `Status changed from "${params.current_status || "unknown"}" to "${params.new_status}"${params.status_note ? ` — ${params.status_note}` : ""} via AI Copilot`,
+        description: `Status changed from "${params.current_status || "unknown"}" to "${incomingExec}"${params.status_note ? ` — ${params.status_note}` : ""} via AI Copilot`,
         user_id: userId,
       });
       return {
         success: true,
-        message: `Done — status updated to ${params.new_status}`,
+        message: `Done — status updated to ${incomingExec}`,
         actionType: "update_deal_status",
         params: { deal_id: params.deal_id },
       };
@@ -7902,6 +7918,14 @@ WRITE ACTION TOOLS:
 - add_deal_note: Add note to activity log (LOW RISK, auto-executes)
 - update_deal_fields: Update deal size, close date, flag (MEDIUM/LOW RISK, depends on field)
 - update_deal_stage: Move deal to a different stage WITHIN its current pipeline (HIGH RISK, needs confirmation). Do NOT use this to move between pipelines.
+
+STAGE vs STATUS — NEVER confuse these two fields:
+- STAGE = pipeline column on the board (Pre-Credit Needs, NDA/Needs List Sent, Terms Issued, In Due Diligence, Funded/Invoiced, Closed Won, Closed Lost, On Hold-as-stage, Passed, etc.). Changes which column the deal card sits in. Tools: update_deal_stage, or the `stage` param of update_deal_fields.
+- STATUS = deal HEALTH badge, strict enum {on-track, at-risk, off-track, on-hold, archived}. Tool: update_deal_status.
+Disambiguation rules — apply these literally:
+- "move <Deal> to <X>" / "change stage to <X>" / "mark as closed lost" / "mark as closed won" / "close <Deal> won|lost" → ALWAYS update_deal_stage.
+- "mark as at risk" / "set status to on hold" / "this deal is off track" / "deal is healthy / on track" → update_deal_status.
+- Closed Won, Closed Lost, Passed, and any pipeline-column phrase are STAGES, never statuses. If you call update_deal_status with one of those, the handler will reject the call.
 - move_deal_pipeline: Move deal to a DIFFERENT pipeline entirely (e.g. from Active Deals to In Development, or to Archived). HIGH RISK, needs confirmation. Use get_pipelines first to see available pipelines.
 - get_pipelines: List all available pipelines with their stages. Use before move_deal_pipeline to resolve names to IDs.
 - update_lender_status: Update lender stage/status (HIGH RISK, needs confirmation)
