@@ -3643,6 +3643,13 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
 
     // ── HIGH RISK: Confirm deal status update (on-track / at-risk / off-track) ──
     case "update_deal_status": {
+      const ALLOWED_STATUSES_CONFIRM = ["on-track", "at-risk", "off-track", "on-hold", "archived"];
+      const incomingConfirm = String(args.new_status ?? "").toLowerCase().trim();
+      if (!ALLOWED_STATUSES_CONFIRM.includes(incomingConfirm)) {
+        return {
+          error: `Invalid status "${args.new_status}". Status must be one of: ${ALLOWED_STATUSES_CONFIRM.join(", ")}. If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", call update_deal_stage instead — those are STAGES, not statuses.`,
+        };
+      }
       const { data: deal } = await supabase
         .from("deals")
         .select("id, company, status")
@@ -3653,11 +3660,11 @@ async function executeTool(supabase: any, name: string, args: any, userId: strin
       return {
         action: "confirm",
         action_type: "update_deal_status",
-        description: `Update ${dealName} status to "${args.new_status}"`,
+        description: `Update ${dealName} status to "${incomingConfirm}"`,
         params: {
           deal_id: args.deal_id,
           deal_name: dealName,
-          new_status: args.new_status,
+          new_status: incomingConfirm,
           current_status: deal.status,
           status_note: args.status_note || null,
         },
