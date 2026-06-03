@@ -6066,8 +6066,16 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       };
     }
     case "update_deal_status": {
+      const ALLOWED_STATUSES_EXEC = ["on-track", "at-risk", "off-track", "on-hold", "archived"];
+      const incomingExec = String(params.new_status ?? "").toLowerCase().trim();
+      if (!ALLOWED_STATUSES_EXEC.includes(incomingExec)) {
+        return {
+          success: false,
+          error: `Invalid status "${params.new_status}". Status must be one of: ${ALLOWED_STATUSES_EXEC.join(", ")}. If you meant to move the deal to a pipeline column like "Closed Lost" or "Closed Won", call update_deal_stage instead — those are STAGES, not statuses.`,
+        };
+      }
       try {
-        await verifiedDealUpdate(supabase, params.deal_id, { status: params.new_status });
+        await verifiedDealUpdate(supabase, params.deal_id, { status: incomingExec });
       } catch (e) {
         if (e instanceof WriteNotPersistedError) {
           return { success: false, error: e.toUserMessage(), error_code: e.code, mismatches: e.mismatches };
@@ -6077,12 +6085,12 @@ async function executeConfirmAction(supabase: any, actionType: string, params: a
       await supabase.from("activity_logs").insert({
         deal_id: params.deal_id,
         activity_type: "status_change",
-        description: `Status changed from "${params.current_status || "unknown"}" to "${params.new_status}"${params.status_note ? ` — ${params.status_note}` : ""} via AI Copilot`,
+        description: `Status changed from "${params.current_status || "unknown"}" to "${incomingExec}"${params.status_note ? ` — ${params.status_note}` : ""} via AI Copilot`,
         user_id: userId,
       });
       return {
         success: true,
-        message: `Done — status updated to ${params.new_status}`,
+        message: `Done — status updated to ${incomingExec}`,
         actionType: "update_deal_status",
         params: { deal_id: params.deal_id },
       };
