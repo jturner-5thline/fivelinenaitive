@@ -75,7 +75,7 @@ export function AddLenderContactDialog({ onAdd, disabled }: AddLenderContactDial
           Add Contact
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-md !z-[100]" overlayClassName="!z-[99]">
+      <DialogContent className="sm:max-w-md !z-[1410]" overlayClassName="!z-[1400]">
         <DialogHeader>
           <DialogTitle>Add Contact</DialogTitle>
         </DialogHeader>
