@@ -990,6 +990,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
         <div className="mt-2 flex justify-end">{StandalonePlusButton}</div>
       ) : null}
       </div>
+      <SharedTaskDrawer taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
     </div>
   );
 }
