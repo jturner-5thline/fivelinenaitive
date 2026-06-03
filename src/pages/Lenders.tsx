@@ -83,6 +83,7 @@ import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
 import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
+import { LenderContactPicker } from '@/components/lenders/LenderContactPicker';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -137,6 +138,7 @@ interface LenderInfo {
 }
 
 interface LenderFormContact {
+  contact_id?: string | null;
   name: string;
   title: string;
   email: string;
@@ -145,7 +147,7 @@ interface LenderFormContact {
 }
 
 const emptyContact = (isPrimary = false): LenderFormContact => ({
-  name: '', title: '', email: '', phone: '', isPrimary,
+  contact_id: null, name: '', title: '', email: '', phone: '', isPrimary,
 });
 
 interface LenderForm {
