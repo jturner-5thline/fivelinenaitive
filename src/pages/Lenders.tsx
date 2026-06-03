@@ -166,6 +166,15 @@ interface LenderForm {
   industries: string;
   geo: string;
   description: string;
+  tier: string;
+  relationshipOwners: string;
+  website: string;
+  linkedinUrl: string;
+  phoneMain: string;
+  address: string;
+  minRevenue: string;
+  ebitdaMin: string;
+  companyRequirements: string;
 }
 
 const emptyForm: LenderForm = {
@@ -178,6 +187,15 @@ const emptyForm: LenderForm = {
   industries: '',
   geo: '',
   description: '',
+  tier: '',
+  relationshipOwners: '',
+  website: '',
+  linkedinUrl: '',
+  phoneMain: '',
+  address: '',
+  minRevenue: '',
+  ebitdaMin: '',
+  companyRequirements: '',
 };
 
 // Helper to convert MasterLender to LenderInfo for dialog compatibility
