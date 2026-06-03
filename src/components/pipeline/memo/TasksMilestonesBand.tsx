@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { AddFollowupInlineForm } from './AddFollowupInlineForm';
 import { AddTaskInlineForm } from './AddTaskInlineForm';
 import { AddMilestoneInlineForm } from './AddMilestoneInlineForm';
+import { SharedTaskDrawer } from '@/components/tasks/SharedTaskDrawer';
 import { prefillFollowupTitle } from '@/lib/dealNextBestAction';
 import { getAsanaSyncContext } from '@/hooks/useAsanaTaskSync';
 import { updateTaskInAsana } from '@/hooks/useAsanaTaskUpdate';
