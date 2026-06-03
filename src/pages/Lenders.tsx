@@ -1778,7 +1778,7 @@ export default function Lenders() {
           <DialogHeader>
             <DialogTitle>{editingLenderId ? 'Edit Funding Source' : 'Add Funding Source'}</DialogTitle>
           </DialogHeader>
-          <ScrollArea className="flex-1 min-h-0 pr-4">
+          <div className="flex-1 min-h-0 overflow-y-auto pr-4 -mr-2">
             <div className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="name">Funding Source Name *</Label>
@@ -1960,7 +1960,7 @@ export default function Lenders() {
                 />
               </div>
             </div>
-          </ScrollArea>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
