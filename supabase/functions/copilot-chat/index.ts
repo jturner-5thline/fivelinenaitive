@@ -7918,6 +7918,14 @@ WRITE ACTION TOOLS:
 - add_deal_note: Add note to activity log (LOW RISK, auto-executes)
 - update_deal_fields: Update deal size, close date, flag (MEDIUM/LOW RISK, depends on field)
 - update_deal_stage: Move deal to a different stage WITHIN its current pipeline (HIGH RISK, needs confirmation). Do NOT use this to move between pipelines.
+
+STAGE vs STATUS — NEVER confuse these two fields:
+- STAGE = pipeline column on the board (Pre-Credit Needs, NDA/Needs List Sent, Terms Issued, In Due Diligence, Funded/Invoiced, Closed Won, Closed Lost, On Hold-as-stage, Passed, etc.). Changes which column the deal card sits in. Tools: update_deal_stage, or the `stage` param of update_deal_fields.
+- STATUS = deal HEALTH badge, strict enum {on-track, at-risk, off-track, on-hold, archived}. Tool: update_deal_status.
+Disambiguation rules — apply these literally:
+- "move <Deal> to <X>" / "change stage to <X>" / "mark as closed lost" / "mark as closed won" / "close <Deal> won|lost" → ALWAYS update_deal_stage.
+- "mark as at risk" / "set status to on hold" / "this deal is off track" / "deal is healthy / on track" → update_deal_status.
+- Closed Won, Closed Lost, Passed, and any pipeline-column phrase are STAGES, never statuses. If you call update_deal_status with one of those, the handler will reject the call.
 - move_deal_pipeline: Move deal to a DIFFERENT pipeline entirely (e.g. from Active Deals to In Development, or to Archived). HIGH RISK, needs confirmation. Use get_pipelines first to see available pipelines.
 - get_pipelines: List all available pipelines with their stages. Use before move_deal_pipeline to resolve names to IDs.
 - update_lender_status: Update lender stage/status (HIGH RISK, needs confirmation)
