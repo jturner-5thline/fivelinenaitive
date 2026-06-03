@@ -15,6 +15,7 @@ import { toast } from 'sonner';
 import { AddFollowupInlineForm } from './AddFollowupInlineForm';
 import { AddTaskInlineForm } from './AddTaskInlineForm';
 import { AddMilestoneInlineForm } from './AddMilestoneInlineForm';
+import { SharedTaskDrawer } from '@/components/tasks/SharedTaskDrawer';
 import { prefillFollowupTitle } from '@/lib/dealNextBestAction';
 import { getAsanaSyncContext } from '@/hooks/useAsanaTaskSync';
 import { updateTaskInAsana } from '@/hooks/useAsanaTaskUpdate';
@@ -189,6 +190,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
   const [savingFieldIds, setSavingFieldIds] = useState<Set<string>>(new Set());
   const [titleDraft, setTitleDraft] = useState('');
   const [addFormOpen, setAddFormOpen] = useState(false);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const prefillTitle = prefillFollowupTitle(deal, tasks, rawDigest);
 
   // Standalone "+" button rendered as a sibling to the bottom-most
@@ -725,19 +727,41 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
                   />
                 ) : (
                   <span
-                    onClick={() => startTitleEdit(task)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (task.kind === 'task') {
+                        setOpenTaskId(task.id);
+                      }
+                    }}
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      if (task.kind === 'task') startTitleEdit(task);
+                    }}
                     className={cn(
                       'flex-1 min-w-0 text-xs text-foreground font-medium truncate',
-                      task.kind === 'task' && 'cursor-text hover:text-primary'
+                      task.kind === 'task' && 'cursor-pointer hover:text-primary'
                     )}
-                    title={task.title}
+                    title={task.kind === 'task' ? `${task.title} — click to open, double-click to rename` : task.title}
                   >
                     {task.title}
                   </span>
                 )}
 
                 {task.kind === 'task' && (
-                  <Pencil className="h-3 w-3 text-muted-foreground/40 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  <button
+                    type="button"
+                    aria-label={`Rename "${task.title}"`}
+                    title="Rename"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startTitleEdit(task);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity p-0.5 -m-0.5 rounded hover:bg-muted/60"
+                  >
+                    <Pencil className="h-3 w-3 text-muted-foreground/60" />
+                  </button>
                 )}
 
                 {task.kind === 'task' ? (
@@ -966,6 +990,7 @@ export function TasksMilestonesBand({ deal, tasks, rawDigest }: TasksMilestonesB
         <div className="mt-2 flex justify-end">{StandalonePlusButton}</div>
       ) : null}
       </div>
+      <SharedTaskDrawer taskId={openTaskId} onClose={() => setOpenTaskId(null)} />
     </div>
   );
 }
