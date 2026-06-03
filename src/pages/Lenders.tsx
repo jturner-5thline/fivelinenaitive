@@ -1907,47 +1907,26 @@ export default function Lenders() {
                         </Button>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Name"
-                        value={contact.name}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, name: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                      <Input
-                        placeholder="Title (e.g., VP)"
-                        value={contact.title}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, title: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Email"
-                        type="email"
-                        value={contact.email}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, email: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                      <Input
-                        placeholder="Phone (optional)"
-                        value={contact.phone}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, phone: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                    </div>
+                    <LenderContactPicker
+                      value={{
+                        contact_id: contact.contact_id ?? null,
+                        name: contact.name,
+                        title: contact.title,
+                        email: contact.email,
+                        phone: contact.phone,
+                      }}
+                      onChange={(next) => setForm(prev => ({
+                        ...prev,
+                        contacts: prev.contacts.map((c, i) => i === idx ? {
+                          ...c,
+                          contact_id: next.contact_id,
+                          name: next.name,
+                          title: next.title,
+                          email: next.email,
+                          phone: next.phone,
+                        } : c),
+                      }))}
+                    />
                   </div>
                 ))}
               </div>
