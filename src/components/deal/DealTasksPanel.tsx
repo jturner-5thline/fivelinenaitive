@@ -1,5 +1,4 @@
 import { useState, useMemo, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import { SharedTaskDrawer } from '@/components/tasks/SharedTaskDrawer';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -38,27 +37,36 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const teamMembers = useTeamMembers();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Deep link: ?task=<id> auto-opens the drawer.
+  // Deep link: read ?task=<id> from the *real* browser URL once on mount.
+  // We deliberately do NOT use react-router's useSearchParams here because
+  // this panel renders inside the deal overlay's synthetic <Routes location>,
+  // and setSearchParams from that context navigates the outer router to a
+  // path it doesn't know (`/deals/__overlay/:id`) → 404. Local state +
+  // window.history.replaceState keeps the URL pretty without re-routing.
   useEffect(() => {
-    const t = searchParams.get('task');
-    if (t && t !== openTaskId) setOpenTaskId(t);
+    if (typeof window === 'undefined') return;
+    const t = new URLSearchParams(window.location.search).get('task');
+    if (t) setOpenTaskId(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, []);
+
+  const writeTaskParam = (id: string | null) => {
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    if (id) url.searchParams.set('task', id);
+    else url.searchParams.delete('task');
+    window.history.replaceState(window.history.state, '', url.toString());
+  };
 
   const handleOpenTask = (id: string) => {
     setOpenTaskId(id);
-    const next = new URLSearchParams(searchParams);
-    next.set('task', id);
-    setSearchParams(next, { replace: true });
+    writeTaskParam(id);
   };
 
   const handleCloseTask = () => {
     setOpenTaskId(null);
-    const next = new URLSearchParams(searchParams);
-    next.delete('task');
-    setSearchParams(next, { replace: true });
+    writeTaskParam(null);
   };
   const [isOpen, setIsOpen] = useState(true);
   const [viewFilter, setViewFilter] = useState<'mine' | 'all'>('mine');
