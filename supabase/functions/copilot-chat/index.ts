@@ -1021,7 +1021,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_status",
-      description: "Update a deal's overall status (on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost). HIGH RISK — returns a confirmation card.",
+      description: "Update a deal's HEALTH INDICATOR only — the colored badge on the deal card. Valid values are STRICTLY: on-track, at-risk, off-track, on-hold, archived. DO NOT use this to move a deal to Closed Won / Closed Lost / On Hold-as-stage / any pipeline column — those are STAGES; use update_deal_stage instead. HIGH RISK — returns a confirmation card.",
       parameters: {
         type: "object",
         properties: {
@@ -1029,7 +1029,8 @@ const tools = [
           deal_name: { type: "string", description: "Deal company name for display" },
           new_status: {
             type: "string",
-            description: "New status. Common values: on-track, at-risk, off-track, on-hold, archived, closed-won, closed-lost",
+            enum: ["on-track", "at-risk", "off-track", "on-hold", "archived"],
+            description: "Deal health indicator. STRICT enum — no other values accepted. For Closed Won / Closed Lost or any pipeline column change, call update_deal_stage instead.",
           },
           status_note: { type: "string", description: "Optional note explaining the status change" },
         },
