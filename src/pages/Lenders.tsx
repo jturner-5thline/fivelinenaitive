@@ -889,6 +889,15 @@ export default function Lenders() {
       industries: form.industries.split(',').map(p => p.trim()).filter(p => p) || null,
       geo: form.geo.trim() || null,
       deal_structure_notes: form.description.trim() || null,
+      tier: form.tier ? `T${form.tier}` : null,
+      relationship_owners: form.relationshipOwners.trim() || null,
+      website: form.website.trim() || null,
+      linkedin_url: form.linkedinUrl.trim() || null,
+      phone: form.phoneMain.trim() || null,
+      address: form.address.trim() || null,
+      min_revenue: form.minRevenue ? parseFloat(form.minRevenue) : null,
+      ebitda_min: form.ebitdaMin ? parseFloat(form.ebitdaMin) : null,
+      company_requirements: form.companyRequirements.trim() || null,
     };
 
     try {
