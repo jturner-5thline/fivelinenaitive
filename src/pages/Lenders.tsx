@@ -83,6 +83,7 @@ import { useCanSeeFlexSync } from '@/hooks/useCanSeeFlexSync';
 import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialog';
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
 import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
+import { LenderContactPicker } from '@/components/lenders/LenderContactPicker';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -137,6 +138,7 @@ interface LenderInfo {
 }
 
 interface LenderFormContact {
+  contact_id?: string | null;
   name: string;
   title: string;
   email: string;
@@ -145,7 +147,7 @@ interface LenderFormContact {
 }
 
 const emptyContact = (isPrimary = false): LenderFormContact => ({
-  name: '', title: '', email: '', phone: '', isPrimary,
+  contact_id: null, name: '', title: '', email: '', phone: '', isPrimary,
 });
 
 interface LenderForm {
@@ -892,18 +894,46 @@ export default function Lenders() {
 
       // Insert contacts into lender_contacts
       if (lenderId) {
-        const contactsToInsert = form.contacts
-          .filter(c => c.name.trim())
-          .map(c => ({
-            lender_id: lenderId!,
-            name: c.name.trim(),
-            title: c.title.trim() || null,
-            email: c.email.trim() || null,
-            phone: c.phone.trim() || null,
-            is_primary: c.isPrimary,
-          }));
-        if (contactsToInsert.length > 0) {
-          await supabase.from('lender_contacts').insert(contactsToInsert);
+        const resolved = await Promise.all(
+          form.contacts
+            .filter(c => c.name.trim())
+            .map(async (c) => {
+              let contactId = c.contact_id ?? null;
+              // No CRM link yet → create a fresh contact row so we link instead of dup later
+              if (!contactId) {
+                const trimmedName = c.name.trim();
+                const [firstName, ...rest] = trimmedName.split(' ');
+                const lastName = rest.join(' ').trim() || null;
+                const { data: created, error: createErr } = await supabase
+                  .from('contacts')
+                  .insert({
+                    first_name: firstName || null,
+                    last_name: lastName,
+                    email: c.email.trim() || null,
+                    job_title: c.title.trim() || null,
+                    phone_work: c.phone.trim() || null,
+                  })
+                  .select('id')
+                  .single();
+                if (createErr) {
+                  console.warn('[Lenders] could not create CRM contact, saving lender contact without link', createErr);
+                } else {
+                  contactId = created?.id ?? null;
+                }
+              }
+              return {
+                lender_id: lenderId!,
+                contact_id: contactId,
+                name: c.name.trim(),
+                title: c.title.trim() || null,
+                email: c.email.trim() || null,
+                phone: c.phone.trim() || null,
+                is_primary: c.isPrimary,
+              };
+            })
+        );
+        if (resolved.length > 0) {
+          await supabase.from('lender_contacts').insert(resolved);
         }
       }
 
@@ -1905,47 +1935,26 @@ export default function Lenders() {
                         </Button>
                       )}
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Name"
-                        value={contact.name}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, name: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                      <Input
-                        placeholder="Title (e.g., VP)"
-                        value={contact.title}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, title: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      <Input
-                        placeholder="Email"
-                        type="email"
-                        value={contact.email}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, email: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                      <Input
-                        placeholder="Phone (optional)"
-                        value={contact.phone}
-                        onChange={(e) => setForm(prev => ({
-                          ...prev,
-                          contacts: prev.contacts.map((c, i) => i === idx ? { ...c, phone: e.target.value } : c),
-                        }))}
-                        className="h-8 text-sm"
-                      />
-                    </div>
+                    <LenderContactPicker
+                      value={{
+                        contact_id: contact.contact_id ?? null,
+                        name: contact.name,
+                        title: contact.title,
+                        email: contact.email,
+                        phone: contact.phone,
+                      }}
+                      onChange={(next) => setForm(prev => ({
+                        ...prev,
+                        contacts: prev.contacts.map((c, i) => i === idx ? {
+                          ...c,
+                          contact_id: next.contact_id,
+                          name: next.name,
+                          title: next.title,
+                          email: next.email,
+                          phone: next.phone,
+                        } : c),
+                      }))}
+                    />
                   </div>
                 ))}
               </div>
