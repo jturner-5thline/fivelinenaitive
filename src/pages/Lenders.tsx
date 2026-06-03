@@ -84,6 +84,11 @@ import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialo
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
 import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
 import { LenderContactPicker } from '@/components/lenders/LenderContactPicker';
+import { MultiSelectChips } from '@/components/lenders/MultiSelectChips';
+import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
+import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
+import { GEO_OPTIONS } from '@/constants/geoOptions';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
@@ -161,6 +166,15 @@ interface LenderForm {
   industries: string;
   geo: string;
   description: string;
+  tier: string;
+  relationshipOwners: string;
+  website: string;
+  linkedinUrl: string;
+  phoneMain: string;
+  address: string;
+  minRevenue: string;
+  ebitdaMin: string;
+  companyRequirements: string;
 }
 
 const emptyForm: LenderForm = {
@@ -173,6 +187,15 @@ const emptyForm: LenderForm = {
   industries: '',
   geo: '',
   description: '',
+  tier: '',
+  relationshipOwners: '',
+  website: '',
+  linkedinUrl: '',
+  phoneMain: '',
+  address: '',
+  minRevenue: '',
+  ebitdaMin: '',
+  companyRequirements: '',
 };
 
 // Helper to convert MasterLender to LenderInfo for dialog compatibility
@@ -866,6 +889,15 @@ export default function Lenders() {
       industries: form.industries.split(',').map(p => p.trim()).filter(p => p) || null,
       geo: form.geo.trim() || null,
       deal_structure_notes: form.description.trim() || null,
+      tier: form.tier ? `T${form.tier}` : null,
+      relationship_owners: form.relationshipOwners.trim() || null,
+      website: form.website.trim() || null,
+      linkedin_url: form.linkedinUrl.trim() || null,
+      phone: form.phoneMain.trim() || null,
+      address: form.address.trim() || null,
+      min_revenue: form.minRevenue ? parseFloat(form.minRevenue) : null,
+      ebitda_min: form.ebitdaMin ? parseFloat(form.ebitdaMin) : null,
+      company_requirements: form.companyRequirements.trim() || null,
     };
 
     try {
@@ -1810,77 +1842,59 @@ export default function Lenders() {
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-y-auto pr-4 -mr-2">
             <div className="space-y-4">
+              {/* Name + Tier */}
+              <div className="grid grid-cols-[1fr_auto] gap-4 items-end">
+                <div className="space-y-2">
+                  <Label htmlFor="name">Funding Source Name *</Label>
+                  <Input
+                    id="name"
+                    value={form.name}
+                    onChange={(e) => setForm({ ...form, name: e.target.value })}
+                    placeholder="Enter lender name"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="tier">Tier</Label>
+                  <Select
+                    value={form.tier || 'none'}
+                    onValueChange={(value) => setForm({ ...form, tier: value === 'none' ? '' : value })}
+                  >
+                    <SelectTrigger id="tier" className="w-[100px]">
+                      <SelectValue placeholder="Tier" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">None</SelectItem>
+                      <SelectItem value="1">T1</SelectItem>
+                      <SelectItem value="2">T2</SelectItem>
+                      <SelectItem value="3">T3</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* About / Notes */}
               <div className="space-y-2">
-                <Label htmlFor="name">Funding Source Name *</Label>
-                <Input
-                  id="name"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  placeholder="Enter lender name"
+                <Label htmlFor="description">About / Notes</Label>
+                <Textarea
+                  id="description"
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Additional notes about the funding source..."
+                  rows={3}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="lenderType">Funding Source Type</Label>
-                  <Input
-                    id="lenderType"
-                    value={form.lenderType}
-                    onChange={(e) => setForm({ ...form, lenderType: e.target.value })}
-                    placeholder="e.g., Bank, Credit Fund"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="geo">Geography</Label>
-                  <Input
-                    id="geo"
-                    value={form.geo}
-                    onChange={(e) => setForm({ ...form, geo: e.target.value })}
-                    placeholder="e.g., US, Global"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="minDeal">Min Deal Size</Label>
-                  <Input
-                    id="minDeal"
-                    type="number"
-                    value={form.minDeal}
-                    onChange={(e) => setForm({ ...form, minDeal: e.target.value })}
-                    placeholder="e.g., 1000000"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="maxDeal">Max Deal Size</Label>
-                  <Input
-                    id="maxDeal"
-                    type="number"
-                    value={form.maxDeal}
-                    onChange={(e) => setForm({ ...form, maxDeal: e.target.value })}
-                    placeholder="e.g., 25000000"
-                  />
-                </div>
-              </div>
+
+              {/* Funding Source Type */}
               <div className="space-y-2">
-                <Label htmlFor="loanTypes">Loan Types</Label>
+                <Label htmlFor="lenderType">Funding Source Type</Label>
                 <Input
-                  id="loanTypes"
-                  value={form.loanTypes}
-                  onChange={(e) => setForm({ ...form, loanTypes: e.target.value })}
-                  placeholder="Comma-separated (e.g., Term Loan, Revolver)"
+                  id="lenderType"
+                  value={form.lenderType}
+                  onChange={(e) => setForm({ ...form, lenderType: e.target.value })}
+                  placeholder="e.g., Bank, Credit Fund"
                 />
-                <p className="text-xs text-muted-foreground">Separate multiple types with commas</p>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="industries">Industries</Label>
-                <Input
-                  id="industries"
-                  value={form.industries}
-                  onChange={(e) => setForm({ ...form, industries: e.target.value })}
-                  placeholder="Comma-separated (e.g., SaaS, Healthcare)"
-                />
-                <p className="text-xs text-muted-foreground">Separate multiple industries with commas</p>
-              </div>
+
               <Separator />
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -1958,15 +1972,150 @@ export default function Lenders() {
                   </div>
                 ))}
               </div>
+
+              {/* Relationship Owner(s) */}
               <div className="space-y-2">
-                <Label htmlFor="description">Notes / Description</Label>
-                <Textarea
-                  id="description"
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  placeholder="Additional notes about the funding source..."
-                  rows={3}
+                <Label htmlFor="relationshipOwners">Relationship Owner(s)</Label>
+                <Input
+                  id="relationshipOwners"
+                  value={form.relationshipOwners}
+                  onChange={(e) => setForm({ ...form, relationshipOwners: e.target.value })}
+                  placeholder="Comma-separated names"
                 />
+              </div>
+
+              <Separator />
+              {/* Business Info */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Business Info</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="website" className="text-xs text-muted-foreground">Website</Label>
+                    <Input
+                      id="website"
+                      value={form.website}
+                      onChange={(e) => setForm({ ...form, website: e.target.value })}
+                      placeholder="https://example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="linkedinUrl" className="text-xs text-muted-foreground">LinkedIn</Label>
+                    <Input
+                      id="linkedinUrl"
+                      value={form.linkedinUrl}
+                      onChange={(e) => setForm({ ...form, linkedinUrl: e.target.value })}
+                      placeholder="https://linkedin.com/company/..."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phoneMain" className="text-xs text-muted-foreground">Phone</Label>
+                    <Input
+                      id="phoneMain"
+                      value={form.phoneMain}
+                      onChange={(e) => setForm({ ...form, phoneMain: e.target.value })}
+                      placeholder="(555) 555-5555"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address" className="text-xs text-muted-foreground">Address</Label>
+                    <Input
+                      id="address"
+                      value={form.address}
+                      onChange={(e) => setForm({ ...form, address: e.target.value })}
+                      placeholder="City, State"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+              {/* Lending Criteria */}
+              <div className="space-y-3">
+                <Label className="text-sm font-medium">Lending Criteria</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="minDeal" className="text-xs text-muted-foreground">Min Deal Size ($)</Label>
+                    <Input
+                      id="minDeal"
+                      type="number"
+                      value={form.minDeal}
+                      onChange={(e) => setForm({ ...form, minDeal: e.target.value })}
+                      placeholder="e.g., 1000000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="maxDeal" className="text-xs text-muted-foreground">Max Deal Size ($)</Label>
+                    <Input
+                      id="maxDeal"
+                      type="number"
+                      value={form.maxDeal}
+                      onChange={(e) => setForm({ ...form, maxDeal: e.target.value })}
+                      placeholder="e.g., 25000000"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Geographic Preference</Label>
+                  <MultiSelectChips
+                    value={form.geo}
+                    onChange={(next) => setForm({ ...form, geo: next })}
+                    options={GEO_OPTIONS}
+                    placeholder="Select regions"
+                    searchPlaceholder="Search regions..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Industries</Label>
+                  <MultiSelectChips
+                    value={form.industries}
+                    onChange={(next) => setForm({ ...form, industries: next })}
+                    options={INDUSTRY_OPTIONS}
+                    placeholder="Select industries"
+                    searchPlaceholder="Search industries..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Loan Types</Label>
+                  <MultiSelectChips
+                    value={form.loanTypes}
+                    onChange={(next) => setForm({ ...form, loanTypes: next })}
+                    options={LOAN_TYPE_OPTIONS}
+                    placeholder="Select loan types"
+                    searchPlaceholder="Search loan types..."
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="minRevenue" className="text-xs text-muted-foreground">Min Revenue ($)</Label>
+                    <Input
+                      id="minRevenue"
+                      type="number"
+                      value={form.minRevenue}
+                      onChange={(e) => setForm({ ...form, minRevenue: e.target.value })}
+                      placeholder="e.g., 5000000"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="ebitdaMin" className="text-xs text-muted-foreground">Min EBITDA ($)</Label>
+                    <Input
+                      id="ebitdaMin"
+                      type="number"
+                      value={form.ebitdaMin}
+                      onChange={(e) => setForm({ ...form, ebitdaMin: e.target.value })}
+                      placeholder="e.g., 1000000"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground">Company Requirements</Label>
+                  <MultiSelectChips
+                    value={form.companyRequirements}
+                    onChange={(next) => setForm({ ...form, companyRequirements: next })}
+                    options={COMPANY_REQUIREMENT_OPTIONS}
+                    placeholder="Select requirements"
+                    searchPlaceholder="Search requirements..."
+                  />
+                </div>
               </div>
             </div>
           </div>
