@@ -688,7 +688,7 @@ const tools = [
     type: "function",
     function: {
       name: "update_deal_stage",
-      description: "Move a deal to a different pipeline stage. HIGH RISK — returns a confirmation card.",
+      description: "Move a deal to a different pipeline STAGE — the column the deal card sits in on the board (e.g. Pre-Credit Needs, NDA/Needs List Sent, Terms Issued, In Due Diligence, Funded/Invoiced, Closed Won, Closed Lost, On Hold, Passed). USE THIS whenever the user says 'move <Deal> to <X>', 'change stage to <X>', 'mark as closed lost/won', or 'close <Deal> won/lost' — including Closed Won and Closed Lost. Do NOT use update_deal_status for those — Closed Won/Lost are STAGES, not statuses. HIGH RISK — returns a confirmation card.",
       parameters: {
         type: "object",
         properties: {
