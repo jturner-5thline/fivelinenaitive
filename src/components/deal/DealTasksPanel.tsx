@@ -1,4 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { SharedTaskDrawer } from '@/components/tasks/SharedTaskDrawer';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -35,6 +37,29 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
   const { tasks, isLoading, createTask, updateTaskStatus, deleteTask } = useDealTasks(dealId);
   const teamMembers = useTeamMembers();
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [openTaskId, setOpenTaskId] = useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Deep link: ?task=<id> auto-opens the drawer.
+  useEffect(() => {
+    const t = searchParams.get('task');
+    if (t && t !== openTaskId) setOpenTaskId(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const handleOpenTask = (id: string) => {
+    setOpenTaskId(id);
+    const next = new URLSearchParams(searchParams);
+    next.set('task', id);
+    setSearchParams(next, { replace: true });
+  };
+
+  const handleCloseTask = () => {
+    setOpenTaskId(null);
+    const next = new URLSearchParams(searchParams);
+    next.delete('task');
+    setSearchParams(next, { replace: true });
+  };
   const [isOpen, setIsOpen] = useState(true);
   const [viewFilter, setViewFilter] = useState<'mine' | 'all'>('mine');
   const [statusFilter, setStatusFilter] = useState<'incomplete' | 'completed' | 'all'>('incomplete');
@@ -157,11 +182,20 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                     const assignee = memberMap.get(task.assigned_to);
                     const isCompleted = isTaskCompleted(task);
                     return (
-                      <div key={task.id} className={cn(
-                        "flex items-start gap-3 group rounded-lg border p-2.5 transition-colors",
-                        isCompleted ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
-                      )}>
-                        <Checkbox checked={isCompleted} onCheckedChange={() => handleToggleStatus(task.id, task.status)} className="mt-0.5" />
+                      <div
+                        key={task.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleOpenTask(task.id)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleOpenTask(task.id); }}
+                        className={cn(
+                          "flex items-start gap-3 group rounded-lg border p-2.5 transition-colors cursor-pointer",
+                          isCompleted ? "border-border/50 opacity-60 hover:opacity-100" : "border-border hover:bg-muted/30"
+                        )}
+                      >
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <Checkbox checked={isCompleted} onCheckedChange={() => handleToggleStatus(task.id, task.status)} className="mt-0.5" />
+                        </div>
                         <div className="flex-1 min-w-0">
                           <p className={cn("text-sm", isCompleted ? "text-muted-foreground line-through" : "font-medium text-foreground")}>{task.title}</p>
                           {!isCompleted && task.description && (
@@ -191,7 +225,12 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
                           </div>
                         </div>
                         {task.assigned_by === user?.id && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive" onClick={() => handleDelete(task.id)}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive"
+                            onClick={(e) => { e.stopPropagation(); handleDelete(task.id); }}
+                          >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         )}
@@ -248,6 +287,8 @@ export function DealTasksPanel({ dealId }: DealTasksPanelProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <SharedTaskDrawer taskId={openTaskId} onClose={handleCloseTask} />
     </>
   );
 }
