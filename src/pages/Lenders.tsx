@@ -84,6 +84,11 @@ import { LenderAnalyticsDialog } from '@/components/lenders/LenderAnalyticsDialo
 import { useOriginAnimation } from '@/hooks/useOriginAnimation';
 import { detectDuplicateLenders } from '@/lib/lenderDuplicates';
 import { LenderContactPicker } from '@/components/lenders/LenderContactPicker';
+import { MultiSelectChips } from '@/components/lenders/MultiSelectChips';
+import { INDUSTRY_OPTIONS } from '@/constants/industries';
+import { LOAN_TYPE_OPTIONS } from '@/constants/loanTypes';
+import { COMPANY_REQUIREMENT_OPTIONS } from '@/constants/companyRequirements';
+import { GEO_OPTIONS } from '@/constants/geoOptions';
 
 const TILE_DISPLAY_STORAGE_KEY = 'lender-tile-display-settings';
 
