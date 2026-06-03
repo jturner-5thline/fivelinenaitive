@@ -894,18 +894,46 @@ export default function Lenders() {
 
       // Insert contacts into lender_contacts
       if (lenderId) {
-        const contactsToInsert = form.contacts
-          .filter(c => c.name.trim())
-          .map(c => ({
-            lender_id: lenderId!,
-            name: c.name.trim(),
-            title: c.title.trim() || null,
-            email: c.email.trim() || null,
-            phone: c.phone.trim() || null,
-            is_primary: c.isPrimary,
-          }));
-        if (contactsToInsert.length > 0) {
-          await supabase.from('lender_contacts').insert(contactsToInsert);
+        const resolved = await Promise.all(
+          form.contacts
+            .filter(c => c.name.trim())
+            .map(async (c) => {
+              let contactId = c.contact_id ?? null;
+              // No CRM link yet → create a fresh contact row so we link instead of dup later
+              if (!contactId) {
+                const trimmedName = c.name.trim();
+                const [firstName, ...rest] = trimmedName.split(' ');
+                const lastName = rest.join(' ').trim() || null;
+                const { data: created, error: createErr } = await supabase
+                  .from('contacts')
+                  .insert({
+                    first_name: firstName || null,
+                    last_name: lastName,
+                    email: c.email.trim() || null,
+                    job_title: c.title.trim() || null,
+                    phone_work: c.phone.trim() || null,
+                  })
+                  .select('id')
+                  .single();
+                if (createErr) {
+                  console.warn('[Lenders] could not create CRM contact, saving lender contact without link', createErr);
+                } else {
+                  contactId = created?.id ?? null;
+                }
+              }
+              return {
+                lender_id: lenderId!,
+                contact_id: contactId,
+                name: c.name.trim(),
+                title: c.title.trim() || null,
+                email: c.email.trim() || null,
+                phone: c.phone.trim() || null,
+                is_primary: c.isPrimary,
+              };
+            })
+        );
+        if (resolved.length > 0) {
+          await supabase.from('lender_contacts').insert(resolved);
         }
       }
 
