@@ -1,7 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, Component, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
+import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import type { Task } from '@/hooks/useTasks';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
@@ -10,6 +11,40 @@ import { toast } from 'sonner';
 interface SharedTaskDrawerProps {
   taskId: string | null;
   onClose: () => void;
+}
+
+/**
+ * Local error boundary so a render failure in TaskDetailDrawer (a heavy
+ * component that runs ~8 parallel queries) does NOT leave the Sheet visibly
+ * blank. Without this, any thrown error during hydration bubbles up to the
+ * nearest boundary, which is typically far above the Sheet portal and
+ * results in an empty SheetContent on screen.
+ */
+class DrawerErrorBoundary extends Component<{ onClose: () => void; children: ReactNode }, { error: Error | null }> {
+  state = { error: null as Error | null };
+  static getDerivedStateFromError(error: Error) { return { error }; }
+  componentDidCatch(error: Error) {
+    // eslint-disable-next-line no-console
+    console.error('[SharedTaskDrawer] render failed:', error);
+  }
+  render() {
+    if (this.state.error) {
+      return (
+        <div className="p-6 space-y-3 text-sm">
+          <p className="font-medium text-destructive">Task drawer failed to render.</p>
+          <p className="text-xs text-muted-foreground break-all">{this.state.error.message}</p>
+          <button
+            type="button"
+            className="text-xs underline text-muted-foreground"
+            onClick={() => { this.setState({ error: null }); this.props.onClose(); }}
+          >
+            Close
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 /**
@@ -23,7 +58,7 @@ interface SharedTaskDrawerProps {
 export function SharedTaskDrawer({ taskId, onClose }: SharedTaskDrawerProps) {
   const qc = useQueryClient();
 
-  const { data: task, isLoading } = useQuery({
+  const { data: task, isLoading, isFetching, error } = useQuery({
     queryKey: ['shared-task-drawer', taskId],
     enabled: !!taskId,
     queryFn: async () => {
@@ -76,12 +111,22 @@ export function SharedTaskDrawer({ taskId, onClose }: SharedTaskDrawerProps) {
 
   // Close on Escape handled by Sheet primitive
   useEffect(() => {
-    if (taskId && !isLoading && !task) {
+    // Only auto-close on a confirmed not-found result (loaded successfully,
+    // no row). Do NOT close on transient query errors — that hid genuine RLS
+    // / fetch failures behind a misleading "Task not found" toast.
+    if (taskId && !isLoading && !isFetching && !error && task === null) {
       // Task not found (or no access) — close so user is not stuck on an empty sheet.
       toast.error('Task not found');
       onClose();
     }
-  }, [taskId, isLoading, task, onClose]);
+  }, [taskId, isLoading, isFetching, error, task, onClose]);
+
+  useEffect(() => {
+    if (error) {
+      // eslint-disable-next-line no-console
+      console.error('[SharedTaskDrawer] task fetch error:', error);
+    }
+  }, [error]);
 
   return (
     <Sheet open={!!taskId} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -89,18 +134,38 @@ export function SharedTaskDrawer({ taskId, onClose }: SharedTaskDrawerProps) {
         side="right"
         className="w-full sm:max-w-xl p-0 border-l border-border bg-card overflow-hidden"
       >
-        {task ? (
-          <TaskDetailDrawer
-            task={task}
-            onClose={onClose}
-            onUpdate={handleUpdate}
-            onDelete={handleDelete}
-          />
-        ) : (
-          <div className="flex items-center justify-center h-full text-xs text-muted-foreground">
-            Loading task…
-          </div>
-        )}
+        {/* Radix requires a Title + Description for a11y. Without these, the
+            Dialog primitive logs a warning and some screen-reader code paths
+            can short-circuit content rendering. Visually hidden so the
+            drawer's own header remains the visible title. */}
+        <VisuallyHidden.Root>
+          <SheetTitle>{task?.title || 'Task details'}</SheetTitle>
+          <SheetDescription>Task detail drawer with comments, subtasks, and activity.</SheetDescription>
+        </VisuallyHidden.Root>
+        <DrawerErrorBoundary onClose={onClose}>
+          {error ? (
+            <div className="p-6 space-y-2 text-sm">
+              <p className="font-medium text-destructive">Could not load task.</p>
+              <p className="text-xs text-muted-foreground break-all">{(error as Error)?.message}</p>
+            </div>
+          ) : task ? (
+            <TaskDetailDrawer
+              task={task}
+              onClose={onClose}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
+            />
+          ) : (
+            <div className="flex flex-col h-full p-5 gap-3 animate-pulse">
+              <div className="h-4 w-24 bg-muted/40 rounded" />
+              <div className="h-6 w-3/4 bg-muted/40 rounded" />
+              <div className="h-3 w-1/2 bg-muted/30 rounded" />
+              <div className="h-3 w-2/3 bg-muted/30 rounded" />
+              <div className="mt-4 h-32 w-full bg-muted/20 rounded" />
+              <div className="mt-2 h-3 w-1/3 bg-muted/30 rounded" />
+            </div>
+          )}
+        </DrawerErrorBoundary>
       </SheetContent>
     </Sheet>
   );
