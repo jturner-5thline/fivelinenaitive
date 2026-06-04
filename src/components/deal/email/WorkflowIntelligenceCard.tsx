@@ -156,7 +156,6 @@ function logAnalytics(event: string, payload: Record<string, unknown>) {
     (window as any).dataLayer = (window as any).dataLayer || [];
     (window as any).dataLayer.push({ event, ...payload });
     window.dispatchEvent(new CustomEvent(event, { detail: payload }));
-    console.debug('[WorkflowIntelligenceCard]', event, payload);
   } catch { /* ignore */ }
 }
 
@@ -293,38 +292,6 @@ export function WorkflowIntelligenceCard({
   if (willAutoLinkThread) warningsToShow.push('thread_not_linked');
   if (willAutoLink) warningsToShow.push('lender_not_on_deal');
   if (isLenderStatus && !lenderResolvable) warningsToShow.push('lender_unresolvable');
-
-  // Temporary diagnostic logging — surfaces the exact gating state so we
-  // can verify the SoLo Funds / Advantage Capital flow.
-  // eslint-disable-next-line no-console
-  console.debug('[WorkflowIntelligenceCard] confirm gating', {
-    resolvedDealId,
-    aiRecommendedDealId: rec.deal_id || null,
-    likelyDealId: analysis.likely_deal.id || null,
-    hasLinkedDeal,
-    isThreadLinkedToDeal,
-    threadLinked,
-    willAutoLinkThread,
-    resolvedLenderId: rec.lender_id || null,
-    isLenderOnDeal,
-    lenderAlreadyOnDeal,
-    masterLenderId: rec.master_lender_id || null,
-    lenderName: rec.lender_name || null,
-    lenderResolvable,
-    willAutoLink,
-    confirmedStatus,
-    selectedReasonLabels,
-    committing,
-    canConfirm,
-    warningsToShow,
-    blockingReason: !dealResolved
-      ? 'no resolved deal id (rec.deal_id and analysis.likely_deal.id both empty)'
-      : !lenderResolvable
-      ? 'lender not resolvable (no lender_id / master_lender_id / confident name)'
-      : committing
-      ? 'commit in progress'
-      : null,
-  });
 
   const handleStatusChange = (next: string) => {
     setConfirmedStatus(next);
