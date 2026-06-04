@@ -22,7 +22,7 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Eraser, Heading1, Heading2, Heading3, Check, Loader2, Copy,
-  MessageSquare,
+  MessageSquare, CheckSquare, Gavel, Hash, Sparkles,
 } from 'lucide-react';
 import { CommentMark } from './CommentMark';
 import {
@@ -35,6 +35,13 @@ import {
 import { FootnoteRefMark } from './footnotes/FootnoteRefMark';
 import { AgendaFootnotesSection } from './footnotes/AgendaFootnotesSection';
 import { AGENDA_INSERT_EVENT, type InsertAgendaFootnoteEvent } from './footnotes/types';
+import {
+  TAG_COLORS,
+  insertActionItem,
+  insertDecision,
+  insertTopic,
+  generateAgendaRecap,
+} from './agendaRecap';
 
 const FONT_FAMILIES = [
   { label: 'Default', value: '' },
