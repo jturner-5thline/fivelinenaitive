@@ -15,6 +15,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
+import { MessageSquarePlus } from 'lucide-react';
 
 export interface NarrativeAttachment {
   id: string;
@@ -92,6 +94,7 @@ export function InsightsNarrativeEditor({
   isSaving, savedAt, readOnly, chromeless,
 }: Props) {
   const { company } = useCompany();
+  const { promote } = useReportAgendaQueue();
   const initialHTMLRef = useRef<string>(toInitialHTML(value));
   const lastEmittedRef = useRef<string>(initialHTMLRef.current);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -99,6 +102,9 @@ export function InsightsNarrativeEditor({
   const [uploading, setUploading] = useState(false);
   const [focused, setFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [selAction, setSelAction] = useState<
+    { text: string; left: number; top: number } | null
+  >(null);
   // Signed-URL cache for attachments (refresh on mount + when list changes).
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
@@ -214,6 +220,36 @@ export function InsightsNarrativeEditor({
     editor.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
   }, [editor]);
 
+  // Track text selection inside the narrative editor and surface a small
+  // "Comment → Queue" action above the selection.
+  useEffect(() => {
+    if (!editor || readOnly) return;
+    const onSelChange = () => {
+      const { from, to, empty } = editor.state.selection;
+      if (empty || to - from < 2) { setSelAction(null); return; }
+      const text = editor.state.doc.textBetween(from, to, ' ').trim();
+      if (!text) { setSelAction(null); return; }
+      const root = containerRef.current;
+      if (!root) return;
+      try {
+        const start = editor.view.coordsAtPos(from);
+        const end = editor.view.coordsAtPos(to);
+        const rect = root.getBoundingClientRect();
+        const left = Math.min(start.left, end.left) - rect.left;
+        const top = Math.min(start.top, end.top) - rect.top - 32;
+        setSelAction({ text: text.slice(0, 400), left, top });
+      } catch {
+        setSelAction(null);
+      }
+    };
+    editor.on('selectionUpdate', onSelChange);
+    editor.on('blur', () => setTimeout(() => {
+      const root = containerRef.current;
+      if (root && !root.contains(document.activeElement)) setSelAction(null);
+    }, 150));
+    return () => { editor.off('selectionUpdate', onSelChange); };
+  }, [editor, readOnly]);
+
   if (!editor) {
     return (
       <div style={{ minHeight: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(160,200,255,0.45)' }}>
@@ -317,9 +353,44 @@ export function InsightsNarrativeEditor({
           color: '#dde8f8',
           fontSize: chromeless ? 14 : 13,
           lineHeight: 1.6,
+          position: 'relative',
         }}
       >
         <EditorContent editor={editor} />
+        {selAction && !readOnly && (
+          <button
+            type="button"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={async () => {
+              const snippet = selAction.text;
+              setSelAction(null);
+              const row = await promote({
+                reportTab: scopeKey,
+                sourceType: 'narrative',
+                sourceId: scopeKey,
+                sourceAnchor: `narrative:${scopeKey}`,
+                sourceSnapshotText: snippet,
+                sourceLabel: 'Narrative selection',
+                commentSource: 'qir',
+                commentTextSnapshot: snippet,
+              });
+              toast.success(row ? 'Added to Agenda Queue' : 'Failed to queue selection');
+            }}
+            style={{
+              position: 'absolute', left: Math.max(0, selAction.left), top: Math.max(0, selAction.top),
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              padding: '4px 8px', borderRadius: 6, fontSize: 11, fontWeight: 600,
+              background: 'rgba(16,28,52,0.95)', color: '#cfe6ff',
+              border: '1px solid rgba(80,150,220,0.45)',
+              boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
+              cursor: 'pointer', zIndex: 30, whiteSpace: 'nowrap',
+            }}
+            title="Send selected text to the Agenda Queue"
+          >
+            <MessageSquarePlus size={12} />
+            Queue
+          </button>
+        )}
         {chromeless && !focused && isEmpty && !readOnly && (
           <div
             onClick={() => editor.chain().focus().run()}
