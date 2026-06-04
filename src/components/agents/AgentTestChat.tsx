@@ -12,6 +12,19 @@ import type { Agent } from '@/hooks/useAgents';
 import { formatDistanceToNow } from 'date-fns';
 import ReactMarkdown from 'react-markdown';
 
+/** Parse `deal://<id>`, `entity://deal/<id>`, `naitive://deals/<id>` etc. */
+function parseDealHref(href: string | undefined): { kind: string; id: string } | null {
+  if (!href) return null;
+  const m = /^(deal|contact|company|lender|funding_source|entity|naitive):\/\/(?:([a-z_]+)\/)?([^/?#\s]+)/i.exec(href);
+  if (!m) return null;
+  const scheme = m[1].toLowerCase();
+  const subtype = m[2]?.toLowerCase();
+  let kind: string;
+  if (scheme === 'naitive' || scheme === 'entity') kind = (subtype || 'deal').replace(/s$/, '');
+  else kind = scheme;
+  return { kind, id: m[3] };
+}
+
 interface AgentTestChatProps {
   agent: Agent;
   onClose: () => void;
