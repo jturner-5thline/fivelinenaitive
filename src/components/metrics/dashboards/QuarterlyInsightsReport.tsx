@@ -682,8 +682,7 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
     letterSpacing: '.1em', color: TEXT_LABEL,
   };
   return (
-    <Card className="glass-module">
-      <div className="qir-report-header">
+    <div className="qir-report-header">
         <div className="qir-report-header-title">
           <span style={fieldLabelStyle}>Report</span>
           <h1 style={{
@@ -737,8 +736,7 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
             />
           </div>
         </div>
-      </div>
-    </Card>
+    </div>
   );
 }
 
