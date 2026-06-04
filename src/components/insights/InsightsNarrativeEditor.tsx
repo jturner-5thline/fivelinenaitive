@@ -43,6 +43,12 @@ interface Props {
   savedAt?: number | null;
   /** Disable editing (e.g. read-only viewer). */
   readOnly?: boolean;
+  /**
+   * When true, the formatting toolbar stays hidden until the editor is
+   * focused or the reader explicitly enters edit mode. Lets the narrative
+   * render as document prose at rest.
+   */
+  chromeless?: boolean;
 }
 
 const BUCKET = 'insights-attachments';
@@ -83,7 +89,7 @@ function bytesLabel(n: number) {
 export function InsightsNarrativeEditor({
   value, attachments, scopeKey,
   onChange, onAttachmentsChange,
-  isSaving, savedAt, readOnly,
+  isSaving, savedAt, readOnly, chromeless,
 }: Props) {
   const { company } = useCompany();
   const initialHTMLRef = useRef<string>(toInitialHTML(value));
@@ -91,6 +97,8 @@ export function InsightsNarrativeEditor({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const imageInputRef = useRef<HTMLInputElement | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   // Signed-URL cache for attachments (refresh on mount + when list changes).
   const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
 
@@ -116,6 +124,16 @@ export function InsightsNarrativeEditor({
       attributes: {
         class: 'insights-narrative-prose focus:outline-none',
       },
+    },
+    onFocus: () => setFocused(true),
+    onBlur: () => {
+      // Keep the toolbar visible briefly so toolbar button clicks don't
+      // re-blur away. Hide if focus didn't return into our container.
+      setTimeout(() => {
+        const root = containerRef.current;
+        if (!root) return;
+        if (!root.contains(document.activeElement)) setFocused(false);
+      }, 100);
     },
   });
 
@@ -223,9 +241,17 @@ export function InsightsNarrativeEditor({
 
   const sep = <span aria-hidden style={{ width: 1, height: 16, background: 'rgba(120,170,255,0.18)', margin: '0 2px' }} />;
 
+  const showToolbar = !readOnly && (!chromeless || focused);
+  const isEmpty = editor.isEmpty;
+
   return (
-    <div className="insights-narrative-editor" style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {!readOnly && (
+    <div
+      ref={containerRef}
+      className="insights-narrative-editor"
+      style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+      onFocus={() => setFocused(true)}
+    >
+      {showToolbar && (
         <div
           role="toolbar"
           aria-label="Narrative formatting"
@@ -284,16 +310,24 @@ export function InsightsNarrativeEditor({
       <div
         style={{
           minHeight: 220,
-          padding: 14,
-          borderRadius: 8,
-          background: 'rgba(10,18,36,0.45)',
-          border: '1px solid rgba(120,170,255,0.18)',
+          padding: chromeless ? '4px 2px' : 14,
+          borderRadius: chromeless ? 0 : 8,
+          background: chromeless ? 'transparent' : 'rgba(10,18,36,0.45)',
+          border: chromeless ? '0' : '1px solid rgba(120,170,255,0.18)',
           color: '#dde8f8',
-          fontSize: 13,
+          fontSize: chromeless ? 14 : 13,
           lineHeight: 1.6,
         }}
       >
         <EditorContent editor={editor} />
+        {chromeless && !focused && isEmpty && !readOnly && (
+          <div
+            onClick={() => editor.chain().focus().run()}
+            style={{ color: 'rgba(160,200,255,0.45)', fontStyle: 'italic', cursor: 'text', padding: '4px 0' }}
+          >
+            Click to write the executive summary…
+          </div>
+        )}
       </div>
 
       {attachments.length > 0 && (

@@ -21,6 +21,7 @@ import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
 import WhatWorkingSections from './WhatWorkingSections';
 import { InsightsNarrativeEditor, type NarrativeAttachment } from '@/components/insights/InsightsNarrativeEditor';
+import { DocStylesOnce, DocSection, DocMetaRow, SourceDataDisclosure, InlineEditable } from './qir/DocPrimitives';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import { AddKpiDialog } from './qir/AddKpiDialog';
@@ -691,29 +692,49 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
           }}>
             {reportTitle}
           </h1>
-        </div>
-        <div className="qir-report-header-meta">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
-            <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
-            <input
-              id="qir-date-prepared"
-              value={s.preparedDate}
-              onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
-              style={{ ...inputStyle, width: '100%' }}
+          <div style={{ marginTop: 8 }}>
+            <DocMetaRow
+              items={[
+                <>Prepared by{' '}
+                  <InlineEditable
+                    label="Prepared By"
+                    value={currentPreparedBy}
+                    onCommit={(next) => set(prev => ({ ...prev, authors: [next] }))}
+                    render={(v) => <strong style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{v}</strong>}
+                    renderEditor={({ value, setValue, commit }) => (
+                      <select
+                        autoFocus
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        onBlur={commit}
+                        style={{ ...selectStyle, padding: '2px 6px', height: 22, width: 'auto', minWidth: 140 }}
+                      >
+                        {PREPARED_BY_OPTIONS.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+                      </select>
+                    )}
+                  />
+                </>,
+                <>
+                  <InlineEditable
+                    label="Date Prepared"
+                    value={s.preparedDate}
+                    onCommit={(next) => set(prev => ({ ...prev, preparedDate: next }))}
+                    render={(v) => <span>{v || '—'}</span>}
+                    renderEditor={({ value, setValue, commit }) => (
+                      <input
+                        autoFocus
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        onBlur={commit}
+                        placeholder="MM/DD/YYYY"
+                        style={{ ...inputStyle, padding: '2px 6px', height: 22, width: 110 }}
+                      />
+                    )}
+                  />
+                </>,
+                <span>{periodLabelStr}</span>,
+              ]}
             />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 160 }}>
-            <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
-            <select
-              id="qir-prepared-by"
-              value={currentPreparedBy}
-              onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
-              style={{ ...selectStyle, width: '100%' }}
-            >
-              {PREPARED_BY_OPTIONS.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
@@ -750,9 +771,22 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={
-          <span title={canAdd ? '' : `Max ${MAX_KPIS} KPIs`}>
-            <Btn icon={Plus} variant="ghost" onClick={canAdd ? () => setAddOpen(true) : undefined}>Add KPI</Btn>
-          </span>
+          <button
+            type="button"
+            className="qir-no-print"
+            onClick={canAdd ? () => setAddOpen(true) : undefined}
+            title={canAdd ? 'Add or manage KPIs' : `Max ${MAX_KPIS} KPIs`}
+            style={{
+              background: 'transparent', border: 0, padding: '4px 6px',
+              color: 'rgba(160,200,255,0.55)', cursor: canAdd ? 'pointer' : 'not-allowed',
+              fontSize: 11, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
+              opacity: canAdd ? 1 : 0.5,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#dde8f8'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(160,200,255,0.55)'; }}
+          >
+            + Manage KPIs
+          </button>
         }>KPIs</SectionTitle>
         <div style={{
           display: 'grid',
@@ -1019,6 +1053,7 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving }: {
           scopeKey={scopeKey}
           isSaving={isSaving}
           savedAt={savedAt}
+          chromeless
           onChange={(html) => {
             set(prev => ({ ...prev, narrative: html }));
             scheduleSave();
@@ -1940,10 +1975,34 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
             </span>
           )}
         </div>
-        {filterEditorOpen && renderFilterEditor()}
-        {error && renderError()}
-        {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showFilteredEmpty ? renderFilteredEmpty() : (
-          <div style={{ overflowX: 'auto' }}>
+        {/* Document-style summary list — quiet, read-first presentation. */}
+        {showSkeleton ? (
+          <div className="qir-doc-list-empty">Loading goals…</div>
+        ) : showEmpty ? (
+          <div className="qir-doc-list-empty">No Asana Goals synced for this period.</div>
+        ) : showFilteredEmpty ? (
+          <div className="qir-doc-list-empty">No goals match the active period filter.</div>
+        ) : (
+          <div className="qir-doc-list">
+            {visibleGoals.map((g) => (
+              <div key={`sum-${g.id}`} className="qir-doc-list-row">
+                {g.url ? (
+                  <a href={g.url} target="_blank" rel="noopener noreferrer">{g.title}</a>
+                ) : (
+                  <span style={{ color: TEXT_PRIMARY, fontSize: 13.5 }}>{g.title}</span>
+                )}
+                <span className="qir-doc-list-owner">{g.owner || '—'}</span>
+                <Pill tone={statusTone(g.status)}>{g.status}</Pill>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Operational chrome demoted to a disclosure. */}
+        <SourceDataDisclosure label="View source data">
+          {filterEditorOpen && renderFilterEditor()}
+          {error && renderError()}
+          {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showFilteredEmpty ? renderFilteredEmpty() : (
+            <div style={{ overflowX: 'auto' }}>
             <SortGroupToolbar
               groupBy={goalsSG.groupBy}
               setGroupBy={goalsSG.setGroupBy}
@@ -2000,8 +2059,9 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+            </div>
+          )}
+        </SourceDataDisclosure>
       </div>
       <InsightsDrilldownDrawer
         open={!!goalsDrill}
@@ -2205,6 +2265,27 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
             <div>Connect Asana to sync portfolio initiatives.</div>
           </div>
         ) : (
+          <>
+          {/* Document-style summary list of initiatives. */}
+          <div className="qir-doc-list">
+            {ownedProjects.length === 0 && !loading && (
+              <div className="qir-doc-list-empty">No initiatives in the selected Asana portfolio.</div>
+            )}
+            {ownedProjects.map((p) => (
+              <div key={`sum-${p.gid}`} className="qir-doc-list-row">
+                {p.permalink_url ? (
+                  <a href={p.permalink_url} target="_blank" rel="noopener noreferrer">{p.name}</a>
+                ) : (
+                  <span style={{ color: TEXT_PRIMARY, fontSize: 13.5 }}>{p.name}</span>
+                )}
+                <span className="qir-doc-list-owner">
+                  {p.owner || '—'}{p.dueOn ? ` · Due ${p.dueOn}` : ''}
+                </span>
+                <Pill tone={statusTone(p.status === 'Off Track' ? 'Off Track' : p.status === 'At Risk' ? 'At Risk' : 'On Track')}>{p.status}</Pill>
+              </div>
+            ))}
+          </div>
+          <SourceDataDisclosure label="View source data">
           <div style={{ overflowX: 'auto' }}>
             <SortGroupToolbar
               groupBy={initSG.groupBy}
@@ -2311,6 +2392,8 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
               </tbody>
             </table>
           </div>
+          </SourceDataDisclosure>
+          </>
         )}
       </div>
       <InsightsDrilldownDrawer
@@ -2330,6 +2413,8 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   const updateRisk = (id: string, patch: Partial<Risk>) => set(prev => ({ ...prev, risks: prev.risks.map(risk => risk.id === id ? { ...risk, ...patch } : risk) }));
   const removeRisk = (id: string) => set(prev => ({ ...prev, risks: prev.risks.filter(risk => risk.id !== id) }));
   const addRisk = () => set(prev => ({ ...prev, risks: [...prev.risks, { id: uid(), description: '', mitigation: '' }] }));
+
+  // (RiskProseBlock is defined at module scope below.)
 
   const [riskDrill, setRiskDrill] = useState<DrilldownContext | null>(null);
   const riskDrillRows = useMemo<Risk[]>(() => {
@@ -2355,40 +2440,28 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
         <SectionTitle prominent right={(
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn icon={ExternalLink} variant="ghost" onClick={() => setRiskDrill({ sourceId: 'risks:all', sourceLabel: 'Open Risks · All', selection: `${s.risks.length} risk${s.risks.length === 1 ? '' : 's'}` })}>View All</Btn>
-            <Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>
           </div>
         )}>
           Open Risks
         </SectionTitle>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Risk Description</th>
-                <th style={thStyle}>Mitigation Plan</th>
-                <th style={{ ...thStyle, width: 40 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.risks.map(risk => (
-                <tr key={risk.id} data-comment-source="risk" data-comment-source-id={risk.id} data-comment-source-label={`Risk · ${risk.description?.slice(0, 40) || 'Untitled risk'}`}>
-                  <td style={{ ...tdStyle, width: '50%' }}>
-                    <textarea value={risk.description} onChange={e => updateRisk(risk.id, { description: e.target.value })} placeholder="Describe the risk…" style={taStyle} />
-                  </td>
-                  <td style={{ ...tdStyle, width: '50%' }}>
-                    <textarea value={risk.mitigation} onChange={e => updateRisk(risk.id, { mitigation: e.target.value })} placeholder="Mitigation plan…" style={taStyle} />
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <Btn icon={ExternalLink} variant="ghost" ariaLabel="Drill into risk" onClick={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.description?.slice(0, 60) || 'Untitled risk'}` })} />
-                      <Btn icon={Trash2} variant="danger" ariaLabel="Remove risk" onClick={() => removeRisk(risk.id)} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {s.risks.length === 0 ? (
+          <div className="qir-doc-list-empty">No open risks recorded for this period.</div>
+        ) : (
+          <div>
+            {s.risks.map(risk => (
+              <RiskProseBlock
+                key={risk.id}
+                risk={risk}
+                onChange={(patch) => updateRisk(risk.id, patch)}
+                onRemove={() => removeRisk(risk.id)}
+                onDrill={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.description?.slice(0, 60) || 'Untitled risk'}` })}
+              />
+            ))}
+          </div>
+        )}
+        <button type="button" className="qir-doc-add-link qir-no-print" onClick={addRisk}>
+          + Add risk
+        </button>
       </div>
       <InsightsDrilldownDrawer
         open={!!riskDrill}
@@ -2403,6 +2476,84 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
 }
 
 function ReportFooterSection({ s, print }: { s: ReportState; print: () => void }) {
+  return _ReportFooterSectionImpl({ s, print });
+}
+
+function RiskProseBlock({ risk, onChange, onRemove, onDrill }: {
+  risk: Risk;
+  onChange: (patch: Partial<Risk>) => void;
+  onRemove: () => void;
+  onDrill: () => void;
+}) {
+  const [editing, setEditing] = useState(!risk.description && !risk.mitigation);
+  const descRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (editing && descRef.current) {
+      try { descRef.current.focus(); } catch {}
+    }
+  }, [editing]);
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
+    setEditing(false);
+  };
+  const ta: React.CSSProperties = {
+    width: '100%', minHeight: 48, padding: '8px 10px', borderRadius: 8,
+    background: 'rgba(10,18,36,0.5)', color: TEXT_PRIMARY,
+    border: '1px solid rgba(120,170,255,0.18)', outline: 'none',
+    fontSize: 13.5, lineHeight: 1.55, resize: 'vertical', fontFamily: 'inherit',
+  };
+  return (
+    <div
+      className="qir-doc-risk qir-doc-editable-block"
+      data-comment-source="risk"
+      data-comment-source-id={risk.id}
+      data-comment-source-label={`Risk · ${risk.description?.slice(0, 40) || 'Untitled risk'}`}
+      onBlur={handleBlur}
+    >
+      {editing ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <textarea
+            ref={descRef}
+            value={risk.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Describe the risk…"
+            style={ta}
+          />
+          <textarea
+            value={risk.mitigation}
+            onChange={(e) => onChange({ mitigation: e.target.value })}
+            placeholder="Mitigation plan…"
+            style={ta}
+          />
+        </div>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setEditing(true)}
+          onFocus={() => setEditing(true)}
+          style={{ cursor: 'text' }}
+        >
+          <div className="qir-doc-risk-statement">
+            {risk.description || <span style={{ color: TEXT_MUTED, fontStyle: 'italic', fontWeight: 400 }}>Describe the risk…</span>}
+          </div>
+          <div className="qir-doc-risk-mitigation">
+            {risk.mitigation
+              ? <><strong>Mitigation:</strong>{risk.mitigation}</>
+              : <span style={{ fontStyle: 'italic' }}>Add a mitigation plan…</span>}
+          </div>
+        </div>
+      )}
+      <div className="qir-doc-risk-actions qir-no-print">
+        <button type="button" className="qir-doc-risk-link" onClick={onDrill}>Open</button>
+        <button type="button" className="qir-doc-risk-link qir-doc-risk-link-danger" onClick={onRemove}>Remove</button>
+      </div>
+    </div>
+  );
+}
+
+function _ReportFooterSectionImpl({ s, print }: { s: ReportState; print: () => void }) {
   return (
     <Card className="glass-module">
       <div style={{ padding: '20px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
@@ -2783,6 +2934,7 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
     : `Quarterly Insights Report — ${s.quarter}`;
   return (
     <div ref={rootRef} className="qir-report-canvas" style={{ padding: '20px 16px', maxWidth: 1200, margin: '0 auto', display: 'flex', flexDirection: 'column', gap: 24, color: TEXT_PRIMARY }}>
+      <DocStylesOnce />
       {unsavedChangesWarning && (
         <div style={{
           marginBottom: -4,
