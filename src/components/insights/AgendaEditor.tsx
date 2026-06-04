@@ -33,6 +33,9 @@ import {
   SelectionBubble,
   useAgendaComments,
 } from './AgendaComments';
+import { FootnoteRefMark } from './footnotes/FootnoteRefMark';
+import { AgendaFootnotesSection } from './footnotes/AgendaFootnotesSection';
+import { AGENDA_INSERT_EVENT, type InsertAgendaFootnoteEvent } from './footnotes/types';
 
 const FONT_FAMILIES = [
   { label: 'Default', value: '' },
@@ -349,6 +352,7 @@ export function AgendaEditor() {
       TaskList,
       TaskItem.configure({ nested: true }),
       CommentMark,
+      FootnoteRefMark,
     ],
     content: SEED_CONTENT,
     editorProps: {
@@ -371,6 +375,68 @@ export function AgendaEditor() {
       if (!threadId) return;
       // Open / move the floating popover to this span. Don't auto-open the rail.
       setActiveThread({ id: threadId, el: target });
+    };
+    dom.addEventListener('click', onClick);
+    return () => { dom.removeEventListener('click', onClick); };
+  }, [editor]);
+
+  // Listen for source surfaces requesting an in-body footnote reference.
+  // We insert at the current selection, or at the end of the doc as a
+  // fallback, then ack so the dispatcher can suppress the "place it manually"
+  // toast. The footnote row itself is already persisted by the caller.
+  useEffect(() => {
+    if (!editor) return;
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<InsertAgendaFootnoteEvent>).detail;
+      if (!detail?.footnoteId || !detail.refId) return;
+      const chain = editor.chain().focus();
+      const sel = editor.state.selection;
+      const hasRange = sel && !sel.empty;
+      if (detail.mode === 'freetext') {
+        const text = detail.snapshotText.slice(0, 280);
+        chain
+          .insertContent({
+            type: 'text',
+            text,
+            marks: [{ type: 'footnoteRefMark', attrs: { footnoteId: detail.footnoteId, refId: detail.refId } }],
+          })
+          .run();
+      } else if (hasRange) {
+        // Apply the mark to the current selection so the user's chosen
+        // phrase becomes the visible label, with a superscript anchor.
+        chain.setFootnoteRef(detail.footnoteId, detail.refId).run();
+      } else {
+        // No selection: insert a zero-width superscript marker at caret.
+        chain
+          .insertContent({
+            type: 'text',
+            text: '\u200b',
+            marks: [{ type: 'footnoteRefMark', attrs: { footnoteId: detail.footnoteId, refId: detail.refId } }],
+          })
+          .run();
+      }
+      window.dispatchEvent(new Event('agenda:insert-footnote-ref-ack'));
+    };
+    window.addEventListener(AGENDA_INSERT_EVENT, handler as EventListener);
+    return () => window.removeEventListener(AGENDA_INSERT_EVENT, handler as EventListener);
+  }, [editor]);
+
+  // Click a footnote marker → scroll to the matching footnote row at the
+  // bottom of the Agenda and pulse it briefly.
+  useEffect(() => {
+    if (!editor) return;
+    const dom = editor.view.dom as HTMLElement;
+    const onClick = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest('sup.agenda-footnote-ref') as HTMLElement | null;
+      if (!target) return;
+      const fid = target.getAttribute('data-footnote-id');
+      if (!fid) return;
+      const row = document.getElementById(`agenda-footnote-${fid}`);
+      if (!row) return;
+      row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      row.style.transition = 'background 0.4s ease';
+      row.style.background = 'rgba(126,208,255,0.15)';
+      window.setTimeout(() => { row.style.background = ''; }, 1200);
     };
     dom.addEventListener('click', onClick);
     return () => { dom.removeEventListener('click', onClick); };
@@ -773,6 +839,12 @@ export function AgendaEditor() {
           }}
         />
       </div>
+      <AgendaFootnotesSection
+        editor={editor}
+        companyId={company?.id ?? null}
+        periodType={periodType as 'month' | 'quarter'}
+        periodKey={periodKey}
+      />
       </div>
       <AgendaCommentsRail
         open={railOpen}

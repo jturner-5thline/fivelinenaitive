@@ -15092,6 +15092,95 @@ export type Database = {
         }
         Relationships: []
       }
+      insights_agenda_footnote_refs: {
+        Row: {
+          company_id: string
+          created_at: string
+          created_by: string
+          footnote_id: string
+          id: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          created_by: string
+          footnote_id: string
+          id?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          footnote_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_agenda_footnote_refs_footnote_id_fkey"
+            columns: ["footnote_id"]
+            isOneToOne: false
+            referencedRelation: "insights_agenda_footnotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insights_agenda_footnotes: {
+        Row: {
+          agenda_period_key: string
+          agenda_period_type: string
+          company_id: string
+          created_at: string
+          created_by: string
+          footnote_type: string
+          id: string
+          link_url: string | null
+          source_anchor: string | null
+          source_current_text: string | null
+          source_id: string | null
+          source_snapshot_text: string
+          source_type: string
+          source_updated_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          agenda_period_key: string
+          agenda_period_type: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          footnote_type: string
+          id?: string
+          link_url?: string | null
+          source_anchor?: string | null
+          source_current_text?: string | null
+          source_id?: string | null
+          source_snapshot_text?: string
+          source_type: string
+          source_updated_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          agenda_period_key?: string
+          agenda_period_type?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          footnote_type?: string
+          id?: string
+          link_url?: string | null
+          source_anchor?: string | null
+          source_current_text?: string | null
+          source_id?: string | null
+          source_snapshot_text?: string
+          source_type?: string
+          source_updated_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       insights_anomaly_history: {
         Row: {
           abs_change: number | null
