@@ -236,6 +236,7 @@ export function useQirComments(reportKey: string) {
         }).catch(() => { /* swallow */ });
       }
     }
+    return (inserted as any as QirComment) || null;
   }, [company?.id, user, members, reportKey]);
 
   const deleteComment = useCallback(async (id: string) => {
