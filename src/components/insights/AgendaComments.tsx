@@ -849,26 +849,43 @@ export function NewThreadPopover({
   onSubmit: (body: string) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
-  const [flipped, setFlipped] = useState(false);
+  const [top, setTop] = useState(0);
   const [shiftX, setShiftX] = useState(0);
   // Reserve space for the bottom status/toolbar so the popover never tucks
   // behind it. Roughly matches the editor footer height.
   const BOTTOM_SAFE = 72;
+  const TOP_SAFE = 8;
   const SIDE_SAFE = 8;
+  const GAP = 8;
 
   useLayoutEffect(() => {
     if (!anchor || !ref.current) return;
     const el = ref.current;
     const measure = () => {
       const rect = el.getBoundingClientRect();
+      const parentRect = (el.offsetParent as HTMLElement | null)?.getBoundingClientRect();
+      const parentTop = parentRect?.top ?? 0;
       const vh = window.innerHeight;
       const vw = window.innerWidth;
-      const overflowBottom = rect.bottom - (vh - BOTTOM_SAFE);
-      setFlipped(overflowBottom > 0 && rect.height + 16 < anchor.top);
+
+      const topBelow = anchor.top + GAP;
+      const popoverBottom = parentTop + topBelow + rect.height;
+      const maxBottom = vh - BOTTOM_SAFE;
+
+      let nextTop = popoverBottom > maxBottom
+        ? anchor.top - rect.height - GAP
+        : topBelow;
+
+      const minTop = TOP_SAFE - parentTop;
+      const maxTop = maxBottom - parentTop - rect.height;
+      nextTop = Math.min(Math.max(nextTop, minTop), maxTop);
+
+      setTop(nextTop);
+
       let dx = 0;
       if (rect.left < SIDE_SAFE) dx = SIDE_SAFE - rect.left;
       else if (rect.right > vw - SIDE_SAFE) dx = (vw - SIDE_SAFE) - rect.right;
-      setShiftX((prev) => prev + dx);
+      setShiftX(dx);
     };
     measure();
     window.addEventListener('resize', measure);
@@ -881,15 +898,13 @@ export function NewThreadPopover({
   }, [anchor?.left, anchor?.top]);
 
   if (!anchor) return null;
-  const top = flipped ? anchor.top - 8 : anchor.top + 8;
-  const translateY = flipped ? '-100%' : '0';
   return (
     <div
       ref={ref}
       data-agenda-bubble
       style={{
         position: 'absolute', left: anchor.left + shiftX, top,
-        transform: `translate(-50%, ${translateY})`, zIndex: 1700,
+        transform: 'translateX(-50%)', zIndex: 1700,
         background: 'rgba(16,28,52,0.98)', border: '0.5px solid rgba(80,140,255,0.35)',
         borderRadius: 10, padding: 8, width: 280,
         boxShadow: '0 10px 30px rgba(0,0,0,0.45)',
