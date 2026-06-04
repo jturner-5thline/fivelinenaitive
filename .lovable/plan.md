@@ -1,177 +1,100 @@
-# @-mention Tagging in Task Comments — Dry Run
 
-## What already exists (reuse, don't rebuild)
+## Goal
 
-- **`task_mentions` table** (with RLS, indexes, unread-count + realtime). Populated by `useCreateMentions()` in `src/hooks/useTaskMentions.ts`.
-- **Mention parser**: `extractMentions(text)` and `renderMentionText(text)` in the same file handle `@[Name](user_id)` markup.
-- **Composer primitive**: `src/components/ui/mention-textarea.tsx` + `mention-list.tsx` (Tiptap-based, arrow keys / Enter / Esc, avatar + email rows).
-- **TaskDetailDrawer** (surface a) already uses `MentionTextarea` for the composer but does NOT call `useCreateMentions` after insert. Other 3 surfaces use plain `<textarea>`.
+Add a shared "structured footnote" layer to the Insights Agenda so Decisions, Notes, and Action Items captured from source surfaces (call transcripts, comment threads, meeting artifacts, tasks) become canonical, traceable footnotes scoped to the same reporting period as the Agenda — without changing the current minimal visual design.
 
-## What we still need
+The Agenda body holds references + optional free text. The bottom Footnotes section is the system of record.
 
-### 1. Migration — add denormalized `mentions` + trigger + RLS tightening
+## Data model (new tables)
 
-```sql
--- Denormalized mention list on the comment row (per spec)
-ALTER TABLE public.task_comments
-  ADD COLUMN IF NOT EXISTS mentions uuid[] NOT NULL DEFAULT '{}';
+1. `insights_agenda_footnotes`
+   - `id` uuid pk
+   - `company_id` uuid (RLS scope)
+   - `agenda_period_type` text ('month' | 'quarter'), `agenda_period_key` text (matches existing `insights_agenda` check constraint)
+   - `footnote_type` text ('decision' | 'note' | 'action_item')
+   - `source_type` text ('claap_meeting' | 'cell_comment' | 'agenda_comment' | 'task' | 'manual' | …)
+   - `source_id` uuid null, `source_anchor` text null (e.g. transcript timestamp, comment thread id, task id)
+   - `source_snapshot_text` text — frozen at insert time (integrity)
+   - `source_current_text` text — refreshed when source changes
+   - `source_updated_at` timestamptz — last seen source mtime
+   - `link_url` text null — deep link back to origin
+   - `status` text default 'active' ('active' | 'archived')
+   - `created_by` uuid → `auth.users`
+   - `created_at`, `updated_at`
+   - Indexes: `(company_id, agenda_period_type, agenda_period_key)`, `(source_type, source_id)`
+   - Dedup helper: unique partial index on `(company_id, agenda_period_key, agenda_period_type, source_type, source_id)` where `source_id is not null and status='active'` — prevents duplicate canonical entries for the same source unless user opts to duplicate (handled by inserting with a synthetic `source_anchor` suffix).
 
-CREATE INDEX IF NOT EXISTS idx_task_comments_mentions
-  ON public.task_comments USING GIN (mentions);
+2. `insights_agenda_footnote_refs` — body→footnote join (a single footnote can have many in-body markers)
+   - `id` uuid pk
+   - `footnote_id` uuid fk → `insights_agenda_footnotes(id)` on delete cascade
+   - `company_id` uuid (mirrored for RLS), `created_by` uuid, `created_at`
+   - The actual placement lives inside the TipTap doc as a `footnoteRef` mark/node carrying `data-footnote-id` + `data-ref-id`. The join row exists so we can answer "how many references point at this footnote?" cheaply at delete time without scanning every period's doc.
 
--- Parse @[Name](uuid) tokens from body on insert/update and keep mentions in sync
-CREATE OR REPLACE FUNCTION public.task_comments_populate_mentions()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  ids uuid[];
-BEGIN
-  SELECT COALESCE(array_agg(DISTINCT (m[2])::uuid), '{}')
-    INTO ids
-  FROM regexp_matches(NEW.body, '@\[([^\]]+)\]\(([0-9a-f-]{36})\)', 'g') AS m;
-  NEW.mentions := ids;
-  RETURN NEW;
-END $$;
+RLS (both tables): `company_id` must belong to caller's companies (same pattern used by `insights_agenda` / `cell_comments`). Grants: `SELECT/INSERT/UPDATE/DELETE` to `authenticated`, `ALL` to `service_role`.
 
-DROP TRIGGER IF EXISTS trg_task_comments_populate_mentions ON public.task_comments;
-CREATE TRIGGER trg_task_comments_populate_mentions
-  BEFORE INSERT OR UPDATE OF body ON public.task_comments
-  FOR EACH ROW EXECUTE FUNCTION public.task_comments_populate_mentions();
+## TipTap extensions
 
--- Fanout to task_mentions + notify edge function via pg_net
-CREATE OR REPLACE FUNCTION public.task_comments_fanout_mentions()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path = public
-AS $$
-DECLARE
-  uid uuid;
-BEGIN
-  FOREACH uid IN ARRAY NEW.mentions LOOP
-    IF uid <> NEW.author_id THEN
-      INSERT INTO public.task_mentions
-        (task_id, comment_id, mentioned_by, mentioned_user_id, source)
-      VALUES (NEW.task_id, NEW.id, NEW.author_id, uid, 'comment')
-      ON CONFLICT DO NOTHING;
-    END IF;
-  END LOOP;
+- `FootnoteRefMark` (inline mark, non-inclusive)
+  - Attrs: `footnoteId`, `refId`, `label?` (short visible text when inserted as a marker; free-text mode uses the surrounding text instead)
+  - Renders as `<sup class="agenda-footnote-ref" data-footnote-id data-ref-id>` showing the live computed footnote number (rendered via React decoration, not stored in attrs, so reordering doesn't require attr rewrites).
+- ProseMirror decoration plugin walks the doc top-to-bottom and assigns sequential numbers to each unique `footnoteId` in order of appearance. Numbering is derived, never persisted — reordering body content automatically renumbers.
 
-  IF array_length(NEW.mentions, 1) > 0 THEN
-    PERFORM net.http_post(
-      url := current_setting('app.functions_url', true) || '/notify-comment-mentions',
-      headers := jsonb_build_object('Content-Type', 'application/json',
-                                    'Authorization', 'Bearer ' || current_setting('app.service_role_key', true)),
-      body := jsonb_build_object('comment_id', NEW.id)
-    );
-  END IF;
-  RETURN NEW;
-END $$;
+## Source-surface context menu
 
-DROP TRIGGER IF EXISTS trg_task_comments_fanout_mentions ON public.task_comments;
-CREATE TRIGGER trg_task_comments_fanout_mentions
-  AFTER INSERT ON public.task_comments
-  FOR EACH ROW EXECUTE FUNCTION public.task_comments_fanout_mentions();
+Single reusable component `AgendaFootnoteContextMenu` (wraps `@radix-ui/react-context-menu`) used wherever Decisions/Notes/Action Items live. Initial integration: Claap meeting decisions/notes/actions panels and existing Agenda comments. Items:
 
--- RLS: the existing "View comments" / "Insert comments" policies already scope
--- to company_members of the parent deal/task. No change needed.
-```
+- Add to Agenda
+- Add to Agenda as Free Text
+- Add as Footnote Only
 
-(Note: `task_mentions` is the source of truth for notification UX — the `mentions` array on `task_comments` is the spec-requested denormalization for fast querying.)
+A thin `useInsertAgendaFootnote()` hook centralizes:
+1. Resolve current agenda row (company + period) via `insights_agenda` upsert (reusing existing logic).
+2. Upsert footnote (dedup by `(source_type, source_id)` unless user explicitly duplicates).
+3. For Add-to-Agenda variants: dispatch a custom event `agenda:insert-footnote-ref` carrying `{ footnoteId, mode: 'marker' | 'freetext', snapshotText }`. The Agenda editor listens, inserts at current selection, falling back to a "click in the agenda to place" toast prompt when no editor selection exists or the editor isn't mounted.
+4. For Footnote Only: just create the footnote row — it shows up in the Footnotes section on next render.
 
-### 2. Edge function `supabase/functions/notify-comment-mentions/index.ts`
+## Agenda editor changes
 
-```ts
-// Pseudocode diff (new file)
-serve(async (req) => {
-  const { comment_id } = await req.json();
-  const supa = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+- Mount the new mark + decoration plugin alongside existing `CommentMark`.
+- New `AgendaFootnotesSection` rendered below `<EditorContent>` (not inside the editor). Subscribes via Supabase realtime to `insights_agenda_footnotes` filtered by `company_id`+period. Items shown in order of appearance in the editor doc (using decoration plugin's ordered list, falling back to `created_at` for footnote-only entries that have no body reference yet).
+- Each footnote row: `[n] [type chip] snapshot text · created by · timestamp · ↗ open source`. Muted secondary styling consistent with existing prose (no card, just `border-top` separator + small type — matches the Agenda's current minimalism).
+- "Source updated" indicator: small dot when `source_current_text !== source_snapshot_text`, with hover diff. Background polling is out of scope for v1 — `source_current_text` refreshed lazily when the footnote panel mounts for visible footnotes.
+- Click footnote marker → scroll to footnote row (smooth, highlight pulse).
+- Click footnote row → if `link_url` present, navigate; else focus the first body reference.
+- Removing a body reference: if it's the last ref pointing at the footnote, show a tiny inline prompt — "Keep footnote / Remove footnote". Default keep.
 
-  const { data: c } = await supa
-    .from('task_comments')
-    .select('id, body, mentions, author_id, task:task_id(id, title, deal_id)')
-    .eq('id', comment_id).single();
-  if (!c?.mentions?.length) return ok();
+## Autosave / persistence
 
-  const [{ data: author }, { data: targets }] = await Promise.all([
-    supa.from('profiles').select('display_name, email').eq('user_id', c.author_id).single(),
-    supa.from('profiles').select('user_id, display_name, email').in('user_id', c.mentions),
-  ]);
+- Body refs are persisted inside the existing `content_json` autosave path — no changes to the agenda save shape.
+- Footnote rows persist independently via their own table. Numbering is derived at render so no resave is needed when content reorders.
 
-  const plain = c.body.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, '@$1');
-  const deepLink = `${APP_URL}/tasks/${c.task.id}?comment=${c.id}`;
+## Files touched / added
 
-  for (const t of targets ?? []) {
-    if (!t.email || t.user_id === c.author_id) continue;
-    // Idempotency: skip if notification_log already has (comment_id, t.user_id)
-    const { count } = await supa.from('notification_log')
-      .select('id', { count: 'exact', head: true })
-      .eq('kind', 'task_mention').eq('ref_id', c.id).eq('user_id', t.user_id);
-    if (count && count > 0) continue;
+Added
+- `supabase/migrations/<ts>_insights_agenda_footnotes.sql`
+- `src/components/insights/footnotes/FootnoteRefMark.ts`
+- `src/components/insights/footnotes/footnoteNumberingPlugin.ts`
+- `src/components/insights/footnotes/AgendaFootnotesSection.tsx`
+- `src/components/insights/footnotes/AgendaFootnoteContextMenu.tsx`
+- `src/components/insights/footnotes/useInsertAgendaFootnote.ts`
+- `src/components/insights/footnotes/types.ts`
 
-    // Resend via connector gateway
-    await fetch('https://connector-gateway.lovable.dev/resend/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        'X-Connection-Api-Key': RESEND_API_KEY,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        from: 'Naitive <notify@5thline.co>',
-        to: [t.email],
-        subject: `You were mentioned on "${c.task.title}"`,
-        html: renderEmail({ commenter: author?.display_name, body: plain, title: c.task.title, link: deepLink }),
-      }),
-    });
+Edited
+- `src/components/insights/AgendaEditor.tsx` — register mark + plugin, listen for `agenda:insert-footnote-ref`, render `<AgendaFootnotesSection />` below editor.
+- One initial source surface to demonstrate the wiring — wrap the existing Agenda-side comment items (and Claap decision/action items if a quick integration target exists) with `AgendaFootnoteContextMenu`. Other surfaces can adopt the menu later.
+- `src/integrations/supabase/types.ts` (auto-regen after migration approval).
 
-    await supa.from('notification_log').insert({
-      kind: 'task_mention', ref_id: c.id, user_id: t.user_id, channel: 'email'
-    });
-  }
-});
-```
+## Acceptance check
 
-Auth: `verify_jwt = false` (trigger calls with service role).
+- Right-click a source decision → "Add to Agenda" → superscript marker appears at caret, new footnote row at bottom, deep link back to source works.
+- Refresh page → marker + footnote persist, numbering stable.
+- Drag a paragraph above another → footnote numbers re-derive in new order, no resave.
+- Edit underlying source text → "source updated" dot appears; snapshot text in footnote remains untouched.
+- Re-add same source item → reuses the existing footnote and adds a second body ref.
+- Two users on same period see same footnotes via realtime.
 
-### 3. UI integration points (4 surfaces)
+## Out of scope (v1)
 
-| # | Surface | File | Today | Change |
-|---|---|---|---|---|
-| a | Task drawer in a deal | `src/components/tasks/TaskDetailDrawer.tsx` | Uses `MentionTextarea` ✓ but doesn't fanout | After `addComment.mutate(...)` resolves with `newCommentId`, call `useCreateMentions().mutate({ taskId, text, commentId, source: 'comment' })`. Render existing comment bodies through `<MentionChips text={body} />` (new tiny component using `renderMentionText` + click→user preview). |
-| b | Daily Rundown task cards | `src/components/dashboard/SuggestedTasksSection.tsx` + `MoffittDealRundown.tsx` | No composer; tasks shown as cards | Add an inline collapsed "Add comment" affordance per task card that opens the same `MentionTextarea`. Same submit handler (`useTaskComments(taskId).addComment` + mention fanout). |
-| c | Deal Rundown task cards | `src/components/deals/DealsOverlay.tsx` | Same as (b) | Same inline composer; pass the deal context so `MentionTextarea`'s user list is filtered by the deal's company members. |
-| d | My Tasks page | `src/components/tasks/ExpandedTaskDetails.tsx` | Plain `<textarea>` | Replace with `MentionTextarea`; wire mention fanout the same way. |
-
-For all 4 surfaces we'll also extract a single reusable `<TaskCommentComposer taskId>` to dedupe — the four call sites become one-liners.
-
-### 4. Tests
-
-- `src/hooks/__tests__/taskMentionParser.test.ts` — unit tests for `extractMentions`: extracts ids, ignores `@plainName` without parens, dedupes repeats, ignores malformed UUIDs.
-- `src/components/tasks/__tests__/TaskCommentComposer.test.tsx` — RTL test that typing `@Jam` opens the typeahead, Enter inserts a chip, submit calls `addComment` then `useCreateMentions`.
-- `e2e/task-mention-notify.spec.ts` — Playwright: sign in as Niki, open a task, mention James Turner, assert (i) `task_mentions` row exists, (ii) `notification_log` row with `kind='task_mention'` exists, (iii) edge function logs show Resend POST.
-
-### 5. Open questions (please confirm before I apply)
-
-1. **Sender domain for Resend** — should the mention email go from `notify@5thline.co` (matches Daily Briefing) or a different verified address?
-2. **Daily / Deal Rundown cards (surfaces b & c)** are read-only summaries today — do you want the composer **always visible** under each task card, or **revealed on hover/click** to keep the rundown dense?
-3. The `mentions uuid[]` column is technically redundant with `task_mentions` rows. OK to keep both (one for fast filter queries, one for notification UX) — or do you want only one?
-
-## Files touched (final list)
-
-- `supabase/migrations/<ts>_task_comment_mentions.sql` (new)
-- `supabase/functions/notify-comment-mentions/index.ts` (new)
-- `src/components/tasks/TaskCommentComposer.tsx` (new, shared)
-- `src/components/tasks/MentionChips.tsx` (new, shared renderer)
-- `src/components/tasks/TaskDetailDrawer.tsx` (wire fanout + renderer)
-- `src/components/tasks/ExpandedTaskDetails.tsx` (swap textarea → composer)
-- `src/components/dashboard/SuggestedTasksSection.tsx` (add composer)
-- `src/components/dashboard/MoffittDealRundown.tsx` (add composer)
-- `src/components/deals/DealsOverlay.tsx` (add composer)
-- `src/hooks/useTasks.ts` (extend `useTaskComments.addComment` to return new id so fanout can run)
-- Tests: `src/hooks/__tests__/taskMentionParser.test.ts`, `src/components/tasks/__tests__/TaskCommentComposer.test.tsx`, `e2e/task-mention-notify.spec.ts`
-
-Nothing is applied yet — confirm the three open questions and I'll ship it.
+- Citations / linked meeting artifacts in surfaces other than Agenda (data model supports them; UI lands later).
+- Conflict UI for concurrent body edits beyond what the existing autosave already does.
+- Bulk migration of legacy Agenda free-text decisions into structured footnotes.
