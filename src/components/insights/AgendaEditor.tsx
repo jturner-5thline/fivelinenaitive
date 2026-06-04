@@ -42,6 +42,7 @@ import {
   insertTopic,
   generateAgendaRecap,
 } from './agendaRecap';
+import { AgendaQueueBadge } from './comments/AgendaQueueBadge';
 
 const FONT_FAMILIES = [
   { label: 'Default', value: '' },
@@ -313,6 +314,9 @@ function Toolbar({ editor }: { editor: Editor | null }) {
         >
           <Hash size={14} style={{ color: TAG_COLORS.topic }} />
         </ToolbarBtn>
+      </Group>
+      <Group>
+        <AgendaQueueBadge variant="inline" />
       </Group>
     </div>
   );

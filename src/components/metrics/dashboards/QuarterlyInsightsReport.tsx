@@ -2270,7 +2270,13 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
               <div className="qir-doc-list-empty">No initiatives in the selected Asana portfolio.</div>
             )}
             {ownedProjects.map((p) => (
-              <div key={`sum-${p.gid}`} className="qir-doc-list-row">
+              <div
+                key={`sum-${p.gid}`}
+                className="qir-doc-list-row"
+                data-comment-source="initiative"
+                data-comment-source-id={p.gid}
+                data-comment-source-label={`Initiative · ${p.name}`}
+              >
                 {p.permalink_url ? (
                   <a href={p.permalink_url} target="_blank" rel="noopener noreferrer">{p.name}</a>
                 ) : (
