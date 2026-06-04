@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { MessageSquareText, FileText, BarChart3, AlignLeft, Highlighter, Target, Compass, ShieldAlert, ExternalLink, Trash2 } from 'lucide-react';
+import { MessageSquareText, FileText, BarChart3, AlignLeft, Highlighter, Target, Compass, ShieldAlert, ExternalLink, Trash2, Pencil } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInsightsUserComments, type InsightsUserComment } from '@/hooks/useInsightsUserComments';
 import { toast } from 'sonner';
 import { MentionText } from './MentionText';
+import { CommentEditInput } from './CommentEditInput';
 
 const SOURCE_ICON: Record<string, any> = {
   selected_text: Highlighter, narrative: AlignLeft, kpi: BarChart3, chart: BarChart3,
@@ -98,9 +99,10 @@ export function InsightsUserCommentsDropdown({
   onNavigateTab: (tabIndex: number) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { items, count, loading, deleteComment } = useInsightsUserComments();
+  const { items, count, loading, deleteComment, editComment } = useInsightsUserComments();
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleClick = (item: InsightsUserComment) => {
     setOpen(false);
@@ -198,6 +200,7 @@ export function InsightsUserCommentsDropdown({
               const key = `${item.source}:${item.id}`;
               const isConfirm = confirmId === key;
               const isDeleting = deletingId === key;
+              const isEditing = editingId === key;
               return (
                 <div
                   key={`${item.source}:${item.id}`}
@@ -224,22 +227,40 @@ export function InsightsUserCommentsDropdown({
                       <span style={{ fontSize: 10, color: 'rgba(200,225,255,0.5)' }}>{relTime(item.created_at)}</span>
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => handleClick(item)}
-                    style={{
-                      textAlign: 'left', background: 'transparent', border: 'none', padding: 0,
-                      color: '#e8f6ff', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
-                    }}
-                  >
-                    <div style={{
-                      fontSize: 12, lineHeight: 1.4, color: '#e8f6ff',
-                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}>
-                      <MentionText text={item.body} />
-                    </div>
-                  </button>
+                  {isEditing ? (
+                    <CommentEditInput
+                      initialValue={item.body}
+                      onCancel={() => setEditingId(null)}
+                      onSave={async (next) => {
+                        try {
+                          await editComment(item, next);
+                          toast.success('Comment updated');
+                          setEditingId(null);
+                        } catch (e) {
+                          console.error('[edit-comment]', e);
+                          toast.error('Failed to update comment');
+                        }
+                      }}
+                      compact
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleClick(item)}
+                      style={{
+                        textAlign: 'left', background: 'transparent', border: 'none', padding: 0,
+                        color: '#e8f6ff', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
+                      }}
+                    >
+                      <div style={{
+                        fontSize: 12, lineHeight: 1.4, color: '#e8f6ff',
+                        display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}>
+                        <MentionText text={item.body} />
+                      </div>
+                    </button>
+                  )}
                   <div style={{
                     display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
                     fontSize: 10, color: 'rgba(155,220,255,0.8)',
@@ -254,6 +275,22 @@ export function InsightsUserCommentsDropdown({
                       }}
                     >
                       <ExternalLink size={9} /> Jump to source
+                    </button>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginLeft: 'auto' }}>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setEditingId(isEditing ? null : key); }}
+                      title={isEditing ? 'Stop editing' : 'Edit comment'}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        background: isEditing ? 'rgba(80,140,255,0.18)' : 'transparent',
+                        border: isEditing ? '1px solid rgba(120,170,255,0.5)' : '1px solid transparent',
+                        color: isEditing ? 'rgb(180,215,255)' : 'rgba(200,225,255,0.55)',
+                        cursor: 'pointer',
+                        padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                      }}
+                    >
+                      <Pencil size={10} />
                     </button>
                     <button
                       type="button"
@@ -273,6 +310,7 @@ export function InsightsUserCommentsDropdown({
                       <Trash2 size={10} />
                       {isConfirm ? 'Confirm' : ''}
                     </button>
+                    </div>
                   </div>
                 </div>
               );
