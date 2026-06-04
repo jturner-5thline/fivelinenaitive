@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { MessageSquare, NotebookPen, X, AtSign, Send } from 'lucide-react';
+import { MessageSquare, NotebookPen, X, AtSign, Send, Inbox, MessageSquarePlus } from 'lucide-react';
 import { useQirComments } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
 import { PromoteToQueueButton } from '@/components/insights/comments/PromoteToQueueButton';
+import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
+import { toast } from 'sonner';
 
 /**
  * Resolves a contextual "source" from the right-click target by walking up
@@ -119,6 +121,14 @@ interface ComposerState {
   source: { type: string; id: string; label: string };
 }
 
+interface QuickMenuState {
+  x: number;
+  y: number;
+  source: { type: string; id: string; label: string };
+  snippet: string;
+  hasSelection: boolean;
+}
+
 export function QirContextualComments({
   reportKey,
   reportLabel,
@@ -130,7 +140,10 @@ export function QirContextualComments({
 }) {
   const { comments, addComment } = useQirComments(reportKey);
   const { members } = useCompany();
+  const { promote } = useReportAgendaQueue();
   const [composer, setComposer] = useState<ComposerState | null>(null);
+  const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
+  const [queueBusy, setQueueBusy] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -160,13 +173,32 @@ export function QirContextualComments({
       if (target.closest('[data-qir-comments-ui]')) return;
       e.preventDefault();
       const source = resolveSource(target);
-      // Position composer near the cursor, clamped to viewport.
-      const w = 320, h = 220;
+      // Capture snippet: prefer a live text selection (if it sits inside the
+      // right-clicked content); otherwise fall back to the nearest block text.
+      let snippet = '';
+      let hasSelection = false;
+      try {
+        const sel = window.getSelection();
+        const selText = sel?.toString().trim() || '';
+        if (selText && sel && sel.rangeCount > 0) {
+          const range = sel.getRangeAt(0);
+          if (target.contains(range.commonAncestorContainer) || range.commonAncestorContainer.contains(target)) {
+            snippet = selText;
+            hasSelection = true;
+          }
+        }
+      } catch { /* ignore selection access errors */ }
+      if (!snippet) {
+        const block = (target.closest('p, li, h1, h2, h3, h4, td, th, [data-comment-source], [id^="qir-section-"]') as HTMLElement) || target;
+        snippet = (block.innerText || block.textContent || '').replace(/\s+/g, ' ').trim();
+      }
+      snippet = snippet.slice(0, 400);
+      // Position quick menu near the cursor, clamped to viewport.
+      const w = 240, h = 96;
       const x = Math.min(e.clientX, window.innerWidth - w - 12);
       const y = Math.min(e.clientY, window.innerHeight - h - 12);
-      setComposer({ x, y, source });
-      setBody('');
-      setTimeout(() => taRef.current?.focus(), 30);
+      setComposer(null);
+      setQuickMenu({ x, y, source, snippet, hasSelection });
     };
     root.addEventListener('contextmenu', onCtx);
     return () => root.removeEventListener('contextmenu', onCtx);
@@ -174,11 +206,66 @@ export function QirContextualComments({
 
   // ESC to close composer.
   useEffect(() => {
-    if (!composer) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setComposer(null); };
+    if (!composer && !quickMenu) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setComposer(null); setQuickMenu(null); }
+    };
+    const onDown = (e: MouseEvent) => {
+      if (!quickMenu) return;
+      const t = e.target as HTMLElement;
+      if (t.closest('[data-qir-quick-menu]')) return;
+      setQuickMenu(null);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [composer]);
+    window.addEventListener('mousedown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('mousedown', onDown);
+    };
+  }, [composer, quickMenu]);
+
+  const openComposerFromMenu = useCallback(() => {
+    if (!quickMenu) return;
+    setComposer({ x: quickMenu.x, y: quickMenu.y, source: quickMenu.source });
+    setQuickMenu(null);
+    setBody('');
+    setTimeout(() => taRef.current?.focus(), 30);
+  }, [quickMenu]);
+
+  const addToQueueFromMenu = useCallback(async () => {
+    if (!quickMenu || queueBusy) return;
+    setQueueBusy(true);
+    try {
+      const { source, snippet } = quickMenu;
+      const body = snippet || source.label;
+      // Create the underlying qir_comment so it shows up in the Queue dropdown
+      // alongside every other authored comment.
+      const inserted = await addComment(source.type, source.id, body, [], reportLabel, source.label);
+      if (!inserted) {
+        toast.error("Couldn't add to Queue");
+        return;
+      }
+      // Stage it on the unified report queue (gives the 'Queued' badge).
+      await promote({
+        reportTab: reportLabel,
+        sourceType: mapTargetTypeToQueue(source.type),
+        sourceId: source.id,
+        sourceAnchor: `${source.type}:${source.id}`,
+        sourceSnapshotText: snapshotForSource(source.type, source.id, source.label) || snippet,
+        sourceLabel: source.label,
+        commentSource: 'qir',
+        commentId: inserted.id,
+        commentTextSnapshot: body,
+      });
+      toast.success('Added to Queue', { description: source.label });
+      setQuickMenu(null);
+    } catch (err) {
+      console.error('[addToQueueFromMenu]', err);
+      toast.error("Couldn't add to Queue");
+    } finally {
+      setQueueBusy(false);
+    }
+  }, [quickMenu, queueBusy, addComment, promote, reportLabel]);
 
   const submit = useCallback(async () => {
     if (!composer || !body.trim() || submitting) return;
@@ -259,6 +346,72 @@ export function QirContextualComments({
   return (
     <>
       {headerButton}
+
+      {quickMenu && createPortal(
+        <div
+          data-qir-comments-ui
+          data-qir-quick-menu
+          className="qir-no-print"
+          style={{
+            position: 'fixed', left: quickMenu.x, top: quickMenu.y, width: 240, zIndex: 1500,
+            background: 'rgba(12,20,36,0.98)', border: '1px solid rgba(120,170,255,0.3)',
+            borderRadius: 8, boxShadow: '0 12px 36px rgba(0,0,0,0.45)',
+            padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
+          }}
+          onContextMenu={e => e.preventDefault()}
+        >
+          <div style={{
+            padding: '6px 10px 4px', fontSize: 9, fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '.1em',
+            color: 'rgba(160,200,255,0.6)',
+            overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          }}>
+            {quickMenu.source.label}
+          </div>
+          <button
+            type="button"
+            onClick={addToQueueFromMenu}
+            disabled={queueBusy}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+              borderRadius: 6, background: 'transparent', border: 'none',
+              color: '#dde8f8', cursor: queueBusy ? 'wait' : 'pointer', fontSize: 13,
+              textAlign: 'left',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(80,140,255,0.18)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <Inbox size={13} style={{ color: 'rgba(155,220,255,0.9)' }} />
+            <span style={{ fontWeight: 600 }}>{queueBusy ? 'Adding…' : 'Add to Queue'}</span>
+          </button>
+          <button
+            type="button"
+            onClick={openComposerFromMenu}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px',
+              borderRadius: 6, background: 'transparent', border: 'none',
+              color: '#dde8f8', cursor: 'pointer', fontSize: 13, textAlign: 'left',
+            }}
+            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(80,140,255,0.18)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+          >
+            <MessageSquarePlus size={13} style={{ color: 'rgba(200,225,255,0.75)' }} />
+            <span>Add comment…</span>
+          </button>
+          {quickMenu.snippet && (
+            <div style={{
+              margin: '4px 10px 6px', padding: '6px 8px',
+              borderTop: '1px solid rgba(120,170,255,0.15)',
+              fontSize: 11, color: 'rgba(200,225,245,0.6)',
+              lineHeight: 1.4, maxHeight: 48, overflow: 'hidden',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            }}>
+              {quickMenu.hasSelection ? '“' : ''}{quickMenu.snippet.slice(0, 140)}{quickMenu.snippet.length > 140 ? '…' : ''}{quickMenu.hasSelection ? '”' : ''}
+            </div>
+          )}
+        </div>,
+        document.body,
+      )}
 
       {composer && (
         <div
