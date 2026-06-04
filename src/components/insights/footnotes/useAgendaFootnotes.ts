@@ -120,7 +120,7 @@ export function useAgendaFootnotes({ companyId, periodType, periodKey }: Options
         console.error('[agenda_footnotes] insert', error);
         return null;
       }
-      const fn = data as AgendaFootnote;
+      const fn = data as unknown as AgendaFootnote;
       setFootnotes((prev) => (prev.some((f) => f.id === fn.id) ? prev : [...prev, fn]));
       return fn;
     },
