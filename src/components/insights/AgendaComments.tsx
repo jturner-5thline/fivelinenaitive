@@ -763,9 +763,9 @@ export function ThreadCard({
             autoFocus
             placeholder="Write a reply…"
             onCancel={() => setReplying(false)}
-            onSubmit={async (body) => {
+            onSubmit={async (body, commentType) => {
               const parent = top[top.length - 1];
-              await api.addComment(thread.id, body, parent?.id ?? null);
+              await api.addComment(thread.id, body, parent?.id ?? null, commentType);
               setReplying(false);
             }}
           />
