@@ -9,7 +9,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Inbox, FileText, BarChart3, Target, Compass, ShieldAlert,
   AlignLeft, Highlighter, ArrowRight, Footprints,
-  ExternalLink, Archive,
+  ExternalLink, Archive, Trash2,
 } from 'lucide-react';
 import {
   useReportAgendaQueue,
@@ -17,6 +17,7 @@ import {
   type ReportQueueSourceType,
 } from '@/hooks/useReportAgendaQueue';
 import { useInsertAgendaFootnote } from '@/components/insights/footnotes/useInsertAgendaFootnote';
+import { MentionText } from './MentionText';
 import { toast } from 'sonner';
 
 const SOURCE_ICON: Record<ReportQueueSourceType, LucideIcon> = {
@@ -71,11 +72,12 @@ export function AgendaQueuePanel({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { items, updateItem, counts } = useReportAgendaQueue();
+  const { items, updateItem, removeItem, counts } = useReportAgendaQueue();
   const insertFootnote = useInsertAgendaFootnote();
   const [filter, setFilter] = useState<FilterKey>('queued');
   const [freeTextFor, setFreeTextFor] = useState<string | null>(null);
   const [freeText, setFreeText] = useState('');
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return items;
@@ -199,7 +201,7 @@ export function AgendaQueuePanel({
                 )}
 
                 <div className="text-[13px] text-foreground whitespace-pre-wrap leading-snug">
-                  {item.comment_text_snapshot}
+                  <MentionText text={item.comment_text_snapshot} />
                 </div>
 
                 <div className="text-[10px] text-muted-foreground flex items-center gap-2">
@@ -212,6 +214,25 @@ export function AgendaQueuePanel({
                     className="ml-auto inline-flex items-center gap-1 text-primary/80 hover:text-primary"
                   >
                     <ExternalLink size={10} /> Jump to source
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (confirmDeleteId !== item.id) { setConfirmDeleteId(item.id); return; }
+                      await removeItem(item.id);
+                      setConfirmDeleteId(null);
+                      toast.success('Removed from queue');
+                    }}
+                    onBlur={() => { if (confirmDeleteId === item.id) setConfirmDeleteId(null); }}
+                    title={confirmDeleteId === item.id ? 'Click again to confirm' : 'Delete'}
+                    className={
+                      'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 border transition-colors ' +
+                      (confirmDeleteId === item.id
+                        ? 'border-destructive/60 bg-destructive/10 text-destructive'
+                        : 'border-transparent text-muted-foreground hover:text-destructive hover:border-destructive/40')
+                    }
+                  >
+                    <Trash2 size={10} />{confirmDeleteId === item.id ? 'Confirm' : ''}
                   </button>
                 </div>
 
