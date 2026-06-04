@@ -321,6 +321,8 @@ export interface ReportState {
   authors: string[];
   kpis: KPI[];
   narrative: string;
+  /** Optional file/image attachments persisted with the narrative section. */
+  narrativeAttachments?: NarrativeAttachment[];
   goals: Goal[];
   initiatives: Initiative[];
   initiativeOwnerFilter: string;
