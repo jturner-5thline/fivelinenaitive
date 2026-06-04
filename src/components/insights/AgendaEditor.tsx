@@ -878,7 +878,7 @@ export function AgendaEditor() {
         <NewThreadPopover
           anchor={pendingComment?.anchor ?? null}
           onCancel={() => setPendingComment(null)}
-          onSubmit={async (body) => {
+          onSubmit={async (body, commentType) => {
             if (!pendingComment || !editor) return;
             const t = await commentsApi.createThread(pendingComment.text);
             if (t) {
@@ -887,7 +887,7 @@ export function AgendaEditor() {
                 .setTextSelection({ from: pendingComment.from, to: pendingComment.to })
                 .setCommentMark(t.id)
                 .run();
-              await commentsApi.addComment(t.id, body);
+              await commentsApi.addComment(t.id, body, null, commentType);
               // Auto-open the inline popover on the freshly-marked span.
               requestAnimationFrame(() => {
                 const span = editor.view.dom.querySelector(

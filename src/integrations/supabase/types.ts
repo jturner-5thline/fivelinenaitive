@@ -473,6 +473,7 @@ export type Database = {
         Row: {
           author_id: string
           body: string
+          comment_type: string
           company_id: string
           created_at: string
           deleted_at: string | null
@@ -487,6 +488,7 @@ export type Database = {
         Insert: {
           author_id: string
           body: string
+          comment_type?: string
           company_id: string
           created_at?: string
           deleted_at?: string | null
@@ -501,6 +503,7 @@ export type Database = {
         Update: {
           author_id?: string
           body?: string
+          comment_type?: string
           company_id?: string
           created_at?: string
           deleted_at?: string | null
@@ -20000,6 +20003,7 @@ export type Database = {
           author_name: string | null
           author_user_id: string
           body: string
+          comment_type: string
           company_id: string
           created_at: string
           id: string
@@ -20015,6 +20019,7 @@ export type Database = {
           author_name?: string | null
           author_user_id: string
           body: string
+          comment_type?: string
           company_id: string
           created_at?: string
           id?: string
@@ -20030,6 +20035,7 @@ export type Database = {
           author_name?: string | null
           author_user_id?: string
           body?: string
+          comment_type?: string
           company_id?: string
           created_at?: string
           id?: string

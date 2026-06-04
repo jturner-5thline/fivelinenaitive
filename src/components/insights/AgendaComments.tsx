@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { findCommentRanges } from './CommentMark';
 import { PromoteToQueueButton } from './comments/PromoteToQueueButton';
+import { CommentTypePicker, type CommentType } from './comments/CommentTypePicker';
+import { useInsertAgendaFootnote } from './footnotes/useInsertAgendaFootnote';
 import { useInsightsTimeframeOptional, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
 
 // ---------- Types ----------
@@ -40,6 +42,7 @@ export interface AgendaComment {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  comment_type?: CommentType;
 }
 
 // ---------- Mention parsing ----------
@@ -90,6 +93,7 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
   const { user } = useAuth();
   const tf = useInsightsTimeframeOptional();
   const period = tf?.reportingPeriod ?? reportingPeriodHelpers.defaultReportingPeriod('quarter');
+  const insertFootnote = useInsertAgendaFootnote();
   const [threads, setThreads] = useState<AgendaThread[]>([]);
   const [comments, setComments] = useState<AgendaComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -184,6 +188,7 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
       threadId: string,
       body: string,
       parentCommentId: string | null = null,
+      commentType: CommentType = 'note',
     ): Promise<AgendaComment | null> => {
       if (!user?.id || !companyId) return null;
       const trimmed = body.trim();
@@ -202,10 +207,29 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
           // to the period the comment was authored under.
           period_type: period.view,
           period_key: period.period,
+          comment_type: commentType,
         })
         .select()
         .single();
       if (error) { toast.error('Could not post comment', { description: error.message }); return null; }
+      // Route the comment into the Agenda footnotes section under the
+      // matching Note / Decision / Action Item bucket. Best-effort.
+      try {
+        const thread = threads.find((t) => t.id === threadId);
+        const anchor = thread?.anchor_text?.slice(0, 120) || 'Agenda';
+        await insertFootnote(
+          {
+            footnoteType: commentType,
+            sourceType: 'comment',
+            sourceId: (data as any)?.id,
+            sourceAnchor: anchor,
+            snapshotText: trimmed,
+          },
+          'footnote_only',
+        );
+      } catch (fErr) {
+        console.error('[agenda-comment->footnote]', fErr);
+      }
       // Fan out @mentions to notification_instances (best-effort; RLS may block if the user isn't admin)
       if (mentions.length > 0) {
         await Promise.all(
@@ -225,7 +249,7 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
       await refetch();
       return data as any;
     },
-    [user?.id, companyId, agendaId, refetch],
+    [user?.id, companyId, agendaId, refetch, threads, insertFootnote, period.view, period.period],
   );
 
   const editComment = useCallback(async (id: string, body: string) => {
@@ -475,23 +499,30 @@ export function SelectionCommentAction({
 
 // ---------- Comment composer (used for new threads + new replies) ----------
 export function CommentComposer({
-  onSubmit, autoFocus, placeholder, onCancel,
+  onSubmit, autoFocus, placeholder, onCancel, withType,
 }: {
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string, commentType: CommentType) => void;
   autoFocus?: boolean;
   placeholder?: string;
   onCancel?: () => void;
+  /** Show the Note / Decision / Action Item selector. Default true. */
+  withType?: boolean;
 }) {
   const [body, setBody] = useState('');
+  const [commentType, setCommentType] = useState<CommentType>('note');
   const members = useTeamMembers();
   const submit = () => {
     const v = body.trim();
     if (!v) return;
-    onSubmit(v);
+    onSubmit(v, commentType);
     setBody('');
+    setCommentType('note');
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {(withType ?? true) && (
+        <CommentTypePicker value={commentType} onChange={setCommentType} />
+      )}
       <MentionableTextarea
         value={body}
         onChange={setBody}
@@ -732,9 +763,9 @@ export function ThreadCard({
             autoFocus
             placeholder="Write a reply…"
             onCancel={() => setReplying(false)}
-            onSubmit={async (body) => {
+            onSubmit={async (body, commentType) => {
               const parent = top[top.length - 1];
-              await api.addComment(thread.id, body, parent?.id ?? null);
+              await api.addComment(thread.id, body, parent?.id ?? null, commentType);
               setReplying(false);
             }}
           />
@@ -871,7 +902,7 @@ export function NewThreadPopover({
 }: {
   anchor: { left: number; top: number } | null;
   onCancel: () => void;
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string, commentType: CommentType) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [top, setTop] = useState(0);

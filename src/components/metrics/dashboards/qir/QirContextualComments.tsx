@@ -7,6 +7,8 @@ import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PromoteToQueueButton } from '@/components/insights/comments/PromoteToQueueButton';
 import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
 import { MentionText } from '@/components/insights/comments/MentionText';
+import { CommentTypePicker, type CommentType } from '@/components/insights/comments/CommentTypePicker';
+import { useInsertAgendaFootnote } from '@/components/insights/footnotes/useInsertAgendaFootnote';
 import { toast } from 'sonner';
 
 /**
@@ -172,10 +174,12 @@ export function QirContextualComments({
   }, [companyMembers, teamMembers]);
   const queueApi = (useReportAgendaQueue() || {}) as any;
   const promote = queueApi.promote ?? (async () => null);
+  const insertFootnote = useInsertAgendaFootnote();
   const [composer, setComposer] = useState<ComposerState | null>(null);
   const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [body, setBody] = useState('');
+  const [commentType, setCommentType] = useState<CommentType>('note');
   const [submitting, setSubmitting] = useState(false);
   const [slotEl, setSlotEl] = useState<HTMLElement | null>(null);
   const taRef = useRef<HTMLTextAreaElement | null>(null);
@@ -233,6 +237,7 @@ export function QirContextualComments({
       setQuickMenu(null);
       setBody('');
       setComposer({ x, y, source, snippet, hasSelection });
+      setCommentType('note');
       setTimeout(() => taRef.current?.focus(), 30);
     };
     root.addEventListener('contextmenu', onCtx);
@@ -266,7 +271,7 @@ export function QirContextualComments({
       const mentionNames = parseMentions(body);
       const inserted = await addComment(
         composer.source.type, composer.source.id, body, mentionNames,
-        reportLabel, composer.source.label,
+        reportLabel, composer.source.label, commentType,
       );
       // Comments ARE queue items — automatically stage every new comment on
       // the shared Queue with the captured source snippet for traceability.
@@ -288,15 +293,32 @@ export function QirContextualComments({
         } catch (qErr) {
           console.error('[auto-promote-to-queue]', qErr);
         }
+        // Route every typed comment into the Agenda footnotes section so it
+        // appears under the matching Note / Decision / Action Item bucket.
+        try {
+          await insertFootnote(
+            {
+              footnoteType: commentType,
+              sourceType: 'comment',
+              sourceId: inserted.id,
+              sourceAnchor: source.label,
+              snapshotText: body,
+            },
+            'footnote_only',
+          );
+        } catch (fErr) {
+          console.error('[comment->footnote]', fErr);
+        }
       }
       setComposer(null);
       setBody('');
+      setCommentType('note');
     } catch (err) {
       console.error('Add comment failed', err);
     } finally {
       setSubmitting(false);
     }
-  }, [composer, body, submitting, addComment, promote, reportLabel]);
+  }, [composer, body, commentType, submitting, addComment, promote, insertFootnote, reportLabel]);
 
   // Mention autocomplete: detect trailing `@` or `@token` in body.
   // Allow zero-length token so the picker opens immediately on `@`.
@@ -405,6 +427,7 @@ export function QirContextualComments({
               {composer.hasSelection ? '“' : ''}{composer.snippet.slice(0, 180)}{composer.snippet.length > 180 ? '…' : ''}{composer.hasSelection ? '”' : ''}
             </div>
           )}
+          <CommentTypePicker value={commentType} onChange={setCommentType} />
           <div style={{ position: 'relative' }}>
             <textarea
               ref={taRef}
