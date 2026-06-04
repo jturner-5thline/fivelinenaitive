@@ -80,6 +80,7 @@ import { EmailSelectionActionMenu } from './EmailSelectionActionMenu';
 import { EmailAttachmentList } from './EmailAttachmentList';
 import { EmailAttachmentsStrip, detectAttachmentFallbackReason } from './EmailAttachmentsStrip';
 import { useFullEmailMessage, prefetchFullEmailMessage } from './useFullEmailMessage';
+import { EmailSyncIndicator } from './EmailSyncIndicator';
 import { LenderPassBanner } from './LenderPassBanner';
 import { useLenderPassDetection } from '@/hooks/useLenderPassDetection';
 import { SendToDataRoomDialog } from './SendToDataRoomDialog';
@@ -1117,16 +1118,19 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
   // same scroll parent.
   if (scrollParent) {
     return (
-      <Virtuoso
-        data={threads}
-        customScrollParent={scrollParent}
-        itemContent={renderThread}
-        computeItemKey={(_i, t) => t.threadId}
-        // Reserve a sensible initial height so a quick first paint doesn't
-        // collapse the list before measurements complete.
-        defaultItemHeight={72}
-        increaseViewportBy={{ top: 400, bottom: 600 }}
-      />
+      <>
+        <EmailSyncIndicator />
+        <Virtuoso
+          data={threads}
+          customScrollParent={scrollParent}
+          itemContent={renderThread}
+          computeItemKey={(_i, t) => t.threadId}
+          // Reserve a sensible initial height so a quick first paint doesn't
+          // collapse the list before measurements complete.
+          defaultItemHeight={72}
+          increaseViewportBy={{ top: 400, bottom: 600 }}
+        />
+      </>
     );
   }
 
@@ -1139,6 +1143,7 @@ export function EmailList({ emails, selectedThread, onSelectThread, onToggleLink
         contain: 'layout paint style',
       }}
     >
+      <EmailSyncIndicator />
       {threads.map((thread, idx) => renderThread(idx, thread))}
     </div>
   );
