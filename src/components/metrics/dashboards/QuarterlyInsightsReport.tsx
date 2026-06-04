@@ -2414,6 +2414,8 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
   const removeRisk = (id: string) => set(prev => ({ ...prev, risks: prev.risks.filter(risk => risk.id !== id) }));
   const addRisk = () => set(prev => ({ ...prev, risks: [...prev.risks, { id: uid(), description: '', mitigation: '' }] }));
 
+  // (RiskProseBlock is defined at module scope below.)
+
   const [riskDrill, setRiskDrill] = useState<DrilldownContext | null>(null);
   const riskDrillRows = useMemo<Risk[]>(() => {
     if (!riskDrill) return [];
