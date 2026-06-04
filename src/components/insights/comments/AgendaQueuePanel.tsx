@@ -123,7 +123,7 @@ export function AgendaQueuePanel({
           <div className="flex items-center gap-2">
             <Inbox className="h-4 w-4 text-primary" />
             <SheetTitle className="text-sm font-semibold tracking-tight">
-              Agenda Queue
+              Queue
             </SheetTitle>
             <Badge variant="secondary" className="ml-1">{counts.queued}</Badge>
           </div>

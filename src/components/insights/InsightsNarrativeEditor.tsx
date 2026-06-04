@@ -374,7 +374,7 @@ export function InsightsNarrativeEditor({
                 commentSource: 'qir',
                 commentTextSnapshot: snippet,
               });
-              toast.success(row ? 'Added to Agenda Queue' : 'Failed to queue selection');
+              toast.success(row ? 'Added to Queue' : 'Failed to queue selection');
             }}
             style={{
               position: 'absolute', left: Math.max(0, selAction.left), top: Math.max(0, selAction.top),
@@ -385,7 +385,7 @@ export function InsightsNarrativeEditor({
               boxShadow: '0 4px 14px rgba(0,0,0,0.4)',
               cursor: 'pointer', zIndex: 30, whiteSpace: 'nowrap',
             }}
-            title="Send selected text to the Agenda Queue"
+            title="Send selected text to the Queue"
           >
             <MessageSquarePlus size={12} />
             Queue

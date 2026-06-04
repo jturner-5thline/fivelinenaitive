@@ -4,8 +4,9 @@ import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
 import { AgendaQueuePanel } from './AgendaQueuePanel';
 
 /**
- * Compact opener for the Agenda Queue panel. Shows a small badge with the
- * current queued count. Drop in the Agenda toolbar or the QIR controls bar.
+ * Compact opener for the Queue panel. Shows a small badge with the current
+ * queued count. NOTE: legacy "AgendaQueue*" file/symbol names are retained
+ * as internal technical debt — user-facing copy says "Queue".
  */
 export function AgendaQueueBadge({
   variant = 'icon',
@@ -19,7 +20,7 @@ export function AgendaQueueBadge({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          title="Agenda Queue"
+          title="Queue"
           className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/50 text-[11px] font-medium text-foreground/80 hover:bg-accent/40 hover:text-foreground transition-colors"
         >
           <Inbox className="h-3 w-3" />
@@ -40,8 +41,8 @@ export function AgendaQueueBadge({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        aria-label="Open Agenda Queue"
-        title={`Agenda Queue (${counts.queued} queued)`}
+        aria-label="Open Queue"
+        title={`Queue (${counts.queued} queued)`}
         className="relative inline-flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors"
       >
         <Inbox className="h-4 w-4" />

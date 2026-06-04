@@ -4,7 +4,6 @@ import { MessageSquare, NotebookPen, X, AtSign, Send } from 'lucide-react';
 import { useQirComments } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
 import { PromoteToQueueButton } from '@/components/insights/comments/PromoteToQueueButton';
-import { AgendaQueueBadge } from '@/components/insights/comments/AgendaQueueBadge';
 
 /**
  * Resolves a contextual "source" from the right-click target by walking up
@@ -251,28 +250,11 @@ export function QirContextualComments({
     setTimeout(() => { el!.style.boxShadow = prev; }, 1600);
   };
 
-  const headerButton = slotEl ? createPortal(
-    <div className="inline-flex items-center gap-1.5" data-qir-comments-ui>
-      <button
-        type="button"
-        onClick={() => setDrawerOpen(true)}
-        aria-label="View all comments"
-        title={`Comments (${comments.length})`}
-        className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors relative"
-      >
-        <NotebookPen className="h-4 w-4" />
-        {comments.length > 0 && (
-          <span style={{
-            position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px',
-            background: 'rgb(80,140,255)', color: 'white', borderRadius: 8, fontSize: 10, fontWeight: 700,
-            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-          }}>{comments.length}</span>
-        )}
-      </button>
-      <AgendaQueueBadge />
-    </div>,
-    slotEl,
-  ) : null;
+  // Header-level comment/queue UI is consolidated into the single
+  // "Queue" dropdown rendered by ManagementReviewCarousel. We intentionally
+  // no longer render a "View all comments" button or an Agenda Queue badge
+  // in the QIR header slot — that surface is now Queue-only.
+  const headerButton = null;
 
   return (
     <>

@@ -42,7 +42,8 @@ import {
   insertTopic,
   generateAgendaRecap,
 } from './agendaRecap';
-import { AgendaQueueBadge } from './comments/AgendaQueueBadge';
+// AgendaQueueBadge intentionally not rendered here — the unified "Queue"
+// dropdown lives in the shared Insights header (ManagementReviewCarousel).
 
 const FONT_FAMILIES = [
   { label: 'Default', value: '' },
@@ -314,9 +315,6 @@ function Toolbar({ editor }: { editor: Editor | null }) {
         >
           <Hash size={14} style={{ color: TAG_COLORS.topic }} />
         </ToolbarBtn>
-      </Group>
-      <Group>
-        <AgendaQueueBadge variant="inline" />
       </Group>
     </div>
   );
