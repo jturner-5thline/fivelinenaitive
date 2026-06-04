@@ -1040,6 +1040,7 @@ function ReportNarrativeSection({ s, set, scopeKey, save, isSaving }: {
           scopeKey={scopeKey}
           isSaving={isSaving}
           savedAt={savedAt}
+          chromeless
           onChange={(html) => {
             set(prev => ({ ...prev, narrative: html }));
             scheduleSave();
