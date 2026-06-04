@@ -295,6 +295,24 @@ function Toolbar({ editor }: { editor: Editor | null }) {
         >
           <Eraser size={14} />
         </ToolbarBtn>
+        <ToolbarBtn
+          title="Insert Action Item"
+          onClick={() => insertActionItem(editor)}
+        >
+          <CheckSquare size={14} style={{ color: TAG_COLORS.action }} />
+        </ToolbarBtn>
+        <ToolbarBtn
+          title="Insert Decision"
+          onClick={() => insertDecision(editor)}
+        >
+          <Gavel size={14} style={{ color: TAG_COLORS.decision }} />
+        </ToolbarBtn>
+        <ToolbarBtn
+          title="Insert Key Topic"
+          onClick={() => insertTopic(editor)}
+        >
+          <Hash size={14} style={{ color: TAG_COLORS.topic }} />
+        </ToolbarBtn>
       </Group>
     </div>
   );
