@@ -189,5 +189,40 @@ export function useInsightsUserComments() {
     // realtime keeps the list fresh. Expose for the dropdown's pull-to-refresh.
   }, []);
 
-  return { items, loading, refresh, count: items.length };
+  /**
+   * Delete a comment from the user's Insights queue. Removes both the
+   * underlying comment (qir_comments / agenda_comments) and any
+   * report_agenda_queue staging row that references it.
+   */
+  const deleteComment = useCallback(async (item: InsightsUserComment) => {
+    // Drop any linked queue row first (best-effort).
+    if (companyId) {
+      await supabase
+        .from('report_agenda_queue' as any)
+        .delete()
+        .eq('company_id', companyId)
+        .eq('comment_source', item.source)
+        .eq('comment_id', item.id);
+    }
+    if (item.source === 'qir') {
+      const { error } = await supabase.from('qir_comments' as any).delete().eq('id', item.id);
+      if (error) throw error;
+      setQirRows((prev) => prev.filter((r) => r.id !== item.id));
+    } else {
+      const { error } = await supabase
+        .from('agenda_comments')
+        .update({ deleted_at: new Date().toISOString() } as any)
+        .eq('id', item.id);
+      if (error) throw error;
+      setAgendaRows((prev) => prev.filter((r) => r.id !== item.id));
+    }
+    setQueueByComment((prev) => {
+      const k = `${item.source}:${item.id}`;
+      if (!(k in prev)) return prev;
+      const { [k]: _drop, ...rest } = prev;
+      return rest;
+    });
+  }, [companyId]);
+
+  return { items, loading, refresh, deleteComment, count: items.length };
 }
