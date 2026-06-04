@@ -364,6 +364,17 @@ export function QirContextualComments({
               <X size={14} />
             </button>
           </div>
+          {composer.snippet && (
+            <div style={{
+              padding: '6px 8px', borderLeft: '2px solid rgba(124,200,240,0.6)',
+              background: 'rgba(124,200,240,0.06)', borderRadius: 4,
+              fontSize: 11, color: 'rgba(200,225,245,0.7)', lineHeight: 1.4,
+              maxHeight: 48, overflow: 'hidden',
+              display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+            }}>
+              {composer.hasSelection ? '“' : ''}{composer.snippet.slice(0, 180)}{composer.snippet.length > 180 ? '…' : ''}{composer.hasSelection ? '”' : ''}
+            </div>
+          )}
           <div style={{ position: 'relative' }}>
             <textarea
               ref={taRef}
