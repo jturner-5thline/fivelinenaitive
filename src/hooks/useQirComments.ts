@@ -244,7 +244,7 @@ export function useQirComments(reportKey: string) {
       }
     }
     return (inserted as any as QirComment) || null;
-  }, [company?.id, user, members, reportKey]);
+  }, [company?.id, user, members, reportKey, period.view, period.period]);
 
   const deleteComment = useCallback(async (id: string) => {
     const { error } = await supabase.from('qir_comments' as any).delete().eq('id', id);
