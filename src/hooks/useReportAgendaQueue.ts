@@ -61,12 +61,13 @@ export function useReportAgendaQueue() {
   const period = tf?.reportingPeriod ?? reportingPeriodHelpers.defaultReportingPeriod('quarter');
   const periodType = period.view as 'month' | 'quarter';
   const periodKey = period.period;
+  const userId = user?.id;
 
   const [items, setItems] = useState<ReportQueueItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!company?.id) return;
+    if (!company?.id || !userId) { setItems([]); setLoading(false); return; }
     let alive = true;
     setLoading(true);
     (async () => {
@@ -74,6 +75,7 @@ export function useReportAgendaQueue() {
         .from('report_agenda_queue' as any)
         .select('*')
         .eq('company_id', company.id)
+        .eq('created_by', userId)
         .eq('period_type', periodType)
         .eq('period_key', periodKey)
         .order('created_at', { ascending: false });
@@ -82,10 +84,10 @@ export function useReportAgendaQueue() {
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, [company?.id, periodType, periodKey]);
+  }, [company?.id, userId, periodType, periodKey]);
 
   useEffect(() => {
-    if (!company?.id) return;
+    if (!company?.id || !userId) return;
     const ch = supabase
       .channel(`report-queue-${company.id}-${periodType}-${periodKey}`)
       .on('postgres_changes', {
@@ -95,6 +97,8 @@ export function useReportAgendaQueue() {
         const row = (payload.new || payload.old) as any;
         if (!row) return;
         if (row.period_type !== periodType || row.period_key !== periodKey) return;
+        // Only surface the current user's own queue rows.
+        if (row.created_by !== userId) return;
         if (payload.eventType === 'INSERT') {
           setItems(prev => prev.find(i => i.id === row.id) ? prev : [row as ReportQueueItem, ...prev]);
         } else if (payload.eventType === 'UPDATE') {
@@ -105,7 +109,7 @@ export function useReportAgendaQueue() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [company?.id, periodType, periodKey]);
+  }, [company?.id, userId, periodType, periodKey]);
 
   const promote = useCallback(async (input: PromoteToQueueInput): Promise<ReportQueueItem | null> => {
     if (!company?.id || !user?.id) return null;
