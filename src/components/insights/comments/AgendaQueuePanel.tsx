@@ -9,7 +9,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Inbox, FileText, BarChart3, Target, Compass, ShieldAlert,
   AlignLeft, Highlighter, ArrowRight, Footprints,
-  ExternalLink, Archive, Trash2,
+  ExternalLink, Archive, Trash2, Pencil,
 } from 'lucide-react';
 import {
   useReportAgendaQueue,
@@ -18,6 +18,8 @@ import {
 } from '@/hooks/useReportAgendaQueue';
 import { useInsertAgendaFootnote } from '@/components/insights/footnotes/useInsertAgendaFootnote';
 import { MentionText } from './MentionText';
+import { CommentEditInput } from './CommentEditInput';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 const SOURCE_ICON: Record<ReportQueueSourceType, LucideIcon> = {
@@ -78,6 +80,7 @@ export function AgendaQueuePanel({
   const [freeTextFor, setFreeTextFor] = useState<string | null>(null);
   const [freeText, setFreeText] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (filter === 'all') return items;
@@ -116,6 +119,43 @@ export function AgendaQueuePanel({
     });
     setFreeTextFor(null);
     setFreeText('');
+  }
+
+  /**
+   * Edit the comment body in place. Updates the underlying source
+   * (qir_comments / agenda_comments) and keeps the queue snapshot in sync
+   * so the panel reflects the new text immediately. Queue status is
+   * preserved.
+   */
+  async function saveEdit(item: ReportQueueItem, newBody: string) {
+    const next = newBody.trim();
+    if (!next || next === item.comment_text_snapshot) {
+      setEditingId(null);
+      return;
+    }
+    try {
+      if (item.comment_id) {
+        if (item.comment_source === 'qir') {
+          const { error } = await supabase
+            .from('qir_comments' as any)
+            .update({ body: next } as any)
+            .eq('id', item.comment_id);
+          if (error) throw error;
+        } else if (item.comment_source === 'agenda') {
+          const { error } = await supabase
+            .from('agenda_comments')
+            .update({ body: next } as any)
+            .eq('id', item.comment_id);
+          if (error) throw error;
+        }
+      }
+      await updateItem(item.id, { comment_text_snapshot: next.slice(0, 4000) });
+      toast.success('Comment updated');
+      setEditingId(null);
+    } catch (e) {
+      console.error('[edit-queue-comment]', e);
+      toast.error('Failed to update comment');
+    }
   }
 
   return (
@@ -200,9 +240,18 @@ export function AgendaQueuePanel({
                   </div>
                 )}
 
-                <div className="text-[13px] text-foreground whitespace-pre-wrap leading-snug">
-                  <MentionText text={item.comment_text_snapshot} />
-                </div>
+                {editingId === item.id ? (
+                  <CommentEditInput
+                    initialValue={item.comment_text_snapshot}
+                    onCancel={() => setEditingId(null)}
+                    onSave={(next) => saveEdit(item, next)}
+                    compact
+                  />
+                ) : (
+                  <div className="text-[13px] text-foreground whitespace-pre-wrap leading-snug">
+                    <MentionText text={item.comment_text_snapshot} />
+                  </div>
+                )}
 
                 <div className="text-[10px] text-muted-foreground flex items-center gap-2">
                   <span>{item.created_by_name || 'Someone'}</span>
@@ -214,6 +263,19 @@ export function AgendaQueuePanel({
                     className="ml-auto inline-flex items-center gap-1 text-primary/80 hover:text-primary"
                   >
                     <ExternalLink size={10} /> Jump to source
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditingId(editingId === item.id ? null : item.id)}
+                    title={editingId === item.id ? 'Stop editing' : 'Edit comment'}
+                    className={
+                      'inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 border transition-colors ' +
+                      (editingId === item.id
+                        ? 'border-primary/60 bg-primary/10 text-primary'
+                        : 'border-transparent text-muted-foreground hover:text-primary hover:border-primary/40')
+                    }
+                  >
+                    <Pencil size={10} />
                   </button>
                   <button
                     type="button"
