@@ -2438,40 +2438,28 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
         <SectionTitle prominent right={(
           <div style={{ display: 'flex', gap: 8 }}>
             <Btn icon={ExternalLink} variant="ghost" onClick={() => setRiskDrill({ sourceId: 'risks:all', sourceLabel: 'Open Risks · All', selection: `${s.risks.length} risk${s.risks.length === 1 ? '' : 's'}` })}>View All</Btn>
-            <Btn icon={Plus} variant="ghost" onClick={addRisk}>Add Risk</Btn>
           </div>
         )}>
           Open Risks
         </SectionTitle>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 640 }}>
-            <thead>
-              <tr>
-                <th style={thStyle}>Risk Description</th>
-                <th style={thStyle}>Mitigation Plan</th>
-                <th style={{ ...thStyle, width: 40 }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.risks.map(risk => (
-                <tr key={risk.id} data-comment-source="risk" data-comment-source-id={risk.id} data-comment-source-label={`Risk · ${risk.description?.slice(0, 40) || 'Untitled risk'}`}>
-                  <td style={{ ...tdStyle, width: '50%' }}>
-                    <textarea value={risk.description} onChange={e => updateRisk(risk.id, { description: e.target.value })} placeholder="Describe the risk…" style={taStyle} />
-                  </td>
-                  <td style={{ ...tdStyle, width: '50%' }}>
-                    <textarea value={risk.mitigation} onChange={e => updateRisk(risk.id, { mitigation: e.target.value })} placeholder="Mitigation plan…" style={taStyle} />
-                  </td>
-                  <td style={tdStyle}>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <Btn icon={ExternalLink} variant="ghost" ariaLabel="Drill into risk" onClick={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.description?.slice(0, 60) || 'Untitled risk'}` })} />
-                      <Btn icon={Trash2} variant="danger" ariaLabel="Remove risk" onClick={() => removeRisk(risk.id)} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        {s.risks.length === 0 ? (
+          <div className="qir-doc-list-empty">No open risks recorded for this period.</div>
+        ) : (
+          <div>
+            {s.risks.map(risk => (
+              <RiskProseBlock
+                key={risk.id}
+                risk={risk}
+                onChange={(patch) => updateRisk(risk.id, patch)}
+                onRemove={() => removeRisk(risk.id)}
+                onDrill={() => setRiskDrill({ sourceId: `risk:${risk.id}`, sourceLabel: `Risk · ${risk.description?.slice(0, 60) || 'Untitled risk'}` })}
+              />
+            ))}
+          </div>
+        )}
+        <button type="button" className="qir-doc-add-link qir-no-print" onClick={addRisk}>
+          + Add risk
+        </button>
       </div>
       <InsightsDrilldownDrawer
         open={!!riskDrill}
