@@ -64,6 +64,12 @@ export function generateSlots(input: GenerateSlotsInput): Slot[] {
 
   const sortedBusy = [...busy]
     .filter((b) => b.end > b.start)
+    // Drop "all-day" / multi-day busy blocks (e.g. OOO, working-location,
+    // tentative all-day events). Nylas free-busy returns these as a single
+    // 24h+ block aligned to local midnight, which would otherwise nuke an
+    // entire day of candidates even though the user is actually free for
+    // meetings. A real meeting will never be >= 20h long.
+    .filter((b) => b.end.getTime() - b.start.getTime() < 20 * 60 * 60_000)
     .sort((a, b) => a.start.getTime() - b.start.getTime());
 
   const candidatesByDay: Slot[][] = [];
@@ -164,18 +170,46 @@ export function generateSlots(input: GenerateSlotsInput): Slot[] {
   // Round-robin merge across days, preserving variety when we're slot-
   // constrained (e.g. maxSlots === numDays we still get different times).
   const picks: Slot[] = [];
+  const usedKeys = new Set<number>();
+  const pushPick = (s: Slot) => {
+    const key = s.start.getTime();
+    if (usedKeys.has(key)) return false;
+    usedKeys.add(key);
+    picks.push(s);
+    return true;
+  };
   let round = 0;
   while (picks.length < maxSlots) {
     let pickedThisRound = false;
     for (const day of dayPicks) {
-      if (round < day.length) {
-        picks.push(day[round]);
+      if (round < day.length && pushPick(day[round])) {
         pickedThisRound = true;
         if (picks.length >= maxSlots) break;
       }
     }
     if (!pickedThisRound) break;
     round += 1;
+  }
+
+  // Backfill: if many days were completely busy (or only a couple had any
+  // openings), we'd otherwise return fewer than `maxSlots`. Pull additional
+  // distinct, non-overlapping candidates from the full pool so the user
+  // always sees up to N options when any availability exists.
+  if (picks.length < maxSlots) {
+    const minGapMs = Math.max(durationMin, 30) * 60_000;
+    const flat = candidatesByDay
+      .flat()
+      .sort((a, b) => a.start.getTime() - b.start.getTime());
+    for (const cand of flat) {
+      if (picks.length >= maxSlots) break;
+      const t = cand.start.getTime();
+      if (usedKeys.has(t)) continue;
+      const tooClose = picks.some(
+        (p) => Math.abs(p.start.getTime() - t) < minGapMs,
+      );
+      if (tooClose) continue;
+      pushPick(cand);
+    }
   }
 
   return picks.sort((a, b) => a.start.getTime() - b.start.getTime());
