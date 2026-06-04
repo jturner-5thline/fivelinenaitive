@@ -224,5 +224,39 @@ export function useInsightsUserComments() {
     });
   }, [companyId]);
 
-  return { items, loading, refresh, deleteComment, count: items.length };
+  /**
+   * Edit the body of a comment in place. Updates the underlying source
+   * (qir_comments / agenda_comments) and keeps any linked queue snapshot
+   * (report_agenda_queue.comment_text_snapshot) in sync so the Agenda
+   * Queue panel reflects the edit immediately.
+   */
+  const editComment = useCallback(async (item: InsightsUserComment, newBody: string) => {
+    const next = newBody.trim();
+    if (!next || next === item.body) return;
+    if (item.source === 'qir') {
+      const { error } = await supabase
+        .from('qir_comments' as any)
+        .update({ body: next } as any)
+        .eq('id', item.id);
+      if (error) throw error;
+      setQirRows((prev) => prev.map((r) => (r.id === item.id ? { ...r, body: next } : r)));
+    } else {
+      const { error } = await supabase
+        .from('agenda_comments')
+        .update({ body: next } as any)
+        .eq('id', item.id);
+      if (error) throw error;
+      setAgendaRows((prev) => prev.map((r) => (r.id === item.id ? { ...r, body: next } : r)));
+    }
+    if (companyId) {
+      await supabase
+        .from('report_agenda_queue' as any)
+        .update({ comment_text_snapshot: next.slice(0, 4000) } as any)
+        .eq('company_id', companyId)
+        .eq('comment_source', item.source)
+        .eq('comment_id', item.id);
+    }
+  }, [companyId]);
+
+  return { items, loading, refresh, deleteComment, editComment, count: items.length };
 }
