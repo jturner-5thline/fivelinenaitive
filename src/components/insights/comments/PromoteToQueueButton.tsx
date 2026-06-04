@@ -4,8 +4,8 @@ import { useReportAgendaQueue, type PromoteToQueueInput } from '@/hooks/useRepor
 import { toast } from 'sonner';
 
 /**
- * Small "Add to Agenda Queue" button shown inside comment popovers /
- * thread cards. Deduplicates per comment so repeated clicks are safe.
+ * Small "Add to Queue" button shown inside comment popovers / thread cards.
+ * Deduplicates per comment so repeated clicks are safe.
  */
 export function PromoteToQueueButton({
   input,
@@ -28,7 +28,7 @@ export function PromoteToQueueButton({
       const result = await promote(input());
       if (result) {
         setDone(true);
-        toast.success('Added to Agenda Queue');
+        toast.success('Added to Queue');
         setTimeout(() => setDone(false), 1600);
       } else {
         toast.error("Couldn't add to queue");
@@ -48,7 +48,7 @@ export function PromoteToQueueButton({
       type="button"
       onClick={onClick}
       disabled={busy}
-      title="Add to Agenda Queue"
+      title="Add to Queue"
       style={{
         display: 'inline-flex', alignItems: 'center', gap: 4,
         padding: `${padY}px ${padX}px`, borderRadius: 6,
