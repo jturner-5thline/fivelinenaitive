@@ -2265,6 +2265,27 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
             <div>Connect Asana to sync portfolio initiatives.</div>
           </div>
         ) : (
+          <>
+          {/* Document-style summary list of initiatives. */}
+          <div className="qir-doc-list">
+            {ownedProjects.length === 0 && !loading && (
+              <div className="qir-doc-list-empty">No initiatives in the selected Asana portfolio.</div>
+            )}
+            {ownedProjects.map((p) => (
+              <div key={`sum-${p.gid}`} className="qir-doc-list-row">
+                {p.permalink_url ? (
+                  <a href={p.permalink_url} target="_blank" rel="noopener noreferrer">{p.name}</a>
+                ) : (
+                  <span style={{ color: TEXT_PRIMARY, fontSize: 13.5 }}>{p.name}</span>
+                )}
+                <span className="qir-doc-list-owner">
+                  {p.owner || '—'}{p.dueOn ? ` · Due ${p.dueOn}` : ''}
+                </span>
+                <Pill tone={statusTone(p.status === 'Off Track' ? 'Off Track' : p.status === 'At Risk' ? 'At Risk' : 'On Track')}>{p.status}</Pill>
+              </div>
+            ))}
+          </div>
+          <SourceDataDisclosure label="View source data">
           <div style={{ overflowX: 'auto' }}>
             <SortGroupToolbar
               groupBy={initSG.groupBy}
@@ -2371,6 +2392,8 @@ function ReportInitiativesSection({ s, set }: { s: ReportState; set: ReportSetSt
               </tbody>
             </table>
           </div>
+          </SourceDataDisclosure>
+          </>
         )}
       </div>
       <InsightsDrilldownDrawer
