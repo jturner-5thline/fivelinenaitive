@@ -141,9 +141,16 @@ export function QirContextualComments({
   reportLabel: string;
   rootRef: React.RefObject<HTMLElement>;
 }) {
-  const { comments, addComment } = useQirComments(reportKey);
-  const { members } = useCompany();
-  const { promote } = useReportAgendaQueue();
+  // Safe defaults: hooks may briefly return undefined on first render before
+  // auth/company context resolves. Default every collection to an empty array
+  // and every async action to a no-op so render paths never touch null/undefined.
+  const qirCommentsApi = useQirComments(reportKey) || ({} as any);
+  const comments = qirCommentsApi.comments ?? [];
+  const addComment = qirCommentsApi.addComment ?? (async () => null);
+  const companyApi = (useCompany() || {}) as any;
+  const members = companyApi.members ?? [];
+  const queueApi = (useReportAgendaQueue() || {}) as any;
+  const promote = queueApi.promote ?? (async () => null);
   const [composer, setComposer] = useState<ComposerState | null>(null);
   const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
