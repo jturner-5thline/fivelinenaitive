@@ -70,6 +70,63 @@ function runNextPrefetch() {
   }
 }
 
+// ─── Prefetch status (for the subtle "Last synced X ago" indicator) ─────
+//
+// Tiny pub/sub kept in module scope so any list component can subscribe
+// without prop drilling. Updated whenever a background prefetch is
+// queued/finished, and whenever a real fetch succeeds.
+let lastFetchAt: number | null = null;
+let lastFetchOk = true;
+const statusListeners = new Set<() => void>();
+
+function notifyStatus() {
+  statusListeners.forEach((l) => {
+    try { l(); } catch { /* ignore listener errors */ }
+  });
+}
+
+function markFetchSuccess() {
+  lastFetchAt = Date.now();
+  lastFetchOk = true;
+  notifyStatus();
+}
+
+function markFetchFailure() {
+  lastFetchOk = false;
+  notifyStatus();
+}
+
+export interface EmailPrefetchStatus {
+  /** Pending background prefetches (queued + actively in flight). */
+  pending: number;
+  /** Timestamp of the most recent successful body fetch, or null. */
+  lastFetchAt: number | null;
+  /** Whether the most recent fetch succeeded (false after a failure). */
+  ok: boolean;
+}
+
+function getStatus(): EmailPrefetchStatus {
+  return {
+    pending: activePrefetches + prefetchQueue.length,
+    lastFetchAt,
+    ok: lastFetchOk,
+  };
+}
+
+/**
+ * Subscribe to prefetch queue / last-sync changes. Designed for use with
+ * React's `useSyncExternalStore` so the indicator renders only when the
+ * underlying status actually changes.
+ */
+export function subscribeEmailPrefetchStatus(cb: () => void): () => void {
+  statusListeners.add(cb);
+  return () => { statusListeners.delete(cb); };
+}
+
+export function getEmailPrefetchStatus(): EmailPrefetchStatus {
+  return getStatus();
+}
+
 /**
  * localStorage-backed persistence layer for full email bodies. Survives
  * modal close/reopen, route changes, and full page reloads so a thread
@@ -194,6 +251,7 @@ export function prefetchFullEmailMessage(messageId: string | undefined): void {
     if (messageCache.has(messageId) || inflight.has(messageId)) {
       activePrefetches--;
       runNextPrefetch();
+      notifyStatus();
       return;
     }
     fetchFullEmailMessage(messageId)
@@ -203,9 +261,11 @@ export function prefetchFullEmailMessage(messageId: string | undefined): void {
       .finally(() => {
         activePrefetches--;
         runNextPrefetch();
+        notifyStatus();
       });
   });
   runNextPrefetch();
+  notifyStatus();
 }
 
 export async function fetchFullEmailMessage(messageId: string): Promise<FullMessage> {
@@ -241,11 +301,15 @@ export async function fetchFullEmailMessage(messageId: string): Promise<FullMess
   };
     rememberMessage(messageId, out);
     persistMessage(messageId, out);
+    markFetchSuccess();
     return out;
   })();
   inflight.set(messageId, p);
   try {
     return await p;
+  } catch (e) {
+    markFetchFailure();
+    throw e;
   } finally {
     inflight.delete(messageId);
   }
