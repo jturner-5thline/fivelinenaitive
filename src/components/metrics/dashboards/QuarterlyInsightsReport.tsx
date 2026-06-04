@@ -771,9 +771,22 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle right={
-          <span title={canAdd ? '' : `Max ${MAX_KPIS} KPIs`}>
-            <Btn icon={Plus} variant="ghost" onClick={canAdd ? () => setAddOpen(true) : undefined}>Add KPI</Btn>
-          </span>
+          <button
+            type="button"
+            className="qir-no-print"
+            onClick={canAdd ? () => setAddOpen(true) : undefined}
+            title={canAdd ? 'Add or manage KPIs' : `Max ${MAX_KPIS} KPIs`}
+            style={{
+              background: 'transparent', border: 0, padding: '4px 6px',
+              color: 'rgba(160,200,255,0.55)', cursor: canAdd ? 'pointer' : 'not-allowed',
+              fontSize: 11, fontWeight: 600, letterSpacing: '.04em', textTransform: 'uppercase',
+              opacity: canAdd ? 1 : 0.5,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#dde8f8'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(160,200,255,0.55)'; }}
+          >
+            + Manage KPIs
+          </button>
         }>KPIs</SectionTitle>
         <div style={{
           display: 'grid',
