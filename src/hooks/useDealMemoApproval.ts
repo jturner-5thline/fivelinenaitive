@@ -292,6 +292,7 @@ export function useDealMemoApproval(
 
       if (taskError) {
         console.error('Failed to create approval task:', taskError);
+        toast.error('Deal memo submitted but review task could not be created. Please notify your admin.');
       }
 
       // 5th Line specific: Create a review task for James Turner when a memo is submitted
@@ -336,6 +337,7 @@ export function useDealMemoApproval(
 
           if (jamesTaskError) {
             console.error('Failed to create James Turner review task:', jamesTaskError);
+            toast.error('Deal memo submitted but review task for James could not be created. Please notify your admin.');
           } else {
             jamesTaskCreated = true;
             // Send in-app notification
