@@ -163,6 +163,7 @@ export function SuggestTimesPanel({
       busyCount: cachedBusy.length,
       busySample: cachedBusy.slice(0, 4).map((b) => ({
         start: b.start.toISOString(), end: b.end.toISOString(),
+        durHrs: (b.end.getTime() - b.start.getTime()) / 3_600_000,
       })),
       picks: result.map((s) => s.start.toISOString()),
     });
