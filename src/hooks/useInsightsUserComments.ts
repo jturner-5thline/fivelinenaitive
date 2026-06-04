@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCompany } from '@/hooks/useCompany';
+import { useInsightsTimeframeOptional, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
 
 export type InsightsCommentSource = 'qir' | 'agenda';
 
@@ -44,6 +45,10 @@ function reportKeyToTab(key: string): { label: string; index: number } {
 export function useInsightsUserComments() {
   const { user } = useAuth();
   const { company } = useCompany();
+  const tf = useInsightsTimeframeOptional();
+  const period = tf?.reportingPeriod ?? reportingPeriodHelpers.defaultReportingPeriod('quarter');
+  const periodType = period.view;
+  const periodKey = period.period;
   const [qirRows, setQirRows] = useState<any[]>([]);
   const [agendaRows, setAgendaRows] = useState<any[]>([]);
   const [threadMap, setThreadMap] = useState<Record<string, { agenda_id: string; anchor_text: string | null }>>({});
@@ -62,17 +67,19 @@ export function useInsightsUserComments() {
       const [qirRes, agendaRes, queueRes] = await Promise.all([
         supabase
           .from('qir_comments' as any)
-          .select('id, body, created_at, report_key, target_type, target_id, company_id, author_user_id')
+          .select('id, body, created_at, report_key, target_type, target_id, company_id, author_user_id, period_type, period_key')
           .eq('company_id', companyId)
           .eq('author_user_id', userId)
+          .or(`and(period_type.eq.${periodType},period_key.eq.${periodKey}),period_key.is.null`)
           .order('created_at', { ascending: false })
           .limit(200),
         supabase
           .from('agenda_comments')
-          .select('id, body, created_at, thread_id, deleted_at, author_id, company_id')
+          .select('id, body, created_at, thread_id, deleted_at, author_id, company_id, period_type, period_key')
           .eq('company_id', companyId)
           .eq('author_id', userId)
           .is('deleted_at', null)
+          .or(`and(period_type.eq.${periodType},period_key.eq.${periodKey}),period_key.is.null`)
           .order('created_at', { ascending: false })
           .limit(200),
         supabase
@@ -109,7 +116,7 @@ export function useInsightsUserComments() {
       setLoading(false);
     })();
     return () => { alive = false; };
-  }, [userId, companyId]);
+  }, [userId, companyId, periodType, periodKey]);
 
   // Realtime — refresh on author's own inserts/updates/deletes
   useEffect(() => {
@@ -122,6 +129,9 @@ export function useInsightsUserComments() {
       }, (payload) => {
         const row = (payload.new || payload.old) as any;
         if (!row || row.author_user_id !== userId) return;
+        // Drop realtime rows that fall outside the active reporting period
+        // (legacy rows with NULL period_key are always allowed through).
+        if (row.period_key && (row.period_type !== periodType || row.period_key !== periodKey)) return;
         if (payload.eventType === 'DELETE') {
           setQirRows((prev) => prev.filter((r) => r.id !== row.id));
         } else if (payload.eventType === 'INSERT') {
@@ -136,6 +146,7 @@ export function useInsightsUserComments() {
       }, (payload) => {
         const row = (payload.new || payload.old) as any;
         if (!row || row.author_id !== userId) return;
+        if (row.period_key && (row.period_type !== periodType || row.period_key !== periodKey)) return;
         if (payload.eventType === 'DELETE' || row.deleted_at) {
           setAgendaRows((prev) => prev.filter((r) => r.id !== row.id));
         } else if (payload.eventType === 'INSERT') {
@@ -146,7 +157,7 @@ export function useInsightsUserComments() {
       })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
-  }, [userId, companyId]);
+  }, [userId, companyId, periodType, periodKey]);
 
   const items: InsightsUserComment[] = useMemo(() => {
     const list: InsightsUserComment[] = [];

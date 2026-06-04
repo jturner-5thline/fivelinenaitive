@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useCompany } from '@/hooks/useCompany';
 import { useAuth } from '@/contexts/AuthContext';
+import { useInsightsTimeframeOptional, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
 
 export interface QirComment {
   id: string;
@@ -38,6 +39,8 @@ export interface QirThreadEvent {
 export function useQirComments(reportKey: string) {
   const { company, members } = useCompany();
   const { user } = useAuth();
+  const tf = useInsightsTimeframeOptional();
+  const period = tf?.reportingPeriod ?? reportingPeriodHelpers.defaultReportingPeriod('quarter');
   const [comments, setComments] = useState<QirComment[]>([]);
   const [loading, setLoading] = useState(true);
   const [threads, setThreads] = useState<QirThreadState[]>([]);
@@ -204,6 +207,10 @@ export function useQirComments(reportKey: string) {
         mentioned_user_ids: mentionedIds,
         author_user_id: user.id,
         author_name: authorName,
+        // Tag with active reporting period so the queue / "Your comments"
+        // dropdown can scope comments to the period they were made under.
+        period_type: period.view,
+        period_key: period.period,
       })
       .select('*')
       .maybeSingle();
@@ -237,7 +244,7 @@ export function useQirComments(reportKey: string) {
       }
     }
     return (inserted as any as QirComment) || null;
-  }, [company?.id, user, members, reportKey]);
+  }, [company?.id, user, members, reportKey, period.view, period.period]);
 
   const deleteComment = useCallback(async (id: string) => {
     const { error } = await supabase.from('qir_comments' as any).delete().eq('id', id);

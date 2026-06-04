@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { findCommentRanges } from './CommentMark';
 import { PromoteToQueueButton } from './comments/PromoteToQueueButton';
+import { useInsightsTimeframeOptional, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
 
 // ---------- Types ----------
 export interface AgendaThread {
@@ -87,6 +88,8 @@ export function renderCommentBody(body: string): React.ReactNode {
 // ---------- Hook ----------
 export function useAgendaComments(agendaId: string | null, companyId: string | null) {
   const { user } = useAuth();
+  const tf = useInsightsTimeframeOptional();
+  const period = tf?.reportingPeriod ?? reportingPeriodHelpers.defaultReportingPeriod('quarter');
   const [threads, setThreads] = useState<AgendaThread[]>([]);
   const [comments, setComments] = useState<AgendaComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -173,7 +176,7 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
       await refetch();
       return data as any;
     },
-    [user?.id, companyId, agendaId, refetch],
+    [user?.id, companyId, agendaId, refetch, period.view, period.period],
   );
 
   const addComment = useCallback(
@@ -195,6 +198,10 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
           author_id: user.id,
           body: trimmed,
           mentions,
+          // Tag with active Insights reporting period so the queue is scoped
+          // to the period the comment was authored under.
+          period_type: period.view,
+          period_key: period.period,
         })
         .select()
         .single();
