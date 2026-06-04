@@ -12,6 +12,7 @@ import {
   ArrowUp,
 } from 'lucide-react';
 import { findCommentRanges } from './CommentMark';
+import { PromoteToQueueButton } from './comments/PromoteToQueueButton';
 
 // ---------- Types ----------
 export interface AgendaThread {
