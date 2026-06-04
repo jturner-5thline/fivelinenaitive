@@ -105,59 +105,10 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
     return () => onSaveReady?.(null, false, false);
   }, [save, canEdit, isDirty, onSaveReady]);
 
-  // Sanity check: confirm the derived composite key matches a saved row.
-  // If this (period × tab) has never been saved but other periods for the
-  // same tab exist in Supabase, surface a warning so users know they're
-  // looking at an empty/seed report rather than the data they expected.
-  const { company } = useCompany();
-  const [keyMismatch, setKeyMismatch] = useState<{ savedKeys: string[] } | null>(null);
-  useEffect(() => {
-    if (!company?.id || !selectionLoaded) return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('company_settings')
-        .select('fpa_dashboard_config')
-        .eq('company_id', company.id)
-        .maybeSingle();
-      if (cancelled) return;
-      const cfg = (data?.fpa_dashboard_config as Record<string, any>) || {};
-      const prefix = `qir:${reportKey}:`;
-      const savedKeys = Object.keys(cfg).filter(k =>
-        k.startsWith(prefix) && !k.endsWith(':selection'),
-      );
-      const matches = savedKeys.includes(dataKey);
-      setKeyMismatch(!matches && savedKeys.length > 0 ? { savedKeys } : null);
-    })();
-    return () => { cancelled = true; };
-  }, [company?.id, selectionLoaded, dataKey, reportKey]);
-
   if (!selectionLoaded) return null;
 
   return (
     <>
-      {keyMismatch && (
-        <div style={{
-          margin: '12px 16px 0', padding: '10px 14px', borderRadius: 10,
-          background: 'rgba(245, 158, 11, 0.10)',
-          border: '1px solid rgba(245, 158, 11, 0.35)',
-          color: 'rgb(252, 211, 77)', display: 'flex', alignItems: 'flex-start', gap: 10,
-          fontSize: 12, lineHeight: 1.5,
-        }}>
-          <AlertTriangle size={14} style={{ marginTop: 2, flexShrink: 0 }} />
-          <div>
-            <div style={{ fontWeight: 600, marginBottom: 2 }}>
-              No saved data for <code>{dataKey}</code>
-            </div>
-            <div style={{ opacity: 0.85 }}>
-              Showing seed defaults. Saved periods for this tab:&nbsp;
-              {keyMismatch.savedKeys
-                .map(k => k.replace(`qir:${reportKey}:`, ''))
-                .join(', ')}
-            </div>
-          </div>
-        </div>
-      )}
       <QuarterlyInsightsReportPage
         s={state}
         set={setState}
