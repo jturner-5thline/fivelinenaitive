@@ -9069,6 +9069,48 @@ export type Database = {
           },
         ]
       }
+      deal_meeting_history: {
+        Row: {
+          created_at: string
+          deal_id: string
+          id: string
+          meeting_date: string
+          source: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          deal_id: string
+          id?: string
+          meeting_date: string
+          source?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          deal_id?: string
+          id?: string
+          meeting_date?: string
+          source?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_meeting_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "deals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_meeting_history_deal_id_fkey"
+            columns: ["deal_id"]
+            isOneToOne: false
+            referencedRelation: "v_deal_owner_resolution"
+            referencedColumns: ["deal_id"]
+          },
+        ]
+      }
       deal_memo_approvals: {
         Row: {
           approver_role: string
