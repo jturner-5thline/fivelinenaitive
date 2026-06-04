@@ -16,6 +16,7 @@ import {
 } from './QuarterlyInsightsReport';
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
+import { InsightsUserCommentsDropdown } from '@/components/insights/comments/InsightsUserCommentsDropdown';
 
 type ReportSelection = {
   period: 'monthly' | 'quarterly';
@@ -280,6 +281,13 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     </div>
   );
 
+  const tabsBarWithActions = (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+      {tabsBar}
+      <InsightsUserCommentsDropdown onNavigateTab={(i) => attemptSetActiveIndex(i)} />
+    </div>
+  );
+
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
     { title: 'Agenda',                               tabLabel: 'Agenda',     render: () => <AgendaEditor /> },
     { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
@@ -324,7 +332,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       onTouchEnd={onTouchEnd}
     >
       {/* Unified reporting bar with tabs on every Insights tab */}
-      <InsightsReportingBar tabsSlot={tabsBar} />
+      <InsightsReportingBar tabsSlot={tabsBarWithActions} />
       {isReportTab && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, margin: '0 auto 12px', maxWidth: 1200, padding: '0 16px', flexWrap: 'wrap' }}>
           <button
