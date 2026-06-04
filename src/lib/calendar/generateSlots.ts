@@ -145,12 +145,14 @@ export function generateSlots(input: GenerateSlotsInput): Slot[] {
     if (day.length <= perDay) return day.slice();
     const out: Slot[] = [];
     const stride = day.length / perDay;
-    // Stagger per-day starting offset so day 0, day 1, day 2… pick from
-    // different positions of their respective free windows.
-    const startOffset = (dayIdx % perDay) * (stride / numDays);
+    // Rotate per-day starting offset so each day picks from a different
+    // position within its candidate list. This prevents "9 AM every day"
+    // when perDay === 1 (i.e. maxSlots === numDays), where every day
+    // would otherwise land on index 0.
+    const rotation = (dayIdx / numDays) * day.length;
     const seen = new Set<number>();
     for (let k = 0; k < perDay; k += 1) {
-      const rawIdx = Math.floor(startOffset + k * stride);
+      const rawIdx = Math.floor(rotation + k * stride) % day.length;
       const idx = Math.min(day.length - 1, Math.max(0, rawIdx));
       if (seen.has(idx)) continue;
       seen.add(idx);
