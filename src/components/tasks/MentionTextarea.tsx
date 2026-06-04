@@ -12,6 +12,34 @@ interface MentionTextareaProps {
   minRows?: number;
 }
 
+type MentionRef = { name: string; id: string };
+
+// Convert storage format "@[Name](uuid)" → display "@Name", collecting mention refs in order.
+function storageToDisplay(storage: string): { display: string; refs: MentionRef[] } {
+  const refs: MentionRef[] = [];
+  const display = storage.replace(/@\[([^\]]+)\]\(([^)]+)\)/g, (_m, name, id) => {
+    refs.push({ name, id });
+    return `@${name}`;
+  });
+  return { display, refs };
+}
+
+// Convert display "@Name" → storage "@[Name](uuid)" using the tracked refs (in insertion order).
+// Each ref is consumed by replacing the first remaining occurrence of `@Name`.
+function displayToStorage(display: string, refs: MentionRef[]): string {
+  let out = display;
+  let cursor = 0;
+  for (const ref of refs) {
+    const token = `@${ref.name}`;
+    const idx = out.indexOf(token, cursor);
+    if (idx < 0) continue; // user deleted the mention
+    const replacement = `@[${ref.name}](${ref.id})`;
+    out = out.slice(0, idx) + replacement + out.slice(idx + token.length);
+    cursor = idx + replacement.length;
+  }
+  return out;
+}
+
 export function MentionTextarea({
   value,
   onChange,
@@ -28,6 +56,21 @@ export function MentionTextarea({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
+  // Display value shown in the textarea (clean "@Name") and the mention refs we've tracked.
+  const initial = storageToDisplay(value || '');
+  const [displayValue, setDisplayValue] = useState(initial.display);
+  const mentionsRef = useRef<MentionRef[]>(initial.refs);
+  const lastEmittedRef = useRef<string>(value || '');
+
+  // Re-sync from external value changes (e.g. parent reset after submit).
+  useEffect(() => {
+    if ((value || '') === lastEmittedRef.current) return;
+    const parsed = storageToDisplay(value || '');
+    setDisplayValue(parsed.display);
+    mentionsRef.current = parsed.refs;
+    lastEmittedRef.current = value || '';
+  }, [value]);
+
   const filteredMembers = members.filter(m =>
     m.display_name.toLowerCase().includes(mentionQuery.toLowerCase()) ||
     (m.email && m.email.toLowerCase().includes(mentionQuery.toLowerCase()))
@@ -37,10 +80,17 @@ export function MentionTextarea({
     setSelectedIndex(0);
   }, [mentionQuery]);
 
+  const emitChange = (nextDisplay: string) => {
+    setDisplayValue(nextDisplay);
+    const storage = displayToStorage(nextDisplay, mentionsRef.current);
+    lastEmittedRef.current = storage;
+    onChange(storage);
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPos = e.target.selectionStart;
-    onChange(newValue);
+    emitChange(newValue);
 
     // Check if we're in a mention context
     const textBeforeCursor = newValue.slice(0, cursorPos);
@@ -62,12 +112,14 @@ export function MentionTextarea({
 
   const insertMention = (member: TeamMember) => {
     if (mentionStart < 0) return;
-    const before = value.slice(0, mentionStart);
-    const cursorPos = textareaRef.current?.selectionStart || value.length;
-    const after = value.slice(cursorPos);
-    const mentionText = `@[${member.display_name}](${member.id}) `;
+    const current = displayValue;
+    const before = current.slice(0, mentionStart);
+    const cursorPos = textareaRef.current?.selectionStart ?? current.length;
+    const after = current.slice(cursorPos);
+    const mentionText = `@${member.display_name} `;
     const newValue = before + mentionText + after;
-    onChange(newValue);
+    mentionsRef.current = [...mentionsRef.current, { name: member.display_name, id: member.id }];
+    emitChange(newValue);
     setShowDropdown(false);
     setMentionQuery('');
     setMentionStart(-1);
@@ -117,7 +169,7 @@ export function MentionTextarea({
     <div className="relative flex-1">
       <textarea
         ref={textareaRef}
-        value={value}
+        value={displayValue}
         onChange={handleChange}
         onKeyDown={handleKeyDown}
         onBlur={() => {
