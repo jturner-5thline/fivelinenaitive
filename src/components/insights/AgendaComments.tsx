@@ -88,6 +88,8 @@ export function renderCommentBody(body: string): React.ReactNode {
 // ---------- Hook ----------
 export function useAgendaComments(agendaId: string | null, companyId: string | null) {
   const { user } = useAuth();
+  const tf = useInsightsTimeframeOptional();
+  const period = tf?.reportingPeriod ?? reportingPeriodHelpers.defaultReportingPeriod('quarter');
   const [threads, setThreads] = useState<AgendaThread[]>([]);
   const [comments, setComments] = useState<AgendaComment[]>([]);
   const [loading, setLoading] = useState(false);
@@ -196,6 +198,10 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
           author_id: user.id,
           body: trimmed,
           mentions,
+          // Tag with active Insights reporting period so the queue is scoped
+          // to the period the comment was authored under.
+          period_type: period.view,
+          period_key: period.period,
         })
         .select()
         .single();
