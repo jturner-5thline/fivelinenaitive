@@ -201,7 +201,7 @@ function Toolbar({ editor }: { editor: Editor | null }) {
   };
   return (
     <div style={{
-      position: 'sticky', top: 0, zIndex: 5,
+      position: 'sticky', top: 'var(--agenda-toolbar-offset, 96px)', zIndex: 20,
       display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 4,
       padding: '8px 10px', marginBottom: 12,
       background: 'rgba(16,28,52,0.85)',
