@@ -479,6 +479,8 @@ export type Database = {
           id: string
           mentions: string[]
           parent_comment_id: string | null
+          period_key: string | null
+          period_type: string | null
           thread_id: string
           updated_at: string
         }
@@ -491,6 +493,8 @@ export type Database = {
           id?: string
           mentions?: string[]
           parent_comment_id?: string | null
+          period_key?: string | null
+          period_type?: string | null
           thread_id: string
           updated_at?: string
         }
@@ -503,6 +507,8 @@ export type Database = {
           id?: string
           mentions?: string[]
           parent_comment_id?: string | null
+          period_key?: string | null
+          period_type?: string | null
           thread_id?: string
           updated_at?: string
         }
@@ -19998,6 +20004,8 @@ export type Database = {
           created_at: string
           id: string
           mentioned_user_ids: string[]
+          period_key: string | null
+          period_type: string | null
           report_key: string
           target_id: string
           target_type: string
@@ -20011,6 +20019,8 @@ export type Database = {
           created_at?: string
           id?: string
           mentioned_user_ids?: string[]
+          period_key?: string | null
+          period_type?: string | null
           report_key: string
           target_id: string
           target_type: string
@@ -20024,6 +20034,8 @@ export type Database = {
           created_at?: string
           id?: string
           mentioned_user_ids?: string[]
+          period_key?: string | null
+          period_type?: string | null
           report_key?: string
           target_id?: string
           target_type?: string
