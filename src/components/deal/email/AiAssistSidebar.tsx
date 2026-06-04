@@ -609,7 +609,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
     setError(null);
     setLoadingTones((s) => ({ ...s, [tone]: true }));
     const startAt = Date.now();
-    console.log(`[AiAssist] draft start tone=${tone} regenerate=${!!opts?.regenerate} since-open=${startAt - panelOpenedAt.current}ms`);
 
     const work = (async () => {
       try {
@@ -629,16 +628,6 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
           dealContextHint,
           customInstructions: opts?.customInstructions,
         };
-        // DEBUG: surface exactly what Deal Space context (if any) is being
-        // forwarded to the smart-email-ai edge function for draft generation.
-        console.log('[AiAssist] draft_reply context payload', {
-          tone,
-          dealId,
-          hasDealContextHint: !!dealContextHint,
-          dealContextHint,
-          dealContextSummary,
-          fullInvokeBody: invokeBody,
-        });
         const invokePromise = supabase.functions.invoke('smart-email-ai', {
           body: invokeBody,
         });
@@ -692,7 +681,7 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
         setError(null);
 
         const elapsed = Date.now() - startAt;
-        console.log(`[AiAssist] draft complete tone=${tone} latency=${elapsed}ms tokens(out)≈${(body.length / 4) | 0}`);
+        void elapsed;
       } catch (err: any) {
         const isTimeout = /timed out/i.test(err?.message || '');
         console.error(`[AiAssist] draft error tone=${tone}:`, err?.message || err);
@@ -773,11 +762,9 @@ export function AiAssistSidebar({ thread, dealId, dealName, onClose, onInsertDra
   // ── Bootstrap: hydrate cache, then generate Balanced if missing ───────
   useEffect(() => {
     panelOpenedAt.current = Date.now();
-    console.log(`[AiAssist] panel open thread=${thread.threadId}`);
 
     const cached = readCache();
     if (cached) {
-      console.log(`[AiAssist] cache hit thread=${thread.threadId} tones=${Object.keys(cached.options || {}).join(',')}`);
       setResult(cached);
       // Pick a sensible default selection that exists in cache.
       if (cached.options.balanced) setSelected('balanced');

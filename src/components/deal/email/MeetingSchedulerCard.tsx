@@ -1386,7 +1386,7 @@ export function MeetingSchedulerCard({
           // "Suggest this time" once that workstream lands. For now we
           // surface the picked moment so the team can verify the
           // contract is wired end-to-end.
-          console.log('[NaitiveCalendar] onSlotClick', slot);
+          void slot;
         }}
       />
       </SchedulerErrorBoundary>

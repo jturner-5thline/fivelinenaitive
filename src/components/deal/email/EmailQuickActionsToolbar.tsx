@@ -152,8 +152,6 @@ export function EmailQuickActionsToolbar({
   }, [meetingPopoverOpen]);
 
   const handleMeetingClick = () => {
-    // eslint-disable-next-line no-console
-    console.log('[ScheduleMeeting] tile clicked', { meetingPopoverOpen, hasDeal: !!dealId, hasContact: !!contactId });
     setMeetingMode('quick-book');
     setActive('meeting');
   };
