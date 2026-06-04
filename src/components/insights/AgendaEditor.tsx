@@ -326,6 +326,9 @@ export function AgendaEditor() {
   const debounceRef = useRef<number | null>(null);
   const latestDocRef = useRef<any>(null);
   const periodRef = useRef<{ type: string; key: string }>({ type: periodType, key: periodKey });
+  // Tracks the most recent updated_at we've already applied to the editor —
+  // used to drop stale or self-originated realtime events.
+  const lastAppliedAtRef = useRef<number>(0);
   const editorWrapRef = useRef<HTMLDivElement>(null);
   const railListRef = useRef<HTMLDivElement | null>(null);
 
