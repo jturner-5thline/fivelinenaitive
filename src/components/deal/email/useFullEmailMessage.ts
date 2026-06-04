@@ -105,12 +105,28 @@ export interface EmailPrefetchStatus {
   ok: boolean;
 }
 
+// Cached snapshot. useSyncExternalStore requires getSnapshot to return a
+// stable, referentially-equal value when nothing has changed — otherwise
+// React detects a "change" on every render and re-subscribes / re-renders
+// in an infinite loop. We rebuild the snapshot ONLY when one of the
+// underlying fields actually differs from the last one we returned.
+let cachedStatus: EmailPrefetchStatus = {
+  pending: 0,
+  lastFetchAt: null,
+  ok: true,
+};
+
 function getStatus(): EmailPrefetchStatus {
-  return {
-    pending: activePrefetches + prefetchQueue.length,
-    lastFetchAt,
-    ok: lastFetchOk,
-  };
+  const pending = activePrefetches + prefetchQueue.length;
+  if (
+    cachedStatus.pending === pending &&
+    cachedStatus.lastFetchAt === lastFetchAt &&
+    cachedStatus.ok === lastFetchOk
+  ) {
+    return cachedStatus;
+  }
+  cachedStatus = { pending, lastFetchAt, ok: lastFetchOk };
+  return cachedStatus;
 }
 
 /**
