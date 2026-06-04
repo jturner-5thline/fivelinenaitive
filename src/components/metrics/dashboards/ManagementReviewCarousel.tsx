@@ -1,8 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
 import { Save as SaveIcon, Check } from 'lucide-react';
-import { AlertTriangle } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
-import { useCompany } from '@/hooks/useCompany';
 import { toast as sonnerToast } from 'sonner';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
 import { BenchmarkForecastsPage } from './BenchmarkForecastsPage';
