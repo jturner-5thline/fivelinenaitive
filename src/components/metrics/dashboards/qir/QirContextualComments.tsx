@@ -298,10 +298,11 @@ export function QirContextualComments({
     }
   }, [composer, body, submitting, addComment, promote, reportLabel]);
 
-  // Mention autocomplete: detect trailing @token in body.
+  // Mention autocomplete: detect trailing `@` or `@token` in body.
+  // Allow zero-length token so the picker opens immediately on `@`.
   const mentionMatch = useMemo(() => {
-    const m = /@([A-Za-z][A-Za-z0-9_.\- ]{0,40})$/.exec(body);
-    return m ? { token: m[1], start: m.index } : null;
+    const m = /(?:^|\s)@([A-Za-z0-9_.\- ]{0,40})$/.exec(body);
+    return m ? { token: m[1] || '', start: m.index + (m[0].startsWith('@') ? 0 : 1) } : null;
   }, [body]);
   const onPickMention = (name: string) => {
     if (!mentionMatch) return;
