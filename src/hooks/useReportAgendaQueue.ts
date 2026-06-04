@@ -163,6 +163,21 @@ export function useReportAgendaQueue() {
     if (error) console.error('[updateQueueItem]', error);
   }, [company?.id]);
 
+  /**
+   * Hard-delete a queue row. Used by the Queue dropdown / Agenda Queue panel
+   * trash actions so users can fully remove a comment from their queue.
+   * NOTE: this only removes the queue staging row, not the underlying
+   * qir_comment / agenda_comment.
+   */
+  const removeItem = useCallback(async (id: string) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+    const { error } = await supabase
+      .from('report_agenda_queue' as any)
+      .delete()
+      .eq('id', id);
+    if (error) console.error('[removeQueueItem]', error);
+  }, []);
+
   const counts = useMemo(() => {
     let queued = 0, added = 0, dismissed = 0, archived = 0;
     for (const i of items) {
@@ -174,5 +189,5 @@ export function useReportAgendaQueue() {
     return { queued, added, dismissed, archived, total: items.length };
   }, [items]);
 
-  return { items, loading, promote, updateItem, counts, periodType, periodKey };
+  return { items, loading, promote, updateItem, removeItem, counts, periodType, periodKey };
 }
