@@ -692,29 +692,49 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
           }}>
             {reportTitle}
           </h1>
-        </div>
-        <div className="qir-report-header-meta">
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 140 }}>
-            <label style={fieldLabelStyle} htmlFor="qir-date-prepared">Date Prepared</label>
-            <input
-              id="qir-date-prepared"
-              value={s.preparedDate}
-              onChange={e => set(prev => ({ ...prev, preparedDate: e.target.value }))}
-              style={{ ...inputStyle, width: '100%' }}
+          <div style={{ marginTop: 8 }}>
+            <DocMetaRow
+              items={[
+                <>Prepared by{' '}
+                  <InlineEditable
+                    label="Prepared By"
+                    value={currentPreparedBy}
+                    onCommit={(next) => set(prev => ({ ...prev, authors: [next] }))}
+                    render={(v) => <strong style={{ color: TEXT_PRIMARY, fontWeight: 600 }}>{v}</strong>}
+                    renderEditor={({ value, setValue, commit }) => (
+                      <select
+                        autoFocus
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        onBlur={commit}
+                        style={{ ...selectStyle, padding: '2px 6px', height: 22, width: 'auto', minWidth: 140 }}
+                      >
+                        {PREPARED_BY_OPTIONS.map(opt => (<option key={opt} value={opt}>{opt}</option>))}
+                      </select>
+                    )}
+                  />
+                </>,
+                <>
+                  <InlineEditable
+                    label="Date Prepared"
+                    value={s.preparedDate}
+                    onCommit={(next) => set(prev => ({ ...prev, preparedDate: next }))}
+                    render={(v) => <span>{v || '—'}</span>}
+                    renderEditor={({ value, setValue, commit }) => (
+                      <input
+                        autoFocus
+                        value={value}
+                        onChange={(e) => setValue(e.target.value)}
+                        onBlur={commit}
+                        placeholder="MM/DD/YYYY"
+                        style={{ ...inputStyle, padding: '2px 6px', height: 22, width: 110 }}
+                      />
+                    )}
+                  />
+                </>,
+                <span>{periodLabelStr}</span>,
+              ]}
             />
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 160 }}>
-            <label style={fieldLabelStyle} htmlFor="qir-prepared-by">Prepared By</label>
-            <select
-              id="qir-prepared-by"
-              value={currentPreparedBy}
-              onChange={e => set(prev => ({ ...prev, authors: [e.target.value] }))}
-              style={{ ...selectStyle, width: '100%' }}
-            >
-              {PREPARED_BY_OPTIONS.map(opt => (
-                <option key={opt} value={opt}>{opt}</option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
