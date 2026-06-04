@@ -1975,10 +1975,34 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
             </span>
           )}
         </div>
-        {filterEditorOpen && renderFilterEditor()}
-        {error && renderError()}
-        {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showFilteredEmpty ? renderFilteredEmpty() : (
-          <div style={{ overflowX: 'auto' }}>
+        {/* Document-style summary list — quiet, read-first presentation. */}
+        {showSkeleton ? (
+          <div className="qir-doc-list-empty">Loading goals…</div>
+        ) : showEmpty ? (
+          <div className="qir-doc-list-empty">No Asana Goals synced for this period.</div>
+        ) : showFilteredEmpty ? (
+          <div className="qir-doc-list-empty">No goals match the active period filter.</div>
+        ) : (
+          <div className="qir-doc-list">
+            {visibleGoals.map((g) => (
+              <div key={`sum-${g.id}`} className="qir-doc-list-row">
+                {g.url ? (
+                  <a href={g.url} target="_blank" rel="noopener noreferrer">{g.title}</a>
+                ) : (
+                  <span style={{ color: TEXT_PRIMARY, fontSize: 13.5 }}>{g.title}</span>
+                )}
+                <span className="qir-doc-list-owner">{g.owner || '—'}</span>
+                <Pill tone={statusTone(g.status)}>{g.status}</Pill>
+              </div>
+            ))}
+          </div>
+        )}
+        {/* Operational chrome demoted to a disclosure. */}
+        <SourceDataDisclosure label="View source data">
+          {filterEditorOpen && renderFilterEditor()}
+          {error && renderError()}
+          {showSkeleton ? renderSkeleton() : showEmpty ? renderEmpty() : showFilteredEmpty ? renderFilteredEmpty() : (
+            <div style={{ overflowX: 'auto' }}>
             <SortGroupToolbar
               groupBy={goalsSG.groupBy}
               setGroupBy={goalsSG.setGroupBy}
@@ -2035,8 +2059,9 @@ function ReportGoalsSection({ s, set, ownerName }: { s: ReportState; set: Report
                 ))}
               </tbody>
             </table>
-          </div>
-        )}
+            </div>
+          )}
+        </SourceDataDisclosure>
       </div>
       <InsightsDrilldownDrawer
         open={!!goalsDrill}
