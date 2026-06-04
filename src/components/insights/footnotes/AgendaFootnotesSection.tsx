@@ -286,7 +286,10 @@ export function AgendaFootnotesSection({ editor, companyId, periodType, periodKe
                 />
               )}
               <div className="agenda-footnotes-meta">
-                via {fn.source_type.replace(/_/g, ' ')} · {authorName} · {formatTs(fn.created_at)}
+                via {fn.source_type === 'comment'
+                  ? `comment · ${fn.source_anchor || 'Agenda'}`
+                  : fn.source_type.replace(/_/g, ' ')}
+                {' · '}{authorName} · {formatTs(fn.created_at)}
               </div>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
