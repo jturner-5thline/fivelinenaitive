@@ -186,7 +186,12 @@ export function QirSummaryView({ s, reportLabel }: { s: ReportState; reportLabel
 
   const visibleKpis = s.kpis.slice(0, 5);
   const reportTitle = reportLabel;
-  const narrativeFirstPara = (s.narrative || '').split(/\n\s*\n/)[0] || s.narrative || '';
+  // Narrative may now be rich-text HTML — render via sanitized HTML when it
+  // contains tags, otherwise fall back to the legacy plain-text snippet.
+  const isHtmlNarrative = /<\/?[a-z][\s\S]*>/i.test((s.narrative || '').trim());
+  const narrativeFirstPara = isHtmlNarrative
+    ? (s.narrative || '')
+    : ((s.narrative || '').split(/\n\s*\n/)[0] || s.narrative || '');
 
   /* Drill rows */
   const goalsDrillRows = ownerGoals;
@@ -229,19 +234,34 @@ export function QirSummaryView({ s, reportLabel }: { s: ReportState; reportLabel
       <Card>
         <div style={{ padding: '20px 22px' }}>
           <SectionHeader title="Narrative Summary" />
-          <div
-            style={{
-              fontSize: 14,
-              lineHeight: 1.65,
-              color: TEXT_PRIMARY,
-              whiteSpace: 'pre-wrap',
-              maxHeight: 220,
-              overflow: 'hidden',
-              maskImage: narrativeFirstPara.length > 600 ? 'linear-gradient(to bottom, #000 70%, transparent 100%)' : undefined,
-            }}
-          >
-            {narrativeFirstPara}
-          </div>
+          {isHtmlNarrative ? (
+            <div
+              className="insights-narrative-prose"
+              style={{
+                fontSize: 14,
+                lineHeight: 1.65,
+                color: TEXT_PRIMARY,
+                maxHeight: 220,
+                overflow: 'hidden',
+                maskImage: narrativeFirstPara.length > 600 ? 'linear-gradient(to bottom, #000 70%, transparent 100%)' : undefined,
+              }}
+              dangerouslySetInnerHTML={{ __html: narrativeFirstPara }}
+            />
+          ) : (
+            <div
+              style={{
+                fontSize: 14,
+                lineHeight: 1.65,
+                color: TEXT_PRIMARY,
+                whiteSpace: 'pre-wrap',
+                maxHeight: 220,
+                overflow: 'hidden',
+                maskImage: narrativeFirstPara.length > 600 ? 'linear-gradient(to bottom, #000 70%, transparent 100%)' : undefined,
+              }}
+            >
+              {narrativeFirstPara}
+            </div>
+          )}
         </div>
       </Card>
 
