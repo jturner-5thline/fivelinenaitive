@@ -985,23 +985,47 @@ function ReportKpisSection({ s, set, reportLabel }: { s: ReportState; set: Repor
   );
 }
 
-function ReportNarrativeSection({ s, set }: { s: ReportState; set: ReportSetState }) {
+function ReportNarrativeSection({ s, set, scopeKey, save, isSaving }: {
+  s: ReportState;
+  set: ReportSetState;
+  scopeKey: string;
+  save?: () => Promise<boolean>;
+  isSaving?: boolean;
+}) {
+  const attachments = s.narrativeAttachments ?? [];
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  // Debounced autosave that triggers the existing report save() so narrative
+  // changes + attachments persist without a manual "Save" click.
+  const scheduleSave = React.useCallback(() => {
+    if (!save) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const ok = await save();
+      if (ok) setSavedAt(Date.now());
+    }, 1200);
+  }, [save]);
+
+  useEffect(() => () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); }, []);
+
   return (
     <Card className="glass-module">
       <div style={{ padding: '16px 18px' }}>
         <SectionTitle prominent>Narrative / Executive Summary</SectionTitle>
-        <textarea
+        <InsightsNarrativeEditor
           value={s.narrative}
-          onChange={e => set(prev => ({ ...prev, narrative: e.target.value }))}
-          style={{
-            ...inputStyle,
-            minHeight: 220,
-            lineHeight: 1.6,
-            fontSize: 13,
-            padding: 14,
-            resize: 'vertical',
-            whiteSpace: 'pre-wrap',
-            fontFamily: 'inherit',
+          attachments={attachments}
+          scopeKey={scopeKey}
+          isSaving={isSaving}
+          savedAt={savedAt}
+          onChange={(html) => {
+            set(prev => ({ ...prev, narrative: html }));
+            scheduleSave();
+          }}
+          onAttachmentsChange={(next) => {
+            set(prev => ({ ...prev, narrativeAttachments: next }));
+            scheduleSave();
           }}
         />
       </div>
@@ -2791,7 +2815,13 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
       <Card className="glass-module qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
           <div id="qir-section-summary" className="qir-unified-section">
-            <ReportNarrativeSection s={s} set={set} />
+            <ReportNarrativeSection
+              s={s}
+              set={set}
+              scopeKey={activeCompositeKey || rk}
+              save={save}
+              isSaving={isSaving}
+            />
           </div>
           <div id="qir-section-financials" className="qir-unified-section">
             <ReportKpisSection s={s} set={set} reportLabel={reportLabel} />
