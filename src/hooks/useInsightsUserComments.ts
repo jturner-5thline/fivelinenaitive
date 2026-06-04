@@ -70,7 +70,8 @@ export function useInsightsUserComments() {
           .select('id, body, created_at, report_key, target_type, target_id, company_id, author_user_id, period_type, period_key')
           .eq('company_id', companyId)
           .eq('author_user_id', userId)
-          .or(`and(period_type.eq.${periodType},period_key.eq.${periodKey}),period_key.is.null`)
+          .eq('period_type', periodType)
+          .eq('period_key', periodKey)
           .order('created_at', { ascending: false })
           .limit(200),
         supabase
@@ -79,7 +80,8 @@ export function useInsightsUserComments() {
           .eq('company_id', companyId)
           .eq('author_id', userId)
           .is('deleted_at', null)
-          .or(`and(period_type.eq.${periodType},period_key.eq.${periodKey}),period_key.is.null`)
+          .eq('period_type', periodType)
+          .eq('period_key', periodKey)
           .order('created_at', { ascending: false })
           .limit(200),
         supabase
@@ -129,9 +131,8 @@ export function useInsightsUserComments() {
       }, (payload) => {
         const row = (payload.new || payload.old) as any;
         if (!row || row.author_user_id !== userId) return;
-        // Drop realtime rows that fall outside the active reporting period
-        // (legacy rows with NULL period_key are always allowed through).
-        if (row.period_key && (row.period_type !== periodType || row.period_key !== periodKey)) return;
+        // Only surface rows that match the active reporting period exactly.
+        if (row.period_type !== periodType || row.period_key !== periodKey) return;
         if (payload.eventType === 'DELETE') {
           setQirRows((prev) => prev.filter((r) => r.id !== row.id));
         } else if (payload.eventType === 'INSERT') {
@@ -146,7 +147,7 @@ export function useInsightsUserComments() {
       }, (payload) => {
         const row = (payload.new || payload.old) as any;
         if (!row || row.author_id !== userId) return;
-        if (row.period_key && (row.period_type !== periodType || row.period_key !== periodKey)) return;
+        if (row.period_type !== periodType || row.period_key !== periodKey) return;
         if (payload.eventType === 'DELETE' || row.deleted_at) {
           setAgendaRows((prev) => prev.filter((r) => r.id !== row.id));
         } else if (payload.eventType === 'INSERT') {
