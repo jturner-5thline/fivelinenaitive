@@ -1585,14 +1585,6 @@ function ThreadMessage({ email, isLatest, defaultExpanded, onExpandChange, threa
 
   useEffect(() => {
     if (!expanded) return;
-    console.warn('[email.thread_render]', {
-      threadId: gmailThreadTarget,
-      messageId: email.id,
-      messageCount: threadEmails.length,
-      firstBodyLen: resolvedHtml ? resolvedHtml.length : trimmedResolvedText.length,
-      error: fullError,
-      loading: fullLoading,
-    });
   }, [expanded, gmailThreadTarget, email.id, threadEmails.length, resolvedHtml, trimmedResolvedText, fullError, fullLoading]);
 
   return (
@@ -2170,7 +2162,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         if (linkErr) throw linkErr;
         const winner = (rows ?? []).find((r: any) => r.locked || r.link_source === 'manual') ?? (rows ?? [])[0];
         if (!winner?.deal_id) {
-          console.info('[link-deal hydrate]', { threadId: thread.threadId, source: 'none', dealId: null });
           window.clearTimeout(timeoutHandle);
           setLinkHydrating(false);
           return;
@@ -2186,13 +2177,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         setLinkedDealId(winner.deal_id);
         if (dealRow?.company) setLinkedDealName(dealRow.company);
         setLinkHydrating(false);
-        console.info('[link-deal hydrate]', {
-          threadId: thread.threadId,
-          dealId: winner.deal_id,
-          dealName: dealRow?.company,
-          source: winner.link_source ?? 'manual',
-          locked: !!winner.locked,
-        });
       } catch (err: any) {
         if (cancelled) return;
         console.error('[link-deal hydrate] failed', err);
@@ -2228,13 +2212,6 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
         link_source: 'manual' as const,
         locked: true,
       }));
-      console.info('[link-deal mutate]', {
-        threadId: thread.threadId,
-        dealId: id,
-        dealName: name,
-        source: 'manual',
-        messages: realIds.length,
-      });
       const { error: upsertErr } = await supabase
         .from('deal_emails')
         .upsert(rows, { onConflict: 'deal_id,gmail_message_id', ignoreDuplicates: false });

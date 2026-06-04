@@ -276,25 +276,6 @@ export function EmailAttachmentsStrip({
     return out;
   }, [emails, attachmentsByMessage]);
 
-  useEffect(() => {
-    if (emails.length === 0) return;
-    console.info('[EmailAttachmentsStrip] thread attachment debug', {
-      threadId: (thread as EmailThread).threadId || emails[0]?.threadId || emails[0]?.id,
-      loading,
-      messages: debug.map((item) => ({
-        messageId: item.messageId,
-        has_attachments: item.hasAttachments,
-        parsedFilenames: item.filenames,
-        attachmentIds: item.attachmentIds,
-      })),
-      headerStripItems: aggregated.map((item) => ({
-        messageId: item.source.id,
-        filename: item.attachment.filename,
-        attachmentId: item.attachment.id,
-      })),
-    });
-  }, [aggregated, debug, emails, loading, thread]);
-
   // Render nothing only when the thread gives us zero signal that attachments
   // exist. Otherwise keep the row visible with loading/fallback messaging.
   const anyMessageClaimsAttachments = emails.some((e) => e.has_attachments);
