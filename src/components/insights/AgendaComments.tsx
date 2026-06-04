@@ -499,23 +499,30 @@ export function SelectionCommentAction({
 
 // ---------- Comment composer (used for new threads + new replies) ----------
 export function CommentComposer({
-  onSubmit, autoFocus, placeholder, onCancel,
+  onSubmit, autoFocus, placeholder, onCancel, withType,
 }: {
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string, commentType: CommentType) => void;
   autoFocus?: boolean;
   placeholder?: string;
   onCancel?: () => void;
+  /** Show the Note / Decision / Action Item selector. Default true. */
+  withType?: boolean;
 }) {
   const [body, setBody] = useState('');
+  const [commentType, setCommentType] = useState<CommentType>('note');
   const members = useTeamMembers();
   const submit = () => {
     const v = body.trim();
     if (!v) return;
-    onSubmit(v);
+    onSubmit(v, commentType);
     setBody('');
+    setCommentType('note');
   };
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      {(withType ?? true) && (
+        <CommentTypePicker value={commentType} onChange={setCommentType} />
+      )}
       <MentionableTextarea
         value={body}
         onChange={setBody}
