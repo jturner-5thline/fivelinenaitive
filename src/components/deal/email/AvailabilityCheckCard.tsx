@@ -884,6 +884,12 @@ export function AvailabilityCheckCard({ thread, onInsertDraft, hideWhenEmpty = f
           result.slots = chronoSlots;
           result.user_timezone = result.user_timezone || BROWSER_TZ;
           result.reply_suggestions = result.reply_suggestions || [];
+        } else {
+          console.log('[AvailabilityCheck] No datetime proposals extracted from thread', {
+            thread_id: thread.threadId,
+            subject: thread.subject,
+            text_length: threadText.length,
+          });
         }
       }
       setParseResult(result);

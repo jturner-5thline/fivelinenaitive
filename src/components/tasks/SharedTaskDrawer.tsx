@@ -1,33 +1,12 @@
-import { useEffect, Component, lazy, Suspense, type ReactNode } from 'react';
+import { useEffect, Component, type ReactNode } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import * as VisuallyHidden from '@radix-ui/react-visually-hidden';
+import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import type { Task } from '@/hooks/useTasks';
 import { invalidateAllTaskCaches } from '@/lib/taskCache';
 import { toast } from 'sonner';
-
-// Lazy-load the heavy TaskDetailDrawer (runs ~8 parallel queries on mount and
-// pulls in comments/mentions/attachments/subtasks subtrees). Its chunk is
-// only parsed the first time a task drawer is actually opened, keeping the
-// initial /deals (and every other surface that mounts SharedTaskDrawer)
-// bundle smaller.
-const TaskDetailDrawer = lazy(() =>
-  import('@/components/tasks/TaskDetailDrawer').then((m) => ({ default: m.TaskDetailDrawer })),
-);
-
-function TaskDetailFallback() {
-  return (
-    <div className="flex flex-col h-full p-5 gap-3 animate-pulse">
-      <div className="h-4 w-24 bg-muted/40 rounded" />
-      <div className="h-6 w-3/4 bg-muted/40 rounded" />
-      <div className="h-3 w-1/2 bg-muted/30 rounded" />
-      <div className="h-3 w-2/3 bg-muted/30 rounded" />
-      <div className="mt-4 h-32 w-full bg-muted/20 rounded" />
-      <div className="mt-2 h-3 w-1/3 bg-muted/30 rounded" />
-    </div>
-  );
-}
 
 interface SharedTaskDrawerProps {
   taskId: string | null;
@@ -170,16 +149,21 @@ export function SharedTaskDrawer({ taskId, onClose }: SharedTaskDrawerProps) {
               <p className="text-xs text-muted-foreground break-all">{(error as Error)?.message}</p>
             </div>
           ) : task ? (
-            <Suspense fallback={<TaskDetailFallback />}>
-              <TaskDetailDrawer
-                task={task}
-                onClose={onClose}
-                onUpdate={handleUpdate}
-                onDelete={handleDelete}
-              />
-            </Suspense>
+            <TaskDetailDrawer
+              task={task}
+              onClose={onClose}
+              onUpdate={handleUpdate}
+              onDelete={handleDelete}
+            />
           ) : (
-            <TaskDetailFallback />
+            <div className="flex flex-col h-full p-5 gap-3 animate-pulse">
+              <div className="h-4 w-24 bg-muted/40 rounded" />
+              <div className="h-6 w-3/4 bg-muted/40 rounded" />
+              <div className="h-3 w-1/2 bg-muted/30 rounded" />
+              <div className="h-3 w-2/3 bg-muted/30 rounded" />
+              <div className="mt-4 h-32 w-full bg-muted/20 rounded" />
+              <div className="mt-2 h-3 w-1/3 bg-muted/30 rounded" />
+            </div>
           )}
         </DrawerErrorBoundary>
       </SheetContent>

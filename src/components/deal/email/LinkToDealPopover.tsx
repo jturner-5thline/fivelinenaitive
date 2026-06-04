@@ -85,6 +85,7 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
       return;
     }
     const mapped = (data || []).map(d => ({ ...d, company: d.company || 'Unnamed Deal' })) as Deal[];
+    console.log('[LinkToDealPopover] deal search', { query, rows: mapped.length });
     // Float the AI-suggested deal to the top so the user can confirm with one click.
     if (aiSuggestedDealId) {
       const idx = mapped.findIndex(d => d.id === aiSuggestedDealId);
@@ -108,6 +109,7 @@ export function LinkToDealPopover({ trigger, currentDealName, isLinked, onLinkDe
     // fails we want the user to see the error and retry without having to
     // re-open the popover and re-search the deal.
     try {
+      console.log('[LinkToDealPopover] linking', { dealId: deal.id, dealName: deal.company });
       await Promise.resolve(onLinkDeal(deal.id, deal.company));
       toast.success(`Linked to ${deal.company}`);
       setSearch('');

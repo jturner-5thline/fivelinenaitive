@@ -444,13 +444,26 @@ export function QuickBookMeetingPopover({
 
     (async () => {
       try {
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] calendar-status request start', { nonce: loadNonce });
+        // eslint-disable-next-line no-console
+        console.time('calendar-status');
         const { data, error } = await Promise.race([
           supabase.functions.invoke('calendar-status', { body: {} }),
           timeoutReject(STATUS_TIMEOUT_MS, 'calendar-status', { nonce: loadNonce }),
         ]) as Awaited<ReturnType<typeof supabase.functions.invoke>>;
+        // eslint-disable-next-line no-console
+        console.timeEnd('calendar-status');
         if (cancelled) return;
         if (error) throw buildInvokeError('calendar-status', error, data);
         const statusData = (data ?? {}) as Record<string, any>;
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] calendar-status response', {
+          nonce: loadNonce,
+          connected: !!statusData.connected,
+          isExpired: !!statusData.is_expired,
+          provider: statusData.provider ?? null,
+        });
         // Successful response — reset timeout streak.
         setTimeoutStreak(0);
         const provider = String(statusData.provider || '').toLowerCase() || null;
@@ -601,6 +614,14 @@ export function QuickBookMeetingPopover({
     timeoutHandleRef.current = `freebusy:${reqId}`;
     (async () => {
       try {
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] freebusy request start', {
+          nonce: loadNonce,
+          reqId,
+          timeMin: timeMin.toISOString(),
+          timeMax: timeMax.toISOString(),
+          debugSimulateTimeout,
+        });
         const request = debugSimulateTimeout
           ? new Promise<never>(() => {})
           : supabase.functions.invoke('calendar-events', {
@@ -620,6 +641,12 @@ export function QuickBookMeetingPopover({
         if (error) throw buildInvokeError('calendar-events', error, data);
         const eventsData = (data ?? {}) as Record<string, any>;
         const evs = Array.isArray(eventsData.events) ? eventsData.events : [];
+        // eslint-disable-next-line no-console
+        console.info('[scheduler] freebusy response', {
+          nonce: loadNonce,
+          reqId,
+          eventCount: evs.length,
+        });
         setBusy(
           evs
             .filter((e: any) => e?.start && e?.end && !e?.all_day)
