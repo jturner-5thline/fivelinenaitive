@@ -95,6 +95,17 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
 
     setIsLoading(true);
     isLoaded.current = false;
+    // Defensive timeout: if the preferences query hangs (network blip, RLS
+    // misconfig, etc.) fall back to defaults so the dashboard skeleton
+    // doesn't get stuck forever.
+    const fallbackTimer = setTimeout(() => {
+      if (cancelled) return;
+      if (!isLoaded.current) {
+        setWidgets(DEFAULT_WIDGETS);
+        setSpecialWidgets(DEFAULT_SPECIAL_WIDGETS);
+        setIsLoading(false);
+      }
+    }, 5000);
     (async () => {
       const { data, error } = await (supabase as any)
         .from('widget_preferences')
@@ -102,7 +113,8 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (cancelled) return;
+      if (cancelled) { clearTimeout(fallbackTimer); return; }
+      clearTimeout(fallbackTimer);
 
       if (!error && data) {
         if (Array.isArray(data.widgets) && data.widgets.length > 0) {
@@ -123,7 +135,7 @@ export function WidgetsProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     })();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; clearTimeout(fallbackTimer); };
   }, [user]);
 
   // Persist to Supabase whenever values change (after initial load)
