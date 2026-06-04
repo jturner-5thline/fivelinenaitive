@@ -33,7 +33,6 @@ interface Props {
 
 type Duration = 15 | 30 | 45 | 60;
 type Window = 3 | 5 | 7 | 14;
-type SlotCount = 3 | 5 | 7;
 type Buffer = 0 | 15 | 30;
 
 function Segmented<T extends string | number>({
@@ -89,12 +88,13 @@ export function SuggestTimesPanel({
   const [windowDays, setWindowDays] = useState<Window>(5);
   const [whStart, setWhStart] = useState(defaultStart);
   const [whEnd, setWhEnd] = useState(defaultEnd);
-  const [slotCount, setSlotCount] = useState<SlotCount>(5);
   const [buffer, setBuffer] = useState<Buffer>(15);
   const [avoidBackToBack, setAvoidBackToBack] = useState(true);
   const [focusFriendly, setFocusFriendly] = useState(false);
-  const [format, setFormat] = useState<SlotFormat>('bulleted');
   const [showRecipientTz, setShowRecipientTz] = useState(false);
+  // Hardcoded: always 5 slots, always bulleted format.
+  const SLOT_COUNT = 5;
+  const format: SlotFormat = 'bulleted';
   const recipientTz: string | null = null; // not yet inferred from signature
 
   const [inserting, setInserting] = useState(false);
@@ -126,7 +126,6 @@ export function SuggestTimesPanel({
   const dWindow = useDebouncedValue(windowDays, 100);
   const dWhStart = useDebouncedValue(whStart, 100);
   const dWhEnd = useDebouncedValue(whEnd, 100);
-  const dSlotCount = useDebouncedValue(slotCount, 100);
   const dBuffer = useDebouncedValue(buffer, 100);
   const dAvoid = useDebouncedValue(avoidBackToBack, 100);
   const dFocus = useDebouncedValue(focusFriendly, 100);
@@ -148,10 +147,16 @@ export function SuggestTimesPanel({
       avoidBackToBack: dAvoid,
       focusFriendly: dFocus,
       busy: cachedBusy,
-      maxSlots: dSlotCount,
+      maxSlots: SLOT_COUNT,
     });
+    if (result.length < SLOT_COUNT) {
+      console.warn(
+        `[SuggestTimes] Only ${result.length}/${SLOT_COUNT} slots found in ${dWindow}d window`,
+        { busyBlocks: cachedBusy.length, duration: dDuration },
+      );
+    }
     return result;
-  }, [cachedBusy, dDuration, dWindow, dWhStart, dWhEnd, dSlotCount, dBuffer, dAvoid, dFocus]);
+  }, [cachedBusy, dDuration, dWindow, dWhStart, dWhEnd, dBuffer, dAvoid, dFocus]);
 
   // Telemetry: log time-to-first-slot once per mount.
   useEffect(() => {
@@ -249,13 +254,6 @@ export function SuggestTimesPanel({
           <Row label="Window">
             <Segmented<Window> values={[3, 5, 7, 14]} current={windowDays} onChange={setWindowDays}
               format={(v) => `${v}d`} />
-          </Row>
-          <Row label="Slots">
-            <Segmented<SlotCount> values={[3, 5, 7]} current={slotCount} onChange={setSlotCount} />
-          </Row>
-          <Row label="Format">
-            <Segmented<SlotFormat> values={['bulleted', 'inline', 'numbered']} current={format}
-              onChange={setFormat} />
           </Row>
         </div>
 
