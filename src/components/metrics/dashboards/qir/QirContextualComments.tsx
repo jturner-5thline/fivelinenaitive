@@ -5,6 +5,7 @@ import { useQirComments } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
 import { PromoteToQueueButton } from '@/components/insights/comments/PromoteToQueueButton';
 import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
+import { MentionText } from '@/components/insights/comments/MentionText';
 import { toast } from 'sonner';
 
 /**
@@ -483,7 +484,9 @@ export function QirContextualComments({
                             <strong style={{ color: '#dde8f8' }}>{c.author_name || 'Unknown'}</strong>
                             <span>{when}</span>
                           </div>
-                          <div style={{ fontSize: 13, color: '#dde8f8', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{c.body}</div>
+                          <div style={{ fontSize: 13, color: '#dde8f8', whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                            <MentionText text={c.body} />
+                          </div>
                           {tagged.length > 0 && (
                             <div style={{ marginTop: 4, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                               {tagged.map(name => (
