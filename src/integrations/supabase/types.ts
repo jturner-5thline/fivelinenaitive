@@ -15026,7 +15026,7 @@ export type Database = {
           period_key: string
           period_type: string
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           company_id: string
@@ -15036,7 +15036,7 @@ export type Database = {
           period_key: string
           period_type: string
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           company_id?: string
@@ -15046,7 +15046,7 @@ export type Database = {
           period_key?: string
           period_type?: string
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
