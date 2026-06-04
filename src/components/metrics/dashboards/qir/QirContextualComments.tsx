@@ -427,6 +427,7 @@ export function QirContextualComments({
               {composer.hasSelection ? '“' : ''}{composer.snippet.slice(0, 180)}{composer.snippet.length > 180 ? '…' : ''}{composer.hasSelection ? '”' : ''}
             </div>
           )}
+          <CommentTypePicker value={commentType} onChange={setCommentType} />
           <div style={{ position: 'relative' }}>
             <textarea
               ref={taRef}
