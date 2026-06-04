@@ -167,8 +167,11 @@ export function QirContextualComments({
     if (!root) return;
     const onCtx = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      // Don't hijack right-click on inputs/textareas/links — preserve native UX.
-      if (target.closest('input, textarea, select, a[href], [contenteditable="true"]')) return;
+      // Don't hijack right-click on form inputs / editable surfaces — preserve
+      // native UX there. Anchors (Goals/Initiatives link out to Asana) are
+      // intentionally NOT excluded: users still need the Queue/Comment menu
+      // on those rows.
+      if (target.closest('input, textarea, select, [contenteditable="true"]')) return;
       // Avoid intercepting clicks inside the comments drawer/composer themselves.
       if (target.closest('[data-qir-comments-ui]')) return;
       e.preventDefault();

@@ -3053,6 +3053,19 @@ export function QuarterlyReportPrintStyles() {
       .qir-unified-report > div > .qir-unified-section + .qir-unified-section {
         border-top: 1px solid rgba(120,170,255,0.22);
       }
+      /* Ensure report content is always text-selectable (and not blocked by
+         anchor drag) so users can highlight Goals/Initiative rows, KPIs,
+         and narrative for the right-click "Add to Queue" snippet. */
+      .qir-report-canvas,
+      .qir-report-canvas * {
+        -webkit-user-select: text;
+        -moz-user-select: text;
+        -ms-user-select: text;
+        user-select: text;
+      }
+      .qir-report-canvas a {
+        -webkit-user-drag: none;
+      }
       /* Uniform padding inside every unified section so narrative, KPIs,
          goals, initiatives, and risks share identical spacing. */
       .qir-unified-report .qir-unified-section .glass-module > div {
