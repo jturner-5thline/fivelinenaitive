@@ -21,6 +21,7 @@ import naitiveLogoDark from '@/assets/naitive-logo-dark.png';
 import { QirContextualComments } from './qir/QirContextualComments';
 import WhatWorkingSections from './WhatWorkingSections';
 import { InsightsNarrativeEditor, type NarrativeAttachment } from '@/components/insights/InsightsNarrativeEditor';
+import { DocStylesOnce, DocSection, DocMetaRow, SourceDataDisclosure, InlineEditable } from './qir/DocPrimitives';
 import { InsightsDrilldownDrawer, type DrilldownColumn, type DrilldownContext } from '../insights/InsightsDrilldownDrawer';
 import { KpiDrillDownDialog, type KpiLike } from './qir/KpiDrillDownDialog';
 import { AddKpiDialog } from './qir/AddKpiDialog';
