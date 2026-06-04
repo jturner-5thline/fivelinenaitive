@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Editor } from '@tiptap/react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink, Plus } from 'lucide-react';
 import { useAgendaFootnotes } from './useAgendaFootnotes';
 import { getAllFootnoteRefs, getOrderedFootnoteIds } from './FootnoteRefMark';
-import type { AgendaFootnote } from './types';
+import type { AgendaFootnote, FootnoteType } from './types';
+import { useInsertAgendaFootnote } from './useInsertAgendaFootnote';
 import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
@@ -36,6 +37,9 @@ export function AgendaFootnotesSection({ editor, companyId, periodType, periodKe
   const { footnotes, byId, archiveFootnote } = useAgendaFootnotes({ companyId, periodType, periodKey });
   const [orderedIds, setOrderedIds] = useState<string[]>([]);
   const [authors, setAuthors] = useState<Record<string, { display_name: string | null; email: string | null }>>({});
+  const [composer, setComposer] = useState<{ type: FootnoteType; text: string; insertBody: boolean } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const insertFootnote = useInsertAgendaFootnote();
 
   // Recompute ordering whenever the editor doc changes.
   useEffect(() => {
@@ -110,7 +114,30 @@ export function AgendaFootnotesSection({ editor, companyId, periodType, periodKe
   }, [editor, orderedIds, ordered.length]);
 
   if (!companyId) return null;
-  if (ordered.length === 0) return null;
+
+  const startCompose = (type: FootnoteType) => {
+    setComposer({ type, text: '', insertBody: true });
+  };
+
+  const submitCompose = async () => {
+    if (!composer || !composer.text.trim() || busy) return;
+    setBusy(true);
+    try {
+      await insertFootnote(
+        {
+          footnoteType: composer.type,
+          sourceType: 'manual',
+          sourceId: null,
+          sourceAnchor: `manual::${Date.now()}`,
+          snapshotText: composer.text.trim(),
+        },
+        composer.insertBody ? 'marker' : 'footnote_only',
+      );
+      setComposer(null);
+    } finally {
+      setBusy(false);
+    }
+  };
 
   return (
     <section
@@ -142,9 +169,99 @@ export function AgendaFootnotesSection({ editor, companyId, periodType, periodKe
         .agenda-footnotes-link { color: rgba(200,225,255,0.6); display: inline-flex; align-items: center; gap: 4px; text-decoration: none; }
         .agenda-footnotes-link:hover { color: #7ed0ff; }
       `}</style>
-      <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(200,225,255,0.55)', marginBottom: 8 }}>
-        Footnotes
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        marginBottom: 10, gap: 8, flexWrap: 'wrap',
+      }}>
+        <div style={{ fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'rgba(200,225,255,0.55)' }}>
+          Footnotes {ordered.length > 0 && <span style={{ marginLeft: 4, opacity: 0.6 }}>· {ordered.length}</span>}
+        </div>
+        <div style={{ display: 'inline-flex', gap: 6 }}>
+          {(['decision', 'note', 'action_item'] as FootnoteType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => startCompose(t)}
+              title={`Add ${TYPE_LABEL[t]}`}
+              style={{
+                display: 'inline-flex', alignItems: 'center', gap: 4,
+                fontSize: 11, padding: '3px 9px', borderRadius: 999,
+                border: '0.5px solid rgba(80,140,255,0.28)',
+                background: 'rgba(16,28,52,0.55)', color: 'rgba(200,225,255,0.85)',
+                cursor: 'pointer',
+              }}
+            >
+              <Plus size={11} /> {TYPE_LABEL[t]}
+            </button>
+          ))}
+        </div>
       </div>
+      {composer && (
+        <div style={{
+          padding: 10, marginBottom: 12, borderRadius: 8,
+          border: '0.5px solid rgba(80,140,255,0.22)', background: 'rgba(16,28,52,0.4)',
+        }}>
+          <div style={{ fontSize: 10.5, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'rgba(200,225,255,0.6)', marginBottom: 6 }}>
+            New {TYPE_LABEL[composer.type]}
+          </div>
+          <textarea
+            autoFocus
+            value={composer.text}
+            onChange={(e) => setComposer({ ...composer, text: e.target.value })}
+            placeholder={`Describe this ${TYPE_LABEL[composer.type].toLowerCase()}…`}
+            rows={2}
+            style={{
+              width: '100%', resize: 'vertical', minHeight: 48,
+              padding: 8, fontSize: 13, lineHeight: 1.45,
+              borderRadius: 6, border: '0.5px solid rgba(80,140,255,0.22)',
+              background: 'rgba(10,20,40,0.6)', color: 'rgba(230,240,255,0.92)',
+              outline: 'none',
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); void submitCompose(); }
+              if (e.key === 'Escape') { e.preventDefault(); setComposer(null); }
+            }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 8, gap: 8 }}>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'rgba(200,225,255,0.7)' }}>
+              <input
+                type="checkbox"
+                checked={composer.insertBody}
+                onChange={(e) => setComposer({ ...composer, insertBody: e.target.checked })}
+              />
+              Also insert reference in Agenda body at cursor
+            </label>
+            <div style={{ display: 'inline-flex', gap: 6 }}>
+              <button
+                type="button"
+                onClick={() => setComposer(null)}
+                style={{
+                  fontSize: 11, padding: '4px 10px', borderRadius: 6,
+                  border: '0.5px solid rgba(80,140,255,0.2)',
+                  background: 'transparent', color: 'rgba(200,225,255,0.7)', cursor: 'pointer',
+                }}
+              >Cancel</button>
+              <button
+                type="button"
+                onClick={() => void submitCompose()}
+                disabled={busy || !composer.text.trim()}
+                style={{
+                  fontSize: 11, padding: '4px 12px', borderRadius: 6,
+                  border: '0.5px solid rgba(80,140,255,0.4)',
+                  background: 'linear-gradient(180deg,#9bdcff,#4db8ff)',
+                  color: '#0a2540', fontWeight: 600,
+                  cursor: busy ? 'wait' : 'pointer', opacity: composer.text.trim() ? 1 : 0.5,
+                }}
+              >Add</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {ordered.length === 0 && !composer && (
+        <div style={{ fontSize: 11.5, color: 'rgba(200,225,255,0.5)', padding: '4px 0' }}>
+          No decisions, notes, or action items yet for {periodKey}. Add one above, or right-click a Decision / Note / Action Item from a meeting to drop it here.
+        </div>
+      )}
       {ordered.map((fn, idx) => {
         const num = idx + 1;
         const author = authors[fn.created_by];
