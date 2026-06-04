@@ -748,6 +748,23 @@ export function AgendaEditor() {
           transition: background 0.15s ease;
         }
         .agenda-prose .agenda-comment:hover { background: rgba(255, 213, 0, 0.32); }
+        /* Smart-tag accent borders — keyed on the highlight color of the
+           bold [Action] / [Decision] / [Topic] mark inside the line. The
+           Highlight extension serializes the chosen color into data-color,
+           which we match here so the styling stays purely presentational. */
+        .agenda-prose p:has(> mark[data-color="${'#ff8a3d'}"]) ,
+        .agenda-prose ul[data-type="taskList"] li:has(mark[data-color="${'#ff8a3d'}"]) > div {
+          border-left: 2px solid ${'#ff8a3d'};
+          padding-left: 10px;
+        }
+        .agenda-prose p:has(> mark[data-color="${'#ffeb3b'}"]) {
+          border-left: 2px solid ${'#ffeb3b'};
+          padding-left: 10px;
+        }
+        .agenda-prose p:has(> mark[data-color="${'#5ec8d6'}"]) {
+          border-left: 2px solid ${'#5ec8d6'};
+          padding-left: 10px;
+        }
       `}</style>
       <div className="agenda-editor-col">
       <Toolbar editor={editor} />
