@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { findCommentRanges } from './CommentMark';
 import { PromoteToQueueButton } from './comments/PromoteToQueueButton';
+import { useInsightsTimeframeOptional, reportingPeriodHelpers } from '@/contexts/InsightsTimeframeContext';
 
 // ---------- Types ----------
 export interface AgendaThread {
