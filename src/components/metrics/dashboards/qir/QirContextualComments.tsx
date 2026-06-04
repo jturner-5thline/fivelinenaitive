@@ -404,6 +404,22 @@ export function QirContextualComments({
                               ))}
                             </div>
                           )}
+                          <div style={{ marginTop: 6 }}>
+                            <PromoteToQueueButton
+                              size="xs"
+                              input={() => ({
+                                reportTab: reportLabel,
+                                sourceType: mapTargetTypeToQueue(g.type),
+                                sourceId: g.id,
+                                sourceAnchor: `${g.type}:${g.id}`,
+                                sourceSnapshotText: snapshotForSource(g.type, g.id, g.label),
+                                sourceLabel: g.label,
+                                commentSource: 'qir',
+                                commentId: c.id,
+                                commentTextSnapshot: c.body,
+                              })}
+                            />
+                          </div>
                         </div>
                       );
                     })}
