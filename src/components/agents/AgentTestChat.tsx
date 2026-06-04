@@ -228,7 +228,54 @@ export function AgentTestChat({ agent, onClose }: AgentTestChatProps) {
                 >
                   <div className="text-sm prose prose-sm dark:prose-invert max-w-none">
                     {message.role === 'assistant' ? (
-                      <ReactMarkdown>{message.content}</ReactMarkdown>
+                      <ReactMarkdown
+                        urlTransform={(url) => url}
+                        components={{
+                          a: ({ href, children }) => {
+                            const parsed = parseDealHref(href);
+                            const label =
+                              typeof children === 'string'
+                                ? children
+                                : Array.isArray(children)
+                                  ? children.filter((c) => typeof c === 'string').join('')
+                                  : '';
+                            if (!parsed) {
+                              return (
+                                <a href={href} target="_blank" rel="noopener noreferrer">
+                                  {children}
+                                </a>
+                              );
+                            }
+                            const followUp = `Use the ${parsed.kind} "${label}" (id: ${parsed.id}). Resolve the disambiguation with this choice and continue.`;
+                            const onPick = (e: React.MouseEvent) => {
+                              e.preventDefault();
+                              if (isLoading) return;
+                              handleSend(followUp);
+                            };
+                            return (
+                              <span className="inline-flex items-center gap-1 align-baseline">
+                                <a
+                                  href={href}
+                                  onClick={onPick}
+                                  className="text-primary font-semibold hover:underline cursor-pointer"
+                                >
+                                  {children}
+                                </a>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-5 px-1.5 py-0 text-[10px] leading-none ml-0.5"
+                                  onClick={onPick}
+                                  disabled={isLoading}
+                                >
+                                  Use
+                                </Button>
+                              </span>
+                            );
+                          },
+                        }}
+                      >{message.content}</ReactMarkdown>
                     ) : (
                       message.content
                     )}
