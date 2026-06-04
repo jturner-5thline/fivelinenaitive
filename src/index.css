@@ -125,16 +125,16 @@
        LIQUID GLASS — Teal Accent Dark Theme
        ═══════════════════════════════════════════════ */
 
-    /* Surface 1: page background — lifted slate (brightened for readability) */
-    --background: 228 20% 18%;
+    /* Surface 1: page background — Linear/Vercel-style airy dark navy */
+    --background: 226 25% 16%;
     --foreground: 0 0% 100%;
 
-    /* Surface 2: card glass layer */
-    --card: 230 17% 23%;
+    /* Surface 2: card glass layer — clearly elevated above page */
+    --card: 225 22% 22%;
     --card-foreground: 0 0% 100%;
 
-    /* Surface 3: elevated */
-    --popover: 230 16% 26%;
+    /* Surface 3: elevated (popover) */
+    --popover: 224 20% 26%;
     --popover-foreground: 0 0% 100%;
 
     /* Primary: Logo blue accent #7EB8F7 */
@@ -142,12 +142,12 @@
     --primary-foreground: 0 0% 100%;
 
     /* Secondary: glass-elevated surface */
-    --secondary: 230 14% 27%;
-    --secondary-foreground: 0 0% 92%;
+    --secondary: 225 18% 28%;
+    --secondary-foreground: 0 0% 94%;
 
     /* Muted */
-    --muted: 230 14% 25%;
-    --muted-foreground: 0 0% 72%;
+    --muted: 225 18% 24%;
+    --muted-foreground: 0 0% 78%;
 
     /* Accent: Logo blue for interactive */
     --accent: 213 90% 70%;
@@ -161,19 +161,19 @@
     --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 95%;
 
-    /* Borders — subtle glass edges (slightly stronger for layer separation) */
-    --border: 0 0% 100% / 0.14;
-    --input: 0 0% 100% / 0.14;
+    /* Borders — clearly visible delineation between sections */
+    --border: 224 16% 32%;
+    --input: 224 16% 32%;
     --ring: 213 90% 70%;
 
     /* Sidebar */
-    --sidebar-background: 260 17% 19%;
-    --sidebar-foreground: 0 0% 92%;
+    --sidebar-background: 226 25% 18%;
+    --sidebar-foreground: 0 0% 94%;
     --sidebar-primary: 213 90% 70%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 213 90% 70% / 0.1;
     --sidebar-accent-foreground: 213 90% 80%;
-    --sidebar-border: 0 0% 100% / 0.14;
+    --sidebar-border: 224 16% 32%;
     --sidebar-ring: 213 90% 70%;
 
     /* Brand */
@@ -189,22 +189,22 @@
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(213 90% 70%), hsl(213 80% 55%));
     --gradient-accent: linear-gradient(135deg, hsl(213 90% 75%), hsl(213 80% 60%));
-    --gradient-hero: linear-gradient(180deg, hsl(228 20% 20%) 0%, hsl(228 20% 17%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(226 25% 18%) 0%, hsl(226 25% 15%) 100%);
 
     /* Email / Outlook tokens — dark mode (tuned for readability) */
     --outlook-blue: 213 90% 72%;
-    --inbox-surface: 228 18% 18%;
-    --email-panel-surface: 228 18% 18%;
+    --inbox-surface: 226 22% 20%;
+    --email-panel-surface: 226 22% 20%;
     /* Lifted surfaces with clearer hierarchy: list < toolbar < reading < sidebar */
-    --email-sidebar-bg: 228 22% 13%;
-    --email-list-bg: 228 20% 15%;
-    --email-toolbar-bg: 228 20% 17%;
-    --email-reading-bg: 228 18% 19%;
+    --email-sidebar-bg: 226 25% 16%;
+    --email-list-bg: 226 22% 18%;
+    --email-toolbar-bg: 226 22% 21%;
+    --email-reading-bg: 226 22% 23%;
     /* Readability text layers for the email surface */
     --email-text-primary: 0 0% 98%;          /* body / sender names — near white */
     --email-text-secondary: 0 0% 82%;        /* subjects, secondary labels */
     --email-text-muted: 0 0% 66%;            /* timestamps, snippets, metadata */
-    --email-border: 0 0% 100% / 0.16;        /* slightly stronger row dividers */
+    --email-border: 224 16% 32%;             /* clearly visible row dividers */
 
     /* Email category chip tokens (dark mode) */
     --email-cat-clients: 142 60% 60%;        /* Clients & Deals — green */
@@ -225,19 +225,19 @@
     --shadow-xl: 0 20px 40px -8px hsl(0 0% 0% / 0.5);
     --shadow-2xl: 0 30px 60px -12px hsl(0 0% 0% / 0.6);
 
-    /* ═══ Liquid Glass Tokens ═══ (brighter, less murky) */
-    --glass-surface: rgba(255,255,255,0.08);
-    --glass-elevated: rgba(255,255,255,0.11);
-    --glass-content-surface: rgba(255,255,255,0.04);
-    --glass-border: rgba(255,255,255,0.14);
-    --glass-border-accent: rgba(126,184,247,0.30);
+    /* ═══ Liquid Glass Tokens ═══ (lighter, airier — less heavy overlay) */
+    --glass-surface: rgba(255,255,255,0.06);
+    --glass-elevated: rgba(255,255,255,0.09);
+    --glass-content-surface: rgba(255,255,255,0.03);
+    --glass-border: rgba(255,255,255,0.18);
+    --glass-border-accent: rgba(126,184,247,0.32);
     --glass-glow: rgba(126,184,247,0.16);
-    --glass-shadow: 0 4px 24px rgba(0,0,0,0.28), inset 0 1px 0 rgba(255,255,255,0.08);
+    --glass-shadow: 0 4px 20px rgba(0,0,0,0.22), inset 0 1px 0 rgba(255,255,255,0.08);
     --glass-blur: blur(12px) saturate(1.4);
     --glass-content-blur: blur(40px) saturate(1.2);
-    --glass-row-hover: rgba(126,184,247,0.08);
+    --glass-row-hover: rgba(126,184,247,0.10);
     --glass-row-alt: rgba(255,255,255,0.02);
-    --glass-header-bg: rgba(255,255,255,0.05);
+    --glass-header-bg: rgba(255,255,255,0.04);
   }
 }
 
