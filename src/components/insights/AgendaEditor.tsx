@@ -22,7 +22,7 @@ import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
   List, ListOrdered, ListChecks, AlignLeft, AlignCenter, AlignRight, AlignJustify,
   Link as LinkIcon, Eraser, Heading1, Heading2, Heading3, Check, Loader2, Copy,
-  MessageSquare,
+  MessageSquare, CheckSquare, Gavel, Hash, Sparkles,
 } from 'lucide-react';
 import { CommentMark } from './CommentMark';
 import {
@@ -35,6 +35,13 @@ import {
 import { FootnoteRefMark } from './footnotes/FootnoteRefMark';
 import { AgendaFootnotesSection } from './footnotes/AgendaFootnotesSection';
 import { AGENDA_INSERT_EVENT, type InsertAgendaFootnoteEvent } from './footnotes/types';
+import {
+  TAG_COLORS,
+  insertActionItem,
+  insertDecision,
+  insertTopic,
+  generateAgendaRecap,
+} from './agendaRecap';
 
 const FONT_FAMILIES = [
   { label: 'Default', value: '' },
@@ -287,6 +294,24 @@ function Toolbar({ editor }: { editor: Editor | null }) {
           onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
         >
           <Eraser size={14} />
+        </ToolbarBtn>
+        <ToolbarBtn
+          title="Insert Action Item"
+          onClick={() => insertActionItem(editor)}
+        >
+          <CheckSquare size={14} style={{ color: TAG_COLORS.action }} />
+        </ToolbarBtn>
+        <ToolbarBtn
+          title="Insert Decision"
+          onClick={() => insertDecision(editor)}
+        >
+          <Gavel size={14} style={{ color: TAG_COLORS.decision }} />
+        </ToolbarBtn>
+        <ToolbarBtn
+          title="Insert Key Topic"
+          onClick={() => insertTopic(editor)}
+        >
+          <Hash size={14} style={{ color: TAG_COLORS.topic }} />
         </ToolbarBtn>
       </Group>
     </div>
@@ -723,6 +748,27 @@ export function AgendaEditor() {
           transition: background 0.15s ease;
         }
         .agenda-prose .agenda-comment:hover { background: rgba(255, 213, 0, 0.32); }
+        /* Smart-tag accent borders — the bold [Action]/[Decision]/[Topic]
+           span carries a Highlight mark whose color we mirror onto the
+           parent line as a 2px left border. Purely presentational. */
+        .agenda-prose p:has(mark[data-color="#ff8a3d"]),
+        .agenda-prose ul[data-type="taskList"] li:has(mark[data-color="#ff8a3d"]) > div,
+        .agenda-prose ul[data-type="taskList"] li:has(mark[data-color="#ff8a3d"]) > p {
+          border-left: 2px solid #ff8a3d;
+          padding-left: 10px;
+        }
+        .agenda-prose p:has(mark[data-color="#ffeb3b"]),
+        .agenda-prose ul[data-type="taskList"] li:has(mark[data-color="#ffeb3b"]) > div,
+        .agenda-prose ul[data-type="taskList"] li:has(mark[data-color="#ffeb3b"]) > p {
+          border-left: 2px solid #ffeb3b;
+          padding-left: 10px;
+        }
+        .agenda-prose p:has(mark[data-color="#5ec8d6"]),
+        .agenda-prose ul[data-type="taskList"] li:has(mark[data-color="#5ec8d6"]) > div,
+        .agenda-prose ul[data-type="taskList"] li:has(mark[data-color="#5ec8d6"]) > p {
+          border-left: 2px solid #5ec8d6;
+          padding-left: 10px;
+        }
       `}</style>
       <div className="agenda-editor-col">
       <Toolbar editor={editor} />
@@ -744,6 +790,32 @@ export function AgendaEditor() {
         >
           <MessageSquare size={11} />
           {commentsApi.threads.filter((t) => !t.resolved).length}
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!editor) return;
+            const { items } = generateAgendaRecap(editor);
+            const doc = editor.getJSON();
+            latestDocRef.current = doc;
+            setIsEmpty(false);
+            void persist(doc, periodType, periodKey);
+            if (items.length === 0) {
+              toast('No tagged items yet — recap inserted as placeholder');
+            } else {
+              toast.success(`Recap updated · ${items.length} tagged item${items.length === 1 ? '' : 's'}`);
+            }
+          }}
+          title="Scan the agenda for [Action]/[Decision]/[Topic] tags and rebuild the Meeting Recap at the top"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 999, marginRight: 6,
+            border: '0.5px solid rgba(80,140,255,0.28)',
+            background: 'rgba(16,28,52,0.55)',
+            color: 'rgba(200,225,255,0.95)', fontSize: 11, cursor: 'pointer',
+          }}
+        >
+          <Sparkles size={11} /> Generate Recap
         </button>
         {isEmpty && loaded && (
           <button
