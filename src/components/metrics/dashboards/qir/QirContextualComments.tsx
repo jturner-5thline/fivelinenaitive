@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { MessageSquare, NotebookPen, X, AtSign, Send, Inbox, MessageSquarePlus } from 'lucide-react';
 import { useQirComments } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
+import { useTeamMembers } from '@/hooks/useTeamMembers';
 import { PromoteToQueueButton } from '@/components/insights/comments/PromoteToQueueButton';
 import { useReportAgendaQueue } from '@/hooks/useReportAgendaQueue';
 import { MentionText } from '@/components/insights/comments/MentionText';
@@ -148,7 +149,27 @@ export function QirContextualComments({
   const comments = qirCommentsApi.comments ?? [];
   const addComment = qirCommentsApi.addComment ?? (async () => null);
   const companyApi = (useCompany() || {}) as any;
-  const members = companyApi.members ?? [];
+  const companyMembers = companyApi.members ?? [];
+  // Canonical team list (same source as Task @mentions). Falls back to
+  // company members if the RPC hasn't returned yet.
+  const teamMembers = useTeamMembers() || [];
+  const members = useMemo(() => {
+    const map = new Map<string, { user_id: string; display_name?: string; email?: string }>();
+    for (const m of companyMembers) {
+      if (m?.user_id) map.set(m.user_id, { user_id: m.user_id, display_name: m.display_name, email: m.email });
+    }
+    for (const m of teamMembers) {
+      if (m?.id) {
+        const existing = map.get(m.id) || { user_id: m.id };
+        map.set(m.id, {
+          user_id: m.id,
+          display_name: existing.display_name || m.display_name,
+          email: existing.email || m.email || undefined,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [companyMembers, teamMembers]);
   const queueApi = (useReportAgendaQueue() || {}) as any;
   const promote = queueApi.promote ?? (async () => null);
   const [composer, setComposer] = useState<ComposerState | null>(null);
@@ -277,10 +298,11 @@ export function QirContextualComments({
     }
   }, [composer, body, submitting, addComment, promote, reportLabel]);
 
-  // Mention autocomplete: detect trailing @token in body.
+  // Mention autocomplete: detect trailing `@` or `@token` in body.
+  // Allow zero-length token so the picker opens immediately on `@`.
   const mentionMatch = useMemo(() => {
-    const m = /@([A-Za-z][A-Za-z0-9_.\- ]{0,40})$/.exec(body);
-    return m ? { token: m[1], start: m.index } : null;
+    const m = /(?:^|\s)@([A-Za-z0-9_.\- ]{0,40})$/.exec(body);
+    return m ? { token: m[1] || '', start: m.index + (m[0].startsWith('@') ? 0 : 1) } : null;
   }, [body]);
   const onPickMention = (name: string) => {
     if (!mentionMatch) return;
