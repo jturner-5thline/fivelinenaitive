@@ -101,6 +101,12 @@ export function MentionTextarea({
       // Only show dropdown if @ is at start or preceded by whitespace, and no space in query
       const charBeforeAt = atIndex > 0 ? newValue[atIndex - 1] : ' ';
       if ((charBeforeAt === ' ' || charBeforeAt === '\n' || atIndex === 0) && !textAfterAt.includes(' ')) {
+        console.debug('[MentionTextarea] mention detected', {
+          mentionStart: atIndex,
+          beforeSlice: newValue.slice(0, atIndex),
+          textBeforeCursor,
+          textAfterAt,
+        });
         setShowDropdown(true);
         setMentionQuery(textAfterAt);
         setMentionStart(atIndex);
@@ -112,11 +118,18 @@ export function MentionTextarea({
 
   const insertMention = (member: TeamMember) => {
     if (mentionStart < 0) return;
-    const current = displayValue;
+    const current = textareaRef.current?.value ?? displayValue;
     const before = current.slice(0, mentionStart);
     const cursorPos = textareaRef.current?.selectionStart ?? current.length;
     const after = current.slice(cursorPos);
     const mentionText = `@${member.display_name} `;
+    console.debug('[MentionTextarea] insertMention', {
+      mentionStart,
+      beforeSlice: before,
+      cursorPos,
+      current,
+      mentionText,
+    });
     const newValue = before + mentionText + after;
     mentionsRef.current = [...mentionsRef.current, { name: member.display_name, id: member.id }];
     emitChange(newValue);
