@@ -682,8 +682,7 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
     letterSpacing: '.1em', color: TEXT_LABEL,
   };
   return (
-    <Card className="glass-module">
-      <div className="qir-report-header">
+    <div className="qir-report-header">
         <div className="qir-report-header-title">
           <span style={fieldLabelStyle}>Report</span>
           <h1 style={{
@@ -737,8 +736,7 @@ function ReportHeaderSection({ s, set, reset, save, print, canEdit, titlePrefix 
             />
           </div>
         </div>
-      </div>
-    </Card>
+    </div>
   );
 }
 
@@ -2963,9 +2961,11 @@ export function QuarterlyInsightsReportPage({ s, set, reset, save, print, canEdi
           Warning: fetched key <code>{fetchedCompositeKey}</code> differs from active key <code>{activeCompositeKey}</code>.
         </div>
       )}
-      <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
-      <Card className="glass-module qir-unified-report">
+      <Card className="popup-shell-surface qir-unified-report">
         <div style={{ display: 'flex', flexDirection: 'column' }}>
+          <div id="qir-section-header" className="qir-unified-section qir-unified-section--header">
+            <ReportHeaderSection s={s} set={set} reset={reset} save={save} print={print} canEdit={canEdit} titlePrefix={titlePrefix} />
+          </div>
           <div id="qir-section-summary" className="qir-unified-section">
             <ReportNarrativeSection
               s={s}
