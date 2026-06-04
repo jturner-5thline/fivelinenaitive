@@ -1,91 +1,107 @@
 ## Goal
 
-Make each JT / JM / SW tab render as one continuous, polished monthly report by default. Keep all existing data sources, persistence, integrations, autosave, period scoping, comments, and drill‑downs. This is a presentation-layer pass only — no business logic changes.
+Make every comment created anywhere in an Insights Report (narrative text, KPIs, charts/figures, goals, initiatives, risks, generic sections) reviewable in one lightweight **Agenda Queue**, and let users push queued items into the Agenda using the existing footnote/recap pipeline. Keep the UI light and document-like — no Kanban, no ticketing chrome.
 
-## Scope of files
+## Strategy
 
-- `src/components/metrics/dashboards/QuarterlyInsightsReport.tsx` (main — header, sections wiring, KPI section, Risks, controls/utility chrome)
-- `src/components/metrics/dashboards/qir/QirSummaryView.tsx` (Narrative section already renders HTML; reuse / align)
-- `src/components/insights/InsightsNarrativeEditor.tsx` (hide toolbar in resting state, expose `readOnly` mode)
-- `src/components/metrics/dashboards/WhatWorkingSections.tsx` (read-first prose, edit on focus)
-- New small primitives in `qir/` for shared document chrome (`DocSection`, `DocMeta`, `InlineEditable`)
+Reuse what already exists; do not introduce a parallel system:
 
-## Visual model
+- **Comment capture** stays on the two existing systems — `agenda_comments`/`agenda_comment_threads` (Agenda editor) and `qir_comments`/`qir_comment_threads` (right-click on QIR elements). Extend the QIR comment surface to also cover narrative text and chart/figure containers.
+- **Agenda Queue** = a new lightweight table `report_agenda_queue` that references the originating comment plus structured source/anchor info. Nothing about comments themselves changes.
+- **Agenda insertion** routes through the **already-built** `useInsertAgendaFootnote` event bus + `insights_agenda_footnotes` table. Queue items become footnotes (with optional body refs) when promoted.
 
-Switch the page body from a stack of glass cards with toolbars to a single-column document column (max width ~960px) with:
-- Typographic section headings (no card borders for body sections)
-- Subtle horizontal dividers between sections
-- Consistent vertical rhythm (e.g. 40px between sections, 16px inside)
-- Quiet metadata row at the top (no boxes)
-- All operational controls (sort/group/filter/sync/source pickers/Save/Reset) moved to a single thin "Report controls" bar above the document, or behind a "View source data" disclosure inside each section
+## Backend
 
-The Card glass surface is retained only for KPI tiles and the document container's outermost frame.
+### New table `report_agenda_queue`
+Fields (per the prompt's data-model guidance):
+- `id`, `company_id`, `period_type`, `period_key`
+- `report_tab` (JT/JM/SW; nullable for non-report surfaces)
+- `source_type` enum: `selected_text | narrative | kpi | chart | goal | initiative | risk | section`
+- `source_id`, `source_anchor`, `source_snapshot_text`
+- `comment_id` (FK → `qir_comments.id` or `agenda_comments.id`; polymorphic via `comment_source` column: `qir | agenda`)
+- `comment_text_snapshot` (denormalized for the queue list)
+- `created_by`, `created_at`, `updated_at`
+- `queue_status` enum: `queued | added_to_agenda | dismissed | archived`
+- `linked_footnote_id` (FK → `insights_agenda_footnotes.id`)
+- `agenda_insertion_mode` enum: `body_reference | free_text | footnote_only` (set when promoted)
 
-## Section-by-section changes
+RLS: scoped by `is_company_member(auth.uid(), company_id)`. Realtime-enabled. GRANTs to `authenticated` + `service_role`. Created timestamp trigger.
 
-### Header / metadata
-- Replace the labeled inputs for `Date Prepared` and `Prepared By` with a one-line metadata row: `Prepared by {name} · {date} · {period}`.
-- Click pencil (appears on hover) to reveal the inline `<input>`/`<select>` controls. Blur or ✓ commits.
-- The author tab pills (JT/JM/SW) and period switcher stay where they are (those are navigation, not body).
+### Extend existing
+- Add a small `period_type`/`period_key` denormalization on `qir_comments` (nullable backfill) so queue items derived from QIR comments inherit a clean period scope, matching the agenda system. Migration backfills from the active report's period when known.
+- `insights_agenda_footnotes.source_type` already supports arbitrary strings — reuse with values: `report_comment`, `report_comment_kpi`, `report_comment_chart`, etc. Add `source_anchor` formatted as `qir-section-{key}#{target_type}:{target_id}` so the existing footnote dedup index handles uniqueness.
 
-### Narrative / Executive Summary
-- Keep `InsightsNarrativeEditor`, add a `chromeless` mode: toolbar hidden until the editor is focused (or a "Edit" pencil clicked).
-- Resting state renders prose at document type scale (existing HTML sanitized render path).
-- Attachments list rendered as a clean inline strip; uploader UI only when editing.
+## Frontend
 
-### KPIs
-- Default view: a compact KPI summary row (label + value + delta), no "Add KPI" button in the main flow.
-- "Add KPI / Manage KPIs" moves into a small `Edit KPIs` link in the section header (opens existing `AddKpiDialog`).
-- Existing KPI cards (`SalesClientsKpiCard`, `TtmRevenuePerHourKpiCard`) keep their drill behavior but render in a tighter grid without heavy card chrome.
+### 1. Generalize the QIR right-click comment surface
+- `QirContextualComments` already walks for `data-comment-source` / `data-comment-source-id`. Decorate the remaining elements that are not yet annotated:
+  - Narrative container in `InsightsNarrativeEditor` body (`source_type="narrative"`).
+  - Each chart/figure wrapper in QIR (`source_type="chart"`, id = chart key).
+  - Initiative rows (`source_type="initiative"`) — currently only goals/risks/KPIs are tagged.
+- Keep right-click as the entry on charts/figures/KPI tiles/section blocks. Selection-based "Comment" button stays the entry for prose.
 
-### Goals (Asana-backed)
-- Default body: a narrative-style summary list — one row per visible goal: `Title · Owner · Status pill · Progress`. No grouping headers, no sort/group toolbar.
-- The full sourced table (current `ReportGoalsSection` body), `SortGroupToolbar`, filter mapping panel, and sync controls collapse into a `<details>` titled "View source data" at the bottom of the section.
-- Header right-rail shows only a small "Synced {relative time}" and a Refresh icon button.
+### 2. Add selection-based comment to narrative
+- Reuse `SelectionCommentAction` + `CommentMark` + `NewThreadPopover` (already built for AgendaEditor) on `InsightsNarrativeEditor` by extracting them into a shared module under `src/components/insights/comments/`.
+- Because narrative content lives in JSONB (`company_settings.fpa_dashboard_config`), narrative comments use the **QIR comment tables** with `target_type='narrative-range'` and `target_id` = stable hash of the anchor text + offset. Threads still resolve back to the visible prose via highlight marks rendered around `<mark data-comment-thread-id="…">` on the dangerously-set HTML pass.
 
-### Initiatives
-- Default body: a clean list of entries — title (link to Asana), owner avatar/name, status pill, short summary (description first line), optional due date.
-- Portfolio selector, sort/group toolbar, and raw portfolio table collapse into the same `View source data` disclosure.
-- Status counts row (On Track / At Risk / Off Track) preserved as a quiet inline summary, drill-through still wired.
+### 3. "Add to Agenda Queue" action on every comment surface
+- New `PromoteToQueueButton` in:
+  - The QIR comment thread popover (`QirContextualComments` thread footer).
+  - The Agenda thread card popover (`AgendaComments` `ThreadCard`).
+- Action inserts a row into `report_agenda_queue` with `queue_status='queued'`, capturing source/anchor/snapshot from the comment's host element (already known at the surface).
+- Optimistic UI + realtime invalidation.
 
-### Open Risks
-- Default body: each risk renders as a structured prose block:
-  - bold risk statement
-  - "Mitigation:" paragraph beneath
-  - subtle "Edit · Remove" action links visible on hover
-- Inputs (`textarea`) appear in place only when a block is in edit mode (click anywhere in the block to edit; blur commits).
-- "Add Risk" becomes a single ghost-link at the end of the list.
+### 4. Agenda Queue review panel
+- Single compact drawer/popover, opened from a small badge in the Agenda editor toolbar ("Queue · 4") and from a quiet link in the QIR controls bar.
+- Renders a flat list grouped by source type with: snippet, author, when, source-type chip, "Jump to source" link (uses the existing `jumpToSource` scroll-and-flash from `QirContextualComments`).
+- Per-item actions (matching the prompt):
+  1. **Add to Agenda** — calls `useInsertAgendaFootnote` with the queue item's source/anchor/snapshot, then dispatches `agenda:insert-footnote-ref` so the Agenda editor inserts a body reference at the current cursor. Sets `queue_status='added_to_agenda'`, `agenda_insertion_mode='body_reference'`, persists `linked_footnote_id`.
+  2. **Add to Agenda as Free Text** — opens a tiny inline composer; on save inserts a paragraph in the Agenda doc with a footnote ref appended. Same status update with `agenda_insertion_mode='free_text'`.
+  3. **Add as Footnote Only** — calls `useInsertAgendaFootnote` without firing the body-ref event. `agenda_insertion_mode='footnote_only'`.
+  4. **Dismiss / Archive** — sets `queue_status='dismissed'` (or `archived`).
+- Filter chips: All / Queued / Added / Dismissed. Default view: Queued only.
+- No sidebar permanence; the panel is a `Popover`/`Sheet` matching the agenda comments side-rail visual style.
 
-### What's Working / What's not Working
-- Render each as a prose block by default. Click to edit → reveals the rich editor (existing `WhatWorkingSections` already uses TipTap; add a `readOnly`/`viewMode` toggle that flips on focus / pencil).
-- Helper text only shows in edit mode.
+### 5. Traceability
+- Each queue item stores `source_id` + `source_anchor` + denormalized `source_snapshot_text`, so the "Jump to source" action works even if the underlying content was edited later. If the live element still exists, we scroll + flash via the existing util. If not, we show the snapshot text in a tooltip.
+- The promoted footnote inherits the same anchor, so the existing "current vs. snapshot" drift detection on `insights_agenda_footnotes` (`source_current_text` vs `source_snapshot_text`) keeps working.
 
-### Controls / utility chrome
-- Single slim top control bar: `Save state pill` (Saved · Saving) + `Reset` overflow (in a kebab menu).
-- Per-section Sync buttons removed from the body; a single "Sync sources" button lives in the kebab menu and triggers all relevant refreshes.
-- Print/share buttons stay where they are (page-level chrome).
+### 6. Persistence + multi-user
+- New table + comment tables already realtime-enabled. The Queue panel subscribes to the realtime channel `report_agenda_queue:{company_id}:{period_type}:{period_key}` and re-renders on insert/update.
+- All scoping uses `company_id + period_type + period_key + report_tab` so JT/JM/SW are cleanly separated.
 
-## Shared primitives to add
+## Files touched
 
-In `src/components/metrics/dashboards/qir/DocPrimitives.tsx`:
-- `DocSection({ title, meta?, actions?, children })` — borderless section with a typographic heading, optional muted meta line, and right-aligned hover-only actions.
-- `DocDivider` — 1px subtle divider with generous vertical spacing.
-- `SourceDataDisclosure({ label = 'View source data', children })` — `<details>` styled to match the doc.
-- `InlineEditable({ value, onCommit, render, editor })` — read-mode renders `render(value)`; click/pencil swaps to `editor`, commit on blur or ✓.
-- `MetaRow({ items })` — quiet `· `-separated metadata line.
+### New
+- `supabase/migrations/<ts>_report_agenda_queue.sql` — new table + RLS + grants + dedup index + denormalized `qir_comments.period_type/period_key`.
+- `src/hooks/useReportAgendaQueue.ts` — list/insert/update/realtime.
+- `src/components/insights/comments/PromoteToQueueButton.tsx`
+- `src/components/insights/comments/AgendaQueuePanel.tsx`
+- `src/components/insights/comments/AgendaQueueBadge.tsx`
+- `src/components/insights/comments/sharedSelectionComment.tsx` — extracted `SelectionCommentAction` + `CommentMark` for reuse on narrative.
 
-## Consistency
-
-JT, JM, SW all flow through the same `ReportState`/`ReportSetState`, so all three tabs inherit the document presentation automatically. No per-author branching is added.
+### Edited
+- `src/components/insights/AgendaComments.tsx` — add Promote button on `ThreadCard`; expose queue badge in the side-rail header.
+- `src/components/insights/AgendaEditor.tsx` — mount `AgendaQueuePanel` trigger in toolbar.
+- `src/components/insights/InsightsNarrativeEditor.tsx` — wire up selection comment action + render existing thread highlights.
+- `src/components/metrics/dashboards/qir/QirContextualComments.tsx` — add Promote action in thread popover; widen `data-comment-source` resolution for initiatives + chart wrappers; reuse `jumpToSource` for queue panel.
+- `src/components/metrics/dashboards/QuarterlyInsightsReport.tsx` — decorate chart/figure containers and initiative rows with `data-comment-source` attributes; place `AgendaQueueBadge` in the report controls bar.
+- `src/components/insights/footnotes/useInsertAgendaFootnote.ts` — accept a new optional `{ queueItemId, insertionMode }` so promotion writes back to the queue row when the editor acks.
 
 ## Non-goals
 
-- No changes to autosave logic, period derivation, Asana fetching, RLS, edge functions, drill-down drawers, comments, print logic, or persistence shape.
-- No new dependencies.
-- `QirSummaryView` (read-only summary modal) is left alone except where it must accept the same HTML narrative it already accepts.
+- No changes to the agenda autosave, period derivation, RLS scoping shape, or the existing footnote dedup behavior.
+- No new mention syntax; we keep both existing formats and only normalize at the queue-display layer.
+- No project-management features (assignees, due dates, statuses beyond queued/added/dismissed/archived).
 
-## Acceptance check (after implementation)
+## Acceptance check
 
-- Default JT/JM/SW view shows: metadata line, narrative prose, KPI summary, goals list, initiatives list, risks prose, what's working prose, what's not prose — no visible textareas, no inline toolbars, no source tables, no group/sort/sync controls in the reading column.
-- Clicking a section reveals its existing editor/controls in place.
-- Save status, autosave, period scoping, Asana data, and drill-throughs all behave exactly as before.
+- Right-click any chart/KPI/section/initiative/goal/risk in JT/JM/SW → comment → "Add to Queue" → item appears in `AgendaQueuePanel` for any other user on the same company/period.
+- Select narrative text → "Comment" → submit → "Add to Queue" → same queue item visible.
+- Promote queue item with each of the four actions; verify body insertion / free-text insertion / footnote-only / dismissal all behave per spec and update `queue_status`.
+- "Jump to source" scrolls and flashes the original element when present; shows snapshot otherwise.
+- All state survives refresh and is identical across users of the same company/period.
+
+## Open question (worth confirming before build)
+
+Should the **narrative comment threads** live in `agenda_comment_threads` (so they share the same editor-style threading with mentions in `@[Name](uuid)` format) or in `qir_comments` (matching the rest of the report surfaces)? My recommendation: **`qir_comments`** — keeps all report-surface comments consistent and avoids tying narrative comments to an `agenda_id` row that may not exist for the period. If you'd rather unify around `agenda_comment_threads`, the queue model still works unchanged — only the comment-source FK switches.

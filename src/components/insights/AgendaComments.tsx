@@ -12,6 +12,7 @@ import {
   ArrowUp,
 } from 'lucide-react';
 import { findCommentRanges } from './CommentMark';
+import { PromoteToQueueButton } from './comments/PromoteToQueueButton';
 
 // ---------- Types ----------
 export interface AgendaThread {
@@ -693,6 +694,23 @@ export function ThreadCard({
         >
           {thread.resolved ? 'Reopen' : <><Check size={11} /> Resolve</>}
         </button>
+        <PromoteToQueueButton
+          size="xs"
+          input={() => {
+            const first = top[0];
+            const body = first?.body || thread.anchor_text || '';
+            return {
+              sourceType: 'selected_text',
+              sourceId: thread.id,
+              sourceAnchor: `agenda-thread:${thread.id}`,
+              sourceSnapshotText: thread.anchor_text || '',
+              sourceLabel: thread.anchor_text?.slice(0, 60) || 'Agenda thread',
+              commentSource: 'agenda',
+              commentId: first?.id || thread.id,
+              commentTextSnapshot: body,
+            };
+          }}
+        />
         <button
           type="button"
           style={{ ...btnGhost, marginLeft: 'auto' }}

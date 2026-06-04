@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom';
 import { MessageSquare, NotebookPen, X, AtSign, Send } from 'lucide-react';
 import { useQirComments } from '@/hooks/useQirComments';
 import { useCompany } from '@/hooks/useCompany';
+import { PromoteToQueueButton } from '@/components/insights/comments/PromoteToQueueButton';
+import { AgendaQueueBadge } from '@/components/insights/comments/AgendaQueueBadge';
 
 /**
  * Resolves a contextual "source" from the right-click target by walking up
@@ -34,6 +36,33 @@ const SECTION_LABELS: Record<string, string> = {
   goals: 'Open Risks',
   commentary: 'Commentary & Footer',
 };
+
+/** Maps QIR comment target_type strings to the queue's source_type enum. */
+function mapTargetTypeToQueue(t: string):
+  'kpi' | 'chart' | 'goal' | 'initiative' | 'risk' | 'section' | 'narrative' | 'selected_text' {
+  switch (t) {
+    case 'kpi': return 'kpi';
+    case 'chart': return 'chart';
+    case 'goal': return 'goal';
+    case 'initiative': return 'initiative';
+    case 'risk': return 'risk';
+    case 'narrative': return 'narrative';
+    case 'narrative-range':
+    case 'selected_text': return 'selected_text';
+    default: return 'section';
+  }
+}
+
+/** Best-effort snapshot of the underlying element's text for traceability. */
+function snapshotForSource(type: string, id: string, label?: string): string {
+  let el: HTMLElement | null = null;
+  if (type === 'section') el = document.getElementById(`qir-section-${id}`);
+  else el = document.querySelector<HTMLElement>(
+    `[data-comment-source="${type}"][data-comment-source-id="${CSS.escape(id)}"]`,
+  );
+  const text = (el?.innerText || label || id || '').replace(/\s+/g, ' ').trim();
+  return text.slice(0, 400);
+}
 
 interface MentionPickerProps {
   members: Array<{ user_id: string; display_name?: string; email?: string }>;
@@ -223,23 +252,25 @@ export function QirContextualComments({
   };
 
   const headerButton = slotEl ? createPortal(
-    <button
-      type="button"
-      onClick={() => setDrawerOpen(true)}
-      aria-label="View all comments"
-      title={`Comments (${comments.length})`}
-      data-qir-comments-ui
-      className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors relative"
-    >
-      <NotebookPen className="h-4 w-4" />
-      {comments.length > 0 && (
-        <span style={{
-          position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px',
-          background: 'rgb(80,140,255)', color: 'white', borderRadius: 8, fontSize: 10, fontWeight: 700,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
-        }}>{comments.length}</span>
-      )}
-    </button>,
+    <div className="inline-flex items-center gap-1.5" data-qir-comments-ui>
+      <button
+        type="button"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="View all comments"
+        title={`Comments (${comments.length})`}
+        className="inline-flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground transition-colors relative"
+      >
+        <NotebookPen className="h-4 w-4" />
+        {comments.length > 0 && (
+          <span style={{
+            position: 'absolute', top: -4, right: -4, minWidth: 16, height: 16, padding: '0 4px',
+            background: 'rgb(80,140,255)', color: 'white', borderRadius: 8, fontSize: 10, fontWeight: 700,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', lineHeight: 1,
+          }}>{comments.length}</span>
+        )}
+      </button>
+      <AgendaQueueBadge />
+    </div>,
     slotEl,
   ) : null;
 
@@ -400,6 +431,22 @@ export function QirContextualComments({
                               ))}
                             </div>
                           )}
+                          <div style={{ marginTop: 6 }}>
+                            <PromoteToQueueButton
+                              size="xs"
+                              input={() => ({
+                                reportTab: reportLabel,
+                                sourceType: mapTargetTypeToQueue(g.type),
+                                sourceId: g.id,
+                                sourceAnchor: `${g.type}:${g.id}`,
+                                sourceSnapshotText: snapshotForSource(g.type, g.id, g.label),
+                                sourceLabel: g.label,
+                                commentSource: 'qir',
+                                commentId: c.id,
+                                commentTextSnapshot: c.body,
+                              })}
+                            />
+                          </div>
                         </div>
                       );
                     })}

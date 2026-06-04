@@ -21244,6 +21244,86 @@ export type Database = {
           },
         ]
       }
+      report_agenda_queue: {
+        Row: {
+          agenda_insertion_mode: string | null
+          comment_id: string | null
+          comment_source: string
+          comment_text_snapshot: string
+          company_id: string
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          id: string
+          linked_footnote_id: string | null
+          linked_ref_id: string | null
+          period_key: string
+          period_type: string
+          queue_status: string
+          report_tab: string | null
+          source_anchor: string | null
+          source_id: string | null
+          source_label: string | null
+          source_snapshot_text: string | null
+          source_type: string
+          updated_at: string
+        }
+        Insert: {
+          agenda_insertion_mode?: string | null
+          comment_id?: string | null
+          comment_source: string
+          comment_text_snapshot: string
+          company_id: string
+          created_at?: string
+          created_by: string
+          created_by_name?: string | null
+          id?: string
+          linked_footnote_id?: string | null
+          linked_ref_id?: string | null
+          period_key: string
+          period_type: string
+          queue_status?: string
+          report_tab?: string | null
+          source_anchor?: string | null
+          source_id?: string | null
+          source_label?: string | null
+          source_snapshot_text?: string | null
+          source_type: string
+          updated_at?: string
+        }
+        Update: {
+          agenda_insertion_mode?: string | null
+          comment_id?: string | null
+          comment_source?: string
+          comment_text_snapshot?: string
+          company_id?: string
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          id?: string
+          linked_footnote_id?: string | null
+          linked_ref_id?: string | null
+          period_key?: string
+          period_type?: string
+          queue_status?: string
+          report_tab?: string | null
+          source_anchor?: string | null
+          source_id?: string | null
+          source_label?: string | null
+          source_snapshot_text?: string | null
+          source_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_agenda_queue_linked_footnote_id_fkey"
+            columns: ["linked_footnote_id"]
+            isOneToOne: false
+            referencedRelation: "insights_agenda_footnotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_ai_summaries: {
         Row: {
           alerts: Json
