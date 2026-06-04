@@ -5,10 +5,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import type { LucideIcon } from 'lucide-react';
 import {
   Inbox, FileText, BarChart3, Target, Compass, ShieldAlert,
-  AlignLeft, Highlighter, ArrowRight, Footprints, X,
-  ExternalLink, Archive, MoreHorizontal,
+  AlignLeft, Highlighter, ArrowRight, Footprints,
+  ExternalLink, Archive,
 } from 'lucide-react';
 import {
   useReportAgendaQueue,
@@ -18,7 +19,7 @@ import {
 import { useInsertAgendaFootnote } from '@/components/insights/footnotes/useInsertAgendaFootnote';
 import { toast } from 'sonner';
 
-const SOURCE_ICON: Record<ReportQueueSourceType, React.ComponentType<{ size?: number }>> = {
+const SOURCE_ICON: Record<ReportQueueSourceType, LucideIcon> = {
   selected_text: Highlighter,
   narrative: AlignLeft,
   kpi: BarChart3,
@@ -278,7 +279,7 @@ export function AgendaQueuePanel({
 function ActionBtn({
   icon: Icon, label, onClick, muted,
 }: {
-  icon: React.ComponentType<{ size?: number }>;
+  icon: LucideIcon;
   label: string;
   onClick: () => void;
   muted?: boolean;
