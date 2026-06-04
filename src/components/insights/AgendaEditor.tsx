@@ -27,10 +27,9 @@ import {
 import { CommentMark } from './CommentMark';
 import {
   AgendaCommentsRail,
-  CommentContextMenu,
   CommentThreadPopover,
   NewThreadPopover,
-  SelectionBubble,
+  SelectionCommentAction,
   useAgendaComments,
 } from './AgendaComments';
 import { FootnoteRefMark } from './footnotes/FootnoteRefMark';
@@ -790,21 +789,9 @@ export function AgendaEditor() {
         minHeight: '60vh',
       }}>
         <EditorContent editor={editor} />
-        <SelectionBubble
+        <SelectionCommentAction
           editor={editor}
           onComment={(text, from, to) => {
-            if (!editor) return;
-            const start = editor.view.coordsAtPos(from);
-            const end = editor.view.coordsAtPos(to);
-            const wrapRect = editorWrapRef.current?.getBoundingClientRect();
-            const left = ((start.left + end.right) / 2) - (wrapRect?.left ?? 0);
-            const top = end.bottom - (wrapRect?.top ?? 0);
-            setPendingComment({ from, to, text, anchor: { left, top } });
-          }}
-        />
-        <CommentContextMenu
-          editor={editor}
-          onAddComment={(text, from, to) => {
             if (!editor) return;
             const start = editor.view.coordsAtPos(from);
             const end = editor.view.coordsAtPos(to);

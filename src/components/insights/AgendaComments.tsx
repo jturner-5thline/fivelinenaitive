@@ -379,108 +379,89 @@ function MentionableTextarea({
   );
 }
 
-// ---------- Selection bubble ----------
-export function SelectionBubble({
+// ---------- Selection comment action (single consolidated trigger) ----------
+// Renders ONE subtle "Comment" button next to the live text selection.
+// - Appears on any non-empty selection inside the editor.
+// - Repositions when the selection changes.
+// - On right-click within a selection, anchors near the cursor instead of
+//   the default above-selection position (and suppresses the browser menu
+//   only in that case so the action feels local to the highlight).
+// - Dismisses when the selection clears or the user scrolls the page.
+export function SelectionCommentAction({
   editor, onComment,
 }: { editor: Editor | null; onComment: (text: string, from: number, to: number) => void }) {
-  const [pos, setPos] = useState<{ left: number; top: number; from: number; to: number; text: string } | null>(null);
+  const [state, setState] = useState<
+    | { left: number; top: number; from: number; to: number; text: string; placement: 'above' | 'cursor' }
+    | null
+  >(null);
 
   useEffect(() => {
     if (!editor) return;
-    const update = () => {
+
+    const computeFromSelection = (override?: { x: number; y: number }) => {
       const { from, to, empty } = editor.state.selection;
-      if (empty || from === to) { setPos(null); return; }
+      if (empty || from === to) { setState(null); return; }
       const text = editor.state.doc.textBetween(from, to, ' ').trim();
-      if (!text) { setPos(null); return; }
-      const start = editor.view.coordsAtPos(from);
+      if (!text) { setState(null); return; }
+      if (override) {
+        setState({
+          left: override.x + window.scrollX + 8,
+          top: override.y + window.scrollY + 8,
+          from, to, text, placement: 'cursor',
+        });
+        return;
+      }
       const end = editor.view.coordsAtPos(to);
-      const left = (start.left + end.right) / 2;
-      const top = start.top - 8 + window.scrollY;
-      setPos({ left: left + window.scrollX, top, from, to, text });
+      setState({
+        left: end.right + window.scrollX + 6,
+        top: end.top + window.scrollY - 2,
+        from, to, text, placement: 'above',
+      });
     };
-    editor.on('selectionUpdate', update);
-    editor.on('blur', () => setTimeout(() => {
-      // keep bubble visible briefly to allow click
-      if (!document.activeElement?.closest('[data-agenda-bubble]')) setPos(null);
-    }, 150));
-    return () => { editor.off('selectionUpdate', update); };
-  }, [editor]);
 
-  if (!pos) return null;
-  return (
-    <div
-      data-agenda-bubble
-      style={{
-        position: 'absolute', left: pos.left, top: pos.top,
-        transform: 'translate(-50%, -100%)', zIndex: 1600,
-      }}
-    >
-      <button
-        type="button"
-        onMouseDown={(e) => { e.preventDefault(); onComment(pos.text, pos.from, pos.to); setPos(null); }}
-        style={{
-          display: 'inline-flex', alignItems: 'center', gap: 6,
-          padding: '6px 10px', borderRadius: 999, fontSize: 12, fontWeight: 600,
-          background: 'linear-gradient(180deg, #9bdcff, #4db8ff)', color: '#0a2540',
-          border: '0.5px solid rgba(255,255,255,0.4)', cursor: 'pointer',
-          boxShadow: '0 6px 18px rgba(0,0,0,0.35)',
-        }}
-      >
-        <MessageSquare size={12} /> Comment
-      </button>
-    </div>
-  );
-}
-
-// ---------- Context menu ----------
-export function CommentContextMenu({
-  editor, onAddComment,
-}: { editor: Editor | null; onAddComment: (text: string, from: number, to: number) => void }) {
-  const [menu, setMenu] = useState<{ x: number; y: number; from: number; to: number; text: string } | null>(null);
-
-  useEffect(() => {
-    if (!editor) return;
+    const onSelection = () => computeFromSelection();
     const dom = editor.view.dom as HTMLElement;
-    const handler = (e: MouseEvent) => {
+    const onContext = (e: MouseEvent) => {
       const { from, to, empty } = editor.state.selection;
-      if (empty || from === to) return; // let browser handle
+      if (empty || from === to) return; // allow native menu when no selection
       const text = editor.state.doc.textBetween(from, to, ' ').trim();
       if (!text) return;
       e.preventDefault();
-      setMenu({ x: e.clientX + window.scrollX, y: e.clientY + window.scrollY, from, to, text });
+      computeFromSelection({ x: e.clientX, y: e.clientY });
     };
-    const onAnyClick = () => setMenu(null);
-    dom.addEventListener('contextmenu', handler);
-    window.addEventListener('click', onAnyClick);
-    window.addEventListener('scroll', onAnyClick, true);
+    const onScroll = () => setState(null);
+
+    editor.on('selectionUpdate', onSelection);
+    dom.addEventListener('contextmenu', onContext);
+    window.addEventListener('scroll', onScroll, true);
     return () => {
-      dom.removeEventListener('contextmenu', handler);
-      window.removeEventListener('click', onAnyClick);
-      window.removeEventListener('scroll', onAnyClick, true);
+      editor.off('selectionUpdate', onSelection);
+      dom.removeEventListener('contextmenu', onContext);
+      window.removeEventListener('scroll', onScroll, true);
     };
   }, [editor]);
 
-  if (!menu) return null;
+  if (!state) return null;
   return (
-    <div style={{
-      position: 'absolute', left: menu.x, top: menu.y, zIndex: 1700,
-      background: 'rgba(16,28,52,0.98)', border: '0.5px solid rgba(80,140,255,0.35)',
-      borderRadius: 8, padding: 4, minWidth: 180, boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-    }}>
-      <button
-        type="button"
-        onMouseDown={(e) => { e.preventDefault(); onAddComment(menu.text, menu.from, menu.to); setMenu(null); }}
-        style={{
-          display: 'flex', alignItems: 'center', gap: 8, width: '100%',
-          padding: '6px 10px', borderRadius: 6, background: 'transparent',
-          color: 'rgba(230,240,255,0.95)', fontSize: 12, border: 'none', cursor: 'pointer', textAlign: 'left',
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(80,140,255,0.18)')}
-        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-      >
-        <MessageSquare size={12} /> Add comment
-      </button>
-    </div>
+    <button
+      type="button"
+      data-agenda-selection-comment
+      onMouseDown={(e) => {
+        e.preventDefault();
+        onComment(state.text, state.from, state.to);
+        setState(null);
+      }}
+      style={{
+        position: 'absolute', left: state.left, top: state.top, zIndex: 1600,
+        display: 'inline-flex', alignItems: 'center', gap: 5,
+        padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 500,
+        background: 'rgba(16,28,52,0.92)', color: 'rgba(220,235,255,0.92)',
+        border: '0.5px solid rgba(80,140,255,0.28)', cursor: 'pointer',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.28)', whiteSpace: 'nowrap',
+      }}
+    >
+      <MessageSquare size={11} /> Comment
+    </button>
   );
 }
 
