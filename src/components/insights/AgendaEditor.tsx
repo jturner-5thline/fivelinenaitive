@@ -398,7 +398,7 @@ export function AgendaEditor() {
     } as any;
     const { data, error } = await supabase
       .from('insights_agenda')
-      .upsert(payload, { onConflict: 'user_id,company_id,period_type,period_key' })
+      .upsert(payload, { onConflict: 'company_id,period_type,period_key' })
       .select('id, updated_at')
       .maybeSingle();
     if (error) {
@@ -447,7 +447,6 @@ export function AgendaEditor() {
       const { data, error } = await supabase
         .from('insights_agenda')
         .select('id, content_json, updated_at')
-        .eq('user_id', user.id)
         .eq('company_id', company.id)
         .eq('period_type', periodType)
         .eq('period_key', periodKey)
@@ -513,7 +512,6 @@ export function AgendaEditor() {
         const { data } = await supabase
           .from('insights_agenda')
           .select('content_json')
-          .eq('user_id', user.id)
           .eq('company_id', company.id)
           .eq('period_type', periodType)
           .eq('period_key', prevKey)
@@ -525,7 +523,6 @@ export function AgendaEditor() {
         const { data } = await supabase
           .from('insights_agenda')
           .select('content_json, period_key')
-          .eq('user_id', user.id)
           .eq('company_id', company.id)
           .eq('period_type', periodType)
           .lt('period_key', periodKey)
