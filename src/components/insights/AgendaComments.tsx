@@ -902,7 +902,7 @@ export function NewThreadPopover({
 }: {
   anchor: { left: number; top: number } | null;
   onCancel: () => void;
-  onSubmit: (body: string) => void;
+  onSubmit: (body: string, commentType: CommentType) => void;
 }) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [top, setTop] = useState(0);
