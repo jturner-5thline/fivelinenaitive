@@ -37,6 +37,33 @@ const SECTION_LABELS: Record<string, string> = {
   commentary: 'Commentary & Footer',
 };
 
+/** Maps QIR comment target_type strings to the queue's source_type enum. */
+function mapTargetTypeToQueue(t: string):
+  'kpi' | 'chart' | 'goal' | 'initiative' | 'risk' | 'section' | 'narrative' | 'selected_text' {
+  switch (t) {
+    case 'kpi': return 'kpi';
+    case 'chart': return 'chart';
+    case 'goal': return 'goal';
+    case 'initiative': return 'initiative';
+    case 'risk': return 'risk';
+    case 'narrative': return 'narrative';
+    case 'narrative-range':
+    case 'selected_text': return 'selected_text';
+    default: return 'section';
+  }
+}
+
+/** Best-effort snapshot of the underlying element's text for traceability. */
+function snapshotForSource(type: string, id: string, label?: string): string {
+  let el: HTMLElement | null = null;
+  if (type === 'section') el = document.getElementById(`qir-section-${id}`);
+  else el = document.querySelector<HTMLElement>(
+    `[data-comment-source="${type}"][data-comment-source-id="${CSS.escape(id)}"]`,
+  );
+  const text = (el?.innerText || label || id || '').replace(/\s+/g, ' ').trim();
+  return text.slice(0, 400);
+}
+
 interface MentionPickerProps {
   members: Array<{ user_id: string; display_name?: string; email?: string }>;
   query: string;
