@@ -43,6 +43,34 @@ const inflight = new Map<string, Promise<FullMessage>>();
 const MAX_CACHE = 200;
 
 /**
+ * Background-prefetch concurrency limiter.
+ *
+ * Click-driven fetches (`fetchFullEmailMessage` called directly from the
+ * viewer) bypass this queue and go immediately. Only background prefetches
+ * triggered by list rendering / hover (`prefetchFullEmailMessage`) flow
+ * through it.
+ *
+ * Why: when the inbox renders 10+ thread rows, each used to fire its own
+ * `gmail-messages` invocation in the same tick. The edge function has no
+ * warm pool for that user, so every request cold-started its own isolate
+ * (~45ms boot) and Nylas throttled the burst — surfacing as the 15s
+ * timeouts and "Stale Emails" errors. Capping parallel background work at
+ * 2 flattens the spike without slowing the user-visible click path.
+ */
+const MAX_PARALLEL_PREFETCH = 2;
+let activePrefetches = 0;
+const prefetchQueue: Array<() => void> = [];
+
+function runNextPrefetch() {
+  while (activePrefetches < MAX_PARALLEL_PREFETCH && prefetchQueue.length > 0) {
+    const next = prefetchQueue.shift();
+    if (!next) break;
+    activePrefetches++;
+    next();
+  }
+}
+
+/**
  * localStorage-backed persistence layer for full email bodies. Survives
  * modal close/reopen, route changes, and full page reloads so a thread
  * the user has opened once renders instantly the next time.
@@ -149,15 +177,35 @@ export function prefetchFullEmailMessage(messageId: string | undefined): void {
   if (!messageId || messageId.startsWith('mock-')) return;
   if (messageCache.has(messageId)) return;
   if (inflight.has(messageId)) return;
-  // IMPORTANT: do NOT wrap with .catch() and re-assign `inflight` here.
-  // fetchFullEmailMessage already manages its own inflight de-dupe; wrapping
-  // it with `.catch(() => null)` and overwriting the inflight entry used to
-  // poison the cache — a subsequent click would await the wrapped promise
-  // and silently receive `null`, rendering a blank message body with no
-  // error and no spinner.
-  void fetchFullEmailMessage(messageId).catch(() => {
-    /* swallow — this is a best-effort prefetch */
+  // Queue behind the concurrency limiter so a render burst (10+ rows) does
+  // not fan out 10+ parallel edge-function invocations. We re-check the
+  // cache / inflight map at dequeue time because a click on the same
+  // message may have already kicked off (or completed) a fetch while we
+  // were queued.
+  //
+  // IMPORTANT: do NOT wrap fetchFullEmailMessage with .catch() and
+  // re-assign `inflight` here. fetchFullEmailMessage already manages its
+  // own inflight de-dupe; wrapping it with `.catch(() => null)` and
+  // overwriting the inflight entry used to poison the cache — a
+  // subsequent click would await the wrapped promise and silently
+  // receive `null`, rendering a blank message body with no error and
+  // no spinner.
+  prefetchQueue.push(() => {
+    if (messageCache.has(messageId) || inflight.has(messageId)) {
+      activePrefetches--;
+      runNextPrefetch();
+      return;
+    }
+    fetchFullEmailMessage(messageId)
+      .catch(() => {
+        /* swallow — this is a best-effort prefetch */
+      })
+      .finally(() => {
+        activePrefetches--;
+        runNextPrefetch();
+      });
   });
+  runNextPrefetch();
 }
 
 export async function fetchFullEmailMessage(messageId: string): Promise<FullMessage> {
