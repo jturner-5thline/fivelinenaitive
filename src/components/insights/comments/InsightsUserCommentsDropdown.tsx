@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { MessageSquareText, FileText, BarChart3, AlignLeft, Highlighter, Target, Compass, ShieldAlert, ExternalLink } from 'lucide-react';
+import { MessageSquareText, FileText, BarChart3, AlignLeft, Highlighter, Target, Compass, ShieldAlert, ExternalLink, Trash2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useInsightsUserComments, type InsightsUserComment } from '@/hooks/useInsightsUserComments';
 import { toast } from 'sonner';
+import { MentionText } from './MentionText';
 
 const SOURCE_ICON: Record<string, any> = {
   selected_text: Highlighter, narrative: AlignLeft, kpi: BarChart3, chart: BarChart3,
@@ -97,13 +98,31 @@ export function InsightsUserCommentsDropdown({
   onNavigateTab: (tabIndex: number) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const { items, count, loading } = useInsightsUserComments();
+  const { items, count, loading, deleteComment } = useInsightsUserComments();
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const handleClick = (item: InsightsUserComment) => {
     setOpen(false);
     onNavigateTab(item.tab_index);
     // Let React paint the new tab, then start polling for the source el.
     window.setTimeout(() => jumpToComment(item), 60);
+  };
+
+  const handleDelete = async (item: InsightsUserComment) => {
+    const key = `${item.source}:${item.id}`;
+    if (confirmId !== key) { setConfirmId(key); return; }
+    setDeletingId(key);
+    try {
+      await deleteComment(item);
+      toast.success('Comment deleted');
+    } catch (e) {
+      console.error('[delete-comment]', e);
+      toast.error('Failed to delete comment');
+    } finally {
+      setConfirmId(null);
+      setDeletingId(null);
+    }
   };
 
   return (
@@ -176,16 +195,17 @@ export function InsightsUserCommentsDropdown({
               const Icon = (item.source === 'qir' && item.target_type
                 ? SOURCE_ICON[item.target_type]
                 : item.source === 'agenda' ? AlignLeft : FileText) || FileText;
+              const key = `${item.source}:${item.id}`;
+              const isConfirm = confirmId === key;
+              const isDeleting = deletingId === key;
               return (
-                <button
+                <div
                   key={`${item.source}:${item.id}`}
-                  type="button"
-                  onClick={() => handleClick(item)}
                   style={{
-                    textAlign: 'left', padding: '8px 10px', borderRadius: 8,
+                    position: 'relative', padding: '8px 10px', borderRadius: 8,
                     background: 'rgba(255,255,255,0.02)',
                     border: '1px solid rgba(80,140,255,0.10)',
-                    cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
+                    display: 'flex', flexDirection: 'column', gap: 4,
                   }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(80,140,255,0.08)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.02)'; }}
@@ -204,20 +224,57 @@ export function InsightsUserCommentsDropdown({
                       <span style={{ fontSize: 10, color: 'rgba(200,225,255,0.5)' }}>{relTime(item.created_at)}</span>
                     </span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={() => handleClick(item)}
+                    style={{
+                      textAlign: 'left', background: 'transparent', border: 'none', padding: 0,
+                      color: '#e8f6ff', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: 4,
+                    }}
+                  >
+                    <div style={{
+                      fontSize: 12, lineHeight: 1.4, color: '#e8f6ff',
+                      display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>
+                      <MentionText text={item.body} />
+                    </div>
+                  </button>
                   <div style={{
-                    fontSize: 12, lineHeight: 1.4, color: '#e8f6ff',
-                    display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                    fontSize: 10, color: 'rgba(155,220,255,0.8)',
                   }}>
-                    {item.body}
+                    <button
+                      type="button"
+                      onClick={() => handleClick(item)}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        background: 'transparent', border: 'none', padding: 0,
+                        color: 'rgba(155,220,255,0.8)', cursor: 'pointer', fontSize: 10,
+                      }}
+                    >
+                      <ExternalLink size={9} /> Jump to source
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); handleDelete(item); }}
+                      onBlur={() => { if (confirmId === key) setConfirmId(null); }}
+                      disabled={isDeleting}
+                      title={isConfirm ? 'Click again to confirm' : 'Delete'}
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 4,
+                        background: isConfirm ? 'rgba(239,68,68,0.18)' : 'transparent',
+                        border: isConfirm ? '1px solid rgba(239,68,68,0.5)' : '1px solid transparent',
+                        color: isConfirm ? 'rgb(252,165,165)' : 'rgba(200,225,255,0.55)',
+                        cursor: isDeleting ? 'wait' : 'pointer',
+                        padding: '2px 6px', borderRadius: 4, fontSize: 10, fontWeight: 600,
+                      }}
+                    >
+                      <Trash2 size={10} />
+                      {isConfirm ? 'Confirm' : ''}
+                    </button>
                   </div>
-                  <div style={{
-                    display: 'inline-flex', alignItems: 'center', gap: 4,
-                    fontSize: 10, color: 'rgba(155,220,255,0.8)', alignSelf: 'flex-start',
-                  }}>
-                    <ExternalLink size={9} /> Jump to source
-                  </div>
-                </button>
+                </div>
               );
             })}
           </div>
