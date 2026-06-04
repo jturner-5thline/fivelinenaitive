@@ -16,6 +16,7 @@ export interface QirComment {
   author_name: string | null;
   created_at: string;
   updated_at?: string;
+  comment_type?: 'note' | 'decision' | 'action_item';
 }
 
 export interface QirThreadState {
@@ -171,6 +172,7 @@ export function useQirComments(reportKey: string) {
     mentionNames: string[],
     reportLabel: string,
     targetLabel: string,
+    commentType: 'note' | 'decision' | 'action_item' = 'note',
   ) => {
     if (!company?.id || !user?.id) return;
     const trimmed = body.trim();
@@ -211,6 +213,7 @@ export function useQirComments(reportKey: string) {
         // dropdown can scope comments to the period they were made under.
         period_type: period.view,
         period_key: period.period,
+        comment_type: commentType,
       })
       .select('*')
       .maybeSingle();
