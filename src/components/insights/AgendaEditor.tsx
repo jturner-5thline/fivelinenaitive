@@ -326,6 +326,9 @@ export function AgendaEditor() {
   const debounceRef = useRef<number | null>(null);
   const latestDocRef = useRef<any>(null);
   const periodRef = useRef<{ type: string; key: string }>({ type: periodType, key: periodKey });
+  // Tracks the most recent updated_at we've already applied to the editor —
+  // used to drop stale or self-originated realtime events.
+  const lastAppliedAtRef = useRef<number>(0);
   const editorWrapRef = useRef<HTMLDivElement>(null);
   const railListRef = useRef<HTMLDivElement | null>(null);
 
@@ -415,6 +418,7 @@ export function AgendaEditor() {
     if (data) {
       setRowId(data.id);
       setSavedAt(new Date(data.updated_at));
+      lastAppliedAtRef.current = new Date(data.updated_at).getTime();
     }
     setSaveState('saved');
   }, [user?.id, company?.id]);
@@ -461,9 +465,11 @@ export function AgendaEditor() {
         );
         setIsEmpty(!hasContent || isSeedContent(data.content_json));
         if (data.updated_at) setSavedAt(new Date(data.updated_at));
+        lastAppliedAtRef.current = data.updated_at ? new Date(data.updated_at).getTime() : 0;
       } else {
         editor.commands.setContent(SEED_CONTENT, { emitUpdate: false });
         setIsEmpty(true);
+        lastAppliedAtRef.current = 0;
       }
       latestDocRef.current = null;
       setLoaded(true);
@@ -471,6 +477,53 @@ export function AgendaEditor() {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id, company?.id, editor, periodType, periodKey]);
+
+  // Realtime: when another company member saves this period's agenda, apply
+  // their content to the local editor. Skips self-originated writes and any
+  // event that lands while the user has pending unflushed local edits, so we
+  // never stomp typing in progress.
+  useEffect(() => {
+    if (!editor || !loaded || !company?.id || !user?.id) return;
+    const channel = supabase
+      .channel(`insights_agenda:${company.id}:${periodType}:${periodKey}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'insights_agenda',
+          filter: `company_id=eq.${company.id}`,
+        },
+        (payload) => {
+          const row: any = payload.new ?? payload.old;
+          if (!row) return;
+          // Only react to the currently active period.
+          if (row.period_type !== periodType || row.period_key !== periodKey) return;
+          // Ignore self-originated writes (our own upserts will echo back).
+          if (row.user_id === user.id) {
+            const ts = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+            if (ts > lastAppliedAtRef.current) lastAppliedAtRef.current = ts;
+            return;
+          }
+          // Don't overwrite unflushed local edits — wait for the user to pause
+          // and the debounced save to land; their next load will reconcile.
+          if (latestDocRef.current || debounceRef.current) return;
+          const ts = row.updated_at ? new Date(row.updated_at).getTime() : 0;
+          if (ts <= lastAppliedAtRef.current) return;
+          const content = row.content_json;
+          if (!content) return;
+          // Preserve the user's selection where possible by not focusing.
+          editor.commands.setContent(content, { emitUpdate: false });
+          setIsEmpty(isSeedContent(content));
+          setRowId(row.id ?? rowId);
+          setSavedAt(new Date(row.updated_at));
+          lastAppliedAtRef.current = ts;
+        },
+      )
+      .subscribe();
+    return () => { void supabase.removeChannel(channel); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editor, loaded, company?.id, user?.id, periodType, periodKey]);
 
   // Debounced autosave on update — always writes to the CURRENT period.
   useEffect(() => {
