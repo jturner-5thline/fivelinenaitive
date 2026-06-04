@@ -2476,6 +2476,84 @@ function ReportRisksSection({ s, set, print }: { s: ReportState; set: ReportSetS
 }
 
 function ReportFooterSection({ s, print }: { s: ReportState; print: () => void }) {
+  return _ReportFooterSectionImpl({ s, print });
+}
+
+function RiskProseBlock({ risk, onChange, onRemove, onDrill }: {
+  risk: Risk;
+  onChange: (patch: Partial<Risk>) => void;
+  onRemove: () => void;
+  onDrill: () => void;
+}) {
+  const [editing, setEditing] = useState(!risk.description && !risk.mitigation);
+  const descRef = useRef<HTMLTextAreaElement | null>(null);
+  useEffect(() => {
+    if (editing && descRef.current) {
+      try { descRef.current.focus(); } catch {}
+    }
+  }, [editing]);
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    const next = e.relatedTarget as Node | null;
+    if (next && e.currentTarget.contains(next)) return;
+    setEditing(false);
+  };
+  const ta: React.CSSProperties = {
+    width: '100%', minHeight: 48, padding: '8px 10px', borderRadius: 8,
+    background: 'rgba(10,18,36,0.5)', color: TEXT_PRIMARY,
+    border: '1px solid rgba(120,170,255,0.18)', outline: 'none',
+    fontSize: 13.5, lineHeight: 1.55, resize: 'vertical', fontFamily: 'inherit',
+  };
+  return (
+    <div
+      className="qir-doc-risk qir-doc-editable-block"
+      data-comment-source="risk"
+      data-comment-source-id={risk.id}
+      data-comment-source-label={`Risk · ${risk.description?.slice(0, 40) || 'Untitled risk'}`}
+      onBlur={handleBlur}
+    >
+      {editing ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          <textarea
+            ref={descRef}
+            value={risk.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            placeholder="Describe the risk…"
+            style={ta}
+          />
+          <textarea
+            value={risk.mitigation}
+            onChange={(e) => onChange({ mitigation: e.target.value })}
+            placeholder="Mitigation plan…"
+            style={ta}
+          />
+        </div>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setEditing(true)}
+          onFocus={() => setEditing(true)}
+          style={{ cursor: 'text' }}
+        >
+          <div className="qir-doc-risk-statement">
+            {risk.description || <span style={{ color: TEXT_MUTED, fontStyle: 'italic', fontWeight: 400 }}>Describe the risk…</span>}
+          </div>
+          <div className="qir-doc-risk-mitigation">
+            {risk.mitigation
+              ? <><strong>Mitigation:</strong>{risk.mitigation}</>
+              : <span style={{ fontStyle: 'italic' }}>Add a mitigation plan…</span>}
+          </div>
+        </div>
+      )}
+      <div className="qir-doc-risk-actions qir-no-print">
+        <button type="button" className="qir-doc-risk-link" onClick={onDrill}>Open</button>
+        <button type="button" className="qir-doc-risk-link qir-doc-risk-link-danger" onClick={onRemove}>Remove</button>
+      </div>
+    </div>
+  );
+}
+
+function _ReportFooterSectionImpl({ s, print }: { s: ReportState; print: () => void }) {
   return (
     <Card className="glass-module">
       <div style={{ padding: '20px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
