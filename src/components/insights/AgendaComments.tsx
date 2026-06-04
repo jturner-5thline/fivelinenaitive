@@ -922,6 +922,7 @@ export function CommentThreadPopover({
   const arrowRef = useRef<HTMLDivElement>(null);
   const { refs, floatingStyles, placement, middlewareData } = useFloating({
     placement: 'right-start',
+    strategy: 'fixed',
     middleware: [
       offset(12),
       flip({ fallbackPlacements: ['left-start', 'bottom-start', 'top-start'] }),
