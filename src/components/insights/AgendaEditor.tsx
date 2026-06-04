@@ -770,6 +770,32 @@ export function AgendaEditor() {
           <MessageSquare size={11} />
           {commentsApi.threads.filter((t) => !t.resolved).length}
         </button>
+        <button
+          type="button"
+          onClick={() => {
+            if (!editor) return;
+            const { items } = generateAgendaRecap(editor);
+            const doc = editor.getJSON();
+            latestDocRef.current = doc;
+            setIsEmpty(false);
+            void persist(doc, periodType, periodKey);
+            if (items.length === 0) {
+              toast('No tagged items yet — recap inserted as placeholder');
+            } else {
+              toast.success(`Recap updated · ${items.length} tagged item${items.length === 1 ? '' : 's'}`);
+            }
+          }}
+          title="Scan the agenda for [Action]/[Decision]/[Topic] tags and rebuild the Meeting Recap at the top"
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 4,
+            padding: '2px 8px', borderRadius: 999, marginRight: 6,
+            border: '0.5px solid rgba(80,140,255,0.28)',
+            background: 'rgba(16,28,52,0.55)',
+            color: 'rgba(200,225,255,0.95)', fontSize: 11, cursor: 'pointer',
+          }}
+        >
+          <Sparkles size={11} /> Generate Recap
+        </button>
         {isEmpty && loaded && (
           <button
             type="button"
