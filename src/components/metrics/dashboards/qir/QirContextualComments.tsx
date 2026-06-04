@@ -119,6 +119,8 @@ interface ComposerState {
   x: number;
   y: number;
   source: { type: string; id: string; label: string };
+  snippet?: string;
+  hasSelection?: boolean;
 }
 
 interface QuickMenuState {
@@ -143,7 +145,6 @@ export function QirContextualComments({
   const { promote } = useReportAgendaQueue();
   const [composer, setComposer] = useState<ComposerState | null>(null);
   const [quickMenu, setQuickMenu] = useState<QuickMenuState | null>(null);
-  const [queueBusy, setQueueBusy] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [body, setBody] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -197,11 +198,13 @@ export function QirContextualComments({
       }
       snippet = snippet.slice(0, 400);
       // Position quick menu near the cursor, clamped to viewport.
-      const w = 240, h = 96;
+      const w = 320, h = 200;
       const x = Math.min(e.clientX, window.innerWidth - w - 12);
       const y = Math.min(e.clientY, window.innerHeight - h - 12);
-      setComposer(null);
-      setQuickMenu({ x, y, source, snippet, hasSelection });
+      setQuickMenu(null);
+      setBody('');
+      setComposer({ x, y, source, snippet, hasSelection });
+      setTimeout(() => taRef.current?.focus(), 30);
     };
     root.addEventListener('contextmenu', onCtx);
     return () => root.removeEventListener('contextmenu', onCtx);
@@ -227,55 +230,36 @@ export function QirContextualComments({
     };
   }, [composer, quickMenu]);
 
-  const openComposerFromMenu = useCallback(() => {
-    if (!quickMenu) return;
-    setComposer({ x: quickMenu.x, y: quickMenu.y, source: quickMenu.source });
-    setQuickMenu(null);
-    setBody('');
-    setTimeout(() => taRef.current?.focus(), 30);
-  }, [quickMenu]);
-
-  const addToQueueFromMenu = useCallback(async () => {
-    if (!quickMenu || queueBusy) return;
-    setQueueBusy(true);
-    try {
-      const { source, snippet } = quickMenu;
-      const body = snippet || source.label;
-      // Create the underlying qir_comment so it shows up in the Queue dropdown
-      // alongside every other authored comment.
-      const inserted = await addComment(source.type, source.id, body, [], reportLabel, source.label);
-      if (!inserted) {
-        toast.error("Couldn't add to Queue");
-        return;
-      }
-      // Stage it on the unified report queue (gives the 'Queued' badge).
-      await promote({
-        reportTab: reportLabel,
-        sourceType: mapTargetTypeToQueue(source.type),
-        sourceId: source.id,
-        sourceAnchor: `${source.type}:${source.id}`,
-        sourceSnapshotText: snapshotForSource(source.type, source.id, source.label) || snippet,
-        sourceLabel: source.label,
-        commentSource: 'qir',
-        commentId: inserted.id,
-        commentTextSnapshot: body,
-      });
-      toast.success('Added to Queue', { description: source.label });
-      setQuickMenu(null);
-    } catch (err) {
-      console.error('[addToQueueFromMenu]', err);
-      toast.error("Couldn't add to Queue");
-    } finally {
-      setQueueBusy(false);
-    }
-  }, [quickMenu, queueBusy, addComment, promote, reportLabel]);
-
   const submit = useCallback(async () => {
     if (!composer || !body.trim() || submitting) return;
     setSubmitting(true);
     try {
       const mentionNames = parseMentions(body);
-      await addComment(composer.source.type, composer.source.id, body, mentionNames, reportLabel, composer.source.label);
+      const inserted = await addComment(
+        composer.source.type, composer.source.id, body, mentionNames,
+        reportLabel, composer.source.label,
+      );
+      // Comments ARE queue items — automatically stage every new comment on
+      // the shared Queue with the captured source snippet for traceability.
+      if (inserted) {
+        const { source, snippet } = composer;
+        try {
+          await promote({
+            reportTab: reportLabel,
+            sourceType: mapTargetTypeToQueue(source.type),
+            sourceId: source.id,
+            sourceAnchor: `${source.type}:${source.id}`,
+            sourceSnapshotText: snippet || snapshotForSource(source.type, source.id, source.label),
+            sourceLabel: source.label,
+            commentSource: 'qir',
+            commentId: inserted.id,
+            commentTextSnapshot: body,
+          });
+          toast.success('Added to Queue', { description: source.label });
+        } catch (qErr) {
+          console.error('[auto-promote-to-queue]', qErr);
+        }
+      }
       setComposer(null);
       setBody('');
     } catch (err) {
@@ -283,7 +267,7 @@ export function QirContextualComments({
     } finally {
       setSubmitting(false);
     }
-  }, [composer, body, submitting, addComment, reportLabel]);
+  }, [composer, body, submitting, addComment, promote, reportLabel]);
 
   // Mention autocomplete: detect trailing @token in body.
   const mentionMatch = useMemo(() => {
