@@ -176,7 +176,7 @@ export function useAgendaComments(agendaId: string | null, companyId: string | n
       await refetch();
       return data as any;
     },
-    [user?.id, companyId, agendaId, refetch],
+    [user?.id, companyId, agendaId, refetch, period.view, period.period],
   );
 
   const addComment = useCallback(
