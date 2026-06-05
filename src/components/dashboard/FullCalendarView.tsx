@@ -1434,6 +1434,10 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
 
   const handleSlotClick = useCallback((date: Date, hour: number) => {
     if (!calendarStatus?.connected) return;
+    if (viewingTeammateId) {
+      toast.info("You're viewing a teammate's calendar (read-only).");
+      return;
+    }
     const startHour = Math.floor(hour);
     const startMin = (hour % 1) >= 0.5 ? 30 : 0;
     const startDate = new Date(date);
@@ -1446,7 +1450,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
       end: format(endDate, "yyyy-MM-dd'T'HH:mm:ss"),
     });
     setEventDialogOpen(true);
-  }, [calendarStatus?.connected]);
+  }, [calendarStatus?.connected, viewingTeammateId]);
 
   // Compute the visible time range so we can fetch a teammate's calendar
   // for the same window when the user picks one in the selector.
