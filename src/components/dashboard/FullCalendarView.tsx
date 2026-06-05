@@ -1448,10 +1448,35 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
     setEventDialogOpen(true);
   }, [calendarStatus?.connected]);
 
+  // Compute the visible time range so we can fetch a teammate's calendar
+  // for the same window when the user picks one in the selector.
+  const teammateRange = useMemo(() => {
+    let tMin: Date, tMax: Date;
+    if (view === 'day') { tMin = startOfDay(currentDate); tMax = endOfDay(currentDate); }
+    else if (view === 'week') { tMin = startOfWeek(currentDate); tMax = endOfWeek(currentDate); }
+    else if (view === 'agenda' || view === 'intel') {
+      tMin = startOfDay(currentDate); tMax = endOfDay(addDays(currentDate, 13));
+    } else { tMin = startOfWeek(startOfMonth(currentDate)); tMax = endOfWeek(endOfMonth(currentDate)); }
+    return { timeMin: tMin.toISOString(), timeMax: tMax.toISOString() };
+  }, [view, currentDate]);
+
+  const {
+    data: teammateData,
+    isFetching: teammateLoading,
+    error: teammateError,
+  } = useTeammateEvents({
+    userId: viewingTeammateId,
+    timeMin: teammateRange.timeMin,
+    timeMax: teammateRange.timeMax,
+    enabled: open && !!viewingTeammateId,
+  });
+
   // Always render the live calendar — never fall back to mock/sample events.
   // The empty / loading / error states below handle the no-data case
   // explicitly so users never see fake events flash in.
-  const allEvents = liveEvents;
+  const allEvents: CalendarEvent[] = viewingTeammateId
+    ? (teammateData?.events ?? [])
+    : liveEvents;
 
   // Overlay state machine. We show the overlay when:
   //  • we're still resolving auth/status, OR
