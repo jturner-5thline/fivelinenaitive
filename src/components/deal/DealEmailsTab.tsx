@@ -1888,7 +1888,23 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <EmailLabelsManageDialog open={manageLabelsOpen} onOpenChange={setManageLabelsOpen} />
 
       <CardContent className="p-0 flex-1 min-h-0">
-        <div className="grid h-full min-w-0 max-w-full overflow-hidden" style={{ gridTemplateColumns: `${railExpanded ? 168 : 52}px minmax(0, ${currentThread || composeOpen ? `${Math.round(inboxWidth)}px` : '1fr'}) minmax(0, 1fr)` }}>
+        <div
+          className="grid h-full min-w-0 max-w-full overflow-hidden"
+          style={{
+            gridTemplateColumns: (() => {
+              const railCol = `${railExpanded ? 168 : 52}px`;
+              // When viewport is below md AND a thread/compose is open, the
+              // list column is `hidden` — collapse its grid track to 0 so
+              // the detail pane reclaims that space instead of letting an
+              // empty reserved track shrink the body to a sliver.
+              const listHiddenOnMobile = isNarrow && (!!currentThread || composeOpen);
+              const listCol = listHiddenOnMobile
+                ? '0px'
+                : `minmax(0, ${currentThread || composeOpen ? `${Math.round(inboxWidth)}px` : '1fr'})`;
+              return `${railCol} ${listCol} minmax(0, 1fr)`;
+            })(),
+          }}
+        >
           {/* ─── Left: Outlook-style folder sidebar ─── */}
           <div
             ref={railRef}
