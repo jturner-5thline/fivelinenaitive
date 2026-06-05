@@ -753,10 +753,21 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const threadResponse = await fetch(
-          `${baseUrl}/threads/${thread_id}`,
-          { headers }
-        );
+        let threadResponse: Response;
+        try {
+          threadResponse = await fetch(`${baseUrl}/threads/${thread_id}`, { headers });
+        } catch (netErr) {
+          console.warn(
+            `[gmail-messages:get_thread] network error for ${thread_id}: ${(netErr as Error)?.message}`,
+          );
+          return new Response(JSON.stringify({
+            thread: { id: thread_id, messages: [] },
+            fallback: true,
+            error: "SERVICE_UNAVAILABLE",
+            error_message: "Conversation could not be loaded. Try again in a moment.",
+            retryable: true,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
         if (!threadResponse.ok) {
           // 404 = thread no longer exists upstream (deleted, archived, or
@@ -769,6 +780,23 @@ serve(async (req: Request): Promise<Response> => {
               JSON.stringify({ thread: { id: thread_id, messages: [] }, not_found: true }),
               { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
             );
+          }
+          const isTransient = threadResponse.status === 429 || threadResponse.status >= 500;
+          if (isTransient) {
+            const retryAfter = threadResponse.headers.get("retry-after");
+            await threadResponse.text().catch(() => "");
+            console.warn(
+              `[gmail-messages:get_thread] transient upstream ${threadResponse.status} for ${thread_id}`,
+            );
+            return new Response(JSON.stringify({
+              thread: { id: thread_id, messages: [] },
+              fallback: true,
+              error: threadResponse.status === 429 ? "RATE_LIMITED" : "SERVICE_UNAVAILABLE",
+              error_message: "Conversation could not be loaded. Try again in a moment.",
+              upstream_status: threadResponse.status,
+              retryable: true,
+              ...(retryAfter ? { retry_after: retryAfter } : {}),
+            }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
           return forwardNylasError(threadResponse, "Failed to get thread");
         }
