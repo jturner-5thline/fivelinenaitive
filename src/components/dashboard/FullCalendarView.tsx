@@ -92,6 +92,8 @@ import ReactMarkdown from 'react-markdown';
 import { CalendarEventDialog } from '@/components/integrations/CalendarEventDialog';
 import { AgendaIntel } from './AgendaIntel';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
+import { useTeammateList, useTeammateEvents } from '@/hooks/useTeammateCalendar';
+import { UserCircle2 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────
 type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda' | 'intel';
