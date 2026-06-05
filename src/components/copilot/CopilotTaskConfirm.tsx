@@ -423,15 +423,26 @@ export function CopilotTaskConfirm({ action }: Props) {
               }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 10px', borderRadius: 8,
-                background: 'var(--glass-surface)',
-                border: '1px solid var(--glass-border)',
+                padding: '10px 12px', borderRadius: 8,
+                background: 'rgba(126,184,247,0.08)',
+                border: '1px solid rgba(126,184,247,0.35)',
                 color: 'hsl(var(--foreground))',
-                fontSize: 12, textAlign: 'left', cursor: 'pointer',
+                fontSize: 13, textAlign: 'left', cursor: 'pointer',
+                transition: 'background 120ms, border-color 120ms',
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(126,184,247,0.16)';
+                e.currentTarget.style.borderColor = 'hsl(var(--primary))';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(126,184,247,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(126,184,247,0.35)';
+              }}
+              title="Click to select this deal"
             >
+              <Circle size={14} style={{ color: 'hsl(var(--primary))', flexShrink: 0 }} />
               <Building2 size={13} style={{ color: 'hsl(var(--muted-foreground))', flexShrink: 0 }} />
-              <span style={{ fontWeight: 600 }}>{c.name}</span>
+              <span style={{ fontWeight: 700, color: 'hsl(var(--primary))' }}>{c.name}</span>
               {c.stage && (
                 <span style={{ color: 'hsl(var(--muted-foreground))' }}>· {c.stage}</span>
               )}
@@ -440,6 +451,17 @@ export function CopilotTaskConfirm({ action }: Props) {
                   Last activity {c.last_activity}
                 </span>
               )}
+              <span
+                style={{
+                  marginLeft: c.last_activity ? 8 : 'auto',
+                  fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  color: 'hsl(var(--primary))',
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                }}
+              >
+                Select <ArrowRight size={11} />
+              </span>
             </button>
           ))}
           <button
