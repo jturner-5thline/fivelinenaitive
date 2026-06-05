@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useUiPreference } from '@/hooks/useUiPreference';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useUndoSend } from '@/contexts/UndoSendContext';
 import { filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
 import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
