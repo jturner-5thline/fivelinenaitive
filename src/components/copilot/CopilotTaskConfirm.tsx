@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight } from 'lucide-react';
+import { Plus, Check, Loader2, Pencil, X, Sparkles, Building2, User as UserIcon, Calendar as CalendarIcon, AlignLeft, Tag, AlertTriangle, ExternalLink, Mail, FileText, ArrowRight, Circle, CheckCircle2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -138,6 +138,44 @@ export function CopilotTaskConfirm({ action }: Props) {
   const needsDisambiguation =
     (hasMultipleCandidates && !resolvedDealId) ||
     (lowDealConfidence && candidates.length > 0 && !resolvedDealId);
+
+  // Publish candidates to the shared copilot store while disambiguation is
+  // open so the chat-panel markdown link renderer can resolve free-form
+  // `[Deal Name](#)` links to the correct deal id (bug: AI-rendered deal
+  // names in chat weren't clickable when the LLM dropped the deal://<id>
+  // href).
+  const setDisambiguationCandidates = useCopilotStore(s => s.setDisambiguationCandidates);
+  const clearDisambiguationCandidates = useCopilotStore(s => s.clearDisambiguationCandidates);
+  useEffect(() => {
+    if (needsDisambiguation && candidates.length > 0) {
+      setDisambiguationCandidates(candidates.map(c => ({ deal_id: c.deal_id, name: c.name })));
+      return () => { clearDisambiguationCandidates(); };
+    }
+    return undefined;
+  }, [needsDisambiguation, candidates, setDisambiguationCandidates, clearDisambiguationCandidates]);
+
+  // When the user resolves the disambiguation via any path (button here,
+  // chip click, or markdown link in the chat), also clear the shared list.
+  useEffect(() => {
+    if (resolvedDealId) clearDisambiguationCandidates();
+  }, [resolvedDealId, clearDisambiguationCandidates]);
+
+  // Listen for resolution events coming from elsewhere (e.g. the chat
+  // markdown link fallback) so this card's local state stays in sync.
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail || {};
+      const id = detail.deal_id as string | undefined;
+      if (!id) return;
+      const match = candidates.find(c => c.deal_id === id);
+      if (!match) return;
+      setResolvedDealId(match.deal_id);
+      setResolvedDealName(match.name);
+      setDealLinked(true);
+    };
+    window.addEventListener('copilot-disambiguation-resolved', handler as EventListener);
+    return () => window.removeEventListener('copilot-disambiguation-resolved', handler as EventListener);
+  }, [candidates]);
 
   const inferredSet = new Set(initial.inferred || []);
   const isInferred = (k: string) => inferredSet.has(k);
@@ -385,15 +423,26 @@ export function CopilotTaskConfirm({ action }: Props) {
               }}
               style={{
                 display: 'flex', alignItems: 'center', gap: 8,
-                padding: '8px 10px', borderRadius: 8,
-                background: 'var(--glass-surface)',
-                border: '1px solid var(--glass-border)',
+                padding: '10px 12px', borderRadius: 8,
+                background: 'rgba(126,184,247,0.08)',
+                border: '1px solid rgba(126,184,247,0.35)',
                 color: 'hsl(var(--foreground))',
-                fontSize: 12, textAlign: 'left', cursor: 'pointer',
+                fontSize: 13, textAlign: 'left', cursor: 'pointer',
+                transition: 'background 120ms, border-color 120ms',
               }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = 'rgba(126,184,247,0.16)';
+                e.currentTarget.style.borderColor = 'hsl(var(--primary))';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = 'rgba(126,184,247,0.08)';
+                e.currentTarget.style.borderColor = 'rgba(126,184,247,0.35)';
+              }}
+              title="Click to select this deal"
             >
+              <Circle size={14} style={{ color: 'hsl(var(--primary))', flexShrink: 0 }} />
               <Building2 size={13} style={{ color: 'hsl(var(--muted-foreground))', flexShrink: 0 }} />
-              <span style={{ fontWeight: 600 }}>{c.name}</span>
+              <span style={{ fontWeight: 700, color: 'hsl(var(--primary))' }}>{c.name}</span>
               {c.stage && (
                 <span style={{ color: 'hsl(var(--muted-foreground))' }}>· {c.stage}</span>
               )}
@@ -402,6 +451,17 @@ export function CopilotTaskConfirm({ action }: Props) {
                   Last activity {c.last_activity}
                 </span>
               )}
+              <span
+                style={{
+                  marginLeft: c.last_activity ? 8 : 'auto',
+                  fontSize: 10, fontWeight: 600, letterSpacing: 0.4,
+                  textTransform: 'uppercase',
+                  color: 'hsl(var(--primary))',
+                  display: 'inline-flex', alignItems: 'center', gap: 3,
+                }}
+              >
+                Select <ArrowRight size={11} />
+              </span>
             </button>
           ))}
           <button

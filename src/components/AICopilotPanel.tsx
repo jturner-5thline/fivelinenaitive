@@ -696,7 +696,36 @@ function CopilotAssistantContent({ content }: { content: string }) {
                       const labelPart = label ? ` "${label.replace(/"/g, '\\"')}"` : '';
                       const prompt = `Use the ${kind}${labelPart} (id: ${id}). Resolve the disambiguation with this choice and continue.`;
                       window.dispatchEvent(new CustomEvent('copilot-chip-click', { detail: { prompt } }));
+                      if (kind === 'deal') {
+                        window.dispatchEvent(new CustomEvent('copilot-disambiguation-resolved', { detail: { deal_id: id } }));
+                      }
                       return;
+                    }
+                    // Fallback: AI sometimes emits disambiguation deal names
+                    // as `[Gabb Wireless](#)` or another non-`deal://` href,
+                    // which would normally do nothing. If the link text
+                    // matches one of the currently-open disambiguation
+                    // candidates, treat the click as a selection.
+                    {
+                      const label = (typeof children === 'string'
+                        ? children
+                        : Array.isArray(children)
+                          ? children.map((c) => (typeof c === 'string' ? c : '')).join('')
+                          : ''
+                      ).trim();
+                      if (label) {
+                        const candidates = useCopilotStore.getState().disambiguationCandidates;
+                        const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
+                        const hit = candidates.find(c => norm(c.name) === norm(label))
+                          || candidates.find(c => norm(label).includes(norm(c.name)) || norm(c.name).includes(norm(label)));
+                        if (hit) {
+                          e.preventDefault();
+                          const prompt = `Use the deal "${hit.name.replace(/"/g, '\\"')}" (id: ${hit.deal_id}). Resolve the disambiguation with this choice and continue.`;
+                          window.dispatchEvent(new CustomEvent('copilot-chip-click', { detail: { prompt } }));
+                          window.dispatchEvent(new CustomEvent('copilot-disambiguation-resolved', { detail: { deal_id: hit.deal_id } }));
+                          return;
+                        }
+                      }
                     }
                     if (href?.startsWith('entity://')) {
                       e.preventDefault();
