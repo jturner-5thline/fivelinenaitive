@@ -295,16 +295,49 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const isMountedRef = useRef(true);
   const isPaginatingRef = useRef(false);
 
-  // Helper to dedupe by id
+  // Helper to dedupe by id.
+  //
+  // Bug fix (Niki): when a message already existed in `existing`, fresh
+  // fields from `incoming` (notably `is_read`, `is_starred`, `labels`)
+  // were dropped — so an email read directly in Gmail still rendered as
+  // unread in Naitive until the cache was reset. We now overlay the
+  // mutable provider-side state from the incoming row onto the cached
+  // row, while keeping any locally enriched fields the UI added.
   const mergeUniqueById = useCallback((existing: any[], incoming: any[]) => {
-    const seen = new Set(existing.map(m => m.id || m.gmail_message_id));
-    const additions = incoming.filter(m => {
-      const key = m.id || m.gmail_message_id;
-      if (!key || seen.has(key)) return false;
+    const incomingById = new Map<string, any>();
+    for (const m of incoming) {
+      const key = m?.id || m?.gmail_message_id;
+      if (key) incomingById.set(key, m);
+    }
+    const seen = new Set<string>();
+    const merged = existing.map((m) => {
+      const key = m?.id || m?.gmail_message_id;
+      if (!key) return m;
       seen.add(key);
-      return true;
+      const fresh = incomingById.get(key);
+      if (!fresh) return m;
+      // Only patch fields that genuinely change to keep referential
+      // equality stable for the virtualized list when nothing moved.
+      const nextIsRead = fresh.is_read ?? m.is_read;
+      const nextIsStarred = fresh.is_starred ?? m.is_starred;
+      const nextLabels = Array.isArray(fresh.labels) ? fresh.labels : m.labels;
+      if (
+        nextIsRead === m.is_read &&
+        nextIsStarred === m.is_starred &&
+        nextLabels === m.labels
+      ) {
+        return m;
+      }
+      return { ...m, is_read: nextIsRead, is_starred: nextIsStarred, labels: nextLabels };
     });
-    return additions.length ? [...existing, ...additions] : existing;
+    const additions: any[] = [];
+    for (const m of incoming) {
+      const key = m?.id || m?.gmail_message_id;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      additions.push(m);
+    }
+    return additions.length ? [...merged, ...additions] : merged;
   }, []);
 
   // ─── Cursor-based pagination ──────────────────────────────────────
