@@ -92,6 +92,8 @@ import ReactMarkdown from 'react-markdown';
 import { CalendarEventDialog } from '@/components/integrations/CalendarEventDialog';
 import { AgendaIntel } from './AgendaIntel';
 import { useCarouselSwipeClass } from '@/hooks/useCarouselSwipeClass';
+import { useTeammateList, useTeammateEvents } from '@/hooks/useTeammateCalendar';
+import { UserCircle2 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────
 type CalendarViewMode = 'day' | 'week' | 'month' | 'agenda' | 'intel';
@@ -1228,6 +1230,17 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   const [displayTimezone, setDisplayTimezone] = useState(getLocalTimezoneAbbr());
   const [showTzDropdown, setShowTzDropdown] = useState(false);
 
+  // ─── Teammate calendar viewer ──────────────────────────────
+  // When set, we render this teammate's events (read-only) instead of
+  // the signed-in user's calendar.
+  const [viewingTeammateId, setViewingTeammateId] = useState<string | null>(null);
+  const [teammatePickerOpen, setTeammatePickerOpen] = useState(false);
+  const { data: teammates = [], isLoading: teammatesLoading } = useTeammateList(open);
+  const viewingTeammate = useMemo(
+    () => teammates.find((t) => t.user_id === viewingTeammateId) || null,
+    [teammates, viewingTeammateId],
+  );
+
   const timeGridScrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to current time on mount / view change
@@ -1408,19 +1421,31 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   }, [editingEvent, deleteEvent, refreshEvents]);
 
   const handleEditEvent = useCallback((event: CalendarEvent) => {
+    if (viewingTeammateId) {
+      toast.info("You're viewing a teammate's calendar (read-only).");
+      return;
+    }
     setEditingEvent(event);
     setEventDialogOpen(true);
     setSelectedEvent(null);
-  }, []);
+  }, [viewingTeammateId]);
 
   const handleNewEvent = useCallback(() => {
+    if (viewingTeammateId) {
+      toast.info("You're viewing a teammate's calendar (read-only).");
+      return;
+    }
     setEditingEvent(null);
     setSlotDefaults(null);
     setEventDialogOpen(true);
-  }, []);
+  }, [viewingTeammateId]);
 
   const handleSlotClick = useCallback((date: Date, hour: number) => {
     if (!calendarStatus?.connected) return;
+    if (viewingTeammateId) {
+      toast.info("You're viewing a teammate's calendar (read-only).");
+      return;
+    }
     const startHour = Math.floor(hour);
     const startMin = (hour % 1) >= 0.5 ? 30 : 0;
     const startDate = new Date(date);
@@ -1433,12 +1458,37 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
       end: format(endDate, "yyyy-MM-dd'T'HH:mm:ss"),
     });
     setEventDialogOpen(true);
-  }, [calendarStatus?.connected]);
+  }, [calendarStatus?.connected, viewingTeammateId]);
+
+  // Compute the visible time range so we can fetch a teammate's calendar
+  // for the same window when the user picks one in the selector.
+  const teammateRange = useMemo(() => {
+    let tMin: Date, tMax: Date;
+    if (view === 'day') { tMin = startOfDay(currentDate); tMax = endOfDay(currentDate); }
+    else if (view === 'week') { tMin = startOfWeek(currentDate); tMax = endOfWeek(currentDate); }
+    else if (view === 'agenda' || view === 'intel') {
+      tMin = startOfDay(currentDate); tMax = endOfDay(addDays(currentDate, 13));
+    } else { tMin = startOfWeek(startOfMonth(currentDate)); tMax = endOfWeek(endOfMonth(currentDate)); }
+    return { timeMin: tMin.toISOString(), timeMax: tMax.toISOString() };
+  }, [view, currentDate]);
+
+  const {
+    data: teammateData,
+    isFetching: teammateLoading,
+    error: teammateError,
+  } = useTeammateEvents({
+    userId: viewingTeammateId,
+    timeMin: teammateRange.timeMin,
+    timeMax: teammateRange.timeMax,
+    enabled: open && !!viewingTeammateId,
+  });
 
   // Always render the live calendar — never fall back to mock/sample events.
   // The empty / loading / error states below handle the no-data case
   // explicitly so users never see fake events flash in.
-  const allEvents = liveEvents;
+  const allEvents: CalendarEvent[] = viewingTeammateId
+    ? (teammateData?.events ?? [])
+    : liveEvents;
 
   // Overlay state machine. We show the overlay when:
   //  • we're still resolving auth/status, OR
@@ -1547,7 +1597,7 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           <Separator orientation="vertical" className="h-6 mx-1" />
 
           <Button variant="outline" size="sm" className="text-xs h-8" onClick={() => navigate('today')}>Today</Button>
-          {calendarStatus?.connected && (
+          {calendarStatus?.connected && !viewingTeammateId && (
             <Button variant="liquid-glass" size="sm" className="gap-2" onClick={handleNewEvent}>
               <Plus className="h-4 w-4" />
               New Event
@@ -1562,6 +1612,98 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
           <h2 className="text-sm font-medium text-foreground min-w-[200px]">{headerLabel}</h2>
 
           <div className="flex-1" />
+
+          {/* Teammate calendar selector */}
+          {calendarStatus?.connected && (
+            <Popover open={teammatePickerOpen} onOpenChange={setTeammatePickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className={cn(
+                    'h-8 gap-1.5 text-xs',
+                    viewingTeammateId && 'border-primary/50 bg-primary/10 text-foreground',
+                  )}
+                  title="View a teammate's calendar"
+                >
+                  <UserCircle2 className="h-3.5 w-3.5" />
+                  <span className="max-w-[140px] truncate">
+                    {viewingTeammate
+                      ? `Viewing ${viewingTeammate.display_name || viewingTeammate.email}`
+                      : 'My calendar'}
+                  </span>
+                  <ChevronDown className="h-3 w-3 opacity-60" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="end" className="w-72 p-0">
+                <div className="px-3 py-2 text-[11px] uppercase tracking-wider text-muted-foreground border-b border-border/60">
+                  View calendar
+                </div>
+                <div className="max-h-[320px] overflow-y-auto py-1">
+                  <button
+                    type="button"
+                    onClick={() => { setViewingTeammateId(null); setTeammatePickerOpen(false); }}
+                    className={cn(
+                      'w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/60',
+                      !viewingTeammateId && 'bg-muted/40',
+                    )}
+                  >
+                    <UserCircle2 className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-foreground">My calendar</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{user?.email}</p>
+                    </div>
+                    {!viewingTeammateId && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                  </button>
+                  <Separator className="my-1" />
+                  {teammatesLoading && (
+                    <div className="px-3 py-3 text-[11px] text-muted-foreground flex items-center gap-2">
+                      <Loader2 className="h-3 w-3 animate-spin" /> Loading teammates…
+                    </div>
+                  )}
+                  {!teammatesLoading && teammates.length === 0 && (
+                    <div className="px-3 py-3 text-[11px] text-muted-foreground">
+                      No teammates with a connected calendar.
+                    </div>
+                  )}
+                  {!teammatesLoading && teammates.map((t) => {
+                    const active = viewingTeammateId === t.user_id;
+                    return (
+                      <button
+                        key={t.user_id}
+                        type="button"
+                        onClick={() => { setViewingTeammateId(t.user_id); setTeammatePickerOpen(false); }}
+                        className={cn(
+                          'w-full flex items-center gap-2 px-3 py-2 text-left text-xs hover:bg-muted/60',
+                          active && 'bg-muted/40',
+                        )}
+                      >
+                        <UserCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-foreground truncate">
+                            {t.display_name || t.email}
+                          </p>
+                          {t.email && t.display_name && (
+                            <p className="text-[10px] text-muted-foreground truncate">{t.email}</p>
+                          )}
+                        </div>
+                        {active && <Check className="h-3.5 w-3.5 text-primary shrink-0" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="px-3 py-2 text-[10px] text-muted-foreground border-t border-border/60">
+                  Read-only. Showing teammates in your organization who have connected their calendar.
+                </div>
+              </PopoverContent>
+            </Popover>
+          )}
+
+          {viewingTeammateId && (
+            <Badge variant="outline" className="text-[10px] h-5 border-primary/40 bg-primary/10 text-foreground">
+              {teammateLoading ? 'Loading…' : teammateError ? 'Error' : 'Read-only'}
+            </Badge>
+          )}
 
           {/* Search */}
           {showSearch ? (
