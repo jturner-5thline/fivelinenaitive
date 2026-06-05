@@ -81,6 +81,17 @@ const AUTO_LOAD_CAP = 1000;
 // or trip Nylas' rate limiter.
 const AUTO_LOAD_DELAY_MS = 350;
 
+function getStateFreshness(value: any): number {
+  const raw = value?.state_fetched_at || value?.received_at || null;
+  if (!raw) return 0;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function shouldApplyProviderState(current: any, incoming: any): boolean {
+  return getStateFreshness(incoming) >= getStateFreshness(current);
+}
+
 // Map Gmail messages to MockEmail format for DealEmailsTab compatibility.
 // Defensive: per-message try/catch + drop messages without an id so a single
 // malformed payload can't crash the inbox list mid-render.
@@ -316,6 +327,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       seen.add(key);
       const fresh = incomingById.get(key);
       if (!fresh) return m;
+      if (!shouldApplyProviderState(m, fresh)) return m;
       // Only patch fields that genuinely change to keep referential
       // equality stable for the virtualized list when nothing moved.
       const nextIsRead = fresh.is_read ?? m.is_read;
@@ -328,7 +340,13 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
       ) {
         return m;
       }
-      return { ...m, is_read: nextIsRead, is_starred: nextIsStarred, labels: nextLabels };
+      return {
+        ...m,
+        is_read: nextIsRead,
+        is_starred: nextIsStarred,
+        labels: nextLabels,
+        state_fetched_at: fresh.state_fetched_at ?? m.state_fetched_at,
+      };
     });
     const additions: any[] = [];
     for (const m of incoming) {
@@ -793,7 +811,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     inboxMessagesRef.current = inboxMessages;
   }, [inboxMessages]);
 
-  const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean }>) => {
+  const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>) => {
     if (!states.length || !isMountedRef.current) return;
     const stateMap = new Map(states.map(s => [s.id, s]));
     // Push deltas into the shared cache too so the unread badge updates
@@ -810,9 +828,15 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         .map(m => {
           const s = stateMap.get(m.id);
           if (!s) return m;
+          if (!shouldApplyProviderState(m, s)) return m;
           if (m.is_read === s.is_read && m.is_starred === s.is_starred) return m;
           changed = true;
-          return { ...m, is_read: s.is_read, is_starred: s.is_starred };
+          return {
+            ...m,
+            is_read: s.is_read,
+            is_starred: s.is_starred,
+            state_fetched_at: s.state_fetched_at ?? m.state_fetched_at,
+          };
         });
       return changed ? next : prev;
     });
@@ -838,6 +862,23 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           body: { action: 'sync_state', message_ids: ids },
         });
         if (cancelled || error || !data?.states) return;
+        void supabase
+          .from('email_cache')
+          .upsert(
+            data.states
+              .filter((s: any) => !s?.missing)
+              .map((s: any) => ({
+                user_id: user?.id,
+                gmail_message_id: s.id,
+                is_read: s.is_read,
+                is_starred: s.is_starred,
+                labels: s.folders ?? null,
+                fetched_at: s.state_fetched_at ?? new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })),
+            { onConflict: 'user_id,gmail_message_id' },
+          )
+          .then(() => {}, () => {});
         reconcileStates(data.states);
       } catch {
         // Swallow transient errors — next tick will retry.
@@ -930,6 +971,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // and slow-fetch toast.
   const handleRefresh = useCallback(async () => {
     if (!status.connected) return;
+    const now = Date.now();
+    if (refreshInFlightRef.current) return;
+    if (now - lastManualRefreshRef.current < MANUAL_REFRESH_MIN_GAP_MS) return;
     await runRefresh({ force: true, manual: true });
     // Also refresh the auxiliary folders silently — cheap and keeps
     // Drafts / Junk / Trash in sync without a full reset.
@@ -1003,7 +1047,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           isRefreshing={isRefreshing}
           lastRefreshAt={lastRefreshAt}
           error={refreshError}
-          onRetry={forceRefresh}
+          onRetry={handleRefresh}
         />
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Error boundary so a single bad message / thread / attachment

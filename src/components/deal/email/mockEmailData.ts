@@ -44,6 +44,8 @@ export interface MockEmail {
   /** True once the full body+attachments have been hydrated from the mail provider. */
   body_loaded?: boolean;
   received_at: string;
+  /** Provider state snapshot timestamp used to ignore stale read/unread sync results. */
+  state_fetched_at?: string;
   is_read: boolean;
   is_starred: boolean;
   folder: 'inbox' | 'sent' | 'drafts' | 'junk' | 'trash' | 'outbox';

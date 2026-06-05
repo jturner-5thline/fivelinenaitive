@@ -96,6 +96,11 @@ function markFetchFailure() {
   notifyStatus();
 }
 
+function isTransientFetchError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error || '');
+  return /rate.?limit|429|503|502|504|timeout|temporar|try again in a moment|service unavailable/i.test(msg);
+}
+
 export interface EmailPrefetchStatus {
   /** Pending background prefetches (queued + actively in flight). */
   pending: number;
@@ -343,7 +348,9 @@ export async function fetchFullEmailMessage(messageId: string): Promise<FullMess
   try {
     return await p;
   } catch (e) {
-    markFetchFailure();
+    if (!isTransientFetchError(e)) {
+      markFetchFailure();
+    }
     throw e;
   } finally {
     inflight.delete(messageId);
