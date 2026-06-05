@@ -1230,6 +1230,17 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   const [displayTimezone, setDisplayTimezone] = useState(getLocalTimezoneAbbr());
   const [showTzDropdown, setShowTzDropdown] = useState(false);
 
+  // ─── Teammate calendar viewer ──────────────────────────────
+  // When set, we render this teammate's events (read-only) instead of
+  // the signed-in user's calendar.
+  const [viewingTeammateId, setViewingTeammateId] = useState<string | null>(null);
+  const [teammatePickerOpen, setTeammatePickerOpen] = useState(false);
+  const { data: teammates = [], isLoading: teammatesLoading } = useTeammateList(open);
+  const viewingTeammate = useMemo(
+    () => teammates.find((t) => t.user_id === viewingTeammateId) || null,
+    [teammates, viewingTeammateId],
+  );
+
   const timeGridScrollRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to current time on mount / view change
