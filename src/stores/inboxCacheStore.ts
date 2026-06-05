@@ -24,6 +24,17 @@ import { supabase } from '@/integrations/supabase/client';
 // "Load more" rarely fires during normal scrolling.
 const PAGE_SIZE = 100;
 
+function getStateFreshness(value: any): number {
+  const raw = value?.state_fetched_at || value?.received_at || null;
+  if (!raw) return 0;
+  const ts = new Date(raw).getTime();
+  return Number.isFinite(ts) ? ts : 0;
+}
+
+function shouldApplyProviderState(current: any, incoming: any): boolean {
+  return getStateFreshness(incoming) >= getStateFreshness(current);
+}
+
 /**
  * Fetch Microsoft (Outlook) messages from the unified `emails` table and
  * shape them into the same field set the Gmail edge function returns, so the
@@ -114,6 +125,7 @@ function mergeUniqueById(existing: any[], incoming: any[]): any[] {
     seen.add(key);
     const fresh = incomingById.get(key);
     if (!fresh) return m;
+    if (!shouldApplyProviderState(m, fresh)) return m;
     const nextIsRead = fresh.is_read ?? m.is_read;
     const nextIsStarred = fresh.is_starred ?? m.is_starred;
     const nextLabels = Array.isArray(fresh.labels) ? fresh.labels : m.labels;
@@ -124,7 +136,13 @@ function mergeUniqueById(existing: any[], incoming: any[]): any[] {
     ) {
       return m;
     }
-    return { ...m, is_read: nextIsRead, is_starred: nextIsStarred, labels: nextLabels };
+    return {
+      ...m,
+      is_read: nextIsRead,
+      is_starred: nextIsStarred,
+      labels: nextLabels,
+      state_fetched_at: fresh.state_fetched_at ?? m.state_fetched_at,
+    };
   });
   const additions: any[] = [];
   for (const m of incoming) {
@@ -230,9 +248,15 @@ export const useInboxCacheStore = create<InboxCacheState>((set, get) => ({
         .map((m) => {
           const s = stateMap.get(m.id);
           if (!s) return m;
+          if (!shouldApplyProviderState(m, s)) return m;
           if (m.is_read === s.is_read && m.is_starred === s.is_starred) return m;
           changed = true;
-          return { ...m, is_read: s.is_read, is_starred: s.is_starred };
+          return {
+            ...m,
+            is_read: s.is_read,
+            is_starred: s.is_starred,
+            state_fetched_at: s.state_fetched_at ?? m.state_fetched_at,
+          };
         });
       return changed ? { inboxMessages: next } : {};
     });
