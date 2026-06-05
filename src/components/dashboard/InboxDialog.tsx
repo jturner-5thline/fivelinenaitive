@@ -295,16 +295,49 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   const isMountedRef = useRef(true);
   const isPaginatingRef = useRef(false);
 
-  // Helper to dedupe by id
+  // Helper to dedupe by id.
+  //
+  // Bug fix (Niki): when a message already existed in `existing`, fresh
+  // fields from `incoming` (notably `is_read`, `is_starred`, `labels`)
+  // were dropped — so an email read directly in Gmail still rendered as
+  // unread in Naitive until the cache was reset. We now overlay the
+  // mutable provider-side state from the incoming row onto the cached
+  // row, while keeping any locally enriched fields the UI added.
   const mergeUniqueById = useCallback((existing: any[], incoming: any[]) => {
-    const seen = new Set(existing.map(m => m.id || m.gmail_message_id));
-    const additions = incoming.filter(m => {
-      const key = m.id || m.gmail_message_id;
-      if (!key || seen.has(key)) return false;
+    const incomingById = new Map<string, any>();
+    for (const m of incoming) {
+      const key = m?.id || m?.gmail_message_id;
+      if (key) incomingById.set(key, m);
+    }
+    const seen = new Set<string>();
+    const merged = existing.map((m) => {
+      const key = m?.id || m?.gmail_message_id;
+      if (!key) return m;
       seen.add(key);
-      return true;
+      const fresh = incomingById.get(key);
+      if (!fresh) return m;
+      // Only patch fields that genuinely change to keep referential
+      // equality stable for the virtualized list when nothing moved.
+      const nextIsRead = fresh.is_read ?? m.is_read;
+      const nextIsStarred = fresh.is_starred ?? m.is_starred;
+      const nextLabels = Array.isArray(fresh.labels) ? fresh.labels : m.labels;
+      if (
+        nextIsRead === m.is_read &&
+        nextIsStarred === m.is_starred &&
+        nextLabels === m.labels
+      ) {
+        return m;
+      }
+      return { ...m, is_read: nextIsRead, is_starred: nextIsStarred, labels: nextLabels };
     });
-    return additions.length ? [...existing, ...additions] : existing;
+    const additions: any[] = [];
+    for (const m of incoming) {
+      const key = m?.id || m?.gmail_message_id;
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      additions.push(m);
+    }
+    return additions.length ? [...merged, ...additions] : merged;
   }, []);
 
   // ─── Cursor-based pagination ──────────────────────────────────────
@@ -495,6 +528,13 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // are preserved because we merge in-place rather than reset state.
   const lastSilentRefreshRef = useRef(0);
   const SILENT_REFRESH_MIN_GAP_MS = 10_000;
+  // Hard floor for *manual* refresh clicks. Even when the user mashes
+  // the refresh button (or `force=true` is passed), we never hit the
+  // provider more often than this. Without it, rapid clicks pile up
+  // requests against Nylas/Gmail and trip rate limits — which is what
+  // surfaced the "sync issue" banner Niki reported.
+  const MANUAL_REFRESH_MIN_GAP_MS = 3_000;
+  const lastManualRefreshRef = useRef(0);
   // Visible-tab cadence: 30s so newly-arrived mail surfaces quickly without
   // hammering the Gmail quota. When the tab is hidden we back off to 120s
   // (we still resume immediately on visibilitychange → visible below) so
@@ -518,8 +558,11 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     if (refreshInFlightRef.current) return;
     const now = Date.now();
     if (!opts.force && now - lastSilentRefreshRef.current < SILENT_REFRESH_MIN_GAP_MS) return;
+    // Manual-click throttle: applies even when force=true.
+    if (opts.manual && now - lastManualRefreshRef.current < MANUAL_REFRESH_MIN_GAP_MS) return;
     refreshInFlightRef.current = true;
     lastSilentRefreshRef.current = now;
+    if (opts.manual) lastManualRefreshRef.current = now;
     setIsRefreshing(true);
     // Soft 5s timeout: if the refresh hasn't returned in 5s, surface a
     // non-blocking toast so the user knows we're still working on it
@@ -553,14 +596,18 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
         }
         return;
       }
-      // Other soft errors (rate-limit / transport / malformed) — keep the
-      // cached list visible and surface a non-blocking retry toast.
-      if ((inbox.errorCode || sent.errorCode) && opts.manual) {
-        toast.error("Couldn't refresh inbox", {
-          description: inbox.errorMessage || sent.errorMessage || undefined,
-          action: { label: 'Retry', onClick: () => void runRefresh({ force: true, manual: true }) },
+      // Other soft errors (rate-limit / transport / malformed) are
+      // almost always transient — the next polling tick or the user's
+      // next click will succeed. Don't flip the visible "Couldn't
+      // refresh" banner on for these; just leave the cached list in
+      // place and keep `lastRefreshAt` from the previous success so
+      // the indicator continues to show "Updated Xs ago" instead of a
+      // scary destructive bar.
+      if (inbox.errorCode || sent.errorCode) {
+        console.warn('[InboxDialog] soft refresh error', {
+          inbox: inbox.errorCode,
+          sent: sent.errorCode,
         });
-        setRefreshError(true);
         return;
       }
       // Prepend new messages above the cached list; mergeUniqueById
@@ -586,13 +633,10 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           toast.success(`${newCount} new ${newCount === 1 ? 'email' : 'emails'}`);
         }
       }
-    } catch {
-      if (isMountedRef.current) setRefreshError(true);
-      if (opts.manual) {
-        toast.error('Couldn\u2019t refresh inbox', {
-          action: { label: 'Retry', onClick: () => void runRefresh({ force: true, manual: true }) },
-        });
-      }
+    } catch (e) {
+      // Network blip or aborted invoke — keep the cached list visible
+      // and stay quiet. The next interval / focus event will retry.
+      console.warn('[InboxDialog] refresh threw — staying silent', e);
     } finally {
       if (slowToastId !== undefined) {
         // If it was still a timeout handle, cancel it. If it was a toast
