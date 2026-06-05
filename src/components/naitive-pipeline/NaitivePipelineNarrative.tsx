@@ -144,11 +144,28 @@ interface Props {
 export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] }: Props) {
   const [periodType, setPeriodType] = useState<PeriodType>(reportingPeriod);
   const today = useMemo(() => new Date(), []);
-  const current = useMemo(() => periodFor(periodType, today), [periodType, today]);
+  const [refDate, setRefDate] = useState<Date>(today);
+  const current = useMemo(() => periodFor(periodType, refDate), [periodType, refDate]);
   const prior = useMemo(() => priorPeriod(current), [current]);
 
   // Sync to outer dashboard period if it changes
   useEffect(() => { setPeriodType(reportingPeriod); }, [reportingPeriod]);
+  // Reset to current period whenever the period type changes
+  useEffect(() => { setRefDate(today); }, [periodType, today]);
+
+  // Build the last 12 selectable periods of the current type
+  const periodOptions = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const ref =
+        periodType === 'week' ? subWeeks(today, i)
+        : periodType === 'month' ? subMonths(today, i)
+        : subQuarters(today, i);
+      const spec = periodFor(periodType, ref);
+      return { key: spec.key, label: spec.label, ref, isCurrent: i === 0 };
+    });
+  }, [periodType, today]);
+
+  const currentPeriodKey = periodOptions[0]?.key;
 
   const [content, setContent] = useState<string>('');
   const [priorContent, setPriorContent] = useState<string>('');
