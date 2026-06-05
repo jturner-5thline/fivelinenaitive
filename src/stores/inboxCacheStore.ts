@@ -97,7 +97,7 @@ export interface InboxCacheState {
   setInboxMessages: (msgs: any[]) => void;
   setSentMessages: (msgs: any[]) => void;
   /** Reconcile is_read / is_starred deltas pushed by the dialog. */
-  applyStateDeltas: (states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean }>) => void;
+  applyStateDeltas: (states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>) => void;
   /** Reset on auth change / logout. */
   reset: () => void;
 }
