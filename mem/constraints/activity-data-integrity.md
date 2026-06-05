@@ -5,6 +5,9 @@ type: constraint
 ---
 **Scope:** ALL deals across the platform — active, paused, archived, closed, historical imports, and any future imports. No exceptions, no subsets.
 
+**Exceptions (explicit user-approved carve-outs):**
+- Blount Capital tenant (company id `c4753066-0da9-4d87-8858-7eb1adecd173`): historical activity backfill into `activity_logs` is permitted, per explicit user approval on 2026-06-05. Other tenants remain fully covered by the no-backfill rule.
+
 **Rules:**
 - Activity feeds/timelines/audit displays must use only **actual source activity records** as-is.
 - Do NOT backfill, reconstruct, infer, simulate, or fabricate activity rows.
