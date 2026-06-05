@@ -648,10 +648,24 @@ serve(async (req: Request): Promise<Response> => {
           });
         }
 
-        const msgResponse = await fetch(
-          `${baseUrl}/messages/${message_id}`,
-          { headers }
-        );
+        let msgResponse: Response;
+        try {
+          msgResponse = await fetch(`${baseUrl}/messages/${message_id}`, { headers });
+        } catch (netErr) {
+          // Network-level failure (DNS, connection reset, fetch abort). Never
+          // let this bubble — surface a soft fallback so the viewer renders a
+          // friendly inline error + Retry instead of crashing.
+          console.warn(
+            `[gmail-messages:get] network error for ${message_id}: ${(netErr as Error)?.message}`,
+          );
+          return new Response(JSON.stringify({
+            message: null,
+            fallback: true,
+            error: "SERVICE_UNAVAILABLE",
+            error_message: "Message could not be loaded. Try again in a moment.",
+            retryable: true,
+          }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
 
         if (!msgResponse.ok) {
           // 404 = message no longer exists in mailbox (deleted, moved, or stale ID).
@@ -662,6 +676,27 @@ serve(async (req: Request): Promise<Response> => {
               status: 200,
               headers: { ...corsHeaders, "Content-Type": "application/json" },
             });
+          }
+          // Transient (429 rate-limit, 5xx upstream) — return a 200 soft
+          // fallback so the viewer can render an inline "Message could not be
+          // loaded. Try again in a moment." state with Retry, instead of
+          // tripping the global error boundary with a non-2xx invoke error.
+          const isTransient = msgResponse.status === 429 || msgResponse.status >= 500;
+          if (isTransient) {
+            const retryAfter = msgResponse.headers.get("retry-after");
+            await msgResponse.text().catch(() => "");
+            console.warn(
+              `[gmail-messages:get] transient upstream ${msgResponse.status} for ${message_id}`,
+            );
+            return new Response(JSON.stringify({
+              message: null,
+              fallback: true,
+              error: msgResponse.status === 429 ? "RATE_LIMITED" : "SERVICE_UNAVAILABLE",
+              error_message: "Message could not be loaded. Try again in a moment.",
+              upstream_status: msgResponse.status,
+              retryable: true,
+              ...(retryAfter ? { retry_after: retryAfter } : {}),
+            }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
           }
           return forwardNylasError(msgResponse, "Failed to get message");
         }
