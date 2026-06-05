@@ -463,7 +463,30 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground mt-2">
-          <Badge variant="outline" className="text-[10px] font-normal">{current.label}</Badge>
+          <Select
+            value={current.key}
+            onValueChange={(key) => {
+              const opt = periodOptions.find((o) => o.key === key);
+              if (opt) setRefDate(opt.ref);
+            }}
+          >
+            <SelectTrigger
+              className="h-6 w-auto gap-1 rounded-sm border border-border bg-transparent px-2 py-0 text-[10px] font-normal text-foreground hover:bg-muted/40 focus:ring-0 focus:ring-offset-0 [&>span]:line-clamp-1"
+              aria-label="Select reporting period"
+            >
+              <SelectValue>
+                {current.label}
+                {current.key === currentPeriodKey ? ' (Current)' : ''}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-[320px]">
+              {periodOptions.map((o) => (
+                <SelectItem key={o.key} value={o.key} className="text-xs">
+                  {o.label}{o.isCurrent ? ' (Current)' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <span>·</span>
           <span>Compared to {prior.label}</span>
           <span className="ml-auto flex items-center gap-1.5">
