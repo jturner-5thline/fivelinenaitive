@@ -35,11 +35,15 @@ async function forwardNylasError(resp: Response, fallbackMessage: string): Promi
 
   const isTransient = upstreamStatus === 429 || (upstreamStatus >= 500 && upstreamStatus <= 599);
   const retryAfter = resp.headers.get("retry-after");
-  const status = isTransient ? 503 : upstreamStatus;
+  // Return 200 for transient upstream failures so the client never blank-screens.
+  // The body carries `retryable: true` + `fallback: true` so callers can decide
+  // whether to retry, surface a toast, or render cached data.
+  const status = isTransient ? 200 : upstreamStatus;
   const body = {
     error: providerMessage || fallbackMessage,
     upstream_status: upstreamStatus,
     retryable: isTransient,
+    ...(isTransient ? { fallback: true } : {}),
     ...(retryAfter ? { retry_after: retryAfter } : {}),
   };
   console.error(`[gmail-messages] upstream error ${upstreamStatus}: ${body.error}`);
