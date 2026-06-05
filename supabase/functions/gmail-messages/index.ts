@@ -466,6 +466,7 @@ serve(async (req: Request): Promise<Response> => {
       case "list": {
         const { max_results = 20, page_token, query } = requestData;
         const labelIds = (requestData as any).label_ids as string[] | undefined;
+        const stateFetchedAt = new Date().toISOString();
         // When the caller explicitly passes `search_all_mail: true`, OR is
         // running a free-text search WITHOUT specifying a folder, we drop
         // the default INBOX restriction so the query matches archived mail
@@ -628,6 +629,7 @@ serve(async (req: Request): Promise<Response> => {
             is_starred: msg.starred || false,
             labels: msg.folders || msg.labels || [],
             received_at: msg.date ? new Date(msg.date * 1000).toISOString() : null,
+            state_fetched_at: stateFetchedAt,
             has_attachments: visibleAtts.length > 0,
             attachment_count: visibleAtts.length,
           };
@@ -1270,6 +1272,7 @@ serve(async (req: Request): Promise<Response> => {
 
         // Cap to protect against runaway requests. Client should batch.
         const capped = ids.slice(0, 200);
+        const stateFetchedAt = new Date().toISOString();
 
         // Fetch each message's metadata in parallel with a small concurrency
         // limit so we don't overwhelm Nylas.
@@ -1291,6 +1294,7 @@ serve(async (req: Request): Promise<Response> => {
               is_read: !m.unread,
               is_starred: !!m.starred,
               folders: m.folders || m.labels || [],
+              state_fetched_at: stateFetchedAt,
             });
           } catch {
             // Ignore single-message failures so the batch still succeeds.
