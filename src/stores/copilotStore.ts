@@ -27,6 +27,17 @@ interface CopilotStore {
   demoMode: boolean;
   /** The text shown (animated) inside the live Ask bar during the demo. */
   demoTypedPrompt: string;
+  /**
+   * Latest disambiguation candidates surfaced by an approval card (e.g.
+   * CopilotTaskConfirm) so other surfaces — like the markdown link renderer
+   * in AICopilotPanel — can resolve free-form text links (`[Gabb Wireless](#)`)
+   * to the right deal id even when the LLM doesn't emit a `deal://<id>` href.
+   */
+  disambiguationCandidates: Array<{ deal_id: string; name: string }>;
+  setDisambiguationCandidates: (
+    candidates: Array<{ deal_id: string; name: string }>,
+  ) => void;
+  clearDisambiguationCandidates: () => void;
   togglePanel: () => void;
   openPanel: () => void;
   closePanel: () => void;
@@ -56,6 +67,9 @@ export const useCopilotStore = create<CopilotStore>((set) => ({
   pendingPrompt: null,
   demoMode: false,
   demoTypedPrompt: '',
+  disambiguationCandidates: [],
+  setDisambiguationCandidates: (candidates) => set({ disambiguationCandidates: candidates }),
+  clearDisambiguationCandidates: () => set({ disambiguationCandidates: [] }),
   // togglePanel cycles: closed → open, open → minimized, minimized → open.
   togglePanel: () => set((s) => {
     if (!s.isOpen) return { isOpen: true, isMinimized: false, unreadCount: 0 };
