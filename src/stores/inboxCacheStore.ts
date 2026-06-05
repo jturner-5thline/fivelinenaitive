@@ -91,16 +91,49 @@ export interface InboxCacheState {
   reset: () => void;
 }
 
-/** Merge `incoming` into `existing` deduped by id, preserving order. */
+/**
+ * Merge `incoming` into `existing` deduped by id, preserving order.
+ *
+ * Bug fix (Niki): the previous implementation only added rows that
+ * weren't already present. When a message had been read in Gmail since
+ * it was last cached, the fresh `is_read: true` from the incoming list
+ * was discarded and Naitive kept showing the message as unread until a
+ * hard reset. We now overlay mutable provider-side state (is_read,
+ * is_starred, labels) onto the cached entry while preserving order.
+ */
 function mergeUniqueById(existing: any[], incoming: any[]): any[] {
-  const seen = new Set(existing.map((m) => m.id || m.gmail_message_id));
-  const additions = incoming.filter((m) => {
-    const key = m.id || m.gmail_message_id;
-    if (!key || seen.has(key)) return false;
+  const incomingById = new Map<string, any>();
+  for (const m of incoming) {
+    const key = m?.id || m?.gmail_message_id;
+    if (key) incomingById.set(key, m);
+  }
+  const seen = new Set<string>();
+  const patched = existing.map((m) => {
+    const key = m?.id || m?.gmail_message_id;
+    if (!key) return m;
     seen.add(key);
-    return true;
+    const fresh = incomingById.get(key);
+    if (!fresh) return m;
+    const nextIsRead = fresh.is_read ?? m.is_read;
+    const nextIsStarred = fresh.is_starred ?? m.is_starred;
+    const nextLabels = Array.isArray(fresh.labels) ? fresh.labels : m.labels;
+    if (
+      nextIsRead === m.is_read &&
+      nextIsStarred === m.is_starred &&
+      nextLabels === m.labels
+    ) {
+      return m;
+    }
+    return { ...m, is_read: nextIsRead, is_starred: nextIsStarred, labels: nextLabels };
   });
-  return additions.length ? [...additions, ...existing] : existing;
+  const additions: any[] = [];
+  for (const m of incoming) {
+    const key = m?.id || m?.gmail_message_id;
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    additions.push(m);
+  }
+  return additions.length ? [...additions, ...patched] : patched;
 }
 
 /** Single page fetch against the gmail-messages edge function. */
