@@ -1421,16 +1421,24 @@ export function FullCalendarView({ open, onOpenChange }: FullCalendarViewProps) 
   }, [editingEvent, deleteEvent, refreshEvents]);
 
   const handleEditEvent = useCallback((event: CalendarEvent) => {
+    if (viewingTeammateId) {
+      toast.info("You're viewing a teammate's calendar (read-only).");
+      return;
+    }
     setEditingEvent(event);
     setEventDialogOpen(true);
     setSelectedEvent(null);
-  }, []);
+  }, [viewingTeammateId]);
 
   const handleNewEvent = useCallback(() => {
+    if (viewingTeammateId) {
+      toast.info("You're viewing a teammate's calendar (read-only).");
+      return;
+    }
     setEditingEvent(null);
     setSlotDefaults(null);
     setEventDialogOpen(true);
-  }, []);
+  }, [viewingTeammateId]);
 
   const handleSlotClick = useCallback((date: Date, hour: number) => {
     if (!calendarStatus?.connected) return;
