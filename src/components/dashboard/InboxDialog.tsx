@@ -811,7 +811,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
     inboxMessagesRef.current = inboxMessages;
   }, [inboxMessages]);
 
-  const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean }>) => {
+  const reconcileStates = useCallback((states: Array<{ id: string; is_read: boolean; is_starred: boolean; missing?: boolean; state_fetched_at?: string }>) => {
     if (!states.length || !isMountedRef.current) return;
     const stateMap = new Map(states.map(s => [s.id, s]));
     // Push deltas into the shared cache too so the unread badge updates
@@ -971,6 +971,9 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
   // and slow-fetch toast.
   const handleRefresh = useCallback(async () => {
     if (!status.connected) return;
+    const now = Date.now();
+    if (refreshInFlightRef.current) return;
+    if (now - lastManualRefreshRef.current < MANUAL_REFRESH_MIN_GAP_MS) return;
     await runRefresh({ force: true, manual: true });
     // Also refresh the auxiliary folders silently — cheap and keeps
     // Drafts / Junk / Trash in sync without a full reset.
@@ -1044,7 +1047,7 @@ function InboxDialogImpl({ open, onOpenChange }: InboxDialogProps) {
           isRefreshing={isRefreshing}
           lastRefreshAt={lastRefreshAt}
           error={refreshError}
-          onRetry={forceRefresh}
+          onRetry={handleRefresh}
         />
         <div className="flex-1 min-h-0 overflow-hidden">
           {/* Error boundary so a single bad message / thread / attachment
