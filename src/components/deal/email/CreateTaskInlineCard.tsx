@@ -207,28 +207,42 @@ export function CreateTaskInlineCard({
       });
 
       if (result?.id) {
+        let asanaWarning: string | null = null;
         if (asanaSync) {
           try {
             const ctx = await getAsanaSyncContext(company?.id || null);
-            if (ctx) {
-              await syncTaskToAsana(ctx, {
+            if (!ctx) {
+              asanaWarning =
+                'Asana sync is not configured for this workspace — enable it in Integrations → Asana.';
+            } else {
+              const gid = await syncTaskToAsana(ctx, {
                 id: result.id,
                 title: draft.title,
                 description: draft.description,
                 due_date: draft.due_date,
               });
+              if (!gid) {
+                asanaWarning =
+                  'Task created in Naitive but Asana sync failed. Check Integrations → Asana for the error.';
+              }
             }
-          } catch (e) {
+          } catch (e: any) {
             console.warn('[CreateTaskInlineCard] Asana sync failed:', e);
+            asanaWarning = `Task created but Asana sync failed: ${e?.message || 'unknown error'}`;
           }
         }
         setCreated({ taskId: result.id, dealName: dealName || null });
         queryClient.invalidateQueries({ queryKey: ['tasks'] });
-        toast.success(
-          dealName
-            ? `Task created and linked to ${dealName}`
-            : 'Task created',
-        );
+        if (asanaWarning) {
+          setErrorMsg(asanaWarning);
+          toast.warning(asanaWarning);
+        } else {
+          toast.success(
+            dealName
+              ? `Task created and linked to ${dealName}`
+              : 'Task created',
+          );
+        }
       }
     } catch (e: any) {
       console.error('[CreateTaskInlineCard] create failed', e);

@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useUiPreference } from '@/hooks/useUiPreference';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useUndoSend } from '@/contexts/UndoSendContext';
 import { filterEmailsByCategory, EMAIL_CATEGORY_TABS, type EmailCategoryTab } from '@/utils/emailClassifier';
 import { useEmailClassifierData } from '@/hooks/useEmailClassifierData';
@@ -470,6 +471,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const inboxWidth = Math.max(MIN_INBOX_WIDTH, Math.min(MAX_INBOX_WIDTH, rawInboxWidth));
 
   const [isResizing, setIsResizing] = useState(false);
+  const isNarrow = useIsMobile();
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -1887,7 +1889,23 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
       <EmailLabelsManageDialog open={manageLabelsOpen} onOpenChange={setManageLabelsOpen} />
 
       <CardContent className="p-0 flex-1 min-h-0">
-        <div className="grid h-full min-w-0 max-w-full overflow-hidden" style={{ gridTemplateColumns: `${railExpanded ? 168 : 52}px minmax(0, ${currentThread || composeOpen ? `${Math.round(inboxWidth)}px` : '1fr'}) minmax(0, 1fr)` }}>
+        <div
+          className="grid h-full min-w-0 max-w-full overflow-hidden"
+          style={{
+            gridTemplateColumns: (() => {
+              const railCol = `${railExpanded ? 168 : 52}px`;
+              // When viewport is below md AND a thread/compose is open, the
+              // list column is `hidden` — collapse its grid track to 0 so
+              // the detail pane reclaims that space instead of letting an
+              // empty reserved track shrink the body to a sliver.
+              const listHiddenOnMobile = isNarrow && (!!currentThread || composeOpen);
+              const listCol = listHiddenOnMobile
+                ? '0px'
+                : `minmax(0, ${currentThread || composeOpen ? `${Math.round(inboxWidth)}px` : '1fr'})`;
+              return `${railCol} ${listCol} minmax(0, 1fr)`;
+            })(),
+          }}
+        >
           {/* ─── Left: Outlook-style folder sidebar ─── */}
           <div
             ref={railRef}
