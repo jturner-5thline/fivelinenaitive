@@ -68,6 +68,11 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
     nextApproverLabel,
   } = useDealMemoApproval(dealId, memo?.id, {
     saveMemo: async () => {
+      // CRITICAL: never blank an existing memo on submit. Only persist when
+      // the user actually has unsaved edits AND we have a populated localValues
+      // snapshot. Otherwise this closure would write all-empty fields and
+      // (via upsert onConflict=deal_id) wipe the entire memo.
+      if (!hasChanges) return;
       const newValues = {
         narrative: localValues.narrative || null,
         highlights: localValues.highlights || null,
@@ -76,6 +81,24 @@ export function DealMemoDialog({ dealId, companyName, dealNarrative, onGoToDataR
         analyst_notes: localValues.analyst_notes || null,
         other_notes: localValues.other_notes || null,
       };
+      // Extra safety: if the memo already has content but localValues looks
+      // empty across the board, refuse to save — almost certainly a stale
+      // closure from before the memo finished loading.
+      const localHasAnyContent = Object.values(newValues).some(
+        (v) => typeof v === 'string' && v.trim().length > 0,
+      );
+      const memoHasAnyContent = !!memo && (
+        (memo.narrative && memo.narrative.trim()) ||
+        (memo.highlights && memo.highlights.trim()) ||
+        (memo.hurdles && memo.hurdles.trim()) ||
+        (memo.lender_notes && memo.lender_notes.trim()) ||
+        (memo.analyst_notes && memo.analyst_notes.trim()) ||
+        (memo.other_notes && memo.other_notes.trim())
+      );
+      if (!localHasAnyContent && memoHasAnyContent) {
+        console.warn('[DealMemo] Skipped pre-submit save: localValues empty while memo has content (would have blanked memo).');
+        return;
+      }
       const oldValues: Record<string, string | null> = {
         narrative: memo?.narrative || null,
         highlights: memo?.highlights || null,
