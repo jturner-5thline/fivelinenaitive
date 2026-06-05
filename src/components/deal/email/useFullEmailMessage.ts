@@ -298,13 +298,32 @@ export async function fetchFullEmailMessage(messageId: string): Promise<FullMess
     'gmail-messages get',
   );
 
+  // Soft fallback (transient rate-limit / 5xx / network blip). The edge
+  // function returns HTTP 200 with `{ fallback: true, error_message }` in
+  // this case so this branch is reachable WITHOUT `err` being set. We
+  // surface the friendly message so the viewer renders an inline
+  // "Message could not be loaded. Try again in a moment." + Retry instead
+  // of crashing the page with an unhandled rejection.
+  if (resp?.fallback) {
+    const friendly =
+      resp.error_message || 'Message could not be loaded. Try again in a moment.';
+    throw new Error(friendly);
+  }
+
   if (err) {
-    throw new Error(err.message || 'Failed to load message');
+    // Some transient transport errors still come through as `err`; map any
+    // recognizable rate-limit / unavailable signal to the same friendly
+    // string so the user never sees raw "non-2xx" text.
+    const raw = err.message || '';
+    if (/non-2xx|rate.?limit|unavailable|429|503|502|504|timeout/i.test(raw)) {
+      throw new Error('Message could not be loaded. Try again in a moment.');
+    }
+    throw new Error(raw || 'Failed to load message');
   }
 
   const m = resp?.message;
   if (!m) {
-    throw new Error('No message returned');
+    throw new Error('Message could not be loaded. Try again in a moment.');
   }
 
     const out: FullMessage = {
@@ -341,6 +360,11 @@ export async function fetchFullEmailThread(threadId: string): Promise<FullThread
     // (e.g. summarize, thread viewer). Return empty so callers can fall
     // back to whatever messages they already have in memory.
     console.warn('[fetchFullEmailThread] soft-fail', err?.message || err);
+    return [];
+  }
+
+  if (resp?.fallback) {
+    console.warn('[fetchFullEmailThread] fallback', resp?.error_message || resp?.error);
     return [];
   }
 
