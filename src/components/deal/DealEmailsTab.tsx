@@ -471,6 +471,7 @@ export function DealEmailsTab({ dealId, externalEmails, onRefresh, isRefreshingE
   const inboxWidth = Math.max(MIN_INBOX_WIDTH, Math.min(MAX_INBOX_WIDTH, rawInboxWidth));
 
   const [isResizing, setIsResizing] = useState(false);
+  const isNarrow = useIsMobile();
 
   const handleResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
