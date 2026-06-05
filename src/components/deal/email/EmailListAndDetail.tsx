@@ -2990,6 +2990,25 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
   const senderName = latest.from_name === 'You' ? latest.to_name : latest.from_name;
   const senderEmail = latest.from_name === 'You' ? latest.to_email : latest.from_email;
 
+  // Detect narrow detail panes (e.g. AI Assist open inside a narrow popup
+  // or mobile viewport). When the available width can't comfortably hold
+  // both the message body AND the 280px assist column, stack the assist
+  // below so the body always renders at a readable width instead of
+  // collapsing to a one-character column.
+  const detailGridRef = useRef<HTMLDivElement | null>(null);
+  const [stackAiAssist, setStackAiAssist] = useState(false);
+  useEffect(() => {
+    const el = detailGridRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      // 700px = ~ body 360 + assist 280 + 60 gutter — under that, stack.
+      setStackAiAssist(w > 0 && w < 700);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
     <>
       {/* Reactive grid: detail column uses minmax(0,1fr) so it can shrink below
@@ -2999,11 +3018,13 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           stacks (detail on top, assist below) so the middle column always has
           room to wrap. */}
         <div
+          ref={detailGridRef}
           className="relative grid h-full min-w-0 w-full max-w-full overflow-hidden bg-transparent transition-[grid-template-columns] duration-200 ease-out"
         style={{
-          gridTemplateColumns: renderAiAssistColumn
-            ? 'minmax(0,1fr) minmax(280px,min(360px,30vw))'
+          gridTemplateColumns: renderAiAssistColumn && !stackAiAssist
+            ? 'minmax(360px,1fr) minmax(280px,min(360px,30vw))'
             : 'minmax(0,1fr)',
+          gridTemplateRows: renderAiAssistColumn && stackAiAssist ? 'minmax(0,1fr) auto' : undefined,
         }}
       >
         {/* Email message column — transparent so the unified popup-shell
