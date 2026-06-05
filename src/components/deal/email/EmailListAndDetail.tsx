@@ -3579,7 +3579,12 @@ export function EmailDetail({ thread, dealId, onBack, onToggleLink, onToggleStar
           <div
             ref={aiAssistPaneRef}
             data-inbox-surface-scope="assistant"
-            className="flex h-full min-h-0 min-w-0 w-full max-w-[min(360px,30vw)] overflow-hidden border-l border-[hsl(var(--email-border))] bg-transparent"
+            className={cn(
+              'flex h-full min-h-0 min-w-0 w-full overflow-hidden bg-transparent',
+              stackAiAssist
+                ? 'max-w-full max-h-[40vh] border-t border-[hsl(var(--email-border))]'
+                : 'max-w-[min(360px,30vw)] border-l border-[hsl(var(--email-border))]',
+            )}
           >
             <EmailPaneErrorBoundary
               resetKey={`ai-assist-${thread.threadId}`}
