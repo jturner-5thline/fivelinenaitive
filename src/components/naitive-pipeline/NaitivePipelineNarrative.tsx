@@ -144,11 +144,28 @@ interface Props {
 export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] }: Props) {
   const [periodType, setPeriodType] = useState<PeriodType>(reportingPeriod);
   const today = useMemo(() => new Date(), []);
-  const current = useMemo(() => periodFor(periodType, today), [periodType, today]);
+  const [refDate, setRefDate] = useState<Date>(today);
+  const current = useMemo(() => periodFor(periodType, refDate), [periodType, refDate]);
   const prior = useMemo(() => priorPeriod(current), [current]);
 
   // Sync to outer dashboard period if it changes
   useEffect(() => { setPeriodType(reportingPeriod); }, [reportingPeriod]);
+  // Reset to current period whenever the period type changes
+  useEffect(() => { setRefDate(today); }, [periodType, today]);
+
+  // Build the last 12 selectable periods of the current type
+  const periodOptions = useMemo(() => {
+    return Array.from({ length: 12 }, (_, i) => {
+      const ref =
+        periodType === 'week' ? subWeeks(today, i)
+        : periodType === 'month' ? subMonths(today, i)
+        : subQuarters(today, i);
+      const spec = periodFor(periodType, ref);
+      return { key: spec.key, label: spec.label, ref, isCurrent: i === 0 };
+    });
+  }, [periodType, today]);
+
+  const currentPeriodKey = periodOptions[0]?.key;
 
   const [content, setContent] = useState<string>('');
   const [priorContent, setPriorContent] = useState<string>('');
@@ -446,7 +463,30 @@ export function NaitivePipelineNarrative({ reportingPeriod = 'week', deals = [] 
           </Select>
         </div>
         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground mt-2">
-          <Badge variant="outline" className="text-[10px] font-normal">{current.label}</Badge>
+          <Select
+            value={current.key}
+            onValueChange={(key) => {
+              const opt = periodOptions.find((o) => o.key === key);
+              if (opt) setRefDate(opt.ref);
+            }}
+          >
+            <SelectTrigger
+              className="h-6 w-auto gap-1 rounded-sm border border-border bg-transparent px-2 py-0 text-[10px] font-normal text-foreground hover:bg-muted/40 focus:ring-0 focus:ring-offset-0 [&>span]:line-clamp-1"
+              aria-label="Select reporting period"
+            >
+              <SelectValue>
+                {current.label}
+                {current.key === currentPeriodKey ? ' (Current)' : ''}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-[320px]">
+              {periodOptions.map((o) => (
+                <SelectItem key={o.key} value={o.key} className="text-xs">
+                  {o.label}{o.isCurrent ? ' (Current)' : ''}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <span>·</span>
           <span>Compared to {prior.label}</span>
           <span className="ml-auto flex items-center gap-1.5">
