@@ -379,6 +379,35 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
             {justSaved ? <Check size={12} /> : <SaveIcon size={12} />}
               {justSaved ? 'Saved' : reportSave.hasUnsavedChanges ? 'Save changes' : 'Save'}
           </button>
+          {/* Submit-for-review — only on JT/JM/SW report tabs. Filled
+              primary style to read as distinct from the ghost Save button. */}
+          <button
+            type="button"
+            onClick={() => { void handleSubmitForReview(); }}
+            disabled={submitting || !REPORT_TAB_META[activeIndex]}
+            title={`Notify reviewers that ${REPORT_TAB_META[activeIndex]?.ownerName ?? "this owner"}'s Insights Report is ready`}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 11,
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              padding: '6px 14px',
+              borderRadius: 999,
+              border: '0.5px solid rgba(80,140,255,0.55)',
+              cursor: submitting ? 'wait' : 'pointer',
+              color: '#0a2540',
+              background: 'linear-gradient(180deg, #7ed0ff, #4db8ff)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              opacity: submitting ? 0.7 : 1,
+              transition: 'opacity .15s',
+            }}
+          >
+            {submitting ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
+            {submitting ? 'Submitting…' : 'Submit'}
+          </button>
         </div>
       )}
       <div style={{ position: 'relative' }}>
