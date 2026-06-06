@@ -1644,7 +1644,7 @@ function EventDetailPane({
             <p className="mt-1 text-[10px] text-muted-foreground/70 italic">
               Action items moved to Suggested tasks above.
             </p>
-            <div className="flex justify-end mt-1.5">
+            <div className="flex justify-end items-center gap-2 mt-1.5">
               {linkedDealId && (
                 <AddToDealCalendarInlineAction
                   dealId={linkedDealId}
