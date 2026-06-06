@@ -1090,10 +1090,11 @@ export function EndOfDayTab({
 // ─── detail pane ────────────────────────────────────────────
 function EventDetailPane({
   event, contactsByEmail, activityEntries, userFirstName, snoozedUntil,
-  deals, onBack, onResolve, onDismiss, onSnooze,
+  deals, linkedDealId, onBack, onResolve, onDismiss, onSnooze,
   onLinkDeal, onNoteAdded, onEmailSent, onCreateTask,
 }: {
   event: CalendarEvent;
+  linkedDealId?: string | null;
   contactsByEmail: Record<string, ContactInfo>;
   activityEntries: ActivityEntry[];
   userFirstName: string;
