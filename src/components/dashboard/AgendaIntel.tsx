@@ -67,7 +67,6 @@ import { EventClaapLinker } from '@/components/dashboard/EventClaapLinker';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCompany } from '@/hooks/useCompany';
 import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
-import { formatDistanceToNow } from 'date-fns';
 
 // ── Types ─────────────────────────────────────────────────────
 type RangeKey = 'today' | '3d' | '7d';
