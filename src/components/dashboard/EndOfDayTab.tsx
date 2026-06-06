@@ -1436,7 +1436,7 @@ function EventDetailPane({
         {/* Action items */}
         <section>
           <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">Action items</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 [&>*]:min-w-0">
+          <div className="flex flex-row flex-nowrap items-stretch gap-2 w-full [&>*]:flex-1 [&>*]:min-w-0">
             <MeetingFollowupInlineAction
               eventId={event.id}
               eventTitle={eventTitle}
@@ -1463,20 +1463,6 @@ function EventDetailPane({
               }))}
               onLinkedDeal={(d) => onLinkDeal(d)}
             />
-          </div>
-          <div className="mt-2 space-y-2">
-            <FindATimeDialog
-              open={scheduleNextOpen}
-              onOpenChange={setScheduleNextOpen}
-              defaultTitle={`Follow-up: ${eventTitle}`}
-              attendees={externals
-                .filter((a) => a.email)
-                .map((a) => ({ email: a.email!, name: a.display_name || a.email }))}
-              onScheduled={() => {
-                toast.success('Calendar invite sent');
-                onEmailSent('Sent calendar invite (Schedule next)');
-              }}
-            />
             <MeetingClaapInlineAction
               eventId={event.id}
               eventTitle={eventTitle}
@@ -1490,6 +1476,20 @@ function EventDetailPane({
                 responseStatus: a.response_status,
               }))}
               onOpenPicker={() => setClaapLinkerOpen(true)}
+            />
+          </div>
+          <div className="mt-2 space-y-2">
+            <FindATimeDialog
+              open={scheduleNextOpen}
+              onOpenChange={setScheduleNextOpen}
+              defaultTitle={`Follow-up: ${eventTitle}`}
+              attendees={externals
+                .filter((a) => a.email)
+                .map((a) => ({ email: a.email!, name: a.display_name || a.email }))}
+              onScheduled={() => {
+                toast.success('Calendar invite sent');
+                onEmailSent('Sent calendar invite (Schedule next)');
+              }}
             />
           </div>
 
