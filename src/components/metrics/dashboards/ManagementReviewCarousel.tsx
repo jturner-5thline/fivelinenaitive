@@ -166,6 +166,54 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     setJustSaved(true);
     window.setTimeout(() => setJustSaved(false), 1800);
   };
+
+  // Per-report-tab metadata used by the Submit-for-review email.
+  // Index aligns with PAGES order (4=JT, 5=JM, 6=SW).
+  const REPORT_TAB_META: Record<number, { tabSlug: 'jt' | 'jm' | 'sw'; ownerName: string; ownerEmail: string }> = {
+    4: { tabSlug: 'jt', ownerName: 'James Turner',   ownerEmail: 'jturner@5thline.co' },
+    5: { tabSlug: 'jm', ownerName: 'John Moffitt',   ownerEmail: 'jmoffitt@5thline.co' },
+    6: { tabSlug: 'sw', ownerName: 'Scott Williams', ownerEmail: 'swilliams@5thline.co' },
+  };
+  const REVIEW_RECIPIENTS = [
+    'mclark@5thline.co',
+    'jturner@5thline.co',
+    'jmoffitt@5thline.co',
+    'swilliams@5thline.co',
+  ];
+
+  const handleSubmitForReview = async () => {
+    const meta = REPORT_TAB_META[activeIndex];
+    if (!meta || submitting) return;
+    setSubmitting(true);
+    try {
+      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fivelinenaitive.lovable.app';
+      const url = `${origin}/insights?tab=${meta.tabSlug}`;
+      const stamp = Date.now();
+      // Fan-out: one send per recipient (the send-transactional-email function
+      // takes a single recipient). Fire in parallel and require all to succeed.
+      const results = await Promise.all(
+        REVIEW_RECIPIENTS.map((recipient) =>
+          supabase.functions.invoke('send-transactional-email', {
+            body: {
+              templateName: 'insights-report-ready',
+              recipientEmail: recipient,
+              idempotencyKey: `insights-report-ready-${meta.tabSlug}-${stamp}-${recipient}`,
+              templateData: { ownerName: meta.ownerName, url },
+            },
+          }),
+        ),
+      );
+      const failed = results.find((r) => r.error);
+      if (failed?.error) throw failed.error;
+      sonnerToast.success('Report submitted — review email sent');
+    } catch (err) {
+      console.error('Failed to submit insights report for review', err);
+      sonnerToast.error('Could not send review email. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const attemptSetActiveIndex = useCallback((nextIndex: number | ((prev: number) => number)) => {
     if (reportSave.hasUnsavedChanges) {
       sonnerToast.error('You have unsaved changes. Save the report before leaving this tab.');
