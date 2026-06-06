@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect, useMemo, TouchEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Save as SaveIcon, Check, Send, Loader2 } from 'lucide-react';
+import { Save as SaveIcon, Check, Send, Loader2, Lock, Unlock } from 'lucide-react';
 import { toast as sonnerToast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { ManagementReviewDashboard } from './ManagementReviewDashboard';
@@ -17,6 +17,7 @@ import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { InsightsUserCommentsDropdown } from '@/components/insights/comments/InsightsUserCommentsDropdown';
 import { InsightsContextualSurface } from '@/components/insights/InsightsContextualSurface';
+import { useInsightsReportSubmission } from '@/hooks/useInsightsReportSubmission';
 
 type ReportSelection = {
   period: 'monthly' | 'quarterly';
@@ -63,7 +64,7 @@ function useSelectionFromGlobalPeriod(): { selection: ReportSelection; ready: bo
   }, [rp?.view, rp?.period]);
 }
 
-function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => void }) {
+function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady, locked = false, lockBanner }: { reportKey: string; defaultAuthor: string; persona: string; onSaveReady?: (save: (() => Promise<boolean>) | null, canEdit: boolean, hasUnsavedChanges: boolean) => void; locked?: boolean; lockBanner?: JSX.Element | null }) {
   // The active period is derived from the GLOBAL Insights reporting period
   // header (Month / Quarter + period dropdown). The composite key
   // `qir:<reportKey>:<period_type>:<period_value>` uniquely identifies each
@@ -100,22 +101,36 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
     // mutated from inside the report editor.
   );
 
+  // When the report is submitted/locked, neutralize edit/save: callers
+  // get a no-op save and canEdit=false so the carousel Save button hides.
   useEffect(() => {
-    onSaveReady?.(save || null, canEdit !== false, isDirty);
+    if (locked) {
+      onSaveReady?.(null, false, false);
+    } else {
+      onSaveReady?.(save || null, canEdit !== false, isDirty);
+    }
     return () => onSaveReady?.(null, false, false);
-  }, [save, canEdit, isDirty, onSaveReady]);
+  }, [save, canEdit, isDirty, onSaveReady, locked]);
 
   if (!selectionLoaded) return null;
 
+  const effectiveCanEdit = locked ? false : canEdit;
+  const noopSave = useCallback(async () => true, []);
+
   return (
     <>
+      {lockBanner}
+      <div
+        style={locked ? { pointerEvents: 'none', opacity: 0.85, filter: 'saturate(0.85)' } : undefined}
+        aria-disabled={locked || undefined}
+      >
       <QuarterlyInsightsReportPage
         s={state}
         set={setState}
         reset={reset}
         print={print}
-        save={save}
-        canEdit={canEdit}
+        save={locked ? noopSave : save}
+        canEdit={effectiveCanEdit}
         reportKey={reportKey}
         titlePrefix={persona}
         ownerName={defaultAuthor}
@@ -125,6 +140,7 @@ function QuarterlyReportSlot({ reportKey, defaultAuthor, persona, onSaveReady }:
         isSaving={isSaving}
         unsavedChangesWarning={unsavedChangesWarning}
       />
+      </div>
     </>
   );
 }
