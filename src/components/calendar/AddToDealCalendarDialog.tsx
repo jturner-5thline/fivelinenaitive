@@ -320,7 +320,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
                   )}
                 </div>
               )}
-              {!prefill.parsed.date && (
+              {!date && (
                 <p className="mt-1 text-xs text-amber-500">No date parsed — please pick one.</p>
               )}
             </div>
