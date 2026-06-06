@@ -36,6 +36,7 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useDailyDismissals } from '@/hooks/useDailyDismissals';
 import { useDbPersistentClears } from '@/hooks/useDbPersistentClears';
+import { AddToDealCalendarProvider } from '@/components/calendar/AddToDealCalendarProvider';
 
 // Reused from the main Email widget pop-up so the AI Assist experience
 // (prompts, actions, summaries, suggested replies) is identical here.
@@ -1956,14 +1957,15 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                   paddingBottom: 'clamp(0.75rem, 1.2vw, 1.5rem)',
                 }}
               >
-                <div
-                  key={activeTab}
-                  className={cn(
-                    'min-w-0 max-w-full',
-                    slideDirection === 'left' && 'animate-slide-in-from-right',
-                    slideDirection === 'right' && 'animate-slide-in-from-left',
-                  )}
-                >
+                <AddToDealCalendarProvider>
+                  <div
+                    key={activeTab}
+                    className={cn(
+                      'min-w-0 max-w-full',
+                      slideDirection === 'left' && 'animate-slide-in-from-right',
+                      slideDirection === 'right' && 'animate-slide-in-from-left',
+                    )}
+                  >
                   {activeTab === 'agenda' && (
                     <div className="h-[70vh] min-h-[500px] flex flex-col min-h-0">
                       {targetUserId === MOFFITT_USER_ID && (
@@ -1994,7 +1996,8 @@ export function DailyBriefingModal({ open, onOpenChange, title = 'Daily Rundown'
                       briefingType={briefingType}
                     />
                   )}
-                </div>
+                  </div>
+                </AddToDealCalendarProvider>
               </ScrollArea>
               </div>
             </div>
