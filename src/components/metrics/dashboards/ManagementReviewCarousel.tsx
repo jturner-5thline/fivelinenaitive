@@ -384,9 +384,9 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
         <KeyMetricsPage isEditMode={isEditMode} />
       </InsightsContextualSurface>
     ) },
-    { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot key="qir-slot-JT" reportKey="report-1" defaultAuthor="James Turner"   persona="JT" onSaveReady={handleSaveReady} /> },
-    { title: 'Quarterly Insights Report — JM', tabLabel: 'JM', render: () => <QuarterlyReportSlot key="qir-slot-JM" reportKey="report-2" defaultAuthor="John Moffitt"   persona="JM" onSaveReady={handleSaveReady} /> },
-    { title: 'Quarterly Insights Report — SW', tabLabel: 'SW', render: () => <QuarterlyReportSlot key="qir-slot-SW" reportKey="report-3" defaultAuthor="Scott Williams" persona="SW" onSaveReady={handleSaveReady} /> },
+    { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot key="qir-slot-JT" reportKey="report-1" defaultAuthor="James Turner"   persona="JT" onSaveReady={handleSaveReady} locked={activeIndex === 4 && isLocked} lockBanner={activeIndex === 4 ? lockBanner : null} /> },
+    { title: 'Quarterly Insights Report — JM', tabLabel: 'JM', render: () => <QuarterlyReportSlot key="qir-slot-JM" reportKey="report-2" defaultAuthor="John Moffitt"   persona="JM" onSaveReady={handleSaveReady} locked={activeIndex === 5 && isLocked} lockBanner={activeIndex === 5 ? lockBanner : null} /> },
+    { title: 'Quarterly Insights Report — SW', tabLabel: 'SW', render: () => <QuarterlyReportSlot key="qir-slot-SW" reportKey="report-3" defaultAuthor="Scott Williams" persona="SW" onSaveReady={handleSaveReady} locked={activeIndex === 6 && isLocked} lockBanner={activeIndex === 6 ? lockBanner : null} /> },
   ];
 
   const goTo = useCallback((dir: -1 | 1) => {
@@ -416,6 +416,31 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   const activePage = PAGES[activeIndex];
   const isReportTab = activeIndex >= 4;
 
+  const submittedAtLabel = submission.row?.submitted_at
+    ? new Date(submission.row.submitted_at).toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+    : null;
+  const lockBanner = isReportTab && isLocked ? (
+    <div style={{
+      maxWidth: 1200,
+      margin: '0 auto 8px',
+      padding: '10px 14px',
+      borderRadius: 10,
+      background: 'rgba(126,184,247,0.08)',
+      border: '1px solid rgba(126,184,247,0.35)',
+      color: 'rgba(200,225,255,0.95)',
+      fontSize: 12,
+      lineHeight: 1.5,
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+    }}>
+      <Lock size={14} />
+      <span>
+        Submitted for review{submission.row?.submitted_by_name ? ` by ${submission.row.submitted_by_name}` : ''}{submittedAtLabel ? ` on ${submittedAtLabel}` : ''}. This report is locked. Click Unsubmit to reopen for editing.
+      </span>
+    </div>
+  ) : null;
+
   return (
     <div
       style={{ position: 'relative' }}
@@ -426,6 +451,7 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
       <InsightsReportingBar tabsSlot={tabsBarWithActions} />
       {isReportTab && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 12, margin: '0 auto 12px', maxWidth: 1200, padding: '0 16px', flexWrap: 'wrap' }}>
+          {!isLocked && (
           <button
             type="button"
               onClick={() => { void handleSaveClick(); }}
@@ -455,13 +481,16 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
             {justSaved ? <Check size={12} /> : <SaveIcon size={12} />}
               {justSaved ? 'Saved' : reportSave.hasUnsavedChanges ? 'Save changes' : 'Save'}
           </button>
-          {/* Submit-for-review — only on JT/JM/SW report tabs. Filled
+          )}
+          {/* Submit / Unsubmit — only on JT/JM/SW report tabs. Filled
               primary style to read as distinct from the ghost Save button. */}
           <button
             type="button"
-            onClick={() => { void handleSubmitForReview(); }}
-            disabled={submitting || !REPORT_TAB_META[activeIndex]}
-            title={`Notify reviewers that ${REPORT_TAB_META[activeIndex]?.ownerName ?? "this owner"}'s Insights Report is ready`}
+            onClick={() => { void (isLocked ? handleUnsubmit() : handleSubmitForReview()); }}
+            disabled={submitting || submission.working || !activeMeta || submission.loading}
+            title={isLocked
+              ? `Unsubmit ${activeMeta?.ownerName ?? "this owner"}'s Insights Report — reopens for editing and notifies reviewers`
+              : `Notify reviewers that ${activeMeta?.ownerName ?? "this owner"}'s Insights Report is ready`}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -471,18 +500,28 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
               letterSpacing: '0.04em',
               padding: '6px 14px',
               borderRadius: 999,
-              border: '0.5px solid rgba(80,140,255,0.55)',
+              border: isLocked
+                ? '0.5px solid rgba(245,158,11,0.55)'
+                : '0.5px solid rgba(80,140,255,0.55)',
               cursor: submitting ? 'wait' : 'pointer',
               color: '#0a2540',
-              background: 'linear-gradient(180deg, #7ed0ff, #4db8ff)',
+              background: isLocked
+                ? 'linear-gradient(180deg, #fcd34d, #f59e0b)'
+                : 'linear-gradient(180deg, #7ed0ff, #4db8ff)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',
               opacity: submitting ? 0.7 : 1,
               transition: 'opacity .15s',
             }}
           >
-            {submitting ? <Loader2 size={12} className="animate-spin" /> : <Send size={12} />}
-            {submitting ? 'Submitting…' : 'Submit'}
+            {submitting
+              ? <Loader2 size={12} className="animate-spin" />
+              : isLocked
+                ? <Unlock size={12} />
+                : <Send size={12} />}
+            {submitting
+              ? (isLocked ? 'Unsubmitting…' : 'Submitting…')
+              : (isLocked ? 'Unsubmit' : ((submission.row?.submit_count ?? 0) > 0 ? 'Resubmit' : 'Submit'))}
           </button>
         </div>
       )}
