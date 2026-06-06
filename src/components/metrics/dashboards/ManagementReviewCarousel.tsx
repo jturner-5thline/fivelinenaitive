@@ -203,10 +203,10 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
 
   // Per-report-tab metadata used by the Submit-for-review email.
   // Index aligns with PAGES order (4=JT, 5=JM, 6=SW).
-  const REPORT_TAB_META: Record<number, { tabSlug: 'jt' | 'jm' | 'sw'; ownerName: string; ownerEmail: string }> = {
-    4: { tabSlug: 'jt', ownerName: 'James Turner',   ownerEmail: 'jturner@5thline.co' },
-    5: { tabSlug: 'jm', ownerName: 'John Moffitt',   ownerEmail: 'jmoffitt@5thline.co' },
-    6: { tabSlug: 'sw', ownerName: 'Scott Williams', ownerEmail: 'swilliams@5thline.co' },
+  const REPORT_TAB_META: Record<number, { tabSlug: 'jt' | 'jm' | 'sw'; ownerName: string; ownerEmail: string; reportKey: string }> = {
+    4: { tabSlug: 'jt', ownerName: 'James Turner',   ownerEmail: 'jturner@5thline.co',  reportKey: 'report-1' },
+    5: { tabSlug: 'jm', ownerName: 'John Moffitt',   ownerEmail: 'jmoffitt@5thline.co', reportKey: 'report-2' },
+    6: { tabSlug: 'sw', ownerName: 'Scott Williams', ownerEmail: 'swilliams@5thline.co', reportKey: 'report-3' },
   };
   const REVIEW_RECIPIENTS = [
     'mclark@5thline.co',
@@ -215,34 +215,76 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
     'swilliams@5thline.co',
   ];
 
+  // Active report tab + period drives the per-(tab × period) submission lock.
+  const activeMeta = REPORT_TAB_META[activeIndex];
+  const { selection: activeSelection } = useSelectionFromGlobalPeriod();
+  const activePeriodKey = activeMeta ? periodSlug(activeSelection) : null;
+  const submission = useInsightsReportSubmission(
+    activeMeta ? activeMeta.reportKey : null,
+    activePeriodKey,
+  );
+  const isLocked = !!activeMeta && submission.isLocked;
+
+  const sendReviewEmails = async (
+    meta: { tabSlug: 'jt' | 'jm' | 'sw'; ownerName: string },
+    state: 'submitted' | 'resubmitted' | 'unsubmitted',
+    actorName: string,
+  ) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fivelinenaitive.lovable.app';
+    const url = `${origin}/insights?tab=${meta.tabSlug}`;
+    const stamp = Date.now();
+    const results = await Promise.all(
+      REVIEW_RECIPIENTS.map((recipient) =>
+        supabase.functions.invoke('send-transactional-email', {
+          body: {
+            templateName: 'insights-report-ready',
+            recipientEmail: recipient,
+            idempotencyKey: `insights-report-${state}-${meta.tabSlug}-${stamp}-${recipient}`,
+            templateData: { ownerName: meta.ownerName, url, state, actorName },
+          },
+        }),
+      ),
+    );
+    const failed = results.find((r) => r.error);
+    if (failed?.error) throw failed.error;
+  };
+
   const handleSubmitForReview = async () => {
-    const meta = REPORT_TAB_META[activeIndex];
+    const meta = activeMeta;
     if (!meta || submitting) return;
     setSubmitting(true);
     try {
-      const origin = typeof window !== 'undefined' ? window.location.origin : 'https://fivelinenaitive.lovable.app';
-      const url = `${origin}/insights?tab=${meta.tabSlug}`;
-      const stamp = Date.now();
-      // Fan-out: one send per recipient (the send-transactional-email function
-      // takes a single recipient). Fire in parallel and require all to succeed.
-      const results = await Promise.all(
-        REVIEW_RECIPIENTS.map((recipient) =>
-          supabase.functions.invoke('send-transactional-email', {
-            body: {
-              templateName: 'insights-report-ready',
-              recipientEmail: recipient,
-              idempotencyKey: `insights-report-ready-${meta.tabSlug}-${stamp}-${recipient}`,
-              templateData: { ownerName: meta.ownerName, url },
-            },
-          }),
-        ),
-      );
-      const failed = results.find((r) => r.error);
-      if (failed?.error) throw failed.error;
-      sonnerToast.success('Report submitted — review email sent');
+      const isResubmit = (submission.row?.submit_count ?? 0) > 0;
+      const result = await submission.submit();
+      if (!result) throw new Error('Submission state did not persist');
+      const actorName = result.submitted_by_name || 'A teammate';
+      await sendReviewEmails(meta, isResubmit ? 'resubmitted' : 'submitted', actorName);
+      sonnerToast.success(isResubmit ? 'Report resubmitted — review email sent' : 'Report submitted — review email sent');
     } catch (err) {
       console.error('Failed to submit insights report for review', err);
-      sonnerToast.error('Could not send review email. Please try again.');
+      sonnerToast.error('Could not submit report. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleUnsubmit = async () => {
+    const meta = activeMeta;
+    if (!meta || submitting) return;
+    const ok = typeof window !== 'undefined'
+      ? window.confirm('Unsubmit this report? It will be reopened for editing and reviewers will be notified.')
+      : true;
+    if (!ok) return;
+    setSubmitting(true);
+    try {
+      const result = await submission.unsubmit();
+      if (!result) throw new Error('Unsubmit did not persist');
+      const actorName = result.unsubmitted_by_name || 'A teammate';
+      await sendReviewEmails(meta, 'unsubmitted', actorName);
+      sonnerToast.success('Report unsubmitted — reviewers notified');
+    } catch (err) {
+      console.error('Failed to unsubmit insights report', err);
+      sonnerToast.error('Could not unsubmit report. Please try again.');
     } finally {
       setSubmitting(false);
     }
