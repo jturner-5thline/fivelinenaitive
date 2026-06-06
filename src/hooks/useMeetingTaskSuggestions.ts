@@ -43,7 +43,7 @@ export interface MeetingTaskSuggestion {
   external_mention: string | null;
   /** How the assignee was resolved: by mention, by deal-manager fallback,
    *  by manual user pick, or unassigned. Drives the UI chip styling. */
-  assignment_source: 'mention' | 'deal-manager' | 'manual' | null;
+  assignment_source: 'mention' | 'deal-manager' | 'manual' | 'viewer' | null;
   due_date: string | null;
   status: SuggestionStatus;
   created_task_id: string | null;
