@@ -31,6 +31,10 @@ export interface InsightsUserComment {
 
 /** report_key → tab metadata. Keep in sync with ManagementReviewCarousel PAGES. */
 const QIR_REPORT_TAB: Record<string, { label: string; index: number }> = {
+  'insights:agenda':      { label: 'Agenda',       index: 0 },
+  'insights:dashboard':   { label: 'Dashboard',    index: 1 },
+  'insights:forecasts':   { label: 'Forecasts',    index: 2 },
+  'insights:key-metrics': { label: 'Key Metrics',  index: 3 },
   'report-1': { label: 'JT Report', index: 4 },
   'report-2': { label: 'JM Report', index: 5 },
   'report-3': { label: 'SW Report', index: 6 },
