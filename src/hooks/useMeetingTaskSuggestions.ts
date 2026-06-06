@@ -567,6 +567,39 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     return n;
   };
 
+  /**
+   * Clear any persisted assignee on a suggestion. The render-time
+   * fallback chain then resolves to deal manager / current viewer, so
+   * the row is never un-actionable.
+   */
+  const clearAssignment = async (s: MeetingTaskSuggestion): Promise<boolean> => {
+    if (!user?.id || !company?.id) return false;
+    const row = {
+      org_company_id: company.id,
+      scope_key: scopeKey,
+      meeting_id: meetingRowId,
+      event_id: eventId,
+      recording_id: source === 'claap' ? recordingRowId : null,
+      suggestion_id: s.suggestion_id,
+      text: s.text,
+      assignee_email: null,
+      external_mention: s.external_mention,
+      due_date: s.due_date,
+      source: s.source,
+      status: s.status,
+      created_task_id: s.created_task_id,
+    };
+    const { error } = await supabase
+      .from('meeting_task_suggestions')
+      .upsert(row, { onConflict: 'scope_key,suggestion_id' });
+    if (error) {
+      toast.error('Failed to clear assignment');
+      return false;
+    }
+    queryClient.invalidateQueries({ queryKey: qk(eventId, meetingRowId) });
+    return true;
+  };
+
   const dismiss = async (s: MeetingTaskSuggestion) => {
     if (!user?.id || !company?.id) return;
     const row = {
@@ -637,10 +670,12 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
     isLoading: rawQuery.isLoading || persistedQuery.isLoading,
     pendingCount: suggestions.filter((s) => s.status === 'pending').length,
     internalMembers,
+    currentViewer: user?.id ? internalMembers.find((m) => m.user_id === user.id) ?? null : null,
     approve,
     approveAll,
     assignManually,
     bulkAssignUnassigned,
+    clearAssignment,
     dismiss,
     dismissAll,
     undo,
