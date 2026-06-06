@@ -10,6 +10,7 @@ import { toast } from '@/hooks/use-toast';
 import { useFinancialComments } from '@/hooks/useFinancialComments';
 import { FinancialCommentsSection } from './saas-model/FinancialCommentsSection';
 import { Separator } from '@/components/ui/separator';
+import { HighlightCalendarMenu } from '@/components/calendar/HighlightCalendarMenu';
 
 interface DealSpaceNotesTabProps {
   dealId: string;
@@ -157,7 +158,18 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
         {/* Main editor */}
         <div className="flex-1 flex flex-col min-w-0">
           {selectedNote ? (
-            <DealSpaceNoteEditor
+            <HighlightCalendarMenu
+              editableMode
+              className="flex-1 flex flex-col min-w-0"
+              sourceCtx={{
+                module: 'deal_memo',
+                recordId: selectedNote.id,
+                sourceTimestamp: selectedNote.updated_at || selectedNote.created_at || new Date().toISOString(),
+                dealId,
+                label: selectedNote.title,
+              }}
+            >
+              <DealSpaceNoteEditor
               note={selectedNote}
               onUpdate={updateNote}
               onDownload={handleDownloadDocx}
@@ -169,7 +181,8 @@ export function DealSpaceNotesTab({ dealId }: DealSpaceNotesTabProps) {
               fetchVersions={fetchVersions}
               restoreVersion={restoreVersion}
               onRequestComment={(text) => { setPendingQuote(text); setShowComments(true); }}
-            />
+              />
+            </HighlightCalendarMenu>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
               <FileText className="h-12 w-12 mb-3 opacity-30" />
