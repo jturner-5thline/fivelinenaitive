@@ -37,7 +37,7 @@ interface Props {
 export function AddKpiDialog({ open, onClose, onPickTemplate, onPickCustom, onPickMetric }: Props) {
   const [step, setStep] = useState<Step>('chooser');
   const [query, setQuery] = useState('');
-  const { data: customMetrics } = useCustomMetrics();
+  const { metrics: customMetrics } = useCustomMetrics();
   const groups = useMemo(
     () => buildInsightsMetricOptions(customMetrics ?? []),
     [customMetrics],
