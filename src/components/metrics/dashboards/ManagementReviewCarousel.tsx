@@ -14,6 +14,7 @@ import {
 import { useCompanyDashboardConfig } from '@/hooks/useCompanyDashboardConfig';
 import { useInsightsTimeframeOptional } from '@/contexts/InsightsTimeframeContext';
 import { InsightsUserCommentsDropdown } from '@/components/insights/comments/InsightsUserCommentsDropdown';
+import { InsightsContextualSurface } from '@/components/insights/InsightsContextualSurface';
 
 type ReportSelection = {
   period: 'monthly' | 'quarterly';
@@ -237,10 +238,26 @@ export function ManagementReviewCarousel({ isEditMode = false, onExitEditMode }:
   );
 
   const PAGES: { title: string; tabLabel: string; render: () => JSX.Element }[] = [
-    { title: 'Agenda',                               tabLabel: 'Agenda',     render: () => <AgendaEditor /> },
-    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} /> },
-    { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => <BenchmarkForecastsPage /> },
-    { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => <KeyMetricsPage /> },
+    { title: 'Agenda',                               tabLabel: 'Agenda',     render: () => (
+      <InsightsContextualSurface reportKey="insights:agenda" reportLabel="Agenda" sectionIdPrefix="agenda-section-" fallbackSourceLabel="Agenda">
+        <AgendaEditor />
+      </InsightsContextualSurface>
+    ) },
+    { title: 'Insights Dashboard',                   tabLabel: 'Dashboard',  render: () => (
+      <InsightsContextualSurface reportKey="insights:dashboard" reportLabel="Insights Dashboard" sectionIdPrefix="dashboard-section-" fallbackSourceLabel="Insights Dashboard">
+        <ManagementReviewDashboard isEditMode={isEditMode} onExitEditMode={onExitEditMode} />
+      </InsightsContextualSurface>
+    ) },
+    { title: 'Benchmark Forecasts',                  tabLabel: 'Forecasts',  render: () => (
+      <InsightsContextualSurface reportKey="insights:forecasts" reportLabel="Benchmark Forecasts" sectionIdPrefix="forecasts-section-" fallbackSourceLabel="Forecasts">
+        <BenchmarkForecastsPage />
+      </InsightsContextualSurface>
+    ) },
+    { title: 'Key Metrics',                          tabLabel: 'Key Metrics',render: () => (
+      <InsightsContextualSurface reportKey="insights:key-metrics" reportLabel="Key Metrics" sectionIdPrefix="keymetrics-section-" fallbackSourceLabel="Key Metrics">
+        <KeyMetricsPage />
+      </InsightsContextualSurface>
+    ) },
     { title: 'Quarterly Insights Report — JT', tabLabel: 'JT', render: () => <QuarterlyReportSlot key="qir-slot-JT" reportKey="report-1" defaultAuthor="James Turner"   persona="JT" onSaveReady={handleSaveReady} /> },
     { title: 'Quarterly Insights Report — JM', tabLabel: 'JM', render: () => <QuarterlyReportSlot key="qir-slot-JM" reportKey="report-2" defaultAuthor="John Moffitt"   persona="JM" onSaveReady={handleSaveReady} /> },
     { title: 'Quarterly Insights Report — SW', tabLabel: 'SW', render: () => <QuarterlyReportSlot key="qir-slot-SW" reportKey="report-3" defaultAuthor="Scott Williams" persona="SW" onSaveReady={handleSaveReady} /> },
