@@ -82,6 +82,7 @@ const PEOPLE = [
 const ACTIVE_INITIATIVE_OWNERS = ['James Turner', 'Niki Heikali', 'Florencia Fustinoni', 'Paz Pina', 'McKenzie Clark'];
 const PRIMARY_AUTHORS = ['James Turner', 'Scott Williams', 'John Moffitt'];
 const QUARTERS = ['Q1 2026', 'Q2 2026', 'Q3 2026', 'Q4 2026', 'Q1 2027', 'Q2 2027', 'Q3 2027', 'Q4 2027'];
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const QUARTER_MONTHS: Record<string, string[]> = {
   Q1: ['January', 'February', 'March'],
   Q2: ['April', 'May', 'June'],
