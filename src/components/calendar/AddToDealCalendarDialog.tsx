@@ -72,10 +72,12 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
   // which case the locked-deal UI may not surface it but we still want
   // submit/toggle gates to recognise the link).
   const effectiveDealId = dealId ?? prefill?.ctx.dealId ?? null;
+  const selectedDeal = effectiveDealId ? deals.find((d) => d.id === effectiveDealId) : null;
+  const hasResolvedDeal = !!effectiveDealId;
 
   useEffect(() => {
     if (!open || !prefill) return;
-    setKind(noLinkedDeal ? 'task' : null);
+    setKind('task');
     setTitle(prefill.title);
     setDate(prefill.parsed.date ?? undefined);
     setTime('');
@@ -99,15 +101,13 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
       .slice(0, 12);
   }, [deals, dealQuery]);
 
-  const selectedDeal = dealId ? deals.find((d) => d.id === dealId) : null;
-
   // Tasks: title only (date + deal optional). Events: title + date + deal.
   const canSave =
     !!kind &&
     !!user &&
     !!title.trim() &&
     !submitting &&
-    (kind === 'event' ? !!effectiveDealId && !!date : true);
+    (kind === 'event' ? hasResolvedDeal && !!date : true);
 
   const handleSave = async () => {
     if (!canSave || !prefill || !user || !kind) return;
@@ -218,7 +218,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
           </div>
 
           {/* Kind toggle — hidden when there's no linked deal (task-only) */}
-          {!noLinkedDeal && (
+          {hasResolvedDeal && (
           <div>
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Item type</Label>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -255,7 +255,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
           </div>
 
           {/* Deal — hidden when there's no linked deal (plain-task mode) */}
-          {!noLinkedDeal && (
+          {hasResolvedDeal && (
           <div>
             <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
               Deal
