@@ -1317,15 +1317,39 @@ function EventDetailPane({
       <div className="flex-1 min-h-0 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden px-4 py-3 space-y-5">
         {/* Attendees */}
         <section>
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80">
-              Attendees ({attendees.length})
-            </h3>
-            {allEmails.length > 0 && (
-              <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1" onClick={() => setComposerForAll(v => !v)}>
-                <Mail className="h-3 w-3" /> Email all
-              </Button>
-            )}
+          <div className="flex items-center justify-between gap-2 mb-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => setAttendeesExpanded((v) => !v)}
+              className="flex items-center gap-1 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 hover:text-white min-w-0"
+              aria-expanded={attendeesExpanded}
+            >
+              {attendeesExpanded
+                ? <ChevronDown className="h-3 w-3 shrink-0" />
+                : <ChevronRight className="h-3 w-3 shrink-0" />}
+              <span className="truncate">Attendees ({attendees.length})</span>
+            </button>
+            <div className="flex items-center gap-1 shrink-0">
+              {allEmails.length > 0 && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 text-[10px] gap-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(allEmails.join(', '));
+                    toast.success(`Copied ${allEmails.length} email${allEmails.length === 1 ? '' : 's'}`);
+                  }}
+                  title="Copy all attendee emails"
+                >
+                  <CopyIcon className="h-3 w-3" /> Copy all
+                </Button>
+              )}
+              {allEmails.length > 0 && (
+                <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1" onClick={() => setComposerForAll(v => !v)}>
+                  <Mail className="h-3 w-3" /> Email all
+                </Button>
+              )}
+            </div>
           </div>
           {composerForAll && allEmails.length > 0 && (
             <div className="mb-2">
@@ -1339,6 +1363,33 @@ function EventDetailPane({
               />
             </div>
           )}
+          {!attendeesExpanded ? (
+            <div className="flex items-center flex-wrap gap-1.5">
+              {attendees.slice(0, 3).map((a, i) => {
+                const key = (a.email || '').trim().toLowerCase();
+                const m = contactsByEmail[key];
+                const name = m?.fullName || a.display_name || a.email || 'Unknown';
+                return (
+                  <span
+                    key={`${event.id}::compact::${key || i}`}
+                    className="inline-flex items-center max-w-[180px] h-6 px-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/85"
+                    title={a.email || name}
+                  >
+                    <span className="truncate">{name}</span>
+                  </span>
+                );
+              })}
+              {attendees.length > 3 && (
+                <button
+                  type="button"
+                  onClick={() => setAttendeesExpanded(true)}
+                  className="inline-flex items-center h-6 px-2 rounded-full bg-primary/[0.08] border border-primary/30 text-[11px] text-primary hover:bg-primary/[0.14]"
+                >
+                  +{attendees.length - 3} more
+                </button>
+              )}
+            </div>
+          ) : (
           <div className="space-y-1.5">
             {attendees.map((a, i) => {
               const key = (a.email || '').trim().toLowerCase();
@@ -1406,6 +1457,7 @@ function EventDetailPane({
               );
             })}
           </div>
+          )}
         </section>
 
         {/* Saved notes — selectable narrative */}
