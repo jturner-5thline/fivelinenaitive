@@ -513,7 +513,7 @@ export function useQuarterlyReportState(
     return () => {
       cancelled = true;
     };
-  }, [company?.id, configKey, seed]);
+  }, [company?.id, configKey, seed, sharedKpiKey]);
 
   const setState: React.Dispatch<React.SetStateAction<ReportState>> = (updater) => {
     setStateLocal(prev => {
