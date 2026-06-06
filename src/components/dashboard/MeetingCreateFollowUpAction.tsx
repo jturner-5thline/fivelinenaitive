@@ -114,9 +114,9 @@ export function MeetingCreateFollowUpAction({
           align="start"
           side="bottom"
           sideOffset={6}
-          collisionPadding={12}
+          collisionPadding={{ top: 12, bottom: 24, left: 12, right: 12 }}
           avoidCollisions
-          className="w-[500px] max-w-[calc(100vw-2rem)] p-3 z-[80] rounded-lg border-transparent glass-border-soft bg-card text-popover-foreground shadow-2xl shadow-black/40 flex flex-col max-h-[min(var(--radix-popover-content-available-height),32rem)] overflow-hidden"
+          className="w-[500px] max-w-[calc(100vw-2rem)] p-2.5 z-[80] rounded-lg border-transparent glass-border-soft bg-card text-popover-foreground shadow-2xl shadow-black/40 flex flex-col max-h-[min(var(--radix-popover-content-available-height),26rem)] overflow-hidden"
         >
           {prefill && (
             <AddToDealCalendarForm
@@ -170,9 +170,9 @@ export function MeetingCreateFollowUpAction({
         align="start"
         side="bottom"
         sideOffset={6}
-        collisionPadding={12}
+        collisionPadding={{ top: 12, bottom: 24, left: 12, right: 12 }}
         avoidCollisions
-        className="w-[500px] max-w-[calc(100vw-2rem)] p-3 z-[80] rounded-lg border-transparent glass-border-soft bg-card text-popover-foreground shadow-2xl shadow-black/40 flex flex-col max-h-[min(var(--radix-popover-content-available-height),32rem)] overflow-hidden"
+        className="w-[500px] max-w-[calc(100vw-2rem)] p-2.5 z-[80] rounded-lg border-transparent glass-border-soft bg-card text-popover-foreground shadow-2xl shadow-black/40 flex flex-col max-h-[min(var(--radix-popover-content-available-height),26rem)] overflow-hidden"
       >
         {prefill && (
           <AddToDealCalendarForm
