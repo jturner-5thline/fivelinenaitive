@@ -78,16 +78,16 @@ export function MeetingCreateFollowUpAction({
       <Button
         size="sm"
         variant="outline"
-        className="h-8 justify-start gap-2 text-xs"
+        className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs"
         onClick={() => { void open(); }}
         disabled={ctx.isLoading && ctx.source === 'none'}
       >
         {effectiveLinkedDealId ? (
-          <CalendarPlus className="h-3.5 w-3.5" />
+          <CalendarPlus className="h-3.5 w-3.5 shrink-0" />
         ) : (
-          <ListPlus className="h-3.5 w-3.5" />
+          <ListPlus className="h-3.5 w-3.5 shrink-0" />
         )}
-        Create follow-up
+        <span className="truncate">Create follow-up</span>
       </Button>
     );
   }
