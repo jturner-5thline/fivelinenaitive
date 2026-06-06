@@ -251,12 +251,8 @@ export function MeetingClaapInlineAction(props: Props) {
   const labelPrefix = band === 'review' ? 'Suggested: ' : '';
 
   // Primary button cell — always rendered to keep the 4-action row balanced.
-  const buttonLabel = (() => {
-    if (band === 'linked') return 'Claap Linked';
-    if (band === 'auto') return `Auto-matched ${scorePct ?? ''}%`.trim();
-    if (band === 'review') return `Suggested ${scorePct ?? ''}%`.trim();
-    return ranking || loadingRecordings ? 'Checking Claap…' : 'Link Claap Recording';
-  })();
+  // Label/click handler match the original `none`-state CTA so we don't change
+  // semantics: the rich suggestion/linked details render in the portaled bar.
   const buttonCell = (
     <Button
       size="sm"
@@ -268,17 +264,13 @@ export function MeetingClaapInlineAction(props: Props) {
         band === 'auto' && 'border-emerald-500/40 bg-emerald-500/[0.08] hover:bg-emerald-500/[0.14]',
         band === 'review' && 'border-amber-500/40 bg-amber-500/[0.08] hover:bg-amber-500/[0.14]',
       )}
-      onClick={() => {
-        if (url) window.open(url, '_blank', 'noopener,noreferrer');
-        else onOpenPicker();
-      }}
-      title={band === 'none' ? undefined : title}
+      onClick={onOpenPicker}
     >
       <Video className="h-3.5 w-3.5 text-primary shrink-0" />
-      <span className="truncate">{buttonLabel}</span>
-      {(ranking || loadingRecordings) && band === 'none' && (
-        <Loader2 className="h-3 w-3 animate-spin shrink-0" />
-      )}
+      <span className="truncate">
+        {ranking || loadingRecordings ? 'Checking Claap…' : 'Link Claap Recording'}
+      </span>
+      {(ranking || loadingRecordings) && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
     </Button>
   );
 
