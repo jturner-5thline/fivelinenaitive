@@ -89,11 +89,8 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
     ? pending.filter((s) => selected.has(s.suggestion_id))
     : pending;
   const hasUnassignedInConsidered = considered.some((s) => !s.assignee_user_id);
-  const approveAllDisabled =
-    considered.length === 0 || hasUnassignedInConsidered || bulkBusy !== null;
-  const approveAllTooltip = hasUnassignedInConsidered
-    ? 'One or more selected tasks have no assignee. Choose assignees first.'
-    : null;
+  const approveAllDisabled = considered.length === 0 || bulkBusy !== null;
+  const approveAllTooltip: string | null = null;
   const unassignedInConsideredCount = considered.filter((s) => !s.assignee_user_id).length;
 
   return (
