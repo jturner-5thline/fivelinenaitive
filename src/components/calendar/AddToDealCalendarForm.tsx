@@ -243,25 +243,37 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
                   placeholder="Search deals…"
                   className="h-8 text-sm"
                 />
-                <div className="max-h-32 overflow-y-auto rounded-md border border-border divide-y divide-border">
-                  {filteredDeals.length === 0 && (
-                    <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground">No deals match.</div>
-                  )}
-                  {filteredDeals.map((d) => (
-                    <button
-                      key={d.id}
-                      type="button"
-                      onClick={() => setDealId(d.id)}
-                      className={cn(
-                        'w-full text-left px-2.5 py-1 text-xs hover:bg-accent',
-                        dealId === d.id && 'bg-accent text-accent-foreground',
-                      )}
-                    >
-                      {d.name}
-                      {d.company && <span className="text-muted-foreground ml-1.5 text-[10px]">{d.company}</span>}
-                    </button>
-                  ))}
-                </div>
+                {!dealQueryActive ? (
+                  <p className="px-0.5 text-[10px] text-muted-foreground">Start typing to search deals.</p>
+                ) : (
+                  <div className="max-h-32 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                    {isSearching && (
+                      <div className="px-2.5 py-1 text-[10px] text-muted-foreground">Searching…</div>
+                    )}
+                    {!isSearching && filteredDeals.length === 0 && (
+                      <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground">No deals match.</div>
+                    )}
+                    {filteredDeals.map((d) => (
+                      <button
+                        key={d.id}
+                        type="button"
+                        onClick={() => { setDealId(d.id); setDealQuery(''); }}
+                        className={cn(
+                          'w-full text-left px-2.5 py-1 text-xs hover:bg-accent',
+                          dealId === d.id && 'bg-accent text-accent-foreground',
+                        )}
+                      >
+                        {d.name}
+                        {d.company && <span className="text-muted-foreground ml-1.5 text-[10px]">{d.company}</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {effectiveDealId && selectedDeal && (
+                  <div className="px-2.5 py-1 rounded-md border border-border bg-muted/30 text-xs truncate">
+                    Selected: {selectedDeal.name}
+                  </div>
+                )}
                 {!dealId && kind === 'event' && (
                   <p className="text-[10px] text-amber-500">Pick a deal — required for events.</p>
                 )}
@@ -419,25 +431,37 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
               placeholder="Search deals…"
               className="h-8 text-sm"
             />
-            <div className="max-h-32 overflow-y-auto rounded-md border border-border divide-y divide-border">
-              {filteredDeals.length === 0 && (
-                <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground">No deals match.</div>
-              )}
-              {filteredDeals.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => setDealId(d.id)}
-                  className={cn(
-                    'w-full text-left px-2.5 py-1 text-xs hover:bg-accent',
-                    dealId === d.id && 'bg-accent text-accent-foreground',
-                  )}
-                >
-                  {d.name}
-                  {d.company && <span className="text-muted-foreground ml-1.5 text-[10px]">{d.company}</span>}
-                </button>
-              ))}
-            </div>
+            {!dealQueryActive ? (
+              <p className="px-0.5 text-[10px] text-muted-foreground">Start typing to search deals.</p>
+            ) : (
+              <div className="max-h-32 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {isSearching && (
+                  <div className="px-2.5 py-1 text-[10px] text-muted-foreground">Searching…</div>
+                )}
+                {!isSearching && filteredDeals.length === 0 && (
+                  <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground">No deals match.</div>
+                )}
+                {filteredDeals.map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => { setDealId(d.id); setDealQuery(''); }}
+                    className={cn(
+                      'w-full text-left px-2.5 py-1 text-xs hover:bg-accent',
+                      dealId === d.id && 'bg-accent text-accent-foreground',
+                    )}
+                  >
+                    {d.name}
+                    {d.company && <span className="text-muted-foreground ml-1.5 text-[10px]">{d.company}</span>}
+                  </button>
+                ))}
+              </div>
+            )}
+            {effectiveDealId && selectedDeal && (
+              <div className="px-2.5 py-1 rounded-md border border-border bg-muted/30 text-xs truncate">
+                Selected: {selectedDeal.name}
+              </div>
+            )}
             {!dealId && kind === 'event' && (
               <p className="text-[10px] text-amber-500">Pick a deal — required for events.</p>
             )}
