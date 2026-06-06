@@ -1487,9 +1487,11 @@ function EventDetailPane({
                 setComposerForAll(true);
               }}
             />
-            <MeetingTasksInlineAction
+            <MeetingCreateFollowUpAction
               eventId={event.id}
-              onOpenTask={(initialTitle) => onCreateTask(initialTitle)}
+              eventTitle={eventTitle}
+              eventStartISO={event.start}
+              linkedDealId={linkedDealId ?? null}
             />
             <MeetingDealInlineAction
               eventId={event.id}
@@ -1501,14 +1503,6 @@ function EventDetailPane({
               }))}
               onLinkedDeal={(d) => onLinkDeal(d)}
             />
-            {linkedDealId ? (
-              <AddToDealCalendarInlineAction
-                dealId={linkedDealId}
-                eventId={event.id}
-                eventTitle={eventTitle}
-                eventStartISO={event.start}
-              />
-            ) : null}
           </div>
           <div className="mt-2 space-y-2">
             <FindATimeDialog
