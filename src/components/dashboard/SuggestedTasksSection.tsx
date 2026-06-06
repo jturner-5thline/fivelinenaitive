@@ -112,6 +112,7 @@ export function SuggestedTasksSection({ eventId, meetingRowId, recordingRowId, s
           {unassignedInConsideredCount > 0 && (
             <AssigneePicker
               members={internalMembers}
+              viewer={currentViewer}
               onSelect={async (m) => {
                 setBulkBusy('approve');
                 try { await bulkAssignUnassigned(considered, m); } finally { setBulkBusy(null); }
