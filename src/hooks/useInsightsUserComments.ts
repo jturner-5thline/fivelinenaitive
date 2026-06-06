@@ -19,6 +19,9 @@ export interface InsightsUserComment {
   /** For qir comments only */
   target_type?: string;
   target_id?: string;
+  /** For qir comments: persisted widget/section title and highlighted snippet */
+  section_label?: string | null;
+  snippet_text?: string | null;
   /** For agenda comments */
   thread_id?: string;
   anchor_text?: string | null;
@@ -67,7 +70,7 @@ export function useInsightsUserComments() {
       const [qirRes, agendaRes, queueRes] = await Promise.all([
         supabase
           .from('qir_comments' as any)
-          .select('id, body, created_at, report_key, target_type, target_id, company_id, author_user_id, period_type, period_key')
+          .select('id, body, created_at, report_key, target_type, target_id, company_id, author_user_id, period_type, period_key, section_label, snippet_text')
           .eq('company_id', companyId)
           .eq('author_user_id', userId)
           .eq('period_type', periodType)
@@ -174,6 +177,8 @@ export function useInsightsUserComments() {
         tab_index: tab.index,
         target_type: r.target_type,
         target_id: r.target_id,
+        section_label: r.section_label ?? null,
+        snippet_text: r.snippet_text ?? null,
         queue_status: (queueByComment[`qir:${r.id}`] as any) ?? null,
       });
     }
