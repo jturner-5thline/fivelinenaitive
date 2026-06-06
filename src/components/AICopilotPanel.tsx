@@ -15,6 +15,7 @@ import { CopilotActionConfirm } from '@/components/copilot/CopilotActionConfirm'
 import { CopilotNameCollisionCard } from '@/components/copilot/CopilotNameCollisionCard';
 import { CopilotDealFuzzyConfirmCard } from '@/components/copilot/CopilotDealFuzzyConfirmCard';
 import { CopilotDealFuzzySuggestionsCard } from '@/components/copilot/CopilotDealFuzzySuggestionsCard';
+import { CopilotDisambiguationOptionsCard, parseCopilotDisambiguationMessage } from '@/components/copilot/CopilotDisambiguationOptionsCard';
 import { CopilotApprovalGroup } from '@/components/copilot/CopilotApprovalGroup';
 import { DealAiSettingsPopover } from '@/components/copilot/DealAiSettingsPopover';
 import { useDealCopilotMemory } from '@/hooks/useDealCopilotMemory';
@@ -351,6 +352,7 @@ function DealSuggestionChips({
 /** Renders assistant content with entity links, JSON formatting, and stage display names */
 function CopilotAssistantContent({ content }: { content: string }) {
   const navigate = useNavigate();
+  const disambiguationCandidates = useCopilotStore((s) => s.disambiguationCandidates);
 
   // Extract chip suggestions emitted by the copilot system prompt in the form:
   //   [[CHIPS:["A","B","C"]]]
@@ -618,6 +620,15 @@ function CopilotAssistantContent({ content }: { content: string }) {
     groupedSegments.push(seg);
   }
 
+  const parsedDisambiguationByIndex = new Map<number, ReturnType<typeof parseCopilotDisambiguationMessage>>();
+  for (let i = 0; i < groupedSegments.length; i++) {
+    const seg = groupedSegments[i];
+    if (seg.type !== 'text' || typeof seg.value !== 'string') continue;
+    const parsed = parseCopilotDisambiguationMessage(seg.value, disambiguationCandidates);
+    if (parsed) parsedDisambiguationByIndex.set(i, parsed);
+  }
+  const shouldSuppressChips = parsedDisambiguationByIndex.size > 0;
+
   return (
     <>
       {groupedSegments.map((seg, i) => {
@@ -633,6 +644,9 @@ function CopilotAssistantContent({ content }: { content: string }) {
         if (seg.type === 'task') return <CopilotTaskCard key={i} task={seg.value} />;
         if (seg.type === 'pipeline') return <CopilotPipelineSummary key={i} data={seg.value} />;
         if (seg.type === 'settings_proposal') return <SettingsMutationCard key={i} proposal={seg.value} />;
+        if (seg.type === 'text' && parsedDisambiguationByIndex.has(i)) {
+          return <CopilotDisambiguationOptionsCard key={i} message={parsedDisambiguationByIndex.get(i)!} />;
+        }
         return (
           <ReactMarkdown
             key={i}
@@ -775,7 +789,7 @@ function CopilotAssistantContent({ content }: { content: string }) {
           </ReactMarkdown>
         );
       })}
-      {chips.length > 0 && (
+      {!shouldSuppressChips && chips.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
           {chips.map((chip, i) => (
             <button
