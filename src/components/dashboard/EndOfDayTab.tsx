@@ -31,6 +31,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { useAuth } from '@/contexts/AuthContext';
+import { useCompany } from '@/hooks/useCompany';
 import { useDealsContext } from '@/contexts/DealsContext';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -645,6 +646,36 @@ export function EndOfDayTab({
     [filtered, outstanding, selectedId],
   );
 
+  // Authoritative linked deal for the currently-selected event. Sourced
+  // from `meeting_deal_links` (the same row written by "Link deal" via
+  // MeetingDealInlineAction). The query key includes selectedId, so the
+  // hook re-runs whenever the user changes the focused event; the
+  // invalidate in MeetingDealInlineAction.persistLink also refreshes it
+  // when the user switches the linked deal in-place. This is the SINGLE
+  // source of truth for prefilling the New Task deal field — no fuzzy
+  // matching on title/transcript and no "first active deal" fallback.
+  const { company } = useCompany();
+  const { data: selectedLinkedDealId } = useQuery<string | null>({
+    queryKey: ['meeting-deal-link', selectedId, company?.id],
+    enabled: !!company?.id && !!selectedId,
+    staleTime: 0,
+    queryFn: async () => {
+      try {
+        const { data } = await (supabase.from('meeting_deal_links') as any)
+          .select('deal_id')
+          .eq('org_company_id', company!.id)
+          .eq('meeting_external_id', selectedId)
+          .is('deleted_at', null)
+          .order('linked_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return (data?.deal_id as string | undefined) ?? null;
+      } catch {
+        return null;
+      }
+    },
+  });
+
   useEffect(() => {
     if (selectedId) markRead(selectedId);
   }, [selectedId, markRead]);
@@ -972,7 +1003,9 @@ export function EndOfDayTab({
           onCreateTask={(initialTitle) => {
             setPrefill({
               title: initialTitle || `Follow Up: ${selectedEvent.summary || '(No title)'}`,
-              dealId: null,
+              // Explicit meeting→deal link is the SINGLE source of truth.
+              // If nothing is linked, leave empty — never guess.
+              dealId: selectedLinkedDealId ?? null,
               eventId: selectedEvent.id,
             });
             setFollowUpOpen(true);
@@ -1026,6 +1059,11 @@ export function EndOfDayTab({
           currentUserId={user?.id || ''}
           initialTitle={prefill.title}
           initialDealId={prefill.dealId}
+          // Meeting flow: the deal field is governed by the explicit
+          // meeting→deal link only. Suppress the dialog's title-based
+          // fuzzy auto-apply so it can never overwrite the explicit
+          // link (or fall back to a random deal when nothing is linked).
+          lockInitialDeal
           initialDueDate={new Date()}
           onCreate={async (input) => {
             await createTask.mutateAsync({

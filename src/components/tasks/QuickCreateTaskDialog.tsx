@@ -41,6 +41,15 @@ interface Props {
   initialTitle?: string;
   initialDealId?: string | null;
   initialDueDate?: Date | null;
+  /**
+   * When true, the dialog treats `initialDealId` as the authoritative
+   * deal for this task. The title-based fuzzy auto-apply is suppressed
+   * (suggestions stay visible as one-click chips, but never silently
+   * overwrite the prefilled deal — and never invent a random deal when
+   * none is prefilled). Used by meeting → Create task flows where the
+   * caller has already resolved the explicit meeting→deal link.
+   */
+  lockInitialDeal?: boolean;
 }
 
 const JUNK_NAMES = ['test', 'asdf', 'aaa', 'abc', 'xxx', 'zzz', 'asd', 'qwe', 'foo', 'bar'];
@@ -92,6 +101,7 @@ export function QuickCreateTaskDialog({
   initialTitle,
   initialDealId,
   initialDueDate,
+  lockInitialDeal = false,
 }: Props) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<QuickTaskInput['priority']>(null);
@@ -192,6 +202,18 @@ export function QuickCreateTaskDialog({
       setDebouncedTitle('');
     }
   }, [open, currentUserId, teamMembers, initialTitle, initialDealId, initialDueDate]);
+
+  // In locked mode (meeting → Create task), keep `dealId` mirrored to the
+  // explicit `initialDealId` for as long as the dialog stays open. The
+  // open-transition effect above only fires on false→true, so without
+  // this we'd miss the case where the caller re-resolves the linked deal
+  // (e.g. the user switches the link from Deal A to Deal B and clicks
+  // Create task again) between reopens. Unlocked callers keep the
+  // existing "set once on open" behavior so manual picks aren't clobbered.
+  useEffect(() => {
+    if (!open || !lockInitialDeal) return;
+    setDealId(initialDealId ?? null);
+  }, [open, lockInitialDeal, initialDealId]);
 
   // Collapse the inline deal results list when the user clicks anywhere
   // outside [data-deal-picker]. Clears query but preserves selection.
@@ -363,6 +385,12 @@ export function QuickCreateTaskDialog({
   // hasn't already chosen a deal. Never override an explicit selection.
   useEffect(() => {
     if (dealId) return;
+    // Meeting → Create task flow: the caller owns the deal field via the
+    // explicit meeting→deal link. Suggestions stay visible as one-click
+    // chips, but never silently auto-apply — that's the bug where a
+    // title like "Follow Up: SoLo Sync" would pick up an unrelated deal
+    // (e.g. Censys) just because its name happened to overlap.
+    if (lockInitialDeal) return;
     if (suggestions.length === 1 && suggestions[0].score >= 100) {
       setDealId(suggestions[0].deal.id);
     }
