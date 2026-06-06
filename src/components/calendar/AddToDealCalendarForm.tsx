@@ -183,7 +183,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
         </div>
 
         {/* Scrollable middle */}
-        <div className="flex-1 min-h-0 overflow-y-auto space-y-2.5 py-2.5 pr-1">
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-2 py-2 pr-1">
           {/* Item type */}
           <div>
             <Label className={labelCls}>Item type</Label>
@@ -240,7 +240,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
                   placeholder="Search deals…"
                   className="h-8 text-sm"
                 />
-                <div className="max-h-40 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                <div className="max-h-32 overflow-y-auto rounded-md border border-border divide-y divide-border">
                   {filteredDeals.length === 0 && (
                     <div className="px-2.5 py-1.5 text-[11px] text-muted-foreground">No deals match.</div>
                   )}
@@ -328,7 +328,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
         </div>
 
         {/* Pinned footer: actions */}
-        <div className="flex items-center justify-end gap-2 pt-2 shrink-0 border-t border-border/60">
+        <div className="flex items-center justify-end gap-2 pt-2 mt-1 shrink-0 border-t border-border/60 bg-card">
           <Button size="sm" variant="ghost" onClick={onClose} disabled={submitting} className="h-8 text-xs">
             Cancel
           </Button>
