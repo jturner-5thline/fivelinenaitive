@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { CalendarIcon, CheckCheck, Loader2, Quote, Sparkles, Lock } from 'lucide-react';
@@ -57,19 +58,28 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
   const [dealId, setDealId] = useState<string | null>(null);
   const [dealQuery, setDealQuery] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [alsoOnDealCalendar, setAlsoOnDealCalendar] = useState(false);
 
   const lockedDeal = !!prefill?.ctx.dealId;
+  // When the caller has no linked deal, run in "plain task" mode:
+  // force Task kind, hide the event option, hide the deal picker, and
+  // skip the calendar backlink. (The calendar toggle only appears when
+  // a deal is linked.)
+  const noLinkedDeal = !prefill?.ctx.dealId;
 
   useEffect(() => {
     if (!open || !prefill) return;
-    setKind(null);
+    setKind(noLinkedDeal ? 'task' : null);
     setTitle(prefill.title);
     setDate(prefill.parsed.date ?? undefined);
     setTime('');
     setDealId(prefill.ctx.dealId ?? null);
     setDealQuery('');
     setSubmitting(false);
-  }, [open, prefill]);
+    // Default: events go on the calendar (implicitly via kind='event'),
+    // tasks default off; user can opt-in.
+    setAlsoOnDealCalendar(false);
+  }, [open, prefill, noLinkedDeal]);
 
   const filteredDeals = useMemo(() => {
     const q = dealQuery.trim().toLowerCase();
@@ -88,51 +98,83 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
   const canSave =
     !!kind &&
     !!user &&
-    !!dealId &&
     !!title.trim() &&
-    !!date &&
+    // Plain task w/o linked deal → date optional
+    (kind === 'task' ? (noLinkedDeal ? true : !!dealId) : !!dealId && !!date) &&
+    (kind === 'event' ? !!date : true) &&
     !submitting;
 
   const handleSave = async () => {
-    if (!canSave || !prefill || !user || !dealId || !date || !kind) return;
+    if (!canSave || !prefill || !user || !kind) return;
     setSubmitting(true);
     try {
-      const dateStr = format(date, 'yyyy-MM-dd');
+      const dateStr = date ? format(date, 'yyyy-MM-dd') : null;
+      const source = {
+        module: prefill.ctx.module,
+        recordId: prefill.ctx.recordId,
+        sourceTimestamp: prefill.ctx.sourceTimestamp,
+        sourceText: prefill.sourceText,
+        deepLinkUrl: prefill.ctx.deepLinkUrl ?? null,
+      } as const;
+      const notes = `From ${MODULE_LABEL[prefill.ctx.module]}:\n\n“${prefill.sourceText}”`;
+
+      // 1) Primary write — task or event.
       await createDealFollowUp({
         kind,
         dealId,
         title: title.trim(),
         date: dateStr,
         time: kind === 'event' && time ? time : null,
-        notes: `From ${MODULE_LABEL[prefill.ctx.module]}:\n\n“${prefill.sourceText}”`,
+        notes,
         userId: user.id,
-        source: {
-          module: prefill.ctx.module,
-          recordId: prefill.ctx.recordId,
-          sourceTimestamp: prefill.ctx.sourceTimestamp,
-          sourceText: prefill.sourceText,
-          deepLinkUrl: prefill.ctx.deepLinkUrl ?? null,
-        },
+        source,
       });
+
+      // 2) Optional companion calendar entry when the user ticks "also
+      // add to deal calendar" on a Task that has a deal + date.
+      if (kind === 'task' && alsoOnDealCalendar && dealId && dateStr) {
+        try {
+          await createDealFollowUp({
+            kind: 'event',
+            dealId,
+            title: title.trim(),
+            date: dateStr,
+            time: null,
+            notes,
+            userId: user.id,
+            // Suffix so the dedupe guard treats this as a distinct backlink.
+            source: { ...source, sourceText: `${prefill.sourceText} [calendar]` },
+          });
+        } catch (companionErr) {
+          // eslint-disable-next-line no-console
+          console.warn('[AddToDealCalendar] companion event insert failed', companionErr);
+        }
+      }
 
       queryClient.invalidateQueries({ queryKey: ['deal-calendar-items', dealId] });
       queryClient.invalidateQueries({ queryKey: ['tasks'] });
 
       const dealName = selectedDeal?.name || 'deal';
-      const friendlyDate = format(date, 'EEE, MMM d');
-      toast.success(`Added to ${dealName} calendar for ${friendlyDate}`, {
+      const friendlyDate = date ? format(date, 'EEE, MMM d') : null;
+      const successMsg =
+        kind === 'event'
+          ? `Added event to ${dealName} calendar${friendlyDate ? ` for ${friendlyDate}` : ''}`
+          : alsoOnDealCalendar && dealId
+            ? `Task created and added to ${dealName} calendar${friendlyDate ? ` for ${friendlyDate}` : ''}`
+            : noLinkedDeal
+              ? `Task created${friendlyDate ? ` for ${friendlyDate}` : ''}`
+              : `Task created for ${dealName}${friendlyDate ? ` · ${friendlyDate}` : ''}`;
+      toast.success(successMsg, dealId ? {
         action: {
           label: 'Open calendar',
-          onClick: () => {
-            window.location.href = `/deals?deal=${dealId}#calendar`;
-          },
+          onClick: () => { window.location.href = `/deals?deal=${dealId}#calendar`; },
         },
-      });
+      } : undefined);
       onOpenChange(false);
     } catch (e) {
       // eslint-disable-next-line no-console
       console.error('[AddToDealCalendar] save failed', e);
-      toast.error('Could not add to deal calendar', {
+      toast.error('Could not create follow-up', {
         description: e instanceof Error ? e.message : 'Unknown error',
       });
     } finally {
@@ -148,10 +190,12 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            Add to Deal Calendar
+            Create follow-up
           </DialogTitle>
           <DialogDescription>
-            Convert the highlighted text into a task or event on the deal calendar.
+            {noLinkedDeal
+              ? 'Create a task to follow up on this item.'
+              : 'Create a task and/or add an event to the deal calendar.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -168,7 +212,8 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
             <p className="text-foreground/90 italic line-clamp-3">"{prefill.sourceText}"</p>
           </div>
 
-          {/* Kind toggle — REQUIRED */}
+          {/* Kind toggle — hidden when there's no linked deal (task-only) */}
+          {!noLinkedDeal && (
           <div>
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">Item type</Label>
             <div className="mt-1.5 grid grid-cols-2 gap-2">
@@ -190,6 +235,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
               </Button>
             </div>
           </div>
+          )}
 
           {/* Title */}
           <div>
@@ -203,7 +249,8 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
             />
           </div>
 
-          {/* Deal */}
+          {/* Deal — hidden when there's no linked deal (plain-task mode) */}
+          {!noLinkedDeal && (
           <div>
             <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
               Deal
@@ -246,11 +293,14 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
               </div>
             )}
           </div>
+          )}
 
           {/* Date */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs uppercase tracking-wide text-muted-foreground">Date</Label>
+              <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                Date {kind === 'task' && <span className="normal-case text-muted-foreground/70">(optional)</span>}
+              </Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -281,7 +331,7 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
                   )}
                 </div>
               )}
-              {!date && (
+              {kind === 'event' && !date && (
                 <p className="mt-1 text-xs text-amber-500">No date parsed — please pick one.</p>
               )}
             </div>
@@ -297,6 +347,22 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
               </div>
             )}
           </div>
+
+          {/* Also-on-calendar toggle (Task + linked deal only) */}
+          {kind === 'task' && !noLinkedDeal && dealId && (
+            <label className="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 cursor-pointer">
+              <Checkbox
+                checked={alsoOnDealCalendar}
+                onCheckedChange={(v) => setAlsoOnDealCalendar(v === true)}
+              />
+              <div className="text-sm">
+                <div className="font-medium">Also add to deal calendar</div>
+                <div className="text-xs text-muted-foreground">
+                  Creates a matching calendar entry on the deal{date ? ` for ${format(date, 'EEE, MMM d')}` : ''}.
+                </div>
+              </div>
+            </label>
+          )}
         </div>
 
         <DialogFooter>
@@ -305,7 +371,11 @@ export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) 
           </Button>
           <Button onClick={handleSave} disabled={!canSave}>
             {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : null}
-            {kind === 'event' ? 'Add event' : 'Add task'}
+            {kind === 'event'
+              ? 'Add event'
+              : alsoOnDealCalendar
+                ? 'Create task + calendar'
+                : 'Create task'}
           </Button>
         </DialogFooter>
       </DialogContent>
