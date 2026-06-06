@@ -1313,7 +1313,7 @@ function EventDetailPane({
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-4 py-3 space-y-5">
+      <div className="flex-1 min-h-0 min-w-0 w-full max-w-full overflow-y-auto overflow-x-hidden px-4 py-3 space-y-5">
         {/* Attendees */}
         <section>
           <div className="flex items-center justify-between mb-2">
