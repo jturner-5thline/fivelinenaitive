@@ -1,33 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { CalendarIcon, CheckCheck, Loader2, Quote, Sparkles, Lock } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useDealsContext } from '@/contexts/DealsContext';
-import { useQueryClient } from '@tanstack/react-query';
-import { toast } from 'sonner';
-import { Link } from 'react-router-dom';
-import type { CalendarSourceCtx } from './AddToDealCalendarProvider';
-import type { ParsedRelativeDate } from '@/lib/parseRelativeDate';
-import { createDealFollowUp } from '@/lib/deals/dealFollowUp';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Sparkles } from 'lucide-react';
+import { AddToDealCalendarForm, type AddToDealCalendarPrefill } from './AddToDealCalendarForm';
 
-export interface AddToDealCalendarPrefill {
-  sourceText: string;
-  title: string;
-  parsed: ParsedRelativeDate;
-  ctx: CalendarSourceCtx;
-}
-
-type ItemKind = 'task' | 'event';
+export type { AddToDealCalendarPrefill } from './AddToDealCalendarForm';
 
 interface Props {
   open: boolean;
@@ -35,18 +10,35 @@ interface Props {
   prefill: AddToDealCalendarPrefill | null;
 }
 
-const MODULE_LABEL: Record<CalendarSourceCtx['module'], string> = {
-  meeting_notes: 'Meeting notes',
-  claap_summary: 'Claap summary',
-  rundown_item: 'Daily rundown',
-  agenda: 'Agenda',
-  report: 'Report',
-  comment: 'Comment',
-  deal_memo: 'Deal memo',
-  other: 'Source',
-};
-
+/**
+ * Modal wrapper kept for the highlight-selection flow (HighlightCalendarMenu).
+ * Inline entry points (MeetingCreateFollowUpAction) anchor the form via a
+ * Popover instead.
+ */
 export function AddToDealCalendarDialog({ open, onOpenChange, prefill }: Props) {
+  if (!prefill) return null;
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md p-4">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-sm">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Create follow-up
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            Create a task and/or add an event to the deal calendar.
+          </DialogDescription>
+        </DialogHeader>
+        <AddToDealCalendarForm
+          prefill={prefill}
+          onClose={() => onOpenChange(false)}
+          compact
+          resetKey={open ? `${prefill.ctx.recordId}:${prefill.ctx.sourceTimestamp}` : 'closed'}
+        />
+      </DialogContent>
+    </Dialog>
+  );
+}
   const { user } = useAuth();
   const { deals } = useDealsContext();
   const queryClient = useQueryClient();
