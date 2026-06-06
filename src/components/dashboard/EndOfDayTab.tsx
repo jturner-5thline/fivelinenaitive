@@ -1127,6 +1127,7 @@ function EventDetailPane({
   const [composerForAll, setComposerForAll] = useState(false);
   const [composerPrefillBody, setComposerPrefillBody] = useState<string | undefined>(undefined);
   const [composerForOne, setComposerForOne] = useState<string | null>(null);
+  const [attendeesExpanded, setAttendeesExpanded] = useState(false);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteDirty, setNoteDirty] = useState(false);
   const [savedNotes, setSavedNotes] = useState<{ id: string; text: string; at: string }[]>([]);
