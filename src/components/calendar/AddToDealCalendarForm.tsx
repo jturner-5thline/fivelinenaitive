@@ -198,7 +198,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
                 onClick={() => setKind('task')}
                 className="justify-center h-8"
               >
-                <CheckCheck className="h-3.5 w-3.5 mr-1.5" /> Task / To-do
+                <CheckCheck className="h-3.5 w-3.5 mr-1.5" /> Task
               </Button>
               <Button
                 type="button"
@@ -386,7 +386,7 @@ export function AddToDealCalendarForm({ prefill, onClose, compact = false, reset
             onClick={() => setKind('task')}
             className="justify-center h-8"
           >
-            <CheckCheck className="h-3.5 w-3.5 mr-1.5" /> Task / To-do
+            <CheckCheck className="h-3.5 w-3.5 mr-1.5" /> Task
           </Button>
           <Button
             type="button"
