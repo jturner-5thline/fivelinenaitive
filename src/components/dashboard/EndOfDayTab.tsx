@@ -1407,46 +1407,6 @@ function EventDetailPane({
           </div>
         </section>
 
-        {/* Meeting summary (Claap) — selectable narrative */}
-        {(claapCtx.summary || claapCtx.keyTakeaways.length > 0 || claapCtx.actionItems.length > 0) && (
-          <section>
-            <h3 className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/80 mb-2">
-              Meeting summary
-            </h3>
-            <HighlightCalendarMenu
-              sourceCtx={{
-                module: 'claap_summary',
-                recordId: event.id,
-                sourceTimestamp: event.start || new Date().toISOString(),
-                dealId: linkedDealId ?? null,
-                label: eventTitle,
-                deepLinkUrl: claapCtx.recording?.url ?? undefined,
-              }}
-              className="rounded-md border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[12px] leading-relaxed text-white/85 space-y-2 select-text"
-            >
-              {claapCtx.summary && (
-                <p className="whitespace-pre-wrap">{claapCtx.summary}</p>
-              )}
-              {claapCtx.keyTakeaways.length > 0 && (
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">Key takeaways</div>
-                  <ul className="list-disc pl-4 space-y-0.5">
-                    {claapCtx.keyTakeaways.map((k, i) => <li key={i}>{k}</li>)}
-                  </ul>
-                </div>
-              )}
-              {claapCtx.actionItems.length > 0 && (
-                <div>
-                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground/80 mb-1">Action items</div>
-                  <ul className="list-disc pl-4 space-y-0.5">
-                    {claapCtx.actionItems.map((k, i) => <li key={i}>{k}</li>)}
-                  </ul>
-                </div>
-              )}
-            </HighlightCalendarMenu>
-          </section>
-        )}
-
         {/* Saved notes — selectable narrative */}
         {savedNotes.length > 0 && (
           <section>
