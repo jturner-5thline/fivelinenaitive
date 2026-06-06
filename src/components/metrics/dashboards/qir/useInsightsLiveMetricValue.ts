@@ -116,12 +116,21 @@ export function useInsightsLiveMetricValue(
     if (!metricSourceId) return { supported: false, status: 'unmapped' };
 
     // ---- Deal/pipeline metrics (Weekly Rundown / Insights deal stats) ----
-    if (
-      metricSourceId === 'active-pipeline' ||
-      metricSourceId === 'closed-won' ||
-      metricSourceId === 'total-fees' ||
-      metricSourceId === 'avg-deal-size'
-    ) {
+    const DEAL_SCALAR_IDS = new Set([
+      'active-pipeline', 'closed-won', 'total-fees', 'avg-deal-size',
+    ]);
+    // Chart-backed deal widgets that resolve to a single scalar via the
+    // SAME useMetricsData() hook the source charts already use.
+    const DEAL_CHART_IDS = new Set([
+      'closed-value-12m', 'closed-value-pop', 'fees-pop',
+      'ytd-cumulative', 'qtd-value',
+      'pipeline-by-stage', 'pipeline-by-type', 'pipeline-gauge',
+      'pipeline-treemap', 'stage-breakdown', 'conversion-funnel',
+      'manager-performance', 'performance-radar',
+      'deal-activity-12m', 'activity-heatmap', 'kpi-bullet',
+      'revenue-waterfall', 'revenue-forecast',
+    ]);
+    if (DEAL_SCALAR_IDS.has(metricSourceId) || DEAL_CHART_IDS.has(metricSourceId)) {
       if (dealMetrics.isLoading || !dealMetrics.rawDeals) {
         return { supported: true, status: 'loading', sourceSurface: 'Weekly Rundown' };
       }
@@ -132,12 +141,45 @@ export function useInsightsLiveMetricValue(
       const totalClosedWonValue = closedWon.reduce((s, d) => s + Number(d.value || 0), 0);
       const totalFees = closedWon.reduce((s, d) => s + Number(d.total_fee || 0), 0);
       const avg = closedWon.length > 0 ? totalClosedWonValue / closedWon.length : 0;
+      const dealCount = scoped.length;
+      // Map chart ids → a sensible scalar resolution.
+      const chartMap: Record<string, number> = {
+        'closed-value-12m': totalClosedWonValue,
+        'closed-value-pop': totalClosedWonValue,
+        'fees-pop': totalFees,
+        'ytd-cumulative': totalClosedWonValue,
+        'qtd-value': totalClosedWonValue,
+        'pipeline-by-stage': totalPipelineValue,
+        'pipeline-by-type': totalPipelineValue,
+        'pipeline-gauge': totalPipelineValue,
+        'pipeline-treemap': totalPipelineValue,
+        'stage-breakdown': totalPipelineValue,
+        'conversion-funnel': closedWon.length,
+        'manager-performance': totalClosedWonValue,
+        'performance-radar': totalClosedWonValue,
+        'deal-activity-12m': dealCount,
+        'activity-heatmap': dealCount,
+        'kpi-bullet': totalClosedWonValue,
+        'revenue-waterfall': totalClosedWonValue - 0,
+        'revenue-forecast': totalClosedWonValue,
+      };
       const v =
         metricSourceId === 'active-pipeline' ? totalPipelineValue :
         metricSourceId === 'closed-won'      ? totalClosedWonValue :
         metricSourceId === 'total-fees'      ? totalFees :
-        avg;
-      return { supported: true, status: 'ready', value: v, sourceSurface: 'Weekly Rundown' };
+        metricSourceId === 'avg-deal-size'   ? avg :
+        (chartMap[metricSourceId] ?? 0);
+      const surface =
+        metricSourceId.startsWith('pipeline-') || metricSourceId === 'stage-breakdown' || metricSourceId === 'conversion-funnel'
+          ? 'Consolidated Debt Pipeline Board'
+          : metricSourceId === 'manager-performance' ? 'Sales Team Board'
+          : metricSourceId === 'performance-radar'   ? 'Rep Scorecard'
+          : ['deal-activity-12m','activity-heatmap','kpi-bullet','revenue-waterfall','revenue-forecast'].includes(metricSourceId)
+            ? 'Sales & BD ROI'
+          : ['closed-value-12m','closed-value-pop','fees-pop','ytd-cumulative','qtd-value'].includes(metricSourceId)
+            ? 'Insights Dashboard'
+          : 'Weekly Rundown';
+      return { supported: true, status: 'ready', value: v, sourceSurface: surface };
     }
 
     // ---- QuickBooks metrics (Controller Dashboard) ----
@@ -163,6 +205,32 @@ export function useInsightsLiveMetricValue(
       if (metricSourceId in map) {
         return { supported: true, status: 'ready', value: map[metricSourceId] ?? 0, sourceSurface: 'Controller Dashboard' };
       }
+      // ---- QuickBooks chart-backed metrics → resolved scalars ----
+      const monthly = (m as any).monthlyRevenue ?? [];
+      const sum = <K extends string>(arr: Array<any>, k: K) =>
+        arr.reduce((s, r) => s + Number(r?.[k] || 0), 0);
+      const top1 = (arr: Array<any> | undefined, k: string) =>
+        Array.isArray(arr) && arr[0] ? Number(arr[0][k] || 0) : 0;
+      const chartMap: Record<string, number | undefined> = {
+        'qb-revenue-trend': sum(monthly, 'revenue'),
+        'qb-ar-aging': m.totalAR,
+        'qb-ap-aging': m.totalAP,
+        'qb-top-customers': top1((m as any).topCustomers, 'revenue'),
+        'qb-top-vendors': top1((m as any).topVendors, 'spend'),
+        'qb-expense-by-category': top1((m as any).expenseByCategoryData, 'amount'),
+        'qb-invoice-status': sum((m as any).invoiceStatusBreakdown, 'count'),
+        'qb-payment-methods': sum((m as any).paymentMethodsBreakdown, 'value'),
+        'qb-revenue-vs-payments': m.totalRevenue - m.totalPayments,
+        'qb-revenue-vs-expenses': m.totalRevenue - m.totalExpenses,
+      };
+      if (metricSourceId in chartMap) {
+        const surface =
+          metricSourceId === 'qb-revenue-trend' || metricSourceId === 'qb-top-customers' ||
+          metricSourceId === 'qb-revenue-vs-payments' || metricSourceId === 'qb-revenue-vs-expenses'
+            ? 'Revenue & Customers'
+            : 'Controller Dashboard';
+        return { supported: true, status: 'ready', value: chartMap[metricSourceId] ?? 0, sourceSurface: surface };
+      }
       return { supported: false, status: 'unmapped', sourceSurface: 'Controller Dashboard' };
     }
 
@@ -184,6 +252,16 @@ export function useInsightsLiveMetricValue(
       };
       if (metricSourceId in map) {
         return { supported: true, status: 'ready', value: map[metricSourceId] ?? 0, sourceSurface: 'HubSpot Dashboard' };
+      }
+      // HubSpot chart-backed → resolved scalars (reuse same hook).
+      const chartMap: Record<string, number | undefined> = {
+        'hs-pipeline-by-stage': m.totalDealValue,
+        'hs-deals-by-owner': m.totalDeals,
+        'hs-deal-value-trend': m.totalDealValue,
+        'hs-contacts-by-source': m.totalContacts,
+      };
+      if (metricSourceId in chartMap) {
+        return { supported: true, status: 'ready', value: chartMap[metricSourceId] ?? 0, sourceSurface: 'HubSpot Dashboard' };
       }
       return { supported: false, status: 'unmapped', sourceSurface: 'HubSpot Dashboard' };
     }
