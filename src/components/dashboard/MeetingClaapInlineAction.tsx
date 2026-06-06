@@ -225,12 +225,14 @@ export function MeetingClaapInlineAction(props: Props) {
       <Button
         size="sm"
         variant="outline"
-        className="h-8 justify-start gap-2 text-xs col-span-2 border-primary/30 bg-primary/[0.06] hover:bg-primary/[0.12] text-white"
+        className="h-8 w-full min-w-0 justify-start gap-1.5 px-2 text-xs border-primary/30 bg-primary/[0.06] hover:bg-primary/[0.12] text-white"
         onClick={onOpenPicker}
       >
-        <Video className="h-3.5 w-3.5 text-primary" />
-        {ranking || loadingRecordings ? 'Checking for Claap recording…' : 'Link Claap Recording'}
-        {(ranking || loadingRecordings) && <Loader2 className="h-3 w-3 animate-spin ml-1" />}
+        <Video className="h-3.5 w-3.5 text-primary shrink-0" />
+        <span className="truncate">
+          {ranking || loadingRecordings ? 'Checking Claap…' : 'Link Claap Recording'}
+        </span>
+        {(ranking || loadingRecordings) && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
       </Button>
     );
   }
