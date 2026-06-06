@@ -597,6 +597,14 @@ function MeetingCard({
               ? `Claap${linkedClaapCount > 1 ? ` (${linkedClaapCount})` : ''} linked`
               : 'Link Claap'}
           </Button>
+          {dealMatch?.id && (
+            <AddToDealCalendarMeetingButton
+              dealId={dealMatch.id}
+              eventId={event.id}
+              eventTitle={event.summary || '(no title)'}
+              eventStartISO={event.start}
+            />
+          )}
         </div>
       )}
 
