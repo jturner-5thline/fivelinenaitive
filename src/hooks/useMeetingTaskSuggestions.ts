@@ -395,7 +395,7 @@ export function useMeetingTaskSuggestions(input: UseMeetingTaskSuggestionsInput)
       // un-actionable: the signed-in user can always Approve and the task
       // is auto-assigned to them, just like the "Assign to me" picker.
       const effective = manualMember ?? resolved ?? dealManager ?? viewer;
-      const assignmentSource: 'mention' | 'deal-manager' | 'manual' | null = manualMember
+      const assignmentSource: MeetingTaskSuggestion['assignment_source'] = manualMember
         ? (resolved && resolved.user_id === manualMember.user_id ? 'mention' : 'manual')
         : resolved
           ? 'mention'
